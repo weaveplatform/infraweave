@@ -437,7 +437,7 @@ These need tickets of their own; this report changes no code.
 | Tier values: `public-worker-slots` and `seats` for Starter, Starter+ rows, `repos` at Free and `drift-detection` at Starter+ | `docs/data/features.json` and the catalogue generated from it | Section 14, C287 |
 | An OpenTofu stack with no image named runs on the Terraform runner image, while Spacelift's blank default is the vendor's image | `internal/workers/internal/core/images/images.go`, `internal/agent/config/config.go` | Section 4; P20 |
 | `useRunAll: false` still runs `terragrunt run --all` | `internal/iac/terragrunt`, the runner | P20 |
-| No plan document is sanitized before upload, which decision 0009 requires | `internal/agent/exec` | P20 |
+| No plan document is sanitized before upload, which decision 0009 requires | `internal/agent/exec` | P13 |
 | `iactest`'s plan cases are Terraform's documents, so no other vendor can pass them | `internal/iac/iactest` | P20 |
 
 Reference operations that no phase names at `3d822e48`, with the phase that carries each: `azureIntegrationConsentConfirm`

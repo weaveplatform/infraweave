@@ -243,6 +243,7 @@ flowchart LR
   P21 --> P18d
   P12b --> P19b[P19b VCS agents and sources]
   P11 --> P20[P20 Vendors]
+  P13 --> P20
   P20 --> P20b[P20b Ansible and plugins]
   P16 --> P21[P21 Templates]
   P20b --> P22[P22 Resources and search]
@@ -276,14 +277,15 @@ list. Numbering does not serialize independent work: a phase starts as soon as
 the phases it depends on are done.
 
 **Critical path:** P0 → P1 → P1b → P1c → P2 → P2c → P2b → P3 → P4 → P5 → P6b →
-P7 → P8 → P8b → P9 → P10 → P11 → P20 → P20b → P22 → P22b → P24 → P24b → P24c →
-P27 → P28, the longest chain of **Depends on** edges (25 edges). Between P5
-and P8, P6 is one phase shorter than P6b → P7, and between P6b and P9, P12 is
-two phases shorter than P7 → P8 → P8b. From P10 to P24, the Flows chain
-(P12b → P13 → P18 → P18c → P18d) ties with the vendor chain, so a slip in
-either moves the release. The policy and identity chain
-(P12b → P13 → P13b → P23), the registry chain (P12b → P13 → P17 → P17b) and
-the audit chain (P12b → P13 → P18 → P18b) are each one phase shorter.
+P7 → P8 → P8b → P9 → P10 → P12b → P13 → P20 → P20b → P22 → P22b → P24 → P24b →
+P24c → P27 → P28, the longest chain of **Depends on** edges (26 edges). Between
+P5 and P8, P6 is one phase shorter than P6b → P7, and between P6b and P9, P12
+is two phases shorter than P7 → P8 → P8b. P20 waits on P13, whose
+`internal/iac/sanitize` sanitizes every vendor's plan, so P11 is one phase
+shorter than P12b → P13 between P10 and P20. From P13 to P24, the Flows chain
+(P18 → P18c → P18d) is one phase shorter than the vendor chain, and the policy
+and identity chain (P13b → P23), the registry chain (P17 → P17b) and the audit
+chain (P18 → P18b) are each two phases shorter.
 
 **Parallel lanes:**
 - P2c comes before P2b, because object storage registers `blob.delete` and
@@ -302,7 +304,8 @@ the audit chain (P12b → P13 → P18 → P18b) are each one phase shorter.
 - P15 (cloud and OIDC) starts once P9 lands, and Intelligence (P25 → P25b)
   follows it.
 - Once P10 lands, four lanes run independently:
-  - state and vendors: P11 → P20 → P20b → P22 → P22b;
+  - state and vendors: P11, then P20 once P13 has landed, → P20b → P22 →
+    P22b;
   - VCS and policy: P12b → P13, then P19b, P13b → P23, P14,
     P17 → P17b (with P15) and P18 → P18b, each from P13 or P12b as its
     **Depends on** line says;
@@ -2146,9 +2149,8 @@ plan policy templates read scanner plugins' results from the policy input
    The plan input carries `third_party_metadata.custom.<plugin>`, which
    P20b's plugins write, and each vendor's block in the shape P20 records
    in decision 0009. The `sanitized()` built-in hashes with
-   `internal/iac/sanitize`, decision 0009's hash (DV-031), which this phase
-   adds if P20 has not landed and imports otherwise, so the worker and the
-   built-in never differ.
+   `internal/iac/sanitize`, decision 0009's hash (DV-031), the package
+   task 7's runner step uses, so the worker and the built-in never differ.
 4. Evaluation points in `internal/runs/internal/core/gates`: approval on
    `QUEUED`, `UNCONFIRMED`, `PENDING_REVIEW` and each `runReview`; plan after
    `PLANNING` and each targeted replan; push in `vcs.evaluate_event`;
@@ -2166,8 +2168,21 @@ plan policy templates read scanner plugins' results from the policy input
    and `registry`'s and `intelligence`'s if P17 or P25 has landed.
    `policies` imports none of its callers
    ([declared graph](repo-layout.md#declared-graph)).
+7. Plan sanitization on the worker (decision 0009): `internal/iac/sanitize`
+   holds the hash (DV-031); the run specification carries the stack's mode
+   (`useSmartSanitization`, and the label
+   `feature:disable_resource_sanitization` to opt out); and the runner
+   sanitizes the Terraform, OpenTofu and Terragrunt plan documents before
+   upload, so the plan policy's input and the stored plan hold hashes, never
+   sensitive values. A Terragrunt stack accepts `useSmartSanitization: true`.
+   Feature: `vendors/sanitization.feature`, where C192 is awaited: the
+   default and smart modes on each of the three vendors, and the opt-out
+   label.
 
 **Exit criteria**
+- No Terraform, OpenTofu or Terragrunt plan document reaches the object
+  store unsanitized: a scenario per vendor finds no sensitive value in the
+  uploaded plan.
 - Option 5's walkthrough holds against Gitea: a push opens a proposed run, a
   plan policy warns, and the check and pull request comment appear.
 - The operations of task 2 and task 4 meet decision 0016's evidence rule.
@@ -2931,13 +2946,14 @@ repositories Spacelift hosts, an Enterprise feature
 
 Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.md), [0009](../research/decisions/0009-policy-engine-opa.md), [0010](../research/decisions/0010-state-backend.md), [0016](../research/decisions/0016-testing-and-acceptance.md), [0024](../research/decisions/0024-expression-language.md), [0004](../research/decisions/0004-repository-architecture.md).
 
-**Depends on:** P11.
+**Depends on:** P11, P13.
 
 Pulumi, CloudFormation and Kubernetes, each an `iac` package with built-in
 command templates and a runner step behind one contract, the rest of
-Terragrunt, whose runs and units P11 delivers, and sanitization for every
-vendor. The decisions were written for the Terraform family, so the first
-task writes each new vendor's contract into them before any vendor's code.
+Terragrunt, whose runs and units P11 delivers, and sanitization of each
+new vendor's plan, on the package and runner step P13 adds. The decisions
+were written for the Terraform family, so the first task writes each new
+vendor's contract into them before any vendor's code.
 
 **Tasks**
 1. Rewrite the decisions in place where P20 and the decisions or main
@@ -2951,8 +2967,9 @@ task writes each new vendor's contract into them before any vendor's code.
      which tools the launcher downloads and how kubectl is verified; and
      whether Pulumi has a runner image of its own, since "runner images
      for each" contradicts 0008's three images and report 20 section 11;
-   - 0009: the sanitization contract, applied on the worker before upload
-     for every vendor, with its modes (`useSmartSanitization`, the label
+   - 0009: the sanitization contract that P13 applies to the Terraform
+     family, extended to each new vendor, with its modes
+     (`useSmartSanitization`, the label
      `feature:disable_resource_sanitization`) and what each vendor's plan
      document hashes, and the shape of each vendor's block in the plan
      policy input, which P13 evaluates;
@@ -2976,18 +2993,16 @@ task writes each new vendor's contract into them before any vendor's code.
    vendor's own (empty, malformed, another format), with the size bound for
    any document; `Vendor.ReadOutputs`; the runner reads plans and outputs
    through the stack's vendor, not through `plan.Parse` directly.
-   `internal/iac/sanitize` holds decision 0009's hash (DV-031), added here
-   or by P13, whichever lands first, the run
-   specification carries the sanitization mode, and the runner sanitizes
-   every vendor's plan document before upload, Terraform and OpenTofu
-   included. P13's `sanitized()` built-in imports the same package.
+   The runner sanitizes each new vendor's plan document before upload with
+   P13's `internal/iac/sanitize` and the mode the run specification
+   carries.
    Built-in command templates live in `internal/iac/workflow` beside
    Terraform's and each vendor's phase map in `internal/agent/vendors`, so
    every command renders through one quoting path (0024).
 3. Terragrunt beyond P11: `useRunAll: false` runs one unit in the project
    root, while P11 runs `run --all` whatever the setting and its features
    set `useRunAll: true` where they need units; `skipReplan` and its
-   deprecated alias `skipReplanWhenRunAll`; `useSmartSanitization`;
+   deprecated alias `skipReplanWhenRunAll`;
    `prefixResourceNamesWithModuleName`; `MANUALLY_PROVISIONED`; explicit
    stacks under run-all; and each unit's changes, outputs and plan
    document. Operations: `terragruntVersions` and
@@ -3015,9 +3030,8 @@ task writes each new vendor's contract into them before any vendor's code.
    the plan document, Kustomize native and Helm through a `helm template`
    hook. Operation: `kubectlVersions`, from the `vendors` catalogue. Gated by `vendor-kubernetes`.
    Feature: `vendors/kubernetes.feature` (`@kubernetes`, k3s).
-7. Feature: `vendors/sanitization.feature`, where C192 is awaited: the
-   default and smart modes on Terraform, OpenTofu and Terragrunt plans, the
-   opt-out label, and each new vendor's rule.
+7. `vendors/sanitization.feature`, which P13 adds, gains each new vendor's
+   rule.
 
 **Exit criteria**
 - Pulumi, CloudFormation and Kubernetes each run a tracked run to
