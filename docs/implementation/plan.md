@@ -88,8 +88,9 @@ are the records that can move.
   ([0016](../research/decisions/0016-testing-and-acceptance.md)).
 - **One event model.** Deploy and Flows share decision
   [0015](../research/decisions/0015-events-notifications-webhooks-audit.md)'s event envelope and emit path from the queue phase on: P2c's
-  outbox writes the `events` rows that P18 fans out and that the Flows
-  engine consumes ([0018](../research/decisions/0018-flows-runtime.md)). Flows therefore follows the events phase
+  outbox writes the `events` rows whose fan-out begins in P12b with Commit
+  checks and extends in P18 to other sinks and kinds. The Flows
+  engine consumes them ([0018](../research/decisions/0018-flows-runtime.md)). Flows therefore follows the events phase
   directly, as P18c and P18d.
 - **One expression language.** Every expression a user writes is CEL
   ([0024](../research/decisions/0024-expression-language.md)). `internal/platform/expr` and the expression endpoints land in
