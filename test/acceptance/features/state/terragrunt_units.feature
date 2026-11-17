@@ -224,9 +224,11 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     Then the answer's items is '[]'
 
     Examples:
-      | yaml                              |
+      | yaml                               |
       | terragrunt: {use_run_all: \"yes\"} |
-      | terragrunt: [                     |
+      | terragrunt: [                      |
+      | terragrunt: {}\\n---\\n[           |
+      | terragrunt: {}\\n---\\nversion: 1  |
 
   @op:runTrigger @case:failure
   Scenario: A single-unit run needs terragrunt.hcl at the project root even when nested units exist

@@ -266,11 +266,14 @@ func TestUnitTriggerTerragruntYAML(t *testing.T) {
 		refused      bool
 	}{
 		{"terragrunt", "terragrunt: [", true},
+		{"terragrunt", "terragrunt: {}\n---\n[", true},
+		{"terragrunt", "terragrunt: {}\n---\nversion: 1", true},
 		{"terragrunt", "terragrunt: {use_run_all: \"yes\"}", true},
 		{"terragrunt", "terragrunt: {use_run_all: false}", false},
 		{"terragrunt", "terragrunt: {}", false},
 		{"terraform", "terragrunt: [", false},
 		{"opentofu", "terragrunt: {use_run_all: \"yes\"}", false},
+		{"opentofu", "terragrunt: {}\n---\n[", false},
 	} {
 		t.Run(tc.vendor+"/"+tc.yaml, func(t *testing.T) {
 			service := trigger.New(trigger.Deps{DB: runtimeDB{}, Stacks: runtimeStacks{vendor: tc.vendor}})
