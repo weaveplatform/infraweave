@@ -164,6 +164,33 @@ Feature: Runs of an OpenTofu stack end to end
     And token "h" reads the run "run"'s PLANNING log through A, which holds "CTX_ONLY=context\nECHO=run of infra\nLEVEL=run\nSTACK_ONLY=stack\nTF_VAR_infraweave_run_type=stack\nTF_VAR_infraweave_stack_id=infra\nro_PLAIN=plain\napi token: set" and not "LEVEL=stack"
     And token "h" reads the run "run"'s PLANNING log through B, which holds "token sub: infra/{run}\nstack read: infra in legacy\nspace read: legacy" and not "LEVEL=context"
 
+  @op:runTrigger @op:contextCreateV2 @op:contextAttach @op:contextConfigAdd @case:success
+  Scenario: Auto-attached contexts rank variables and hooks from Z to A
+    Given token "h" sends "POST /api/v1/contexts" with '{"name":"Alpha","space":"legacy","configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"alpha","writeOnly":false}],"hooks":{"afterApply":[],"afterDestroy":[],"afterInit":[],"afterPerform":[],"afterPlan":["echo after-alpha"],"afterRun":[],"beforeApply":[],"beforeDestroy":[],"beforeInit":[],"beforePerform":[],"beforePlan":["echo alpha"]},"labels":["autoattach:infra"]}' through A
+    Then it answers 201
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Zulu","space":"legacy","configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"zulu","writeOnly":false}],"hooks":{"afterApply":[],"afterDestroy":[],"afterInit":[],"afterPerform":[],"afterPlan":["echo after-zulu"],"afterRun":[],"beforeApply":[],"beforeDestroy":[],"beforeInit":[],"beforePerform":[],"beforePlan":["echo zulu"]},"labels":["autoattach:infra"]}' through A
+    Then it answers 201
+    And token "h" sends "POST /api/v1/contexts" with '{"name":"Direct","space":"legacy","configAttachments":[{"id":"DIRECT_ONLY","type":"ENVIRONMENT_VARIABLE","value":"direct","writeOnly":false}],"hooks":{"afterApply":[],"afterDestroy":[],"afterInit":[],"afterPerform":[],"afterPlan":["echo after-direct"],"afterRun":[],"beforeApply":[],"beforeDestroy":[],"beforeInit":[],"beforePerform":[],"beforePlan":["echo \"DIRECT_ONLY=$DIRECT_ONLY\"","echo \"LEVEL=$LEVEL\"","echo direct"]}}' through A
+    Then it answers 201
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","labels":["infra"],"vendorConfig":{"opentofu":{}},"beforePlan":["echo stack"],"afterPlan":["echo after-stack"]},"manageState":true}' through B
+    Then it answers 201
+    And token "h" sends "PUT /api/v1/stacks/infra/contexts/direct" with '{"priority":5}' through A
+    Then it answers 200
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through B
+    Then it answers 200
+    And the answer's id names "auto"
+    And token "h" eventually reads the run "auto" in the state "FINISHED" through A
+    And token "h" reads the run "auto"'s PLANNING log through B, which holds "DIRECT_ONLY=direct\nLEVEL=zulu\ndirect\nzulu\nalpha\nstack" and not "LEVEL=alpha"
+    And token "h" reads the run "auto"'s PLANNING log through A, which holds "after-stack\nafter-alpha\nafter-zulu\nafter-direct" and not "LEVEL=alpha"
+    When token "h" sends "POST /api/v1/contexts/direct/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"direct","writeOnly":false}' through A
+    Then it answers 201
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
+    Then it answers 200
+    And the answer's id names "direct"
+    And token "h" eventually reads the run "direct" in the state "FINISHED" through B
+    And token "h" reads the run "direct"'s PLANNING log through A, which holds "DIRECT_ONLY=direct\nLEVEL=direct\ndirect\nzulu\nalpha\nstack" and not "LEVEL=zulu"
+
   @op:taskCreate @op:runLogs @case:success
   Scenario: A task performs its command on the stack's state, and a failing task fails in PERFORMING with its output masked
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{}},"beforePerform":["echo \"before perform: $TF_VAR_infraweave_run_type\""],"afterPerform":["echo \"after perform\""]},"manageState":true}' through B

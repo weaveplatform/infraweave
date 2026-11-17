@@ -1350,7 +1350,7 @@
       "id": "C99",
       "kind": "capture",
       "area": "Configuration and state (reports 13 and 16)",
-      "question": "What priority does an auto-attached context attachment report, and does `autoattach:*` reach child spaces whatever their inheritance setting? The console gives an auto-attached context no priority field and labels the auto-attached order reverse alphabetical (report 32); the API's value, and which of two auto-attached contexts wins a variable, are unread",
+      "question": "What priority does an auto-attached context attachment report, and does `autoattach:*` reach child spaces whatever their inheritance setting? The console gives an auto-attached context no priority field (report 32); the API's value remains unread. Answer for which of two auto-attached contexts wins a variable: the one whose name sorts last, as the console's Z→A label shows (maintainer, 2026-11-17)",
       "howToCapture": "Query `attachedContexts`; test with an inheritance-off child space",
       "blocks": "the attachment resource and auto-attach resolution",
       "reports": [

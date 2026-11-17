@@ -317,7 +317,7 @@ environment view lists only the winning value with the context it comes from
 |---|---|
 | A context labelled `autoattach:<label>` attaches to every stack and module carrying `<label>`; the project needs only the bare label | [D](https://docs.spacelift.io/concepts/configuration/context) |
 | `autoattach:*` attaches to every project in the context's space and its child spaces | [D](https://docs.spacelift.io/concepts/configuration/context) |
-| Auto-attached contexts have no priority picker; among themselves they order alphabetically by name | [D](https://docs.spacelift.io/concepts/configuration/context) |
+| Auto-attached contexts have no priority picker; among themselves they rank in reverse alphabetical order by name | [32](32-spacelift-console-survey.md) section 17.1; maintainer, 2026-11-17, for variables and hooks alike; contrary to the docs' alphabetical wording [D](https://docs.spacelift.io/concepts/configuration/context) |
 | Attachments made this way report `isAutoattached: true` | [G] |
 | The same label mechanism attaches policies (except login policies) and AWS and Azure integrations | [D](https://docs.spacelift.io/concepts/policy); [D](https://docs.spacelift.io/concepts/configuration/context) |
 | For AWS and Azure integrations only, `autoattach_read:` and `autoattach_write:` restrict the attachment to read or write; combined with `autoattach:` both are granted | [D](https://docs.spacelift.io/concepts/configuration/context); [RN](https://docs.spacelift.io/product/changelog) (2026-06-10) |
@@ -450,7 +450,7 @@ Highest first [D](https://docs.spacelift.io/concepts/configuration):
 | 2 | `.spacelift/config.yml`, `stack_defaults` | Version 2 files; in version 1 files rank 3 outranks it [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) |
 | 3 | The stack: its environment and its settings | Report 07 for settings |
 | 4 | Explicitly attached contexts, by priority, lowest number first | |
-| 5 | Auto-attached contexts, alphabetically | [D](https://docs.spacelift.io/concepts/configuration/context) |
+| 5 | Auto-attached contexts, reverse alphabetical | [32](32-spacelift-console-survey.md) section 17.1; maintainer, 2026-11-17; contrary to the docs' alphabetical wording [D](https://docs.spacelift.io/concepts/configuration/context) |
 
 The runtime configuration page restates ranks 1 to 3, and says the runtime
 file's `environment` map overrides both context and stack variables on a
@@ -467,6 +467,7 @@ ranks 1 and 2 drop out for it
 
 | Point | What the sources say | Status |
 |---|---|---|
+| Auto-attached context order | The context docs say alphabetical [D](https://docs.spacelift.io/concepts/configuration/context); the console labels the priority Z→A ([32](32-spacelift-console-survey.md) section 17.1) | The last name wins variables and mounted files; hooks use that rank before a phase and reverse it after (maintainer, 2026-11-17). C99 retains only the API priority and attachment reach questions |
 | Runtime file version | Version 2 puts the file above stack settings. Version 1 put stack settings above `stack_defaults` [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration). That page says `version` defaults to `1`; the YAML reference says `version` is optional and ignored [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration/runtime-yaml-reference) | Contradictory; which applies to a file without `version` is *(unverified)* (C27) |
 | No stack block | When the file has no block for the stack, the page lists the stack's settings first and `stack_defaults` second [D](https://docs.spacelift.io/concepts/configuration/runtime-configuration) | Read literally, that reverses rank 2 and 3 for such stacks *(unverified)* (C28) |
 | Hooks from the runtime file | The file's hooks "can override" stack hooks [D](https://docs.spacelift.io/concepts/stack/stack-settings) | Whether they replace or extend stack hooks, and what happens to context hooks, is *(unverified)* (C29); without a runtime file, a run's recorded configuration holds context and stack hooks merged in execution order ([32](32-spacelift-console-survey.md) section 17.1) |
