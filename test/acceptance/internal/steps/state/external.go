@@ -142,6 +142,12 @@ func (b *backendSteps) state(ctx context.Context, method, path, user, phrase, re
 		http.MethodGet: "", http.MethodPost: `{"version":4,"serial":1,"lineage":"x"}`,
 		stateapi.MethodLock: `{"ID":"external"}`, stateapi.MethodUnlock: `{"ID":"external"}`,
 	}[method]
+	return b.stateBody(ctx, method, path, user, pass, body, replica)
+}
+
+// stateBody sends an explicit body so force-unlock can distinguish an empty
+// request from the LockInfo a holder sends when releasing its own lock.
+func (b *backendSteps) stateBody(ctx context.Context, method, path, user, pass, body, replica string) (harness.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, b.w.Base(replica)+path,
 		strings.NewReader(body))
 	if err != nil {
