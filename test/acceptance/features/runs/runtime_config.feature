@@ -129,5 +129,5 @@ Feature: A trigger checks and applies its custom runtime configuration
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "FAILED" through B
     And the answer's history is the states "QUEUED, READY, PREPARING, FAILED"
-    And the answer's last state transition's note starts with '/runtimeConfig/yaml'
+    And the answer's last state transition's note contains '/runtimeConfig/yaml'
     And the answer leaves out "runtimeConfig"

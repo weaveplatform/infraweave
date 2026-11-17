@@ -504,6 +504,8 @@ The read model `RuntimeConfig` has the hooks, `environment`, `projectRoot`,
 `gitSparseCheckoutPaths`, `yaml`, and per-vendor `terraform`, `opentofu` and
 `terragrunt` objects [G]. Whether unknown keys are rejected or ignored is not
 documented *(unverified)* (C30).
+Whether `customRuntimeConfig` or the effective `runtimeConfig` answers a
+trigger's environment variable values is not documented *(unverified)* (C311).
 
 ## 8. What the read model adds
 

@@ -20,8 +20,10 @@ func TestUnitRuntimeSettings(t *testing.T) {
 		VendorConfig: json.RawMessage(`{"workspace":"kept","workflowTool":"TERRAFORM_FOSS"}`),
 		ManagesState: true,
 	}
-	in := Input{ProjectRoot: &root, RunnerImage: &image, TerraformVersion: new("ignored"),
-		OpenTofuVersion: &version, WorkflowTool: &workflow, GitSparseCheckoutPaths: &paths}
+	in := Input{
+		ProjectRoot: &root, RunnerImage: &image, TerraformVersion: new("ignored"),
+		OpenTofuVersion: &version, WorkflowTool: &workflow, GitSparseCheckoutPaths: &paths,
+	}
 	if err := in.ApplySettings(&st); err != nil || *st.ProjectRoot != root || *st.RunnerImage != image ||
 		*st.TerraformVersion != version || !slices.Equal(st.GitSparseCheckoutPaths, paths) ||
 		DrivenVendor(st) != "opentofu" || !st.ManagesState {
@@ -48,8 +50,10 @@ func TestUnitRuntimeSettings(t *testing.T) {
 func TestUnitRuntimeVendorBlocks(t *testing.T) {
 	for _, custom := range []bool{false, true} {
 		t.Run(map[bool]string{false: "default", true: "custom"}[custom], func(t *testing.T) {
-			st := stacksapi.Settings{Vendor: "opentofu", TerraformVersion: new("old"),
-				VendorConfig: json.RawMessage(`{"version":"old","concise":true,"enableCPUProfiling":true}`)}
+			st := stacksapi.Settings{
+				Vendor: "opentofu", TerraformVersion: new("old"),
+				VendorConfig: json.RawMessage(`{"version":"old","concise":true,"enableCPUProfiling":true}`),
+			}
 			block := &OpenTofuInput{Version: new("1.6.3")}
 			if custom {
 				block.WorkflowTool = new("CUSTOM")
@@ -68,8 +72,10 @@ func TestUnitRuntimeVendorBlocks(t *testing.T) {
 			}
 		})
 	}
-	st := stacksapi.Settings{Vendor: "terragrunt", ManagesState: true,
-		VendorConfig: json.RawMessage(`{"useRunAll":true,"useSmartSanitization":true,"tool":"OPEN_TOFU"}`)}
+	st := stacksapi.Settings{
+		Vendor: "terragrunt", ManagesState: true,
+		VendorConfig: json.RawMessage(`{"useRunAll":true,"useSmartSanitization":true,"tool":"OPEN_TOFU"}`),
+	}
 	if err := (Input{Terragrunt: &TerragruntInput{}}).ApplySettings(&st); err != nil {
 		t.Fatal(err)
 	}

@@ -110,6 +110,7 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's last state transition's note is "([^"]*)"$`, l.note)
 	sc.Step(`^the answer's last state transition's note is '([^']*)'$`, l.note)
 	sc.Step(`^the answer's last state transition's note starts with '([^']*)'$`, l.noteStarts)
+	sc.Step(`^the answer's last state transition's note contains '([^']*)'$`, l.noteContains)
 }
 
 // previousRelease adds an older verified archive to the existing mirror,
@@ -541,6 +542,20 @@ func (l *launcherSteps) noteStarts(want string) error {
 		}
 		return fmt.Errorf("%w: the last transition is %s, with the note %s", harness.ErrStep,
 			last.State, note)
+	}
+	return nil
+}
+
+// noteContains checks a setting pointer inside a note whose transport
+// context precedes the underlying configuration refusal.
+func (l *launcherSteps) noteContains(want string) error {
+	h, err := l.transitions()
+	if err != nil {
+		return err
+	}
+	last := h[len(h)-1]
+	if last.Note == nil || !strings.Contains(*last.Note, l.w.Resolve(want)) {
+		return fmt.Errorf("%w: the last transition's note lacks %s", harness.ErrStep, want)
 	}
 	return nil
 }

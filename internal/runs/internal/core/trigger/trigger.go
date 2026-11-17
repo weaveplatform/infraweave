@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
@@ -131,9 +132,13 @@ func (s *Service) Task(ctx context.Context, p kernel.Principal, slug string, t k
 
 // create creates n's run as p on p's account's stack slug, on the commit
 // sha, in one transaction, and answers its view.
-func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, n lifecycle.NewRun) (read.View, error) {
+func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, original lifecycle.NewRun) (read.View, error) {
 	var v read.View
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+		// A serialization retry must parse the original API form and seal its
+		// original values, rather than reparsing a previous attempt's record.
+		n := original
+		n.Overrides = slices.Clone(original.Overrides)
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 		if err != nil {
 			return err //nolint:wrapcheck // the stacks domain names the read

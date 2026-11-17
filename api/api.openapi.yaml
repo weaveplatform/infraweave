@@ -28169,7 +28169,7 @@ components:
           nullable: true
           type: array
         gitSparseCheckoutPaths:
-          description: List of paths for git sparse checkout.
+          description: List of paths for git sparse checkout. An empty list uses the stack's paths.
           items:
             type: string
           nullable: true

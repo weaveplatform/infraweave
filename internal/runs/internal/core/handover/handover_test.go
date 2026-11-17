@@ -673,8 +673,10 @@ func TestUnitHandoverRuntimeConfiguration(t *testing.T) {
 		"projectRoot":"infra", "runnerImage":"runtime:one", "gitSparseCheckoutPaths":["infra"],
 		"environment":[{"key":"TOKEN","value":"runtime-secret"},{"key":"LEVEL","value":"${{ literal }}"}]
 	}`))
-	w.store.overrides = []lifecycle.Override{{Name: "TOKEN", Value: "runtime-secret"},
-		{Name: "LEVEL", Value: "${{ literal }}"}}
+	w.store.overrides = []lifecycle.Override{
+		{Name: "TOKEN", Value: "runtime-secret"},
+		{Name: "LEVEL", Value: "${{ literal }}"},
+	}
 	w.env.resolved.Hooks = map[string][]string{"before_plan": {"context guard", "echo runtime"}}
 	w.env.resolved.Elements = []configapi.Element{variable("TOKEN", "stack-secret", true), variable("LEVEL", "context", false)}
 	h, err := w.firstHandover(t, w.run.ID)
@@ -737,7 +739,8 @@ func TestUnitHandoverRuntimeVersions(t *testing.T) {
 			w.catalog.invalid = true
 			if _, err := w.firstHandover(t, w.run.ID); err == nil {
 				t.Fatal("unmatched runtime constraint accepted")
-			} else if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != "/runtimeConfig/yaml" {
+			} else if inv, ok := errors.AsType[*kernel.Invalid](err); !ok || inv.Errors[0].Pointer != "/runtimeConfig/yaml" ||
+				!strings.Contains(inv.Detail, "/runtimeConfig/yaml") {
 				t.Fatalf("runtime constraint diagnostic: %v", err)
 			}
 		})
@@ -1242,7 +1245,8 @@ func TestUnitHandoverReplaysResolvedConfiguration(t *testing.T) {
 			}
 			if tc.vendor == "terragrunt" {
 				w.store.run.RuntimeConfig = storedRuntime(t, "terragrunt", json.RawMessage(
-					`{"yaml":"terragrunt: {terragrunt_tool: OPEN_TOFU, terraform_version: '1.13.9', terragrunt_version: '1.2.2', use_run_all: false, use_smart_sanitization: true}"}`))
+					`{"yaml":"terragrunt: {terragrunt_tool: OPEN_TOFU, terraform_version: '1.13.9', terragrunt_version: '1.2.2', use_run_all: false, use_smart_sanitization: true}"}`,
+				))
 			}
 			w.env.resolved = configapi.Resolved{
 				Hooks: map[string][]string{"before_plan": {"echo planned"}, "before_apply": {"echo original"}},

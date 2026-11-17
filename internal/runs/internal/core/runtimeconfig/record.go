@@ -10,7 +10,7 @@ import (
 
 // Record fixes a run's configuration at its first successful handover.
 // Configuration is the public view; Execution retains settings the public
-// schema cannot express. Neither contains variables, files or credentials.
+// schema cannot express. Neither contains variable values, files or credentials.
 type Record struct {
 	Configuration Configuration `json:"configuration"`
 	Execution     Execution     `json:"execution"`

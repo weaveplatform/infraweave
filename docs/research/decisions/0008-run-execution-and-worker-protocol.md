@@ -319,11 +319,47 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   that the public shape cannot express. Shared resolved releases and
   Terragrunt's mode have one authoritative place in `configuration`.
   Reads expose that configuration alone, absent before the first successful
-  handover, and its YAML contains no private execution metadata. Environment
-  and sparse paths are empty lists until the trigger's configuration is
-  applied. An unspecified runtime/stack runner image is recorded as an
+  handover. Its environment lists the trigger's variable keys with empty
+  values, and its sparse paths are those the checkout uses. Its YAML contains
+  only supported runtime-file keys, with environment values empty; other
+  vendor flags remain in JSON and the private execution settings. An
+  unspecified runtime/stack runner image is recorded as an
   empty string and replayed as absent: account and launcher defaults are
   still resolved by those layers, rather than snapshotted here.
+
+- **A run's runtime configuration.** `runTrigger` takes the eleven hook lists,
+  environment variables, project root, runner image and sparse paths as fields,
+  or `yaml` containing one stack's settings in the runtime file's keys
+  ([07 section 7.3](../reference/07-stack-model.md#73-key-reference)).
+  Its presence, including an empty object, needs
+  `RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG` on the stack's space beside
+  `RUN_TRIGGER` ([0007](0007-authorization-spaces-and-roles.md)), and creates a new run
+  each time. One strict parser checks both forms before creation: wrong types,
+  unknown keys, reserved variables, an unclean relative project root and a
+  vendor block with no effect answer `422 validation-failed`.
+
+  At the first handover, a supplied hook list replaces the stack's own list
+  for that phase; an empty list clears it, and an omitted phase keeps it.
+  Context hooks still wrap those lists in the environment's order (C29).
+  Variables win over every stored source, unrendered, through the sealed
+  overrides below (C102). Project root, runner image, tool constraints and
+  workflow tool replace the stack's settings. A native `opentofu` or
+  `terragrunt` block replaces that whole vendor block, with omitted switches
+  defaulting false. Native OpenTofu versions belong to `opentofu.version`;
+  top-level versions alone fail preparation. An unresolved custom release
+  fails preparation naming `/runtimeConfig/yaml`. Terragrunt's
+  `use_smart_sanitization` is retained; `use_state_management` cannot change
+  the stack's backend ([0010](0010-state-backend.md)). Nonempty custom sparse
+  paths win, otherwise the stack's paths apply. The resolved record fixes
+  this merge, and the specification's own fields carry it to the worker;
+  `runtimeConfig` there is only the redacted trigger reference.
+
+  Run reads answer the supplied configuration as `customRuntimeConfig`, absent
+  for a plain trigger, and the first handover's effective configuration as
+  `runtimeConfig`. Both list environment keys with empty values and render
+  YAML without their values. `runs.runtime_config` stores the typed input,
+  never the original YAML or variable values. C311 captures what Spacelift
+  answers; infraweave never answers a trigger's variable values.
 
 - **The clear part and the sealed part.** The specification answers the run
   token's own run alone. Its clear part carries everything but secrets. A
@@ -352,7 +388,8 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   path, carrying the winning context's attachment.
 - **Overrides.** A proposed run, from `proposeWithOverrides` or
   `runProposeLocalWorkspace`, may carry environment variable overrides for
-  that run alone. They are kept in `runs.env_overrides_sealed`
+  that run alone. A trigger's runtime configuration variables use the same
+  mechanism on both tracked and proposed runs. They are kept in `runs.env_overrides_sealed`
   ([0013](0013-secrets-at-rest.md)), and only the specification answers
   them. The handover applies them over the variables the stack resolves
   to:
@@ -364,8 +401,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   No override names a variable infraweave sets for the run,
   `TF_VAR_infraweave_*`, `INFRAWEAVE_*` or `TF_APPEND_USER_AGENT`, and names
   follow a context's rules. A proposal with overrides creates a run each
-  time, since no other run shares them, and one without them never answers
-  a run that has them.
+  time, since no other run shares them. A plain trigger reuses only a run
+  without overrides. A custom trigger always creates a new run, including
+  when its configuration is empty; a retry retains its own reuse rule.
 - **The runner image** is the run's runtime configuration's, else the
   stack's, else the account's default for private pools, else the
   launcher's default for the stack's vendor (see "Runner images").
@@ -1177,7 +1215,9 @@ has failed":
 - **Preparation**, inside the preparing timeout: fetch the specification and
   decrypt its secrets; evaluate the worker-side initialization policy; fetch the
   source or restore the workspace; download and verify tool binaries; pull the
-  runner image; start the container. A failure reports T11, T36 or T44.
+  runner image; start the container. A Git source with sparse paths checks out
+  only those directories; a local preview's archive is extracted whole. A
+  failure reports T11, T36 or T44.
 - **The container.** Docker through `github.com/moby/moby/client`. The launcher
   bind-mounts its own executable read-only at `/opt/infraweave/bin/infraweave`
   and runs it as the container's root process with the argument `runner`,

@@ -66,7 +66,11 @@ func TestUnitRuntimeInput(t *testing.T) {
 	if _, err := runtimeconfig.Read(json.RawMessage(`{`)); err == nil {
 		t.Error("invalid stored configuration was read")
 	}
-	if in, err := runtimeconfig.Parse(json.RawMessage(`{"beforePlan":null,"environment":null,"projectRoot":null,"runnerImage":null,"gitSparseCheckoutPaths":null,"yaml":null}`), "terraform"); err != nil || len(in.Hooks) != 0 || in.Environment != nil || in.ProjectRoot != nil || in.RunnerImage != nil || in.GitSparseCheckoutPaths != nil {
+	if in, err := runtimeconfig.Parse(
+		json.RawMessage(`{"beforePlan":null,"environment":null,"projectRoot":null,"runnerImage":null,"gitSparseCheckoutPaths":null,"yaml":null}`),
+		"terraform",
+	); err != nil || len(in.Hooks) != 0 || in.Environment != nil || in.ProjectRoot != nil || in.RunnerImage != nil ||
+		in.GitSparseCheckoutPaths != nil {
 		t.Fatalf("known nullable fields were not omitted: %+v, %v", in, err)
 	}
 }
@@ -158,6 +162,8 @@ func TestUnitRuntimeRefused(t *testing.T) {
 		`{"environment":[{"key":"A","value":"x"},{"key":"A","value":"y"}]}`,
 		`{"environment":[{"key":"TF_VAR_infraweave_run_id","value":"x"}]}`,
 		`{"beforePlan":"wrong type"}`, `{"projectRoot":"/outside"}`,
+		`{"beforePlan":[null]}`, `{"gitSparseCheckoutPaths":[null]}`,
+		`{"environment":[null]}`, `{"environment":[{"key":"TOKEN","value":null}]}`,
 	} {
 		if _, err := runtimeconfig.Parse(json.RawMessage(raw), "terraform"); err == nil {
 			t.Errorf("invalid fields accepted: %s", raw)

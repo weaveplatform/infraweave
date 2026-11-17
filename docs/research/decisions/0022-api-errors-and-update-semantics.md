@@ -163,6 +163,14 @@ nothing. A refusal's message is the validator's reason, which never quotes
 the value, so a value sent in error, such as a token, is not echoed.
 Handlers then apply domain rules, giving `validation-failed`.
 
+The custom runtime configuration of `runTrigger` is a narrow exception:
+wrong types and unknown fields within `/runtimeConfig` answer `422
+validation-failed` with the same pointer and reason. Its strict parser also
+checks the YAML form as one document, so both forms use the trigger's semantic
+refusal contract ([0008](0008-run-execution-and-worker-protocol.md)). Missing
+required members, malformed JSON and unrelated fields retain `400
+invalid-request`; other operations keep the general schema rule.
+
 The path check runs after authentication and before the handler, so the
 worker API's run ID, at most 26 characters, answers a longer one `400` at
 `#/path/run` like any refused value, while a well-formed ID of another

@@ -88,6 +88,9 @@ func parseFields(fields map[string]json.RawMessage, in *Input) error {
 		if string(raw) == "null" {
 			continue
 		}
+		if !nonNullJSON(raw) {
+			return invalid("/runtimeConfig/"+key, kernel.ReasonFormat, key+" contains a null value where a string is required.")
+		}
 		var err error
 		switch key {
 		case "environment":
@@ -108,6 +111,35 @@ func parseFields(fields map[string]json.RawMessage, in *Input) error {
 		}
 	}
 	return nil
+}
+
+// nonNullJSON prevents encoding/json's null-to-zero-value coercion inside
+// string lists and variable objects. Known nullable top-level fields have
+// already been treated as omitted by parseFields.
+func nonNullJSON(raw json.RawMessage) bool {
+	var value any
+	_ = json.Unmarshal(raw, &value) // the enclosing object already decoded
+	var valid func(any) bool
+	valid = func(value any) bool {
+		switch v := value.(type) {
+		case nil:
+			return false
+		case []any:
+			for _, item := range v {
+				if !valid(item) {
+					return false
+				}
+			}
+		case map[string]any:
+			for _, item := range v {
+				if !valid(item) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return valid(value)
 }
 
 func parseYAML(text string) (Input, error) {

@@ -225,16 +225,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	var tool *workersapi.SpecTool
 	var tg *workersapi.SpecTerragrunt
 	if r.ResolvedConfig == nil {
-		if tool, err = s.tool(ctx, st); err != nil {
-			if inv, ok := errors.AsType[*kernel.Invalid](err); ok && rc.OwnsToolVersion() {
-				return workersapi.Handover{}, at(inv, "/runtimeConfig/yaml")
-			}
-			return workersapi.Handover{}, err
-		}
-		if tg, err = s.terragrunt(ctx, st); err != nil {
-			if inv, ok := errors.AsType[*kernel.Invalid](err); ok && rc.Terragrunt != nil {
-				return workersapi.Handover{}, at(inv, "/runtimeConfig/yaml")
-			}
+		if tool, tg, err = s.runtimeTools(ctx, st, rc); err != nil {
 			return workersapi.Handover{}, err
 		}
 	}
@@ -311,6 +302,29 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	return workersapi.Handover{
 		Account: r.Account, Pool: *r.WorkerPool, Spec: spec, Secrets: crypt.NewValue(doc),
 	}, nil
+}
+
+// runtimeTools resolves first-handover tools and names custom constraints in
+// both field errors and Detail, which the launcher reports in its failure note.
+func (s *Service) runtimeTools(ctx context.Context, st stacksapi.Settings, in runtimeconfig.Input) (*workersapi.SpecTool, *workersapi.SpecTerragrunt, error) {
+	tool, err := s.tool(ctx, st)
+	if err != nil {
+		return nil, nil, runtimeToolError(err, in.OwnsToolVersion())
+	}
+	tg, err := s.terragrunt(ctx, st)
+	if err != nil {
+		return nil, nil, runtimeToolError(err, in.Terragrunt != nil)
+	}
+	return tool, tg, nil
+}
+
+func runtimeToolError(err error, owned bool) error {
+	if inv, ok := errors.AsType[*kernel.Invalid](err); ok && owned {
+		out := at(inv, "/runtimeConfig/yaml")
+		out.Detail = "/runtimeConfig/yaml: " + out.Detail
+		return out
+	}
+	return err
 }
 
 // source names r's source in spec and seals its credential in sec: a

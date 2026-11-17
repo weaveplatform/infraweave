@@ -445,7 +445,10 @@ so that member sees an empty list.
   where the owning service's rule is narrower than the route's: API key
   management takes `any` at the route, and the `apikey` service refuses a
   caller who is not space-admin on the top space while non-admin managers
-  are off.
+  are off. A trigger with a custom runtime configuration also decides
+  `RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG` on the stack's space, whose
+  fallback is admin, beside the route's writer-level `RUN_TRIGGER`; a
+  denial names that additional action ([0008](0008-run-execution-and-worker-protocol.md)).
 - **Deny by default.** A route the router serves with no route-table entry
   answers `403`, and `api/authorization_test.go` fails when any operation
   lacks either extension, names an action the catalogue lacks, or names a

@@ -7223,7 +7223,7 @@ type RuntimeConfigInput struct {
 	// Environment Environment variables
 	Environment *[]EnvVarInput `json:"environment,omitempty"`
 
-	// GitSparseCheckoutPaths List of paths for git sparse checkout.
+	// GitSparseCheckoutPaths List of paths for git sparse checkout. An empty list uses the stack's paths.
 	GitSparseCheckoutPaths *[]string `json:"gitSparseCheckoutPaths,omitempty"`
 
 	// ProjectRoot Indicates where the root of the Terraform project is.
