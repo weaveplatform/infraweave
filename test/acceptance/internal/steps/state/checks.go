@@ -10,6 +10,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 	"github.com/weaveplatform/infraweave/test/deps"
@@ -17,11 +18,14 @@ import (
 
 func (b *backendSteps) registerChecks(sc *godog.ScenarioContext) {
 	sc.Step(`^the relay (holds|releases) the state backend's unlocks$`, b.unlocks)
-	sc.Step(`^the relay holds (\d+) unlocks? of the state of the run "(\w+)"$`, b.heldUnlocks)
+	sc.Step(`^the relay holds (\d+) unlocks? of the state `+ofWorkspace+`of the run "(\w+)"$`,
+		b.heldUnlocks)
 	sc.Step(`^the relay (holds|releases) the state backend's writes$`, b.writes)
-	sc.Step(`^the relay holds (\d+) writes? of the state of the run "(\w+)"$`, b.heldWrites)
+	sc.Step(`^the relay holds (\d+) writes? of the state `+ofWorkspace+`of the run "(\w+)"$`,
+		b.heldWrites)
 	sc.Step(
-		`^the relay passed an? (GET|POST|LOCK|UNLOCK) of the state of the run "(\w+)" answered (\d+)$`,
+		`^the relay passed an? (GET|POST|LOCK|UNLOCK) of the state `+ofWorkspace+
+			`of the run "(\w+)" answered (\d+)$`,
 		b.passed,
 	)
 	sc.Step(
@@ -43,73 +47,138 @@ func (b *backendSteps) registerChecks(sc *godog.ScenarioContext) {
 		b.sealed)
 }
 
+// ofWorkspace names a state workspace of a run's stack other than its
+// default one, as "workspace "network/vpc" ", which a step's pattern
+// puts between "the state " and "of the run"; absent, it is the default
+// workspace.
+const ofWorkspace = `(?:workspace "([^"]+)" )?`
+
+// statePrefix is the path of a stack's state backend before the stack's
+// ID, which a run's specification names as its stateBackend.path.
+//
+// ref: decision 0010 § "Endpoints"
+const statePrefix = "/state/v1/stacks/"
+
+// relayed is the relay the scenario's runs reach the state backend
+// through: the worker's own once it took over a run, else the one the
+// scenario's launchers reach the servers through.
+func (b *backendSteps) relayed() (*harness.Relay, error) {
+	switch {
+	case b.relay != nil:
+		return b.relay, nil
+	case b.w.Relay != nil:
+		return b.w.Relay, nil
+	}
+	return nil, fmt.Errorf("%w: no relay, since the worker took over no run and no launcher "+
+		"started", harness.ErrStep)
+}
+
+// statePath is the path of the workspace ws, the default one when ws is
+// empty, of the backend of the stack the run kept as run ran on, as the
+// relay records it: decoded, so a / in the workspace's name, which the
+// tool sends escaped as one segment, reads as a separator. A run the
+// worker took over names its backend's path in its specification; one a
+// launcher ran is found by its stack's ID.
+func (b *backendSteps) statePath(ctx context.Context, run, ws string) (string, error) {
+	path := ""
+	if tr, ok := b.runs[run]; ok {
+		path = tr.path
+	} else {
+		id, ok := b.w.IDs[run]
+		if !ok {
+			return "", fmt.Errorf("%w: no run %q", harness.ErrStep, run)
+		}
+		var stack kernel.ULID
+		if err := b.w.Row(ctx, `SELECT stack_id::text FROM runs WHERE id = $1`,
+			[]any{harness.UUIDOf(id)}, &stack); err != nil {
+			return "", err //nolint:wrapcheck // names the query
+		}
+		path = statePrefix + stack.String()
+	}
+	if ws == "" || ws == "default" {
+		return path, nil
+	}
+	return path + "/workspaces/" + ws, nil
+}
+
 // unlocks makes the relay hold the backend's UNLOCK calls from now on,
 // or pass the held ones on.
 func (b *backendSteps) unlocks(what string) error {
-	if b.relay == nil {
-		return fmt.Errorf("%w: no relay, since the worker took over no run", harness.ErrStep)
+	relay, err := b.relayed()
+	if err != nil {
+		return err
 	}
 	if what == "holds" {
-		b.relay.HoldUnlocks()
+		relay.HoldUnlocks()
 	} else {
-		b.relay.ReleaseUnlocks()
+		relay.ReleaseUnlocks()
 	}
 	return nil
 }
 
-// heldUnlocks waits until the relay holds n UNLOCK calls of the state the
-// run kept as run reaches.
-func (b *backendSteps) heldUnlocks(ctx context.Context, n int, run string) error {
-	tr, err := b.run(run)
+// heldUnlocks waits until the relay holds n UNLOCK calls of the
+// workspace ws of the state the run kept as run reaches.
+func (b *backendSteps) heldUnlocks(ctx context.Context, n int, ws, run string) error {
+	relay, err := b.relayed()
+	if err != nil {
+		return err
+	}
+	path, err := b.statePath(ctx, run, ws)
 	if err != nil {
 		return err
 	}
 	//nolint:wrapcheck // names what it waited for
-	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d unlocks", n),
-		func(context.Context) (bool, error) { return b.relay.HeldUnlocks(tr.path) == n, nil })
+	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d unlocks of %s", n, path),
+		func(context.Context) (bool, error) { return relay.HeldUnlocks(path) == n, nil })
 }
 
 // writes makes the relay hold the backend's POST calls from now on, or
 // pass the held ones on.
 func (b *backendSteps) writes(what string) error {
-	if b.relay == nil {
-		return fmt.Errorf("%w: no relay, since the worker took over no run", harness.ErrStep)
+	relay, err := b.relayed()
+	if err != nil {
+		return err
 	}
 	if what == "holds" {
-		b.relay.HoldWrites()
+		relay.HoldWrites()
 	} else {
-		b.relay.ReleaseWrites()
+		relay.ReleaseWrites()
 	}
 	return nil
 }
 
-// heldWrites waits until the relay holds n POST calls of the state the
-// run kept as run reaches.
-func (b *backendSteps) heldWrites(ctx context.Context, n int, run string) error {
-	tr, err := b.run(run)
+// heldWrites waits until the relay holds n POST calls of the workspace ws
+// of the state the run kept as run reaches.
+func (b *backendSteps) heldWrites(ctx context.Context, n int, ws, run string) error {
+	relay, err := b.relayed()
+	if err != nil {
+		return err
+	}
+	path, err := b.statePath(ctx, run, ws)
 	if err != nil {
 		return err
 	}
 	//nolint:wrapcheck // names what it waited for
-	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d writes", n),
-		func(context.Context) (bool, error) { return b.relay.HeldWrites(tr.path) == n, nil })
+	return deps.Eventually(ctx, fmt.Sprintf("the relay to hold %d writes of %s", n, path),
+		func(context.Context) (bool, error) { return relay.HeldWrites(path) == n, nil })
 }
 
-// passed checks that the relay passed a call of method to the state the
-// run kept as run reaches that answered status.
-func (b *backendSteps) passed(method, run string, status int) error {
-	tr, err := b.run(run)
+// passed checks that the relay passed a call of method to the workspace
+// ws of the state the run kept as run reaches that answered status.
+func (b *backendSteps) passed(ctx context.Context, method, ws, run string, status int) error {
+	relay, err := b.relayed()
 	if err != nil {
 		return err
 	}
-	if slices.Contains(
-		b.relay.Calls(),
-		harness.Call{Method: method, Path: tr.path, Status: status},
-	) {
+	path, err := b.statePath(ctx, run, ws)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(relay.Calls(), harness.Call{Method: method, Path: path, Status: status}) {
 		return nil
 	}
 	return fmt.Errorf("%w: the relay passed no %s %s answered %d: %+v", harness.ErrStep, method,
-		tr.path, status, b.relay.Calls())
+		path, status, relay.Calls())
 }
 
 // refused waits until the relay has passed a LOCK of the state the run

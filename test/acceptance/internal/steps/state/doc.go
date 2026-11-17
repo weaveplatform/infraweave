@@ -19,9 +19,16 @@
 // scenario can instead hand a run it took over to
 // this build's runner, started as a launcher starts it in the tool's
 // runner image, which executes the run's phases and reports them itself.
+// For a run a real launcher executes, the relay steps act on the relay
+// the launcher reaches the servers through, and find the backend's path
+// by the run's stack; a step may name a workspace of the stack other
+// than its default one, such as a Terragrunt unit's.
 // The steps of the signed state URLs keep the URL an answer names and
 // send it, with no credential, to either replica's listener in place of
-// server.public_url. The steps of external access send the backend's
+// server.public_url; they move time on for a URL by signing its token
+// again with its expiry moved back, under the key the scenario's keyring
+// derives for the token's kind, and for an upload by moving its creation
+// and expiry back, which blob.expire then reads. The steps of external access send the backend's
 // requests with a tenant's API key, a kept token or a run token as HTTP
 // Basic credentials, write a terraform_remote_state of another stack into
 // a run's workspace or a user's workspace of its own, whose credential
@@ -49,8 +56,10 @@
 // daemon, reads the scenario's database through SQL and its bucket in
 // RustFS through S3, and writes each run's workspace under the
 // scenario's directory; the import steps read the versions, uploads and
-// audit trail entries an import or a rollback writes through SQL, and the
-// retention steps age a stack's versions there. A failed scenario
+// audit trail entries an import or a rollback writes through SQL, the
+// retention steps age a stack's versions there, and the URL steps an
+// upload's blob_objects row, and read the scenario's keyring to sign a
+// URL's token again. A failed scenario
 // leaves the relay's calls and each tool's output beside the servers'
 // evidence. It sends a signed URL's request and a backend request of its
 // own with net/http, recording its answer for the answer steps.
@@ -59,5 +68,6 @@
 //
 // It builds on harness.World, its Launchers and Relay, test/deps's
 // pinned tools, Gitea, object store and Eventually, internal/agent's
-// backend, handoff and wire packages, and platform/seal.
+// backend, handoff and wire packages, platform/seal, and platform/crypt's
+// keyring, through harness.World.Keyring.
 package state

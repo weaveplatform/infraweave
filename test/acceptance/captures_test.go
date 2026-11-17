@@ -52,30 +52,35 @@ func captureEntries(t *testing.T) map[string]bool {
 	return out
 }
 
-// awaited are the captures a feature stands in for until each is
-// recorded, by the feature that asserts the choices made meanwhile.
-// TestAccCaptures runs each one missing from the fixtures as a skipped
-// subtest, so a run names what it still waits for.
-var awaited = map[string]string{
-	"C10":  "runs/lifecycle.feature",
-	"C17":  "runs/terraform.feature",
-	"C34":  "runs/lifecycle.feature",
-	"C36":  "runs/lifecycle.feature",
-	"C39":  "runs/lifecycle.feature",
-	"C42":  "runs/lifecycle.feature",
-	"C44":  "runs/lifecycle.feature",
-	"C98":  "runs/terraform.feature",
-	"C101": "runs/terraform.feature",
-	"C102": "runs/terraform.feature",
-	"C103": "runs/terraform.feature",
-	"C104": "runs/terraform.feature",
-	"C105": "state/backend.feature",
-	"C106": "state/external_access.feature",
-	"C107": "state/import.feature",
-	"C109": "state/import.feature",
-	"C110": "state/rollback.feature",
-	"C111": "state/backend.feature",
-	"C112": "state/import.feature",
+// awaited are the captures features stand in for until each is
+// recorded, by the features that assert the choices made meanwhile: a
+// capture whose question spans two operations, such as import and
+// rollback, names the feature of each. TestAccCaptures runs each one
+// missing from the fixtures as a skipped subtest, so a run names what it
+// still waits for.
+var awaited = map[string][]string{
+	"C10":  {"runs/lifecycle.feature"},
+	"C17":  {"runs/terraform.feature"},
+	"C34":  {"runs/lifecycle.feature"},
+	"C36":  {"runs/lifecycle.feature"},
+	"C39":  {"runs/lifecycle.feature"},
+	"C42":  {"runs/lifecycle.feature"},
+	"C44":  {"runs/lifecycle.feature"},
+	"C98":  {"runs/terraform.feature"},
+	"C101": {"runs/terraform.feature"},
+	"C102": {"runs/terraform.feature"},
+	"C103": {"runs/terraform.feature"},
+	"C104": {"runs/terraform.feature"},
+	"C105": {"state/backend.feature"},
+	"C106": {"state/external_access.feature"},
+	"C107": {"state/import.feature"},
+	"C108": {"state/urls.feature"},
+	"C109": {"state/import.feature", "state/rollback.feature"},
+	"C110": {"state/rollback.feature", "state/retention.feature"},
+	"C111": {"state/backend.feature"},
+	"C112": {"state/import.feature"},
+	"C113": {"vendors/terragrunt.feature", "state/terragrunt_units.feature"},
+	"C114": {"state/terragrunt_units.feature"},
 }
 
 // TestAccCaptures replays every capture's calls against infraweave serve on
@@ -144,23 +149,47 @@ func TestAccCaptures(t *testing.T) {
 	for _, id := range slices.Sorted(maps.Keys(awaited)) {
 		if !recorded[id] {
 			t.Run(id, func(t *testing.T) {
-				t.Skipf("not recorded; %s asserts the choices made until it is", awaited[id])
+				t.Skipf("not recorded; %s the choices made until it is", asserting(awaited[id]))
 			})
 		}
 	}
 	t.Logf("replayed %d captures and the example", real)
 }
 
+// asserting names the features that assert an awaited capture's choices,
+// as the subject of "assert".
+func asserting(features []string) string {
+	if len(features) == 1 {
+		return features[0] + " asserts"
+	}
+	return strings.Join(features[:len(features)-1], ", ") + " and " + features[len(features)-1] +
+		" assert"
+}
+
 // TestUnitAwaitedCaptures holds each awaited capture to a capture record
-// of the register and a feature that exists.
+// of the register and at least one feature, each of which exists.
 func TestUnitAwaitedCaptures(t *testing.T) {
 	entries := captureEntries(t)
-	for id, feature := range awaited {
+	for id, features := range awaited {
 		if !entries[id] {
 			t.Errorf("%s is no capture record of the register", id)
 		}
-		if _, err := os.Stat(filepath.Join("features", feature)); err != nil {
-			t.Errorf("%s awaits with %s: %v", id, feature, err)
+		if len(features) == 0 {
+			t.Errorf("%s awaits with no feature", id)
+		}
+		for _, feature := range features {
+			if _, err := os.Stat(filepath.Join("features", feature)); err != nil {
+				t.Errorf("%s awaits with %s: %v", id, feature, err)
+			}
+		}
+	}
+	for features, want := range map[string]string{
+		"state/urls.feature": "state/urls.feature asserts",
+		"state/import.feature,state/rollback.feature": "state/import.feature and " +
+			"state/rollback.feature assert",
+	} {
+		if got := asserting(strings.Split(features, ",")); got != want {
+			t.Errorf("asserting(%s) = %q, want %q", features, got, want)
 		}
 	}
 }

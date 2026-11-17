@@ -131,6 +131,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 			return err
 		}
 		w.IDs["relay.url"] = l.relay.URL
+		w.Relay = l.relay
 	}
 	poolToken, err := l.poolToken(ctx, token, pool, replica)
 	if err != nil {

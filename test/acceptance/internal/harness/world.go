@@ -67,6 +67,11 @@ type World struct {
 	// reach, which the scenario's tags start, in the order their
 	// certificates join vcs.ca_file.
 	Fakes []Fake
+	// Relay is the relay the scenario's launchers, and the runs they
+	// start, reach the servers through, once a launcher starts; nil
+	// before. The state steps hold and read the backend calls of a run a
+	// launcher executes through it.
+	Relay *Relay
 	// Bucket is an @objectstore scenario's bucket in the shared RustFS,
 	// which every server of the scenario keeps its objects in.
 	Bucket string

@@ -15,13 +15,22 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
   the sum of their plans'. A tracked run waits for confirmation with its
   workspace saved, Terragrunt's cache of the units with it, and once
   confirmed applies every unit in a new container, so the stack's state
-  workspaces are one per unit, each at a version the run wrote. A unit
-  that includes a file declaring remote_state fails initialization naming
-  the unit; a launcher whose download of Terragrunt is altered fails the
-  run in PREPARING naming the release; and a stack deleted with its
-  resources destroys every unit, its after-destroy hook finding no
-  resource left in any unit's state. The release indexes serve the recorded
-  fixtures; the home key is space-admin on the account's top space.
+  workspaces are one per unit, each at a version the run wrote. The
+  stack's Tofu workspaces list the same workspaces, and each unit's apply
+  holds its own workspace's lock: an operator's release of
+  network/vpc's lock, which the backend file names network%2Fvpc,
+  refuses that unit's write with 423 and the run fails, while the other
+  unit's write lands. The relay the launcher reaches the servers through
+  holds the backend's writes for that. Whether infraweave keeps a stack's
+  state was decided when the stack was created: terragrunt
+  use_state_management in a run's runtime configuration changes it
+  neither way. A unit that includes a file declaring remote_state fails
+  initialization naming the unit; a launcher whose download of Terragrunt
+  is altered fails the run in PREPARING naming the release; and a stack
+  deleted with its resources destroys every unit, its after-destroy hook
+  finding no resource left in any unit's state. The release indexes serve
+  the recorded fixtures; the home key is space-admin on the account's top
+  space.
   Stacks live in legacy, keep their state in infraweave and run on the
   pool; the units have terraform_data resources alone, so no provider is
   downloaded.
@@ -67,6 +76,55 @@ Feature: Runs of a Terragrunt stack, each unit in its own state workspace
     And the state workspaces of the run "run"'s stack are "default, network/vpc", each at a version the run wrote
     When token "h" sends "GET /api/v1/stacks/infra" through B
     Then the answer's outputs is '[]'
+
+  @op:searchTofuWorkspaces @op:tofuWorkspaceUnlock @case:success
+  Scenario: Each unit's apply holds its own workspace's lock, and the release of network/vpc's refuses that unit's write, failing the run
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    Then token "h" eventually reads the run "run" in the state "UNCONFIRMED" through B
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"stack","constraint":{"stringEquals":["infra"]}}]}' through A
+    Then the answer's Tofu workspaces are "default, network/vpc"
+    And the answer's Tofu workspace "network/vpc" names "vpc"
+    When the relay holds the state backend's writes
+    And token "h" sends "POST /api/v1/stacks/infra/runs/confirm" with '{"run":"{run}"}' through B
+    Then the relay holds 1 write of the state of the run "run"
+    And the relay holds 1 write of the state workspace "network/vpc" of the run "run"
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
+    Then the answer's Tofu workspaces are "default locked by the home key, network/vpc locked by the home key"
+    When token "h" sends "POST /api/v1/tofu-workspaces/{vpc}/unlock" through B
+    Then the answer's Tofu workspaces are "network/vpc"
+    And the audit trail holds 1 release of the Tofu workspace "vpc" by the home key
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"isLocked","constraint":{"booleanEquals":[true]}}]}' through A
+    Then the answer's Tofu workspaces are "default locked by the home key"
+    When the relay releases the state backend's writes
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, UNCONFIRMED, CONFIRMED, PREPARING_APPLY, APPLYING, FAILED"
+    And the relay passed a POST of the state of the run "run" answered 200
+    And the relay passed a POST of the state workspace "network/vpc" of the run "run" answered 423
+    And the relay passed an UNLOCK of the state workspace "network/vpc" of the run "run" answered 423
+    And the run "run" wrote 1 state version
+
+  @op:runTrigger @case:success
+  Scenario: A run's runtime configuration changes no stack's state management: use_state_management off keeps each unit's state, and on keeps none
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Kept","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Unkept","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","projectRoot":"live","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks/kept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: false\n"}}' through A
+    And the answer's id names "kept"
+    Then token "h" eventually reads the run "kept" in the state "FINISHED" through B
+    And the run "kept" wrote 2 state versions
+    And the state workspaces of the run "kept"'s stack are "default, network/vpc", each at a version the run wrote
+    When token "h" sends "GET /api/v1/stacks/kept" through A
+    Then the answer's managesStateFile is 'true'
+    When token "h" sends "POST /api/v1/stacks/unkept/runs" with '{"commitSha":"{seed}","runtimeConfig":{"yaml":"terragrunt:\n  use_state_management: true\n"}}' through B
+    And the answer's id names "unkept"
+    Then token "h" eventually reads the run "unkept" in the state "FINISHED" through A
+    And token "h" reads the run "unkept"'s APPLYING log through B, which holds "Apply complete! Resources: 2 added, 0 changed, 0 destroyed." and not "Error"
+    And the run "unkept" wrote 0 state versions
+    When token "h" sends "POST /api/v1/tofu-workspaces/search" with '{"predicates":[{"field":"stack","constraint":{"stringEquals":["unkept"]}}]}' through A
+    Then the answer's Tofu workspaces are ""
+    When token "h" sends "GET /api/v1/stacks/unkept" through B
+    Then the answer's managesStateFile is 'false'
 
   @op:runTrigger @case:failure
   Scenario: A unit that includes a file declaring remote_state fails initialization naming the unit
