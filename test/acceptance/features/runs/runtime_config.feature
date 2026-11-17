@@ -1,5 +1,5 @@
 @postgres @objectstore @vcs @docker
-Feature: A trigger checks and applies its custom runtime configuration
+Feature: A run applies checked custom and repository runtime configuration
   A custom configuration requires the admin action, replaces the stack's
   own supplied settings, and keeps context hooks around the replacement.
   Its variable values reach the runner but never a run read. Sparse paths
@@ -138,3 +138,201 @@ Feature: A trigger checks and applies its custom runtime configuration
     And the answer's last state transition's note contains '/runtimeConfig/yaml'
     And the answer has no recorded runtime configuration
     And the answer's custom runtime configuration includes '{"terraformVersion":"> 9999.0.0"}'
+
+
+  @op:runTrigger @op:run @case:success
+  Scenario Outline: Repository entries replace defaults while custom variables remain strongest
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stack_defaults:
+        before_plan: ["echo hook: defaults"]
+        environment: {LEVEL: defaults, FILE_SECRET: file-secret-567}
+      stacks:
+        infra:
+          before_plan: ["echo hook: infra"]
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}},"beforePlan":["echo hook: stack"],"afterPlan":["echo LEVEL=$LEVEL"]},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"stack","writeOnly":false}' through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through B
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through A
+    And the answer's repository runtime configuration includes '{"beforePlan":["echo hook: infra"],"environment":[{"key":"FILE_SECRET","value":""},{"key":"LEVEL","value":""}]}'
+    And the answer's runtime configuration YAML is '{"before_plan":["echo hook: infra"]}'
+    And neither the answer nor a server's log names "file-secret-567"
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "hook: infra" and not "hook: stack"
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "LEVEL=defaults" and not "file-secret-567"
+    And token "h" records the run "run"'s PLANNING runtime evidence through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Other","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}},"beforePlan":["echo hook: other"],"afterPlan":["echo LEVEL=$LEVEL"]},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks/other/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through B
+    Then it answers 200
+    And the answer's id names "other"
+    And token "h" eventually reads the run "other" in the state "FINISHED" through A
+    And the answer's repository runtime configuration includes '{"beforePlan":["echo hook: defaults"]}'
+    And the answer's runtime configuration YAML is '{"before_plan":["echo hook: defaults"],"environment":{"LEVEL":"","FILE_SECRET":""}}'
+    And neither the answer nor a server's log names "file-secret-567"
+    And token "h" reads the run "other"'s PLANNING log through B, which holds "hook: defaults" and not "hook: other"
+    And token "h" records the run "other"'s PLANNING runtime evidence through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED","runtimeConfig":{"environment":[{"key":"LEVEL","value":"custom"}]}}' through B
+    Then it answers 200
+    And the answer's id names "custom"
+    And token "h" eventually reads the run "custom" in the state "FINISHED" through A
+    And the answer's custom runtime configuration includes '{"environment":[{"key":"LEVEL","value":""}]}'
+    And the answer's repository runtime configuration includes '{"beforePlan":["echo hook: infra"]}'
+    And neither the answer nor a server's log names "file-secret-567"
+    And token "h" reads the run "custom"'s PLANNING log through B, which holds "LEVEL=custom" and not "hook: stack"
+    And token "h" records the run "custom"'s PLANNING runtime evidence through A
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @op:runTrigger @op:run @case:success
+  Scenario Outline: The ignore label retains stack settings despite a repository file
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stack_defaults: {before_plan: ["echo hook: defaults"]}
+      stacks: {infra: {before_plan: ["echo hook: infra"]}}
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","labels":["feature:ignore_runtime_config"],"vendorConfig":{"<vendor>":{}},"beforePlan":["echo hook: stack"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And token "h" reads the run "run"'s PLANNING log through A, which holds "hook: stack" and not "hook: infra"
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @op:runTrigger @op:run @case:success
+  Scenario Outline: An unknown repository key warns during initialization and remains visible
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stacks:
+        infra:
+          before_plan: ["echo hook: infra"]
+          environment: {TOKEN: &secret file-unknown-secret-567}
+          befor_plan: *secret
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the answer's repository runtime configuration includes '{"beforePlan":["echo hook: infra"]}'
+    And the answer's runtime configuration YAML is '{"before_plan":["echo hook: infra"],"environment":{"TOKEN":""},"befor_plan":""}'
+    And neither the answer nor a server's log names "file-unknown-secret-567"
+    And token "h" reads the run "run"'s INITIALIZING log through A, which holds "infraweave: .infraweave/config.yml: unknown key stacks.infra.befor_plan" and not "hook: infra"
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @op:runTrigger @op:run @case:denial
+  Scenario Outline: A writer applies repository configuration without the custom configuration action
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stacks: {infra: {before_plan: ["echo hook: infra"]}}
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}}},"manageState":true}' through B
+    And the member key is exchanged through A for token "m"
+    And the member key is space-writer on the space "legacy"
+    When token "m" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED","runtimeConfig":{}}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"RUN_TRIGGER_WITH_CUSTOM_RUNTIME_CONFIG"'
+    When token "m" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through B
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FINISHED" through A
+    And token "h" reads the run "run"'s PLANNING log through B, which holds "hook: infra" and not "hook: defaults"
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @op:runTrigger @op:run @case:failure
+  Scenario Outline: A wrong typed repository key fails initialization before every hook
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stacks: {infra: {before_plan: "x"}}
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}},"beforeInit":["echo hook: before"],"afterInit":["echo hook: after"],"afterRun":["echo hook: after_run"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, FAILED"
+    And the answer's last state transition's note contains 'stacks.infra.before_plan'
+    And token "h" records the run "run"'s repository refusal evidence through A
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @runtime-config-reject @op:runTrigger @op:run @case:failure
+  Scenario Outline: The reject server policy refuses an unknown repository key before hooks
+    Given a commit to "main" of "infra" writing ".infraweave/config.yml":
+      """
+      version: "2"
+      stacks: {infra: {befor_plan: ["typo"]}}
+      """
+    And the head of "main" of "infra" is kept as "configured"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","projectRoot":"infra","vendorConfig":{"<vendor>":{}},"beforeInit":["echo hook: before"],"afterRun":["echo hook: after_run"]},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{configured}","runType":"PROPOSED"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, FAILED"
+    And the answer's last state transition's note contains 'stacks.infra.befor_plan'
+    And token "h" records the run "run"'s repository refusal evidence through A
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |

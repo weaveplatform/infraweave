@@ -16,13 +16,19 @@ import (
 // runtimeConfiguration compares the named public fields of a run's
 // recorded configuration, resolving the scenario's release and run names.
 func (r *runSteps) runtimeConfiguration(want string) error {
-	return r.configurationFields("runtimeConfig", want)
+	return r.configurationFields("runtimeConfig", want, true)
 }
 
 // customRuntimeConfiguration checks the trigger's public input separately
 // from the effective configuration fixed at handover.
 func (r *runSteps) customRuntimeConfiguration(want string) error {
-	return r.configurationFields("customRuntimeConfig", want)
+	return r.configurationFields("customRuntimeConfig", want, true)
+}
+
+// fileRuntimeConfiguration checks effective fields separately from the
+// selected entry's public source projection, which can omit inherited keys.
+func (r *runSteps) fileRuntimeConfiguration(want string) error {
+	return r.configurationFields("runtimeConfig", want, false)
 }
 
 // noRuntimeConfiguration checks the member itself: a failure note may
@@ -39,7 +45,7 @@ func (r *runSteps) noRuntimeConfiguration() error {
 	return nil
 }
 
-func (r *runSteps) configurationFields(field, want string) error {
+func (r *runSteps) configurationFields(field, want string, canonical bool) error {
 	var run map[string]json.RawMessage
 	var got map[string]json.RawMessage
 	var fields map[string]json.RawMessage
@@ -69,17 +75,66 @@ func (r *runSteps) configurationFields(field, want string) error {
 	}
 	if json.Unmarshal(got["environment"], &environment) != nil ||
 		json.Unmarshal(got["yaml"], &rendered) != nil || rendered == "" ||
-		yaml.Unmarshal([]byte(rendered), &document) != nil || len(document.Environment) != len(environment) {
+		yaml.Unmarshal([]byte(rendered), &document) != nil || canonical && len(document.Environment) != len(environment) {
 		return fmt.Errorf("%w: %s has no matching JSON and YAML environment", harness.ErrStep, field)
 	}
 	for _, variable := range environment {
 		value, exists := document.Environment[variable.Key]
-		if variable.Value != "" || !exists || value != "" {
+		if variable.Value != "" || canonical && !exists || value != "" {
 			return fmt.Errorf("%w: %s answers a value or omits the YAML key %s", harness.ErrStep, field, variable.Key)
+		}
+	}
+	for key, value := range document.Environment {
+		if value != "" {
+			return fmt.Errorf("%w: %s YAML answers the value of %s", harness.ErrStep, field, key)
 		}
 	}
 	doc, _ := json.Marshal(got)
 	fmt.Printf("acceptance: %s: %s\n", field, doc)
+	return nil
+}
+
+// runtimeYAML compares the entire source projection, including unknown
+// diagnostic keys and the absence of inherited execution settings.
+func (r *runSteps) runtimeYAML(want string) error {
+	var run struct {
+		RuntimeConfig struct {
+			YAML string `json:"yaml"`
+		} `json:"runtimeConfig"`
+	}
+	var actual, expected map[string]any
+	last := r.w.Last()
+	if last.Status != http.StatusOK || json.Unmarshal(last.Body, &run) != nil ||
+		yaml.Unmarshal([]byte(run.RuntimeConfig.YAML), &actual) != nil ||
+		json.Unmarshal([]byte(r.w.Resolve(want)), &expected) != nil || !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("%w: runtime source YAML is %q, want %s", harness.ErrStep, run.RuntimeConfig.YAML, want)
+	}
+	return nil
+}
+
+// fileRefusalEvidence captures the actual run note before logText changes
+// the last response, and confirms INITIALIZING reported the same setting.
+func (r *runSteps) fileRefusalEvidence(ctx context.Context, token, run, replica string) error {
+	var answer struct {
+		History []struct {
+			Note *string `json:"note"`
+		} `json:"history"`
+	}
+	if json.Unmarshal(r.w.Last().Body, &answer) != nil || len(answer.History) == 0 {
+		return fmt.Errorf("%w: no refusal history", harness.ErrStep)
+	}
+	note := answer.History[len(answer.History)-1].Note
+	if note == nil || !strings.Contains(*note, "stacks.infra.") {
+		return fmt.Errorf("%w: refusal names no stack setting", harness.ErrStep)
+	}
+	text, err := logText(ctx, r.w, token, run, "INITIALIZING", replica)
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(text, *note) || strings.Contains(text, "hook: ") {
+		return fmt.Errorf("%w: initializing log lacks refusal or ran a hook: %s", harness.ErrStep, text)
+	}
+	fmt.Printf("acceptance: repository refusal note: %s\n", *note)
 	return nil
 }
 

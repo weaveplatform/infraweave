@@ -33,6 +33,7 @@ type giteaSteps struct {
 func (g *giteaSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^a Gitea repository "([^"]+)" with the files:$`, g.repository)
 	sc.Step(`^a commit to "([^"]+)" of "([^"]+)" changing "([^"]+)"$`, g.commit)
+	sc.Step(`^a commit to "([^"]+)" of "([^"]+)" writing "([^"]+)":$`, g.writeFile)
 	sc.Step(`^the head of "([^"]+)" of "([^"]+)" is kept as "([^"]+)"$`, g.keepHead)
 	sc.Step(`^the head of "([^"]+)" of "([^"]+)" is its last commit$`, g.headIsLast)
 	sc.Step(`^the commits kept as "([^"]+)" and "([^"]+)" differ$`, g.differ)
@@ -115,6 +116,22 @@ func (g *giteaSteps) commit(ctx context.Context, branch, name, path string) erro
 	}
 	content := "change " + strconv.FormatInt(g.w.Suite.Deps.Serial(), 10) + "\n"
 	sha, err := g.gitea.Commit(ctx, repo, branch, map[string]string{path: content}, "change "+path)
+	if err != nil {
+		return err
+	}
+	g.last[name] = sha
+	return nil
+}
+
+// writeFile commits the supplied source verbatim, so a run can read a
+// repository configuration at a named immutable commit.
+func (g *giteaSteps) writeFile(ctx context.Context, branch, name, path string, content *godog.DocString) error {
+	repo, err := g.repo(name)
+	if err != nil {
+		return err
+	}
+	sha, err := g.gitea.Commit(ctx, repo, branch,
+		map[string]string{path: g.w.Resolve(content.Content)}, "write "+path)
 	if err != nil {
 		return err
 	}
