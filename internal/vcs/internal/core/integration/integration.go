@@ -9,6 +9,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -149,6 +150,7 @@ type Deps struct {
 	Apps      port.Apps
 	Public    string
 	Now       func() time.Time
+	Features  featuresapi.Options
 }
 
 // Service is the integrations' logic. Every write runs in one
@@ -165,6 +167,7 @@ type Service struct {
 	apps      port.Apps
 	public    string
 	now       func() time.Time
+	features  featuresapi.Options
 }
 
 // New returns the service over d.
@@ -176,7 +179,7 @@ func New(d Deps) *Service {
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
 		providers: d.Providers, testers: d.Testers, browse: d.Browse,
-		apps:   d.Apps,
+		apps: d.Apps, features: d.Features,
 		public: strings.TrimSuffix(d.Public, "/"), now: now,
 	}
 }
@@ -388,6 +391,16 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Int
 func (s *Service) create(ctx context.Context, p kernel.Principal, id kernel.ULID, in Input) (Integration, error) {
 	if err := s.check(in, true); err != nil {
 		return Integration{}, err
+	}
+	// The spec gate sees only a present false; omitted isDefault has the
+	// same effective value and must pass the domain's entitlement check.
+	if !in.IsDefault {
+		if s.features == nil {
+			return Integration{}, fmt.Errorf("vcs: integration option policy: %w", kernel.ErrUnavailable)
+		}
+		if err := s.features.AllowOrganization(ctx, p.OrganizationID, "multiple-vcs-integrations"); err != nil {
+			return Integration{}, err //nolint:wrapcheck // the features domain names the refusal
+		}
 	}
 	var out Integration
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {

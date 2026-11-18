@@ -29,7 +29,8 @@
 // # Input and output
 //
 // New takes the database, the keyring, the access domain's spaces and
-// authorizer, the stacks domain's api, the vcs settings, the server's
+// authorizer, the features domain's option policy, the stacks domain's api,
+// the vcs settings, the server's
 // public origin and the log a run's fallback credential is noted in, in
 // Deps; a vcs.ca_file it cannot read, or that holds no
 // certificate fail it with ErrConfig. Accounts register their own GitHub
@@ -39,7 +40,7 @@
 //
 // # Dependencies
 //
-// It imports the access and stacks api packages, internal/kernel,
+// It imports the access, features and stacks api packages, internal/kernel,
 // platform/crypt, platform/outbox, platform/queue, platform/sql's
 // integrity and migrate packages, platform/tx and the domain's api, http,
 // azuredevops, bitbucketcloud, bitbucketdc, github, gitlab, pg, rawgit,

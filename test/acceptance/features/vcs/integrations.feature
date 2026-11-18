@@ -11,7 +11,7 @@ Feature: VCS integrations
   their secrets sealed.
 
   Background:
-    Given two infraweave servers, A and B, on one database
+    Given two infraweave servers, A and B, on one database, with an operator key
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
@@ -95,3 +95,52 @@ Feature: VCS integrations
     When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","provider":"GITLAB","vcsIntegrationId":"{main}","space":"{team}"}' through B
     Then it answers 200
     And the answer's vcsIntegration is '{"id":"{main}"}'
+
+  # ref: decisions 0007, 0012, 0016, 0021 and 0022
+  @gitlab @bitbucket-dc @op:gitlabIntegrationCreate @op:bitbucketDatacenterIntegrationCreate @op:vcsIntegrations @case:denial
+  Scenario: Billing refuses effective non-defaults while one default per provider stays free
+    Given the operator key is exchanged through A for token "op"
+    And a GitLab user "dev" with a token kept as "tok"
+    And token "op" turns billing on through A
+    And token "op" gives the home organization a seeded tier with "vcs-integrations" lacking "multiple-vcs-integrations" through A
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Omitted","spaceID":"{team}"}}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "multiple-vcs-integrations"
+    And the problem lists the catalogue tiers holding "multiple-vcs-integrations"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Null","spaceID":"{team}","isDefault":null}}' through A
+    Then it answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "multiple-vcs-integrations"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","username":"dev","accessToken":"not-stored","customInput":{"name":"Explicit","spaceID":"acme","isDefault":false}}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "multiple-vcs-integrations"
+    When token "h" sends "GET /api/v1/vcs-integrations" through A
+    Then it answers 200
+    And the answer lists the integrations "{cloud}, {main}, {sgl}, {tgl}"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","username":"dev","accessToken":"free-default","customInput":{"name":"DC default","spaceID":"acme","isDefault":true}}' through B
+    Then it answers 201
+    And the answer's isDefault is 'true'
+
+  # ref: decisions 0007, 0012, 0016, 0021 and 0022
+  @gitlab @op:gitlabIntegrationCreate @op:gitlabIntegration @op:gitlabIntegrationUpdate @op:gitlabIntegrationTest @op:gitlabIntegrationDelete @case:success
+  Scenario: An entitled non-default integration stays usable after the tier drops
+    Given the operator key is exchanged through A for token "op"
+    And a GitLab user "dev" with a token kept as "tok"
+    And token "op" turns billing on through A
+    And token "op" gives the home organization a seeded tier with "vcs-integrations" holding "multiple-vcs-integrations" through B
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Retained","spaceID":"{team}","isDefault":false}}' through A
+    Then it answers 201
+    And the answer's id names "retained"
+    And token "op" gives the home organization a seeded tier with "vcs-integrations" lacking "multiple-vcs-integrations" through A
+    When token "h" sends "GET /api/v1/gitlab-integrations/{retained}" through B
+    Then it answers 200
+    And the answer's isDefault is 'false'
+    When token "h" sends "PUT /api/v1/gitlab-integrations/{retained}" with '{"customInput":{"space":"{team}","description":"Still usable"}}' through A
+    Then it answers 200
+    And the answer's description is '"Still usable"'
+    When token "h" sends "POST /api/v1/gitlab-integrations/{retained}/test" through B
+    Then it answers 200
+    And the answer is 'true'
+    When token "h" sends "DELETE /api/v1/gitlab-integrations/{retained}" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/gitlab-integrations/{retained}" through B
+    Then it answers a 404 problem "not-found"

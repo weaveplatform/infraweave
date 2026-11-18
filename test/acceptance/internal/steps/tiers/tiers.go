@@ -24,6 +24,8 @@ type platformSteps struct {
 }
 
 func (p *platformSteps) register(sc *godog.ScenarioContext) {
+	sc.Step(`^token "(\w+)" gives the home organization a seeded tier with "([a-z-]+)" (holding|lacking) "([a-z-]+)" through ([AB])$`, p.chooseOptionTier)
+	sc.Step(`^the problem lists the catalogue tiers holding "([a-z-]+)"$`, p.optionProblemTiers)
 	sc.Step(
 		`^token "(\w+)" creates the tier "([^"]+)" with the feature "([a-z-]+)"(?: and (\d+) seats)? through ([AB])$`,
 		p.createTier,

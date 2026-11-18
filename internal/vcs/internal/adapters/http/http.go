@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -280,6 +281,15 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 // integrationError answers the service's refusals. A *kernel.Invalid is
 // answered as it is.
 func integrationError(err error) error {
+	if r, ok := errors.AsType[*featuresapi.Refusal](err); ok {
+		p := problem.FeatureNotInTier.New(fmt.Sprintf("The organization's tier does not include %s.", r.Feature))
+		p.Feature, p.Tiers = r.Feature, r.Tiers
+		if r.Disabled {
+			p = problem.FeatureDisabled.New(fmt.Sprintf("The operator has switched off %s for this installation.", r.Feature))
+			p.Feature = r.Feature
+		}
+		return &problem.Error{Problem: p}
+	}
 	if m, ok := errors.AsType[*integration.Missing](err); ok {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.NotFound.Error(fmt.Sprintf("No %s %q in this account.", m.Kind, m.ID))

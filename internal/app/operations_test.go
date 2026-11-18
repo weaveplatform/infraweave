@@ -168,6 +168,15 @@ func TestUnitAPIOperations(t *testing.T) {
 		[]featuresapi.OptionGate{{Pointer: "/oidc", Feature: "oidc-api-keys"}}) {
 		t.Errorf("apiKeyCreate's options: %+v", g.Options)
 	}
+	for _, path := range []string{
+		"/gitlab-integrations", "/bitbucket-cloud-integrations", "/bitbucket-datacenter-integrations",
+		"/azure-dev-ops-repo-integrations", "/github-enterprise-integrations",
+	} {
+		if g, ok := ops["POST "+BaseURL+path]; !ok || !reflect.DeepEqual(g.Gate.Options,
+			[]featuresapi.OptionGate{{Pointer: "/customInput/isDefault", Feature: "multiple-vcs-integrations", Value: "false"}}) {
+			t.Errorf("%s create's options: %+v, exists=%t", path, g.Gate.Options, ok)
+		}
+	}
 	if g := ops["PUT "+BaseURL+"/stacks/{stackId}"].Gate; !reflect.DeepEqual(g.Options,
 		[]featuresapi.OptionGate{
 			{Pointer: "/vendorConfig/opentofu", Feature: "vendor-opentofu"},

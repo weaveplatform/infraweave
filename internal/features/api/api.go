@@ -24,6 +24,22 @@ type Entitlement struct {
 	Limits   map[string]int64
 }
 
+// Refusal is why an operation may not use a feature: Disabled for the
+// operator's switch-off, otherwise the organization's entitlement lacks
+// it and Tiers names the tiers that hold it, smallest first.
+type Refusal struct {
+	Disabled bool
+	Feature  string
+	Tiers    []string
+}
+
+func (r *Refusal) Error() string {
+	if r.Disabled {
+		return "features: " + r.Feature + " is switched off"
+	}
+	return "features: " + r.Feature + " is not in the organization's tier"
+}
+
 // Seats is the limit on members and API keys, which access counts.
 //
 // ref: decision 0021
@@ -115,6 +131,7 @@ type OptionGate struct {
 // an organization's or account's rows in the transaction that creates or
 // deletes the organization or account.
 type Entitlements interface {
+	Options
 	// CreateOrganization gives org its entitlement on the installation's
 	// default tier, Enterprise unless the operator changed it.
 	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
@@ -141,4 +158,12 @@ type Entitlements interface {
 	// creations cannot both take the last unit. An organization without
 	// an entitlement has no limits.
 	CheckLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, count func(context.Context) (Usage, error)) error
+}
+
+// Options admits effective domain values that require a catalogue option.
+type Options interface {
+	// AllowOrganization checks the installation's switches and org's
+	// entitlement. A denied feature is a *Refusal; billing off admits every
+	// feature not switched off.
+	AllowOrganization(ctx context.Context, org kernel.OrganizationID, feature string) error
 }

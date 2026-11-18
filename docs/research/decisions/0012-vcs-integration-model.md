@@ -89,6 +89,13 @@ not provider names.
 - **One default per provider.** A partial unique index
   `(account_id, provider) where is_default` enforces it, and a `CHECK` ties a
   default to the account's top space ([0007](0007-authorization-spaces-and-roles.md#spaces)). `isDefault` and `name` are fixed after creation.
+- **Non-default creation.** The effective `isDefault: false`, including an
+  omitted or null value, requires the `multiple-vcs-integrations` option
+  (0021). The body marker rejects an explicit false before the handler;
+  the integration service checks the same entitlement for every create,
+  including a manifest-created App after the account's first default.
+  A tier drop does not gate an existing integration's reads, updates,
+  connection tests, source use or deletion.
 - **Resolution at use time.** A stack or module with no
   `vcs_integration_id` uses its provider's current default whenever an event
   arrives or a run starts; the default is never copied onto the stack.

@@ -24,13 +24,17 @@
 // names, or its provider's default, which a space the caller reads
 // reaches, or a raw Git repository's branches by URL; SearchUsers and
 // SuggestUsers search the stacks that use an integration.
+// Non-default creation checks the multiple-vcs-integrations option on its
+// effective isDefault value; existing integrations remain usable after
+// an entitlement change.
 //
 // ref: decisions 0007, 0012 and 0013
 //
 // # Input and output
 //
 // New takes the Store, the pool its writes begin transactions on, the
-// access domain's spaces and authorizer, the stacks domain's api, the
+// access domain's spaces and authorizer, the features domain's Options,
+// the stacks domain's api, the
 // providers infraweave stores integrations of, each one's Tester, each
 // one's Brancher, which a provider listing repositories extends to
 // port.Browse, the GitHub provider's Apps and the
@@ -38,7 +42,7 @@
 //
 // # Dependencies
 //
-// It imports the access and stacks api packages, internal/kernel and its
+// It imports the access, features and stacks api packages, internal/kernel and its
 // search package, platform/tx and the domain's port package. The domain's
 // assembly constructs it over the pg adapter.
 package integration
