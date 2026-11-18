@@ -110,6 +110,7 @@ func TestUnitCommitCheckLostCreate(t *testing.T) {
 	if _, err := l.gl.Set(t.Context(), l.repo.Repo, l.repo.Head, r); err == nil {
 		t.Fatal("unknown state accepted")
 	}
+	r.State = port.CheckQueued
 	if _, err := l.gl.Set(t.Context(), l.repo.Repo, strings.Repeat("0", 40), r); err == nil {
 		t.Fatal("zero commit accepted")
 	}

@@ -115,7 +115,65 @@ func TestUnitCommitCheckLostCreate(t *testing.T) {
 	if _, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, r); err == nil {
 		t.Fatal("unknown state accepted")
 	}
+	r.State = port.CheckQueued
 	if _, err := l.gh.Set(t.Context(), l.repo.Repo, strings.Repeat("0", 40), r); err == nil {
 		t.Fatal("zero commit accepted")
+	}
+}
+
+func TestUnitCommitChecksPerRunActionsAndReopen(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	stack := kernel.NewULID()
+	report := port.CheckReport{
+		Name:       "infraweave/tracked",
+		State:      port.CheckInProgress,
+		Title:      "Planning",
+		Summary:    "Plan is running.",
+		URL:        "https://infra.example/runs/first",
+		ExternalID: stack.String(),
+		RecoveryID: "infraweave/run:first",
+		Actions: []port.CheckAction{
+			{Label: "Preview", Description: "Propose a run", Identifier: "preview"},
+			{Label: "Deploy", Description: "Track a run", Identifier: "deploy"},
+		},
+	}
+	first, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report.Actions = []port.CheckAction{}
+	if _, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	got := l.fake.Checks("acme", "infra")
+	if len(got) != 1 || got[0].Actions == nil || len(got[0].Actions) != 0 {
+		t.Fatal("disabled actions retained", got)
+	}
+	report.URL = "https://infra.example/runs/second"
+	report.RecoveryID = "infraweave/run:second"
+	second, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil || second == first {
+		t.Fatal("another run took over first check", first, second, err)
+	}
+	report.ExternalID = ""
+	report.RecoveryID = "infraweave/aggregate/infraweave/tracked/" + l.repo.Head
+	aggregate, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil || aggregate == first || aggregate == second {
+		t.Fatal("aggregate stole a per-run identity", aggregate, err)
+	}
+	report.State = port.CheckSuccess
+	if _, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	l.fake.RejectCheckReopen(true)
+	report.State = port.CheckQueued
+	reopened, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil || reopened == aggregate {
+		t.Fatal("refused reopen did not create a recoverable generation", reopened, err)
+	}
+	again, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil || again != reopened || len(l.fake.Checks("acme", "infra")) != 4 {
+		t.Fatal("reopened check was not recovered", again, err)
 	}
 }

@@ -23,7 +23,7 @@ func (s *Store) BindCheck(ctx context.Context, b feedback.CheckBinding) (feedbac
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `WITH owner AS (SELECT id FROM vcs_integrations WHERE account_id=$1 AND id=$5 FOR KEY SHARE)
         INSERT INTO vcs_check_bindings(account_id,binding_key,run_id,stack_id,integration_id,namespace,repository,commit_hash,run_type,is_cap,binding)
 		SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11 FROM owner
-		ON CONFLICT(account_id,binding_key) DO UPDATE SET binding=CASE WHEN vcs_check_bindings.is_cap THEN EXCLUDED.binding ELSE vcs_check_bindings.binding END
+		ON CONFLICT(account_id,binding_key) DO UPDATE SET binding=CASE WHEN vcs_check_bindings.is_cap AND (vcs_check_bindings.binding->>'createdAt')::timestamptz <= (EXCLUDED.binding->>'createdAt')::timestamptz THEN EXCLUDED.binding ELSE vcs_check_bindings.binding END
 		RETURNING binding`, b.Account, b.Key, b.Run, b.Stack, b.Integration, b.Namespace, b.Repository, b.Commit, b.Type, b.Cap, b).Scan(&kept)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return b, feedback.ErrNoCheck

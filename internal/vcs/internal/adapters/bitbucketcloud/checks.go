@@ -91,8 +91,10 @@ func nativeCheckState(state port.CheckState) (string, bool) {
 	switch state {
 	case port.CheckQueued, port.CheckInProgress:
 		return "INPROGRESS", true
-	case port.CheckFailure, port.CheckCanceled:
+	case port.CheckFailure:
 		return "FAILED", true
+	case port.CheckCanceled:
+		return "STOPPED", true
 	case port.CheckSuccess, port.CheckNeutral, port.CheckSkipped:
 		return "SUCCESSFUL", true
 	}

@@ -187,7 +187,7 @@ CREATE TABLE vcs_ignored_triggers (
 CREATE INDEX vcs_ignored_triggers_stack ON vcs_ignored_triggers(account_id,stack_id,created_at DESC,id);
 CREATE INDEX vcs_ignored_triggers_retention ON vcs_ignored_triggers(created_at,id);
 -- Check bindings retain credential-free source identity. Integration deletion
--- removes their requests and native cursors; stack deletion calls the VCS guard.
+-- removes their requests; stack deletion calls the VCS guard.
 -- A run ID is historical identity, not a cross-domain foreign key. Cap bindings
 -- have no run, and keep the failed stack/commit/type diagnosis instead.
 CREATE TABLE vcs_check_bindings (

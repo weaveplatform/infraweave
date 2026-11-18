@@ -103,6 +103,7 @@ type Deps struct {
 	Stacks           stacksapi.Stacks
 	Histories        runsapi.RunHistories
 	CommitRuns       runsapi.CommitRuns
+	CheckFacts       runsapi.CheckFacts
 	Settings         Settings
 	Public           string
 	Log              *slog.Logger
@@ -191,10 +192,40 @@ func New(d Deps) (*Domain, error) {
 		Log:          d.Log,
 	})
 	ignoredTriggers := ignored.New(ignored.Deps{Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Authz: d.Authz, Now: clock})
+	checks := feedback.NewDeployments(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
+		if d.Spaces == nil {
+			return accessapi.ErrNoAccount
+		}
+		return d.Spaces.Hold(ctx, acct, acct.ULID)
+	}, feedback.DeploymentDeps{
+		DB: d.DB, Store: pg.New(d.DB, d.Keys), Histories: d.Histories,
+		Stacks: d.Stacks, Integrations: integrations,
+		Providers: map[string]port.Deployments{
+			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
+		},
+	}).WithChecks(feedback.CheckDeps{
+		DB:           d.DB,
+		Store:        pg.New(d.DB, d.Keys),
+		Facts:        d.CheckFacts,
+		Histories:    d.Histories,
+		Stacks:       d.Stacks,
+		Integrations: integrations,
+		Public:       d.Public,
+		Now:          clock,
+		Log:          d.Log,
+		Providers: map[string]feedback.CheckProviders{
+			integration.GitHub:           gh,
+			integration.GitHubEnterprise: gh,
+			integration.GitLab:           gl,
+			integration.BitbucketCloud:   bbc,
+			integration.BitbucketDC:      bbdc,
+			integration.AzureDevOps:      ado,
+		},
+	})
 	pushes := push.New(push.Deps{
 		DB: d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
 		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
-		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
+		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 	})
 	requests := pullrequest.New(pullrequest.Deps{
 		Store: pg.New(d.DB, d.Keys), Integrations: integrations,
@@ -216,19 +247,8 @@ func New(d Deps) (*Domain, error) {
 		intake:       inbox,
 		limits:       limits,
 		ignored:      ignoredTriggers,
-		feedback: feedback.NewDeployments(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
-			if d.Spaces == nil {
-				return accessapi.ErrNoAccount
-			}
-			return d.Spaces.Hold(ctx, acct, acct.ULID)
-		}, feedback.DeploymentDeps{
-			DB: d.DB, Store: pg.New(d.DB, d.Keys), Histories: d.Histories,
-			Stacks: d.Stacks, Integrations: integrations,
-			Providers: map[string]port.Deployments{
-				integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
-			},
-		}),
-		api: http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox).WithIgnored(ignoredTriggers),
+		feedback:     checks,
+		api:          http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox).WithIgnored(ignoredTriggers),
 	}, nil
 }
 
@@ -255,7 +275,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 		if err != nil {
 			return err //nolint:wrapcheck // the store names the purge
 		}
-		if done {
+		checksDone, err := d.feedback.PurgeChecks(ctx, acct, PurgeBatch)
+		if err != nil {
+			return fmt.Errorf("VCS check purge: %w", err)
+		}
+		if done && checksDone {
 			break
 		}
 	}
@@ -284,7 +308,30 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 }
 
 // StackGuard removes stack-owned ignored records in the deletion transaction.
-func (d *Domain) StackGuard() stacksapi.StackGuard { return d.ignored }
+func (d *Domain) StackGuard() stacksapi.StackGuard { return stackGuard{d.ignored, d.feedback} }
+
+type stackGuard []stacksapi.StackGuard
+
+func (g stackGuard) LostOnMove(ctx context.Context, m stacksapi.StackMove) ([]string, error) {
+	var out []string
+	for _, guard := range g {
+		rows, err := guard.LostOnMove(ctx, m)
+		if err != nil {
+			return nil, fmt.Errorf("VCS stack move: %w", err)
+		}
+		out = append(out, rows...)
+	}
+	return out, nil
+}
+
+func (g stackGuard) Deleting(ctx context.Context, st stacksapi.Stack) error {
+	for _, guard := range g {
+		if err := guard.Deleting(ctx, st); err != nil {
+			return fmt.Errorf("VCS stack deletion: %w", err)
+		}
+	}
+	return nil
+}
 
 // Sources resolves the commits of a stack's repository for other domains.
 func (d *Domain) Sources() vcsapi.Sources { return d.sources }
@@ -317,6 +364,7 @@ func (d *Domain) Jobs() []queue.Registration {
 		{Kind: Revoke, Handler: d.sources.Revoked},
 		d.deliveryJob(),
 		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported},
+		{Kind: feedback.ReportCheck, Handler: d.feedback.Checked},
 		{
 			Kind: push.Evaluate, Handler: d.push.Evaluated,
 			Options: queue.HandlerOptions{Feature: "vcs-integrations"},

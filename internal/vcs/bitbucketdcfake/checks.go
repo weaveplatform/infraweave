@@ -64,7 +64,7 @@ func (f *Fake) getCheck(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) setCheck(w http.ResponseWriter, r *http.Request) {
 	var body CheckRecord
 	if json.NewDecoder(r.Body).Decode(&body) != nil || body.Key == "" || body.URL == "" ||
-		!slices.Contains([]string{"INPROGRESS", "SUCCESSFUL", "FAILED"}, body.State) {
+		!slices.Contains([]string{"INPROGRESS", "SUCCESSFUL", "FAILED", "CANCELLED"}, body.State) {
 		answer(w, 400, problem("Invalid build status"))
 		return
 	}

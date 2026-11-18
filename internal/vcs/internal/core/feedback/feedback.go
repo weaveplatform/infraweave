@@ -14,9 +14,8 @@ import (
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 )
 
-// ReportCheck is the Commit checks delivery job. Target selection remains
-// empty until its provider handler is implemented, so no unfinished job
-// is produced by a run's state transition.
+// ReportCheck coalesces pending states for a named commit check. The VCS
+// handler owns provider effects; events retains only the target reference.
 var ReportCheck = queue.Kind{Name: "vcs.report_check", Queue: queue.Deliveries, Policy: queue.Coalesce}
 
 // Service owns VCS feedback jobs; the events domain owns fan-out records.

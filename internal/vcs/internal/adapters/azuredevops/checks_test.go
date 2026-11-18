@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/vcs/azuredevopsfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -110,7 +111,78 @@ func TestUnitCommitCheckLostCreate(t *testing.T) {
 	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, r); err == nil {
 		t.Fatal("unknown state accepted")
 	}
+	r.State = port.CheckQueued
 	if _, err := l.az.Set(t.Context(), l.repo.Repo, strings.Repeat("0", 40), r); err == nil {
 		t.Fatal("zero commit accepted")
+	}
+}
+
+func TestUnitCommitCheckLatestPullRequestIteration(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	earlier := azuredevopsfake.CheckIteration{ID: 1}
+	earlier.Source.SHA = l.repo.Base
+	latest := azuredevopsfake.CheckIteration{ID: 3}
+	latest.Source.SHA = l.repo.Head
+	l.fake.SetCheckIterations("Platform", "infra", 42, []azuredevopsfake.CheckIteration{latest, earlier})
+	report := port.CheckReport{
+		Name:         "infraweave/infra",
+		State:        port.CheckInProgress,
+		Title:        "Planning",
+		Summary:      "Changes are being planned.",
+		URL:          "https://infra.example/runs/one",
+		RecoveryID:   "infraweave/run:one",
+		PullRequests: []int{42},
+	}
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	got := l.fake.Checks("Platform", "infra")
+	if len(got) != 2 {
+		t.Fatal(got)
+	}
+	for _, v := range got {
+		if v.PullRequest != 0 && (v.PullRequest != 42 || v.Iteration != 3 || v.SHA != l.repo.Head) {
+			t.Fatal("wrong iteration painted", v)
+		}
+	}
+	before := len(l.fake.CheckWrites("Platform", "infra"))
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	if len(l.fake.CheckWrites("Platform", "infra")) != before {
+		t.Fatal("recovery wrote duplicate native contexts")
+	}
+	report.State = port.CheckSuccess
+	latest.ID = 4
+	latest.Source.SHA = l.repo.Base
+	l.fake.SetCheckIterations("Platform", "infra", 42, []azuredevopsfake.CheckIteration{earlier, latest})
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range l.fake.CheckWrites("Platform", "infra") {
+		if v.Iteration == 4 {
+			t.Fatal("stale result posted onto new PR head", v)
+		}
+	}
+	latest.Source.SHA = l.repo.Head
+	l.fake.SetCheckIterations("Platform", "infra", 42, []azuredevopsfake.CheckIteration{latest})
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	writes := l.fake.CheckWrites("Platform", "infra")
+	last := writes[len(writes)-1]
+	if last.Iteration != 4 || last.State != "succeeded" {
+		t.Fatal("new latest iteration omitted", last)
+	}
+	report.PullRequests = []int{99}
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err == nil {
+		t.Fatal("missing PR became silent success")
+	}
+	report.PullRequests = []int{42}
+	latest.Source.SHA = ""
+	l.fake.SetCheckIterations("Platform", "infra", 42, []azuredevopsfake.CheckIteration{latest})
+	if _, err := l.az.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err == nil {
+		t.Fatal("malformed iteration accepted")
 	}
 }

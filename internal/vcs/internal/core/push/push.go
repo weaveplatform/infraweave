@@ -71,6 +71,12 @@ type IgnoredRecorder interface {
 	Record(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Commit, string) error
 }
 
+// CapReporter schedules the failed commit check in the completing child
+// transaction; the cap has no run_updated event of its own.
+type CapReporter interface {
+	Capped(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string, kernel.RunType, int) error
+}
+
 // Deps is the forward domain graph and transactional stores used by VCS jobs.
 type Deps struct {
 	DB           tx.Beginner
@@ -83,6 +89,7 @@ type Deps struct {
 	Supersede    runsapi.Supersede
 	Jobs         intake.Jobs
 	Limits       *Limits
+	Checks       CapReporter
 	Ignored      IgnoredRecorder
 	Now          func() time.Time
 	Log          *slog.Logger
