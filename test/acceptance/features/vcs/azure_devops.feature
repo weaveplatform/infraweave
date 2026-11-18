@@ -251,17 +251,17 @@ Feature: Azure DevOps integrations
     And the answer's webhook secret is kept as "originalHook"
     When token "h" sends "GET /api/v1/azure-dev-ops-webhooks-endpoint" through B
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/azure_devops/{hookIntegration}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/azure_devops/{hookIntegration}"
     When token "h" regenerates the webhook secret at "/api/v1/azure-dev-ops-repo-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
     Then it answers 200
     And the answer's webhook secret differs from "originalHook"
     And the answer's webhook secret is kept as "firstHook"
     When token "h" sends "GET /api/v1/azure-dev-ops-repo-integrations/{hookIntegration}" through B
     Then it answers 200
-    And the answer's webhookSecret is '"{firstHook}"'
+    And the answer's webhookPassword is '"{firstHook}"'
     When token "h" regenerates the webhook secret at "/api/v1/azure-dev-ops-repo-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through B
     Then it answers 200
-    And the answer's webhookSecret is '"{firstHook}"'
+    And the answer's webhookPassword is '"{firstHook}"'
     And integration "hookIntegration" has 1 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook"
     When token "h" sends "POST /api/v1/azure-dev-ops-repo-integrations/{hookIntegration}/regenerate-webhook-secret" through B
     Then it answers 200
@@ -269,7 +269,7 @@ Feature: Azure DevOps integrations
     And the answer's webhook secret is kept as "secondHook"
     When token "h" sends "GET /api/v1/azure-dev-ops-repo-integrations/{hookIntegration}" through A
     Then it answers 200
-    And the answer's webhookSecret is '"{secondHook}"'
+    And the answer's webhookPassword is '"{secondHook}"'
     And integration "hookIntegration" has 2 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook, secondHook"
 
   @op:azureDevOpsRepoIntegrationRegenerateWebhookSecret @op:azureDevOpsWebhooksEndpoint @case:denial @webhook-controls
@@ -287,7 +287,7 @@ Feature: Azure DevOps integrations
     And the answer's action is '"SPACE_ADMIN"'
     When token "h" sends "GET /api/v1/azure-dev-ops-repo-integrations/{hookIntegration}" through B
     Then it answers 200
-    And the answer's webhookSecret is '"{untouchedHook}"'
+    And the answer's webhookPassword is '"{untouchedHook}"'
     And integration "hookIntegration" has 0 secret rotation audit entries and never logs or audits secrets "untouchedHook"
 
   @op:azureDevOpsRepoIntegrationRegenerateWebhookSecret @op:azureDevOpsWebhooksEndpoint @case:failure @webhook-controls

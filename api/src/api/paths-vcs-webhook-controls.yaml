@@ -1,8 +1,13 @@
-# Account-owned webhook controls; Azure DevOps rotation is DV-132.
+# Account-owned webhook controls.
+# ref: DV-132
 paths:
   /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret:
     post:
-      description: Regenerates the webhook secret for Azure DevOps integration.
+      description: >-
+        Regenerates the Azure DevOps webhook password and returns the admin
+        integration view, including webhookPassword. The preceding password
+        remains accepted for vcs.webhook_secret_overlap (24 hours by default).
+        A second regeneration replaces that preceding password.
       operationId: azureDevOpsRepoIntegrationRegenerateWebhookSecret
       x-infraweave-feature: vcs-integrations
       x-infraweave-action: SPACE_ADMIN

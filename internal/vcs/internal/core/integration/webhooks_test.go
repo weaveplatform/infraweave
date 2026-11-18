@@ -12,7 +12,9 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type (
@@ -83,7 +85,7 @@ func TestUnitWebhookRotationClock(t *testing.T) {
 			t.Fatalf("first rotation: %+v %v, entropy=%d until=%s", first, err, len(entropy), store.until)
 		}
 		firstSecret := slices.Clone(store.current)
-		time.Sleep(2 * time.Hour)
+		time.Sleep(2 * time.Hour) //nolint:forbidigo // synctest advances virtual time without a wall-clock sleep.
 		if _, err := svc.RotateWebhookSecret(t.Context(), p, id.String(), integration.GitLab, "192.0.2.1"); err != nil {
 			t.Fatal(err)
 		}
@@ -144,5 +146,89 @@ func TestUnitWebhookRotationFailures(t *testing.T) {
 				t.Fatal("failed rotation recorded an audit")
 			}
 		})
+	}
+}
+
+func TestUnitWebhookEndpoints(t *testing.T) {
+	account := kernel.NewAccountID()
+	store := &providerStore{}
+	svc := integration.New(integration.Deps{Store: store, Public: "https://iw.example/"})
+	for _, provider := range []string{integration.GitLab, integration.BitbucketCloud, integration.BitbucketDC, integration.AzureDevOps, integration.GitHubEnterprise} {
+		id := kernel.NewULID()
+		store.rows = append(store.rows, integration.Integration{Account: account, ID: id, Provider: provider, IsDefault: true})
+		endpoint, err := svc.WebhookEndpoint(t.Context(), kernel.Principal{AccountID: account}, provider, "")
+		if err != nil || endpoint != svc.WebhookURL(provider, id) {
+			t.Fatalf("%s default URL: %s %v", provider, endpoint, err)
+		}
+		if _, err := svc.WebhookEndpoint(t.Context(), kernel.Principal{AccountID: kernel.NewAccountID()}, provider, ""); !errors.Is(err, integration.ErrNotFound) {
+			t.Fatal("foreign default", err)
+		}
+	}
+	named := kernel.NewULID()
+	store.rows = append(store.rows, integration.Integration{Account: account, ID: named, Provider: integration.GitHubEnterprise})
+	p := kernel.Principal{AccountID: account}
+	if got, err := svc.WebhookEndpoint(t.Context(), p, integration.GitHubEnterprise, named.String()); err != nil || got != svc.WebhookURL(integration.GitHubEnterprise, named) {
+		t.Fatal("named App URL", got, err)
+	}
+	if _, err := svc.WebhookEndpoint(t.Context(), p, integration.GitLab, named.String()); !errors.Is(err, integration.ErrNotFound) {
+		t.Fatal("wrong provider", err)
+	}
+	store.fail = errors.New("lookup failed")
+	if _, err := svc.WebhookEndpoint(t.Context(), p, integration.GitLab, ""); !errors.Is(err, store.fail) {
+		t.Fatal("default lookup failure", err)
+	}
+	if store.secretReads != 0 {
+		t.Fatal("URL lookup opened a secret")
+	}
+}
+
+type webhookProbe struct {
+	input port.WebhookInput
+	err   error
+	calls int
+}
+
+func (*webhookProbe) Test(context.Context, port.Integration) ([]port.Check, error) {
+	return []port.Check{{Type: port.CheckConnection, Passed: true}}, nil
+}
+
+func (p *webhookProbe) TestWebhooks(_ context.Context, _ port.Integration, input port.WebhookInput) (port.Check, error) {
+	p.input = input
+	p.calls++
+	return port.Check{Type: port.CheckWebhook, Passed: true}, p.err
+}
+
+type webhookRepositories struct {
+	stacksapi.Stacks
+	account kernel.AccountID
+	use     stacksapi.Use
+	err     error
+}
+
+func (s *webhookRepositories) VCSRepositories(_ context.Context, account kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	s.account, s.use = account, use
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "private"}, {Namespace: "acme", Name: "public"}}, s.err
+}
+
+func TestUnitWebhookTestRepositoryScope(t *testing.T) {
+	account, id := kernel.NewAccountID(), kernel.NewULID()
+	store := &providerStore{rows: []integration.Integration{{Account: account, ID: id, Provider: integration.GitHubEnterprise, IsDefault: true}}}
+	probe, repositories := &webhookProbe{}, &webhookRepositories{}
+	svc := integration.New(integration.Deps{Store: store, Stacks: repositories, Public: "https://iw.example", Testers: map[string]port.Tester{integration.GitHubEnterprise: probe}})
+	p := kernel.Principal{AccountID: account}
+	checks, err := svc.Test(t.Context(), p, id.String(), integration.GitHubEnterprise)
+	if err != nil || len(checks) != 2 || checks[1].Type != port.CheckWebhook || !checks[1].Passed || repositories.account != account ||
+		repositories.use.Integration != id || !repositories.use.Default || !slices.Equal(repositories.use.Aliases, []string{integration.GitHub}) ||
+		probe.input.URL != svc.WebhookURL(integration.GitHubEnterprise, id) || len(probe.input.Repositories) != 2 || probe.input.Repositories[0].Name != "private" {
+		t.Fatalf("repository scope: checks=%+v account=%s use=%+v input=%+v %v", checks, repositories.account, repositories.use, probe.input, err)
+	}
+	repositories.err = errors.New("repository read failed")
+	if _, err := svc.Test(t.Context(), p, id.String(), integration.GitHubEnterprise); !errors.Is(err, repositories.err) || probe.calls != 1 {
+		t.Fatal("repository failure reached provider", err)
+	}
+	repositories.err = nil
+	probe.err = errors.New("hook check failed")
+	if _, err := svc.Test(t.Context(), p, id.String(), integration.GitHubEnterprise); !errors.Is(err, probe.err) {
+		t.Fatal("provider failure lost", err)
 	}
 }

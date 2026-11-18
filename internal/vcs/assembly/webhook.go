@@ -33,7 +33,7 @@ func DefaultSettings() Settings {
 	return Settings{Deliveries: DeliverySettings{Retention: 7 * 24 * time.Hour}, WebhookSecretOverlap: 24 * time.Hour}
 }
 
-// Validate refuses retention that could prune an accepted delivery immediately.
+// Validate refuses non-positive delivery retention or secret overlap.
 func (s Settings) Validate() error {
 	if s.Deliveries.Retention <= 0 {
 		return fmt.Errorf("%w: vcs.deliveries.retention must be positive", ErrConfig)

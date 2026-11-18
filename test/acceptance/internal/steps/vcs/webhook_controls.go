@@ -35,6 +35,7 @@ type webhookControlSteps struct {
 func (h *webhookControlSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's webhook secret is kept as "(\w+)"$`, h.keepSecret)
 	sc.Step(`^the answer's webhook secret differs from "(\w+)"$`, h.differentSecret)
+	sc.Step(`^the webhook endpoint in the answer is "([^"]+)"$`, h.endpoint)
 	sc.Step(`^token "(\w+)" regenerates the webhook secret at "([^"]+)" with idempotency key "([^"]+)" through ([AB])$`, h.rotate)
 	sc.Step(`^integration "(\w+)" has (\d+) secret rotation audit entries and never logs or audits secrets "([^"]+)"$`, h.audit)
 	sc.Step(`^the (GitLab|Bitbucket Cloud|Bitbucket Data Center|Azure DevOps) repository "([^"]+)" has a webhook to "([^"]+)" for events "([^"]*)"$`, h.hook)
@@ -47,13 +48,26 @@ func (h *webhookControlSteps) register(sc *godog.ScenarioContext) {
 
 func (h *webhookControlSteps) secret() (string, error) {
 	var view struct {
-		Secret string `json:"webhookSecret"`
+		Secret   string `json:"webhookSecret"`
+		Password string `json:"webhookPassword"`
 	}
 	r := h.w.Last()
-	if json.Unmarshal(r.Body, &view) != nil || view.Secret == "" {
+	if json.Unmarshal(r.Body, &view) != nil || (view.Secret == "") == (view.Password == "") {
 		return "", fmt.Errorf("%w: answer %d has no webhook secret", harness.ErrStep, r.Status)
 	}
+	if view.Password != "" {
+		return view.Password, nil
+	}
 	return view.Secret, nil
+}
+
+func (h *webhookControlSteps) endpoint(want string) error {
+	var got string
+	r := h.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &got) != nil || got != h.w.Resolve(want) {
+		return fmt.Errorf("%w: answer is not the integration's expected webhook URL", harness.ErrStep)
+	}
+	return nil
 }
 
 func (h *webhookControlSteps) keepSecret(key string) error {
@@ -178,9 +192,12 @@ type controlCheck struct {
 	Type     string `json:"type"`
 	Status   string `json:"status"`
 	Metadata struct {
-		WebHooks    struct{ Expected, Actual string } `json:"webHooks"`
-		Permissions []string                          `json:"permissions"`
-		Events      []string                          `json:"githubAppEvents"`
+		WebHooks struct {
+			Expected string `json:"expected"`
+			Actual   string `json:"actual"`
+		} `json:"webHooks"`
+		Permissions []string `json:"permissions"`
+		Events      []string `json:"githubAppEvents"`
 	} `json:"metadata"`
 }
 

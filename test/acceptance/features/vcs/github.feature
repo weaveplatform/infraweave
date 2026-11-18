@@ -308,7 +308,7 @@ Feature: GitHub integrations
     And the answer's webhook secret is kept as "originalHook"
     When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"
     When token "h" regenerates the webhook secret at "/api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
     Then it answers 200
     And the answer's webhook secret differs from "originalHook"
@@ -333,10 +333,10 @@ Feature: GitHub integrations
     And the answer's id names "namedHookApp"
     When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id={namedHookApp}" through A
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{namedHookApp}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/github_enterprise/{namedHookApp}"
     When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"
 
   @op:githubEnterpriseIntegrationRegenerateWebhookSecret @op:githubEnterpriseWebhooksEndpoint @case:denial @webhook-controls
   Scenario: A GitHub App space reader cannot rotate a secret or read the delivery URL
@@ -390,7 +390,7 @@ Feature: GitHub integrations
     And the answer's id names "teamHookApp"
     When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id={teamHookApp}" through A
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{teamHookApp}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/github_enterprise/{teamHookApp}"
     When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"SPACE_ADMIN"'

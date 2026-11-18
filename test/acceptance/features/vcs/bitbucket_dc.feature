@@ -251,7 +251,7 @@ Feature: Bitbucket Data Center integrations
     And the answer's webhook secret is kept as "originalHook"
     When token "h" sends "GET /api/v1/bitbucket-datacenter-webhooks-endpoint" through B
     Then it answers 200
-    And the answer is '"http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"'
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
     When token "h" regenerates the webhook secret at "/api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
     Then it answers 200
     And the answer's webhook secret differs from "originalHook"

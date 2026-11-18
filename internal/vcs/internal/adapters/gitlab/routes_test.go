@@ -41,15 +41,26 @@ func TestUnitRoutes(t *testing.T) {
 	}
 	base, _ := url.Parse("https://gitlab.example/api/v4/")
 	sent := 0
-	tr := routeTransport{base: base, next: routeProbe(func(*http.Request) (*http.Response, error) { sent++; return nil, nil })}
+	tr := routeTransport{base: base, next: routeProbe(func(*http.Request) (*http.Response, error) {
+		sent++
+		return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil
+	})}
 	for _, raw := range []string{"https://elsewhere.example/api/v4/user", "http://gitlab.example/api/v4/user", "https://gitlab.example/outside/user", "https://gitlab.example/api/v4/groups"} {
 		u, _ := url.Parse(raw)
-		if _, err := tr.RoundTrip(&http.Request{Method: http.MethodGet, URL: u}); !errors.Is(err, ErrRoute) {
+		response, err := tr.RoundTrip(&http.Request{Method: http.MethodGet, URL: u})
+		if response != nil {
+			_ = response.Body.Close()
+		}
+		if !errors.Is(err, ErrRoute) {
 			t.Fatal(raw, err)
 		}
 	}
 	u, _ := url.Parse("https://gitlab.example/api/v4/projects/acme%2Finfra/hooks?page=2")
-	if _, err := tr.RoundTrip(&http.Request{Method: http.MethodGet, URL: u}); err != nil || sent != 1 {
+	response, err := tr.RoundTrip(&http.Request{Method: http.MethodGet, URL: u})
+	if response != nil {
+		_ = response.Body.Close()
+	}
+	if err != nil || sent != 1 {
 		t.Fatalf("allowed SDK route: sent=%d %v", sent, err)
 	}
 }

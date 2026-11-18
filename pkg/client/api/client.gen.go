@@ -9885,15 +9885,21 @@ type VCSIntegrationTestResult struct {
 
 // VCSIntegrationTestResultMetadata defines model for VCSIntegrationTestResultMetadata.
 type VCSIntegrationTestResultMetadata struct {
-	GithubAppEvents []string                                  `json:"githubAppEvents"`
-	Permissions     []string                                  `json:"permissions"`
-	Reason          *string                                   `json:"reason,omitempty"`
-	WebHooks        *VCSIntegrationTestResultMetadataWebhooks `json:"webHooks,omitempty"`
+	// GithubAppEvents Missing subscribed GitHub App events.
+	GithubAppEvents []string `json:"githubAppEvents"`
+
+	// Permissions Missing permissions by name; reason states each required level.
+	Permissions []string                                  `json:"permissions"`
+	Reason      *string                                   `json:"reason,omitempty"`
+	WebHooks    *VCSIntegrationTestResultMetadataWebhooks `json:"webHooks,omitempty"`
 }
 
 // VCSIntegrationTestResultMetadataWebhooks defines model for VCSIntegrationTestResultMetadataWebhooks.
 type VCSIntegrationTestResultMetadataWebhooks struct {
-	Actual   string `json:"actual"`
+	// Actual Hook diagnostics for up to ten failing repositories, with a count of the remainder. Credential-bearing URL parts are omitted.
+	Actual string `json:"actual"`
+
+	// Expected The integration's delivery URL and the consumed events its hooks must cover.
 	Expected string `json:"expected"`
 }
 
@@ -15211,7 +15217,7 @@ type ClientInterface interface {
 
 	// AzureDevOpsRepoIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Azure DevOps integration.
+	// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
 	//
 	// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
 	AzureDevOpsRepoIntegrationRegenerateWebhookSecret(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15393,7 +15399,7 @@ type ClientInterface interface {
 
 	// BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
 	BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15482,7 +15488,7 @@ type ClientInterface interface {
 
 	// BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
 	BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15854,7 +15860,7 @@ type ClientInterface interface {
 
 	// GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitHub Enterprise integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
 	GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15944,7 +15950,7 @@ type ClientInterface interface {
 
 	// GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitLab integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
 	GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -20318,7 +20324,7 @@ func (c *Client) AzureDevOpsRepoIntegrationUpdate(ctx context.Context, azureDevO
 
 // AzureDevOpsRepoIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Azure DevOps integration.
+// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
 //
 // Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) AzureDevOpsRepoIntegrationRegenerateWebhookSecret(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -20720,7 +20726,7 @@ func (c *Client) BitbucketCloudIntegrationUpdateV2(ctx context.Context, bitbucke
 
 // BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Cloud integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -20919,7 +20925,7 @@ func (c *Client) BitbucketDatacenterIntegrationUpdate(ctx context.Context, bitbu
 
 // BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Datacenter integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21741,7 +21747,7 @@ func (c *Client) GithubEnterpriseIntegrationUpdate(ctx context.Context, githubEn
 
 // GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitHub Enterprise integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21941,7 +21947,7 @@ func (c *Client) GitlabIntegrationUpdate(ctx context.Context, gitlabIntegrationI
 
 // GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitLab integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -48912,7 +48918,7 @@ type ClientWithResponsesInterface interface {
 
 	// AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Azure DevOps integration.
+	// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49110,7 +49116,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49209,7 +49215,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49611,7 +49617,7 @@ type ClientWithResponsesInterface interface {
 
 	// GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitHub Enterprise integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49711,7 +49717,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitLab integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -91143,7 +91149,7 @@ func (c *ClientWithResponses) AzureDevOpsRepoIntegrationUpdateWithResponse(ctx c
 
 // AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Azure DevOps integration.
+// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -91473,7 +91479,7 @@ func (c *ClientWithResponses) BitbucketCloudIntegrationUpdateV2WithResponse(ctx 
 
 // BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Cloud integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -91638,7 +91644,7 @@ func (c *ClientWithResponses) BitbucketDatacenterIntegrationUpdateWithResponse(c
 
 // BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Datacenter integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92310,7 +92316,7 @@ func (c *ClientWithResponses) GithubEnterpriseIntegrationUpdateWithResponse(ctx 
 
 // GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitHub Enterprise integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92476,7 +92482,7 @@ func (c *ClientWithResponses) GitlabIntegrationUpdateWithResponse(ctx context.Co
 
 // GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitLab integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //

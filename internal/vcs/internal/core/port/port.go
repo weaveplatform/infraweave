@@ -112,7 +112,8 @@ const (
 	CheckGithubAppEvents = "GITHUB_APP_EVENTS"
 )
 
-// Check is one check of a test: its kind, whether it passed, and why not.
+// Check is one test result. Metadata describes missing requirements;
+// permission names omit levels, which the human-readable Reason retains.
 type Check struct {
 	Type            string
 	Passed          bool
