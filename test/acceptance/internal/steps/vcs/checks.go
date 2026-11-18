@@ -273,19 +273,56 @@ func (s *checkSteps) failStack(ctx context.Context, slug string) error {
 	return nil
 }
 
+// Replacement schemas retain provider-specific required fields. Read them
+// through the admin API and copy only update members, without logging secrets.
+func (s *checkSteps) replacement(ctx context.Context, mode string, options map[string]any) (map[string]any, string, error) {
+	current, err := s.w.Do(ctx, "A", "h", http.MethodGet, s.path+"/"+s.integration, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	etag := current.Header.Get("ETag")
+	var view map[string]any
+	if current.Status != 200 || etag == "" || json.Unmarshal(current.Body, &view) != nil {
+		return nil, "", fmt.Errorf("%w: check replacement lacks a current admin view", harness.ErrStep)
+	}
+	custom := map[string]any{"space": "acme", "vcsChecks": mode}
+	if options != nil {
+		custom["vcsCheckOptions"] = options
+	}
+	body := map[string]any{"customInput": custom}
+	var fields []string
+	switch s.provider {
+	case "GitHub":
+		fields = []string{"apiHost", "webhookSecret"}
+	case "GitLab":
+		fields = []string{"apiHost"}
+	case "Bitbucket Cloud":
+		fields = []string{"email"}
+	case "Bitbucket DC":
+		fields = []string{"apiHost", "userFacingHost"}
+	case "Azure DevOps":
+		fields = []string{"organizationURL"}
+	}
+	for _, field := range fields {
+		value, ok := view[field].(string)
+		if !ok || value == "" {
+			return nil, "", fmt.Errorf("%w: check replacement lacks required %s", harness.ErrStep, field)
+		}
+		body[field] = value
+	}
+	return body, etag, nil
+}
+
 func (s *checkSteps) policy(ctx context.Context, mode, raw string) error {
 	var options map[string]any
 	if json.Unmarshal([]byte(raw), &options) != nil {
 		return fmt.Errorf("%w: invalid check options", harness.ErrStep)
 	}
-	r, err := s.w.Do(
-		ctx,
-		"B",
-		"h",
-		http.MethodPut,
-		s.path+"/"+s.integration,
-		map[string]any{"customInput": map[string]any{"space": "acme", "vcsChecks": mode, "vcsCheckOptions": options}},
-	)
+	body, etag, err := s.replacement(ctx, mode, options)
+	if err != nil {
+		return err
+	}
+	r, err := s.w.Do(ctx, "B", "h", http.MethodPut, s.path+"/"+s.integration, body, sdk.Header{Name: "If-Match", Value: etag})
 	if err != nil {
 		return err
 	}
@@ -553,9 +590,15 @@ func (s *checkSteps) requestMode(ctx context.Context, method, mode string) error
 	} else {
 		path += "/" + s.integration
 		body = map[string]any{"customInput": map[string]any{"space": "acme", "vcsChecks": mode}}
-		if method == http.MethodPatch {
-			headers = append(headers, sdk.Header{Name: "If-Match", Value: s.originalETag})
+		etag := s.originalETag
+		if method == http.MethodPut {
+			var err error
+			body, etag, err = s.replacement(ctx, mode, nil)
+			if err != nil {
+				return err
+			}
 		}
+		headers = append(headers, sdk.Header{Name: "If-Match", Value: etag})
 	}
 	r, err := s.w.Do(ctx, "B", "h", method, path, body, headers...)
 	if err != nil && r.Status == 0 {
