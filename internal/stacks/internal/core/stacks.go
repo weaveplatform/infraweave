@@ -111,6 +111,9 @@ type Store interface {
 	// through integration, nil for none, by slug.
 	ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error)
 	ByVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, namespace, repository string) ([]stacksapi.Stack, error)
+	// RepointVCSRepository updates matching source coordinates and versions,
+	// returning only the identity/version facts needed for Changed events.
+	RepointVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, from, to stacksapi.VCSRepository) ([]Stack, error)
 	// Create writes a new stack with its hooks and labels; a *SlugTaken
 	// when another stack of its account holds its slug.
 	Create(ctx context.Context, st Stack) error

@@ -90,6 +90,7 @@ func (u *user) email() string { return u.name + "@example.com" }
 // repository is a repository in a project, with its users' roles by
 // username.
 type repository struct {
+	id      int
 	project string
 	slug    string
 	repo    *Repo
@@ -200,7 +201,8 @@ func (f *Fake) repositoryOf(project, slug string) *repository {
 	if r, ok := f.repos[key]; ok {
 		return r
 	}
-	r := &repository{project: project, slug: slug, repo: gitmem.New(), roles: map[string]Role{}}
+	f.nextID++
+	r := &repository{id: f.nextID, project: project, slug: slug, repo: gitmem.New(), roles: map[string]Role{}}
 	f.repos[key] = r
 	return r
 }
@@ -259,6 +261,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Route("/projects/{project}/repos/{slug}", func(r chi.Router) {
 			r.Use(f.member)
 			f.commentRoutes(r)
+			r.Get("/", f.repositoryMetadata)
 			r.Get("/webhooks", f.listWebhooks)
 			r.Get("/branches", f.branches)
 			r.Get("/tags/*", f.tag)

@@ -30,6 +30,7 @@ var Routes = []Route{
 	{http.MethodPost, API + "/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{request}/comments"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{request}/comments/{comment}"},
 	{http.MethodPut, API + "/projects/{projectKey}/repos/{repositorySlug}/pull-requests/{request}/comments/{comment}"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/webhooks"},
 	{http.MethodGet, API + "/profile/recent/repos"},
 	{http.MethodGet, API + "/repos"},

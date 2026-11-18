@@ -19,10 +19,13 @@ import (
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func storedRequest(f *fixture, id kernel.ULID) pullrequest.Request {
@@ -464,5 +467,246 @@ func TestAccPullRequestRejectsNonCommitMembership(t *testing.T) {
 	)
 	if err != nil || len(got[id]) != 0 || runs.called {
 		t.Fatal("stored noncommit joined local-workspace membership", got, runs.called, err)
+	}
+}
+
+type renamedRequestRuns struct {
+	account    kernel.AccountID
+	stack, run kernel.ULID
+	head       string
+}
+
+func (r renamedRequestRuns) OnCommits(_ context.Context, acct kernel.AccountID, stack kernel.ULID, _ []string) ([]runsapi.CommitRun, error) {
+	if acct != r.account || stack != r.stack {
+		return nil, errDown
+	}
+	return []runsapi.CommitRun{{ID: r.run, CommitSHA: r.head, CreatedAt: time.Now()}}, nil
+}
+
+func TestAccPullRequestReadsFollowNativeRepositoryRenames(t *testing.T) {
+	cases := []struct {
+		name, provider, native string
+		legacy                 bool
+	}{
+		{name: "github", provider: integration.GitHubEnterprise, native: "7"},
+		{name: "gitlab", provider: integration.GitLab, native: "42"},
+		{name: "bitbucket canonical UUID", provider: integration.BitbucketCloud, native: "7bf80420-965b-4f23-90c0-ec114b064264"},
+		{name: "bitbucket historical braced UUID", provider: integration.BitbucketCloud, native: "{7BF80420-965B-4F23-90C0-EC114B064264}", legacy: true},
+		{name: "bitbucket historical uppercase UUID", provider: integration.BitbucketCloud, native: "7BF80420-965B-4F23-90C0-EC114B064264", legacy: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			id := kernel.NewULID()
+			now := time.Now().UTC().Truncate(time.Microsecond)
+			if err := f.store.Create(
+				t.Context(),
+				integration.Integration{
+					Account:   f.acct,
+					ID:        id,
+					Provider:  tc.provider,
+					Slug:      "rename",
+					Name:      "Rename",
+					Space:     f.acct.ULID,
+					Labels:    []string{},
+					Checks:    integration.Checks{Mode: "INDIVIDUAL"},
+					CreatedAt: now,
+					UpdatedAt: now,
+					Version:   1,
+				},
+				integration.Secrets{},
+			); err != nil {
+				t.Fatal(err)
+			}
+			request := storedRequest(f, id)
+			request.RepositoryID = tc.native
+			upsertRequest(t, f, request)
+			if tc.legacy {
+				if _, err := f.db.Exec(t.Context(), `UPDATE pull_requests SET repository_id=$3 WHERE account_id=$1 AND id=$2`, f.acct, request.ID, tc.native); err != nil {
+					t.Fatal(err)
+				}
+			}
+			native := &lifecycle.Service{DB: f.db, Store: f.store, Stacks: &routedTargets{}, Now: func() time.Time { return now }}
+			use := stacksapi.Use{Integration: id, Provider: tc.provider}
+			original := vcsapi.Repository{ID: tc.native, Namespace: "acme", Name: "infra"}
+			if err := native.Seed(t.Context(), f.acct, id, use, original); err != nil {
+				t.Fatal(err)
+			}
+			renamed := original
+			renamed.Namespace, renamed.Name = "platform", "renamed"
+			if err := tx.Do(t.Context(), f.db, tx.Options{}, func(ctx context.Context) error {
+				return native.Apply(ctx, f.acct, id, use, now.Add(time.Second), []vcsapi.Event{{Repository: renamed}})
+			}); err != nil {
+				t.Fatal(err)
+			}
+			candidates, err := f.store.Candidates(t.Context(), f.acct, id, renamed.Namespace, renamed.Name, "main", nil, 100)
+			if err != nil || len(candidates) != 1 || candidates[0].ID != request.ID {
+				t.Fatal("retained PR vanished after native rename", candidates, err)
+			}
+			if old, err := f.store.Candidates(t.Context(), f.acct, id, original.Namespace, original.Name, "main", nil, 100); err != nil || len(old) != 0 {
+				t.Fatal("stale path still selected mapped PR", old, err)
+			}
+			stack, run := kernel.NewULID(), kernel.NewULID()
+			reader := pullrequest.New(
+				pullrequest.Deps{Store: f.store, Integrations: f.svc, Runs: renamedRequestRuns{account: f.acct, stack: stack, run: run, head: request.HeadSHA}},
+			)
+			views, err := reader.PullRequests(
+				t.Context(),
+				f.acct,
+				[]stacksapi.Settings{
+					{Stack: stacksapi.Stack{ID: stack}, Provider: tc.provider, VCSIntegration: &id, Namespace: renamed.Namespace, Repository: renamed.Name, Branch: "main"},
+				},
+			)
+			if err != nil || len(views[stack]) != 1 || !slices.Equal(views[stack][0].Runs, []kernel.ULID{run}) {
+				t.Fatal("renamed stack lost PR/run projection", views, err)
+			}
+			if foreign, err := f.store.Candidates(t.Context(), kernel.NewAccountID(), id, renamed.Namespace, renamed.Name, "main", nil, 100); err != nil || len(foreign) != 0 {
+				t.Fatal("mapped path crossed accounts", foreign, err)
+			}
+			if tc.legacy {
+				update := request
+				update.ID = kernel.NewULID()
+				update.RepositoryID = lifecycle.CanonicalID(tc.native)
+				update.HeadSHA = requestHash("new-head")
+				update.UpdatedAt = now.Add(2 * time.Second)
+				upsertRequest(t, f, update)
+				var count int
+				if err := f.db.QueryRow(t.Context(), `SELECT count(*) FROM pull_requests WHERE account_id=$1 AND integration_id=$2`, f.acct, id).
+					Scan(&count); err != nil ||
+					count != 1 {
+					t.Fatal("canonical update duplicated historical UUID PR", count, err)
+				}
+				heads, err := f.store.Heads(t.Context(), f.acct, []kernel.ULID{request.ID})
+				if err != nil || !slices.Equal(heads[request.ID], []string{request.HeadSHA, update.HeadSHA}) {
+					t.Fatal("UUID update replaced stable request/head history", heads, err)
+				}
+				author, err := f.store.Author(t.Context(), f.acct, id, update.RepositoryID, request.Number)
+				if err != nil || author != request.AuthorLogin {
+					t.Fatal("canonical creator lookup missed historical UUID", author, err)
+				}
+			}
+		})
+	}
+}
+
+type requestHoldBarrier struct {
+	*pg.Store
+	ready, proceed chan struct{}
+}
+
+func (s requestHoldBarrier) Upsert(ctx context.Context, r pullrequest.Request) error {
+	if err := s.Store.Upsert(ctx, r); err != nil {
+		return err
+	}
+	close(s.ready)
+	select {
+	case <-s.proceed:
+		return nil
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+func TestAccCompoundParentsAcquireExclusiveOwnerBeforeLifecycle(t *testing.T) {
+	w := newWebhookWorld(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	first := requestHoldBarrier{Store: w.f.store, ready: make(chan struct{}), proceed: make(chan struct{})}
+	second := requestHoldBarrier{Store: w.f.store, ready: make(chan struct{}), proceed: make(chan struct{})}
+	release := func() {
+		select {
+		case <-first.proceed:
+		default:
+			close(first.proceed)
+		}
+		select {
+		case <-second.proceed:
+		default:
+			close(second.proceed)
+		}
+	}
+	defer release()
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: &routedTargets{}, Now: time.Now}
+	prepare := func(label, repository string, store pullrequest.Store) intake.DispatchPlan {
+		t.Helper()
+		if status := w.receive(t, label, webhookBody(128)); status != 202 { //nolint:contextcheck // fixture helpers use the test lifetime before bounded parent work
+			t.Fatal(status)
+		}
+		d := w.delivery(t, label) //nolint:contextcheck // fixture helpers use the test lifetime before bounded parent work
+		events := []vcsapi.Event{
+			{
+				Type:        "pull_request",
+				Repository:  vcsapi.Repository{ID: repository, Namespace: "acme", Name: label},
+				Head:        requestHash(label),
+				PullRequest: &vcsapi.PullRequest{Number: 17, BaseBranch: "main", HeadBranch: "feature", AuthorLogin: "creator", Title: label, State: pullrequest.Open},
+			},
+		}
+		service := pullrequest.New(
+			pullrequest.Deps{
+				Store:  store,
+				Pushes: push.New(push.Deps{DB: w.f.db, Store: w.f.store, Stacks: &routedTargets{}, Integrations: w.f.svc, Jobs: w.queue, Lifecycle: native}),
+			},
+		)
+		plan, err := service.Prepare(ctx, d, events)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return plan
+	}
+	plan1, plan2 := prepare("one", "7", first), prepare("two", "8", second)
+	done := make(chan error, 2)
+	pids := make(chan uint32, 2)
+	run := func(plan intake.DispatchPlan) {
+		done <- tx.Do(ctx, w.f.db, tx.Options{NoRetry: true}, func(ctx context.Context) error {
+			if _, err := tx.Q(ctx, w.f.db).Exec(ctx, `SET LOCAL deadlock_timeout='25ms'`); err != nil {
+				return err
+			}
+			var pid uint32
+			if err := tx.Q(ctx, w.f.db).QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&pid); err != nil {
+				return err
+			}
+			pids <- pid
+			return plan.Commit(ctx)
+		})
+	}
+	go run(plan1)
+	select {
+	case <-first.ready:
+	case <-ctx.Done():
+		t.Fatal(context.Cause(ctx))
+	}
+	<-pids
+	go run(plan2)
+	var secondPID uint32
+	select {
+	case secondPID = <-pids:
+	case <-ctx.Done():
+		t.Fatal(context.Cause(ctx))
+	}
+	// Old KEY SHARE allowed both upserts to reach the barrier and then deadlock
+	// upgrading. The exclusive hold makes the second parent wait BEFORE upkeep.
+	if err := deps.Eventually(ctx, "second parent completes its shared hold or waits for the exclusive owner", func(ctx context.Context) (bool, error) {
+		select {
+		case <-second.ready:
+			return true, nil
+		default:
+		}
+		var waiting bool
+		err := w.f.db.QueryRow(ctx, `SELECT coalesce(wait_event_type='Lock',false) FROM pg_stat_activity WHERE pid=$1`, secondPID).Scan(&waiting)
+		return waiting, err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	release()
+	for range 2 {
+		if err := <-done; err != nil {
+			t.Fatal("compound parents failed their owner/lifecycle fence", err)
+		}
+	}
+	var requests, maps int
+	if err := w.f.db.QueryRow(ctx, `SELECT (SELECT count(*) FROM pull_requests WHERE account_id=$1),(SELECT count(*) FROM vcs_repository_map WHERE account_id=$1)`, w.f.acct).
+		Scan(&requests, &maps); err != nil || requests != 2 ||
+		maps != 2 {
+		t.Fatal("compound completion lost request or lifecycle work", requests, maps, err)
 	}
 }
