@@ -212,7 +212,7 @@ infraweave/
 │   ├── registry/                  hexagon: modules, versions, test cases, providers, GPG keys (P17, P17b)
 │   │   └── api/ assembly/ internal/{core/{module,version,testcase,provider,gpg,sharing,port},adapters/{http,protocol,pg}}/
 │   ├── events/                    hexagon: Commit checks sink (P12b); inbox, named and stack webhooks, streams, audit trail, Slack, Teams (P18, P18b)
-│   │   └── api/ assembly/ internal/{core/{inbox,webhook,delivery,stream,audit,metrics,port},adapters/{http,slack,pg}}/
+│   │   └── api/ assembly/ internal/{core/{inbox,webhook,delivery,stream,audit,metrics,port},adapters/{http,slack,metrics,pg}}/
 │   ├── templates/                 flat: blueprints, templates, versions, deployments (P21)
 │   │   └── api/ assembly/ internal/{core,render,http,pg}/
 │   ├── resources/                 flat: managed entities, scans, generic search (P22, P22b)
@@ -561,7 +561,7 @@ it adds no import.
 | `registry` | features, access, workers, configuration, policies, runs, cloud | |
 | `vcs` | features, access, stacks, runs, registry, policies | |
 | `schedules` | features, access, stacks, runs | |
-| `events` | features, access, workers, stacks, runs, policies, vcs | |
+| `events` | vcs (P12b); features, access, workers, stacks and runs (P18); policies (edge allowed when P13 introduces it, used in P18) | |
 | `templates` | features, access, stacks, runs | |
 | `resources` | features, access, stacks, runs, state, workers | |
 | `intelligence` | features, access, workers, stacks, policies, runs, cloud | `platform/httpkit/dispatch` for the `query` and `mutate` tools |

@@ -14,7 +14,8 @@
 // and SpaceOf, for Entity, are its say in the access domain;
 // StackIntegrations the check of the integration a stack's write names,
 // which internal/app binds in the stacks domain; and Purge deletes a
-// deleted account's integrations. Jobs are its job handlers, which the
+// deleted account's integrations. Feedback exposes VCS-owned target
+// selection and job enqueueing to the events domain. Jobs are its job handlers, which the
 // scheduler registers: Revoke's, which revokes a run's minted tokens once
 // vcsapi.Sources.Release enqueues it. API is its partial of the API's
 // strict server, aliased VCSAPI.
@@ -44,6 +45,6 @@
 // platform/crypt, platform/outbox, platform/queue, platform/sql's
 // integrity and migrate packages, platform/tx and the domain's api, http,
 // azuredevops, bitbucketcloud, bitbucketdc, github, gitlab, pg, rawgit,
-// integration, port and source packages. Only internal/app and cmd/ import it, as the
+// integration, feedback, port and source packages. Only internal/app and cmd/ import it, as the
 // constructors rule enforces.
 package assembly

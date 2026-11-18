@@ -10,8 +10,8 @@
 // settings, the access domain's assembly Settings; Database holds the
 // PostgreSQL database.* settings of platform/sql; Log holds the log.*
 // settings of platform/observe; Queue holds the work queue's queue.*
-// settings of platform/queue; Events holds the events.* settings of
-// platform/outbox; Secrets holds the secrets.* settings of platform/crypt:
+// settings of platform/queue; Events composes the events.* settings of
+// platform/outbox and the events domain’s deliveries.retention; Secrets holds the secrets.* settings of platform/crypt:
 // secrets.rotation_interval, and the KEK provider and each provider's
 // settings under secrets.kek, as in secrets.kek.vault.auth.method;
 // Expressions holds the expressions.* limits of platform/expr;
@@ -60,6 +60,6 @@
 // middleware/idempotency, platform/sql, platform/observe, platform/queue,
 // platform/outbox, platform/crypt, crypt/kek, platform/expr and
 // platform/objectstore, and the access, features, vendors, vcs, workers,
-// runs and state domains' assemblies for their Settings. internal/app and cmd/
+// events, runs and state domains' assemblies for their Settings. internal/app and cmd/
 // import it.
 package config

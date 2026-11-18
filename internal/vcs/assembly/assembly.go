@@ -30,6 +30,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -108,6 +109,7 @@ type Deps struct {
 type Domain struct {
 	sources      *source.Service
 	integrations *integration.Service
+	feedback     *feedback.Service
 	api          http.Server
 	intake       *intake.Service
 }
@@ -180,7 +182,13 @@ func New(d Deps) (*Domain, error) {
 		}),
 		integrations: integrations,
 		intake:       inbox,
-		api:          http.New(integrations, d.Spaces, nil),
+		feedback: feedback.New(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
+			if d.Spaces == nil {
+				return accessapi.ErrNoAccount
+			}
+			return d.Spaces.Hold(ctx, acct, acct.ULID)
+		}),
+		api: http.New(integrations, d.Spaces, nil),
 	}, nil
 }
 

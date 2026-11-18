@@ -8,10 +8,13 @@
 // # Input and output
 //
 // Its tests create jobs through package queue and read the jobs table and
-// infraweave_jobs notifications directly; it has no exported API.
+// infraweave_jobs notifications directly. ConsumeTwice is the reusable
+// fenced-consumer contract: a domain supplies its handler on a real queue
+// and checks its own target rows after both claimed jobs complete.
 //
 // # Dependencies
 //
-// Its tests import package queue, platform/tx, platform/sql/sqltest and the
-// platform stream; nothing imports it.
+// ConsumeTwice imports kernel and queue. Its tests import platform/tx,
+// platform/sql/sqltest and the platform stream. Domain contract suites
+// import the reusable consumer contract; production code does not.
 package queuetest

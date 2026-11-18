@@ -10,6 +10,7 @@ import (
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
 	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
+	eventsassembly "github.com/weaveplatform/infraweave/internal/events/assembly"
 	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -44,6 +45,7 @@ type Domains struct {
 	Runs          *runsassembly.Domain
 	State         *stateassembly.Domain
 	VCS           *vcsassembly.Domain
+	Events        *eventsassembly.Domain
 	Expressions   *expressionsassembly.Domain
 	// Auth authenticates the API's requests; nil refuses every credential.
 	Auth accessapi.Authenticator
@@ -217,6 +219,12 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.BindSources(vcs.StackSources())
 	runs.BindSources(vcs.RunSources(), vcs.StackSources())
 	stacks.BindIntegrations(vcs.StackIntegrations())
+	eventSinks, err := eventsassembly.New(eventsassembly.Deps{
+		DB: db.Primary(), Feedback: vcs.Feedback(), Settings: c.Events.Deliveries,
+	})
+	if err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the event setting or instrument
+	}
 	d := Domains{
 		Features:      features,
 		Access:        access,
@@ -227,6 +235,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Runs:          runs,
 		State:         state,
 		VCS:           vcs,
+		Events:        eventSinks,
 		Expressions:   expressionsassembly.New(registry),
 		Auth:          access.Authenticator(),
 		OperatorAuth:  access.OperatorAuthenticator(),
@@ -246,6 +255,9 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
 	if err := state.Subscribe(events); err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the consumer
+	}
+	if err := eventSinks.Subscribe(events); err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
 	return d, nil
@@ -281,5 +293,5 @@ func newKinds() *outbox.Kinds {
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
 	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
-		d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), []cron.Task{orphansTask(q, log)})
+		d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), d.Events.Cron(), []cron.Task{orphansTask(q, log)})
 }
