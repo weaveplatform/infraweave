@@ -291,3 +291,4 @@ CREATE TABLE vcs_installation_repositories (
         REFERENCES vcs_installations(account_id,integration_id,installation_id) ON DELETE CASCADE
 );
 CREATE INDEX vcs_installation_repository_path ON vcs_installation_repositories(account_id,integration_id,namespace,name);
+CREATE INDEX vcs_installation_repository_installation ON vcs_installation_repositories(account_id,integration_id,installation_id);
