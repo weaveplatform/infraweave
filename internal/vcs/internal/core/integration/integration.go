@@ -144,36 +144,36 @@ type Store interface {
 // Apps, the GitHub provider's App work; and Public, the server's public origin, which webhook and
 // manifest URLs start with.
 type Deps struct {
-	Store     Store
-	DB        tx.Beginner
-	Spaces    accessapi.Spaces
-	Authz     accessapi.Authorizer
-	Stacks    stacksapi.Stacks
-	Providers []string
-	Testers   map[string]port.Tester
-	Browse    map[string]port.Brancher
-	Apps      port.Apps
-	Public    string
-	Now       func() time.Time
-	Features featuresapi.Options
+	Store         Store
+	DB            tx.Beginner
+	Spaces        accessapi.Spaces
+	Authz         accessapi.Authorizer
+	Stacks        stacksapi.Stacks
+	Providers     []string
+	Testers       map[string]port.Tester
+	Browse        map[string]port.Brancher
+	Apps          port.Apps
+	Public        string
+	Now           func() time.Time
+	Features      featuresapi.Options
 	SecretOverlap time.Duration
 }
 
 // Service is the integrations' logic. Every write runs in one
 // transaction.
 type Service struct {
-	store     Store
-	db        tx.Beginner
-	spaces    accessapi.Spaces
-	authz     accessapi.Authorizer
-	stacks    stacksapi.Stacks
-	providers []string
-	testers   map[string]port.Tester
-	browse    map[string]port.Brancher
-	apps      port.Apps
-	public    string
-	now       func() time.Time
-	features featuresapi.Options
+	store         Store
+	db            tx.Beginner
+	spaces        accessapi.Spaces
+	authz         accessapi.Authorizer
+	stacks        stacksapi.Stacks
+	providers     []string
+	testers       map[string]port.Tester
+	browse        map[string]port.Brancher
+	apps          port.Apps
+	public        string
+	now           func() time.Time
+	features      featuresapi.Options
 	secretOverlap time.Duration
 }
 
