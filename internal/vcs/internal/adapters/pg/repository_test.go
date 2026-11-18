@@ -16,6 +16,7 @@ import (
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
 
@@ -38,6 +39,7 @@ func (s *lifecycleTargets) RepointVCSRepository(ctx context.Context, acct kernel
 	s.moves = append(s.moves, to)
 	return s.err
 }
+
 func (s *lifecycleTargets) ByVCSRepository(ctx context.Context, acct kernel.AccountID, use stacksapi.Use, namespace, name string) ([]stacksapi.Stack, error) {
 	if !tx.In(ctx) || acct != s.f.acct || use.Integration != s.integration {
 		return nil, errors.New("affected stack lookup preceded completing transaction")
@@ -65,11 +67,21 @@ func TestAccRepositoryRenameCommitsBeforeFanout(t *testing.T) {
 			if err := native.Seed(t.Context(), w.f.acct, w.id, use, vcsapi.Repository{ID: "7", Namespace: "acme", Name: "infra"}); err != nil {
 				t.Fatal(err)
 			}
-			events := []vcsapi.Event{{Type: "push", Repository: vcsapi.Repository{ID: "7", Namespace: "new-owner", Name: "renamed"}, Branch: "main", Before: strings.Repeat("a", 40), Head: strings.Repeat("b", 40)}}
+			events := []vcsapi.Event{
+				{
+					Type:       "push",
+					Repository: vcsapi.Repository{ID: "7", Namespace: "new-owner", Name: "renamed"},
+					Branch:     "main",
+					Before:     strings.Repeat("a", 40),
+					Head:       strings.Repeat("b", 40),
+				},
+			}
 			source := &dispatchSource{}
 			deps := w.deps
 			deps.Providers["GITHUB_ENTERPRISE"] = dispatchProvider{events: events}
-			deps.Dispatcher = push.New(push.Deps{DB: w.f.db, Store: w.f.store, Stacks: targets, Integrations: dispatchIntegration{w.id}, Sources: source, Jobs: w.queue, Lifecycle: native})
+			deps.Dispatcher = push.New(
+				push.Deps{DB: w.f.db, Store: w.f.store, Stacks: targets, Integrations: dispatchIntegration{w.id}, Sources: source, Jobs: w.queue, Lifecycle: native},
+			)
 			cause := errors.New("completion refused")
 			if fault == "completion rollback" {
 				deps.Jobs = refusedDispatchCompletion{Queue: w.queue, err: cause}
@@ -129,7 +141,11 @@ func TestAccRepositoryMapIsolationCollisionAndPurge(t *testing.T) {
 	apply := func(at time.Time, events ...vcsapi.Event) error {
 		return tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error { return native.Apply(ctx, w.f.acct, w.id, use, at, events) })
 	}
-	if err := apply(now, vcsapi.Event{Repository: vcsapi.Repository{ID: "7", Namespace: "acme", Name: "other"}}, vcsapi.Event{Repository: vcsapi.Repository{ID: "8", Namespace: "acme", Name: "infra"}}); err != nil {
+	if err := apply(
+		now,
+		vcsapi.Event{Repository: vcsapi.Repository{ID: "7", Namespace: "acme", Name: "other"}},
+		vcsapi.Event{Repository: vcsapi.Repository{ID: "8", Namespace: "acme", Name: "infra"}},
+	); err != nil {
 		t.Fatal(err)
 	}
 	r, _, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7")
@@ -163,7 +179,12 @@ func TestAccRepositoryMapIsolationCollisionAndPurge(t *testing.T) {
 	if err != nil || r.Name != "new-1" {
 		t.Fatal("stale observation won", r, err)
 	}
-	install := vcsapi.Installation{ID: "71", Action: "created", Owner: vcsapi.Owner{ID: "41", Login: "acme"}, Repositories: []vcsapi.Repository{{ID: "7", Namespace: "acme", Name: "new-1"}}}
+	install := vcsapi.Installation{
+		ID:           "71",
+		Action:       "created",
+		Owner:        vcsapi.Owner{ID: "41", Login: "acme"},
+		Repositories: []vcsapi.Repository{{ID: "7", Namespace: "acme", Name: "new-1"}},
+	}
 	if err := apply(now.Add(3*time.Second), vcsapi.Event{Installation: &install}); err != nil {
 		t.Fatal(err)
 	}
@@ -190,5 +211,225 @@ func TestAccRepositoryMapIsolationCollisionAndPurge(t *testing.T) {
 	}
 	if _, err := w.f.store.HoldRepositoryIntegration(t.Context(), w.f.acct, w.id); !errors.Is(err, queue.ErrNoTransaction) {
 		t.Fatal(err)
+	}
+}
+
+type routedTargets struct {
+	stacksapi.Stacks
+	rows  []stacksapi.Stack
+	reads int
+}
+
+func (s *routedTargets) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
+	s.reads++
+	return s.rows, nil
+}
+
+func (*routedTargets) RepointVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, stacksapi.VCSRepository, stacksapi.VCSRepository) error {
+	return nil
+}
+
+func TestAccRepositoryCollisionNeverTargetsOccupant(t *testing.T) {
+	w := newWebhookWorld(t)
+	targets := &routedTargets{rows: []stacksapi.Stack{{ID: kernel.NewULID()}}}
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: targets, Now: func() time.Time { return time.Now().Add(-time.Minute) }}
+	use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+	for _, repo := range []vcsapi.Repository{{ID: "7", Namespace: "acme", Name: "original"}, {ID: "8", Namespace: "acme", Name: "occupied"}} {
+		if err := native.Seed(t.Context(), w.f.acct, w.id, use, repo); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deps := w.deps
+	deps.Providers["GITHUB_ENTERPRISE"] = dispatchProvider{
+		events: []vcsapi.Event{{Type: "push", Repository: vcsapi.Repository{ID: "7", Namespace: "acme", Name: "occupied"}, Branch: "main", Head: strings.Repeat("b", 40)}},
+	}
+	deps.Dispatcher = push.New(
+		push.Deps{DB: w.f.db, Store: w.f.store, Stacks: targets, Integrations: dispatchIntegration{w.id}, Sources: &dispatchSource{}, Jobs: w.queue, Lifecycle: native},
+	)
+	w.svc = intake.New(deps)
+	if status := w.receive(t, "collision", webhookBody(128)); status != 202 {
+		t.Fatal(status)
+	}
+	if err := w.svc.Processed(t.Context(), w.claim(t, w.queue, "collision-parent")); err != nil {
+		t.Fatal(err)
+	}
+	var children int
+	if err := w.f.db.QueryRow(t.Context(), `SELECT count(*) FROM jobs WHERE account_id=$1 AND kind=$2`, w.f.acct, push.Evaluate.Name).Scan(&children); err != nil {
+		t.Fatal(err)
+	}
+	if children != 0 || targets.reads != 0 {
+		t.Fatal("refused rename targeted the occupying repository", children, targets.reads)
+	}
+	delivery := w.delivery(t, "collision")
+	facts, err := w.f.store.Prepared(t.Context(), w.f.acct, delivery.ID)
+	if err != nil || len(facts) != 0 || delivery.State != intake.Dispatched {
+		t.Fatal("collision left runnable facts or failed parent settlement", facts, delivery.State, err)
+	}
+	for id, want := range map[string]string{"7": "original", "8": "occupied"} {
+		current, _, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, id)
+		if err != nil || current.Name != want {
+			t.Fatal("collision changed identity map", current, err)
+		}
+	}
+}
+
+type preparationBarrier struct {
+	intake.Dispatcher
+	ready   chan struct{}
+	proceed chan struct{}
+}
+
+func (b preparationBarrier) Prepare(ctx context.Context, d intake.Delivery, e []vcsapi.Event) (intake.DispatchPlan, error) {
+	plan, err := b.Dispatcher.Prepare(ctx, d, e)
+	if err != nil {
+		return nil, err
+	}
+	close(b.ready)
+	select {
+	case <-b.proceed:
+		return plan, nil
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	}
+}
+
+func TestAccNewerRenameBetweenPreparationAndCommit(t *testing.T) {
+	w := newWebhookWorld(t)
+	targets := &lifecycleTargets{f: w.f, integration: w.id, stack: kernel.NewULID()}
+	now := time.Now().UTC().Add(-time.Minute)
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: targets, Now: func() time.Time { return now }}
+	use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+	old := vcsapi.Repository{ID: "7", Namespace: "acme", Name: "original"}
+	if err := native.Seed(t.Context(), w.f.acct, w.id, use, old); err != nil {
+		t.Fatal(err)
+	}
+	source := &dispatchSource{}
+	deps := w.deps
+	deps.Providers["GITHUB_ENTERPRISE"] = dispatchProvider{events: []vcsapi.Event{{Type: "push", Repository: old, Branch: "main", Head: strings.Repeat("b", 40)}}}
+	barrier := preparationBarrier{
+		Dispatcher: push.New(push.Deps{DB: w.f.db, Store: w.f.store, Stacks: targets, Integrations: dispatchIntegration{w.id}, Sources: source, Jobs: w.queue, Lifecycle: native}),
+		ready:      make(chan struct{}),
+		proceed:    make(chan struct{}),
+	}
+	deps.Dispatcher = barrier
+	w.svc = intake.New(deps)
+	if status := w.receive(t, "concurrent-rename", webhookBody(128)); status != 202 {
+		t.Fatal(status)
+	}
+	delivery := w.delivery(t, "concurrent-rename")
+	job := w.claim(t, w.queue, "original-push")
+	done := make(chan error, 1)
+	go func() { done <- w.svc.Processed(t.Context(), job) }()
+	select {
+	case <-barrier.ready:
+	case <-t.Context().Done():
+		t.Fatal(context.Cause(t.Context()))
+	}
+	renamed := vcsapi.Repository{ID: "7", Namespace: "platform", Name: "renamed"}
+	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		return native.Apply(ctx, w.f.acct, w.id, use, delivery.ReceivedAt.Add(time.Second), []vcsapi.Event{{Repository: renamed}})
+	})
+	close(barrier.proceed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	facts, err := w.f.store.Prepared(t.Context(), w.f.acct, delivery.ID)
+	if err != nil || len(facts) != 1 || facts[0].Event.Repository != renamed || source.calls != 1 {
+		t.Fatal("completion lost current identity or reread provider", facts, source.calls, err)
+	}
+	children, err := w.queue.Claim(t.Context(), queue.VCSInbox, []string{push.Evaluate.Name}, 2, time.Minute, "renamed-child")
+	if err != nil || len(children) != 1 {
+		t.Fatal("push lost after concurrent rename", children, err)
+	}
+}
+
+func TestAccInstallationReplacementAndMembershipClocks(t *testing.T) {
+	w := newWebhookWorld(t)
+	targets := &routedTargets{}
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: targets, Now: time.Now}
+	use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	owner := vcsapi.Owner{ID: "41", Login: "acme"}
+	repository := vcsapi.Repository{ID: "7", OwnerID: owner.ID, Namespace: owner.Login, Name: "infra"}
+	apply := func(id, action string, offset time.Duration) {
+		t.Helper()
+		event := vcsapi.Installation{ID: id, Owner: owner, Action: action}
+		switch action {
+		case "created", "added":
+			event.Added = []vcsapi.Repository{repository}
+		case "removed":
+			event.Removed = []vcsapi.Repository{repository}
+		}
+		if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+			return native.Apply(ctx, w.f.acct, w.id, use, at.Add(offset), []vcsapi.Event{{Installation: &event}})
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apply("1", "created", 0)
+	// An availability-only API refresh is newer than a queued membership removal.
+	if reason, err := native.Refresh(
+		t.Context(),
+		w.f.acct,
+		w.id,
+		at.Add(3*time.Second),
+		[]port.InstallationState{{ID: "1", Owner: owner, State: "active"}},
+	); err != nil ||
+		reason != "" {
+		t.Fatal(reason, err)
+	}
+	apply("1", "removed", 2*time.Second)
+	if err := native.Check(t.Context(), w.f.acct, w.id, "acme", "infra"); err == nil {
+		t.Fatal("state-only refresh suppressed queued removal")
+	}
+	apply("1", "added", 4*time.Second)
+	apply("1", "removed", 2500*time.Millisecond)
+	if err := native.Check(t.Context(), w.f.acct, w.id, "acme", "infra"); err != nil {
+		t.Fatal("stale removal replaced newer add", err)
+	}
+	if _, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7"); err != nil || !found {
+		t.Fatal("stale removal deleted replacement map", found, err)
+	}
+	apply("1", "removed", 5*time.Second)
+	apply("1", "deleted", 6*time.Second)
+	// The replacement's created event need not contain repositories. Its unknown
+	// membership must retain the native lookup instead of inheriting an old deny.
+	event := vcsapi.Installation{ID: "2", Owner: owner, Action: "created"}
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		return native.Apply(ctx, w.f.acct, w.id, use, at.Add(7*time.Second), []vcsapi.Event{{Installation: &event}})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := native.Check(t.Context(), w.f.acct, w.id, "acme", "infra"); err != nil {
+		t.Fatal("old-ID tombstone poisoned reinstall", err)
+	}
+	if err := native.SeedAt(t.Context(), w.f.acct, w.id, use, repository, at.Add(8*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	for index, action := range []string{"suspend", "deleted", "removed", "unsuspend", "created"} {
+		apply("1", action, time.Duration(index+9)*time.Second)
+		if err := native.Check(t.Context(), w.f.acct, w.id, "acme", "infra"); err != nil {
+			t.Fatal("superseded installation changed replacement availability", action, err)
+		}
+		if _, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7"); err != nil || !found {
+			t.Fatal("old removal dropped replacement map", found, err)
+		}
+	}
+	if reason, err := native.Refresh(
+		t.Context(),
+		w.f.acct,
+		w.id,
+		at.Add(20*time.Second),
+		[]port.InstallationState{{ID: "2", Owner: owner, State: "active"}},
+	); err != nil ||
+		reason != "" {
+		t.Fatal("active native replacement remains unhealthy", reason, err)
+	}
+	installations, err := w.f.store.Installations(t.Context(), w.f.acct, w.id)
+	if err != nil || len(installations) != 2 || installations[0].Current || !installations[1].Current {
+		t.Fatal("current-owner identity did not persist", installations, err)
 	}
 }

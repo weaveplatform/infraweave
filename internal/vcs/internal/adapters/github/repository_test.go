@@ -12,7 +12,8 @@ func TestUnitRepositoryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Repository.ID == "" || first.Repository.Namespace != l.repo.Repo.Namespace || first.Repository.Name != l.repo.Repo.Name || first.Commit.Hash != l.repo.Head || second.Repository != first.Repository {
+	if first.Repository.ID == "" || first.Repository.Namespace != l.repo.Repo.Namespace || first.Repository.Name != l.repo.Repo.Name || first.Commit.Hash != l.repo.Head ||
+		second.Repository != first.Repository {
 		t.Fatalf("stable identity: first=%+v second=%+v", first, second)
 	}
 }
@@ -35,7 +36,9 @@ func TestUnitRepositoryIdentitySurvivesRenames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.Repository.ID != original.Repository.ID || resolved.Repository.OwnerID != original.Repository.OwnerID || resolved.Repository.Namespace != "platform" || resolved.Repository.Name != "renamed" || resolved.Commit.Hash != original.Commit.Hash {
+	if resolved.Repository.ID != original.Repository.ID || resolved.Repository.OwnerID != original.Repository.OwnerID || resolved.Repository.Namespace != "platform" ||
+		resolved.Repository.Name != "renamed" ||
+		resolved.Commit.Hash != original.Commit.Hash {
 		t.Fatal(original, resolved)
 	}
 }

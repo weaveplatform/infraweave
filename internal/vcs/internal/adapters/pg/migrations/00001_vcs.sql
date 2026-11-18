@@ -210,10 +210,13 @@ CREATE TABLE vcs_installations (
     owner_id text NOT NULL,
     owner_login text NOT NULL,
     state text NOT NULL CHECK(state IN ('active','suspended','deleted')),
+    is_current boolean NOT NULL DEFAULT true,
     observed_at timestamptz NOT NULL,
     PRIMARY KEY(account_id,integration_id,installation_id),
     FOREIGN KEY(account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX vcs_installation_current_owner ON vcs_installations(account_id,integration_id,owner_id) WHERE is_current;
 
 -- Membership remains after removal drops the current map row, so stack.changed
 -- cannot accidentally restore a repository the App no longer reaches.

@@ -39,7 +39,16 @@ func TestUnitKnownUnavailableDoesNotReachProvider(t *testing.T) {
 			if _, err := f.svc.Credential(t.Context(), f.acct, f.stack, f.run); !errors.Is(err, refusal) {
 				t.Fatal(err)
 			}
-			if _, _, err := f.svc.PreparePush(t.Context(), f.acct, f.in.ID, "GITLAB", vcsapi.Event{Repository: vcsapi.Repository{Namespace: "acme", Name: "infra"}}); !errors.Is(err, refusal) {
+			if _, _, err := f.svc.PreparePush(
+				t.Context(),
+				f.acct,
+				f.in.ID,
+				"GITLAB",
+				vcsapi.Event{Repository: vcsapi.Repository{Namespace: "acme", Name: "infra"}},
+			); !errors.Is(
+				err,
+				refusal,
+			) {
 				t.Fatal(err)
 			}
 			if called != "" || reached.Integration != nil || guard.calls != 4 || len(f.kept) != 0 {

@@ -73,6 +73,7 @@ type IgnoredRecorder interface {
 
 // Lifecycle commits provider identity changes before selecting fan-out targets.
 type Lifecycle interface {
+	FanoutRepository(context.Context, kernel.AccountID, kernel.ULID, time.Time, vcsapi.Repository) (vcsapi.Repository, bool, error)
 	EventRepository(context.Context, kernel.AccountID, kernel.ULID, time.Time, vcsapi.Repository) (vcsapi.Repository, error)
 	Apply(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, time.Time, []vcsapi.Event) error
 }

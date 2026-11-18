@@ -21,8 +21,10 @@ func (f *Fake) repositoryMetadata(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	id, ownerID := f.repoIDs[repo], f.ownerIDs[owner]
 	f.mu.Unlock()
-	answer(w, http.StatusOK, map[string]any{"id": id, "name": name, "full_name": owner + "/" + name,
-		"owner": map[string]any{"id": ownerID, "login": owner}, "default_branch": repo.DefaultBranch()})
+	answer(w, http.StatusOK, map[string]any{
+		"id": id, "name": name, "full_name": owner + "/" + name,
+		"owner": map[string]any{"id": ownerID, "login": owner}, "default_branch": repo.DefaultBranch(),
+	})
 }
 
 func (f *Fake) gitTree(w http.ResponseWriter, r *http.Request) {

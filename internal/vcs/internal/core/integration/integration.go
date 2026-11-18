@@ -337,7 +337,7 @@ func (s *Service) Test(ctx context.Context, p kernel.Principal, id, provider str
 		} else {
 			reason, err = s.installations.Refresh(ctx, p.AccountID, in.ID, started, list)
 			if err != nil {
-				return nil, err
+				return nil, err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 		}
 		if reason != "" {

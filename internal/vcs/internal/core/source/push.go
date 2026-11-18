@@ -27,7 +27,7 @@ func (s *Service) PreparePush(ctx context.Context, acct kernel.AccountID, id ker
 	}
 	if s.identities != nil {
 		if err := s.identities.Check(ctx, acct, in.ID, event.Repository.Namespace, event.Repository.Name); err != nil {
-			return stacksapi.Commit{}, nil, err
+			return stacksapi.Commit{}, nil, err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
 	repository := port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}

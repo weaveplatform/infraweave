@@ -39,8 +39,8 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	})
 
 	if len(selected) == 0 && s.d.Lifecycle == nil {
-		return nil, nil
-	} //nolint:nilnil // legacy dispatchers have no lifecycle work
+		return nil, nil //nolint:nilnil // no lifecycle or actionable work needs a plan
+	}
 	use, found, err := s.d.Integrations.EventUse(ctx, delivery.Account, delivery.Integration)
 	if err != nil || !found {
 		return nil, err //nolint:wrapcheck // the integration service names the metadata read
@@ -56,7 +56,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 		if s.d.Lifecycle != nil {
 			event.Repository, err = s.d.Lifecycle.EventRepository(ctx, delivery.Account, delivery.Integration, delivery.ReceivedAt, event.Repository)
 			if err != nil {
-				return nil, err
+				return nil, err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 		}
 		prepared := Prepared{Event: event}
@@ -89,24 +89,38 @@ func (p *plan) Commit(ctx context.Context) error {
 	}
 	if p.s.d.Lifecycle != nil {
 		if err := p.s.d.Lifecycle.Apply(ctx, p.delivery.Account, p.delivery.Integration, p.use, p.delivery.ReceivedAt, p.normalized); err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
-	if len(p.events) == 0 {
+	events := make([]Prepared, 0, len(p.events))
+	for _, prepared := range p.events {
+		if p.s.d.Lifecycle != nil {
+			repo, allowed, err := p.s.d.Lifecycle.FanoutRepository(ctx, p.delivery.Account, p.delivery.Integration, p.delivery.ReceivedAt, prepared.Event.Repository)
+			if err != nil {
+				return err //nolint:wrapcheck // the called boundary names the failed operation
+			} //nolint:wrapcheck // lifecycle names the read
+			if !allowed {
+				continue
+			}
+			prepared.Event.Repository = repo
+		}
+		events = append(events, prepared)
+	}
+	if len(events) == 0 {
 		return nil
 	}
-	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, p.events); err != nil {
+	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, events); err != nil {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
 	targets := map[kernel.ULID]bool{}
 	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
-	for _, prepared := range p.events {
+	for _, prepared := range events {
 		stacks, seen := repositories[prepared.Event.Repository]
 		if !seen {
 			var err error
 			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, p.use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 			repositories[prepared.Event.Repository] = stacks
 		}
@@ -121,8 +135,16 @@ func (p *plan) Commit(ctx context.Context) error {
 	slices.SortFunc(ids, func(a, b kernel.ULID) int { return bytes.Compare(a[:], b[:]) })
 	for _, stack := range ids {
 		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline, Replays: p.delivery.Replays}
-		if _, err := p.s.d.Jobs.EnqueueTx(ctx, Evaluate, payload,
-			queue.Account(p.delivery.Account.ULID), queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)), queue.OrderingKey("stack:"+stack.String())); err != nil {
+		if _, err := p.s.d.Jobs.EnqueueTx(
+			ctx,
+			Evaluate,
+			payload,
+			queue.Account(
+				p.delivery.Account.ULID,
+			),
+			queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)),
+			queue.OrderingKey("stack:"+stack.String()),
+		); err != nil {
 			return err //nolint:wrapcheck // the queue names the bounded child write
 		}
 	}

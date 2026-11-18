@@ -162,7 +162,7 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 			}
 			use, found, readErr := bindings.EventUse(ctx, acct, repo.Integration.ID)
 			if readErr != nil {
-				return readErr
+				return readErr //nolint:wrapcheck // the called boundary names the failed operation
 			}
 			if found {
 				err = s.identities.SeedAt(ctx, acct, repo.Integration.ID, use, resolved.Repository, started)
@@ -231,7 +231,7 @@ func (s *Service) source(ctx context.Context, acct kernel.AccountID, stack kerne
 		repo.Integration = &in
 		if s.identities != nil {
 			if err := s.identities.Check(ctx, acct, in.ID, repo.Namespace, repo.Name); err != nil {
-				return nil, port.Repository{}, err
+				return nil, port.Repository{}, err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 		}
 	}

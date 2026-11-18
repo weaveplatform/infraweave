@@ -24,6 +24,7 @@ func (p *Provider) ResolveRepositoryRef(ctx context.Context, repo port.Repositor
 	if err != nil {
 		return port.Resolution{}, err
 	}
+	//nolint:tagliatelle // Bitbucket Cloud native metadata
 	var native struct {
 		ID       string `json:"uuid"`
 		FullName string `json:"full_name"`

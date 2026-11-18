@@ -412,6 +412,11 @@ func (f *Fake) asInstallation(next http.Handler) http.Handler {
 		f.mu.Lock()
 		t := f.tokens[tok]
 		in, ok := f.installs[t.install]
+		if ok {
+			copy := *in
+			copy.Repos = slices.Clone(in.Repos)
+			in = &copy
+		}
 		f.mu.Unlock()
 		if !ok || in.Deleted || in.SuspendedAt != nil {
 			answer(w, http.StatusUnauthorized, message("Bad credentials"))

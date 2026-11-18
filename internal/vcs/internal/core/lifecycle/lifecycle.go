@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -31,6 +33,7 @@ type Installation struct {
 	ID         string
 	Owner      vcsapi.Owner
 	State      string
+	Current    bool
 	ObservedAt time.Time
 }
 
@@ -45,7 +48,7 @@ type Store interface {
 	DropRepositoryIdentity(context.Context, kernel.AccountID, kernel.ULID, string) error
 	Installations(context.Context, kernel.AccountID, kernel.ULID) ([]Installation, error)
 	PutInstallation(context.Context, kernel.AccountID, kernel.ULID, Installation) error
-	PutMembership(context.Context, kernel.AccountID, kernel.ULID, string, Repository, bool) error
+	PutMembership(context.Context, kernel.AccountID, kernel.ULID, string, Repository, bool) (bool, error)
 	MembershipRemoved(context.Context, kernel.AccountID, kernel.ULID, string, string, string) (bool, error)
 	MoveMembership(context.Context, kernel.AccountID, kernel.ULID, Repository) error
 	OwnerMemberships(context.Context, kernel.AccountID, kernel.ULID, string, string) ([]Membership, error)
@@ -74,21 +77,21 @@ func CanonicalID(id string) string {
 func (s *Service) Check(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, namespace, name string) error {
 	removed, err := s.Store.MembershipRemoved(ctx, acct, integration, namespace, name, "")
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	if removed {
 		return &kernel.Invalid{Detail: fmt.Sprintf("The GitHub App installation on %s no longer reaches this repository.", namespace)}
 	}
 	repository, known, err := s.Store.RepositoryPath(ctx, acct, integration, namespace, name)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	installs, err := s.Store.Installations(ctx, acct, integration)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	for _, in := range installs {
-		if (in.Owner.Login == namespace || known && repository.OwnerID != "" && in.Owner.ID == repository.OwnerID) && in.State != "active" {
+		if (in.Owner.Login == namespace || known && repository.OwnerID != "" && in.Owner.ID == repository.OwnerID) && in.Current && in.State != "active" {
 			return &kernel.Invalid{Detail: fmt.Sprintf("The GitHub App installation on %s is %s.", in.Owner.Login, in.State)}
 		}
 	}
@@ -107,10 +110,10 @@ func (s *Service) SeedAt(ctx context.Context, acct kernel.AccountID, id kernel.U
 	if repo.ID == "" || repo.Namespace == "" || repo.Name == "" {
 		return nil
 	}
-	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error {
+	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error { //nolint:wrapcheck // the called boundary names the failed operation
 		found, err := s.Store.HoldRepositoryIntegration(ctx, acct, id)
 		if err != nil || !found {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 		if err := s.Check(ctx, acct, id, repo.Namespace, repo.Name); err != nil {
 			return err
@@ -126,7 +129,7 @@ func (s *Service) Apply(ctx context.Context, acct kernel.AccountID, id kernel.UL
 	}
 	found, err := s.Store.HoldRepositoryIntegration(ctx, acct, id)
 	if err != nil || !found {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	for _, event := range events {
 		if event.OwnerRename != nil {
@@ -142,7 +145,7 @@ func (s *Service) Apply(ctx context.Context, acct kernel.AccountID, id kernel.UL
 		if event.Repository.ID != "" && event.Repository.Namespace != "" && event.Repository.Name != "" {
 			removed, err := s.Store.MembershipRemoved(ctx, acct, id, event.Repository.Namespace, event.Repository.Name, CanonicalID(event.Repository.ID))
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 			if !removed {
 				if err := s.observe(ctx, acct, id, use, event.Repository, at); err != nil {
@@ -158,14 +161,14 @@ func (s *Service) observe(ctx context.Context, acct kernel.AccountID, id kernel.
 	repo.ID = CanonicalID(repo.ID)
 	old, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	if found && old.ObservedAt.After(at) {
 		return nil
 	}
 	occupant, occupied, err := s.Store.RepositoryPath(ctx, acct, id, repo.Namespace, repo.Name)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	if occupied && occupant.ID != repo.ID {
 		if s.Log != nil {
@@ -180,24 +183,24 @@ func (s *Service) observe(ctx context.Context, acct kernel.AccountID, id kernel.
 		if err := s.Stacks.RepointVCSRepository(ctx, acct, use,
 			stacksapi.VCSRepository{Namespace: old.Namespace, Name: old.Name},
 			stacksapi.VCSRepository{Namespace: repo.Namespace, Name: repo.Name}); err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
 	observation := Repository{Repository: repo, ObservedAt: at}
 	if err := s.Store.PutRepositoryIdentity(ctx, acct, id, observation); err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
-	return s.Store.MoveMembership(ctx, acct, id, observation)
+	return s.Store.MoveMembership(ctx, acct, id, observation) //nolint:wrapcheck // the called boundary names the failed operation
 }
 
 func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, at time.Time, owner vcsapi.OwnerRename) error {
 	members, err := s.Store.OwnerMemberships(ctx, acct, id, owner.ID, owner.PreviousLogin)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	repos, err := s.Store.OwnerRepositories(ctx, acct, id, owner.ID, owner.PreviousLogin)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	for _, repo := range repos {
 		repo.Namespace, repo.OwnerID = owner.Login, owner.ID
@@ -213,29 +216,29 @@ func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id ker
 		}
 		occupied, found, err := s.Store.RepositoryPath(ctx, acct, id, owner.Login, member.Name)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 		if found && occupied.ID != member.ID {
 			continue
 		}
 		if err := s.Stacks.RepointVCSRepository(ctx, acct, use, stacksapi.VCSRepository{Namespace: member.Namespace, Name: member.Name},
 			stacksapi.VCSRepository{Namespace: owner.Login, Name: member.Name}); err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 		member.Namespace, member.ObservedAt = owner.Login, at
 		if err := s.Store.MoveMembership(ctx, acct, id, member.Repository); err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
 	installs, err := s.Store.Installations(ctx, acct, id)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	for _, in := range installs {
 		if in.Owner.ID == owner.ID && !in.ObservedAt.After(at) {
 			in.Owner.Login, in.ObservedAt = owner.Login, at
 			if err := s.Store.PutInstallation(ctx, acct, id, in); err != nil {
-				return err
+				return err //nolint:wrapcheck // the called boundary names the failed operation
 			}
 		}
 	}
@@ -245,32 +248,31 @@ func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id ker
 func (s *Service) install(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, at time.Time, event vcsapi.Installation) error {
 	all, err := s.Store.Installations(ctx, acct, id)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
-	state := "active"
-	for _, in := range all {
-		if in.ID == event.ID {
-			if in.ObservedAt.After(at) {
-				return nil
-			}
-			state = in.State
-		}
+	next, apply := nextInstallation(all, event, at)
+	if !apply {
+		return nil
 	}
-	switch event.Action {
-	case "created", "unsuspend", "new_permissions_accepted":
-		state = "active"
-	case "suspend":
-		state = "suspended"
-	case "deleted":
-		state = "deleted"
+	if err := s.Store.PutInstallation(ctx, acct, id, next); err != nil {
+		return err //nolint:wrapcheck // the called boundary names the failed operation
+	} //nolint:wrapcheck // store names the write
+	if !next.Current {
+		return nil
 	}
-	if err := s.Store.PutInstallation(ctx, acct, id, Installation{ID: event.ID, Owner: event.Owner, State: state, ObservedAt: at}); err != nil {
-		return err
-	}
-	for _, repo := range append(event.Repositories, event.Added...) {
+	for _, repo := range slices.Concat(event.Repositories, event.Added) {
 		repo.ID, repo.OwnerID = CanonicalID(repo.ID), event.Owner.ID
-		if err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, true); err != nil {
-			return err
+		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the failed read
+		} //nolint:wrapcheck // store names the read
+		if found && current.ObservedAt.After(at) {
+			repo = current.Repository
+		}
+		if accepted, err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, true); err != nil {
+			return err //nolint:wrapcheck // the called boundary names the failed operation
+		} else if !accepted {
+			continue
 		}
 		if err := s.observe(ctx, acct, id, use, repo, at); err != nil {
 			return err
@@ -278,11 +280,20 @@ func (s *Service) install(ctx context.Context, acct kernel.AccountID, id kernel.
 	}
 	for _, repo := range event.Removed {
 		repo.ID, repo.OwnerID = CanonicalID(repo.ID), event.Owner.ID
-		if err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, false); err != nil {
-			return err
+		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the failed read
+		} //nolint:wrapcheck // store names the read
+		if found && current.ObservedAt.After(at) {
+			repo = current.Repository
+		}
+		if accepted, err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, false); err != nil {
+			return err //nolint:wrapcheck // the called boundary names the failed operation
+		} else if !accepted {
+			continue
 		}
 		if err := s.Store.DropRepositoryIdentity(ctx, acct, id, repo.ID); err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
 	return nil
@@ -297,10 +308,32 @@ func (s *Service) EventRepository(ctx context.Context, acct kernel.AccountID, id
 	}
 	current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, CanonicalID(repo.ID))
 	if err != nil {
-		return vcsapi.Repository{}, err
+		return vcsapi.Repository{}, err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	if found && current.ObservedAt.After(at) {
 		return current.Repository, nil
 	}
 	return repo, nil
+}
+
+// FanoutRepository runs under the integration fence, after Apply. A refused
+// path collision produces no target instead of routing this native ID to the
+// unrelated repository already occupying the event's advertised coordinates.
+func (s *Service) FanoutRepository(ctx context.Context, acct kernel.AccountID, id kernel.ULID, at time.Time, repo vcsapi.Repository) (vcsapi.Repository, bool, error) {
+	if !tx.In(ctx) {
+		return vcsapi.Repository{}, false, queue.ErrNoTransaction
+	}
+	current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, CanonicalID(repo.ID))
+	if err != nil {
+		return vcsapi.Repository{}, false, err //nolint:wrapcheck // the called boundary names the failed operation
+	} //nolint:wrapcheck // store names the read
+	if !found {
+		return vcsapi.Repository{}, false, nil
+	}
+	if current.Namespace != repo.Namespace || current.Name != repo.Name {
+		if !current.ObservedAt.After(at) {
+			return vcsapi.Repository{}, false, nil
+		}
+	}
+	return current.Repository, true, nil
 }

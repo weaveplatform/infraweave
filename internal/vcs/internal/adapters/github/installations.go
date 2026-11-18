@@ -33,8 +33,10 @@ func (p *Provider) ReadInstallations(ctx context.Context, in port.Integration) (
 		if native.SuspendedAt != nil && !native.SuspendedAt.IsZero() {
 			state = "suspended"
 		}
-		out = append(out, port.InstallationState{ID: strconv.FormatInt(native.GetID(), 10),
-			Owner: vcsapi.Owner{ID: strconv.FormatInt(native.GetAccount().GetID(), 10), Login: native.GetAccount().GetLogin()}, State: state})
+		out = append(out, port.InstallationState{
+			ID:    strconv.FormatInt(native.GetID(), 10),
+			Owner: vcsapi.Owner{ID: strconv.FormatInt(native.GetAccount().GetID(), 10), Login: native.GetAccount().GetLogin()}, State: state,
+		})
 	}
 	return out, nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
@@ -93,7 +94,7 @@ func (s *Store) DropRepositoryIdentity(ctx context.Context, acct kernel.AccountI
 
 // Installations returns availability records without opening any credential.
 func (s *Store) Installations(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]lifecycle.Installation, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT installation_id,owner_id,owner_login,state,observed_at FROM vcs_installations
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT installation_id,owner_id,owner_login,state,is_current,observed_at FROM vcs_installations
  WHERE account_id=$1 AND integration_id=$2 ORDER BY installation_id`, acct, id)
 	if err != nil {
 		return nil, repositoryError(err)
@@ -102,7 +103,7 @@ func (s *Store) Installations(ctx context.Context, acct kernel.AccountID, id ker
 	var out []lifecycle.Installation
 	for rows.Next() {
 		var in lifecycle.Installation
-		if err := rows.Scan(&in.ID, &in.Owner.ID, &in.Owner.Login, &in.State, &in.ObservedAt); err != nil {
+		if err := rows.Scan(&in.ID, &in.Owner.ID, &in.Owner.Login, &in.State, &in.Current, &in.ObservedAt); err != nil {
 			return nil, repositoryError(err)
 		}
 		out = append(out, in)
@@ -112,33 +113,44 @@ func (s *Store) Installations(ctx context.Context, acct kernel.AccountID, id ker
 
 // PutInstallation records the last native state observation.
 func (s *Store) PutInstallation(ctx context.Context, acct kernel.AccountID, id kernel.ULID, in lifecycle.Installation) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installations(account_id,integration_id,installation_id,owner_id,owner_login,state,observed_at)
- VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(account_id,integration_id,installation_id) DO UPDATE
- SET owner_id=EXCLUDED.owner_id,owner_login=EXCLUDED.owner_login,state=EXCLUDED.state,observed_at=EXCLUDED.observed_at`, acct, id, in.ID, in.Owner.ID, in.Owner.Login, in.State, in.ObservedAt)
+	if !tx.In(ctx) {
+		return queue.ErrNoTransaction
+	}
+	if in.Current {
+		if _, err := tx.Q(ctx, s.db).
+			Exec(ctx, `UPDATE vcs_installations SET is_current=false WHERE account_id=$1 AND integration_id=$2 AND owner_id=$3 AND installation_id<>$4`, acct, id, in.Owner.ID, in.ID); err != nil {
+			return repositoryError(err)
+		}
+	}
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installations(account_id,integration_id,installation_id,owner_id,owner_login,state,is_current,observed_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(account_id,integration_id,installation_id) DO UPDATE
+ SET owner_id=EXCLUDED.owner_id,owner_login=EXCLUDED.owner_login,state=EXCLUDED.state,is_current=EXCLUDED.is_current,observed_at=EXCLUDED.observed_at`, acct, id, in.ID, in.Owner.ID, in.Owner.Login, in.State, in.Current, in.ObservedAt)
 	return repositoryError(err)
 }
 
 // PutMembership preserves both known membership and explicit removal.
-func (s *Store) PutMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, installation string, r lifecycle.Repository, present bool) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installation_repositories(account_id,integration_id,installation_id,repository_id,namespace,name,present,observed_at)
+func (s *Store) PutMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, installation string, r lifecycle.Repository, present bool) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installation_repositories(account_id,integration_id,installation_id,repository_id,namespace,name,present,observed_at)
  VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(account_id,integration_id,repository_id) DO UPDATE
  SET installation_id=EXCLUDED.installation_id,namespace=EXCLUDED.namespace,name=EXCLUDED.name,present=EXCLUDED.present,observed_at=EXCLUDED.observed_at
  WHERE vcs_installation_repositories.observed_at <= EXCLUDED.observed_at`, acct, id, installation, r.ID, r.Namespace, r.Name, present, r.ObservedAt)
-	return repositoryError(err)
+	return tag.RowsAffected() > 0, repositoryError(err)
 }
 
 // MembershipRemoved answers only positively known absence, never an unknown App.
 func (s *Store) MembershipRemoved(ctx context.Context, acct kernel.AccountID, id kernel.ULID, namespace, name, native string) (bool, error) {
 	var removed bool
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT COALESCE((SELECT NOT present FROM vcs_installation_repositories WHERE account_id=$1 AND integration_id=$2
- AND ((namespace=$3 AND name=$4) OR ($5<>'' AND repository_id=$5))
- ORDER BY observed_at DESC,repository_id LIMIT 1),false)`, acct, id, namespace, name, native).Scan(&removed)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT COALESCE((SELECT NOT m.present FROM vcs_installation_repositories m JOIN vcs_installations i
+ ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
+ WHERE m.account_id=$1 AND m.integration_id=$2 AND i.is_current
+ AND ((m.namespace=$3 AND m.name=$4) OR ($5<>'' AND m.repository_id=$5))
+ ORDER BY m.observed_at DESC,m.repository_id LIMIT 1),false)`, acct, id, namespace, name, native).Scan(&removed)
 	return removed, repositoryError(err)
 }
 
 // MoveMembership follows a known repository path without changing presence.
 func (s *Store) MoveMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, r lifecycle.Repository) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_installation_repositories SET namespace=$4,name=$5,observed_at=$6
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_installation_repositories SET namespace=$4,name=$5
  WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 AND observed_at<=$6`, acct, id, r.ID, r.Namespace, r.Name, r.ObservedAt)
 	return repositoryError(err)
 }
@@ -148,7 +160,7 @@ func (s *Store) OwnerMemberships(ctx context.Context, acct kernel.AccountID, id 
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT m.repository_id,m.namespace,m.name,i.owner_id,m.observed_at,m.present
  FROM vcs_installation_repositories m JOIN vcs_installations i
  ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
- WHERE m.account_id=$1 AND m.integration_id=$2 AND (i.owner_id=$3 OR (i.owner_id='' AND m.namespace=$4))
+ WHERE m.account_id=$1 AND m.integration_id=$2 AND i.is_current AND (i.owner_id=$3 OR (i.owner_id='' AND m.namespace=$4))
  ORDER BY m.repository_id`, acct, id, owner, previous)
 	if err != nil {
 		return nil, repositoryError(err)

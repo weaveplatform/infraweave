@@ -12,7 +12,8 @@ func TestUnitRepositoryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Repository.ID == "" || first.Repository.Namespace != l.repo.Repo.Namespace || first.Repository.Name != l.repo.Repo.Name || first.Commit.Hash != l.repo.Head || second.Repository != first.Repository {
+	if first.Repository.ID == "" || first.Repository.Namespace != l.repo.Repo.Namespace || first.Repository.Name != l.repo.Repo.Name || first.Commit.Hash != l.repo.Head ||
+		second.Repository != first.Repository {
 		t.Fatalf("stable identity: first=%+v second=%+v", first, second)
 	}
 }
