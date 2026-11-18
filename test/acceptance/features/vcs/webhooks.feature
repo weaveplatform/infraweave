@@ -181,12 +181,14 @@ Feature: VCS webhook protocol and event run budgets
     And the only "TRACKED" event run for commit "head" is kept as "run"
     And stack "infra" has exactly 1 event runs for commit "head"
     And the home account has 1 caller-attributed delivery replay audits
+    And token "h" eventually reads the run "run" in the state "READY" through B
     When token "h" replays delivery "delivery" of integration "integration" with key "dedup-active" through B
     Then it answers 202
     And delivery "delivery" generation 2 settles with 0 newly created runs
     And stack "infra" has exactly 1 event runs for commit "head"
     When token "h" sends "POST /api/v1/stacks/infra/runs/{run}/cancel" with '{}' through A
     Then it answers 200
+    And the answer's canRetry is 'true'
     When token "h" replays delivery "delivery" of integration "integration" with key "dedup-ended" through A
     Then it answers 202
     And delivery "delivery" generation 3 settles with 0 newly created runs
@@ -228,6 +230,8 @@ Feature: VCS webhook protocol and event run budgets
     And it answers 201
     And the answer's id names "integration"
     When token "m" lists integration "integration" deliveries with page size 1 after "" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "POST /api/v1/vcs-integrations/{integration}/deliveries/01ARZ3NDEKTSV4RRFFQ69G5FAV/replay" through A
     Then it answers a 404 problem "not-found"
     Given the member key is space-reader on the space "acme"
     When token "m" lists integration "integration" deliveries with page size 1 after "" through B
@@ -294,4 +298,24 @@ Feature: VCS webhook protocol and event run budgets
     And delivery "delivery" keeps replay generation 0
     When token "h" sends "POST /api/v1/vcs-integrations/{integration}/deliveries/01ARZ3NDEKTSV4RRFFQ69G5FAV/replay" through B
     Then it answers a 404 problem "not-found"
+    And the home account has 0 caller-attributed delivery replay audits
+
+  @gitlab @op:vcsIntegrationDeliveryReplay @case:failure
+  Scenario: A genuine pending job prevents replay even before any worker claims it
+    Given two infraweave servers, A and B, with inbox workers paused
+    And the home key is exchanged through A for token "h"
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "seed"
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Pending","spaceID":"acme"}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    When GitLab sends a "merge-request" delivery "pending" for integration "integration" with "current" token through A
+    Then it answers 202
+    And delivery "pending" of integration "integration" is kept as "delivery"
+    When token "h" lists integration "integration" deliveries with page size 1 after "" through B
+    Then the delivery page contains only "delivery" in state "RECEIVED" and keeps cursor "pendingCursor"
+    When token "h" replays delivery "delivery" of integration "integration" with key "pending" through B
+    Then it answers a 409 problem "invalid-state"
+    And delivery "delivery" keeps replay generation 0
     And the home account has 0 caller-attributed delivery replay audits

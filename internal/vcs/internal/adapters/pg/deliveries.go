@@ -29,7 +29,7 @@ func (s *Deliveries) Pending(ctx context.Context, after kernel.ULID, limit int) 
 	// A zero ULID's Valuer produces SQL NULL; UUID text keeps the first
 	// page's all-zero lower bound inside the indexed range predicate.
 	rows, err := tx.Q(ctx, s.store.db).Query(ctx, `SELECT account_id,id,replays,state FROM vcs_deliveries
-		WHERE state IN ('received','dispatched') AND id>$1 ORDER BY id LIMIT $2`, after.UUID(), limit)
+		WHERE (state='received' OR (state='dispatched' AND last_error='')) AND id>$1 ORDER BY id LIMIT $2`, after.UUID(), limit)
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read pending deliveries: %w", sql.Unavailable(err))
 	}
@@ -146,7 +146,7 @@ func (s *Deliveries) State(ctx context.Context, acct kernel.AccountID, id kernel
 // the same transaction's deferred platform blob deletion.
 func (s *Deliveries) Drop(ctx context.Context, acct *kernel.AccountID, before *time.Time, batch int) ([]string, int, error) {
 	rows, err := tx.Q(ctx, s.store.db).Query(ctx, `DELETE FROM vcs_deliveries WHERE (account_id,id) IN
-		(SELECT account_id,id,replays,state FROM vcs_deliveries WHERE ($1::uuid IS NULL OR account_id=$1)
+		(SELECT account_id,id FROM vcs_deliveries WHERE ($1::uuid IS NULL OR account_id=$1)
 		AND ($2::timestamptz IS NULL OR received_at<$2) ORDER BY received_at,id LIMIT $3 FOR UPDATE)
 		RETURNING coalesce(body_key,'')`, acct, before, batch)
 	if err != nil {

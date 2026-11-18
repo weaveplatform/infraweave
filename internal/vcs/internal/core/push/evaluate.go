@@ -44,7 +44,7 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 	if errors.Is(err, errExpired) || errors.Is(err, context.DeadlineExceeded) && !s.d.Now().Before(input.Deadline) {
 		return s.finish(ctx, job, input, Expired)
 	}
-	if err != nil && job.Attempt >= job.MaxAttempts {
+	if err != nil && !errors.Is(err, queue.ErrLeaseLost) && job.MaxAttempts > 0 && job.Attempt >= job.MaxAttempts {
 		if mark := s.failed(ctx, job, input); mark != nil {
 			return mark
 		}
@@ -240,6 +240,8 @@ func (s *Service) finish(ctx context.Context, job queue.Job, input Evaluation, o
 }
 
 // failed records an exhausted child without changing the state siblings use.
+//
+//nolint:wrapcheck // queue and store errors retain their fenced boundary
 func (s *Service) failed(ctx context.Context, job queue.Job, input Evaluation) error {
 	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		if err := s.d.Jobs.HoldTx(ctx, job); err != nil {

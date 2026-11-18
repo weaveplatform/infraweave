@@ -109,7 +109,10 @@ CREATE TABLE vcs_deliveries (
 );
 
 CREATE INDEX vcs_deliveries_retention ON vcs_deliveries (received_at,id);
-CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id) WHERE state='received';
+CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id)
+    WHERE state='received' OR (state='dispatched' AND last_error='');
+CREATE INDEX vcs_deliveries_integration ON vcs_deliveries
+    (account_id,integration_id,received_at DESC,id DESC);
 
 -- An absent row means no account cap; the operator ceiling still applies.
 CREATE TABLE vcs_account_settings (

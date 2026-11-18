@@ -21,6 +21,7 @@ func (s Server) WithDeliveries(deliveries *intake.Service) Server {
 	return s
 }
 
+//nolint:wrapcheck // shared problems are returned as the HTTP boundary
 func (s Server) deliveryAdmin(ctx context.Context, id string) (kernel.Principal, kernel.ULID, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -81,9 +82,13 @@ func (s Server) VcsIntegrationDeliveryReplay(ctx context.Context, req api.VcsInt
 }
 
 func deliveryView(d intake.Delivery) api.VCSDelivery {
-	return api.VCSDelivery{Id: d.ID.String(), DeliveryId: d.DeliveryID, Event: d.Event, ReceivedAt: d.ReceivedAt,
-		State: api.VCSDeliveryState(strings.ToUpper(d.State)), LastError: d.LastError, RunsCreated: int32(min(d.RunsCreated, math.MaxInt32))}
+	return api.VCSDelivery{
+		Id: d.ID.String(), DeliveryId: d.DeliveryID, Event: d.Event, ReceivedAt: d.ReceivedAt,
+		State: api.VCSDeliveryState(strings.ToUpper(d.State)), LastError: d.LastError, RunsCreated: int32(max(0, min(d.RunsCreated, math.MaxInt32))),
+	} //nolint:gosec // clamped to the served int32 range
 }
+
+//nolint:wrapcheck // typed domain refusals become shared HTTP problems
 func deliveryError(err error) error {
 	if errors.Is(err, intake.ErrNotFound) {
 		return problem.NotFound.Error("No such delivery for this integration.")

@@ -52,6 +52,7 @@ func ProcessKey(id kernel.ULID, replays int64) string {
 	}
 	return ReplayPrefix(id, replays) + "process"
 }
+
 func EvaluationKey(id kernel.ULID, replays int64, stack kernel.ULID) string {
 	if replays == 0 {
 		return id.String() + ":" + stack.String()
@@ -67,6 +68,8 @@ func terminal(status queue.KeyStatus) bool { return status.Dead > 0 || status.Ca
 // List projects a sticky generation failure without changing the DISPATCHED
 // state that still-active sibling evaluations need. The serializable snapshot
 // keeps a row's generation and the queue summary in the same database view.
+//
+//nolint:wrapcheck // stores and queue name each boundary and preserve typed refusals
 func (s *Service) List(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, in search.Input) (search.Result[Delivery], error) {
 	var out search.Result[Delivery]
 	if s.d.Admin == nil {
@@ -101,6 +104,8 @@ func (s *Service) List(ctx context.Context, acct kernel.AccountID, integration k
 // Replay verifies immutable retained bytes again. Queue rows are held before
 // delivery/integration rows, matching workers' completion lock order. Every
 // mutation, including the caller audit, rolls back if enqueue or sealing fails.
+//
+//nolint:wrapcheck // each transactional boundary names its own failure
 func (s *Service) Replay(ctx context.Context, p kernel.Principal, integration, id kernel.ULID, remoteIP string) (Delivery, error) {
 	if s.d.Admin == nil {
 		return Delivery{}, kernel.ErrUnavailable
@@ -127,11 +132,14 @@ func (s *Service) Replay(ctx context.Context, p kernel.Principal, integration, i
 		if err != nil {
 			return err
 		}
+		now = s.d.Now()
+		if d.ReceivedAt.Before(now.Add(-s.d.Retention)) {
+			return ErrNotFound
+		}
 		if d.Replays != initial.Replays {
 			return &ReplayConflict{"The delivery changed while replay was being requested."}
 		}
 		if d.BodyKey != "" {
-
 			if _, err = s.d.Objects.LockLiveAt(ctx, objectstore.Inbox, d.BodyKey, now); err != nil {
 				if errors.Is(err, objectstore.ErrNotFound) {
 					return &ReplayConflict{"The retained inbox body has expired or is no longer available."}
@@ -198,10 +206,7 @@ func (s *Service) replayBody(ctx context.Context, d Delivery) ([]byte, error) {
 // GitHub/Bitbucket retain the exact sha256= header; token/basic providers
 // retain a plain body MAC. Incoming credential headers are deliberately absent.
 func verifyStored(body, signature []byte, secrets [][]byte) bool {
-	text := string(signature)
-	if strings.HasPrefix(text, "sha256=") {
-		text = strings.TrimPrefix(text, "sha256=")
-	}
+	text := strings.TrimPrefix(string(signature), "sha256=")
 	if len(text) != sha256.Size*2 {
 		return false
 	}

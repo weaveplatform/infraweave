@@ -32,6 +32,7 @@ func (w *webhookWorld) terminal(t *testing.T, name string) intake.Delivery {
 	}
 	return w.delivery(t, name)
 }
+
 func replayConflict(t *testing.T, err error) {
 	t.Helper()
 	var refused *intake.ReplayConflict
@@ -61,7 +62,8 @@ func TestAccDeliveryReplayAtomicity(t *testing.T) {
 			out, err := intake.New(deps).Replay(t.Context(), w.f.admin, w.id, d.ID, "192.0.2.41")
 			kept := w.delivery(t, "replay")
 			var jobs, audits int
-			if err := w.f.db.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM jobs WHERE account_id=$1 AND kind=$2 AND state='pending'),(SELECT count(*) FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery')`, w.f.acct, intake.Process.Name).Scan(&jobs, &audits); err != nil {
+			if err := w.f.db.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM jobs WHERE account_id=$1 AND kind=$2 AND state='pending'),(SELECT count(*) FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery')`, w.f.acct, intake.Process.Name).
+				Scan(&jobs, &audits); err != nil {
 				t.Fatal(err)
 			}
 			prepared, readErr := w.f.store.Prepared(t.Context(), w.f.acct, d.ID)
@@ -74,11 +76,20 @@ func TestAccDeliveryReplayAtomicity(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || out.Replays != 1 || kept.Replays != 1 || kept.State != intake.Received || kept.LastError != "" || kept.RunsCreated != 0 || !kept.Deadline.After(d.Deadline) || kept.ReceivedAt != d.ReceivedAt || jobs != 1 || audits != 1 || len(prepared) != 0 {
+			if err != nil || out.Replays != 1 || kept.Replays != 1 || kept.State != intake.Received || kept.LastError != "" || kept.RunsCreated != 0 ||
+				!kept.Deadline.After(d.Deadline) ||
+				kept.ReceivedAt != d.ReceivedAt ||
+				jobs != 1 ||
+				audits != 1 ||
+				len(prepared) != 0 {
 				t.Fatal("replay transaction incomplete", out, err, kept, jobs, audits, len(prepared))
 			}
 			var actor, resource, ip string
-			if err := w.f.db.QueryRow(t.Context(), `SELECT actor_username,affected_id,remote_ip FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery'`, w.f.acct).Scan(&actor, &resource, &ip); err != nil || actor != w.f.admin.Login || resource != w.id.String() || ip != "192.0.2.41" {
+			if err := w.f.db.QueryRow(t.Context(), `SELECT actor_username,affected_id,remote_ip FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery'`, w.f.acct).
+				Scan(&actor, &resource, &ip); err != nil ||
+				actor != w.f.admin.Login ||
+				resource != w.id.String() ||
+				ip != "192.0.2.41" {
 				t.Fatal("replay audit lost caller", actor, resource, ip, err)
 			}
 			j := w.claim(t, w.queue, "replayed")
@@ -111,7 +122,8 @@ func TestAccDeliveryListingAndGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 	page, err := w.svc.List(t.Context(), w.f.acct, w.id, search.Input{First: new(int32(1))})
-	if err != nil || len(page.Edges) != 1 || !page.HasNext || page.Edges[0].Node.ID != second.ID || page.Edges[0].Node.State != intake.Failed || page.Edges[0].Node.LastError != intake.ProcessingFailed {
+	if err != nil || len(page.Edges) != 1 || !page.HasNext || page.Edges[0].Node.ID != second.ID || page.Edges[0].Node.State != intake.Failed ||
+		page.Edges[0].Node.LastError != intake.ProcessingFailed {
 		t.Fatal("newest failed delivery page incorrect", page, err)
 	}
 	next, err := w.svc.List(t.Context(), w.f.acct, w.id, search.Input{First: new(int32(1)), After: page.End})
@@ -134,6 +146,12 @@ func TestAccDeliveryListingAndGeneration(t *testing.T) {
 	if _, err := w.svc.Replay(t.Context(), w.f.admin, w.id, first.ID, ""); err != nil {
 		t.Fatal(err)
 	}
+	if err := w.store.State(t.Context(), w.f.acct, first.ID, 0, intake.Failed, "old error"); err != nil {
+		t.Fatal(err)
+	}
+	if w.delivery(t, "first").State != intake.Received {
+		t.Fatal("old state writer changed replay")
+	}
 	j := w.claim(t, w.queue, "new-generation")
 	if err := w.svc.Processed(t.Context(), j); err != nil {
 		t.Fatal(err)
@@ -148,21 +166,44 @@ func TestAccDeliveryListingAndGeneration(t *testing.T) {
 			t.Fatal("old dead generation poisoned replay", edge.Node)
 		}
 	}
-	old := queue.Job{Payload: []byte(`{"account":"` + w.f.acct.String() + `","id":"` + first.ID.String() + `"}`), Account: w.f.acct.ULID}
+
 	// Re-enqueue the legacy key through the real operator retry path.
 	var oldID int64
-	if err := w.f.db.QueryRow(t.Context(), `SELECT id FROM jobs WHERE account_id=$1 AND kind=$2 AND unique_key=$3`, w.f.acct, intake.Process.Name, first.ID.String()).Scan(&oldID); err != nil {
+	if err := w.f.db.QueryRow(t.Context(), `SELECT id FROM jobs WHERE account_id=$1 AND kind=$2 AND unique_key=$3`, w.f.acct, intake.Process.Name, first.ID.String()).
+		Scan(&oldID); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.queue.Retry(t.Context(), oldID); err != nil {
 		t.Fatal(err)
 	}
-	old = w.claim(t, w.queue, "old-generation")
+	old := w.claim(t, w.queue, "old-generation")
 	if err := w.svc.Processed(t.Context(), old); err != nil {
 		t.Fatal(err)
 	}
 	if w.delivery(t, "first").State != intake.Dispatched || w.delivery(t, "first").Replays != 1 {
 		t.Fatal("retried old parent mutated new generation")
+	}
+
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if err := w.f.store.EvaluationFailed(ctx, w.f.acct, first.ID, 0); err != nil {
+			return err
+		}
+		ok, err := w.f.store.ReserveRun(ctx, w.f.acct, first.ID, 0, 1)
+		if ok {
+			t.Fatal("old child consumed replay budget")
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if w.delivery(t, "first").LastError != "" || w.delivery(t, "first").RunsCreated != 0 {
+		t.Fatal("old child changed replay metadata")
+	}
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error { return w.f.store.EvaluationFailed(ctx, w.f.acct, first.ID, 1) }); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.delivery(t, "first"); got.State != intake.Dispatched || got.LastError != intake.ProcessingFailed {
+		t.Fatal("current terminal child marker missing", got)
 	}
 }
 
@@ -183,7 +224,13 @@ func TestAccReplayLocksActiveParentAndChild(t *testing.T) {
 					t.Fatal(err)
 				}
 				if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
-					_, err := w.queue.EnqueueTx(ctx, push.Evaluate, push.Evaluation{Account: w.f.acct, Delivery: d.ID, Stack: kernel.NewULID(), Deadline: d.Deadline}, queue.Account(w.f.acct.ULID), queue.UniqueKey(intake.EvaluationKey(d.ID, 0, kernel.NewULID())))
+					_, err := w.queue.EnqueueTx(
+						ctx,
+						push.Evaluate,
+						push.Evaluation{Account: w.f.acct, Delivery: d.ID, Stack: kernel.NewULID(), Deadline: d.Deadline},
+						queue.Account(w.f.acct.ULID),
+						queue.UniqueKey(intake.EvaluationKey(d.ID, 0, kernel.NewULID())),
+					)
 					return err
 				}); err != nil {
 					t.Fatal(err)
@@ -249,7 +296,13 @@ func TestAccDeliveryChildFailurePreservesSibling(t *testing.T) {
 	for range 2 {
 		stack := kernel.NewULID()
 		if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
-			_, err := w.queue.EnqueueTx(ctx, push.Evaluate, push.Evaluation{Account: w.f.acct, Delivery: d.ID, Stack: stack, Deadline: d.Deadline}, queue.Account(w.f.acct.ULID), queue.UniqueKey(intake.EvaluationKey(d.ID, 0, stack)))
+			_, err := w.queue.EnqueueTx(
+				ctx,
+				push.Evaluate,
+				push.Evaluation{Account: w.f.acct, Delivery: d.ID, Stack: stack, Deadline: d.Deadline},
+				queue.Account(w.f.acct.ULID),
+				queue.UniqueKey(intake.EvaluationKey(d.ID, 0, stack)),
+			)
 			return err
 		}); err != nil {
 			t.Fatal(err)
@@ -347,5 +400,29 @@ func TestAccReplayExpiredBlobAndRotatedSignature(t *testing.T) {
 				t.Fatal("refused body/signature changed replay generation")
 			}
 		})
+	}
+}
+
+func TestAccConcurrentDeliveryReplay(t *testing.T) {
+	w := newWebhookWorld(t)
+	d := w.terminal(t, "concurrent")
+	start := make(chan struct{})
+	result := make(chan error, 2)
+	for range 2 {
+		go func() { <-start; _, err := w.svc.Replay(t.Context(), w.f.admin, w.id, d.ID, ""); result <- err }()
+	}
+	close(start)
+	first, second := <-result, <-result
+	if first == nil && second == nil || first != nil && second != nil {
+		t.Fatal("concurrent replay did not serialize to one request", first, second)
+	}
+	if first != nil {
+		replayConflict(t, first)
+	}
+	if second != nil {
+		replayConflict(t, second)
+	}
+	if w.delivery(t, "concurrent").Replays != 1 {
+		t.Fatal("concurrent replay reset twice")
 	}
 }

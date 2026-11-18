@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -45,7 +46,9 @@ func (s *Deliveries) Owned(ctx context.Context, acct kernel.AccountID, integrati
 	}
 	if lock {
 		var held kernel.ULID
-		err := tx.Q(ctx, s.store.db).QueryRow(ctx, `SELECT id FROM vcs_deliveries WHERE account_id=$1 AND integration_id=$2 AND id=$3 AND received_at >= $4 FOR UPDATE`, acct, integration, id, before).Scan(&held)
+		err := tx.Q(ctx, s.store.db).
+			QueryRow(ctx, `SELECT id FROM vcs_deliveries WHERE account_id=$1 AND integration_id=$2 AND id=$3 AND received_at >= $4 FOR UPDATE`, acct, integration, id, before).
+			Scan(&held)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return intake.Delivery{}, intake.ErrNotFound
 		}
@@ -65,6 +68,8 @@ func (s *Deliveries) Owned(ctx context.Context, acct kernel.AccountID, integrati
 
 // List selects metadata only. Scope is part of cursor identity, so a cursor
 // cannot be transferred to another integration or account.
+//
+//nolint:wrapcheck // Find names query/cursor errors and its scanner is internal
 func (s *Deliveries) List(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, before time.Time, in search.Input) (search.Result[intake.Delivery], error) {
 	if err := s.owner(ctx, acct, integration, false); err != nil {
 		return search.Result[intake.Delivery]{}, err
@@ -82,7 +87,8 @@ func (s *Deliveries) List(ctx context.Context, acct kernel.AccountID, integratio
 	scope := sqlsearch.Scope{Where: "d.account_id=$1 AND d.integration_id=$2 AND d.received_at >= $3", Args: []any{acct, integration, before}, Reachable: []kernel.ULID{acct.ULID}}
 	return sqlsearch.Find(ctx, tx.Q(ctx, s.store.db), entity, scope, in, func(row pgx.Row, extra ...any) (intake.Delivery, error) {
 		d := intake.Delivery{Account: acct, Integration: integration}
-		dest := []any{&d.ID, &d.DeliveryID, &d.Event, &d.ReceivedAt, &d.State, &d.LastError, &d.RunsCreated, &d.Replays}
+		dest := make([]any, 0, 8+len(extra))
+		dest = append(dest, &d.ID, &d.DeliveryID, &d.Event, &d.ReceivedAt, &d.State, &d.LastError, &d.RunsCreated, &d.Replays)
 		err := row.Scan(append(dest, extra...)...)
 		return d, err
 	})
@@ -94,7 +100,9 @@ func (s *Deliveries) Hold(ctx context.Context, ref intake.Ref) (bool, error) {
 		return false, queue.ErrNoTransaction
 	}
 	var id kernel.ULID
-	err := tx.Q(ctx, s.store.db).QueryRow(ctx, `SELECT id FROM vcs_deliveries WHERE account_id=$1 AND id=$2 AND replays=$3 AND state=$4 FOR KEY SHARE`, ref.Account, ref.ID, ref.Replays, ref.State).Scan(&id)
+	err := tx.Q(ctx, s.store.db).
+		QueryRow(ctx, `SELECT id FROM vcs_deliveries WHERE account_id=$1 AND id=$2 AND replays=$3 AND state=$4 FOR KEY SHARE`, ref.Account, ref.ID, ref.Replays, ref.State).
+		Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}

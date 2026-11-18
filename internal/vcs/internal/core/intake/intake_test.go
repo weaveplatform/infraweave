@@ -499,6 +499,7 @@ func TestUnitDeliveryDeadline(t *testing.T) {
 func (s *store) Hold(_ context.Context, ref Ref) (bool, error) {
 	return s.d.Replays == ref.Replays && s.d.State == ref.State, s.state
 }
+
 func (s *store) Failure(_ context.Context, ref Ref) error {
 	if s.d.Replays == ref.Replays {
 		if s.d.State == Received {
@@ -508,6 +509,7 @@ func (s *store) Failure(_ context.Context, ref Ref) error {
 	}
 	return s.state
 }
+
 func (j *jobs) StatusByKeyPrefixes(_ context.Context, _ kernel.ULID, _ []queue.Kind, prefixes []string) (map[string]queue.KeyStatus, error) {
 	out := map[string]queue.KeyStatus{}
 	if j.statusError != nil {
@@ -523,6 +525,7 @@ func (j *jobs) StatusByKeyPrefixes(_ context.Context, _ kernel.ULID, _ []queue.K
 	}
 	return out, j.deadError
 }
+
 func (j *jobs) HoldByKeyPrefixTx(ctx context.Context, _ kernel.ULID, _ []queue.Kind, prefix string) (queue.KeyStatus, error) {
 	if !tx.In(ctx) {
 		return queue.KeyStatus{}, queue.ErrNoTransaction

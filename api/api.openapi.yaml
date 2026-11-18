@@ -18962,6 +18962,7 @@ paths:
       x-infraweave-divergence:
         - DV-044
         - rate-limit
+        - idempotency-key
       tags:
         - VCS Integrations
       parameters:

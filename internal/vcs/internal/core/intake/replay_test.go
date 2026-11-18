@@ -23,6 +23,7 @@ type adminStore struct {
 	s                              *store
 	rows                           search.Result[Delivery]
 	read, lock, list, reset, audit error
+	onLock                         func()
 	changed                        bool
 	entries                        []kernel.AuditEntry
 	resets                         int
@@ -33,6 +34,9 @@ func (a *adminStore) Owned(_ context.Context, acct kernel.AccountID, integration
 		return Delivery{}, ErrNotFound
 	}
 	if lock {
+		if a.onLock != nil {
+			a.onLock()
+		}
 		if a.changed {
 			a.s.d.Replays++
 		}
@@ -40,6 +44,7 @@ func (a *adminStore) Owned(_ context.Context, acct kernel.AccountID, integration
 	}
 	return a.s.d, a.read
 }
+
 func (a *adminStore) List(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ time.Time, _ search.Input) (search.Result[Delivery], error) {
 	if !tx.In(ctx) {
 		return search.Result[Delivery]{}, queue.ErrNoTransaction
@@ -48,6 +53,7 @@ func (a *adminStore) List(ctx context.Context, _ kernel.AccountID, _ kernel.ULID
 	out.Edges = append([]search.Edge[Delivery](nil), a.rows.Edges...)
 	return out, a.list
 }
+
 func (a *adminStore) Reset(ctx context.Context, d Delivery, deadline time.Time) (Delivery, error) {
 	if !tx.In(ctx) {
 		return d, queue.ErrNoTransaction
@@ -60,6 +66,7 @@ func (a *adminStore) Reset(ctx context.Context, d Delivery, deadline time.Time) 
 	d.Deadline = deadline
 	return d, a.reset
 }
+
 func (a *adminStore) Audit(ctx context.Context, e kernel.AuditEntry) error {
 	if !tx.In(ctx) {
 		return queue.ErrNoTransaction
@@ -67,6 +74,7 @@ func (a *adminStore) Audit(ctx context.Context, e kernel.AuditEntry) error {
 	a.entries = append(a.entries, e)
 	return a.audit
 }
+
 func bodyMAC(body, secret []byte) []byte {
 	m := hmac.New(sha256.New, secret)
 	_, _ = m.Write(body)
@@ -115,7 +123,8 @@ func TestUnitReplayKeys(t *testing.T) {
 	if ProcessKey(id, 0) != id.String() || EvaluationKey(id, 0, stack) != id.String()+":"+stack.String() {
 		t.Fatal("legacy keys changed")
 	}
-	if !strings.HasPrefix(ProcessKey(id, 1), ReplayPrefix(id, 1)) || !strings.HasPrefix(EvaluationKey(id, 1, stack), ReplayPrefix(id, 1)) || strings.HasPrefix(ProcessKey(id, 10), ReplayPrefix(id, 1)) {
+	if !strings.HasPrefix(ProcessKey(id, 1), ReplayPrefix(id, 1)) || !strings.HasPrefix(EvaluationKey(id, 1, stack), ReplayPrefix(id, 1)) ||
+		strings.HasPrefix(ProcessKey(id, 10), ReplayPrefix(id, 1)) {
 		t.Fatal("generation keys overlap")
 	}
 }
@@ -127,7 +136,17 @@ func TestUnitDeliveryReplay(t *testing.T) {
 			now := time.Now()
 			body, secret := []byte("unprinted-body"), []byte(strings.Repeat("s", 32))
 			f.store.in.Current = secret
-			f.store.d = Delivery{Account: f.store.in.Account, ID: kernel.NewULID(), Integration: f.store.in.ID, ReceivedAt: now.Add(-3 * 24 * time.Hour), Body: body, Signature: bodyMAC(body, secret), State: Failed, RunsCreated: 4, LastError: ProcessingFailed}
+			f.store.d = Delivery{
+				Account:     f.store.in.Account,
+				ID:          kernel.NewULID(),
+				Integration: f.store.in.ID,
+				ReceivedAt:  now.Add(-3 * 24 * time.Hour),
+				Body:        body,
+				Signature:   bodyMAC(body, secret),
+				State:       Failed,
+				RunsCreated: 4,
+				LastError:   ProcessingFailed,
+			}
 			admin := &adminStore{s: f.store}
 			f.svc.d.Admin = admin
 			p := kernel.Principal{AccountID: f.store.d.Account, ActorID: kernel.NewULID(), Kind: principal}
@@ -135,10 +154,14 @@ func TestUnitDeliveryReplay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if out.Replays != 1 || out.State != Received || out.RunsCreated != 0 || out.LastError != "" || out.ReceivedAt != f.store.d.ReceivedAt || !out.Deadline.After(now) || f.jobs.enqueued != 1 || len(admin.entries) != 1 {
+			if out.Replays != 1 || out.State != Received || out.RunsCreated != 0 || out.LastError != "" || out.ReceivedAt != f.store.d.ReceivedAt || !out.Deadline.After(now) ||
+				f.jobs.enqueued != 1 ||
+				len(admin.entries) != 1 {
 				t.Fatal("replay reset/receipt/audit not atomic", out, admin.entries)
 			}
-			if admin.entries[0].Actor.Username == "" || admin.entries[0].Action != "vcs_integration.replay_delivery" || admin.entries[0].Body != nil || admin.entries[0].RemoteIP != "127.0.0.1" || f.jobs.heldPrefix != out.ID.String() {
+			if admin.entries[0].Actor.Username == "" || admin.entries[0].Action != "vcs_integration.replay_delivery" || admin.entries[0].Body != nil ||
+				admin.entries[0].RemoteIP != "127.0.0.1" ||
+				f.jobs.heldPrefix != out.ID.String() {
 				t.Fatal("unsafe/incomplete audit or lock scope")
 			}
 			if principal == kernel.PrincipalRun && admin.entries[0].Actor.Run != p.ActorID {
@@ -159,7 +182,15 @@ func TestUnitReplayRefusalsAndFailures(t *testing.T) {
 			now := time.Now()
 			body, secret := []byte("payload"), []byte(strings.Repeat("s", 32))
 			f.store.in.Current = secret
-			d := Delivery{Account: f.store.in.Account, Integration: f.store.in.ID, ID: kernel.NewULID(), ReceivedAt: now, Body: body, Signature: bodyMAC(body, secret), State: Failed}
+			d := Delivery{
+				Account:     f.store.in.Account,
+				Integration: f.store.in.ID,
+				ID:          kernel.NewULID(),
+				ReceivedAt:  now,
+				Body:        body,
+				Signature:   bodyMAC(body, secret),
+				State:       Failed,
+			}
 			f.store.d = d
 			admin := &adminStore{s: f.store}
 			f.svc.d.Admin = admin
@@ -249,7 +280,9 @@ func TestUnitDeliveryFailureProjection(t *testing.T) {
 	f.svc.d.Admin = admin
 	f.jobs.statuses = map[string]queue.KeyStatus{ReplayPrefix(current, 2): {Dead: 1, Running: 1}, ReplayPrefix(old, 1): {Dead: 1}}
 	out, err := f.svc.List(t.Context(), acct, id, search.Input{})
-	if err != nil || len(out.Edges) != 3 || out.Edges[0].Node.State != Failed || out.Edges[0].Node.LastError != ProcessingFailed || out.Edges[1].Node.State != Dispatched || out.Edges[2].Node.State != Failed || admin.rows.Edges[0].Node.State != Dispatched {
+	if err != nil || len(out.Edges) != 3 || out.Edges[0].Node.State != Failed || out.Edges[0].Node.LastError != ProcessingFailed || out.Edges[1].Node.State != Dispatched ||
+		out.Edges[2].Node.State != Failed ||
+		admin.rows.Edges[0].Node.State != Dispatched {
 		t.Fatal("generation failure projection incorrect", out, err)
 	}
 	f.jobs.statusError = errDown
@@ -267,5 +300,32 @@ func TestUnitDeliveryFailureProjection(t *testing.T) {
 	}
 	if _, err := f.svc.Replay(t.Context(), kernel.Principal{}, id, current, ""); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatal("missing replay store accepted", err)
+	}
+}
+
+func TestUnitReplayRechecksSecretWindowAfterLock(t *testing.T) {
+	f := newFixture(t)
+	now := time.Now()
+	secret := []byte(strings.Repeat("s", 32))
+	until := now.Add(time.Second)
+	f.svc.d.Now = func() time.Time { return now }
+	f.store.in.Current = []byte(strings.Repeat("x", 32))
+	f.store.in.Previous = secret
+	f.store.in.PreviousUntil = &until
+	f.store.d = Delivery{
+		Account:     f.store.in.Account,
+		ID:          kernel.NewULID(),
+		Integration: f.store.in.ID,
+		ReceivedAt:  now,
+		Body:        []byte("body"),
+		Signature:   bodyMAC([]byte("body"), secret),
+		State:       Failed,
+	}
+	admin := &adminStore{s: f.store, onLock: func() { now = now.Add(2 * time.Second) }}
+	f.svc.d.Admin = admin
+	_, err := f.svc.Replay(t.Context(), kernel.Principal{AccountID: f.store.d.Account}, f.store.d.Integration, f.store.d.ID, "")
+	var conflict *ReplayConflict
+	if !errors.As(err, &conflict) || admin.resets != 0 {
+		t.Fatal("previous window was evaluated before the row lock", err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/vcs/gitlabfake"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
@@ -23,6 +24,10 @@ type deliverySteps struct {
 }
 
 func (s *deliverySteps) register(sc *godog.ScenarioContext) {
+	sc.Step(`^two infraweave servers, A and B, with inbox workers paused$`, func(ctx context.Context) error {
+		s.w.Settings["queue"] = map[string]any{"queues": map[string]any{"vcs-inbox": map[string]any{"workers": 0}}}
+		return s.w.TwoReplicas(ctx)
+	})
 	sc.Step(`^GitLab source requests fail before event run creation$`, func() { s.gitlab.fake.FailPath("/projects/", gitlabfake.ServerError, 0) })
 	sc.Step(`^GitLab source requests recover$`, func() { s.gitlab.fake.Fail(gitlabfake.None, 0) })
 	sc.Step(`^delivery "(\w+)" of integration "(\w+)" is kept as "(\w+)"$`, s.keep)
@@ -42,6 +47,7 @@ func (s *deliverySteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^delivery "(\w+)" has an elapsed but unswept inbox body$`, s.expire)
 	sc.Step(`^delivery "(\w+)" keeps replay generation (\d+)$`, s.generation)
 }
+
 func (s *deliverySteps) keep(ctx context.Context, name, integration, key string) error {
 	delivery, ok := s.hooks.deliveries[name]
 	if !ok {
@@ -58,12 +64,21 @@ func (s *deliverySteps) keep(ctx context.Context, name, integration, key string)
 	s.w.IDs[key] = kept.String()
 	return nil
 }
+
 func (s *deliverySteps) failed(ctx context.Context, key string) error {
 	return deps.Eventually(ctx, "real processing attempts exhaust before run creation", func(ctx context.Context) (bool, error) {
 		var state, last string
 		var runs int
 		var dead bool
-		err := s.w.Row(ctx, `SELECT state,last_error,runs_created,EXISTS(SELECT 1 FROM jobs WHERE account_id=d.account_id AND kind='vcs.process_delivery' AND unique_key=$2 AND state='dead') FROM vcs_deliveries d WHERE id=$1`, []any{harness.UUIDOf(s.w.IDs[key]), s.w.IDs[key]}, &state, &last, &runs, &dead)
+		err := s.w.Row(
+			ctx,
+			`SELECT state,last_error,runs_created,EXISTS(SELECT 1 FROM jobs WHERE account_id=d.account_id AND kind='vcs.process_delivery' AND unique_key=$2 AND state='dead') FROM vcs_deliveries d WHERE id=$1`,
+			[]any{harness.UUIDOf(s.w.IDs[key]), s.w.IDs[key]},
+			&state,
+			&last,
+			&runs,
+			&dead,
+		)
 		if err != nil {
 			return false, err
 		}
@@ -76,6 +91,7 @@ func (s *deliverySteps) failed(ctx context.Context, key string) error {
 		return true, nil
 	})
 }
+
 func (s *deliverySteps) list(ctx context.Context, token, integration string, first int, after, replica string) error {
 	input := map[string]any{"first": first}
 	if after != "" {
@@ -92,6 +108,7 @@ func (s *deliverySteps) list(ctx context.Context, token, integration string, fir
 	}
 	return nil
 }
+
 func (s *deliverySteps) page(key, state, cursor string) error {
 	var page struct {
 		Edges []struct {
@@ -119,6 +136,7 @@ func (s *deliverySteps) page(key, state, cursor string) error {
 	fmt.Printf("Delivery API evidence: %s\n", r.Body)
 	return nil
 }
+
 func (s *deliverySteps) replay(ctx context.Context, token, key, integration, idempotency, replica string) error {
 	path := "/api/v1/vcs-integrations/" + s.w.IDs[integration] + "/deliveries/" + s.w.IDs[key] + "/replay"
 	var headers []sdk.Header
@@ -131,6 +149,7 @@ func (s *deliverySteps) replay(ctx context.Context, token, key, integration, ide
 	}
 	return nil
 }
+
 func (s *deliverySteps) settled(ctx context.Context, key string, generation, runs int) error {
 	return deps.Eventually(ctx, "replayed parent and children settle", func(ctx context.Context) (bool, error) {
 		var state string
@@ -158,10 +177,17 @@ func (s *deliverySteps) settled(ctx context.Context, key string, generation, run
 		return true, nil
 	})
 }
+
 func (s *deliverySteps) audits(ctx context.Context, want int) error {
 	var count int
 	var good bool
-	err := s.w.Row(ctx, `SELECT count(*),coalesce(bool_and(actor_username=$2 AND actor_run IS NULL AND event_type='UPDATE' AND affected_type='VCS_INTEGRATION' AND coalesce(remote_ip,'')<>'' AND body IS NULL),true) FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery'`, []any{harness.UUIDOf(harness.Home.Account), harness.Home.Key}, &count, &good)
+	err := s.w.Row(
+		ctx,
+		`SELECT count(*),coalesce(bool_and(actor_username=$2 AND actor_run IS NULL AND event_type='UPDATE' AND affected_type='VCS_INTEGRATION' AND coalesce(remote_ip,'')<>'' AND body IS NULL),true) FROM audit_trail_entries WHERE account_id=$1 AND action='vcs_integration.replay_delivery'`,
+		[]any{harness.UUIDOf(harness.Home.Account), harness.Home.Key},
+		&count,
+		&good,
+	)
 	if err != nil {
 		return err
 	}
@@ -170,6 +196,7 @@ func (s *deliverySteps) audits(ctx context.Context, want int) error {
 	}
 	return nil
 }
+
 func (s *deliverySteps) large(ctx context.Context, name, integration, replica string) error {
 	delivery, err := s.gitlab.fake.PushWebhook("acme/platform", "infra", "main", s.w.IDs["seed"], s.w.IDs["seed"])
 	if err != nil {
@@ -180,9 +207,15 @@ func (s *deliverySteps) large(ctx context.Context, name, integration, replica st
 	s.hooks.deliveries[name] = delivery
 	return s.hooks.sendDelivery(ctx, integration, replica, s.hooks.secret.Reveal(), delivery)
 }
+
 func (s *deliverySteps) expire(ctx context.Context, key string) error {
 	var count int
-	if err := s.w.Row(ctx, `WITH changed AS(UPDATE blob_objects SET expires_at=now()-interval '1 second' WHERE store='inbox' AND state='live' AND key=(SELECT body_key FROM vcs_deliveries WHERE id=$1) RETURNING key) SELECT count(*) FROM changed`, []any{harness.UUIDOf(s.w.IDs[key])}, &count); err != nil {
+	if err := s.w.Row(
+		ctx,
+		`WITH changed AS(UPDATE blob_objects SET expires_at=now()-interval '1 second' WHERE store='inbox' AND state='live' AND key=(SELECT body_key FROM vcs_deliveries WHERE id=$1) RETURNING key) SELECT count(*) FROM changed`,
+		[]any{harness.UUIDOf(s.w.IDs[key])},
+		&count,
+	); err != nil {
 		return err
 	}
 	if count != 1 {
@@ -190,6 +223,7 @@ func (s *deliverySteps) expire(ctx context.Context, key string) error {
 	}
 	return nil
 }
+
 func (s *deliverySteps) generation(ctx context.Context, key string, want int) error {
 	var got int
 	if err := s.w.Row(ctx, `SELECT replays FROM vcs_deliveries WHERE id=$1`, []any{harness.UUIDOf(s.w.IDs[key])}, &got); err != nil {

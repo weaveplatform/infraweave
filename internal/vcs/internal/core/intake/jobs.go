@@ -87,7 +87,7 @@ func (s *Service) dispatched(ctx context.Context, j queue.Job, p job, plan Dispa
 		}
 		current, err := s.d.Store.Hold(ctx, Ref{Account: p.Account, ID: p.ID, Replays: p.Replays, State: Received})
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck // the store names the generation hold
 		}
 		if !current {
 			return s.d.Jobs.CompleteTx(ctx, j)

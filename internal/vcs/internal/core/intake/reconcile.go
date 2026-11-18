@@ -14,8 +14,10 @@ type cursor struct {
 }
 
 // ProcessingFailed is deliberately independent of raw queue/provider errors.
-const ProcessingFailed = "vcs: delivery processing failed"
-const exhausted = ProcessingFailed
+const (
+	ProcessingFailed = "vcs: delivery processing failed"
+	exhausted        = ProcessingFailed
+)
 
 // Reconciled settles jobs whose final attempt died without returning through the
 // handler, such as lease recovery after a crash. Each job checks at most one

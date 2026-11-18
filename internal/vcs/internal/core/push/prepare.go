@@ -102,8 +102,16 @@ func (p *plan) Commit(ctx context.Context) error {
 	}
 	for _, stack := range p.stacks {
 		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline, Replays: p.delivery.Replays}
-		if _, err := p.s.d.Jobs.EnqueueTx(ctx, Evaluate, payload,
-			queue.Account(p.delivery.Account.ULID), queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)), queue.OrderingKey("stack:"+stack.String())); err != nil {
+		if _, err := p.s.d.Jobs.EnqueueTx(
+			ctx,
+			Evaluate,
+			payload,
+			queue.Account(
+				p.delivery.Account.ULID,
+			),
+			queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)),
+			queue.OrderingKey("stack:"+stack.String()),
+		); err != nil {
 			return err //nolint:wrapcheck // the queue names the bounded child write
 		}
 	}
