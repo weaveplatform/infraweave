@@ -47,6 +47,9 @@ func Held() []integrity.Held {
 		{Entity: "account", Table: "vcs_manifests", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_run_tokens", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_deliveries", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_deployment_runs", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_deployment_states", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_deployment_resources", Columns: []string{"account_id"}},
 		{
 			Entity:  "stack",
 			Table:   "vcs_run_tokens",

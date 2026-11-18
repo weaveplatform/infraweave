@@ -23,11 +23,16 @@ type Beginner interface {
 	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
 }
 
-// Options choose a transaction's isolation. The zero value is READ
-// COMMITTED.
+// Options choose a transaction's isolation and retry policy. The zero value
+// uses READ COMMITTED and retries serialization failures and deadlocks.
 type Options struct {
 	// Serializable runs the transaction at SERIALIZABLE.
 	Serializable bool
+	// NoRetry returns the first error without replaying the callback, including
+	// a serialization failure or deadlock from the commit. Only the outermost
+	// Do controls retries. An external effect still needs independent recovery
+	// because a database rollback cannot undo it.
+	NoRetry bool
 }
 
 // MaxRetries is how many times Do runs fn again after a serialization
@@ -59,6 +64,9 @@ type ctxKey struct{}
 // serialization failure or deadlock, from fn or from the commit, rolls
 // back and runs fn again, up to MaxRetries times, so fn must have no effect
 // outside the database: work for after the commit goes to AfterCommit.
+// NoRetry instead attempts fn once; callers that perform a bounded external
+// effect under a database fence must recover that effect independently if the
+// transaction fails.
 //
 // Called with a context that already carries a transaction, Do runs fn in
 // that transaction, whatever opts say: the outermost Do owns the commit and
@@ -80,7 +88,7 @@ func Do(ctx context.Context, db Beginner, opts Options, fn func(ctx context.Cont
 			return nil
 		}
 		var pgErr *pgconn.PgError
-		if attempt == MaxRetries || !errors.As(err, &pgErr) || !retryable[pgErr.Code] {
+		if opts.NoRetry || attempt == MaxRetries || !errors.As(err, &pgErr) || !retryable[pgErr.Code] {
 			return err
 		}
 		t := time.NewTimer(backoff())

@@ -427,6 +427,63 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   `ghenv:<name>` or disabled by `ghenv:-`. Discard or failed apply marks
   failure, successful apply active. GitLab environments follow that rule.
 
+  Deployment eligibility is VCS business logic over a Runs-owned fact reader:
+  the run's identity and transitions through the event's exact state sequence.
+  A later terminal state cannot erase whether it reached `UNCONFIRMED` or
+  `APPLYING`, and a delayed earlier event cannot read future transitions. A
+  tracked run that never reached either phase, including a no-change plan,
+  reports no deployment. The first eligible report fixes its integration,
+  source coordinates and environment without copying credentials. Jobs open
+  the bound integration's current credentials; deleting it never falls back
+  to a replacement default.
+
+  GitHub creates the deployment with the full commit SHA, task `infraweave
+  apply`, `production_environment: true`, `auto_merge: false`, and an explicit
+  empty `required_contexts`. Its payload retains the run ID for recovery after
+  an uncertain create. Statuses are `pending`, `queued`, `in_progress`,
+  `success`, and `failure`; cancellation and discard map to failure. Recovery
+  establishes the initial pending status even if the create response was lost.
+  See the native [deployment](https://docs.github.com/en/rest/deployments/deployments)
+  and [status](https://docs.github.com/en/rest/deployments/statuses) contracts.
+
+  GitLab's native identity is environment, ref and SHA within a project; it
+  offers no run-ID payload or ref/SHA list filters. Read environment-filtered
+  pages and compare ref/SHA locally. Repeated runs at that same native identity
+  can reuse a deployment, while GitHub retains one per run. GitLab states are
+  `running`, `success`, `failed` and `canceled`; confirmation and applying both
+  map to running. Find environments by exact name and create them on first
+  use. See GitLab's [deployments](https://docs.gitlab.com/api/deployments/) and
+  [environments](https://docs.gitlab.com/api/environments/) contracts.
+
+  `vcs.report_deployment` has durable per-run/state uniqueness. GitHub jobs
+  order by run; GitLab jobs order by the shared native resource, which also
+  preserves each run's order. Its identity uses the canonical API host and
+  installation path, project, environment, ref and SHA, scoped to the account;
+  separate integrations reaching that same resource share its fence.
+  Credentials and integration IDs do not distinguish GitLab resources. Host
+  casing, default ports and equivalent API-prefix forms normalize together;
+  distinct hosts or installation paths remain distinct. A bound integration
+  retargeted to another API host is refused before any provider request, while
+  credential rotation on the same host remains usable.
+
+  The resource's newest eligible run is reserved atomically with enqueue.
+  Its epoch is the authoritative first `UNCONFIRMED`/`APPLYING` timestamp,
+  with run creation time and ID only breaking ties. Run creation order cannot
+  establish deployment order: an older-created run can first become eligible
+  later. A completed sequence prevents older states of that same run from
+  regressing its reported status. Late reports from an older epoch are skipped.
+
+  A report owns an outer `NoRetry` transaction, holding the account, queue
+  generation and resource row across the provider call, bounded to 30 seconds.
+  This bounded external-effect exception prevents claim recovery or another
+  resource owner from overtaking the effect. An inherited transaction is
+  refused because its outer retry policy would control replay. Cursor update
+  and fenced job completion commit together. A provider effect whose response
+  or local acknowledgement is lost is recovered by native lookup on a later
+  queue attempt, never by retrying the transaction callback. Rate-limit
+  responses with a reset snooze the job without spending an attempt; provider
+  response bodies and credentials never enter retained queue diagnostics.
+
 ref: [0015](0015-events-notifications-webhooks-audit.md), [0016](0016-testing-and-acceptance.md), RN-46, DV-047, C73, C74, C75, C79.
 
 ### Source access for runs
