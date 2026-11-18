@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/ignored"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -33,7 +34,12 @@ type Server struct {
 	describe   map[string]Describe
 	limits     *push.Limits
 	deliveries *intake.Service
+	ignored    *ignored.Service
 }
+
+// WithIgnored binds the VCS-owned search without putting VCS business logic in
+// the stacks partial that happens to own the operation's served path.
+func (s Server) WithIgnored(service *ignored.Service) Server { s.ignored = service; return s }
 
 // New returns the partial over the service, naming spaces through
 // spaces, with each provider's details by its served VCSProvider value.

@@ -24,6 +24,14 @@ import (
 
 type evaluationDB struct{}
 
+// Recording contracts bind their own capturing recorder. These existing
+// evaluation fixtures explicitly omit persistence to isolate run admission.
+type discardIgnored struct{}
+
+func (discardIgnored) Record(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Commit, string) error {
+	return nil
+}
+
 func (evaluationDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
 	return evaluationTx{}, nil
 }
@@ -221,6 +229,7 @@ func newEvaluation(t *testing.T) *evaluationWorld {
 			Supersede:    evaluationRuns{w},
 			Jobs:         evaluationJobs{w: w},
 			Limits:       &Limits{Store: evaluationLimit{w: w}, Ceiling: 500},
+			Ignored:      discardIgnored{},
 		},
 	)
 	return w

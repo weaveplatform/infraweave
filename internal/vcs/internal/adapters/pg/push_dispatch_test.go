@@ -114,6 +114,13 @@ type dispatchSource struct {
 	files []string
 }
 
+func (s *dispatchSource) PrepareTag(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, error) {
+	if tx.In(ctx) {
+		return stacksapi.Commit{}, errors.New("tag provider read under transaction")
+	}
+	return stacksapi.Commit{Hash: event.Head, Tag: event.Tag}, nil
+}
+
 func (s *dispatchSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
 	if tx.In(ctx) {
 		return stacksapi.Commit{}, nil, errors.New("provider read under transaction")

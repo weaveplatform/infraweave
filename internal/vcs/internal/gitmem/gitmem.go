@@ -214,6 +214,21 @@ func (r *Repo) resolve(ref string) (*object.Commit, error) {
 	return nil, fmt.Errorf("%w: ref %s", ErrNotFound, ref)
 }
 
+// TagObject reads an immutable annotated-tag object, without consulting refs.
+// It is separate from Resolve so a tag object is never mistaken for a commit.
+func (r *Repo) TagObject(id string) (*object.Tag, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !plumbing.IsHash(id) {
+		return nil, fmt.Errorf("%w: tag object", ErrNotFound)
+	}
+	tag, err := r.git.TagObject(plumbing.NewHash(id))
+	if err != nil {
+		return nil, fmt.Errorf("%w: tag object: %w", ErrNotFound, err)
+	}
+	return tag, nil
+}
+
 // TagOf is tag's object: its SHA and message, and the commit it peels
 // to; ErrNotFound when the repository has no such tag.
 func (r *Repo) TagOf(tag string) (sha, message string, commit *object.Commit, err error) {

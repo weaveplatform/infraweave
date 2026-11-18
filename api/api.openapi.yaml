@@ -16493,10 +16493,11 @@ paths:
         field: searchRunIgnoredTriggers
         operation: query
         type: Stack
-      x-infraweave-cost: standard
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
-      x-rest-style: field
+        - DV-133
+      x-rest-style: search
   /stacks/{stackId}/set-current-commit:
     post:
       description: |-
@@ -27456,12 +27457,16 @@ components:
       type: object
       x-graphql-type: RunIgnoredTriggerPolicyAttachments
     RunIgnoredTriggerReasonType:
+      description: |-
+        Why an event created no run on a stack. RUN_LIMIT_REACHED means the
+        event's admitted runs reached the effective account or operator cap.
       enum:
         - DISABLED_BY_LABEL
         - TAGS_IGNORED_BY_DEFAULT
         - NO_AFFECTED_FILES_IN_PROJECT_ROOT
         - CUSTOM_POLICY
         - CUSTOM_POLICY_NO_TRIGGER
+        - RUN_LIMIT_REACHED
       type: string
       x-graphql-type: RunIgnoredTriggerReasonType
     RunIgnoredTriggersConnection:
