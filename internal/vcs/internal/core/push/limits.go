@@ -24,7 +24,7 @@ var (
 type LimitStore interface {
 	RunLimit(context.Context, kernel.AccountID) (*int, error)
 	SetRunLimit(context.Context, kernel.AccountID, *int) error
-	ReserveRun(context.Context, kernel.AccountID, kernel.ULID, int) (bool, error)
+	ReserveRun(context.Context, kernel.AccountID, kernel.ULID, int64, int) (bool, error)
 	PurgeRunLimit(context.Context, kernel.AccountID) error
 	Audit(context.Context, kernel.AuditEntry) error
 }

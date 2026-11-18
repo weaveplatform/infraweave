@@ -88,7 +88,7 @@ func (s evaluationLimit) RunLimit(context.Context, kernel.AccountID) (*int, erro
 	return &s.w.cap, s.w.limitErr
 }
 
-func (s evaluationLimit) ReserveRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, limit int) (bool, error) {
+func (s evaluationLimit) ReserveRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ int64, limit int) (bool, error) {
 	s.w.step(ctx, "admit")
 	if s.w.admissionErr != nil {
 		return false, s.w.admissionErr
@@ -431,4 +431,8 @@ func TestUnitDefaultIntegrationAliases(t *testing.T) {
 	if uses(stacksapi.Settings{Provider: "GITHUB"}, use) {
 		t.Fatal("nondefault integration acquired an implicit stack")
 	}
+}
+
+func (s evaluationStore) EvaluationFailed(context.Context, kernel.AccountID, kernel.ULID, int64) error {
+	return nil
 }

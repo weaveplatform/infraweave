@@ -531,7 +531,7 @@ func TestAccWebhookStoreUnavailable(t *testing.T) {
 	_, lookup := w.store.Integration(ctx, w.id, time.Now())
 	_, insert := w.store.Insert(ctx, intake.Delivery{})
 	_, read := w.store.Read(ctx, w.f.acct, kernel.NewULID())
-	state := w.store.State(ctx, w.f.acct, kernel.NewULID(), intake.Failed, "safe")
+	state := w.store.State(ctx, w.f.acct, kernel.NewULID(), 0, intake.Failed, "safe")
 	_, _, drop := w.store.Drop(ctx, &w.f.acct, nil, 1)
 	_, pending := w.store.Pending(ctx, kernel.ULID{}, 1)
 	for name, err := range map[string]error{"lookup": lookup, "insert": insert, "read": read, "state": state, "drop": drop, "pending": pending} {

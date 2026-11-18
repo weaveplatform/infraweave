@@ -587,6 +587,62 @@ components:
         - node
       type: object
       x-graphql-type: VCSIntegrationsConnection
+    VCSDelivery:
+      description: Metadata for a verified webhook delivery. Payloads and signatures are never returned.
+      type: object
+      required: [id, deliveryId, event, receivedAt, state, lastError, runsCreated]
+      properties:
+        id:
+          type: string
+        deliveryId:
+          type: string
+        event:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          enum: [RECEIVED, DISPATCHED, FAILED, EXPIRED]
+        lastError:
+          type: string
+          description: A safe processing diagnostic, empty when none is recorded.
+        runsCreated:
+          type: integer
+          format: int32
+          minimum: 0
+    VCSDeliverySearchInput:
+      description: Search paging in newest-received order. Page size defaults to 20 and is clamped to 1 through 100.
+      type: object
+      additionalProperties: false
+      properties:
+        first:
+          type: integer
+          format: int32
+          nullable: true
+        after:
+          type: string
+          nullable: true
+        requestedPage:
+          $ref: '#/components/schemas/SearchQueryRequestedPage'
+    VCSDeliveryConnection:
+      type: object
+      required: [cursor, node]
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/VCSDelivery'
+    VCSDeliveriesOutput:
+      type: object
+      required: [edges, pageInfo]
+      properties:
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/VCSDeliveryConnection'
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
 paths:
   /azure-dev-ops-repo-integrations:
     post:
@@ -3313,3 +3369,118 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: override
+  /vcs-integrations/{vcsIntegrationId}/deliveries:
+    get:
+      operationId: vcsIntegrationDeliveries
+      summary: List integration deliveries
+      description: >-
+        List retained webhook deliveries newest first, with search cursors and
+        page size. A failed child is reported as FAILED while other children
+        may still be processing. Stored bodies, headers and signatures are private.
+      x-infraweave-cost: standard
+      x-upstream: none
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      x-infraweave-divergence:
+        - DV-044
+        - rate-limit
+      tags:
+        - VCS Integrations
+      parameters:
+        - in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: input
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSDeliverySearchInput'
+      responses:
+        "200":
+          description: The retained delivery page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSDeliveriesOutput'
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay:
+    post:
+      operationId: vcsIntegrationDeliveryReplay
+      summary: Replay an integration delivery
+      description: >-
+        Verify the retained body with the current or eligible previous webhook
+        secret and schedule a new processing attempt. Existing runs on the same
+        stack, type and commit are preserved. Active work, an expired inbox
+        body or a signature that no longer verifies is refused with 409.
+      x-infraweave-cost: expensive
+      x-infraweave-audit-action: vcs_integration.replay_delivery
+      x-upstream: none
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:vcsIntegrationId:vcs_integration
+      x-infraweave-divergence:
+        - DV-044
+        - rate-limit
+        - idempotency-key
+      tags:
+        - VCS Integrations
+      parameters:
+        - in: path
+          name: vcsIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: deliveryId
+          description: The retained delivery's id, rather than the provider's deliveryId.
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "202":
+          description: The delivery scheduled for replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VCSDelivery'
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

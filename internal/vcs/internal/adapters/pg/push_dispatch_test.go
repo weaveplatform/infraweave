@@ -56,7 +56,7 @@ func TestAccEvaluationHoldsDeliveryRetention(t *testing.T) {
 		if _, found, err := w.f.store.EventContext(ctx, w.f.acct, delivery.ID); err != nil || !found {
 			return fmt.Errorf("second child hold: %w", err)
 		}
-		allowed, err := w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 2)
+		allowed, err := w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 0, 2)
 		if err != nil || !allowed {
 			return fmt.Errorf("second child counter: %w", err)
 		}

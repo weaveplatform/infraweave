@@ -99,6 +99,7 @@ CREATE TABLE vcs_deliveries (
     repository text NOT NULL,
     state text NOT NULL CHECK (state IN ('received','dispatched','failed','expired')),
     deadline timestamptz NOT NULL,
+    replays bigint NOT NULL DEFAULT 0 CHECK (replays >= 0),
     runs_created integer NOT NULL DEFAULT 0 CHECK (runs_created >= 0),
     last_error text NOT NULL DEFAULT '',
     PRIMARY KEY (account_id,id),

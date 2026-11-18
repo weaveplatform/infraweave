@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
@@ -27,10 +28,11 @@ type Describe func(in integration.Integration) (api.VCSIntegrationDetails, error
 // space, or on the space an attachable list names, before its handler
 // runs, and answered 404 for one the caller cannot read.
 type Server struct {
-	svc      *integration.Service
-	spaces   accessapi.Spaces
-	describe map[string]Describe
-	limits   *push.Limits
+	svc        *integration.Service
+	spaces     accessapi.Spaces
+	describe   map[string]Describe
+	limits     *push.Limits
+	deliveries *intake.Service
 }
 
 // New returns the partial over the service, naming spaces through

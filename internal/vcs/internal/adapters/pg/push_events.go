@@ -19,8 +19,8 @@ import (
 // blocking other children from updating the non-key admission counter.
 func (s *Store) EventContext(ctx context.Context, acct kernel.AccountID, delivery kernel.ULID) (push.EventContext, bool, error) {
 	var out push.EventContext
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT integration_id,provider,state,deadline FROM vcs_deliveries
-		WHERE account_id=$1 AND id=$2 FOR KEY SHARE`, acct, delivery).Scan(&out.Integration, &out.Provider, &out.State, &out.Deadline)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT integration_id,provider,state,deadline,replays FROM vcs_deliveries
+		WHERE account_id=$1 AND id=$2 FOR KEY SHARE`, acct, delivery).Scan(&out.Integration, &out.Provider, &out.State, &out.Deadline, &out.Replays)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, false, nil
 	}
