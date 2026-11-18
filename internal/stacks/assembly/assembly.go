@@ -141,6 +141,9 @@ func (d *Domain) SetStackStatus(s stacksapi.StackStatus) { d.api.SetStackStatus(
 // domain; until then no stack answers isStateRollback.
 func (d *Domain) BindStateRollbacks(r stacksapi.StateRollbacks) { d.api.BindStateRollbacks(r) }
 
+// BindPullRequests binds the VCS request history reader after construction.
+func (d *Domain) BindPullRequests(r stacksapi.PullRequestReader) { d.api.BindPullRequests(r) }
+
 // SpaceGuard is the domain's say in the access domain's space deletes and
 // moves, which internal/app registers there.
 func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.stacks }

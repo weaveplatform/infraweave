@@ -40,7 +40,7 @@ type Server struct {
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces, catalog vendorsapi.Catalog) Server {
 	return Server{
 		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
-		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}},
+		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}},
 	}
 }
 
@@ -422,6 +422,14 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the state domain names the read
 	}
+	settings := make([]stacksapi.Settings, 0, len(all))
+	for _, st := range all {
+		settings = append(settings, st.Settings)
+	}
+	requests, err := s.edges.requests.PullRequests(ctx, p.AccountID, settings)
+	if err != nil {
+		return nil, err
+	}
 	releases := resolver{catalog: s.catalog, seen: map[resolution]*string{}}
 	for _, st := range all {
 		var versions api.EffectiveTerragruntVersionResult
@@ -442,6 +450,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 		v.RuntimeConfig = runtimeViews(runtime[st.ID])
 		v.Outputs = outputViews(outputs[st.ID])
 		v.IsStateRollback = rolledBack[st.ID]
+		v.PullRequests = requestViews(requests[st.ID])
 		if b, ok := blockers[st.ID]; ok {
 			v.Blocker = &api.RunRef{Id: b.Run.String()}
 			v.Delta = apidelta.Of(b.Delta)

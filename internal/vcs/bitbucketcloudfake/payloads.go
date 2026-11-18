@@ -30,15 +30,26 @@ func Payload(event string) ([]byte, error) {
 			"old": payloadRef("branch", "main", BeforeSHA), "new": payloadRef("branch", "main", AfterSHA),
 			"created": false, "closed": false, "forced": true,
 		}}}
-	case "pullrequest:created", "pullrequest:updated", "pullrequest:approved", "pullrequest:unapproved", "pullrequest:fulfilled", "pullrequest:comment_created":
+	case "pullrequest:created",
+		"pullrequest:updated",
+		"pullrequest:approved",
+		"pullrequest:unapproved",
+		"pullrequest:fulfilled",
+		"pullrequest:rejected",
+		"pullrequest:comment_created":
 		approved := event == "pullrequest:approved" || event == "pullrequest:updated" || event == "pullrequest:fulfilled"
 		state := "OPEN"
 		if event == "pullrequest:fulfilled" {
 			state = "MERGED"
 		}
+		if event == "pullrequest:rejected" {
+			state = "DECLINED"
+		}
 		d["pullrequest"] = map[string]any{
-			"id":     12,
-			"title":  "Infrastructure change",
+			"id":         12,
+			"title":      "Infrastructure change",
+			"created_on": "2026-01-01T00:00:00Z", "updated_on": "2026-01-01T00:01:00Z",
+			"links":  map[string]any{"html": map[string]string{"href": "https://bitbucket.org/acme/infra/pull-requests/12"}},
 			"state":  state,
 			"draft":  false,
 			"author": author,
@@ -72,6 +83,7 @@ func Payload(event string) ([]byte, error) {
 func payloadRepository(id, workspace string) map[string]any {
 	return map[string]any{
 		"uuid": id, "name": "infra", "slug": "infra", "full_name": workspace + "/infra",
+		"links":     map[string]any{"html": map[string]string{"href": "https://bitbucket.org/" + workspace + "/infra"}},
 		"workspace": map[string]string{"slug": workspace, "name": workspace},
 	}
 }

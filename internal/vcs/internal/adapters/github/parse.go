@@ -140,6 +140,7 @@ func (d *webhook) pullRequest(e vcsapi.Event) (vcsapi.Event, error) {
 		Fork:      pr.GetHead().GetRepo().GetID() != pr.GetBase().GetRepo().GetID(),
 		Mergeable: clean, Labels: labels,
 	}
+	requestMetadata(pr, e.PullRequest)
 	return e, nil
 }
 

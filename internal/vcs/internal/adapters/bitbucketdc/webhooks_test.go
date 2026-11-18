@@ -11,7 +11,17 @@ import (
 
 func TestUnitWebhookConfiguration(t *testing.T) {
 	l := newLab(t)
-	events := []string{"repo:refs_changed", "pr:opened", "pr:from_ref_updated", "pr:modified", "pr:reviewer:approved", "pr:reviewer:unapproved", "pr:merged", "pr:comment:added"}
+	events := []string{
+		"repo:refs_changed",
+		"pr:opened",
+		"pr:from_ref_updated",
+		"pr:modified",
+		"pr:reviewer:approved",
+		"pr:reviewer:unapproved",
+		"pr:merged",
+		"pr:declined",
+		"pr:comment:added",
+	}
 	expected := port.WebhookInput{URL: "https://iw.example/webhooks/vcs/provider/id", Repositories: []port.Listed{{Namespace: "ACME", Name: "infra"}}}
 	hooks := []bitbucketdcfake.Hook{{URL: expected.URL, Events: events, Active: true}}
 	check := func(want bool) port.Check {

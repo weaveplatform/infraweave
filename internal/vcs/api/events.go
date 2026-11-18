@@ -1,5 +1,7 @@
 package api
 
+import "time"
+
 // Event is a provider-independent VCS event. Provider adapters retain stable
 // repository identities as well as paths, so a rename does not change ordering.
 // Comments are parsed as policy input; intake creates no runs from them.
@@ -31,16 +33,24 @@ type Repository struct {
 
 // PullRequest holds the request state consumed by push policies.
 type PullRequest struct {
-	Number     int      `json:"number"`
-	HeadBranch string   `json:"headBranch"`
-	BaseBranch string   `json:"baseBranch"`
-	HeadOwner  string   `json:"headOwner"`
-	Draft      bool     `json:"draft"`
-	Fork       bool     `json:"fork"`
-	Approved   bool     `json:"approved"`
-	Mergeable  bool     `json:"mergeable"`
-	Undiverged bool     `json:"undiverged"`
-	Labels     []string `json:"labels"`
+	AuthorID      string    `json:"authorId,omitempty"`
+	AuthorLogin   string    `json:"authorLogin,omitempty"`
+	Title         string    `json:"title,omitempty"`
+	URL           string    `json:"url,omitempty"`
+	HeadBranchURL string    `json:"headBranchUrl,omitempty"`
+	State         string    `json:"state,omitempty"`
+	CreatedAt     time.Time `json:"createdAt,omitempty"`
+	UpdatedAt     time.Time `json:"updatedAt,omitempty"`
+	Number        int       `json:"number"`
+	HeadBranch    string    `json:"headBranch"`
+	BaseBranch    string    `json:"baseBranch"`
+	HeadOwner     string    `json:"headOwner"`
+	Draft         bool      `json:"draft"`
+	Fork          bool      `json:"fork"`
+	Approved      bool      `json:"approved"`
+	Mergeable     bool      `json:"mergeable"`
+	Undiverged    bool      `json:"undiverged"`
+	Labels        []string  `json:"labels"`
 }
 
 // Comment includes the request identity supplied by every provider's event.

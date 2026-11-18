@@ -1,8 +1,12 @@
 package gitlab
 
 import (
+	"encoding/json"
+	"errors"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 )
@@ -23,6 +27,7 @@ type webhookPayload struct {
 	UserName     string             `json:"user_name"`
 	Labels       []webhookLabel     `json:"labels"`
 	User         struct {
+		ID       int64  `json:"id"`
 		Username string `json:"username"`
 	} `json:"user"`
 	Changes struct {
@@ -32,6 +37,8 @@ type webhookPayload struct {
 
 //nolint:tagliatelle // GitLab's documented wire names.
 type webhookProject struct {
+	WebURL            string `json:"web_url"`
+	Homepage          string `json:"homepage"`
 	ID                int64  `json:"id"`
 	Namespace         string `json:"namespace"`
 	PathWithNamespace string `json:"path_with_namespace"`
@@ -78,6 +85,12 @@ type webhookAttributes struct {
 
 //nolint:tagliatelle // GitLab's documented wire names.
 type webhookRequest struct {
+	AuthorID                    int64           `json:"author_id"`
+	Title                       string          `json:"title"`
+	URL                         string          `json:"url"`
+	State                       string          `json:"state"`
+	CreatedAt                   webhookTime     `json:"created_at"`
+	UpdatedAt                   webhookTime     `json:"updated_at"`
 	IID                         int             `json:"iid"`
 	SourceProjectID             int64           `json:"source_project_id"`
 	TargetProjectID             int64           `json:"target_project_id"`
@@ -111,11 +124,46 @@ func (r webhookRequest) request(project webhookProject, action string) (vcsapi.P
 	// discussions. The fully-approved action supplies that missing approval fact.
 	mergeable := !r.Draft && action != "unapproved" && resolved && (r.DetailedMergeStatus == "mergeable" ||
 		r.DetailedMergeStatus == "" && r.MergeStatus == "can_be_merged" && approved)
-	return vcsapi.PullRequest{
+	out := vcsapi.PullRequest{
 		Number: r.IID, HeadBranch: r.SourceBranch, BaseBranch: r.TargetBranch,
 		HeadOwner: owner, Fork: r.SourceProjectID != r.TargetProjectID,
 		Draft: r.Draft, Approved: approved, Mergeable: mergeable, Labels: labelNames(r.Labels),
-	}, true
+	}
+	if r.AuthorID > 0 {
+		out.AuthorID = strconv.FormatInt(r.AuthorID, 10)
+	}
+	out.Title, out.URL = r.Title, r.URL
+	out.CreatedAt, out.UpdatedAt = r.CreatedAt.Time, r.UpdatedAt.Time
+	switch r.State {
+	case "opened", "locked":
+		out.State = "open"
+	case "closed", "merged":
+		out.State = r.State
+	}
+	if r.Source != nil {
+		if base := or(r.Source.WebURL, r.Source.Homepage); base != "" {
+			out.HeadBranchURL = strings.TrimSuffix(base, "/") + "/-/tree/" + url.PathEscape(r.SourceBranch)
+		}
+	}
+	return out, true
+}
+
+// GitLab before19 used a named timezone rather than an ISO timestamp.
+type webhookTime struct{ time.Time }
+
+func (t *webhookTime) UnmarshalJSON(body []byte) error {
+	var raw string
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return err
+	}
+	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05 MST", "2006-01-02 15:04:05 -0700"} {
+		parsed, err := time.Parse(layout, raw)
+		if err == nil {
+			t.Time = parsed
+			return nil
+		}
+	}
+	return errors.New("gitlab: invalid request timestamp")
 }
 
 //nolint:tagliatelle,misspell // GitLab's documented routing field spellings.
