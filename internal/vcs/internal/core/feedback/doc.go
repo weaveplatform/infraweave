@@ -1,5 +1,6 @@
 // Package feedback owns VCS feedback target selection and transaction-bound
-// enqueueing for the events domain, and queued commit checks and deployments.
+// enqueueing for the events domain, and queued commit checks, deployments and
+// pull request comments to providers.
 //
 // # Input and output
 //
@@ -39,6 +40,23 @@
 // historical native cursors remain to fence old work. Account purge removes
 // all three tables. Cap failures enqueue in the evaluator's completing
 // transaction and never create a synthetic run.
+// # Plan comments
+//
+// A tracked or proposed run leaving PLANNING selects every open current head
+// at its commit, only with feature:add_plan_pr_comment. Historical run facts
+// identify the exact planning state version. Runs supplies its stored masked
+// text through PlanningLogs; VCS builds the provider-sized tail, heading and
+// final recovery marker. Provider requests never run during event fan-out.
+//
+// A persistent mapping reserves plan:<run> on each native pull request. Its
+// queued handler holds the account, queue generation, integration, request
+// and mapping through a non-retrying bounded completion transaction. Current
+// head movement is rechecked before posting; the native marker recovers a
+// lost create response. Native identity, prior-plan minimization and queue
+// acknowledgement commit together. Run creation time and ID order previous
+// plans even when a delayed older run reports after a newer one. Non-GitHub
+// providers acknowledge minimization as a no-op and keep all native comments.
+// Notification Upsert keys cannot use the reserved plan: namespace.
 //
 // # Dependencies
 //

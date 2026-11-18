@@ -116,6 +116,7 @@ type repository struct {
 // repositories, served under /acme.
 type Fake struct {
 	checks   checkStore
+	comments commentStore
 	webhooks map[string][]Hook
 	mu       sync.Mutex
 	tokens   map[string]*token
@@ -248,6 +249,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Route("/{repository}", func(r chi.Router) {
 				r.Use(f.repository)
 				f.checkRoutes(r)
+				f.commentRoutes(r)
 				r.Get("/refs", f.refs)
 				r.Get("/commits/{commit}", f.commit)
 				r.Get("/annotatedtags/{object}", f.annotatedTag)

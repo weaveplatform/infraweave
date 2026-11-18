@@ -206,6 +206,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Authz:            access.Authorizer(),
 		Stacks:           stacks.Stacks(),
 		Histories:        runs,
+		PlanningLogs:     runs.PlanningLogs(),
 		CommitRuns:       runs.CommitRuns(),
 		CheckFacts:       runs.CheckFacts(),
 		Settings:         c.VCS,

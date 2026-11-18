@@ -16,6 +16,8 @@
 // stack's current or historical commit hashes without filtering type or state;
 // CheckFacts reads minimal current state and plan facts for repository feedback,
 // separately from HistoryAt's exact historical transition cutoff.
+// PlanningLogs reads a bounded raw masked log tail of an exact PLANNING
+// transition without execution configuration or signed object URLs.
 //
 // # Input and output
 //
@@ -26,5 +28,5 @@
 // It imports the standard library and internal/kernel. The domains above
 // runs in the declared graph import it, the vcs domain implements
 // RunSources, and the runs domain implements StateAccess, StackRuns and
-// RunEnds, CommitRuns and CheckFacts.
+// RunEnds, CommitRuns, CheckFacts and PlanningLogs.
 package api

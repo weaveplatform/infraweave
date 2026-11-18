@@ -15,6 +15,10 @@
 // verified delivery, and retains its provider for jobs after integration
 // deletion. Delivery/job/blob transitions share the caller's transaction;
 // retention and account purge return body keys for deferred blob deletion.
+// Pull request comment mappings retain native IDs, Azure thread IDs and Data
+// Center versions. Bind, current-head holds, native-reference acknowledgement
+// and minimization bookkeeping join the caller's transaction. Account purge
+// removes these credential-free records in bounded batches.
 //
 // # Input and output
 //

@@ -27,6 +27,10 @@ type Route struct {
 var Routes = []Route{
 	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/commit/{commit}/statuses/build/{key}"},
 	{http.MethodPost, "/repositories/{workspace}/{repo_slug}/commit/{commit}/statuses/build"},
+	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/pullrequests/{request}/comments"},
+	{http.MethodPost, "/repositories/{workspace}/{repo_slug}/pullrequests/{request}/comments"},
+	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/pullrequests/{request}/comments/{comment}"},
+	{http.MethodPut, "/repositories/{workspace}/{repo_slug}/pullrequests/{request}/comments/{comment}"},
 	{http.MethodGet, "/user"},
 	{http.MethodGet, "/user/workspaces"},
 	{http.MethodGet, "/repositories/{workspace}"},

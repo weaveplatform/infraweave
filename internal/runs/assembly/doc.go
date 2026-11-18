@@ -49,6 +49,8 @@
 // identities and creation times of runs on a stack's requested commits;
 // CheckFacts supplies minimal current state and plan facts for feedback, leaving
 // historical transition cutoffs to HistoryAt and provider policy to its caller;
+// PlanningLogs supplies an account-bound bounded tail of an exact planning
+// transition's masked log, without full run views or signed URLs;
 // Stream is its migration stream, which
 // internal/app registers after configuration's.
 //

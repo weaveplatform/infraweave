@@ -114,6 +114,7 @@ func (p *project) fullPath() string { return p.namespace + "/" + p.path }
 // and subgroups with their members, served under /api/v4.
 type Fake struct {
 	checks      checkStore
+	comments    commentStore
 	deployments deploymentStore
 	webhooks    map[string][]Hook
 	mu          sync.Mutex
@@ -288,6 +289,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Use(f.member)
 			f.deploymentRoutes(r)
 			f.checkRoutes(r)
+			f.commentRoutes(r)
 			r.Get("/", f.project)
 			r.Get("/hooks", f.listWebhooks)
 			r.Get("/repository/commits/{sha}", f.commit)

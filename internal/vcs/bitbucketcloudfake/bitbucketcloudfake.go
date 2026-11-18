@@ -89,6 +89,7 @@ type repository struct {
 // under /2.0.
 type Fake struct {
 	checks   checkStore
+	comments commentStore
 	webhooks map[string][]Hook
 	mu       sync.Mutex
 	accounts map[string]*account
@@ -221,6 +222,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Route("/repositories/{workspace}/{slug}", func(r chi.Router) {
 			r.Use(f.member)
 			f.checkRoutes(r)
+			f.commentRoutes(r)
 			r.Get("/hooks", f.listWebhooks)
 			r.Get("/refs/branches", f.branches)
 			r.Get("/refs/branches/*", f.branch)

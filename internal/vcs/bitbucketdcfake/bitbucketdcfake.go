@@ -117,6 +117,7 @@ type Minted struct {
 // admin mints, served under Tokens.
 type Fake struct {
 	checks   checkStore
+	comments commentStore
 	webhooks map[string][]Hook
 	mu       sync.Mutex
 	users    map[string]*user
@@ -261,6 +262,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Route("/projects/{project}/repos/{slug}", func(r chi.Router) {
 			r.Use(f.member)
 			f.checkRoutes(r)
+			f.commentRoutes(r)
 			r.Get("/", f.repositoryMetadata)
 			r.Get("/webhooks", f.listWebhooks)
 			r.Get("/branches", f.branches)

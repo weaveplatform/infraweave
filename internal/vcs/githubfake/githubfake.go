@@ -105,6 +105,7 @@ type token struct {
 // them.
 type Fake struct {
 	checks      checkStore
+	comments    commentStore
 	deployments deploymentStore
 	mu          sync.Mutex
 	apps        map[int64]*App
@@ -313,6 +314,7 @@ func (f *Fake) Handler() http.Handler {
 				r.Use(f.reachable)
 				f.deploymentRoutes(r)
 				f.checkRoutes(r)
+				f.commentRoutes(r)
 				r.Get("/", f.repositoryMetadata)
 				r.Get("/git/trees/{tree}", f.gitTree)
 				r.Get("/commits/*", f.commit)
@@ -323,6 +325,7 @@ func (f *Fake) Handler() http.Handler {
 			})
 		})
 	})
+	r.With(f.asInstallation).Post("/api/graphql", f.minimizeComment)
 	f.gitRoutes(r)
 	return r
 }
@@ -433,7 +436,7 @@ func (f *Fake) asInstallation(next http.Handler) http.Handler {
 // and the token's repositories name when it is narrowed, answering 404
 // for any other, as GitHub hides what a token cannot see; a token
 // narrowed to permissions without contents is refused on source routes.
-// Deployment routes check their own deployments permission.
+// Deployment and comment routes check their own write-capability permissions.
 func (f *Fake) reachable(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		owner, name := chi.URLParam(r, "owner"), chi.URLParam(r, "repo")
@@ -448,7 +451,8 @@ func (f *Fake) reachable(next http.Handler) http.Handler {
 			return
 		}
 		deployment := strings.HasPrefix(r.URL.Path, "/api/v3/repos/"+owner+"/"+name+"/deployments")
-		if !deployment && t.perms != nil && t.perms["contents"] == "" {
+		comment := strings.Contains(r.URL.Path, "/issues/")
+		if !deployment && !comment && t.perms != nil && t.perms["contents"] == "" {
 			answer(w, http.StatusForbidden, message("Resource not accessible by integration"))
 			return
 		}

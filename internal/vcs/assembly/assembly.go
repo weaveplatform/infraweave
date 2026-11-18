@@ -103,6 +103,7 @@ type Deps struct {
 	Authz            accessapi.Authorizer
 	Stacks           stacksapi.Stacks
 	Histories        runsapi.RunHistories
+	PlanningLogs     runsapi.PlanningLogs
 	CommitRuns       runsapi.CommitRuns
 	CheckFacts       runsapi.CheckFacts
 	Settings         Settings
@@ -227,6 +228,14 @@ func New(d Deps) (*Domain, error) {
 			integration.AzureDevOps:      ado,
 		},
 	})
+	checks.WithComments(feedback.CommentDeps{
+		DB: d.DB, Store: pg.New(d.DB, d.Keys), Histories: d.Histories, Logs: d.PlanningLogs,
+		Stacks: d.Stacks, Integrations: integrations, Public: d.Public,
+		Providers: map[string]port.Comments{
+			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
+			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
+		},
+	})
 	pushes := push.New(push.Deps{
 		Lifecycle: identities,
 		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
@@ -276,6 +285,15 @@ const PurgeBatch = 500
 // Purge deletes the deleted account acct's integrations, PurgeBatch at a
 // time. internal/app runs it for each accessapi.Deleted.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.feedback.PurgeComments(ctx, acct, PurgeBatch)
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the purge
+		}
+		if done {
+			break
+		}
+	}
 	for {
 		done, err := d.feedback.PurgeDeployments(ctx, acct, PurgeBatch)
 		if err != nil {
@@ -371,6 +389,7 @@ func (d *Domain) Jobs() []queue.Registration {
 		d.deliveryJob(),
 		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported},
 		{Kind: feedback.ReportCheck, Handler: d.feedback.Checked},
+		{Kind: feedback.ReportComment, Handler: d.feedback.Commented},
 		{
 			Kind: push.Evaluate, Handler: d.push.Evaluated,
 			Options: queue.HandlerOptions{Feature: "vcs-integrations"},

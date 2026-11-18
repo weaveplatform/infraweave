@@ -24,6 +24,7 @@ type Service struct {
 	hold        func(context.Context, kernel.AccountID) error
 	deployments *DeploymentDeps
 	checks      *CheckDeps
+	comments    *CommentDeps
 }
 
 // ErrAccountHold refuses enqueueing when its owner fence is not configured.
@@ -47,12 +48,16 @@ func (s *Service) Targets(ctx context.Context, event outbox.Event) ([]vcsapi.Fee
 	if err != nil {
 		return nil, err
 	}
-	return append(targets, checks...), nil
+	comments, err := s.commentTargets(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	return append(append(targets, checks...), comments...), nil
 }
 
 func valid(target vcsapi.FeedbackTarget) bool {
 	return !target.Account.IsZero() && !target.EventID.IsZero() && target.Key != "" &&
-		(target.Job == ReportCheck.Name || target.Job == ReportDeployment.Name) && json.Valid(target.Payload)
+		(target.Job == ReportCheck.Name || target.Job == ReportDeployment.Name || target.Job == ReportComment.Name) && json.Valid(target.Payload)
 }
 
 // Enqueue creates the target's job in the transaction on ctx. The event,
@@ -73,7 +78,10 @@ func (s *Service) Enqueue(ctx context.Context, target vcsapi.FeedbackTarget) err
 	if target.Job == ReportDeployment.Name {
 		return s.enqueueDeployment(ctx, target)
 	}
-	if s.checks != nil {
+	if target.Job == ReportComment.Name {
+		return s.enqueueComment(ctx, target)
+	}
+	if target.Job == ReportCheck.Name && s.checks != nil {
 		return s.enqueueCheck(ctx, target)
 	}
 	key := fmt.Sprintf("%s:%s:commit_checks:%s:0", target.Account, target.EventID, target.Key)

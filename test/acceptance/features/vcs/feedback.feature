@@ -248,3 +248,67 @@ Feature: Repository runs report native checks and deployments
     Then it answers 200
     And token "h" eventually reads the run "pushCheck" in the state "DISCARDED" through A
     And check events for run "pushCheck" have settled
+  @case:plan-comments
+  Scenario Outline: Labelled plans recover one masked comment per run and follow current shared heads
+    Given a "<provider>" plan-comment stack "infra" using "<vendor>" with labels '["feature:add_plan_pr_comment"]'
+    And the comment fixture sends shared, moved and closed requests through A
+    And the comment API loses its next successful create response
+    When a real "PROPOSED" plan of comment stack "infra" is run as "first" with "masked" output through A
+    Then token "h" eventually reads the run "first" in the state "FINISHED" through B
+    And comment events for run "first" have settled
+    And a comment report for run "first" recovered after a lost create
+    And run "first" has one masked native plan comment on each request "12, 13"
+    And run "first" has a native plan comment result "FINISHED" on request 12
+    And comment requests "14, 15" have no native comments
+    When comment request 12 moves to another real commit through B
+    And a real "TRACKED" plan of comment stack "infra" is run as "second" with "plain" output through B
+    Then token "h" eventually reads the run "second" in the state "UNCONFIRMED" through A
+    And comment events for run "second" have settled
+    And run "second" has a native plan comment result "UNCONFIRMED" on request 13
+    And run "second" has no native comment on request 12
+    And comment request 13 has 2 comments and its previous plan is "<previous>"
+    And comment requests "14, 15" have no native comments
+    When token "h" sends "POST /api/v1/stacks/infra/runs/discard" with '{"run":"{second}"}' through A
+    Then it answers 200
+    And token "h" eventually reads the run "second" in the state "DISCARDED" through B
+    And comment events for run "second" have settled
+    Given a "<provider>" plan-comment stack "silent" using "<vendor>" with labels '[]'
+    When a real "PROPOSED" plan of comment stack "silent" is run as "silent" with "plain" output through A
+    Then token "h" eventually reads the run "silent" in the state "FINISHED" through B
+    And comment events for run "silent" have settled
+    And unlabelled run "silent" has real stored planning output and no native comment
+    And comment request 13 has 2 comments and its previous plan is "<previous>"
+
+    @terraform
+    Examples:
+      | provider | vendor    | previous  |
+      | GitHub   | terraform | outdated  |
+      | GitLab   | terraform | unchanged |
+
+    @tofu
+    Examples:
+      | provider | vendor   | previous  |
+      | GitHub   | opentofu | outdated  |
+      | GitLab   | opentofu | unchanged |
+
+  @case:plan-comments
+  Scenario Outline: An oversized stored planning log keeps its exact tail within the native comment budget
+    Given a "<provider>" plan-comment stack "infra" using "<vendor>" with labels '["feature:add_plan_pr_comment"]'
+    And the comment fixture opens request 12 at the current head through A
+    When a real "PROPOSED" plan of comment stack "infra" is run as "large" with "oversized" output through B
+    Then token "h" eventually reads the run "large" in the state "FINISHED" through A
+    And comment events for run "large" have settled
+    And run "large" has a native plan comment result "FINISHED" on request 12
+    And run "large" has an oversized native comment tail on request 12
+
+    @terraform
+    Examples:
+      | provider | vendor    |
+      | GitHub   | terraform |
+      | GitLab   | terraform |
+
+    @tofu
+    Examples:
+      | provider | vendor   |
+      | GitHub   | opentofu |
+      | GitLab   | opentofu |
