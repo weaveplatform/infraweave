@@ -30,6 +30,11 @@
 // Data Center sends once; circuit breaking does not establish a documented
 // per-delivery retry policy. Redirects remain separate responses.
 //
+// Authenticated Git smart HTTP serves the same immutable repository graph at
+// the provider's native clone paths. Only upload-pack is available; credentials,
+// current repository membership and native read scope are checked before it.
+// There is no receive-pack or unauthenticated clone fallback.
+//
 // # Dependencies
 //
 // It imports chi, go-git's object package and the domain's gitmem, which

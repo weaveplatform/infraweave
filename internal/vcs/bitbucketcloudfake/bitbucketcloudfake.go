@@ -229,6 +229,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/", f.repositoryMetadata)
 		})
 	})
+	f.gitRoutes(r)
 	return r
 }
 

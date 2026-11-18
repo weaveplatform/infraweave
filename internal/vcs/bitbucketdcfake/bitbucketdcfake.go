@@ -276,6 +276,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Put("/", f.mint)
 		r.Delete("/{id}", f.revoke)
 	})
+	f.gitRoutes(r)
 	return r
 }
 
