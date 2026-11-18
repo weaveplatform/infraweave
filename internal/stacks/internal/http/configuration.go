@@ -14,6 +14,10 @@ import (
 // exists, and no stack is rolled back.
 type unbound struct{}
 
+func (unbound) PullRequests(context.Context, kernel.AccountID, []stacksapi.Settings) (map[kernel.ULID][]stacksapi.PullRequest, error) {
+	return map[kernel.ULID][]stacksapi.PullRequest{}, nil
+}
+
 func (unbound) RolledBack(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]bool, error) {
 	return map[kernel.ULID]bool{}, nil
 }
@@ -45,10 +49,14 @@ func (unbound) RuntimeConfig(context.Context, kernel.AccountID, []kernel.ULID) (
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
+	requests  stacksapi.PullRequestReader
 	config    stacksapi.StackConfiguration
 	status    stacksapi.StackStatus
 	rollbacks stacksapi.StateRollbacks
 }
+
+// BindPullRequests binds the request history read after VCS construction.
+func (s Server) BindPullRequests(r stacksapi.PullRequestReader) { s.edges.requests = r }
 
 // BindConfiguration makes c the configuration every copy of s reads. It
 // runs during construction, before the server serves a request.

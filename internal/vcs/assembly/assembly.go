@@ -34,6 +34,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
 )
@@ -100,6 +101,7 @@ type Deps struct {
 	Authz            accessapi.Authorizer
 	Stacks           stacksapi.Stacks
 	Histories        runsapi.RunHistories
+	CommitRuns       runsapi.CommitRuns
 	Settings         Settings
 	Public           string
 	Log              *slog.Logger
@@ -120,6 +122,7 @@ type Domain struct {
 	intake       *intake.Service
 	limits       *push.Limits
 	push         *push.Service
+	requests     *pullrequest.Service
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
@@ -190,7 +193,12 @@ func New(d Deps) (*Domain, error) {
 		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
 		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log,
 	})
-	inbox, err := newIntake(d, pushes, map[string]any{
+	requests := pullrequest.New(pullrequest.Deps{
+		Store: pg.New(d.DB, d.Keys), Integrations: integrations,
+		Authors: map[string]pullrequest.Authors{integration.GitLab: gl}, Runs: d.CommitRuns, Pushes: pushes,
+		Now: clock, Retention: d.Settings.Deliveries.Retention,
+	})
+	inbox, err := newIntake(d, requests, map[string]any{
 		integration.GitHubEnterprise: gh, integration.GitLab: gl,
 		integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
 	})
@@ -200,6 +208,7 @@ func New(d Deps) (*Domain, error) {
 	return &Domain{
 		sources:      sources,
 		push:         pushes,
+		requests:     requests,
 		integrations: integrations,
 		intake:       inbox,
 		limits:       limits,
@@ -255,6 +264,11 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 			if err := d.purgeDeliveries(ctx, acct); err != nil {
 				return err
 			}
+			if d.requests != nil {
+				if err := d.requests.Purge(ctx, acct); err != nil {
+					return err //nolint:wrapcheck // the request service names the failed purge
+				}
+			}
 			return d.limits.Store.PurgeRunLimit(ctx, acct) //nolint:wrapcheck // the VCS setting store names the purge
 		}
 	}
@@ -262,6 +276,9 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 
 // Sources resolves the commits of a stack's repository for other domains.
 func (d *Domain) Sources() vcsapi.Sources { return d.sources }
+
+// PullRequests supplies the stacks-owned request history back edge.
+func (d *Domain) PullRequests() stacksapi.PullRequestReader { return d.requests }
 
 // RunSources answers a run's source at its handover and releases its
 // credentials at its end, the runsapi.RunSources internal/app binds in

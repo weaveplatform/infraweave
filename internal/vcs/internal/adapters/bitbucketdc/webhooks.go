@@ -16,6 +16,7 @@ var webhookEvents = []string{
 	"pr:reviewer:approved",
 	"pr:reviewer:unapproved",
 	"pr:merged",
+	"pr:declined",
 	"pr:comment:added",
 }
 

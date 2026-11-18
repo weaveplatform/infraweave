@@ -2,14 +2,16 @@ package azuredevops
 
 import (
 	"strings"
+	"time"
 
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 )
 
 type webhookEnvelope struct {
-	ID        string           `json:"id"`
-	EventType string           `json:"eventType"`
-	Resource  *webhookResource `json:"resource"`
+	CreatedDate time.Time        `json:"createdDate"`
+	ID          string           `json:"id"`
+	EventType   string           `json:"eventType"`
+	Resource    *webhookResource `json:"resource"`
 }
 
 type webhookResource struct {
@@ -30,9 +32,11 @@ type webhookRefUpdate struct {
 }
 
 type webhookRepository struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Project struct {
+	RemoteURL string `json:"remoteUrl"`
+	WebURL    string `json:"webUrl"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Project   struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"project"`
@@ -62,6 +66,15 @@ func (i webhookIdentity) login() string {
 }
 
 type webhookRequest struct {
+	Title        string    `json:"title"`
+	CreationDate time.Time `json:"creationDate"`
+	ClosedDate   time.Time `json:"closedDate"`
+	UpdatedAt    time.Time `json:"-"`
+	Links        struct {
+		Web struct {
+			Href string `json:"href"`
+		} `json:"web"`
+	} `json:"_links"` //nolint:tagliatelle // Azure DevOps' native links envelope.
 	Repository            *webhookRepository `json:"repository"`
 	PullRequestID         int                `json:"pullRequestId"`
 	SourceRefName         string             `json:"sourceRefName"`
@@ -113,8 +126,10 @@ func (r webhookRequest) request() (vcsapi.PullRequest, bool) {
 	// mergeStatus reports the preview merge, not every blocking policy.
 	// Neither it nor a reviewer vote proves target ancestry or full policy
 	// approval, so mergeability and undiverged remain unknown/false.
-	return vcsapi.PullRequest{
+	out := vcsapi.PullRequest{
 		Number: r.PullRequestID, HeadBranch: head, BaseBranch: base, HeadOwner: owner,
 		Draft: r.IsDraft, Fork: r.ForkSource != nil, Approved: approved, Labels: labels,
-	}, true
+	}
+	azureMetadata(r, &out)
+	return out, true
 }

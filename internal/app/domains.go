@@ -206,6 +206,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Authz:            access.Authorizer(),
 		Stacks:           stacks.Stacks(),
 		Histories:        runs,
+		CommitRuns:       runs.CommitRuns(),
 		Settings:         c.VCS,
 		Public:           c.Server.PublicURL,
 		Log:              log,
@@ -223,6 +224,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.BindSources(vcs.StackSources())
 	runs.BindSources(vcs.RunSources(), vcs.StackSources())
 	stacks.BindIntegrations(vcs.StackIntegrations())
+	stacks.BindPullRequests(vcs.PullRequests())
 	eventSinks, err := eventsassembly.New(eventsassembly.Deps{
 		DB: db.Primary(), Feedback: vcs.Feedback(), Settings: c.Events.Deliveries,
 	})

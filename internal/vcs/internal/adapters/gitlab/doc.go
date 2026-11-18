@@ -33,6 +33,9 @@
 // fail durably. Fully approved/unapproved notifications re-evaluate policy as
 // edited actions. Missing approval/mergeability facts stay false, without a
 // provider query; note bodies remain uninterpreted policy data.
+// AuthorLogin separately resolves a missing creator's immutable user ID during
+// VCS preparation, before the completion transaction, without refreshing the
+// delivered request or its head. It uses the same bounded, allowlisted client.
 //
 // # Dependencies
 //

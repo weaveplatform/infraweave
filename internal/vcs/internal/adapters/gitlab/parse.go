@@ -131,6 +131,9 @@ func mergePayload(payload webhookPayload, event vcsapi.Event) ([]vcsapi.Event, e
 		request.Labels = labelNames(payload.Labels)
 	}
 	event.Type, event.PullRequest = "pull_request", &request
+	if attributes.AuthorID > 0 && payload.User.ID == attributes.AuthorID {
+		request.AuthorLogin = payload.User.Username
+	}
 	event.Head, event.Branch = attributes.LastCommit.ID, attributes.SourceBranch
 	event.Before = attributes.OldRev
 	actions := requestActions(attributes.Action, attributes.OldRev, payload.Changes.Labels)

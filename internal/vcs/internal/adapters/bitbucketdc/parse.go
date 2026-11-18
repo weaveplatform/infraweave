@@ -22,7 +22,7 @@ func (*Provider) DeliveryID(h http.Header, _ []byte) string { return h.Get("X-Re
 // Consumed excludes ping and every unsupported event before persistence.
 func (*Provider) Consumed(event string) bool {
 	switch event {
-	case "repo:refs_changed", "pr:opened", "pr:from_ref_updated", "pr:modified", "pr:reviewer:approved", "pr:reviewer:unapproved", "pr:merged", "pr:comment:added":
+	case "repo:refs_changed", "pr:opened", "pr:from_ref_updated", "pr:modified", "pr:reviewer:approved", "pr:reviewer:unapproved", "pr:merged", "pr:declined", "pr:comment:added":
 		return true
 	}
 	return false
@@ -104,8 +104,9 @@ type webhookPayload struct {
 }
 
 type webhookRepository struct {
-	ID      int64  `json:"id"`
-	Slug    string `json:"slug"`
+	Links   webhookLinks `json:"links"`
+	ID      int64        `json:"id"`
+	Slug    string       `json:"slug"`
 	Project struct {
 		Key string `json:"key"`
 	} `json:"project"`
@@ -124,6 +125,11 @@ type webhookParticipant struct {
 }
 
 type webhookRequest struct {
+	Title        string               `json:"title"`
+	State        string               `json:"state"`
+	CreatedDate  int64                `json:"createdDate"`
+	UpdatedDate  int64                `json:"updatedDate"`
+	Links        webhookLinks         `json:"links"`
 	ID           int                  `json:"id"`
 	Draft        bool                 `json:"draft"`
 	FromRef      webhookRef           `json:"fromRef"`
@@ -216,7 +222,10 @@ func dcChange(c webhookChange, repo vcsapi.Repository, author string) (vcsapi.Ev
 
 func dcRequest(d webhookPayload, event string) (vcsapi.Event, error) {
 	r := d.PullRequest
-	if r == nil || r.ID <= 0 || r.FromRef.LatestCommit == "" {
+	if r == nil || r.ID <= 0 {
+		return vcsapi.Event{}, ErrWebhookPayload
+	}
+	if !port.ValidCommit(r.FromRef.LatestCommit) && event != "pr:merged" && event != "pr:declined" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	source, sourceOK := dcRepository(r.FromRef.Repository)
@@ -246,6 +255,8 @@ func dcRequest(d webhookPayload, event string) (vcsapi.Event, error) {
 		e.Action, e.Before = "synchronize", d.PreviousFromHash
 	case "pr:merged":
 		e.Action = "merged"
+	case "pr:declined":
+		e.Action = "closed"
 	}
 	// An OPEN state says nothing about conflicts, branch protection or
 	// target ancestry. These facts remain false without payload proof.
@@ -259,6 +270,7 @@ func dcRequest(d webhookPayload, event string) (vcsapi.Event, error) {
 		Approved:   dcApproved(d),
 		Labels:     []string{},
 	}
+	dcMetadata(r, e.PullRequest)
 	return e, nil
 }
 
