@@ -19,16 +19,20 @@ import (
 
 type deploymentFacts struct {
 	stacksapi.Stacks
-	history     runsapi.RunHistory
-	stack       stacksapi.Settings
-	labels      []string
-	binding     kernel.ULID
-	stored      Deployment
-	failure     error
-	reports     []port.DeploymentState
-	reportError error
-	useError    error
-	useFound    bool
+	history      runsapi.RunHistory
+	stack        stacksapi.Settings
+	labels       []string
+	binding      kernel.ULID
+	stored       Deployment
+	failure      error
+	stackError   error
+	labelsError  error
+	bindingError error
+	storeError   error
+	reports      []port.DeploymentState
+	reportError  error
+	useError     error
+	useFound     bool
 }
 
 func (f *deploymentFacts) HistoryAt(context.Context, kernel.AccountID, kernel.ULID, int64) (runsapi.RunHistory, error) {
@@ -36,15 +40,15 @@ func (f *deploymentFacts) HistoryAt(context.Context, kernel.AccountID, kernel.UL
 }
 
 func (f *deploymentFacts) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
-	return f.stack, f.failure
+	return f.stack, f.stackError
 }
 
 func (f *deploymentFacts) Labels(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]string, error) {
-	return map[kernel.ULID][]string{f.stack.ID: slices.Clone(f.labels)}, nil
+	return map[kernel.ULID][]string{f.stack.ID: slices.Clone(f.labels)}, f.labelsError
 }
 
 func (f *deploymentFacts) Binding(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error) {
-	return port.Integration{ID: f.binding}, !f.binding.IsZero(), nil
+	return port.Integration{ID: f.binding}, !f.binding.IsZero(), f.bindingError
 }
 
 func (f *deploymentFacts) Use(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error) {
@@ -57,10 +61,22 @@ func (f *deploymentFacts) Report(_ context.Context, _ port.Repository, _ port.De
 }
 
 func (f *deploymentFacts) Deployment(context.Context, kernel.AccountID, kernel.ULID) (Deployment, error) {
+	if f.storeError != nil {
+		return Deployment{}, f.storeError
+	}
 	if f.stored.Run.ID.IsZero() {
 		return Deployment{}, ErrNoDeployment
 	}
 	return f.stored, nil
+}
+
+type deploymentScopedFacts struct {
+	*deploymentFacts
+	err error
+}
+
+func (f deploymentScopedFacts) DeploymentHost(port.Settings) (string, error) {
+	return "https://gitlab.example.com/api/v4/", f.err
 }
 
 func (*deploymentFacts) BindDeployment(context.Context, Deployment) (Deployment, error) {
@@ -286,5 +302,53 @@ func TestUnitDeploymentProviderBoundary(t *testing.T) {
 	}
 	if err := s.Reported(t.Context(), queue.Job{}); err == nil {
 		t.Fatal("invalid job accepted")
+	}
+}
+
+func TestUnitDeploymentFactFailures(t *testing.T) {
+	t.Parallel()
+	down := errors.New("fact reader unavailable")
+	for name, change := range map[string]func(*Service, *deploymentFacts){
+		"stored binding":      func(_ *Service, f *deploymentFacts) { f.storeError = down },
+		"stack":               func(_ *Service, f *deploymentFacts) { f.stackError = down },
+		"labels":              func(_ *Service, f *deploymentFacts) { f.labelsError = down },
+		"integration binding": func(_ *Service, f *deploymentFacts) { f.bindingError = down },
+		"native host": func(s *Service, f *deploymentFacts) {
+			f.stack.Provider = "GITLAB"
+			s.deployments.Providers["GITLAB"] = deploymentScopedFacts{deploymentFacts: f, err: down}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s, f, event := deploymentTargetWorld(t)
+			change(s, f)
+			targets, err := s.Targets(t.Context(), event)
+			if !errors.Is(err, down) || len(targets) != 0 || len(f.reports) != 0 {
+				t.Fatalf("unavailable facts silently skipped or emitted effect: targets=%v error=%v reports=%v", targets, err, f.reports)
+			}
+		})
+	}
+}
+
+func TestUnitDeploymentNativeScopeAndMissingStack(t *testing.T) {
+	t.Parallel()
+	s, f, event := deploymentTargetWorld(t)
+	f.stack.Provider = "GITLAB"
+	f.history.Branch = ""
+	s.deployments.Providers["GITLAB"] = deploymentScopedFacts{deploymentFacts: f}
+	targets, err := s.Targets(t.Context(), event)
+	if err != nil || len(targets) != 1 {
+		t.Fatalf("native target %+v %v", targets, err)
+	}
+	var r DeploymentRequest
+	if err := json.Unmarshal(targets[0].Payload, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Deployment.NativeHost != "https://gitlab.example.com/api/v4/" || r.Deployment.Run.Ref != f.stack.Branch || !validDeployment(r) {
+		t.Fatalf("native scope/ref %+v", r)
+	}
+	f.stackError = stacksapi.ErrNotFound
+	if targets, err := s.Targets(t.Context(), event); err != nil || len(targets) != 0 {
+		t.Fatalf("deleted stack target %+v %v", targets, err)
 	}
 }
