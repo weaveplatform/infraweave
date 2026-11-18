@@ -34,6 +34,10 @@ type lifecycleTargets struct {
 	err         error
 }
 
+func (s *lifecycleTargets) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
+}
+
 func (s *lifecycleTargets) RepointVCSRepository(ctx context.Context, acct kernel.AccountID, use stacksapi.Use, from, to stacksapi.VCSRepository) error {
 	if !tx.In(ctx) || acct != s.f.acct || use.Integration != s.integration {
 		return errors.New("repoint lost transaction/binding")
@@ -222,6 +226,10 @@ type routedTargets struct {
 	stacksapi.Stacks
 	rows  []stacksapi.Stack
 	reads int
+}
+
+func (s *routedTargets) VCSRepositories(ctx context.Context, acct kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	return (dispatchTargets{rows: s.rows}).VCSRepositories(ctx, acct, use)
 }
 
 func (s *routedTargets) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
@@ -610,6 +618,19 @@ type (
 		renamedUse, selectedUse stacksapi.Use
 	}
 )
+
+func (s *liveBindingStacks) VCSRepositories(_ context.Context, acct kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	if acct != s.account {
+		return nil, errDown
+	}
+	var out []stacksapi.VCSRepository
+	for _, row := range s.rows {
+		if row.binding == use.Integration || row.binding.IsZero() && use.Default {
+			out = append(out, stacksapi.VCSRepository{Namespace: row.namespace, Name: row.name})
+		}
+	}
+	return out, nil
+}
 
 func (s *liveBindingStacks) RepointVCSRepository(ctx context.Context, acct kernel.AccountID, use stacksapi.Use, from, to stacksapi.VCSRepository) error {
 	if !tx.In(ctx) || acct != s.account {

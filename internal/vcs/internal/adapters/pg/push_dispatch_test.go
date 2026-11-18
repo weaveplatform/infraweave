@@ -99,6 +99,13 @@ type dispatchTargets struct {
 	rows []stacksapi.Stack
 }
 
+func (s dispatchTargets) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	if len(s.rows) == 0 {
+		return nil, nil
+	}
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
+}
+
 func (s dispatchTargets) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
 	return s.rows, nil
 }

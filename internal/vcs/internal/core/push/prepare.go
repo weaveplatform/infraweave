@@ -23,6 +23,7 @@ type plan struct {
 	delivery   intake.Delivery
 	events     []Prepared
 	normalized []vcsapi.Event
+	noSources  bool
 }
 
 // Prepare resolves each diff once, then groups every ref into one child per
@@ -48,6 +49,13 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 		return nil, fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
 	}
 	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events)}
+	if len(selected) != 0 {
+		repositories, err := s.d.Stacks.VCSRepositories(ctx, delivery.Account, use)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the stack boundary names the metadata read
+		}
+		out.noSources = len(repositories) == 0
+	}
 	for _, event := range selected {
 		if !s.d.Now().Before(delivery.Deadline) {
 			return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
@@ -59,6 +67,10 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			}
 		}
 		prepared := Prepared{Event: event}
+		if out.noSources {
+			out.events = append(out.events, prepared)
+			continue
+		}
 		if event.Type == "push" {
 			prepared.Commit, prepared.Files, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
@@ -115,9 +127,6 @@ func (p *plan) Commit(ctx context.Context) error {
 	if len(events) == 0 {
 		return nil
 	}
-	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, events); err != nil {
-		return err //nolint:wrapcheck // the store names the prepared write
-	}
 	targets := map[kernel.ULID]bool{}
 	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
 	for _, prepared := range events {
@@ -133,6 +142,17 @@ func (p *plan) Commit(ctx context.Context) error {
 		for _, stack := range stacks {
 			targets[stack.ID] = true
 		}
+	}
+	if p.noSources {
+		// A stack/default binding can appear after the repository-only preflight.
+		// Retry outside the transaction rather than publish missing native facts.
+		if len(targets) != 0 {
+			return fmt.Errorf("%w: repository users appeared after preparation", kernel.ErrUnavailable)
+		}
+		return nil
+	}
+	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, events); err != nil {
+		return err //nolint:wrapcheck // the store names the prepared write
 	}
 	ids := make([]kernel.ULID, 0, len(targets))
 	for id := range targets {
