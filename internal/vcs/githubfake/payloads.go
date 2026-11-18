@@ -37,9 +37,15 @@ func Payload(event, action string) ([]byte, error) {
 			"author":    map[string]string{"name": AuthorName, "email": AuthorEmail, "username": AuthorLogin},
 		}
 	case "pull_request", "pull_request_review":
-		d["number"], d["pull_request"] = 12, pullRequestPayload(repo, sender)
+		pr := pullRequestPayload(repo, sender)
+		pr["draft"] = action == "converted_to_draft"
+		d["number"], d["pull_request"] = 12, pr
 		if event == "pull_request_review" {
-			d["review"] = map[string]any{"id": 93, "state": "approved", "user": sender, "body": "Looks good"}
+			state := "approved"
+			if action == "dismissed" {
+				state = "dismissed"
+			}
+			d["review"] = map[string]any{"id": 93, "state": state, "user": sender, "body": "Looks good"}
 		}
 	case "issue_comment":
 		d["issue"] = map[string]any{"number": 12, "pull_request": map[string]string{"url": "https://api.github.com/repos/acme/infra/pulls/12"}}

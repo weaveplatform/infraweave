@@ -91,7 +91,9 @@ func TestAccGitHubAppWebhook(t *testing.T) {
 				t.Fatal("stored delivery changed verified bytes or account identity")
 			}
 			var ordering, stored string
-			if err := w.f.db.QueryRow(t.Context(), `SELECT ordering_key FROM jobs WHERE account_id=$1 AND kind='vcs.process_delivery'`, w.f.acct).Scan(&ordering); err != nil || ordering != w.id.String()+"/7" {
+			if err := w.f.db.QueryRow(t.Context(), `SELECT ordering_key FROM jobs WHERE account_id=$1 AND kind='vcs.process_delivery'`, w.f.acct).
+				Scan(&ordering); err != nil ||
+				ordering != w.id.String()+"/7" {
 				t.Fatalf("repository ordering = %q, %v", ordering, err)
 			}
 			if err := w.f.db.QueryRow(t.Context(), `SELECT row_to_json(d)::text FROM vcs_deliveries d WHERE id=$1`, d.ID).Scan(&stored); err != nil {
@@ -104,7 +106,8 @@ func TestAccGitHubAppWebhook(t *testing.T) {
 			if err := w.svc.Processed(t.Context(), job); err != nil {
 				t.Fatal(err)
 			}
-			if len(events) != 1 || events[0].Type != "push" || events[0].Repository.ID != "7" || events[0].Branch != "main" || events[0].Head != githubfake.AfterSHA || !events[0].Forced {
+			if len(events) != 1 || events[0].Type != "push" || events[0].Repository.ID != "7" || events[0].Branch != "main" || events[0].Head != githubfake.AfterSHA ||
+				!events[0].Forced {
 				t.Fatalf("durable normalization = %+v", events)
 			}
 			if w.delivery(t, id).State != intake.Dispatched {

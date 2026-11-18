@@ -116,6 +116,11 @@ func (d *webhook) pullRequest(e vcsapi.Event) (vcsapi.Event, error) {
 	if pr.GetNumber() <= 0 || pr.GetHead() == nil || pr.GetBase() == nil {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
+	if e.Type == "pull_request_review" {
+		// Review changes reevaluate policy as an edit. The retained delivery
+		// still carries the provider's submitted/dismissed action.
+		e.Action = "edited"
+	}
 	e.Type, e.Head, e.Branch, e.Before = "pull_request", pr.GetHead().GetSHA(), pr.GetHead().GetRef(), d.Before
 	if e.Action == "closed" && pr.GetMerged() {
 		e.Action = "merged"

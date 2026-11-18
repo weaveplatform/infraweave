@@ -98,6 +98,8 @@ func TestUnitGitHubParse(t *testing.T) {
 		{kind: "repository", action: "renamed", want: vcsapi.Event{Type: "repository_renamed", Action: "renamed", Repository: repo, Author: githubfake.AuthorLogin}},
 	}...)
 	for _, action := range []string{"opened", "reopened", "synchronize", "edited", "closed", "labeled", "unlabeled", "ready_for_review", "converted_to_draft"} {
+		request := *pr
+		request.Draft = action == "converted_to_draft"
 		cases = append(
 			cases,
 			example{
@@ -110,7 +112,7 @@ func TestUnitGitHubParse(t *testing.T) {
 					Author:      githubfake.AuthorLogin,
 					Branch:      "feature",
 					Head:        githubfake.HeadSHA,
-					PullRequest: pr,
+					PullRequest: &request,
 				},
 			},
 		)
@@ -140,7 +142,7 @@ func TestUnitGitHubParse(t *testing.T) {
 				action: action,
 				want: vcsapi.Event{
 					Type:        "pull_request",
-					Action:      action,
+					Action:      "edited",
 					Repository:  repo,
 					Author:      githubfake.AuthorLogin,
 					Branch:      "feature",
