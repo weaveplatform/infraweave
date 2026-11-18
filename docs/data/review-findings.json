@@ -13220,7 +13220,7 @@
           "file": "docs/implementation/repo-layout.md",
           "present": [
             "| `registry` | features, access, workers, configuration, policies, runs, cloud | |",
-            "| `events` | features, access, workers, stacks, runs, policies, vcs | |",
+            "| `events` | runs and vcs (P12b); features, access, workers and stacks (P18); policies (edge allowed when P13 introduces it, used in P18) | |",
             "| `intelligence` | features, access, workers, stacks, policies, runs, cloud |",
             "| `flows` | features, access, stacks, runs, templates |"
           ]

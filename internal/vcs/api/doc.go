@@ -2,7 +2,9 @@
 // which resolves a branch, a tag or a commit of a stack's repository to a
 // Commit, names the URL a worker fetches a commit's source from, hands a
 // run the Credential it fetches with and revokes it when the run ends;
-// ErrRefNotFound when the repository lacks the ref.
+// ErrRefNotFound when the repository lacks the ref. Feedback exposes only
+// event kinds, target selection and transaction-bound job enqueueing to
+// the events domain; its payloads carry identifiers rather than secrets.
 //
 // # Input and output
 //
@@ -10,7 +12,7 @@
 //
 // # Dependencies
 //
-// It imports the standard library and internal/kernel. The vcs domain's
+// It imports the standard library, internal/kernel and platform/outbox. The vcs domain's
 // assembly implements Sources; runs calls it through a back edge that
 // internal/app binds.
 package api

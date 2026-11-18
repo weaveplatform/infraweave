@@ -22,7 +22,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/serve"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
-	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
@@ -38,7 +37,7 @@ type Config struct {
 	Database sql.Config        `mapstructure:"database"`
 	Log      observe.LogConfig `mapstructure:"log"`
 	Queue    queue.Config      `mapstructure:"queue"`
-	Events   outbox.Config     `mapstructure:"events"`
+	Events   EventsSettings    `mapstructure:"events"`
 	Secrets  crypt.Config      `mapstructure:"secrets"`
 	// Expressions are the limits every expression evaluation runs under.
 	//
@@ -130,7 +129,7 @@ func Defaults() Config {
 		Database:    sql.Defaults(),
 		Log:         observe.LogDefaults(),
 		Queue:       queue.Defaults(),
-		Events:      outbox.Defaults(),
+		Events:      defaultEventsSettings(),
 		Secrets:     crypt.Defaults(),
 		Expressions: expr.Defaults(),
 

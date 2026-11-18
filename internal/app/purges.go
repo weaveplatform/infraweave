@@ -25,6 +25,7 @@ const (
 	stacksPurge        = "stacks.purge"
 	configurationPurge = "configuration.purge"
 	vcsPurge           = "vcs.purge"
+	eventsPurge        = "events.purge"
 	runsPurge          = "runs.purge"
 	workersPurge       = "workers.purge"
 	statePurge         = "state.purge"
@@ -46,6 +47,9 @@ func subscribePurges(events *outbox.Outbox, d Domains) error {
 		},
 		vcsPurge: func(ctx context.Context, del accessapi.Deleted) error {
 			return d.VCS.Purge(ctx, kernel.AccountID{ULID: del.Account})
+		},
+		eventsPurge: func(ctx context.Context, del accessapi.Deleted) error {
+			return d.Events.Purge(ctx, kernel.AccountID{ULID: del.Account})
 		},
 		runsPurge: func(ctx context.Context, del accessapi.Deleted) error {
 			return d.Runs.Purge(ctx, kernel.AccountID{ULID: del.Account})
