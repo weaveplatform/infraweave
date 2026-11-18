@@ -14,7 +14,7 @@ Feature: Expression samples and template secrecy use ranked configuration source
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     Then it answers 201
 
   @op:expressionCheck @op:expressionComplete @op:expressionEvaluate @op:stackConfigAdd @op:stackConfigSet @op:stackConfigElement @case:success

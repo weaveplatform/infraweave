@@ -104,16 +104,17 @@ func (s *Service) users(ctx context.Context, p kernel.Principal, id string) (sta
 	if err != nil {
 		return stacksapi.Use{}, err
 	}
-	return stacksapi.Use{Integration: in.ID, Provider: in.Provider, Default: in.IsDefault}, nil
+	use := stacksapi.Use{Integration: in.ID, Provider: in.Provider, Default: in.IsDefault}
+	if in.Provider == GitHubEnterprise {
+		use.Aliases = []string{GitHub}
+	}
+	return use, nil
 }
 
 // browsed is the integration p browses, with its secrets opened: the
-// operator's for a built-in provider; id, of provider when it is not
-// empty; or provider's default when id is empty.
+// id, of provider when it is not empty; or provider's default when id is empty.
 func (s *Service) browsed(ctx context.Context, p kernel.Principal, provider, id string) (port.Integration, error) {
-	if use, ok := s.builtin[provider]; ok {
-		return use, nil
-	}
+	provider = canonicalProvider(provider)
 	if id == "" && provider == "" {
 		return port.Integration{}, &kernel.Invalid{
 			Detail: invalidDetail,

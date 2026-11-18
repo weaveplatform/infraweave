@@ -6259,7 +6259,7 @@ components:
       type: object
       x-graphql-type: VCSIntegration
     VCSProvider:
-      description: VCSProvider is the type of VCS provider.
+      description: VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
       enum:
         - BITBUCKET_CLOUD
         - BITBUCKET_DATACENTER
@@ -6279,7 +6279,7 @@ components:
         BITBUCKET_DATACENTER: Self-hosted Bitbucket Datacenter.
         BLOB: Blob Storage VCS provider reading commit archives from an object store.
         GIT: Git link VCS provider.
-        GITHUB: Managed GitHub (github.com).
+        GITHUB: The account's named GitHub App integration, or its default when none is named.
         GITHUB_ENTERPRISE: |-
           GitHub Enterprise - either self-hosted or as an extra organization on
           github.com.

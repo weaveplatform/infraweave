@@ -22,13 +22,12 @@ func (s stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacks
 }
 
 // TestUnitDomain checks that the domain reads raw Git, refusing an http
-// URL at /repositoryURL before any request; reads GitHub, refusing a
-// stack with no operator App at /vcsIntegrationId; refuses a provider it
-// has no Source of at /provider; and that a nil domain's partial is the
+// URL at /repositoryURL before any request; refuses a provider it has
+// no Source of at /provider; and checks that a nil domain's partial is the
 // zero one.
 func TestUnitDomain(t *testing.T) {
 	for provider, pointer := range map[string]string{
-		"GIT": "/repositoryURL", "GITHUB": "/vcsIntegrationId",
+		"GIT":   "/repositoryURL",
 		"OTHER": "/provider",
 	} {
 		d, err := New(Deps{Stacks: stacks{provider: provider}})

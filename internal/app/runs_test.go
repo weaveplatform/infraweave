@@ -39,6 +39,7 @@ func TestAccRunsHoldRace(t *testing.T) {
 		res, err := d.Stacks.API().StackCreate(w.admin, api.StackCreateRequestObject{
 			Body: &api.StackCreateRequest{Input: api.StackInput{
 				Name: name, Repository: "infra", Branch: "main", Space: &space,
+				Provider: new(api.VCSProviderGIT),
 			}},
 		})
 		if err != nil {

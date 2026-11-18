@@ -38,8 +38,8 @@ Feature: Callers from outside a stack's runs read its state, read only
     And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Reader","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}"},"manageState":true}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Closed","repository":"infra","branch":"main","space":"legacy"},"manageState":true}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Closed","repository":"infra","branch":"main","space":"legacy"},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And the launcher "w" registers with the key of "csr" and the certificate "cert" through A
 
   @case:success

@@ -19,10 +19,10 @@ Feature: Stack search and suggestions
     And the answer's id is the space "team"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Child","description":"","inheritEntities":false,"parentSpace":"{team}"}' through B
     And the answer's id is the space "child"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"zeta","branch":"main","space":"legacy","labels":["prod","eu"]},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"alpha","branch":"dev","space":"{child}","labels":["prod"]},"manageState":false}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Api","repository":"mid","branch":"main","space":"{team}","labels":["staging"]},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Core","repository":"beta","branch":"release","space":"acme"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"zeta","branch":"main","space":"legacy","labels":["prod","eu"]},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Web","repository":"alpha","branch":"dev","space":"{child}","labels":["prod"]},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Api","repository":"mid","branch":"main","space":"{team}","labels":["staging"]},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Core","repository":"beta","branch":"release","space":"acme"},"manageState":false}' through B
     And token "h" sends "POST /api/v1/stacks/infra/lock" through A
 
   @op:searchStacks @case:success

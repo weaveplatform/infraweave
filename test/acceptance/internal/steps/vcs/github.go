@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,18 +15,12 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
-// githubSteps run the GitHub host a @github scenario's servers reach: an
-// in-process githubfake over TLS, whose certificate they trust through
-// vcs.ca_file, with the operator's App installed on the organization
-// acme, which the servers' vcs.github_app names. Its URL is {githubHost}
-// to the scenario's requests.
+// githubSteps serves a TLS GitHub host. Accounts register their own Apps
+// through the API; starting the host provides only its URL and trusted CA.
 type githubSteps struct {
 	w    *harness.World
 	fake *githubfake.Fake
 	srv  *githubfake.Server
-	// app0 is the vcs.github_app settings every server of the scenario
-	// reads.
-	app0 map[string]any
 }
 
 func (g *githubSteps) register(sc *godog.ScenarioContext) {
@@ -42,43 +34,15 @@ func (g *githubSteps) register(sc *godog.ScenarioContext) {
 	)
 }
 
-// start serves the fake with the operator's App and answers the vcs
-// settings that reach it: the operator's App, its key and webhook secret
-// written to files under dir, and the fake's certificate, which the
-// caller writes to vcs.ca_file.
-func (g *githubSteps) start(dir string) (map[string]any, []byte, error) {
-	g.fake = githubfake.New()
-	g.srv = g.fake.Start()
-	op := g.fake.AddApp("infraweave", "acme")
-	g.fake.Install(op.ID, "acme", "Organization", "infra", "web")
-	key, secret := filepath.Join(dir, "github-app.pem"), filepath.Join(dir, "github-app.secret")
-	if err := os.WriteFile(key, op.PrivateKey, 0o600); err != nil {
-		return nil, nil, fmt.Errorf("operator App key: %w", err)
-	}
-	if err := os.WriteFile(secret, []byte(op.WebhookSecret), 0o600); err != nil {
-		return nil, nil, fmt.Errorf("operator App secret: %w", err)
-	}
-	g.w.IDs["githubHost"] = g.srv.URL
-	g.app0 = map[string]any{
-		"app_id": strconv.FormatInt(op.ID, 10), "private_key_file": key,
-		"webhook_secret_file": secret, "api_host": g.srv.URL,
-	}
-	return g.app0, g.srv.CA, nil
-}
-
-// VCS starts the fake for a @github scenario on first use, and returns the
-// vcs settings and certificate every server of the scenario needs while
-// it runs.
+// VCS starts the fake on first use and returns only its trusted certificate.
 func (g *githubSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
 	if slices.Contains(w.Tags, "@github") && g.srv == nil {
-		app, ca, err := g.start(w.Dir)
-		if err != nil {
-			return nil, nil, err
-		}
-		return map[string]any{"github_app": app}, ca, nil
+		g.fake = githubfake.New()
+		g.srv = g.fake.Start()
+		g.w.IDs["githubHost"] = g.srv.URL
 	}
 	if g.srv != nil {
-		return map[string]any{"github_app": g.app0}, g.srv.CA, nil
+		return nil, g.srv.CA, nil
 	}
 	return nil, nil, nil
 }
@@ -98,7 +62,7 @@ func (g *githubSteps) app(key, org string) error {
 		return fmt.Errorf("%w: a GitHub App needs a @github scenario", harness.ErrStep)
 	}
 	app := g.fake.AddApp(key, org)
-	g.fake.Install(app.ID, org, "Organization", "infra")
+	g.fake.Install(app.ID, org, "Organization", "infra", "web")
 	pem, err := json.Marshal(string(app.PrivateKey))
 	if err != nil {
 		return fmt.Errorf("escape the key of %s: %w", key, err)

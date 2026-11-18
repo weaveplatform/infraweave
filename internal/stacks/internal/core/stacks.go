@@ -723,7 +723,7 @@ func (s *Service) bind(ctx context.Context, acct kernel.AccountID, st *Stack, in
 		return err
 	}
 	if in.VCSIntegration == nil {
-		return nil
+		return s.bindDefault(ctx, acct, st.Provider)
 	}
 	refused := &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
 		Pointer: at + "/vcsIntegrationId", Reason: kernel.ReasonNotFound,
@@ -749,6 +749,31 @@ func (s *Service) bind(ctx context.Context, acct kernel.AccountID, st *Stack, in
 	}
 	st.VCSIntegration = &id
 	return nil
+}
+
+// bindDefault validates GITHUB's account-owned default at the write boundary.
+// The semantic refusal names provider for every write shape; the stack keeps
+// its omitted integration so later use follows the account's current default.
+func (s *Service) bindDefault(ctx context.Context, acct kernel.AccountID, provider string) error {
+	if provider != DefaultProvider {
+		return nil
+	}
+	s.mu.RLock()
+	integrations := s.integrations
+	s.mu.RUnlock()
+	if integrations != nil {
+		available, err := integrations.DefaultAvailable(ctx, acct, provider)
+		if err != nil {
+			return err //nolint:wrapcheck // the vcs domain names the lookup
+		}
+		if available {
+			return nil
+		}
+	}
+	return &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
+		Pointer: "/provider", Reason: kernel.ReasonRule,
+		Message: "Mark a GitHub App integration default or name one in vcsIntegrationId.",
+	}}}
 }
 
 // bindPool binds st to the worker pool in names, held for the

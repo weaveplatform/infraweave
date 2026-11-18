@@ -232,7 +232,7 @@ func (f fixture) changes(t *testing.T, id kernel.ULID) []string {
 }
 
 func input(name string) core.Input {
-	return core.Input{Space: "team", Name: name, Repository: "infra", Branch: "main"}
+	return core.Input{Space: "team", Name: name, Repository: "infra", Branch: "main", Provider: new("GIT")}
 }
 
 // pointers are the refused fields' pointers of err, a *kernel.Invalid.
@@ -894,15 +894,25 @@ func TestAccServiceTracked(t *testing.T) {
 // integrations binds only bound, of provider GITLAB, and fails with err
 // when it is set.
 type integrations struct {
-	bound kernel.ULID
-	err   error
+	bound            kernel.ULID
+	err              error
+	provider         string
+	defaultAvailable bool
+}
+
+func (i integrations) DefaultAvailable(context.Context, kernel.AccountID, string) (bool, error) {
+	return i.defaultAvailable, i.err
 }
 
 func (i integrations) Bindable(_ context.Context, _ kernel.AccountID, _ kernel.ULID, provider string, id kernel.ULID) error {
+	providerMatches := provider == "GITLAB"
+	if i.provider != "" {
+		providerMatches = provider == i.provider || i.provider == "GITHUB_ENTERPRISE" && provider == "GITHUB"
+	}
 	switch {
 	case i.err != nil:
 		return i.err
-	case id != i.bound || provider != "GITLAB":
+	case id != i.bound || !providerMatches:
 		return stacksapi.ErrNoIntegration
 	}
 	return nil

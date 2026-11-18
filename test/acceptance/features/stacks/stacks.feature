@@ -23,7 +23,7 @@ Feature: Stacks
   Scenario: An account admin creates, reads, changes, moves, reslugs and deletes a stack
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["b","a"],"beforePlan":["make"]},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["b","a"],"beforePlan":["make"]},"manageState":false}' through A
     Then it answers 201
     And the answer's id is '"infra"'
     And the answer's space is '"legacy"'
@@ -32,9 +32,9 @@ Feature: Stacks
     When token "h" sends "GET /api/v1/stacks/infra" through B
     Then it answers 200
     And the answer's hooks is '{"beforeInit":[],"afterInit":[],"beforePlan":["make"],"afterPlan":[],"beforeApply":[],"afterApply":[],"beforeDestroy":[],"afterDestroy":[],"beforePerform":[],"afterPerform":[],"afterRun":[]}'
-    And the answer's provider is '"GITHUB"'
+    And the answer's provider is '"GIT"'
     And the answer's outputs is '[]'
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra Two","repository":"infra","branch":"dev","space":"{team}","description":"ours"}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra Two","repository":"infra","branch":"dev","space":"{team}","description":"ours"}' through B
     Then it answers 200
     And the answer's id is '"infra"'
     And the answer's space is '"{team}"'
@@ -54,15 +54,15 @@ Feature: Stacks
 
   @op:stackCreate @op:stackUpdate @op:stack @op:stacks @op:stackReslug @op:stackDisable @op:stackEnable @op:stackUnlock @op:starSet @case:failure
   Scenario: A stack needs a name, a repository, a branch, a free slug and a space the account holds
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     Then it answers a 422 problem "validation-failed"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"nowhere"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"nowhere"},"manageState":false}' through B
     Then it answers a 404 problem "not-found"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     Then it answers 201
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"other","branch":"main","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"other","branch":"main","space":"legacy"},"manageState":false}' through B
     Then it answers a 409 problem "already-exists"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"","space":"legacy"}' through A
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"","space":"legacy"}' through A
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "GET /api/v1/stacks?cursor=nope" through B
     Then it answers a 400 problem "invalid-cursor"
@@ -83,13 +83,13 @@ Feature: Stacks
   Scenario: A protected stack is not deleted, nor is the space that holds it
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","protectFromDeletion":true},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}","protectFromDeletion":true},"manageState":false}' through A
     When token "h" sends "DELETE /api/v1/stacks/infra" through B
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "DELETE /api/v1/spaces/{team}" through A
     Then it answers a 422 problem "validation-failed"
     And the problem's detail names "still holds entities"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{team}"}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}"}' through B
     And token "h" sends "DELETE /api/v1/stacks/infra" through A
     Then it answers 200
     When token "h" sends "DELETE /api/v1/spaces/{team}" through B
@@ -99,8 +99,8 @@ Feature: Stacks
   Scenario: A space reader reads the stacks of its spaces alone and changes none
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Other","repository":"other","branch":"main","space":"{team}"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Other","repository":"other","branch":"main","space":"{team}"},"manageState":false}' through A
     And the member key is space-reader on the space "legacy"
     When token "m" sends "GET /api/v1/stacks" through B
     Then the answer lists the stacks "infra"
@@ -113,10 +113,10 @@ Feature: Stacks
     When token "m" sends "GET /api/v1/stacks/infra" through A
     Then it answers 200
     And the answer's canWrite is 'false'
-    When token "m" sends "POST /api/v1/stacks" with '{"input":{"name":"Mine","repository":"mine","branch":"main","space":"legacy"},"manageState":false}' through B
+    When token "m" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Mine","repository":"mine","branch":"main","space":"legacy"},"manageState":false}' through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_CREATE"'
-    When token "m" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"dev","space":"legacy"}' through A
+    When token "m" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"dev","space":"legacy"}' through A
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_UPDATE"'
     When token "m" sends "POST /api/v1/stacks/infra/reslug" through B
@@ -137,7 +137,7 @@ Feature: Stacks
 
   @op:stackLock @op:stackUnlock @case:success @case:denial @case:failure
   Scenario: A lock is lifted by its holder or forced by an admin, and refuses every other lock
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And the member key is space-writer on the space "legacy"
     When token "m" sends "POST /api/v1/stacks/infra/lock" with '{"note":"mine"}' through B
     Then it answers 200
@@ -159,7 +159,7 @@ Feature: Stacks
 
   @op:starSet @op:stackDisable @op:stackEnable @op:stack @case:success
   Scenario: Each caller's stars are its own, and an admin disables and enables a stack
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And the member key is space-reader on the space "legacy"
     When token "m" sends "PUT /api/v1/stacks/infra/star" with '{"star":true}' through B
     Then it answers 200
@@ -176,16 +176,16 @@ Feature: Stacks
 
   @op:stackCreate @op:stackPatch @case:failure @case:success
   Scenario: A stack's labels are 1 to 255 characters with no control characters or edge whitespace, at most 100, each once
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["{256 × x}","a\u0007b"," edge","ok","ok"]},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["{256 × x}","a\u0007b"," edge","ok","ok"]},"manageState":false}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/labels/0" as "max-length"
     And the problem refuses the field "/input/labels/1" as "pattern"
     And the problem refuses the field "/input/labels/2" as "pattern"
     And the problem refuses the field "/input/labels/4" as "duplicate"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":[{101 labels}]},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":[{101 labels}]},"manageState":false}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/labels" as "max-length"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["prod","Prod","{255 × x}"]},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["prod","Prod","{255 × x}"]},"manageState":false}' through A
     Then it answers 201
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"labels":["prod","Prod"]}' through B
     Then it answers 200
@@ -196,7 +196,7 @@ Feature: Stacks
 
   @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @op:stackRun @case:success @case:failure
   Scenario: A stack with no runs lists empty pages of runs and tasks, and finds no run by ID
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And the member key is space-reader on the space "legacy"
     When token "m" sends "GET /api/v1/stacks/infra/runs" through A
     Then it answers 200
@@ -223,7 +223,7 @@ Feature: Stacks
   Scenario: The runs and tasks of a stack the caller cannot read answer as a stack that does not exist
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Other","repository":"other","branch":"main","space":"{team}"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Other","repository":"other","branch":"main","space":"{team}"},"manageState":false}' through A
     And the member key is space-reader on the space "legacy"
     When token "m" sends "GET /api/v1/stacks/other/runs" through A
     Then it answers a 404 problem "not-found"
@@ -240,7 +240,7 @@ Feature: Stacks
 
   @op:stackRuns @op:stackRunsInRange @op:stackProposedRuns @op:stackTasks @case:failure
   Scenario: An altered cursor on a stack's runs or tasks answers 400
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     When token "h" sends "GET /api/v1/stacks/infra/runs?cursor=nope" through A
     Then it answers a 400 problem "invalid-cursor"
     When token "h" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700000001&cursor=nope" through B

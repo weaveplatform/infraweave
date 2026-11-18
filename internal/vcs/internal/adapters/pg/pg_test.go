@@ -163,10 +163,7 @@ func newFixture(t *testing.T) *fixture {
 		}},
 		Providers: []string{"GITLAB", "BITBUCKET_CLOUD", "GITHUB_ENTERPRISE", "AZURE_DEVOPS"},
 		Testers:   map[string]port.Tester{"GITLAB": tester{}},
-		Builtin: map[string]port.Integration{"GITHUB": {
-			Provider: "GITHUB", Credential: []byte("operator-key"),
-			Settings: port.Settings{APIHost: "https://api.github.com", AppID: "1"},
-		}},
+
 		Apps:   apps{},
 		Public: "https://infraweave.example/",
 		Now:    func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },

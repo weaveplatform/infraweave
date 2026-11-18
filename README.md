@@ -346,6 +346,14 @@ process, then stop accepting and drain in-flight requests for up to
 at once. `SIGHUP` re-reads `log.level`, and no other setting. `infraweave version` prints
 the build's version, commit and date.
 
+GitHub access is account-owned. Register each account's GitHub App through
+the GitHub Enterprise integration API, by key or manifest, on github.com
+or GitHub Enterprise Server. A `GITHUB` stack with no named integration
+uses its account's default GitHub App integration; mark one default before
+creating the stack. An explicit integration stays named, while an implicit
+default is resolved again when source is used. Server configuration holds
+no GitHub App credentials.
+
 Every request on the API listener applies
 [decision 0003](docs/research/decisions/0003-api-conventions.md)'s
 controls, whether its operation is implemented or a stub:

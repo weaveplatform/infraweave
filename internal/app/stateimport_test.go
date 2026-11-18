@@ -75,7 +75,10 @@ func (w importWorld) uploadState(t *testing.T, object string) string {
 func (w importWorld) create(ctx context.Context, name string, manage bool, object string) error {
 	space := "kept"
 	body := &api.StackCreateRequest{
-		Input:       api.StackInput{Name: name, Repository: "infra", Branch: "main", Space: &space},
+		Input: api.StackInput{
+			Name: name, Repository: "infra", Branch: "main", Space: &space,
+			Provider: new(api.VCSProviderGIT),
+		},
 		ManageState: manage,
 	}
 	if object != "" {

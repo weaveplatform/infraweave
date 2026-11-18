@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/mail"
 	"net/url"
-	"slices"
 	"strings"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
-// The providers the service names: GitHub is the operator's App, which
-// the server's settings configure; GitHub Enterprise an account's own App
+// The providers the service names: GitHub aliases GitHub Enterprise, an
+// account's own App
 // on github.com or a GitHub Enterprise Server; GitLab GitLab.com or a
 // self-managed GitLab, reached with an access token; Bitbucket Cloud its
 // workspaces, reached with an Atlassian account's email and API token;
@@ -147,76 +146,6 @@ func (s *Service) sameSpace(ctx context.Context, acct kernel.AccountID, space ke
 // ref: decision 0012 § "Webhook intake: stored before acknowledgement"
 func (s *Service) WebhookURL(provider string, id kernel.ULID) string {
 	return fmt.Sprintf("%s/webhooks/vcs/%s/%s", s.public, strings.ToLower(provider), id)
-}
-
-// Builtin reads the integration of provider whose credentials the
-// operator sets, with p's account's check options: those it stored, or
-// the defaults until it stores some. ErrNotConfigured when the operator
-// has set none.
-func (s *Service) Builtin(ctx context.Context, p kernel.Principal, provider string) (Integration, error) {
-	use, ok := s.builtin[provider]
-	if !ok {
-		return Integration{}, fmt.Errorf("%w: %s", ErrNotConfigured, provider)
-	}
-	in, err := s.store.Default(ctx, p.AccountID, provider)
-	if errors.Is(err, ErrNotFound) {
-		in = Integration{
-			Account: p.AccountID, Provider: provider, Space: p.AccountID.ULID,
-			IsDefault: true, Labels: []string{}, Checks: Checks{Mode: checkModes[0]},
-		}
-	} else if err != nil {
-		return Integration{}, err //nolint:wrapcheck // the store names the read
-	}
-	in.Settings = use.Settings
-	return in, nil
-}
-
-// SetBuiltin stores p's account's check options of the built-in provider
-// and whether its runs use a Git checkout, keeping the stored value of
-// each that is nil. The route has decided SPACE_ADMIN on the top space.
-func (s *Service) SetBuiltin(ctx context.Context, p kernel.Principal, provider string, checks Checks, useGitCheckout *bool) (Integration, error) {
-	if _, ok := s.builtin[provider]; !ok {
-		return Integration{}, fmt.Errorf("%w: %s", ErrNotConfigured, provider)
-	}
-	if !slices.Contains(checkModes, checks.Mode) {
-		return Integration{}, &kernel.Invalid{Detail: invalidDetail, Errors: []kernel.FieldError{{
-			Pointer: "/vcsChecks", Reason: kernel.ReasonEnum,
-			Message: "vcsChecks is one of INDIVIDUAL, AGGREGATED and ALL.",
-		}}}
-	}
-	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		in, err := s.store.Default(ctx, p.AccountID, provider)
-		stored := err == nil
-		if errors.Is(err, ErrNotFound) {
-			now := s.now()
-			in = Integration{
-				Account: p.AccountID, ID: kernel.NewULID(), Provider: provider,
-				Slug: strings.ToLower(provider), Name: provider, Space: p.AccountID.ULID,
-				IsDefault: true, Labels: []string{}, CreatedAt: now, UpdatedAt: now,
-			}
-		} else if err != nil {
-			return err //nolint:wrapcheck // the store names the read
-		}
-		in.Checks = checks
-		if useGitCheckout != nil {
-			in.UseGitCheckout = *useGitCheckout
-		}
-		if !stored {
-			in.Version = 1
-			return s.store.Create(
-				ctx,
-				in,
-				Secrets{},
-			) //nolint:wrapcheck // the store names the write
-		}
-		in.UpdatedAt = s.now()
-		in.Version++
-		return s.store.Write(ctx, in, nil) //nolint:wrapcheck // the store names the write
-	})
-	if err != nil {
-		return Integration{}, err //nolint:wrapcheck // each step in the transaction names itself
-	}
-	return s.Builtin(ctx, p, provider)
 }
 
 // OpenManifest opens a manifest form for p's account that creates a

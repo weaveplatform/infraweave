@@ -178,12 +178,6 @@ func (s Server) details(ctx context.Context, p kernel.Principal, in integration.
 			return nil, derr //nolint:wrapcheck // the store names the read
 		}
 		err = out.FromAzureDevOpsRepoIntegration(azureDevOpsView(in, slugs, &d))
-	case integration.GitHub:
-		b, berr := s.svc.Builtin(ctx, p, in.Provider)
-		if berr != nil {
-			return nil, integrationError(berr)
-		}
-		err = out.FromGithubIntegration(githubView(b))
 	default:
 		d, ok := s.describe[in.Provider]
 		if !ok {
@@ -297,7 +291,7 @@ func integrationError(err error) error {
 	if errors.Is(err, integration.ErrNotConfigured) {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.ServiceUnavailable.Error(
-			"The operator has not configured this provider's GitHub App.")
+			"GitHub App registration is unavailable.")
 	}
 	if rl, ok := errors.AsType[*port.RateLimited](err); ok {
 		//nolint:wrapcheck // as above

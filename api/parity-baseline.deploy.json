@@ -480,6 +480,10 @@
       "vcsAgentPoolUpdate",
       "vcsAgentPools"
     ],
+    "VCS Integrations": [
+      "githubIntegration",
+      "githubIntegrationUpdate"
+    ],
     "Version Catalog": [
       "kubectlVersions",
       "terragruntEffectiveVersion",
@@ -505,5 +509,9 @@
       "stackMigrateVendorAll",
       "userSecurityKeyDeleteAll"
     ]
+  },
+  "reasons": {
+    "githubIntegration": "DV-041: No built-in GitHub integration; each account registers its own GitHub App integration.",
+    "githubIntegrationUpdate": "DV-041: No built-in GitHub integration; each account registers its own GitHub App integration."
   }
 }

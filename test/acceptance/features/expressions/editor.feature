@@ -17,7 +17,7 @@ Feature: Expressions editor
   Scenario: A template is checked, completed and evaluated against a stack's environment, its secret masked
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through B
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TOKEN","type":"ENVIRONMENT_VARIABLE","value":"s3cret","writeOnly":true}' through A
     When token "h" sends "POST /api/v1/expressions/check" with '{"surface":"environment","ref":"infra","form":"template","source":"https://${{ env.REGION }}/${{ stack.id }}"}' through A
@@ -70,7 +70,7 @@ Feature: Expressions editor
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     When token "m" sends "POST /api/v1/expressions/check" with '{"surface":"environment","ref":"infra","form":"expression","source":"stack.id"}' through A
     Then it answers a 404 problem "not-found"
     When token "m" sends "POST /api/v1/expressions/complete" with '{"surface":"environment","ref":"infra","form":"expression","source":"stack.","position":{"line":1,"column":7}}' through B
@@ -100,7 +100,7 @@ Feature: Expressions editor
   Scenario: A misspelt variable is flagged with its range, and a source, cursor or surface the endpoints cannot use is refused
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"REGION","type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through B
     When token "h" sends "POST /api/v1/expressions/check" with '{"surface":"environment","ref":"infra","form":"template","source":"${{ env.REGOIN }}"}' through A
     Then it answers 200

@@ -40,6 +40,9 @@ func TestAccServiceSearchUsers(t *testing.T) {
 	} {
 		in := input(c.name)
 		in.Space, in.Provider = c.space, new(c.prov)
+		if c.prov == "GITHUB" {
+			f.svc.BindIntegrations(integrations{defaultAvailable: true})
+		}
 		if c.integration != (kernel.ULID{}) {
 			f.svc.BindIntegrations(integrations{bound: c.integration})
 			in.VCSIntegration = new(c.integration.String())
@@ -134,9 +137,9 @@ func TestUnitSearchScopeUse(t *testing.T) {
 		Use:    &stacksapi.Use{Integration: id, Provider: "GITLAB", Default: true},
 	})
 	want := "s.account_id = $1 AND s.id = ANY($4::uuid[]) AND (s.vcs_integration_id = $5 OR " +
-		"($6 AND s.vcs_integration_id IS NULL AND s.provider = $7))"
+		"($6 AND s.vcs_integration_id IS NULL AND s.provider = ANY($7::text[])))"
 	if s.Where != want || len(s.Args) != 7 || s.Args[4] != id || s.Args[5] != true ||
-		s.Args[6] != "GITLAB" {
+		!slices.Equal(s.Args[6].([]string), []string{"GITLAB"}) {
 		t.Errorf("scope = %q, %v", s.Where, s.Args)
 	}
 }

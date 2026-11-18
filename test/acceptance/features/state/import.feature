@@ -234,7 +234,7 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the fixture "<fixture>" is put with no credential at the URL "up" through B
     And token "h" sends "POST /api/v1/roles" with '{"name":"Stack Creators","actions":["SPACE_READ","STACK_CREATE","STACK_LOCK"]}' through A
     And the member key is stack-creators on the space "legacy"
-    When token "m" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through B
+    When token "m" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_MANAGED_STATE_IMPORT"'
     When token "h" sends "GET /api/v1/stacks/copy" through A
@@ -261,25 +261,25 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the answer's url is kept as "old"
     And the answer's objectId names "v3"
     And '{"version":3,"serial":1,"lineage":"l","modules":[]}' is put with no credential at the URL "old" through A
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"01KACME0000000000000000ZZZ"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"01KACME0000000000000000ZZZ"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "not-found"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":false,"stackObjectID":"{obj}"}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":false,"stackObjectID":"{obj}"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "rule"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":false}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/vendorConfig/terraform/externalStateAccessEnabled" as "rule"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{v3}"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{v3}"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "rule"
     When token "h" sends "GET /api/v1/stacks/copy" through B
     Then it answers a 404 problem "not-found"
     And the upload of the URL "up" is one sealed object in the uploads store
     And the upload of the URL "old" is one sealed object in the uploads store
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through A
     Then it answers 201
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Again","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Again","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{obj}"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "not-found"
     When token "h" sends "GET /api/v1/stacks/again" through A
@@ -287,7 +287,7 @@ Feature: A state file is imported at a stack's creation or into an existing stac
 
   @op:stackManagedStateImport @case:failure
   Scenario: An import is refused into a stack without managed state, unlocked, locked by another or with a tracked run or a task under way, and of an upload that is missing, another's or no state
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/state/upload-url" with '{}' through B
     And the answer's url is kept as "up"
     And the answer's objectId names "obj"
@@ -349,7 +349,7 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the answer's objectId names "invalid"
     And '<body>' is put with no credential at the URL "invalid" through B
     Then it answers 200
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Invalid","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{invalid}"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Invalid","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{invalid}"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "rule"
     When token "h" sends "POST /api/v1/stacks/infra/lock" through B

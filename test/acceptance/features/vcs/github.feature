@@ -1,17 +1,9 @@
 @postgres @github
 Feature: GitHub integrations
-  An account reaches GitHub through the operator's GitHub App, whose check
-  options it sets, or through GitHub Apps of its own on github.com or a
-  GitHub Enterprise Server, which it registers by their keys or creates
-  through a manifest form. The scenarios' GitHub host is an in-process
-  fake at {githubHost}, a GitHub Enterprise Server to the servers, with the
-  operator's App installed on acme. A run of a stack on a private
-  repository fetches its source by Git with an installation token minted
-  for that repository alone, which only the specification's sealed part
-  carries; the release indexes serve the recorded fixtures, so the run's
-  specification names a Terraform release. The home key is space-admin on
-  the account's top space; the member key holds only the bindings a
-  scenario gives it. Space team inherits from the top space.
+  Each account reaches GitHub through its own Apps on github.com or a
+  GitHub Enterprise Server, registered by key or through the manifest flow.
+  GITHUB is the account-default App alias, and run credentials are narrowed
+  to one repository and sealed to the worker pool.
 
   Background:
     Given the release indexes serve the recorded fixtures
@@ -22,19 +14,21 @@ Feature: GitHub integrations
     And the answer's id is the space "team"
     And a GitHub App "ent" installed on the organization "acme"
 
-  @op:githubIntegration @op:githubIntegrationUpdate @case:success
-  Scenario: An admin reads and sets the check options of the operator's App
-    When token "h" sends "GET /api/v1/github-integration" through A
+  @op:githubEnterpriseIntegrationCreate @op:githubEnterpriseIntegration @op:githubEnterpriseIntegrationUpdate @case:success
+  Scenario: An admin reads and updates the account default App's check options
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Default App","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    And the answer's id names "defaultApp"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{defaultApp}" through A
     Then it answers 200
     And the answer's apiHost is '"{githubHost}"'
-    And the answer's isEnterprise is 'true'
     And the answer's vcsChecks is '"INDIVIDUAL"'
-    When token "h" sends "PUT /api/v1/github-integration" with '{"vcsChecks":"ALL","useGitCheckout":true,"vcsCheckOptions":{"individualFailuresOnly":true}}' through B
+    When token "h" sends "PUT /api/v1/github-enterprise-integrations/{defaultApp}" with '{"apiHost":"{githubHost}","webhookSecret":"hook","customInput":{"space":"acme","vcsChecks":"ALL","useGitCheckout":true,"vcsCheckOptions":{"individualFailuresOnly":true}}}' through B
     Then it answers 200
     And the answer's vcsChecks is '"ALL"'
-    When token "h" sends "PUT /api/v1/github-integration" with '{"vcsChecks":"AGGREGATED"}' through A
+    When token "h" sends "PUT /api/v1/github-enterprise-integrations/{defaultApp}" with '{"apiHost":"{githubHost}","webhookSecret":"hook","customInput":{"space":"acme","vcsChecks":"AGGREGATED"}}' through A
     Then it answers 200
-    When token "h" sends "GET /api/v1/github-integration" through B
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{defaultApp}" through B
     Then the answer's vcsChecks is '"AGGREGATED"'
     And the answer's useGitCheckout is 'true'
     And the answer's vcsCheckOptions is '{"individualFailuresOnly":true,"individualSkipUnchanged":false}'
@@ -81,7 +75,7 @@ Feature: GitHub integrations
     When token "h" sends "POST /api/v1/github-enterprise-integrations/from-manifest" with '{"code":"{code}","state":"{state}"}' through A
     Then it answers a 422 problem "validation-failed"
 
-  @op:githubEnterpriseIntegrationCreate @op:githubEnterpriseIntegration @op:githubEnterpriseIntegrationUpdate @op:githubEnterpriseIntegrationDelete @op:githubEnterpriseIntegrationTest @op:githubIntegrationUpdate @op:githubAppGenerateManifest @op:githubAppCreateFromManifest @case:denial
+  @op:githubEnterpriseIntegrationCreate @op:githubEnterpriseIntegration @op:githubEnterpriseIntegrationUpdate @op:githubEnterpriseIntegrationDelete @op:githubEnterpriseIntegrationTest @op:githubAppGenerateManifest @op:githubAppCreateFromManifest @case:denial
   Scenario: A reader of a space sees its Apps without their secrets, and changes nothing
     Given the member key is space-reader on the space "{team}"
     When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Enterprise","spaceID":"{team}"}}' through A
@@ -98,14 +92,12 @@ Feature: GitHub integrations
     Then it answers a 403 problem "forbidden"
     When token "m" sends "POST /api/v1/github-enterprise-integrations/{e}/test" through B
     Then it answers a 403 problem "forbidden"
-    When token "m" sends "PUT /api/v1/github-integration" with '{"vcsChecks":"ALL"}' through A
-    Then it answers a 403 problem "forbidden"
     When token "m" sends "POST /api/v1/github-app-manifests" with '{"ownerType":"USER"}' through B
     Then it answers a 403 problem "forbidden"
     When token "m" sends "POST /api/v1/github-enterprise-integrations/from-manifest" with '{"code":"x","state":"y"}' through A
     Then it answers a 403 problem "forbidden"
 
-  @op:githubEnterpriseIntegrationCreate @op:githubEnterpriseIntegrationTest @op:githubEnterpriseIntegrationUpdate @op:githubAppGenerateManifest @op:githubAppCreateFromManifest @op:githubIntegrationUpdate @case:failure
+  @op:githubEnterpriseIntegrationCreate @op:githubEnterpriseIntegrationTest @op:githubEnterpriseIntegrationUpdate @op:githubAppGenerateManifest @op:githubAppCreateFromManifest @case:failure
   Scenario: Bad settings, an App that misses events, another space and an unknown form are refused
     When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"http://github.example","appID":"seven","privateKey":"not a key","customInput":{"name":"Bad","spaceID":"acme"}}' through A
     Then it answers a 422 problem "validation-failed"
@@ -126,11 +118,11 @@ Feature: GitHub integrations
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "POST /api/v1/github-enterprise-integrations/from-manifest" with '{"code":"x","state":"nope"}' through B
     Then it answers a 422 problem "validation-failed"
-    When token "h" sends "PUT /api/v1/github-integration" with '{"vcsChecks":"SOME"}' through A
-    Then it answers a 400 problem "invalid-request"
 
   @op:repositories @op:branches @case:success
-  Scenario: A user pages the repositories and branches of the operator's App
+  Scenario: A user pages the repositories and branches of the account's default App
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Default App","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
     Given a commit to "main" of the GitHub repository "acme/infra" is kept as "first"
     And a commit to "dev" of the GitHub repository "acme/infra" is kept as "dev"
     When token "h" sends "GET /api/v1/repositories?provider=GITHUB&limit=1" through B
@@ -151,7 +143,9 @@ Feature: GitHub integrations
     And the answer leaves out "nextCursor"
 
   @op:stackCreate @op:stackSyncCommit @op:stackSetCurrentCommit @case:success
-  Scenario: A stack on a private repository tracks its branch through the operator's App, and pins an earlier commit
+  Scenario: A stack on a private repository tracks its branch through the account's default App, and pins an earlier commit
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Default App","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
     Given a commit to "main" of the GitHub repository "acme/infra" is kept as "seed"
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme","repository":"infra","branch":"main","provider":"GITHUB","space":"{team}"},"manageState":false}' through B
     Then it answers 201
@@ -166,6 +160,8 @@ Feature: GitHub integrations
 
   @op:stackCreate @op:runTrigger @case:success
   Scenario: A run of a stack on a private repository fetches its source by Git with a token sealed for that repository alone
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Default App","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
     Given token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
     And a commit to "main" of the GitHub repository "acme/infra" is kept as "seed"
     And a certificate signing request for a P-256 key is kept as "csr"

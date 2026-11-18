@@ -57,7 +57,7 @@ Feature: Live sessions follow changes of their grants
 
   @op:space @op:stackLock @case:success
   Scenario: A grant committed with no message reaches the member's next request on either replica
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
     When token "m" sends "GET /api/v1/spaces/legacy" through A
     Then it answers a 404 problem "not-found"
     When token "m" sends "GET /api/v1/spaces/legacy" through B

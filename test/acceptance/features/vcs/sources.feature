@@ -91,6 +91,8 @@ Feature: A stack's tracked commit
   @vcs-lab @lab:github
   Scenario: A private stack on GitHub tracks its branch, pins an earlier commit and syncs back
     Given the vcs-lab lab's repository
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{labHost}","appID":"{labUser}","privateKey":"{labKey}","customInput":{"name":"Lab App","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab","namespace":"{labNamespace}","repository":"{labRepository}","branch":"main","provider":"GITHUB","space":"legacy"},"manageState":false}' through B
     Then it answers 201
     And token "h" eventually reads the stack "lab" tracking the commit kept as "labHead" through A

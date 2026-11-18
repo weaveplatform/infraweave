@@ -13,43 +13,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
-// GithubIntegration answers the operator's GitHub App integration with the
-// caller's account's check options.
-func (s Server) GithubIntegration(ctx context.Context, _ api.GithubIntegrationRequestObject) (api.GithubIntegrationResponseObject, error) {
-	p, err := principal(ctx)
-	if err != nil {
-		return nil, err
-	}
-	in, err := s.svc.Builtin(ctx, p, integration.GitHub)
-	if err != nil {
-		return nil, integrationError(err)
-	}
-	return api.GithubIntegration200JSONResponse{Body: githubView(in)}, nil
-}
-
-// GithubIntegrationUpdate sets the caller's account's check options of the
-// operator's GitHub App integration.
-func (s Server) GithubIntegrationUpdate(ctx context.Context, req api.GithubIntegrationUpdateRequestObject) (api.GithubIntegrationUpdateResponseObject, error) {
-	p, err := principal(ctx)
-	if err != nil {
-		return nil, err
-	}
-	in, err := s.svc.Builtin(ctx, p, integration.GitHub)
-	if err != nil {
-		return nil, integrationError(err)
-	}
-	checks := in.Checks
-	checks.Mode = string(req.Body.VcsChecks)
-	if o := req.Body.VcsCheckOptions; o != nil {
-		checks = checkOptions(checks, o)
-	}
-	in, err = s.svc.SetBuiltin(ctx, p, integration.GitHub, checks, req.Body.UseGitCheckout)
-	if err != nil {
-		return nil, integrationError(err)
-	}
-	return api.GithubIntegrationUpdate200JSONResponse{Body: githubView(in)}, nil
-}
-
 // GithubEnterpriseIntegrationCreate creates a GitHub Enterprise
 // integration, with a webhook secret of its own when the request carries
 // none.
@@ -293,19 +256,6 @@ func enterpriseView(in integration.Integration, slugs map[kernel.ULID]string, d 
 		v.WebhookSecret, v.WebhookUrl = d.WebhookSecret, d.WebhookURL
 	}
 	return v
-}
-
-// githubView is in, the operator's App integration, as its operations
-// answer it. Its host is GitHub Enterprise Server when the operator's App
-// lives on one.
-func githubView(in integration.Integration) api.GithubIntegration {
-	host := in.Settings.APIHost
-	return api.GithubIntegration{
-		ApiHost: host, IsEnterprise: host != "" && host != "https://api.github.com",
-		Kind:           api.GithubIntegrationKindGithubIntegration,
-		UseGitCheckout: in.UseGitCheckout, VcsChecks: api.VCSCheck(in.Checks.Mode),
-		VcsCheckOptions: checkOptionsView(in.Checks),
-	}
 }
 
 func checkOptionsView(c integration.Checks) *api.VCSCheckOptions {
