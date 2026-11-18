@@ -151,7 +151,7 @@ type Stacks interface {
 	ByVCSRepository(ctx context.Context, acct kernel.AccountID, u Use, namespace, repository string) ([]Stack, error)
 	// RepointVCSRepository replaces from with to on every attached stack
 	// using u, across branches, in the caller's transaction. Each changed stack
-	// advances its version and appends Changed with Source true; no audit
+	// advances its version and appends Changed with Source false; no audit
 	// entry is recorded. Equal coordinates have no effect. It requires a
 	// transaction even for a no-op, otherwise ErrNoTransaction.
 	RepointVCSRepository(ctx context.Context, acct kernel.AccountID, u Use, from, to VCSRepository) error
