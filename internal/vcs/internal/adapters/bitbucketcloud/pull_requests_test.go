@@ -1,6 +1,7 @@
 package bitbucketcloud_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -34,5 +35,28 @@ func TestUnitCloudRequestMetadataAndClosure(t *testing.T) {
 				t.Fatalf("lost native request metadata: %+v %+v", e, r)
 			}
 		})
+	}
+}
+
+func TestUnitCloudRequestHeadRequiredExceptTerminal(t *testing.T) {
+	p := bitbucketcloud.New(bitbucketcloud.Options{})
+	for _, head := range []string{"", "refs/heads/main", strings.Repeat("0", 40), strings.Repeat("z", 40)} {
+		for _, kind := range []string{"pullrequest:created", "pullrequest:rejected", "pullrequest:fulfilled"} {
+			t.Run(kind+"/"+head, func(t *testing.T) {
+				body := cloudBody(t, kind, func(d map[string]any) {
+					d["pullrequest"].(map[string]any)["source"].(map[string]any)["commit"].(map[string]any)["hash"] = head
+				})
+				events, err := p.Parse(cloudHeaders(kind), body)
+				if kind == "pullrequest:created" {
+					if err == nil {
+						t.Fatal("noncommit open head accepted")
+					}
+					return
+				}
+				if err != nil || len(events) != 1 {
+					t.Fatal("terminal close with deleted branch was lost", events, err)
+				}
+			})
+		}
 	}
 }

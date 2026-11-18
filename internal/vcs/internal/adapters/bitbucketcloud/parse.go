@@ -246,7 +246,10 @@ func cloudChange(c webhookChange, repo vcsapi.Repository, author string) (vcsapi
 
 func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsapi.Event, error) {
 	r := d.PullRequest
-	if r == nil || r.ID <= 0 || r.Source.Branch.Name == "" || r.Destination.Branch.Name == "" || r.Source.Commit.Hash == "" {
+	if r == nil || r.ID <= 0 || r.Source.Branch.Name == "" || r.Destination.Branch.Name == "" {
+		return vcsapi.Event{}, ErrWebhookPayload
+	}
+	if !port.ValidCommit(r.Source.Commit.Hash) && event != "pullrequest:fulfilled" && event != "pullrequest:rejected" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	source, sourceOK := cloudRepository(r.Source.Repository)

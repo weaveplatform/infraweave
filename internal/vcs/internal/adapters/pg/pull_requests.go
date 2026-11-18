@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 )
 
@@ -19,6 +20,15 @@ import (
 func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 	if !tx.In(ctx) {
 		return pullrequest.ErrNoTransaction
+	}
+	validHead := port.ValidCommit(r.HeadSHA)
+	if !validHead {
+		if r.State == pullrequest.Open {
+			return pullrequest.ErrHead
+		}
+		// A terminal notification can close an existing request after its source
+		// branch disappeared. It contributes no head and preserves the old one.
+		r.HeadSHA = ""
 	}
 	var integration kernel.ULID
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM vcs_integrations WHERE account_id=$1 AND id=$2 FOR KEY SHARE`, r.Account, r.Integration).Scan(&integration)
@@ -34,7 +44,7 @@ func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 		ON CONFLICT(integration_id,repository_id,provider_id) DO UPDATE SET
 		namespace=excluded.namespace,repository=excluded.repository,base_branch=excluded.base_branch,
-		head_branch=excluded.head_branch,head_sha=excluded.head_sha,
+		head_branch=excluded.head_branch,head_sha=CASE WHEN excluded.head_sha='' THEN pull_requests.head_sha ELSE excluded.head_sha END,
 		author_login=CASE WHEN excluded.author_login='' THEN pull_requests.author_login ELSE excluded.author_login END,
 		title=excluded.title,url=excluded.url,head_branch_url=excluded.head_branch_url,draft=excluded.draft,
 		state=excluded.state,updated_at=excluded.updated_at
@@ -47,6 +57,9 @@ func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 	}
 	if err != nil {
 		return fmt.Errorf("vcs: upsert pull request: %w", sql.Unavailable(err))
+	}
+	if !validHead {
+		return nil
 	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO pull_request_heads(account_id,request_id,sha,became_head_at) VALUES($1,$2,$3,$4)
 		ON CONFLICT(account_id,request_id,sha) DO UPDATE SET became_head_at=least(pull_request_heads.became_head_at,excluded.became_head_at)`, r.Account, id, r.HeadSHA, r.UpdatedAt)

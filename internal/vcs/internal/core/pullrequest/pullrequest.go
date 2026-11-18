@@ -22,6 +22,9 @@ const (
 // ErrNoTransaction refuses upkeep outside the inbox completion transaction.
 var ErrNoTransaction = errors.New("vcs: pull request upkeep requires a transaction")
 
+// ErrHead refuses an open snapshot without a Git commit identity.
+var ErrHead = errors.New("vcs: request head is not a commit")
+
 // Request retains stable repository identity and its current path separately.
 // ID is internal; Number is the provider's repository-local request identity.
 type Request struct {

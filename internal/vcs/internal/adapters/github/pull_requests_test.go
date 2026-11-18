@@ -2,6 +2,7 @@ package github_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,5 +42,26 @@ func TestUnitGitHubRequestMetadata(t *testing.T) {
 				t.Fatalf("request lost original metadata/head: %+v %+v", e, r)
 			}
 		})
+	}
+}
+
+func TestUnitGitHubRequestHeadRequiredExceptTerminal(t *testing.T) {
+	p := github.New(github.Options{})
+	for _, head := range []string{"", "refs/heads/main", strings.Repeat("0", 40), strings.Repeat("z", 40)} {
+		for _, action := range []string{"opened", "closed"} {
+			t.Run(action+"/"+head, func(t *testing.T) {
+				body := payload(t, "pull_request", action, func(d map[string]any) { d["pull_request"].(map[string]any)["head"].(map[string]any)["sha"] = head })
+				events, err := p.Parse(http.Header{"X-Github-Event": {"pull_request"}}, body)
+				if action == "opened" {
+					if err == nil {
+						t.Fatal("noncommit open head accepted")
+					}
+					return
+				}
+				if err != nil || len(events) != 1 || events[0].Action != "closed" {
+					t.Fatal("terminal close with deleted branch was lost", events, err)
+				}
+			})
+		}
 	}
 }

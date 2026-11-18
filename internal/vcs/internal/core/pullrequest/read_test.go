@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -115,7 +116,7 @@ func TestUnitMembershipBeforeRequestCap(t *testing.T) {
 	runs := &commitRuns{}
 	now := time.Now().UTC()
 	for i := range 160 {
-		r := Request{ID: kernel.NewULID(), Number: strconv.Itoa(i), HeadSHA: fmt.Sprint(i), UpdatedAt: now.Add(-time.Duration(i) * time.Second)}
+		r := Request{ID: kernel.NewULID(), Number: strconv.Itoa(i), HeadSHA: fmt.Sprintf("%040x", i+1), UpdatedAt: now.Add(-time.Duration(i) * time.Second)}
 		store.rows = append(store.rows, r)
 		store.heads[r.ID] = []string{r.HeadSHA}
 		if i >= 100 {
@@ -145,7 +146,7 @@ func TestUnitHistoricalAndSharedHeads(t *testing.T) {
 		URL:           "https://example.com/pr/17",
 		HeadBranch:    "feature",
 		HeadBranchURL: "https://example.com/feature",
-		HeadSHA:       "current",
+		HeadSHA:       requestHash("current"),
 		Draft:         true,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -153,9 +154,12 @@ func TestUnitHistoricalAndSharedHeads(t *testing.T) {
 	second := first
 	second.ID = kernel.NewULID()
 	second.Number = "18"
-	store := &memoryStore{rows: []Request{first, second}, heads: map[kernel.ULID][]string{first.ID: {"older", "current"}, second.ID: {"current", "older"}}}
-	older := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: "older", CreatedAt: now.Add(time.Hour)}
-	current := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: "current", CreatedAt: now}
+	store := &memoryStore{
+		rows:  []Request{first, second},
+		heads: map[kernel.ULID][]string{first.ID: {requestHash("older"), requestHash("current")}, second.ID: {requestHash("current"), requestHash("older")}},
+	}
+	older := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: requestHash("older"), CreatedAt: now.Add(time.Hour)}
+	current := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: requestHash("current"), CreatedAt: now}
 	later := current
 	later.ID = kernel.NewULID()
 	runs := &commitRuns{rows: []runsapi.CommitRun{older, current, later}}
@@ -188,8 +192,8 @@ func TestUnitRequestReadScopeAndFailures(t *testing.T) {
 		t.Run(where, func(t *testing.T) {
 			t.Parallel()
 			cause := errors.New("unavailable")
-			row := Request{ID: kernel.NewULID(), HeadSHA: "sha"}
-			store := &memoryStore{rows: []Request{row}, heads: map[kernel.ULID][]string{row.ID: {"sha"}}, cause: cause, errAt: where}
+			row := Request{ID: kernel.NewULID(), HeadSHA: requestHash("sha")}
+			store := &memoryStore{rows: []Request{row}, heads: map[kernel.ULID][]string{row.ID: {requestHash("sha")}}, cause: cause, errAt: where}
 			binding := &bindings{found: true}
 			runs := &commitRuns{}
 			if where == "binding" {
@@ -229,5 +233,35 @@ func TestUnitRequestReadScopeAndFailures(t *testing.T) {
 				t.Fatal("read opened integration credentials")
 			}
 		})
+	}
+}
+
+func requestHash(text string) string { return fmt.Sprintf("%040x", []byte(text)) }
+
+func TestUnitNonCommitHeadsNeverMatchLocalRuns(t *testing.T) {
+	for _, head := range []string{"", "refs/heads/main", strings.Repeat("0", 40), strings.Repeat("z", 40)} {
+		t.Run(fmt.Sprintf("%q", head), func(t *testing.T) {
+			row := Request{ID: kernel.NewULID(), HeadSHA: head}
+			store := &memoryStore{rows: []Request{row}, heads: map[kernel.ULID][]string{row.ID: {head}}}
+			runs := &commitRuns{rows: []runsapi.CommitRun{{ID: kernel.NewULID(), CommitSHA: head}}}
+			id := kernel.NewULID()
+			s := New(Deps{Store: store, Integrations: &bindings{found: true}, Runs: runs})
+			got, err := s.PullRequests(t.Context(), kernel.NewAccountID(), []stacksapi.Settings{{Stack: stacksapi.Stack{ID: id}}})
+			if err != nil || len(got[id]) != 0 || runs.calls != 0 {
+				t.Fatal("noncommit/local workspace run qualified a request", got, runs.calls, err)
+			}
+		})
+	}
+	// Invalid legacy heads cannot join even when the same request also has a
+	// legitimate current head and therefore calls the Runs port.
+	valid := requestHash("valid")
+	r := Request{ID: kernel.NewULID(), HeadSHA: valid}
+	runs := &commitRuns{rows: []runsapi.CommitRun{{ID: kernel.NewULID(), CommitSHA: ""}, {ID: kernel.NewULID(), CommitSHA: valid}}}
+	store := &memoryStore{rows: []Request{r}, heads: map[kernel.ULID][]string{r.ID: {"", valid}}}
+	id := kernel.NewULID()
+	s := New(Deps{Store: store, Integrations: &bindings{found: true}, Runs: runs})
+	got, err := s.PullRequests(t.Context(), kernel.NewAccountID(), []stacksapi.Settings{{Stack: stacksapi.Stack{ID: id}}})
+	if err != nil || len(got[id]) != 1 || len(got[id][0].Runs) != 1 || got[id][0].Runs[0] != runs.rows[1].ID {
+		t.Fatal("invalid historical head linked a local run", got, err)
 	}
 }

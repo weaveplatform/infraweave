@@ -16,6 +16,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
@@ -35,7 +37,7 @@ func storedRequest(f *fixture, id kernel.ULID) pullrequest.Request {
 		Number:        "17",
 		BaseBranch:    "main",
 		HeadBranch:    "feature",
-		HeadSHA:       "first",
+		HeadSHA:       requestHash("first"),
 		AuthorLogin:   "creator",
 		Title:         "changes",
 		URL:           "https://example.com/pr/17",
@@ -68,7 +70,7 @@ func TestAccPullRequestSnapshotsAndHistory(t *testing.T) {
 	upsertRequest(t, f, r)
 	current := r
 	current.ID = kernel.NewULID()
-	current.HeadSHA = "current"
+	current.HeadSHA = requestHash("current")
 	current.UpdatedAt = r.UpdatedAt.Add(time.Hour)
 	current.CreatedAt = current.UpdatedAt
 	current.Title = "edited"
@@ -77,7 +79,7 @@ func TestAccPullRequestSnapshotsAndHistory(t *testing.T) {
 	upsertRequest(t, f, current)
 	late := r
 	late.ID = kernel.NewULID()
-	late.HeadSHA = "late-history"
+	late.HeadSHA = requestHash("late-history")
 	late.UpdatedAt = r.UpdatedAt.Add(time.Minute)
 	late.Title = "stale"
 	late.State = pullrequest.Closed
@@ -88,12 +90,12 @@ func TestAccPullRequestSnapshotsAndHistory(t *testing.T) {
 		t.Fatal("stable identity created duplicate or stale closure hid current", rows, err)
 	}
 	got := rows[0]
-	if got.ID != r.ID || got.HeadSHA != "current" || got.Title != "edited" || got.AuthorLogin != "creator" || got.Draft || !got.CreatedAt.Equal(r.CreatedAt) ||
+	if got.ID != r.ID || got.HeadSHA != requestHash("current") || got.Title != "edited" || got.AuthorLogin != "creator" || got.Draft || !got.CreatedAt.Equal(r.CreatedAt) ||
 		!got.UpdatedAt.Equal(current.UpdatedAt) {
 		t.Fatalf("stale/partial snapshot replaced current: %+v", got)
 	}
 	heads, err := f.store.Heads(ctx, f.acct, []kernel.ULID{r.ID})
-	if err != nil || !reflect.DeepEqual(heads[r.ID], []string{"first", "late-history", "current"}) {
+	if err != nil || !reflect.DeepEqual(heads[r.ID], []string{requestHash("first"), requestHash("late-history"), requestHash("current")}) {
 		t.Fatal("history was overwritten/duplicated", heads, err)
 	}
 	for _, acct := range []kernel.AccountID{f.acct, kernel.NewAccountID()} {
@@ -372,5 +374,95 @@ func TestAccPullRequestReadUnavailable(t *testing.T) {
 	}
 	if heads, err := f.store.Heads(ctx, f.acct, nil); err != nil || len(heads) != 0 {
 		t.Fatal("empty history needlessly read database", heads, err)
+	}
+}
+
+func requestHash(text string) string { return fmt.Sprintf("%040x", []byte(text)) }
+
+func TestAccPullRequestIntegrationDeletionCascades(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	in, err := f.svc.Create(ctx, f.admin, gitlab("Main", "", true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := storedRequest(f, in.ID)
+	upsertRequest(t, f, r)
+	r.HeadSHA = requestHash("next")
+	r.UpdatedAt = r.UpdatedAt.Add(time.Minute)
+	upsertRequest(t, f, r)
+	if _, err := f.svc.Delete(ctx, f.admin, in.ID.String(), integration.GitLab); err != nil {
+		t.Fatal(err)
+	}
+	var rows, heads int
+	if err := f.db.QueryRow(ctx, `SELECT (SELECT count(*) FROM pull_requests),(SELECT count(*) FROM pull_request_heads)`).
+		Scan(&rows, &heads); err != nil || rows != 0 ||
+		heads != 0 {
+		t.Fatal("integration deletion orphaned an open request/history", rows, heads, err)
+	}
+	upsertRequest(t, f, r)
+	if err := f.db.QueryRow(ctx, `SELECT count(*) FROM pull_requests`).Scan(&rows); err != nil || rows != 0 {
+		t.Fatal("queued upkeep recreated deleted integration history", rows, err)
+	}
+}
+
+type localWorkspaceRuns struct{ called bool }
+
+func (r *localWorkspaceRuns) OnCommits(context.Context, kernel.AccountID, kernel.ULID, []string) ([]runsapi.CommitRun, error) {
+	r.called = true
+	return []runsapi.CommitRun{{ID: kernel.NewULID(), CommitSHA: ""}}, nil
+}
+
+func TestAccPullRequestRejectsNonCommitMembership(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	in, err := f.svc.Create(ctx, f.admin, gitlab("Main", "", true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := storedRequest(f, in.ID)
+	upsertRequest(t, f, r)
+	bad := r
+	bad.HeadSHA = ""
+	if err := tx.Do(ctx, f.db, tx.Options{}, func(ctx context.Context) error { return f.store.Upsert(ctx, bad) }); !errors.Is(err, pullrequest.ErrHead) {
+		t.Fatal("new invalid open head accepted", err)
+	}
+	// A branch-deletion notification still closes the existing record, retains
+	// its last real head, and contributes no empty historical head.
+	bad.State = pullrequest.Closed
+	bad.UpdatedAt = r.UpdatedAt.Add(time.Hour)
+	upsertRequest(t, f, bad)
+	var head, state string
+	if err := f.db.QueryRow(ctx, `SELECT head_sha,state FROM pull_requests WHERE account_id=$1 AND id=$2`, f.acct, r.ID).
+		Scan(&head, &state); err != nil || head != r.HeadSHA ||
+		state != pullrequest.Closed {
+		t.Fatal("terminal no-head snapshot stranded/regressed request", head, state, err)
+	}
+	heads, err := f.store.Heads(ctx, f.acct, []kernel.ULID{r.ID})
+	if err != nil || !slices.Equal(heads[r.ID], []string{r.HeadSHA}) {
+		t.Fatal("terminal snapshot inserted invalid history", heads, err)
+	}
+	// Reproduce legacy/minimal payload data directly, bypassing the new write
+	// guard: even this stored empty head cannot qualify via a local-workspace
+	// run's empty commit projection. VCS must not query Runs with that value.
+	if _, err := f.db.Exec(ctx, `UPDATE pull_requests SET head_sha='',state='open' WHERE account_id=$1 AND id=$2`, f.acct, r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.db.Exec(ctx, `DELETE FROM pull_request_heads WHERE account_id=$1 AND request_id=$2`, f.acct, r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.db.Exec(ctx, `INSERT INTO pull_request_heads(account_id,request_id,sha,became_head_at) VALUES($1,$2,'',$3)`, f.acct, r.ID, r.UpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	runs := &localWorkspaceRuns{}
+	svc := pullrequest.New(pullrequest.Deps{Store: f.store, Integrations: f.svc, Runs: runs})
+	id := kernel.NewULID()
+	got, err := svc.PullRequests(
+		ctx,
+		f.acct,
+		[]stacksapi.Settings{{Stack: stacksapi.Stack{ID: id}, Provider: integration.GitLab, Namespace: r.Namespace, Repository: r.Repository, Branch: r.BaseBranch}},
+	)
+	if err != nil || len(got[id]) != 0 || runs.called {
+		t.Fatal("stored noncommit joined local-workspace membership", got, runs.called, err)
 	}
 }

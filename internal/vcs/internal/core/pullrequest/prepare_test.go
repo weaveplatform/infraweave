@@ -69,7 +69,7 @@ func requestEvent() vcsapi.Event {
 	return vcsapi.Event{
 		Type:       "pull_request",
 		Action:     "opened",
-		Head:       "head",
+		Head:       requestHash("head"),
 		Repository: vcsapi.Repository{ID: "repo-id", Namespace: "acme", Name: "infra"},
 		PullRequest: &vcsapi.PullRequest{
 			Number:        17,
@@ -125,7 +125,7 @@ func TestUnitRequestPreparationKeepsCreatorAndFence(t *testing.T) {
 				!r.Draft ||
 				!r.CreatedAt.Equal(d.ReceivedAt) ||
 				!r.UpdatedAt.Equal(d.ReceivedAt) ||
-				r.HeadSHA != "head" {
+				r.HeadSHA != requestHash("head") {
 				t.Fatalf("lost immutable snapshot: %+v", r)
 			}
 			if lookup.calls != map[string]int{"lookup": 1}[known] || lookup.calls > 0 && lookup.id != "42" {
@@ -223,5 +223,31 @@ func TestUnitRequestStateAndRetention(t *testing.T) {
 	store.cause = errors.New("store unavailable")
 	if err := s.Pruned(t.Context()); !errors.Is(err, store.cause) {
 		t.Fatal("prune failure hidden", err)
+	}
+}
+
+func TestUnitRequestPreparationRequiresOpenHead(t *testing.T) {
+	for _, action := range []string{"opened", "reopened", "edited", "closed", "merged"} {
+		t.Run(action, func(t *testing.T) {
+			e := requestEvent()
+			e.Action = action
+			e.Head = ""
+			e.PullRequest.AuthorID = ""
+			store := &memoryStore{}
+			s := New(Deps{Store: store})
+			plan, err := s.Prepare(t.Context(), requestDelivery(), []vcsapi.Event{e})
+			if action != "closed" && action != "merged" {
+				if !errors.Is(err, ErrHead) {
+					t.Fatal("open snapshot with no head accepted", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("legitimate terminal no-head snapshot refused", err)
+			}
+			if err := tx.Do(t.Context(), planDB{}, tx.Options{}, plan.Commit); err != nil || len(store.rows) != 1 || store.rows[0].State != action {
+				t.Fatal("terminal state lost", store.rows, err)
+			}
+		})
 	}
 }

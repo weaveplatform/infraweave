@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type plan struct {
@@ -70,6 +71,9 @@ func (s *Service) prepare(ctx context.Context, d intake.Delivery, event vcsapi.E
 	}
 	if r.CreatedAt.IsZero() {
 		r.CreatedAt = d.ReceivedAt
+	}
+	if r.State == Open && !port.ValidCommit(r.HeadSHA) {
+		return Request{}, ErrHead
 	}
 	if r.UpdatedAt.IsZero() {
 		r.UpdatedAt = d.ReceivedAt

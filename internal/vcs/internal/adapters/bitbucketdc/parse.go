@@ -222,7 +222,10 @@ func dcChange(c webhookChange, repo vcsapi.Repository, author string) (vcsapi.Ev
 
 func dcRequest(d webhookPayload, event string) (vcsapi.Event, error) {
 	r := d.PullRequest
-	if r == nil || r.ID <= 0 || r.FromRef.LatestCommit == "" {
+	if r == nil || r.ID <= 0 {
+		return vcsapi.Event{}, ErrWebhookPayload
+	}
+	if !port.ValidCommit(r.FromRef.LatestCommit) && event != "pr:merged" && event != "pr:declined" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	source, sourceOK := dcRepository(r.FromRef.Repository)

@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 var _ stacksapi.PullRequestReader = (*Service)(nil)
@@ -65,7 +66,9 @@ func (s *Service) match(ctx context.Context, acct kernel.AccountID, stack kernel
 	unique := map[string]bool{}
 	for _, hashes := range heads {
 		for _, hash := range hashes {
-			unique[hash] = true
+			if port.ValidCommit(hash) {
+				unique[hash] = true
+			}
 		}
 	}
 	hashes := make([]string, 0, len(unique))
@@ -91,7 +94,9 @@ func (s *Service) match(ctx context.Context, acct kernel.AccountID, stack kernel
 	for _, request := range page {
 		var matching []runsapi.CommitRun
 		for _, hash := range heads[request.ID] {
-			matching = append(matching, bySHA[hash]...)
+			if port.ValidCommit(hash) {
+				matching = append(matching, bySHA[hash]...)
+			}
 		}
 		if len(matching) == 0 {
 			continue

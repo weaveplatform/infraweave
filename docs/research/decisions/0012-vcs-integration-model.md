@@ -365,6 +365,10 @@ user: infraweave never creates or deletes provider hooks.
   creation times are ordered by descending internal ID. Closed and merged
   requests expire after the delivery retention horizon; open requests remain
   live, and account purge removes both tables.
+  Deleting their integration cascades its request records and head history.
+  Only nonzero full Git commit IDs enter head membership; an empty commit
+  from a local-workspace run never qualifies a request. A terminal notification
+  without a valid head closes the request while preserving its last real head.
   GitLab's webhook actor is not its request creator: when only `author_id` is
   supplied, preparation reuses a stored creator or reads `GET /users/:id`
   outside the transaction, without refreshing the delivered head. Bitbucket

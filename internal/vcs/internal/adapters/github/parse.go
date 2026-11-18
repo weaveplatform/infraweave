@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/v93/github"
 
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 // ErrWebhookPayload refuses malformed or incomplete consumed deliveries.
@@ -114,6 +115,9 @@ func (d *webhook) normalize(kind string) (vcsapi.Event, error) {
 func (d *webhook) pullRequest(e vcsapi.Event) (vcsapi.Event, error) {
 	pr := d.PullRequest
 	if pr.GetNumber() <= 0 || pr.GetHead() == nil || pr.GetBase() == nil {
+		return vcsapi.Event{}, ErrWebhookPayload
+	}
+	if !port.ValidCommit(pr.GetHead().GetSHA()) && e.Action != "closed" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	if e.Type == "pull_request_review" {
