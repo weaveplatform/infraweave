@@ -100,6 +100,46 @@ func TestAccTxRetry(t *testing.T) {
 	}
 }
 
+// A fenced external effect cannot be replayed inside Do after a database
+// conflict, including one raised by a deferred trigger during COMMIT.
+func TestAccTxNoRetry(t *testing.T) {
+	for _, code := range []string{"40001", "40P01"} {
+		for _, stage := range []string{"callback", "commit"} {
+			t.Run(code+" at "+stage, func(t *testing.T) {
+				pool := setup(t)
+				if stage == "commit" {
+					if _, err := pool.Exec(t.Context(), `CREATE FUNCTION fail_commit() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'injected at commit' USING ERRCODE = '`+code+`'; END$$;
+CREATE CONSTRAINT TRIGGER fail_commit AFTER INSERT ON t DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION fail_commit()`); err != nil {
+						t.Fatal(err)
+					}
+				}
+				effects, after := 0, 0
+				err := tx.Do(t.Context(), pool, tx.Options{NoRetry: true}, func(ctx context.Context) error {
+					q := tx.Q(ctx, pool)
+					if _, err := q.Exec(ctx, "INSERT INTO t VALUES (1)"); err != nil {
+						return err
+					}
+					effects++
+					tx.AfterCommit(ctx, func(context.Context) { after++ })
+					if stage == "callback" {
+						return raise(ctx, q, code)
+					}
+					return nil
+				})
+				var pgErr *pgconn.PgError
+				if !errors.As(err, &pgErr) || pgErr.Code != code || effects != 1 || after != 0 {
+					t.Fatalf("error=%v effects=%d after=%d; want %s and one effect without after-commit", err, effects, after, code)
+				}
+				if got := rows(t, pool); len(got) != 0 {
+					t.Fatalf("failed transaction kept rows: %v", got)
+				}
+			})
+		}
+	}
+}
+
 // Two SERIALIZABLE transactions that each read the table and insert its
 // count conflict; the loser retries, reads the winner's row and commits.
 func TestAccTxSerializableConflict(t *testing.T) {
@@ -208,6 +248,70 @@ func (f failingBeginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
 type noQuerier struct{ tx.Querier }
+
+type observedTx struct {
+	pgx.Tx
+	commitError        error
+	commits, rollbacks int
+}
+
+func (o *observedTx) Commit(context.Context) error {
+	o.commits++
+	return o.commitError
+}
+
+func (o *observedTx) Rollback(context.Context) error {
+	o.rollbacks++
+	return nil
+}
+
+type observedBeginner struct {
+	transactions []*observedTx
+	commitError  error
+}
+
+func (o *observedBeginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	t := &observedTx{commitError: o.commitError}
+	o.transactions = append(o.transactions, t)
+	return t, nil
+}
+
+func TestUnitTxNoRetry(t *testing.T) {
+	for _, stage := range []string{"callback", "commit", "success"} {
+		t.Run(stage, func(t *testing.T) {
+			conflict := &pgconn.PgError{Code: "40001"}
+			db := &observedBeginner{}
+			if stage == "commit" {
+				db.commitError = conflict
+			}
+			calls, after := 0, 0
+			err := tx.Do(t.Context(), db, tx.Options{NoRetry: true}, func(ctx context.Context) error {
+				calls++
+				if !tx.In(ctx) || tx.Q(ctx, nil) != db.transactions[0] {
+					t.Fatal("callback lost its transaction fence")
+				}
+				tx.AfterCommit(ctx, func(context.Context) { after++ })
+				if stage == "callback" {
+					return conflict
+				}
+				return nil
+			})
+			if calls != 1 || len(db.transactions) != 1 {
+				t.Fatalf("callback calls=%d transactions=%d; want one each", calls, len(db.transactions))
+			}
+			if stage == "success" {
+				if err != nil || after != 1 || db.transactions[0].commits != 1 {
+					t.Fatalf("successful transaction: error=%v after=%d commits=%d", err, after, db.transactions[0].commits)
+				}
+			} else if !errors.Is(err, conflict) || after != 0 {
+				t.Fatalf("failed transaction: error=%v after=%d", err, after)
+			}
+			if stage == "callback" && db.transactions[0].rollbacks != 1 {
+				t.Fatalf("callback error rolled back %d times", db.transactions[0].rollbacks)
+			}
+		})
+	}
+}
 
 func TestUnitTxOutsideATransaction(t *testing.T) {
 	if tx.In(t.Context()) {

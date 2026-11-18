@@ -7,6 +7,9 @@
 // unit of work. Q returns the context's transaction or the given pool, In
 // reports whether there is one, and AfterCommit defers work such as a
 // notification until the commit succeeds.
+// NoRetry disables callback replay for a bounded external effect that must run
+// while a database fence is held. Such a caller must own the outer transaction
+// and independently recover remote success after a rollback or failed commit.
 //
 // # Input and output
 //
