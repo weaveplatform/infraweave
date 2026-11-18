@@ -132,6 +132,7 @@ func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode,
 // stacks are an account's stacks by slug, with their labels and hooks by
 // slug, recording each hold.
 type stacks struct {
+	stacksapi.Stacks
 	mu     sync.Mutex
 	all    map[string]stacksapi.Stack
 	labels map[string][]string

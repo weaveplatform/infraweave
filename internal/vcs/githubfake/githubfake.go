@@ -72,11 +72,14 @@ type App struct {
 // Installation is an App's installation on an owner, reaching some of its
 // repositories.
 type Installation struct {
-	ID        int64
-	AppID     int64
-	Owner     string
-	OwnerType string
-	Repos     []string
+	ID          int64
+	AppID       int64
+	Owner       string
+	OwnerType   string
+	OwnerID     int64
+	SuspendedAt *time.Time
+	Deleted     bool
+	Repos       []string
 }
 
 // TokenRequest is a request for an installation token as the fake
@@ -107,6 +110,8 @@ type Fake struct {
 	apps        map[int64]*App
 	installs    map[int64]*Installation
 	repos       map[string]*Repo
+	repoIDs     map[*Repo]int64
+	ownerIDs    map[string]int64
 	tokens      map[string]token
 	minted      []TokenRequest
 	codes       map[string]string
@@ -125,6 +130,7 @@ type Fake struct {
 func New() *Fake {
 	return &Fake{
 		apps: map[int64]*App{}, installs: map[int64]*Installation{}, repos: map[string]*Repo{},
+		repoIDs: map[*Repo]int64{}, ownerIDs: map[string]int64{},
 		tokens: map[string]token{}, codes: map[string]string{}, nextID: 1000,
 		logins: map[string]string{AuthorEmail: AuthorLogin},
 	}
@@ -201,9 +207,13 @@ func (f *Fake) SetApp(app int64, permissions map[string]string, events []string)
 func (f *Fake) Install(app int64, owner, ownerType string, repos ...string) int64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.ownerIDs[owner] == 0 {
+		f.nextID++
+		f.ownerIDs[owner] = f.nextID
+	}
 	f.nextID++
 	f.installs[f.nextID] = &Installation{
-		ID: f.nextID, AppID: app, Owner: owner, OwnerType: ownerType, Repos: repos,
+		ID: f.nextID, AppID: app, Owner: owner, OwnerType: ownerType, OwnerID: f.ownerIDs[owner], Repos: slices.Clone(repos),
 	}
 	return f.nextID
 }
@@ -217,6 +227,12 @@ func (f *Fake) Repo(owner, name string) *Repo {
 		return r
 	}
 	r := gitmem.New()
+	f.nextID++
+	f.repoIDs[r] = f.nextID
+	if f.ownerIDs[owner] == 0 {
+		f.nextID++
+		f.ownerIDs[owner] = f.nextID
+	}
 	f.repos[key] = r
 	return r
 }
@@ -398,8 +414,13 @@ func (f *Fake) asInstallation(next http.Handler) http.Handler {
 		f.mu.Lock()
 		t := f.tokens[tok]
 		in, ok := f.installs[t.install]
+		if ok {
+			copy := *in
+			copy.Repos = slices.Clone(in.Repos)
+			in = &copy
+		}
 		f.mu.Unlock()
-		if !ok {
+		if !ok || in.Deleted || in.SuspendedAt != nil {
 			answer(w, http.StatusUnauthorized, message("Bad credentials"))
 			return
 		}
@@ -451,7 +472,7 @@ func (f *Fake) installations(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	var out []map[string]any
 	for _, id := range slices.Sorted(maps.Keys(f.installs)) {
-		if in := f.installs[id]; in.AppID == a.ID {
+		if in := f.installs[id]; in.AppID == a.ID && !in.Deleted {
 			out = append(out, installation(r, in))
 		}
 	}
@@ -474,7 +495,7 @@ func (f *Fake) accessToken(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	in, ok := f.installs[id]
-	if !ok || in.AppID != a.ID {
+	if !ok || in.AppID != a.ID || in.Deleted || in.SuspendedAt != nil {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
 	}
@@ -521,7 +542,7 @@ func (f *Fake) repoInstallation(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	for _, id := range slices.Sorted(maps.Keys(f.installs)) {
 		in := f.installs[id]
-		if in.AppID == a.ID && in.Owner == owner && slices.Contains(in.Repos, name) {
+		if in.AppID == a.ID && !in.Deleted && in.SuspendedAt == nil && in.Owner == owner && slices.Contains(in.Repos, name) {
 			if _, ok := f.repos[owner+"/"+name]; ok {
 				answer(w, http.StatusOK, installation(r, in))
 				return
@@ -675,8 +696,9 @@ func (f *Fake) convert(w http.ResponseWriter, r *http.Request) {
 func installation(r *http.Request, in *Installation) map[string]any {
 	return map[string]any{
 		"id": in.ID, "app_id": in.AppID,
-		"account":  map[string]string{"login": in.Owner, "type": in.OwnerType},
-		"html_url": fmt.Sprintf("%s/settings/installations/%d", host(r), in.ID),
+		"account":      map[string]any{"id": in.OwnerID, "login": in.Owner, "type": in.OwnerType},
+		"suspended_at": in.SuspendedAt,
+		"html_url":     fmt.Sprintf("%s/settings/installations/%d", host(r), in.ID),
 	}
 }
 

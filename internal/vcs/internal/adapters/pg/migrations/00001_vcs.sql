@@ -239,3 +239,54 @@ CREATE TABLE vcs_check_resources (
     PRIMARY KEY (account_id,resource_key)
 );
 CREATE INDEX vcs_check_resources_binding ON vcs_check_resources(account_id,binding_key);
+
+-- Native repository identity survives provider path changes. Paths remain
+-- exclusive until an unambiguous event moves the previous occupant. All rows
+-- are owned by the integration and disappear with its deletion/account purge.
+CREATE TABLE vcs_repository_map (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    repository_id text NOT NULL,
+    namespace text NOT NULL,
+    name text NOT NULL,
+    owner_id text NOT NULL DEFAULT '',
+    observed_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id,integration_id,repository_id),
+    UNIQUE (account_id,integration_id,namespace,name),
+    FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+CREATE INDEX vcs_repository_owner ON vcs_repository_map(account_id,integration_id,owner_id);
+
+CREATE TABLE vcs_installations (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    installation_id text NOT NULL,
+    owner_id text NOT NULL,
+    owner_login text NOT NULL,
+    state text NOT NULL CHECK(state IN ('active','suspended','deleted')),
+    is_current boolean NOT NULL DEFAULT true,
+    is_superseded boolean NOT NULL DEFAULT false,
+    observed_at timestamptz NOT NULL,
+    PRIMARY KEY(account_id,integration_id,installation_id),
+    FOREIGN KEY(account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX vcs_installation_current_owner ON vcs_installations(account_id,integration_id,owner_id) WHERE is_current;
+
+-- Membership remains after removal drops the current map row, so stack.changed
+-- cannot accidentally restore a repository the App no longer reaches.
+CREATE TABLE vcs_installation_repositories (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    installation_id text NOT NULL,
+    repository_id text NOT NULL,
+    namespace text NOT NULL,
+    name text NOT NULL,
+    present boolean NOT NULL,
+    observed_at timestamptz NOT NULL,
+    coordinates_at timestamptz NOT NULL,
+    PRIMARY KEY(account_id,integration_id,repository_id),
+    FOREIGN KEY(account_id,integration_id,installation_id)
+        REFERENCES vcs_installations(account_id,integration_id,installation_id) ON DELETE CASCADE
+);
+CREATE INDEX vcs_installation_repository_path ON vcs_installation_repositories(account_id,integration_id,namespace,name);

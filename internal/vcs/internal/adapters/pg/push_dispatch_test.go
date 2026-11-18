@@ -228,3 +228,10 @@ func TestAccPushDispatchAtomicFence(t *testing.T) {
 		})
 	}
 }
+
+func (i dispatchIntegration) HeldEventUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Use, bool, error) {
+	if !tx.In(ctx) {
+		return stacksapi.Use{}, false, queue.ErrNoTransaction
+	}
+	return i.EventUse(ctx, acct, id)
+}

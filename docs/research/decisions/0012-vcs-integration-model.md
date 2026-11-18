@@ -354,13 +354,42 @@ user: infraweave never creates or deletes provider hooks.
 - **Renames (D15).** `vcs` maps integration plus stable provider repository
   ID to path. A changed path renames every stack on the old path through
   a `stacksapi` method that bumps its version and appends `stack.changed`,
-  without an audit entry. GitHub `installation_target` and `organization`
-  renamed events re-point all stacks on the owner's repositories.
+  without an audit entry. This identity-preserving change leaves the event's
+  `source` flag false: background tracking must not advance commits on behalf of
+  a capped or refused push. Initial and manually changed sources still initialize
+  their pointers, including when native resolution first canonicalizes their
+  coordinates. Native lookup stays outside the database transaction; subsequent
+  canonicalization and pointer initialization share one held current integration
+  binding. An implicit source resolved through a former default cannot update
+  either coordinates or pointers. GitHub `installation_target` and `organization`
+  renamed events re-point all stacks on the owner's repositories. Provider API
+  resolution seeds the account/integration-scoped native-ID map. Event processing
+  changes the map and calls the Stacks-owned repoint port in the same fenced
+  transaction that stores prepared facts and enqueues stack children. Provider
+  reads stay outside that transaction; affected stacks are selected afterward.
+  The completion fence rechecks current coordinates, so a rename committed after
+  preparation cannot lose a push. A path occupied by another native ID is not
+  reassigned or used for fan-out; a later unambiguous observation can free it.
+  UUID spelling differences are canonicalized only for native identity matching.
+  Replay retains its original observation time and reaches the latest mapped
+  path without undoing newer rename facts.
 - **Installation state (D22).** Installation and repository events keep
   the GitHub App integration's installations and repositories current.
   Deleted or suspended installations mark the integration unhealthy;
   affected runs fail fast with that reason. No account is created or
-  renamed by any VCS event.
+  renamed by any VCS event. Availability belongs to the current installation ID
+  for a stable provider owner. Reinstalling the same App creates a new current ID;
+  late jobs for superseded IDs cannot poison that replacement. Removed repository
+  membership is retained separately from the current map, so background tracking
+  cannot restore removed access. A replacement installation's unknown membership
+  keeps the ordinary native lookup. Membership presence and coordinates retain
+  separate observation times: a delayed add can restore access without undoing
+  an owner rename learned after removal dropped the current map. Known inactive
+  or removed access fails
+  before a source lookup or token mint. Connection testing refreshes installation
+  availability through the App-authenticated installation list and reports a
+  failed `PERMISSIONS` check naming the affected owner/state. No credential is
+  needed in the identity, state or membership rows.
 - **Pull requests (D16).** `vcs` owns `pull_requests` and the head commits
   each request has had. `stacksapi` declares the read port behind
   `Stack.pullRequests`, implemented by `vcs`: at most 50 open requests

@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/google/uuid"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/gitmem"
 )
@@ -76,6 +77,7 @@ func (a *account) nickname() string { n, _, _ := strings.Cut(a.email, "@"); retu
 // repository is a repository in a workspace, with its accounts' roles by
 // e-mail.
 type repository struct {
+	id        string
 	workspace string
 	slug      string
 	repo      *Repo
@@ -172,7 +174,7 @@ func (f *Fake) repositoryOf(workspace, slug string) *repository {
 	if r, ok := f.repos[key]; ok {
 		return r
 	}
-	r := &repository{workspace: workspace, slug: slug, repo: gitmem.New(), roles: map[string]Role{}}
+	r := &repository{id: "{" + uuid.NewString() + "}", workspace: workspace, slug: slug, repo: gitmem.New(), roles: map[string]Role{}}
 	f.repos[key] = r
 	return r
 }

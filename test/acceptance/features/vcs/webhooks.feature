@@ -617,3 +617,244 @@ Feature: VCS webhook protocol, event run budgets and request history
     Then it answers a 422 problem "validation-failed"
     When token "h" searches ignored triggers of stack "alpha" with '{}' through B
     Then the ignored-trigger answer has 0 records and keeps cursor "empty"
+
+  @gitlab @objectstore @docker @case:success
+  Scenario Outline: A renamed GitLab project keeps every matching branch and plans its next push on the new source
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And the sibling key is exchanged through B for token "s"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And token "h" eventually reads the OpenTofu versions through B as the fixture's stable releases newest first
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
+    And the GitLab project "acme/platform/infra" commits files on "main" as "seed":
+      | main.tf | resource "terraform_data" "this" {\n  input = "before"\n}\n |
+    And the GitLab project "acme/platform/infra" branches "feature" from "seed"
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Rename","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Isolated","spaceID":"acme"}}' through B
+    And it answers 201
+    And the answer's id names "other"
+    And token "s" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Foreign","spaceID":"acme-dev","isDefault":true}}' through B
+    And it answers 201
+    And the answer's id names "foreign"
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And it answers 201
+    And the answer's id names "pool"
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And these repository lifecycle stacks are created:
+      | token | stack    | provider | namespace     | repository | branch  | space    | integration | vendor   | managed |
+      | h     | infra    | GITLAB   | acme/platform | infra      | main    | acme     | integration | <vendor> | true    |
+      | h     | branch   | GITLAB   | acme/platform | infra      | feature | acme     | -           | <vendor> | true    |
+      | h     | isolated | GITLAB   | acme/platform | infra      | main    | acme     | other       | -        | false   |
+      | s     | foreign  | GITLAB   | acme/platform | infra      | main    | acme-dev | foreign     | -        | false   |
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
+    And repository lifecycle stacks are checkpointed:
+      | token | stack    |
+      | h     | infra    |
+      | h     | branch   |
+      | h     | isolated |
+      | s     | foreign  |
+    And token "h" sends "GET /api/v1/stacks/infra" through A
+    And the answer's ETag is kept as "beforeRename"
+    And local tenancy is checkpointed before provider lifecycle events
+    And the GitLab project "acme/platform/infra" commits files on "main" as "head":
+      | main.tf | resource "terraform_data" "this" {\n  input = "renamed"\n}\n |
+    And the GitLab project "acme/platform/infra" branches "feature" from "head"
+    And GitLab sends request snapshots for integration "integration" through B:
+      | id | action | project             | head    | base | commit | draft |
+      | 17 | open   | acme/platform/infra | feature | main | head   | false |
+    When GitLab renames project "acme/platform/infra" to "renamed/platform/project"
+    And GitLab pushes renamed project "renamed/platform/project" as "renamedPush" for integration "integration" from "seed" to "head" on "main" through A
+    Then it answers 202
+    And GitLab push "renamedPush" for integration "integration" settles with 2 runs and 2 stack jobs
+    And repository lifecycle stacks now have these coordinates and version advances:
+      | token | stack    | namespace        | repository | advances |
+      | h     | infra    | renamed/platform | project    | 1        |
+      | h     | branch   | renamed/platform | project    | 1        |
+      | h     | isolated | acme/platform    | infra      | 0        |
+      | s     | foreign  | acme/platform    | infra      | 0        |
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"branch":"stale-branch"}' if matching the ETag "beforeRename" through B
+    Then it answers a 412 problem "precondition-failed"
+    And the "TRACKED" event run on stack "infra" for commit "head" is kept as "renamedRun"
+    And token "h" eventually reads the run "renamedRun" in the state "UNCONFIRMED" through B
+    And the event run "renamedRun" has a real tool plan through B
+    And stack "infra" lists requests "17" through A with token "h"
+    And request "17" on stack "infra" links runs "renamedRun" through B
+    And token "h" sends "GET /api/v1/stacks/infra" through A
+    And the answer's repository is '"project"'
+    And the answer's namespace is '"renamed/platform"'
+    And provider lifecycle events leave every local account organization and space unchanged
+    When GitLab explicitly resends delivery "renamedPush" for integration "integration" through B
+    Then it answers 200
+    And repository lifecycle stacks now have these coordinates and version advances:
+      | token | stack | namespace        | repository | advances |
+      | h     | infra | renamed/platform | project    | 1        |
+
+    @terraform
+    Examples:
+      | vendor    |
+      | terraform |
+
+    @tofu
+    Examples:
+      | vendor   |
+      | opentofu |
+
+  @github @case:success
+  Scenario Outline: GitHub repository and owner rename events repoint only their integration without changing local tenancy
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And a GitHub lifecycle App "app" is installed on "acme"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{appID}","privateKey":"{appKey}","webhookSecret":"{appWebhookSecret}","customInput":{"name":"Lifecycle","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{appID}","privateKey":"{appKey}","webhookSecret":"{appWebhookSecret}","customInput":{"name":"Isolated","spaceID":"acme"}}' through B
+    And it answers 201
+    And the answer's id names "other"
+    And these repository lifecycle stacks are created:
+      | token | stack    | provider          | namespace | repository | branch  | space | integration | vendor | managed |
+      | h     | infra    | GITHUB_ENTERPRISE | acme      | infra      | main    | acme  | integration | -      | false   |
+      | h     | branch   | GITHUB            | acme      | infra      | feature | acme  | -           | -      | false   |
+      | h     | web      | GITHUB_ENTERPRISE | acme      | web        | main    | acme  | integration | -      | false   |
+      | h     | isolated | GITHUB_ENTERPRISE | acme      | infra      | main    | acme  | other       | -      | false   |
+    And repository lifecycle stacks are checkpointed:
+      | token | stack    |
+      | h     | infra    |
+      | h     | branch   |
+      | h     | web      |
+      | h     | isolated |
+    And local tenancy is checkpointed before provider lifecycle events
+    When GitHub App "app" sends installation action "created" for owner "acme" as delivery "created" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "created" is eventually dispatched
+    When GitHub renames repository "acme/infra" to "renamed" and App "app" sends delivery "repositoryRename" to integration "integration" through B
+    Then it answers 202
+    And GitHub delivery "repositoryRename" is eventually dispatched
+    And repository lifecycle stacks now have these coordinates and version advances:
+      | token | stack    | namespace | repository | advances |
+      | h     | infra    | acme      | renamed    | 1        |
+      | h     | branch   | acme      | renamed    | 1        |
+      | h     | web      | acme      | web        | 0        |
+      | h     | isolated | acme      | infra      | 0        |
+    When GitHub renames owner "acme" to "renamed-owner" and App "app" sends "<event>" delivery "ownerRename" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "ownerRename" is eventually dispatched
+    And repository lifecycle stacks now have these coordinates and version advances:
+      | token | stack    | namespace     | repository | advances |
+      | h     | infra    | renamed-owner | renamed    | 2        |
+      | h     | branch   | renamed-owner | renamed    | 2        |
+      | h     | web      | renamed-owner | web        | 1        |
+      | h     | isolated | acme          | infra      | 0        |
+    And provider lifecycle events leave every local account organization and space unchanged
+
+    Examples:
+      | event               |
+      | organization        |
+      | installation_target |
+
+  @github @objectstore @docker @op:vcsIntegrationTest @case:success @case:failure
+  Scenario Outline: GitHub installation unavailability fails before provider calls and restoration permits a real plan
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And token "h" eventually reads the OpenTofu versions through B as the fixture's stable releases newest first
+    And a GitHub lifecycle App "app" is installed on "acme"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{appID}","privateKey":"{appKey}","webhookSecret":"{appWebhookSecret}","customInput":{"name":"Lifecycle","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And it answers 201
+    And the answer's id names "pool"
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And these repository lifecycle stacks are created:
+      | token | stack | provider          | namespace | repository | branch | space | integration | vendor   | managed |
+      | h     | infra | GITHUB_ENTERPRISE | acme      | infra      | main   | acme  | integration | <vendor> | true    |
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
+    And local tenancy is checkpointed before provider lifecycle events
+    When GitHub App "app" sends installation action "created" for owner "acme" as delivery "created" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "created" is eventually dispatched
+    Given the native GitHub installation of App "app" becomes "<state>"
+    When GitHub App "app" sends installation action "<action>" for owner "acme" as delivery "inactive" to integration "integration" through B
+    Then it answers 202
+    And GitHub delivery "inactive" is eventually dispatched
+    And GitHub source resolution on stack "infra" refuses "<state>" without a provider call through A
+    When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the GitHub installation check names owner "acme" and state "<state>"
+    Given GitHub restores App "app" on "acme" using "<recovery>"
+    When GitHub App "app" sends installation action "<restore>" for owner "acme" as delivery "restored" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "restored" is eventually dispatched
+    When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    Then it answers 200
+    And the answer's id names "restoredRun"
+    And token "h" eventually reads the run "restoredRun" in the state "UNCONFIRMED" through A
+    And the event run "restoredRun" has a real tool plan through A
+    And GitHub App "app" minted source tokens only for its restored installation
+    And provider lifecycle events leave every local account organization and space unchanged
+
+    @terraform
+    Examples:
+      | state     | action  | restore   | recovery              | vendor    |
+      | suspended | suspend | unsuspend | the same installation | terraform |
+
+    @tofu
+    Examples:
+      | state   | action  | restore | recovery           | vendor   |
+      | deleted | deleted | created | a new installation | opentofu |
+
+  @github @op:vcsIntegrationTest @case:success @case:failure
+  Scenario: GitHub repository membership and authoritative installation refresh control source availability
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And a GitHub lifecycle App "app" is installed on "acme"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{appID}","privateKey":"{appKey}","webhookSecret":"{appWebhookSecret}","customInput":{"name":"Lifecycle","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And these repository lifecycle stacks are created:
+      | token | stack | provider          | namespace | repository | branch | space | integration | vendor | managed |
+      | h     | infra | GITHUB_ENTERPRISE | acme      | infra      | main   | acme  | integration | -      | false   |
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
+    And local tenancy is checkpointed before provider lifecycle events
+    When GitHub App "app" sends installation action "created" for owner "acme" as delivery "created" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "created" is eventually dispatched
+    When GitHub App "app" sends repository membership "removed" for "acme/infra" as delivery "removed" to integration "integration" through B
+    Then it answers 202
+    And GitHub delivery "removed" is eventually dispatched
+    And GitHub source resolution on stack "infra" refuses "no longer reaches" without a provider call through A
+    When GitHub App "app" sends repository membership "added" for "acme/infra" as delivery "added" to integration "integration" through A
+    Then it answers 202
+    And GitHub delivery "added" is eventually dispatched
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    Then it answers 200
+    Given the native GitHub installation of App "app" becomes "suspended"
+    When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through A
+    Then it answers 200
+    And the GitHub installation check names owner "acme" and state "suspended"
+    And GitHub source resolution on stack "infra" refuses "suspended" without a provider call through B
+    Given the native GitHub installation of App "app" becomes "deleted"
+    When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the GitHub installation check names owner "acme" and state "deleted"
+    And GitHub source resolution on stack "infra" refuses "deleted" without a provider call through A
+    Given GitHub restores App "app" on "acme" using "a new installation"
+    When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through A
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    Then it answers 200
+    And provider lifecycle events leave every local account organization and space unchanged

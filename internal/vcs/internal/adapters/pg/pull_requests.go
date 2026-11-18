@@ -6,17 +6,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 )
 
 // Upsert joins the inbox fence and holds the integration, fencing account purge.
-// An older snapshot contributes history without reverting current metadata.
+// The exclusive hold also avoids a KEY SHARE-to-UPDATE upgrade when compound
+// lifecycle completion reads its held current binding. An older snapshot
+// contributes history without reverting current metadata.
 func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 	if !tx.In(ctx) {
 		return pullrequest.ErrNoTransaction
@@ -31,12 +35,26 @@ func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 		r.HeadSHA = ""
 	}
 	var integration kernel.ULID
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM vcs_integrations WHERE account_id=$1 AND id=$2 FOR KEY SHARE`, r.Account, r.Integration).Scan(&integration)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM vcs_integrations WHERE account_id=$1 AND id=$2 FOR UPDATE`, r.Account, r.Integration).Scan(&integration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("vcs: hold request integration: %w", sql.Unavailable(err))
+	}
+	r.RepositoryID = lifecycle.CanonicalID(r.RepositoryID)
+	if _, parseErr := uuid.Parse(r.RepositoryID); parseErr == nil {
+		// Reuse a historical UUID spelling so the canonical update retains the
+		// same request/head identity instead of inserting a duplicate logical PR.
+		var stored string
+		readErr := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT r.repository_id FROM pull_requests r
+   WHERE r.account_id=$1 AND r.integration_id=$2 AND r.provider_id=$3 AND `+requestRepositoryIDSQL+`=$4
+   ORDER BY (r.repository_id=$4) DESC,r.updated_at DESC,r.id LIMIT 1`, r.Account, r.Integration, r.Number, r.RepositoryID).Scan(&stored)
+		if readErr == nil {
+			r.RepositoryID = stored
+		} else if !errors.Is(readErr, pgx.ErrNoRows) {
+			return fmt.Errorf("vcs: resolve historical request identity: %w", sql.Unavailable(readErr))
+		}
 	}
 	var id kernel.ULID
 	err = tx.Q(ctx, s.db).QueryRow(ctx, `INSERT INTO pull_requests
@@ -73,7 +91,7 @@ func (s *Store) Upsert(ctx context.Context, r pullrequest.Request) error {
 func (s *Store) Author(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, repository, number string) (string, error) {
 	var author string
 	err := tx.Q(ctx, s.db).
-		QueryRow(ctx, `SELECT author_login FROM pull_requests WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 AND provider_id=$4`, acct, integration, repository, number).
+		QueryRow(ctx, `SELECT r.author_login FROM pull_requests r WHERE r.account_id=$1 AND r.integration_id=$2 AND `+requestRepositoryIDSQL+`=$3 AND r.provider_id=$4`, acct, integration, lifecycle.CanonicalID(repository), number).
 		Scan(&author)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
@@ -99,9 +117,13 @@ func (s *Store) Candidates(
 		at = &after.UpdatedAt
 		id = &after.ID
 	}
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id,repository_id,provider_id,base_branch,head_branch,head_sha,author_login,title,url,head_branch_url,draft,created_at,updated_at
-		FROM pull_requests WHERE account_id=$1 AND integration_id=$2 AND namespace=$3 AND repository=$4 AND base_branch=$5 AND state='open'
-		AND ($6::timestamptz IS NULL OR (updated_at,id)<($6,$7::uuid)) ORDER BY updated_at DESC,id DESC LIMIT $8`, acct, integration, namespace, repository, branch, at, id, limit)
+	rows, err := tx.Q(ctx, s.db).
+		Query(ctx, `SELECT r.id,r.repository_id,r.provider_id,r.base_branch,r.head_branch,r.head_sha,r.author_login,r.title,r.url,r.head_branch_url,r.draft,r.created_at,r.updated_at
+ FROM pull_requests r LEFT JOIN vcs_repository_map m ON m.account_id=r.account_id AND m.integration_id=r.integration_id
+ AND m.repository_id=`+requestRepositoryIDSQL+`
+ WHERE r.account_id=$1 AND r.integration_id=$2 AND coalesce(m.namespace,r.namespace)=$3 AND coalesce(m.name,r.repository)=$4
+ AND r.base_branch=$5 AND r.state='open' AND ($6::timestamptz IS NULL OR (r.updated_at,r.id)<($6,$7::uuid))
+ ORDER BY r.updated_at DESC,r.id DESC LIMIT $8`, acct, integration, namespace, repository, branch, at, id, limit)
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read request candidates: %w", sql.Unavailable(err))
 	}

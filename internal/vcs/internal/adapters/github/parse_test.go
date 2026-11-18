@@ -36,7 +36,7 @@ func payload(t *testing.T, kind, action string, edit func(map[string]any)) []byt
 }
 
 func TestUnitGitHubParse(t *testing.T) {
-	repo := vcsapi.Repository{ID: "7", Namespace: "acme", Name: "infra"}
+	repo := vcsapi.Repository{ID: "7", Namespace: "acme", Name: "infra", OwnerID: "41"}
 	pr := &vcsapi.PullRequest{
 		AuthorLogin: githubfake.AuthorLogin, Title: "Infrastructure change", URL: "https://github.example.com/acme/infra/pull/12",
 		HeadBranchURL: "https://github.example.com/contributor/infra/tree/feature", State: "open",
@@ -199,7 +199,7 @@ func TestUnitGitHubParse(t *testing.T) {
 						Owner:        vcsapi.Owner{ID: "41", Login: "acme"},
 						Repositories: []vcsapi.Repository{},
 						Added:        []vcsapi.Repository{repo},
-						Removed:      []vcsapi.Repository{{ID: "8", Namespace: "acme", Name: "retired"}},
+						Removed:      []vcsapi.Repository{{ID: "8", Namespace: "acme", Name: "retired", OwnerID: "41"}},
 					},
 				},
 			},
