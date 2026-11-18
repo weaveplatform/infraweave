@@ -2,6 +2,7 @@ package gitlab_test
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -123,5 +124,29 @@ func TestUnitDeploymentHost(t *testing.T) {
 	}
 	if _, err := l.gl.DeploymentHost(port.Settings{APIHost: "mailto:invalid"}); err == nil {
 		t.Fatal("invalid host accepted")
+	}
+}
+
+func TestUnitDeploymentPagination(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	stack := port.DeploymentStack{ID: kernel.NewULID(), Environment: "production"}
+	var last port.DeploymentRun
+	for i := range 101 {
+		ref := fmt.Sprintf("release-%d", i)
+		sha := l.fake.Repo("acme/platform", "infra").Commit(ref, ref, map[string]string{"main.tf": ref})
+		last = port.DeploymentRun{ID: kernel.NewULID(), Commit: sha, Ref: ref}
+		if err := l.gl.Report(t.Context(), l.repo.Repo, stack, last, port.DeploymentPending); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// GitLab defaults to ascending ID. The last environment/ref/SHA match
+	// is on page two and cannot be found using invented ref/SHA filters.
+	if err := l.gl.Report(t.Context(), l.repo.Repo, stack, last, port.DeploymentSuccess); err != nil {
+		t.Fatal(err)
+	}
+	got := l.fake.Deployments("acme/platform", "infra")
+	if len(got) != 101 || !slices.Equal(got[100].States, []string{"running", "success"}) || len(l.fake.Environments("acme/platform", "infra")) != 1 {
+		t.Fatalf("paginated native identity: %d deployments, last %+v", len(got), got[100])
 	}
 }

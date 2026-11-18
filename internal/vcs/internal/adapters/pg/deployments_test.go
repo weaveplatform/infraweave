@@ -13,21 +13,61 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/gitlabfake"
 	gitlabadapter "github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/gitlab"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
+func TestUnitDeploymentHeldAndTransactions(t *testing.T) {
+	t.Parallel()
+	for _, table := range []string{"vcs_deployment_runs", "vcs_deployment_states", "vcs_deployment_resources"} {
+		if !slices.ContainsFunc(pg.Held(), func(h integrity.Held) bool {
+			return h.Entity == "account" && h.Table == table && slices.Equal(h.Columns, []string{"account_id"})
+		}) {
+			t.Errorf("missing account hold registration for %s", table)
+		}
+	}
+	store := pg.New(nil, nil)
+	if _, err := store.BindDeployment(t.Context(), feedback.Deployment{}); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatalf("bind outside transaction %v", err)
+	}
+	if _, err := store.RequestDeployment(t.Context(), feedback.DeploymentRequest{}); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatalf("request outside transaction %v", err)
+	}
+	if err := store.ReserveDeployment(t.Context(), feedback.Deployment{}, ""); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatalf("reserve outside transaction %v", err)
+	}
+	if _, err := store.HoldDeployment(t.Context(), kernel.AccountID{}, ""); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatalf("hold outside transaction %v", err)
+	}
+	if err := store.ReportedDeployment(t.Context(), kernel.AccountID{}, "", 1); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatalf("report outside transaction %v", err)
+	}
+}
+
 type deploymentWorld struct {
-	f       *fixture
-	jobs    *queue.Queue
-	service *feedback.Service
-	fake    *gitlabfake.Fake
-	binding feedback.Deployment
+	f        *fixture
+	jobs     *queue.Queue
+	service  *feedback.Service
+	fake     *gitlabfake.Fake
+	binding  feedback.Deployment
+	provider *countedDeployment
+}
+
+type countedDeployment struct {
+	*gitlabadapter.Provider
+	reports int
+}
+
+func (p *countedDeployment) Report(ctx context.Context, repo port.Repository, stack port.DeploymentStack, run port.DeploymentRun, state port.DeploymentState) error {
+	p.reports++
+	return p.Provider.Report(ctx, repo, stack, run, state) //nolint:wrapcheck // test records the native capability boundary
 }
 
 func newDeploymentWorld(t *testing.T) *deploymentWorld {
@@ -78,9 +118,10 @@ func newDeploymentWorld(t *testing.T) *deploymentWorld {
 		CreatedAt: now,
 		Epoch:     now.Add(time.Minute),
 	}}
+	w.provider = &countedDeployment{Provider: gitlabadapter.New(gitlabadapter.Options{RootCAs: srv.Pool()})}
 	w.service = feedback.NewDeployments(w.jobs, func(ctx context.Context, acct kernel.AccountID) error {
 		return f.deps.Spaces.Hold(ctx, acct, acct.ULID)
-	}, feedback.DeploymentDeps{DB: f.db, Store: f.store, Integrations: f.svc, Providers: map[string]port.Deployments{"GITLAB": gitlabadapter.New(gitlabadapter.Options{RootCAs: srv.Pool()})}})
+	}, feedback.DeploymentDeps{DB: f.db, Store: f.store, Integrations: f.svc, Providers: map[string]port.Deployments{"GITLAB": w.provider}})
 	return w
 }
 
@@ -357,6 +398,9 @@ func TestAccDeploymentEffectRollbackDoesNotReplay(t *testing.T) {
 	if err == nil {
 		t.Fatal("acknowledgement failure ignored")
 	}
+	if w.provider.reports != 1 {
+		t.Fatalf("provider callback replayed inside transaction: %d calls", w.provider.reports)
+	}
 	if got := w.fake.DeploymentWrites("acme", "infra"); len(got) != 1 {
 		t.Fatalf("external effect replayed inside transaction: %+v", got)
 	}
@@ -373,6 +417,9 @@ func TestAccDeploymentEffectRollbackDoesNotReplay(t *testing.T) {
 	}
 	if err := w.service.Reported(t.Context(), j); err != nil {
 		t.Fatal(err)
+	}
+	if w.provider.reports != 2 {
+		t.Fatalf("later queue attempt did not invoke exactly one recovery: %d calls", w.provider.reports)
 	}
 	if got := w.fake.Deployments("acme", "infra"); len(got) != 1 || len(got[0].States) != 1 {
 		t.Fatalf("later queue attempt did not recover remote effect: %+v", got)

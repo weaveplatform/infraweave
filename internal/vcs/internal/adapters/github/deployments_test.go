@@ -100,3 +100,35 @@ func TestUnitDeploymentRefusals(t *testing.T) {
 		t.Fatal("refused write changed deployments")
 	}
 }
+
+func TestUnitDeploymentPagination(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	stack := port.DeploymentStack{ID: kernel.NewULID(), Environment: "production"}
+	first := port.DeploymentRun{ID: kernel.NewULID(), Commit: l.repo.Head, Ref: "main"}
+	if err := l.gh.Report(t.Context(), l.repo.Repo, stack, first, port.DeploymentPending); err != nil {
+		t.Fatal(err)
+	}
+	for range 100 {
+		run := first
+		run.ID = kernel.NewULID()
+		if err := l.gh.Report(t.Context(), l.repo.Repo, stack, run, port.DeploymentPending); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The matching run is on the second native page, despite sharing SHA
+	// and task with the first hundred records.
+	for i := range 101 {
+		state := port.DeploymentSuccess
+		if i%2 == 0 {
+			state = port.DeploymentFailure
+		}
+		if err := l.gh.Report(t.Context(), l.repo.Repo, stack, first, state); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := l.fake.Deployments("acme", "infra")
+	if len(got) != 101 || len(got[0].Statuses) != 102 || got[0].Statuses[101].State != "failure" {
+		t.Fatalf("paginated recovery/states: %d deployments, first %+v", len(got), got[0])
+	}
+}

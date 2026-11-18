@@ -5,14 +5,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -79,7 +83,26 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	boundary := &purgeBoundary{Store: w.store, before: func(ctx context.Context) error { return receive(ctx, "racing") }}
-	d := &Domain{integrations: integration.New(integration.Deps{Store: boundary}), intake: svc}
+	deployment := feedback.Deployment{
+		Account: w.acct, Integration: id, Provider: "GITHUB_ENTERPRISE", Namespace: "acme", Repository: "infra",
+		Run:   port.DeploymentRun{ID: kernel.NewULID(), Commit: strings.Repeat("a", 40), Ref: "main"},
+		Stack: port.DeploymentStack{ID: stack, Slug: "infra", Environment: "infraweave/infra"}, Epoch: time.Now(), CreatedAt: time.Now(),
+	}
+	if err := tx.Do(t.Context(), w.db, tx.Options{}, func(ctx context.Context) error {
+		if _, err := w.store.BindDeployment(ctx, deployment); err != nil {
+			return err
+		}
+		if _, err := w.store.RequestDeployment(ctx, feedback.DeploymentRequest{Deployment: deployment, State: kernel.RunStateUnconfirmed, Sequence: 3}); err != nil {
+			return err
+		}
+		return w.store.ReserveDeployment(ctx, deployment, "purge-boundary")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	d := &Domain{
+		integrations: integration.New(integration.Deps{Store: boundary}), intake: svc,
+		feedback: feedback.NewDeployments(q, nil, feedback.DeploymentDeps{DB: w.db, Store: w.store}),
+	}
 	if err := d.Purge(t.Context(), w.acct); err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +114,12 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 		(SELECT count(*) FROM blob_objects WHERE store='inbox' AND starts_with(key,$2) AND state='deleting')`, w.acct, w.acct.String()+"/").Scan(&integrations, &deliveries, &live, &deleting)
 	if err != nil || integrations != 0 || deliveries != 0 || live != 0 || deleting != 2 {
 		t.Fatalf("purge integration/delivery/live/deleting=%d/%d/%d/%d: %v", integrations, deliveries, live, deleting, err)
+	}
+	for _, table := range []string{"vcs_deployment_runs", "vcs_deployment_states", "vcs_deployment_resources"} {
+		var n int
+		if err := w.db.QueryRow(t.Context(), "SELECT count(*) FROM "+table+" WHERE account_id=$1", w.acct).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("deployment purge %s=%d: %v", table, n, err)
+		}
 	}
 	if _, err := svc.Receive(t.Context(), "github_enterprise", id.String(), http.Header{}, nil); err == nil {
 		t.Fatal("purged integration still accepts intake")
