@@ -11,6 +11,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -86,7 +87,7 @@ var ErrConfig = errors.New("invalid vcs configuration")
 // Deps are what the vcs domain needs of the platform and the domains
 // built before it: the database, the keys every integration's secrets are
 // sealed under, the spaces an integration lives in, the authorizer, the
-// stacks it reads and detaches, its settings, and the server's public
+// stacks it reads and detaches, the policy for non-default creation, its settings, and the server's public
 // origin, which webhook and manifest URLs start with.
 type Deps struct {
 	DB               DB
@@ -100,6 +101,7 @@ type Deps struct {
 	Objects          Objects
 	Now              func() time.Time
 	PushEventTimeout time.Duration
+	Features         featuresapi.Options
 }
 
 // Domain is the vcs domain, constructed once per process.
@@ -145,7 +147,7 @@ func New(d Deps) (*Domain, error) {
 	}
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
-		Stacks: d.Stacks, Providers: Providers,
+		Stacks: d.Stacks, Providers: Providers, Features: d.Features,
 		Testers: map[string]port.Tester{
 			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc,

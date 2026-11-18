@@ -4325,7 +4325,7 @@ type CustomVCSInput struct {
 	// Description Free-form description of the integration.
 	Description *string `json:"description,omitempty"`
 
-	// IsDefault isDefault indicates whether this integration should be used as the default. If not provided, defaults to false.
+	// IsDefault Whether this integration is its provider's default in the top space. Omitted defaults to false. Creating a non-default integration requires the multiple-vcs-integrations option; existing integrations remain usable after an entitlement change.
 	IsDefault *bool `json:"isDefault,omitempty"`
 
 	// Labels Labels for the integration.

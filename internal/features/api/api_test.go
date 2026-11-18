@@ -2,6 +2,20 @@ package api
 
 import "testing"
 
+func TestUnitRefusal(t *testing.T) {
+	for _, tc := range []struct {
+		refusal Refusal
+		want    string
+	}{
+		{Refusal{Feature: "multiple-vcs-integrations"}, "features: multiple-vcs-integrations is not in the organization's tier"},
+		{Refusal{Feature: "multiple-vcs-integrations", Disabled: true}, "features: multiple-vcs-integrations is switched off"},
+	} {
+		if got := tc.refusal.Error(); got != tc.want {
+			t.Errorf("Error = %q, want %q", got, tc.want)
+		}
+	}
+}
+
 func TestUnitLimitError(t *testing.T) {
 	for _, scope := range []Scope{ScopeOrganization, ScopeAccount} {
 		e := &LimitError{Limit: Seats, Scope: scope, Value: 2}

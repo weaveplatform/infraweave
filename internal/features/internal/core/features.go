@@ -248,18 +248,7 @@ func (s *Service) Billing(ctx context.Context) (bool, error) {
 // Refusal is why a request for a feature is refused: Disabled for the
 // operator's switch-off, which no caller can change, else the caller's
 // organization lacks it, and Tiers are the tiers that hold it.
-type Refusal struct {
-	Disabled bool
-	Feature  string
-	Tiers    []string
-}
-
-func (r *Refusal) Error() string {
-	if r.Disabled {
-		return "features: " + r.Feature + " is switched off"
-	}
-	return "features: " + r.Feature + " is not in the organization's tier"
-}
+type Refusal = featuresapi.Refusal
 
 // Allow refuses feature to the request ctx carries with a *Refusal when the
 // installation switched it off, or, with billing on, when the principal's

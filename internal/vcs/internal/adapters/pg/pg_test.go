@@ -104,6 +104,14 @@ func (tester) Test(_ context.Context, in port.Integration) ([]port.Check, error)
 	}}, nil
 }
 
+// Creation tests that focus on storage and space rules explicitly admit
+// options; entitlement refusals use a separate policy in options_test.go.
+type allowOptions struct{}
+
+func (allowOptions) AllowOrganization(context.Context, kernel.OrganizationID, string) error {
+	return nil
+}
+
 type fixture struct {
 	db            *pgxpool.Pool
 	store         *pg.Store
@@ -156,7 +164,7 @@ func newFixture(t *testing.T) *fixture {
 	f.stacks = &stacks{detached: &f.detached}
 	f.store = pg.New(db, keys)
 	f.deps = integration.Deps{
-		Store: f.store, DB: db, Spaces: tree, Stacks: f.stacks,
+		Store: f.store, DB: db, Spaces: tree, Stacks: f.stacks, Features: allowOptions{},
 		Authz: authz{grants: map[string]map[kernel.ULID][]accessapi.Action{
 			"admin":  {f.acct.ULID: all, f.team: all, f.hidden: all},
 			"reader": {f.acct.ULID: read, f.team: read},

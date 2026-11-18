@@ -22988,9 +22988,12 @@ components:
             - spacelift_bitbucket_datacenter_integration.description
             - spacelift_gitlab_integration.description
         isDefault:
-          description: isDefault indicates whether this integration should be used as the default. If not provided, defaults to false.
+          description: Whether this integration is its provider's default in the top space. Omitted defaults to false. Creating a non-default integration requires the multiple-vcs-integrations option; existing integrations remain usable after an entitlement change.
           nullable: true
           type: boolean
+          x-infraweave-feature:
+            feature: multiple-vcs-integrations
+            value: 'false'
           x-terraform:
             - spacelift_azure_devops_integration.is_default
             - spacelift_bitbucket_datacenter_integration.is_default
