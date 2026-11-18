@@ -38,7 +38,7 @@ func TestUnitGitHubParse(t *testing.T) {
 	repo := vcsapi.Repository{ID: "7", Namespace: "acme", Name: "infra"}
 	pr := &vcsapi.PullRequest{
 		Number: 12, HeadBranch: "feature", BaseBranch: "main", HeadOwner: "contributor",
-		Fork: true, Mergeable: true, Undiverged: true, Labels: []string{"infrastructure"},
+		Fork: true, Mergeable: true, Labels: []string{"infrastructure"},
 	}
 	type example struct {
 		kind, action string
@@ -333,7 +333,7 @@ func TestUnitGitHubPullRequestEvidence(t *testing.T) {
 		state     any
 		want      bool
 	}{
-		{"clean", true, "clean", true},
+		{"clean without divergence evidence", true, "clean", true},
 		{"blocked", true, "blocked", false},
 		{"conflicts", false, "dirty", false},
 		{"unknown", nil, "unknown", false},
@@ -349,8 +349,8 @@ func TestUnitGitHubPullRequestEvidence(t *testing.T) {
 			if err != nil || len(got) != 1 {
 				t.Fatalf("review = %+v, %v", got, err)
 			}
-			if got[0].PullRequest.Approved || got[0].PullRequest.Mergeable != tc.want {
-				t.Fatalf("an individual APPROVED review proved aggregate approval or mergeability: %+v", got[0].PullRequest)
+			if got[0].PullRequest.Approved || got[0].PullRequest.Undiverged || got[0].PullRequest.Mergeable != tc.want {
+				t.Fatalf("payload invented aggregate approval/divergence or changed mergeability: %+v", got[0].PullRequest)
 			}
 		})
 	}

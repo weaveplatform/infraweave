@@ -131,12 +131,14 @@ func (d *webhook) pullRequest(e vcsapi.Event) (vcsapi.Event, error) {
 	}
 	// mergeable alone says only that conflicts are absent. "clean" also
 	// excludes branch-protection blockers; null and other states prove neither.
+	// Merging need not require an up-to-date branch, so this does not prove
+	// ancestry. Undiverged remains false without a divergence comparison.
 	clean := pr.GetMergeable() && pr.GetMergeableState() == "clean"
 	e.PullRequest = &vcsapi.PullRequest{
 		Number: pr.GetNumber(), HeadBranch: pr.GetHead().GetRef(), BaseBranch: pr.GetBase().GetRef(),
 		HeadOwner: pr.GetHead().GetRepo().GetOwner().GetLogin(), Draft: pr.GetDraft(),
 		Fork:      pr.GetHead().GetRepo().GetID() != pr.GetBase().GetRepo().GetID(),
-		Mergeable: clean, Undiverged: clean, Labels: labels,
+		Mergeable: clean, Labels: labels,
 	}
 	return e, nil
 }

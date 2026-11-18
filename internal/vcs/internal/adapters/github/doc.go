@@ -33,6 +33,8 @@
 // infraweave account. A single approving review cannot establish a repository's
 // required aggregate approval, so Approved remains false; Mergeable requires
 // explicit true and a clean mergeable_state from the payload.
+// Undiverged remains false because mergeability does not establish that
+// the request is up to date with its target branch.
 //
 // # Dependencies
 //
