@@ -101,9 +101,17 @@ func (p *plan) Commit(ctx context.Context) error {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
 	for _, stack := range p.stacks {
-		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline}
-		if _, err := p.s.d.Jobs.EnqueueTx(ctx, Evaluate, payload,
-			queue.Account(p.delivery.Account.ULID), queue.UniqueKey(p.delivery.ID.String()+":"+stack.String()), queue.OrderingKey("stack:"+stack.String())); err != nil {
+		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline, Replays: p.delivery.Replays}
+		if _, err := p.s.d.Jobs.EnqueueTx(
+			ctx,
+			Evaluate,
+			payload,
+			queue.Account(
+				p.delivery.Account.ULID,
+			),
+			queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)),
+			queue.OrderingKey("stack:"+stack.String()),
+		); err != nil {
 			return err //nolint:wrapcheck // the queue names the bounded child write
 		}
 	}

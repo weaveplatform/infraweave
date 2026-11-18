@@ -99,6 +99,7 @@ CREATE TABLE vcs_deliveries (
     repository text NOT NULL,
     state text NOT NULL CHECK (state IN ('received','dispatched','failed','expired')),
     deadline timestamptz NOT NULL,
+    replays bigint NOT NULL DEFAULT 0 CHECK (replays >= 0),
     runs_created integer NOT NULL DEFAULT 0 CHECK (runs_created >= 0),
     last_error text NOT NULL DEFAULT '',
     PRIMARY KEY (account_id,id),
@@ -108,7 +109,10 @@ CREATE TABLE vcs_deliveries (
 );
 
 CREATE INDEX vcs_deliveries_retention ON vcs_deliveries (received_at,id);
-CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id) WHERE state='received';
+CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id)
+    WHERE state='received' OR (state='dispatched' AND last_error='');
+CREATE INDEX vcs_deliveries_integration ON vcs_deliveries
+    (account_id,integration_id,received_at DESC,id DESC);
 
 -- Requests retain stable repository identity and a path projection so stack
 -- reads need no provider call. Head membership is independent of run lifetime.

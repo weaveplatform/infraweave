@@ -46,6 +46,7 @@ type store struct {
 	d                                 Delivery
 	calls                             *[]string
 	lookup, insert, read, state, drop error
+	onLookup                          func()
 	duplicate                         bool
 	keys                              []string
 	drops                             []int
@@ -55,6 +56,9 @@ type store struct {
 
 func (s *store) Integration(context.Context, kernel.ULID, time.Time) (Integration, error) {
 	*s.calls = append(*s.calls, "lookup")
+	if s.onLookup != nil {
+		s.onLookup()
+	}
 	return s.in, s.lookup
 }
 
@@ -71,8 +75,8 @@ func (s *store) Read(context.Context, kernel.AccountID, kernel.ULID) (Delivery, 
 	return s.d, s.read
 }
 
-func (s *store) State(_ context.Context, _ kernel.AccountID, _ kernel.ULID, state, last string) error {
-	if s.d.State == Received {
+func (s *store) State(_ context.Context, _ kernel.AccountID, _ kernel.ULID, replays int64, state, last string) error {
+	if s.d.State == Received && s.d.Replays == replays {
 		s.d.State = state
 		s.d.LastError = last
 	}
@@ -108,6 +112,9 @@ type jobs struct {
 	dead                     map[string]bool
 	deadError                error
 	checked                  int
+	statuses                 map[string]queue.KeyStatus
+	statusError              error
+	heldPrefix               string
 }
 
 func (j *jobs) EnqueueTx(ctx context.Context, k queue.Kind, p any, _ ...queue.Option) (int64, error) {
@@ -144,8 +151,13 @@ func (j *jobs) HoldTx(ctx context.Context, _ queue.Job) error {
 }
 
 type objects struct {
+	onLock                    func()
+	expires                   *time.Time
 	bodies                    map[string][]byte
 	put, commit, open, delete error
+	read                      error
+	live                      error
+	locked                    int
 	committed, deleted        []string
 }
 
@@ -160,6 +172,9 @@ func (o *objects) Commit(_ context.Context, _ objectstore.Name, key string) erro
 }
 
 func (o *objects) Open(_ context.Context, _ objectstore.Name, key string) (io.ReadCloser, error) {
+	if o.read != nil {
+		return io.NopCloser(errorReader{o.read}), o.open
+	}
 	return io.NopCloser(bytes.NewReader(o.bodies[key])), o.open
 }
 
@@ -486,3 +501,70 @@ func TestUnitDeliveryDeadline(t *testing.T) {
 		}
 	})
 }
+
+func (s *store) Hold(_ context.Context, ref Ref) (bool, error) {
+	return s.d.Replays == ref.Replays && s.d.State == ref.State, s.state
+}
+
+func (s *store) Failure(_ context.Context, ref Ref) error {
+	if s.d.Replays == ref.Replays {
+		if s.d.State == Received {
+			s.d.State = Failed
+		}
+		s.d.LastError = ProcessingFailed
+	}
+	return s.state
+}
+
+func (j *jobs) StatusByKeyPrefixes(_ context.Context, _ kernel.ULID, _ []queue.Kind, prefixes []string) (map[string]queue.KeyStatus, error) {
+	out := map[string]queue.KeyStatus{}
+	if j.statusError != nil {
+		return nil, j.statusError
+	}
+	for _, p := range prefixes {
+		if j.dead[p] {
+			out[p] = queue.KeyStatus{Dead: 1}
+		}
+		if j.statuses != nil {
+			out[p] = j.statuses[p]
+		}
+	}
+	return out, j.deadError
+}
+
+func (j *jobs) HoldByKeyPrefixTx(ctx context.Context, _ kernel.ULID, _ []queue.Kind, prefix string) (queue.KeyStatus, error) {
+	if !tx.In(ctx) {
+		return queue.KeyStatus{}, queue.ErrNoTransaction
+	}
+	j.checked++
+	j.heldPrefix = prefix
+	if j.statusError != nil {
+		return queue.KeyStatus{}, j.statusError
+	}
+	out := queue.KeyStatus{}
+	if j.dead[prefix] {
+		out.Dead = 1
+	}
+	if j.statuses != nil {
+		out = j.statuses[prefix]
+	}
+	return out, j.deadError
+}
+
+func (o *objects) LockLiveAt(ctx context.Context, _ objectstore.Name, _ string, at time.Time) (objectstore.Object, error) {
+	if !tx.In(ctx) {
+		return objectstore.Object{}, queue.ErrNoTransaction
+	}
+	o.locked++
+	if o.expires != nil && !at.Before(*o.expires) {
+		return objectstore.Object{}, objectstore.ErrNotFound
+	}
+	if o.onLock != nil {
+		o.onLock()
+	}
+	return objectstore.Object{}, o.live
+}
+
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }

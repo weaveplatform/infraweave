@@ -28,14 +28,14 @@ var _ intake.Store = (*Deliveries)(nil)
 func (s *Deliveries) Pending(ctx context.Context, after kernel.ULID, limit int) ([]intake.Ref, error) {
 	// A zero ULID's Valuer produces SQL NULL; UUID text keeps the first
 	// page's all-zero lower bound inside the indexed range predicate.
-	rows, err := tx.Q(ctx, s.store.db).Query(ctx, `SELECT account_id,id FROM vcs_deliveries
-		WHERE state='received' AND id>$1 ORDER BY id LIMIT $2`, after.UUID(), limit)
+	rows, err := tx.Q(ctx, s.store.db).Query(ctx, `SELECT account_id,id,replays,state FROM vcs_deliveries
+		WHERE (state='received' OR (state='dispatched' AND last_error='')) AND id>$1 ORDER BY id LIMIT $2`, after.UUID(), limit)
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read pending deliveries: %w", sql.Unavailable(err))
 	}
 	refs, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (intake.Ref, error) {
 		var ref intake.Ref
-		err := row.Scan(&ref.Account, &ref.ID)
+		err := row.Scan(&ref.Account, &ref.ID, &ref.Replays, &ref.State)
 		return ref, err //nolint:wrapcheck // CollectRows' caller names the pending read
 	})
 	if err != nil {
@@ -115,10 +115,10 @@ func (s *Deliveries) Read(ctx context.Context, acct kernel.AccountID, id kernel.
 	d := intake.Delivery{Account: acct, ID: id}
 	var headers []byte
 	err := tx.Q(ctx, s.store.db).QueryRow(ctx, `SELECT integration_id,provider,delivery_id,event,
-		received_at,headers,signature,body,coalesce(body_key,''),repository,state,deadline,runs_created,last_error
+		received_at,headers,signature,body,coalesce(body_key,''),repository,state,deadline,runs_created,last_error,replays
 		FROM vcs_deliveries WHERE account_id=$1 AND id=$2`, acct, id).Scan(&d.Integration, &d.Provider,
 		&d.DeliveryID, &d.Event, &d.ReceivedAt, &headers, &d.Signature, &d.Body, &d.BodyKey, &d.Repository,
-		&d.State, &d.Deadline, &d.RunsCreated, &d.LastError)
+		&d.State, &d.Deadline, &d.RunsCreated, &d.LastError, &d.Replays)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return d, intake.ErrNotFound
 	}
@@ -133,9 +133,9 @@ func (s *Deliveries) Read(ctx context.Context, acct kernel.AccountID, id kernel.
 
 // State changes only a still-received delivery, so repeating an attempt cannot
 // resurrect a completed delivery or overwrite its final result.
-func (s *Deliveries) State(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state, lastError string) error {
+func (s *Deliveries) State(ctx context.Context, acct kernel.AccountID, id kernel.ULID, replays int64, state, lastError string) error {
 	_, err := tx.Q(ctx, s.store.db).Exec(ctx, `UPDATE vcs_deliveries SET state=$3,last_error=$4
-		WHERE account_id=$1 AND id=$2 AND state='received'`, acct, id, state, lastError)
+		WHERE account_id=$1 AND id=$2 AND state='received' AND replays=$5`, acct, id, state, lastError, replays)
 	if err != nil {
 		return fmt.Errorf("vcs: update delivery: %w", sql.Unavailable(err))
 	}

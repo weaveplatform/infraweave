@@ -30,6 +30,7 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&webhookSteps{w: w}).register(sc)
 	gitlabHooks := &gitlabWebhookSteps{w: w, provider: gitlab}
 	gitlabHooks.register(sc)
+	(&deliverySteps{w: w, gitlab: gitlab, hooks: gitlabHooks}).register(sc)
 	(&pushSteps{w: w, gitlab: gitlab, hooks: gitlabHooks}).register(sc)
 	(&pullRequestSteps{w: w, gitlab: gitlab, hooks: gitlabHooks}).register(sc)
 	(&bitbucketWebhookSteps{w: w, cloud: bitbucketCloud, dc: bitbucketDC}).register(sc)

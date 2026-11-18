@@ -1402,6 +1402,14 @@ func (UnimplementedStrict) VcsIntegration(context.Context, VcsIntegrationRequest
 	return nil, &problem.NotImplementedError{OperationID: "vcsIntegration", Route: "GET /vcs-integrations/{vcsIntegrationId}"}
 }
 
+func (UnimplementedStrict) VcsIntegrationDeliveries(context.Context, VcsIntegrationDeliveriesRequestObject) (VcsIntegrationDeliveriesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationDeliveries", Route: "GET /vcs-integrations/{vcsIntegrationId}/deliveries"}
+}
+
+func (UnimplementedStrict) VcsIntegrationDeliveryReplay(context.Context, VcsIntegrationDeliveryReplayRequestObject) (VcsIntegrationDeliveryReplayResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationDeliveryReplay", Route: "POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay"}
+}
+
 func (UnimplementedStrict) VcsIntegrationSearchUsers(context.Context, VcsIntegrationSearchUsersRequestObject) (VcsIntegrationSearchUsersResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "vcsIntegrationSearchUsers", Route: "GET /vcs-integrations/{vcsIntegrationId}/search-users"}
 }

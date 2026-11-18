@@ -98,6 +98,7 @@ type Delivery struct {
 	State       string
 	Deadline    time.Time
 	RunsCreated int
+	Replays     int64
 	LastError   string
 }
 
@@ -112,7 +113,9 @@ type Store interface {
 	Integration(ctx context.Context, id kernel.ULID, at time.Time) (Integration, error)
 	Insert(ctx context.Context, d Delivery) (bool, error)
 	Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Delivery, error)
-	State(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state, lastError string) error
+	Hold(ctx context.Context, ref Ref) (bool, error)
+	Failure(ctx context.Context, ref Ref) error
+	State(ctx context.Context, acct kernel.AccountID, id kernel.ULID, replays int64, state, lastError string) error
 	Drop(ctx context.Context, acct *kernel.AccountID, before *time.Time, batch int) ([]string, int, error)
 	Pending(ctx context.Context, after kernel.ULID, limit int) ([]Ref, error)
 }
@@ -121,6 +124,8 @@ type Store interface {
 type Ref struct {
 	Account kernel.AccountID
 	ID      kernel.ULID
+	Replays int64
+	State   string
 }
 
 // Objects is the platform's pending/live blob lifecycle, including deferred
@@ -130,6 +135,7 @@ type Objects interface {
 	Commit(context.Context, objectstore.Name, string) error
 	Open(context.Context, objectstore.Name, string) (io.ReadCloser, error)
 	Delete(context.Context, objectstore.Name, string) error
+	LockLiveAt(context.Context, objectstore.Name, string, time.Time) (objectstore.Object, error)
 }
 
 // Jobs is the transactional queue boundary used by intake and its processor.
@@ -138,6 +144,8 @@ type Jobs interface {
 	CompleteTx(context.Context, queue.Job) error
 	HoldTx(context.Context, queue.Job) error
 	DeadByKeyTx(context.Context, queue.Kind, string, kernel.ULID) (bool, error)
+	StatusByKeyPrefixes(context.Context, kernel.ULID, []queue.Kind, []string) (map[string]queue.KeyStatus, error)
+	HoldByKeyPrefixTx(context.Context, kernel.ULID, []queue.Kind, string) (queue.KeyStatus, error)
 }
 
 // DispatchPlan commits prepared VCS work under the processor's queue fence.
@@ -155,17 +163,19 @@ type Dispatcher interface {
 // Deps supplies the durable boundaries and the clock used for secret overlap and
 // processing deadlines. Rejected counts only bounded provider/reason labels.
 type Deps struct {
-	DB         tx.Beginner
-	Store      Store
-	Objects    Objects
-	Jobs       Jobs
-	Providers  map[string]port.Webhooks
-	Now        func() time.Time
-	Timeout    time.Duration
-	Retention  time.Duration
-	Rejected   func(context.Context, string, string)
-	Log        *slog.Logger
-	Dispatcher Dispatcher
+	DB           tx.Beginner
+	Store        Store
+	Objects      Objects
+	Jobs         Jobs
+	Providers    map[string]port.Webhooks
+	Now          func() time.Time
+	Timeout      time.Duration
+	Retention    time.Duration
+	Rejected     func(context.Context, string, string)
+	Log          *slog.Logger
+	Dispatcher   Dispatcher
+	RelatedKinds []queue.Kind
+	Admin        AdminStore
 }
 
 // Service receives deliveries and processes the work they commit.
@@ -184,6 +194,9 @@ func New(d Deps) *Service {
 	}
 	if d.Log == nil {
 		d.Log = slog.New(slog.DiscardHandler)
+	}
+	if d.Admin == nil {
+		d.Admin, _ = d.Store.(AdminStore)
 	}
 	return &Service{d: d}
 }
@@ -266,7 +279,7 @@ func (s *Service) store(ctx context.Context, d Delivery) (int, error) {
 			}
 		}
 		_, err = s.d.Jobs.EnqueueTx(ctx, Process, job{Account: d.Account, ID: d.ID},
-			queue.Account(d.Account.ULID), queue.UniqueKey(d.ID.String()),
+			queue.Account(d.Account.ULID), queue.UniqueKey(ProcessKey(d.ID, d.Replays)),
 			queue.OrderingKey(d.Integration.String()+"/"+d.Repository))
 		return err //nolint:wrapcheck // the queue names the job kind
 	})

@@ -395,7 +395,17 @@ user: infraweave never creates or deletes provider hooks.
   running work, expired body, or a signature that no longer verifies
   answers `409 invalid-state`; missing or other-integration delivery is
   `404`. Replay is audited and obeys the once-per-commit rule: only runs
-  that never existed are recovered.
+  that never existed are recovered. A replay generation fences the parent,
+  stack children, prepared facts, cap counter and crash reconciliation. Replay
+  refuses active work in any generation; old operator-retried jobs become
+  no-ops after a generation change. A terminal child failure is sticky in the
+  public delivery state with a safe VCS diagnostic, while the internal
+  dispatched state permits its other children to finish. Replay clears that
+  marker. Queue error strings and retained bodies never become public metadata.
+  Inbox expiry is checked even before its sweep removes an object; inline
+  bodies remain available for the retained row's lifetime. The listing uses
+  fixed newest-first search edges/pageInfo with first/after/requestedPage;
+  cursors are scoped to the account and integration.
 
 New tables join their domain's initial `00001_*.sql` `CREATE`s; no `ALTER`
 is added before v0.1.0.

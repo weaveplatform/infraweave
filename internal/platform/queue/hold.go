@@ -41,7 +41,8 @@ func (q *Queue) DeadByKeyTx(ctx context.Context, k Kind, key string, account ker
 	}
 	var id int64
 	err := tx.Q(ctx, q.q).QueryRow(ctx, `SELECT id FROM jobs WHERE kind=$1 AND unique_key=$2
-		AND account_id IS NOT DISTINCT FROM $3::uuid AND state IN ('dead','cancelled') ORDER BY id DESC LIMIT 1 FOR UPDATE`, k.Name, key, account).Scan(&id)
+		AND (account_id=$3 OR (account_id IS NULL AND $3::uuid IS NULL))
+		AND state IN ('dead','cancelled') ORDER BY id DESC LIMIT 1 FOR UPDATE`, k.Name, key, account).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}

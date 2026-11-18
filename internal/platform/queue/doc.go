@@ -26,6 +26,12 @@
 // Discard are the operator's dead-job operations, and Stats reports each queue's
 // depth.
 //
+// StatusByKeyPrefixes reads account-bound counts for literal unique-key prefixes,
+// without payloads or errors. HoldByKeyPrefixTx locks all matching states in job-ID
+// order, including terminal rows an operator can retry, and reads again after any
+// parent-lock wait to include the children that parent committed. Callers fence
+// producers and recheck their own versions; these are row, not predicate, locks.
+//
 // A domain hands its kinds' handlers to the process as Registrations. A
 // process that runs jobs registers a Handler per kind in a Registry, with
 // its timeout (at most MaxTimeout), the feature that gates it and its retry

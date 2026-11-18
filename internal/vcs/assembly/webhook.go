@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
 
 // DeliverySettings controls the retention of verified delivery rows; inbox body
@@ -61,7 +62,7 @@ func newIntake(d Deps, dispatcher intake.Dispatcher, providers map[string]any) (
 	return intake.New(intake.Deps{
 		DB: d.DB, Store: pg.NewDeliveries(d.DB, d.Keys), Objects: d.Objects, Jobs: queue.New(d.DB),
 		Providers: hooks, Now: d.Now, Timeout: d.PushEventTimeout, Retention: d.Settings.Deliveries.Retention,
-		Rejected: rejected, Log: d.Log, Dispatcher: dispatcher,
+		Rejected: rejected, Log: d.Log, Dispatcher: dispatcher, RelatedKinds: []queue.Kind{push.Evaluate},
 	}), nil
 }
 

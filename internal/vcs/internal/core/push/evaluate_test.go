@@ -34,35 +34,37 @@ func (evaluationTx) Commit(context.Context) error   { return nil }
 func (evaluationTx) Rollback(context.Context) error { return nil }
 
 type evaluationWorld struct {
-	t             *testing.T
-	s             *Service
-	input         Evaluation
-	job           queue.Job
-	stack         stacksapi.Settings
-	meta          EventContext
-	events        []Prepared
-	order         []string
-	created       map[string]bool
-	requests      []runsapi.CreateRequest
-	heads         []string
-	tracked       []string
-	cap           int
-	used          int
-	complete      int
-	holdErr       error
-	createErr     error
-	metaErr       error
-	readErr       error
-	ownerErr      error
-	initialErr    error
-	lockErr       error
-	projectionErr error
-	supersedeErr  error
-	limitErr      error
-	admissionErr  error
-	changedSpace  bool
-	found         bool
-	delay         time.Duration
+	failureMarkers int
+	failureErr     error
+	t              *testing.T
+	s              *Service
+	input          Evaluation
+	job            queue.Job
+	stack          stacksapi.Settings
+	meta           EventContext
+	events         []Prepared
+	order          []string
+	created        map[string]bool
+	requests       []runsapi.CreateRequest
+	heads          []string
+	tracked        []string
+	cap            int
+	used           int
+	complete       int
+	holdErr        error
+	createErr      error
+	metaErr        error
+	readErr        error
+	ownerErr       error
+	initialErr     error
+	lockErr        error
+	projectionErr  error
+	supersedeErr   error
+	limitErr       error
+	admissionErr   error
+	changedSpace   bool
+	found          bool
+	delay          time.Duration
 }
 
 type evaluationStore struct{ w *evaluationWorld }
@@ -88,7 +90,7 @@ func (s evaluationLimit) RunLimit(context.Context, kernel.AccountID) (*int, erro
 	return &s.w.cap, s.w.limitErr
 }
 
-func (s evaluationLimit) ReserveRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, limit int) (bool, error) {
+func (s evaluationLimit) ReserveRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ int64, limit int) (bool, error) {
 	s.w.step(ctx, "admit")
 	if s.w.admissionErr != nil {
 		return false, s.w.admissionErr
@@ -430,5 +432,49 @@ func TestUnitDefaultIntegrationAliases(t *testing.T) {
 	use.Default = false
 	if uses(stacksapi.Settings{Provider: "GITHUB"}, use) {
 		t.Fatal("nondefault integration acquired an implicit stack")
+	}
+}
+
+func (s evaluationStore) EvaluationFailed(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ int64) error {
+	s.w.step(ctx, "failure marker")
+	s.w.failureMarkers++
+	return s.w.failureErr
+}
+
+func TestUnitEvaluationOldReplayIsNoop(t *testing.T) {
+	w := newEvaluation(t)
+	w.meta.Replays = 1
+	w.events = []Prepared{w.push("main", strings.Repeat("1", 40), "main.tf")}
+	if err := w.s.Evaluated(t.Context(), w.job); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.requests) != 0 || w.used != 0 || w.complete != 1 {
+		t.Fatal("old replay consumed work or budget", w.requests, w.used, w.complete)
+	}
+}
+
+func TestUnitEvaluationTerminalMarker(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		attempt, max int
+		markerError  error
+		want         int
+	}{
+		{"retrying", 1, 2, nil, 0}, {"exhausted", 2, 2, nil, 1}, {"marker unavailable", 2, 2, errors.New("marker store unavailable"), 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newEvaluation(t)
+			w.job.Attempt, w.job.MaxAttempts = tc.attempt, tc.max
+			w.failureErr = tc.markerError
+			w.events = []Prepared{w.push("main", strings.Repeat("1", 40), "main.tf")}
+			w.createErr = errors.New("run storage unavailable")
+			err := w.s.Evaluated(t.Context(), w.job)
+			if err == nil || w.failureMarkers != tc.want {
+				t.Fatal("terminal failure marker lost", err, w.failureMarkers)
+			}
+			if tc.markerError != nil && !errors.Is(err, tc.markerError) {
+				t.Fatal("marker failure hidden", err)
+			}
+		})
 	}
 }

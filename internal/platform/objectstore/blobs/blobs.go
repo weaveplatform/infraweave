@@ -463,8 +463,8 @@ func (o *Objects) Open(ctx context.Context, store objectstore.Name, key string) 
 	return nil, fmt.Errorf("blobs: open %s/%s: %w", store, key, err)
 }
 
-// Live reports whether key's object is live: committed, and neither
-// expired nor deleted.
+// Live reports whether key's object is committed and has not been marked deleting
+// by expiry or deletion. LockLiveAt also checks an elapsed expiry before the sweep.
 func (o *Objects) Live(ctx context.Context, store objectstore.Name, key string) (bool, error) {
 	var sealed []byte
 	err := tx.Q(ctx, o.db).QueryRow(ctx, live, store, key).Scan(&sealed)
@@ -478,7 +478,8 @@ func (o *Objects) Live(ctx context.Context, store objectstore.Name, key string) 
 }
 
 const lockLive = `SELECT size, sha256 FROM blob_objects
-WHERE store = $1 AND key = $2 AND state = 'live' FOR UPDATE`
+WHERE store = $1 AND key = $2 AND state = 'live'
+AND ($3::timestamptz IS NULL OR expires_at IS NULL OR expires_at > $3) FOR UPDATE`
 
 // LockLive locks key's live object's row in the transaction on ctx until
 // it ends, and answers the object's size and SHA-256, the plaintext's for
@@ -486,6 +487,18 @@ WHERE store = $1 AND key = $2 AND state = 'live' FOR UPDATE`
 // that transaction is the only one to: a second caller waits, then finds
 // it deleting. A key with no live row is objectstore.ErrNotFound.
 func (o *Objects) LockLive(ctx context.Context, store objectstore.Name, key string) (objectstore.Object, error) {
+	return o.lockLive(ctx, store, key, nil)
+}
+
+// LockLiveAt locks a live object that has not expired at the supplied time, even
+// when the expiry sweep has not run. The transaction holds off deletion.
+// Missing, deleting and expired objects are objectstore.ErrNotFound; database
+// failures retain their errors. An object without an expiry remains eligible.
+func (o *Objects) LockLiveAt(ctx context.Context, store objectstore.Name, key string, at time.Time) (objectstore.Object, error) {
+	return o.lockLive(ctx, store, key, &at)
+}
+
+func (o *Objects) lockLive(ctx context.Context, store objectstore.Name, key string, at *time.Time) (objectstore.Object, error) {
 	if !tx.In(ctx) {
 		return objectstore.Object{}, queue.ErrNoTransaction
 	}
@@ -493,7 +506,7 @@ func (o *Objects) LockLive(ctx context.Context, store objectstore.Name, key stri
 		obj objectstore.Object
 		sum []byte
 	)
-	err := tx.Q(ctx, o.db).QueryRow(ctx, lockLive, store, key).Scan(&obj.Size, &sum)
+	err := tx.Q(ctx, o.db).QueryRow(ctx, lockLive, store, key, at).Scan(&obj.Size, &sum)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return obj, objectstore.ErrNotFound

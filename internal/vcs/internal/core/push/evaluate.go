@@ -44,6 +44,11 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 	if errors.Is(err, errExpired) || errors.Is(err, context.DeadlineExceeded) && !s.d.Now().Before(input.Deadline) {
 		return s.finish(ctx, job, input, Expired)
 	}
+	if err != nil && !errors.Is(err, queue.ErrLeaseLost) && job.MaxAttempts > 0 && job.Attempt >= job.MaxAttempts {
+		if mark := s.failed(ctx, job, input); mark != nil {
+			return mark
+		}
+	}
 	return err //nolint:wrapcheck // each fenced step names its boundary
 }
 
@@ -52,7 +57,7 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the owner check
 	}
-	if !found || meta.State != intake.Dispatched || !s.d.Now().Before(meta.Deadline) {
+	if !found || meta.Replays != input.Replays || meta.State != intake.Dispatched || !s.d.Now().Before(meta.Deadline) {
 		return errExpired
 	}
 	if meta.Deadline.Before(input.Deadline) {
@@ -201,7 +206,7 @@ func (s *Service) admit(ctx context.Context, input Evaluation) error {
 	if err != nil {
 		return err
 	}
-	allowed, err := s.d.Limits.Store.ReserveRun(ctx, input.Account, input.Delivery, limit)
+	allowed, err := s.d.Limits.Store.ReserveRun(ctx, input.Account, input.Delivery, input.Replays, limit)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the conditional admission
 	}
@@ -231,5 +236,17 @@ func (s *Service) finish(ctx context.Context, job queue.Job, input Evaluation, o
 		}
 		s.report(ctx, input, Decision{Outcome: outcome})
 		return nil
+	})
+}
+
+// failed records an exhausted child without changing the state siblings use.
+//
+//nolint:wrapcheck // queue and store errors retain their fenced boundary
+func (s *Service) failed(ctx context.Context, job queue.Job, input Evaluation) error {
+	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.d.Jobs.HoldTx(ctx, job); err != nil {
+			return err
+		}
+		return s.d.Store.EvaluationFailed(ctx, input.Account, input.Delivery, input.Replays)
 	})
 }

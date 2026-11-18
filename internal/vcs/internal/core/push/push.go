@@ -32,11 +32,13 @@ type Evaluation struct {
 	Delivery kernel.ULID      `json:"delivery"`
 	Stack    kernel.ULID      `json:"stack"`
 	Deadline time.Time        `json:"deadline"`
+	Replays  int64            `json:"replays"`
 }
 
 // Store joins the processor/evaluator transaction. Prepared rows are owned by
 // their delivery and disappear with its retention or account purge.
 type Store interface {
+	EvaluationFailed(context.Context, kernel.AccountID, kernel.ULID, int64) error
 	PutPrepared(context.Context, kernel.AccountID, kernel.ULID, []Prepared) error
 	Prepared(context.Context, kernel.AccountID, kernel.ULID) ([]Prepared, error)
 	EventContext(context.Context, kernel.AccountID, kernel.ULID) (EventContext, bool, error)
@@ -49,6 +51,7 @@ type EventContext struct {
 	Provider    string
 	State       string
 	Deadline    time.Time
+	Replays     int64
 }
 
 // Integrations reads effective bindings without opening provider credentials.
