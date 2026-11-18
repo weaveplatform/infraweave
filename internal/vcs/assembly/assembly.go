@@ -34,6 +34,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/ignored"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
@@ -158,8 +159,10 @@ func New(d Deps) (*Domain, error) {
 		clock = time.Now
 	}
 	limits := &push.Limits{DB: d.DB, Store: pg.New(d.DB, d.Keys), Spaces: d.Spaces, Ceiling: d.Settings.EventRunsCeiling, Now: clock}
+	identities := &lifecycle.Service{DB: d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Now: clock, Log: d.Log}
 	integrations := integration.New(integration.Deps{
-		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
+		Installations: identities,
+		Store:         pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers, Features: d.Features,
 		Testers: map[string]port.Tester{
 			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
@@ -174,7 +177,9 @@ func New(d Deps) (*Domain, error) {
 		Apps: gh, Public: d.Public, Now: d.Now, SecretOverlap: d.Settings.WebhookSecretOverlap,
 	})
 	sources := source.New(source.Deps{
-		Stacks: d.Stacks,
+		DB:         d.DB,
+		Identities: identities,
+		Stacks:     d.Stacks,
 		Providers: map[string]port.Source{
 			integration.Git:              git,
 			integration.GitHub:           gh,
@@ -192,7 +197,8 @@ func New(d Deps) (*Domain, error) {
 	})
 	ignoredTriggers := ignored.New(ignored.Deps{Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Authz: d.Authz, Now: clock})
 	pushes := push.New(push.Deps{
-		DB: d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
+		Lifecycle: identities,
+		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
 		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
 		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 	})

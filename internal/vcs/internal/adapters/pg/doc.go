@@ -27,4 +27,6 @@
 // internal/kernel and its search package, platform/crypt, platform/sql
 // and its search, integrity and migrate packages, and platform/tx. The
 // domain's assembly constructs it and internal/app registers its stream.
+// Native repository maps, current installation IDs and membership tombstones
+// are account/integration scoped and cascade with integration deletion.
 package pg

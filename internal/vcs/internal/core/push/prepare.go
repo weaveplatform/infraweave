@@ -19,10 +19,11 @@ import (
 var _ intake.Dispatcher = (*Service)(nil)
 
 type plan struct {
-	s        *Service
-	delivery intake.Delivery
-	events   []Prepared
-	stacks   []kernel.ULID
+	s          *Service
+	delivery   intake.Delivery
+	events     []Prepared
+	normalized []vcsapi.Event
+	noSources  bool
 }
 
 // Prepare resolves each diff once, then groups every ref into one child per
@@ -36,8 +37,9 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
 		return event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head)
 	})
-	if len(selected) == 0 {
-		return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
+
+	if len(selected) == 0 && s.d.Lifecycle == nil {
+		return nil, nil //nolint:nilnil // no lifecycle or actionable work needs a plan
 	}
 	use, found, err := s.d.Integrations.EventUse(ctx, delivery.Account, delivery.Integration)
 	if err != nil || !found {
@@ -46,25 +48,29 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	if use.Provider != delivery.Provider {
 		return nil, fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
 	}
-	out := &plan{s: s, delivery: delivery}
-	targets := map[kernel.ULID]bool{}
-	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
+	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events)}
+	if len(selected) != 0 {
+		repositories, err := s.d.Stacks.VCSRepositories(ctx, delivery.Account, use)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the stack boundary names the metadata read
+		}
+		out.noSources = len(repositories) == 0
+	}
 	for _, event := range selected {
 		if !s.d.Now().Before(delivery.Deadline) {
 			return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
 		}
-		stacks, seen := repositories[event.Repository]
-		if !seen {
-			stacks, err = s.d.Stacks.ByVCSRepository(ctx, delivery.Account, use, event.Repository.Namespace, event.Repository.Name)
+		if s.d.Lifecycle != nil {
+			event.Repository, err = s.d.Lifecycle.EventRepository(ctx, delivery.Account, delivery.Integration, delivery.ReceivedAt, event.Repository)
 			if err != nil {
-				return nil, err //nolint:wrapcheck // stacks names the account-scoped lookup
+				return nil, err //nolint:wrapcheck // the called boundary names the failed operation
 			}
-			repositories[event.Repository] = stacks
-		}
-		if len(stacks) == 0 {
-			continue
 		}
 		prepared := Prepared{Event: event}
+		if out.noSources {
+			out.events = append(out.events, prepared)
+			continue
+		}
 		if event.Type == "push" {
 			prepared.Commit, prepared.Files, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
@@ -82,14 +88,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			}
 		}
 		out.events = append(out.events, prepared)
-		for _, stack := range stacks {
-			targets[stack.ID] = true
-		}
 	}
-	for id := range targets {
-		out.stacks = append(out.stacks, id)
-	}
-	slices.SortFunc(out.stacks, func(a, b kernel.ULID) int { return bytes.Compare(a[:], b[:]) })
 	return out, nil
 }
 
@@ -99,13 +98,68 @@ func (p *plan) Commit(ctx context.Context) error {
 	if !tx.In(ctx) {
 		return queue.ErrNoTransaction
 	}
-	if len(p.events) == 0 {
+	use, found, err := p.s.d.Integrations.HeldEventUse(ctx, p.delivery.Account, p.delivery.Integration)
+	if err != nil || !found {
+		return err //nolint:wrapcheck // the called boundary names the failed operation
+	} //nolint:wrapcheck // integration names the metadata read
+	if use.Provider != p.delivery.Provider {
+		return fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
+	}
+	if p.s.d.Lifecycle != nil {
+		if err := p.s.d.Lifecycle.Apply(ctx, p.delivery.Account, p.delivery.Integration, use, p.delivery.ReceivedAt, p.normalized); err != nil {
+			return err //nolint:wrapcheck // the called boundary names the failed operation
+		}
+	}
+	events := make([]Prepared, 0, len(p.events))
+	for _, prepared := range p.events {
+		if p.s.d.Lifecycle != nil {
+			repo, allowed, err := p.s.d.Lifecycle.FanoutRepository(ctx, p.delivery.Account, p.delivery.Integration, p.delivery.ReceivedAt, prepared.Event.Repository)
+			if err != nil {
+				return err //nolint:wrapcheck // the called boundary names the failed operation
+			} //nolint:wrapcheck // lifecycle names the read
+			if !allowed {
+				continue
+			}
+			prepared.Event.Repository = repo
+		}
+		events = append(events, prepared)
+	}
+	if len(events) == 0 {
 		return nil
 	}
-	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, p.events); err != nil {
+	targets := map[kernel.ULID]bool{}
+	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
+	for _, prepared := range events {
+		stacks, seen := repositories[prepared.Event.Repository]
+		if !seen {
+			var err error
+			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
+			if err != nil {
+				return err //nolint:wrapcheck // the called boundary names the failed operation
+			}
+			repositories[prepared.Event.Repository] = stacks
+		}
+		for _, stack := range stacks {
+			targets[stack.ID] = true
+		}
+	}
+	if p.noSources {
+		// A stack/default binding can appear after the repository-only preflight.
+		// Retry outside the transaction rather than publish missing native facts.
+		if len(targets) != 0 {
+			return fmt.Errorf("%w: repository users appeared after preparation", kernel.ErrUnavailable)
+		}
+		return nil
+	}
+	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, events); err != nil {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
-	for _, stack := range p.stacks {
+	ids := make([]kernel.ULID, 0, len(targets))
+	for id := range targets {
+		ids = append(ids, id)
+	}
+	slices.SortFunc(ids, func(a, b kernel.ULID) int { return bytes.Compare(a[:], b[:]) })
+	for _, stack := range ids {
 		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline, Replays: p.delivery.Replays}
 		if _, err := p.s.d.Jobs.EnqueueTx(
 			ctx,

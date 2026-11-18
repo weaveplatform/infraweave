@@ -99,6 +99,13 @@ type dispatchTargets struct {
 	rows []stacksapi.Stack
 }
 
+func (s dispatchTargets) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	if len(s.rows) == 0 {
+		return nil, nil
+	}
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
+}
+
 func (s dispatchTargets) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
 	return s.rows, nil
 }
@@ -227,4 +234,11 @@ func TestAccPushDispatchAtomicFence(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (i dispatchIntegration) HeldEventUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Use, bool, error) {
+	if !tx.In(ctx) {
+		return stacksapi.Use{}, false, queue.ErrNoTransaction
+	}
+	return i.EventUse(ctx, acct, id)
 }

@@ -33,6 +33,13 @@ type repositoryStacks struct {
 	err   error
 }
 
+func (s *repositoryStacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	if s.err != nil || len(s.rows) == 0 {
+		return nil, s.err
+	}
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
+}
+
 func (s *repositoryStacks) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
 	s.calls++
 	return s.rows, s.err
@@ -92,8 +99,8 @@ func TestUnitPreparedMultiRefFanout(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := prepared.(*plan) //nolint:forcetypeassert // this package's concrete dispatcher result
-	if stacks.calls != 1 || !slices.Equal(source.calls, []string{"main", "feature"}) || len(plan.events) != 3 || len(plan.stacks) != 2 {
-		t.Fatal("refs were dropped, source work repeated per stack, or child targets duplicated")
+	if stacks.calls != 0 || !slices.Equal(source.calls, []string{"main", "feature"}) || len(plan.events) != 3 {
+		t.Fatal("refs were dropped, source work repeated per stack, or targets selected before commit")
 	}
 	if plan.events[0].Commit.Branch != "main" || plan.events[1].Commit.Branch != "feature" || plan.events[2].Event.Tag != "v1" || plan.events[2].Commit.Hash != events[2].Head ||
 		plan.events[2].Commit.Tag != "v1" ||
@@ -104,6 +111,14 @@ func TestUnitPreparedMultiRefFanout(t *testing.T) {
 	events[0].Branch = "mutated"
 	if plan.events[0].Files[0] != "terraform/main.tf" || plan.events[0].Event.Branch != "main" {
 		t.Fatal("prepared facts retained caller-owned mutable data")
+	}
+	jobs := &preparedJobs{}
+	s.d.Jobs, s.d.Store = jobs, preparedStore{}
+	if err := tx.Do(t.Context(), evaluationDB{}, tx.Options{}, plan.Commit); err != nil {
+		t.Fatal(err)
+	}
+	if stacks.calls != 1 || len(jobs.inputs) != 2 {
+		t.Fatal("committed fanout lost/duplicated targets", stacks.calls, jobs.inputs)
 	}
 	if err := plan.Commit(t.Context()); !errors.Is(err, queue.ErrNoTransaction) {
 		t.Fatal("prepared work committed outside the processor transaction", err)
@@ -134,16 +149,20 @@ func TestUnitPreparedSourceGuards(t *testing.T) {
 				use.use.Provider = "OTHER"
 			}
 			s := New(Deps{Stacks: stacks, Sources: source, Integrations: use})
-			_, err := s.Prepare(
+			plan, err := s.Prepare(
 				t.Context(),
 				intake.Delivery{Provider: "GITLAB", Deadline: time.Now().Add(time.Minute)},
 				[]vcsapi.Event{{Type: "push", Head: strings.Repeat("1", 40)}},
 			)
+			if err == nil && plan != nil {
+				s.d.Store, s.d.Jobs = preparedStore{}, &preparedJobs{}
+				err = tx.Do(t.Context(), evaluationDB{}, tx.Options{}, plan.Commit)
+			}
 			wantError := name != "no users" && name != "deleted integration"
 			if (err != nil) != wantError {
 				t.Fatal("source guard hid or fabricated failure", err)
 			}
-			if (name == "no users" || name == "deleted integration") && len(source.calls) != 0 {
+			if (name == "deleted integration" || name == "no users") && len(source.calls) != 0 {
 				t.Fatal("unneeded provider request")
 			}
 		})
@@ -160,4 +179,32 @@ func TestUnitPreparationNoop(t *testing.T) {
 	if plan, err := s.Prepare(t.Context(), intake.Delivery{Deadline: time.Now().Add(-time.Minute)}, []vcsapi.Event{{Type: "push"}}); err != nil || plan != nil {
 		t.Fatal("expired preparation read a dependency", plan, err)
 	}
+}
+
+// Preparation performs provider reads only; commit owns the affected-stack
+// snapshot, after the native identity map has repointed any renamed users.
+type preparedJobs struct {
+	intake.Jobs
+	inputs []Evaluation
+}
+
+func (j *preparedJobs) EnqueueTx(ctx context.Context, _ queue.Kind, payload any, _ ...queue.Option) (int64, error) {
+	if !tx.In(ctx) {
+		return 0, queue.ErrNoTransaction
+	}
+	j.inputs = append(j.inputs, payload.(Evaluation))
+	return int64(len(j.inputs)), nil
+}
+
+type preparedStore struct{ Store }
+
+func (preparedStore) PutPrepared(context.Context, kernel.AccountID, kernel.ULID, []Prepared) error {
+	return nil
+}
+
+func (u eventUse) HeldEventUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Use, bool, error) {
+	if !tx.In(ctx) {
+		return stacksapi.Use{}, false, queue.ErrNoTransaction
+	}
+	return u.EventUse(ctx, acct, id)
 }

@@ -13,6 +13,9 @@ import (
 // ErrNotFound reports a stack the account lacks.
 var ErrNotFound = errors.New("stacks: not found")
 
+// ErrNoTransaction refuses a cross-domain write outside its caller's transaction.
+var ErrNoTransaction = errors.New("stacks: write requires a transaction")
+
 // Stack is a stack as other domains read it: its ULID, which every other
 // domain holds, its slug, which a reslug changes, its name, and the space
 // it lives in.
@@ -146,6 +149,12 @@ type Stacks interface {
 	// ByVCSRepository lists every branch's stacks using u on the exact
 	// namespace and repository, excluding detached sources, by slug.
 	ByVCSRepository(ctx context.Context, acct kernel.AccountID, u Use, namespace, repository string) ([]Stack, error)
+	// RepointVCSRepository replaces from with to on every attached stack
+	// using u, across branches, in the caller's transaction. Each changed stack
+	// advances its version and appends Changed with Source false; no audit
+	// entry is recorded. Equal coordinates have no effect. It requires a
+	// transaction even for a no-op, otherwise ErrNoTransaction.
+	RepointVCSRepository(ctx context.Context, acct kernel.AccountID, u Use, from, to VCSRepository) error
 	// LockForRun reads acct's stack id's settings and locks its row FOR
 	// UPDATE in the context's transaction, so no write changes them
 	// before a run created in that transaction commits; ErrNotFound when
@@ -198,8 +207,8 @@ type Stacks interface {
 	SuggestUsers(ctx context.Context, p kernel.Principal, u Use, in search.SuggestionsInput) (search.Suggestions, error)
 	// VCSRepositories lists the distinct repository coordinates of every
 	// stack using u in acct, including implicit default bindings, without
-	// an actor's search filter. Only the integration-admin connection test
-	// consumes this repository-only projection.
+	// an actor's search filter. Connection tests and webhook preparation use
+	// this projection without selecting affected stack identities.
 	VCSRepositories(ctx context.Context, acct kernel.AccountID, u Use) ([]VCSRepository, error)
 }
 
@@ -207,10 +216,10 @@ type Stacks interface {
 // stack identity or setting unrelated to webhook configuration.
 type VCSRepository struct{ Namespace, Name string }
 
-// Use names the stacks that use a VCS integration: those bound to
-// Integration and, when Default is set, those on Provider that name no
-// integration, which use their provider's default. Aliases are additional
-// provider names with that same default; they never match a named binding.
+// Use names the stacks on Provider or Aliases bound to Integration and,
+// when Default is set, those naming no integration, which use their
+// provider's default. Aliases are additional names of the same provider;
+// a named binding still must equal Integration.
 type Use struct {
 	Integration kernel.ULID
 	Provider    string
@@ -457,7 +466,8 @@ const (
 // Changed is a ChangedKind event's document: the stack's ULID and slug
 // after the change, which change it was, and whether it gave the stack
 // its source or changed it: its provider, VCS integration, namespace,
-// repository, repository URL or branch.
+// repository, repository URL or branch. A provider rename preserving the native
+// repository and branch identity leaves Source false and preserves its commits.
 type Changed struct {
 	Stack  kernel.ULID `json:"stack"`
 	Slug   string      `json:"slug"`

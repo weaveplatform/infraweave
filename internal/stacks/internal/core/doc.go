@@ -51,7 +51,9 @@
 // a worker pool holds it through Deps' workersapi.Pools when the stack's
 // space reaches it, refused at workerPool otherwise; PoolInUse lists the
 // stacks that name a pool for the workers domain's delete and move.
-// DetachVCS
+// RepointVCSRepository changes an integration's repository coordinates across
+// branches in its caller's transaction, with versioned source-change events and
+// no audit entry. DetachVCS
 // detaches the stacks bound to a deleted integration, without changing
 // their versions; a detached stack's commit operations are a *Detached
 // until a write gives it a source again. Bind, BindAll, Rebind and Unbind write a stack's role

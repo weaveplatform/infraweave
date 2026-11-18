@@ -9,6 +9,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -23,7 +24,15 @@ type Integrations interface {
 
 // Service implements vcsapi.Sources over the provider of each stack's
 // repository.
+// Identities follows native identities and known installation availability.
+type Identities interface {
+	Check(context.Context, kernel.AccountID, kernel.ULID, string, string) error
+	SeedReferenceAt(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, stacksapi.VCSRepository, vcsapi.Repository, time.Time) error
+}
+
 type Service struct {
+	db           tx.Beginner
+	identities   Identities
 	stacks       stacksapi.Stacks
 	providers    map[string]port.Source
 	integrations Integrations
@@ -35,12 +44,15 @@ type Service struct {
 
 var _ vcsapi.Sources = (*Service)(nil)
 
-// Deps are what the service reads and writes through: the stacks
+// Deps are what the service reads and writes through: the database fencing
+// native identity and pointer initialization, the stacks
 // domain's api, each provider's Source keyed by its served VCSProvider
 // value, the domain's Integrations, the Tokens minted for runs, the queue
 // Release enqueues on, the clock and the log a run's fallback to an
 // integration's own token is noted in.
 type Deps struct {
+	DB           tx.Beginner
+	Identities   Identities
 	Stacks       stacksapi.Stacks
 	Providers    map[string]port.Source
 	Integrations Integrations
@@ -53,7 +65,7 @@ type Deps struct {
 // New returns the service over d.
 func New(d Deps) *Service {
 	return &Service{
-		stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
+		db: d.DB, identities: d.Identities, stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
 		tokens: d.Tokens, jobs: d.Jobs, now: d.Now, log: d.Log,
 	}
 }
@@ -136,7 +148,24 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 	if err != nil {
 		return err //nolint:wrapcheck // stacks names the read
 	}
-	c, err := src.ResolveRef(ctx, repo, st.Branch)
+	started := time.Now()
+	if s.now != nil {
+		started = s.now()
+	}
+	var c vcsapi.Commit
+	if native, ok := src.(port.RepositorySource); ok && repo.Integration != nil && s.identities != nil {
+		var resolved port.Resolution
+		resolved, err = native.ResolveRepositoryRef(ctx, repo, st.Branch)
+		c = resolved.Commit
+		if err == nil {
+			err = s.trackRepository(ctx, acct, stack, st, repo, resolved, started)
+			if err == nil {
+				return nil
+			}
+		}
+	} else {
+		c, err = src.ResolveRef(ctx, repo, st.Branch)
+	}
 	if errors.Is(err, port.ErrNotFound) || errors.Is(err, port.ErrRepositoryURL) ||
 		errors.Is(err, port.ErrNoIntegration) {
 		//nolint:wrapcheck // marks it
@@ -195,6 +224,11 @@ func (s *Service) source(ctx context.Context, acct kernel.AccountID, stack kerne
 	}
 	if ok {
 		repo.Integration = &in
+		if s.identities != nil {
+			if err := s.identities.Check(ctx, acct, in.ID, repo.Namespace, repo.Name); err != nil {
+				return nil, port.Repository{}, err //nolint:wrapcheck // the called boundary names the failed operation
+			}
+		}
 	}
 	return src, repo, nil
 }
