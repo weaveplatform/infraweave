@@ -287,6 +287,15 @@ user: infraweave never creates or deletes provider hooks.
   the root propose on the head, with no pull request needed. Pull request
   events record the request and its head commits and create no run. Fork
   pull requests get runs only through P13's `allow_fork`.
+
+  Push comparisons use complete before/after trees rather than the head
+  commit's changed-file list. GitHub walks single-level trees if its recursive
+  response is truncated. Bitbucket Data Center enumerates both paged file sets
+  and compares common paths individually, avoiding the global changes hard cap;
+  binary or mode-only diff identities still count when no text hunks exist.
+  New-branch comparisons there require the merge-base endpoint from Data Center
+  8.16 or later. An unsupported or incomplete provider response fails preparation
+  safely rather than silently substituting another comparison.
 - **Ignored triggers (D9, D17).** Record tracked pushes with no affected
   root files, tag pushes on every stack of the repository
   (`TAGS_IGNORED_BY_DEFAULT`), and stacks beyond the cap
@@ -315,6 +324,18 @@ user: infraweave never creates or deletes provider hooks.
   or 1 up to `vcs.event_runs_ceiling` (default 500), which always applies.
   Increment the delivery counter in the run-creating transaction. Every
   stack past the cap records `RUN_LIMIT_REACHED` and a failed check.
+
+  One child job carries the ordered prepared events for one delivery/stack,
+  preserving every ref of a multi-ref push. Full event and affected-file data
+  is stored once beside the delivery; small child references keep it outside
+  the queue's 64 KiB payload bound. Preparation and provider reads happen before
+  the fenced transaction that stores those rows, enqueues children and completes
+  dispatch. Admission runs under the stack's creation lock after stack refusals
+  and any-state deduplication, immediately before insertion. A duplicate consumes
+  no slot; a capped later event leaves the batch's earlier admitted runs intact.
+  An unexpected failure rolls back the counter, run effects and job completion
+  together. A capped/refused tracked push can update its branch head but never
+  moves the tracked commit to a commit for which no run was admitted.
 - **Superseded proposed runs.** A branch push stops its older proposed
   runs still in `PLANNING`.
 - **Renames (D15).** `vcs` maps integration plus stable provider repository

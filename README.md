@@ -314,6 +314,7 @@ To bootstrap an installation:
 | `vcs.ca_file` | | `INFRAWEAVE_VCS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when reaching a repository's host, for a host under a private CA; read at start |
 | `vcs.deliveries.retention` | | `INFRAWEAVE_VCS_DELIVERIES_RETENTION` | `168h`, positive; delivery rows are pruned hourly, separately from the inbox bodies' `48h` object retention |
 | `vcs.webhook_secret_overlap` | | `INFRAWEAVE_VCS_WEBHOOK_SECRET_OVERLAP` | `24h`, positive; regenerating a webhook secret keeps the preceding secret valid for this window; another regenerate replaces that preceding secret |
+| `vcs.event_runs_ceiling` | | `INFRAWEAVE_VCS_EVENT_RUNS_CEILING` | `500`, at least 1; bounds the runs created by one delivery, including when its account has no configured cap; account limits can be null or 1 through this ceiling |
 | `policy.timeouts.push_event` | | `INFRAWEAVE_POLICY_TIMEOUTS_PUSH_EVENT` | `10m`, positive; verified deliveries keep a received-time deadline across queue attempts |
 | `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
 | `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |

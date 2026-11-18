@@ -211,6 +211,8 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Objects:          objects,
 		PushEventTimeout: c.Policy.Timeouts.PushEvent,
 		Features:         features.Entitlements(),
+		Creator:          runs.Creator(),
+		Supersede:        runs.Supersede(),
 	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting

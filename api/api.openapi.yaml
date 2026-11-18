@@ -685,6 +685,62 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /account/update-vcs-event-triggered-runs-limit:
+    post:
+      description: >-
+        Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      operationId: accountUpdateVCSEventTriggeredRunsLimit
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateVCSEventTriggeredRunsLimitRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                nullable: true
+                type: integer
+                x-go-type: '*int32'
+          description: The accountUpdateVCSEventTriggeredRunsLimit result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update VCSEvent Triggered Runs Limit
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update VCSEvent Triggered Runs Limit.bru
+      x-graphql:
+        field: accountUpdateVCSEventTriggeredRunsLimit
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+        - DV-133
+      x-rest-style: singleton
   /actions:
     get:
       description: >-
@@ -18695,6 +18751,50 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: search
+  /vcs-event-triggered-runs-limit:
+    get:
+      description: >-
+        Read the account limit on runs created by one VCS delivery. Null is the default and uses the operator ceiling (500 by default). A configured limit is from 1 through that ceiling and can never exceed it.
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      operationId: vcsEventTriggeredRunsLimit
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                format: int32
+                nullable: true
+                type: integer
+                x-go-type: '*int32'
+          description: The vcsEventTriggeredRunsLimit result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Vcs Event Triggered Runs Limit
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Vcs Event Triggered Runs Limit.bru
+      x-graphql:
+        field: vcsEventTriggeredRunsLimit
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+        - DV-133
+      x-rest-style: read
   /vcs-integrations:
     get:
       description: List of all VCS integrations available in the account.
@@ -20629,6 +20729,17 @@ components:
         - securityEmail
       type: object
       x-graphql-args-of: accountUpdateSecurityEmail
+    AccountUpdateVCSEventTriggeredRunsLimitRequest:
+      additionalProperties: false
+      description: The account limit for runs created by a single VCS delivery.
+      properties:
+        limit:
+          description: A value from 1 through the operator ceiling, or null to clear the account limit.
+          format: int32
+          nullable: true
+          type: integer
+      type: object
+      x-graphql-args-of: accountUpdateVCSEventTriggeredRunsLimit
     Action:
       description: Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
       enum:

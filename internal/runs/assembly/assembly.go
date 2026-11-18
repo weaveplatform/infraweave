@@ -184,12 +184,12 @@ func New(d Deps) *Domain {
 		}),
 		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
 		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Stacks: d.Stacks, Authz: d.Authz, Lifecycle: lc, Views: views,
+			DB: d.DB, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc, Views: views,
 			Objects: d.Objects,
 		}),
 		read: views,
 		control: control.New(control.Deps{
-			DB: d.DB, Store: store, Stacks: d.Stacks, Authz: d.Authz, Lifecycle: lc,
+			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc,
 			Views: views, Now: d.Now,
 		}),
 		timers: timers.New(timers.Deps{

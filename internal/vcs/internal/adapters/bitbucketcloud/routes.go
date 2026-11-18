@@ -28,6 +28,7 @@ var Routes = []Route{
 	{http.MethodGet, "/user"},
 	{http.MethodGet, "/user/workspaces"},
 	{http.MethodGet, "/repositories/{workspace}"},
+	{http.MethodGet, "/repositories/{workspace}/{repo_slug}"},
 	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/hooks"},
 	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/refs/branches"},
 	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/refs/branches/{name...}"},

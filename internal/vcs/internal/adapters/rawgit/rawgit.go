@@ -139,22 +139,48 @@ func (s *Source) ReadFile(ctx context.Context, repo port.Repository, ref, path s
 // AffectedFiles implements port.Source: every path added, removed or
 // changed between the two commits' trees, sorted, a rename as both its
 // paths.
-func (s *Source) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (s *Source) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("rawgit: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff && port.ZeroCommit(head) {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
+	if comparison == port.PushDiff && port.ZeroCommit(base) {
+		f, err := s.fetchWithHistory(ctx, repo, true, "HEAD", head)
+		if err != nil {
+			return nil, err
+		}
+		bases, err := f.commits[0].MergeBase(f.commits[1])
+		if err != nil {
+			return nil, fmt.Errorf("rawgit: merge base: %w", err)
+		}
+		if len(bases) == 0 {
+			return nil, fmt.Errorf("%w: default branch merge base", port.ErrNotFound)
+		}
+		return diffCommits(ctx, bases[0], f.commits[1])
+	}
 	f, err := s.fetch(ctx, repo, base, head)
 	if err != nil {
 		return nil, err
 	}
+	return diffCommits(ctx, f.commits[0], f.commits[1])
+}
+
+func diffCommits(ctx context.Context, base, head *object.Commit) ([]string, error) {
 	trees := make([]*object.Tree, 2)
-	for i, c := range f.commits {
+	for i, c := range []*object.Commit{base, head} {
+		var err error
 		if trees[i], err = c.Tree(); err != nil {
 			return nil, fmt.Errorf("rawgit: tree of %s: %w", c.Hash, err)
 		}
 	}
 	changes, err := object.DiffTreeWithOptions(ctx, trees[0], trees[1], nil)
 	if err != nil {
-		return nil, fmt.Errorf("rawgit: diff %s..%s: %w", base, head, err)
+		return nil, fmt.Errorf("rawgit: diff %s..%s: %w", base.Hash, head.Hash, err)
 	}
 	paths := make([]string, 0, len(changes))
 	for _, ch := range changes {
@@ -182,6 +208,10 @@ type fetched struct {
 // fetch resolves each of refs on repo's advertised refs and fetches their
 // commits into memory, one commit deep where the server allows it.
 func (s *Source) fetch(ctx context.Context, repo port.Repository, refs ...string) (fetched, error) {
+	return s.fetchWithHistory(ctx, repo, false, refs...)
+}
+
+func (s *Source) fetchWithHistory(ctx context.Context, repo port.Repository, history bool, refs ...string) (fetched, error) {
 	ep, err := endpoint(repo.URL)
 	if err != nil {
 		return fetched{}, err
@@ -208,7 +238,7 @@ func (s *Source) fetch(ctx context.Context, repo port.Repository, refs ...string
 	req.Capabilities.Delete(capability.Sideband)
 	req.Capabilities.Delete(capability.Sideband64k)
 	req.Capabilities.Delete(capability.ThinPack)
-	if ar.Capabilities.Supports(capability.Shallow) &&
+	if !history && ar.Capabilities.Supports(capability.Shallow) &&
 		req.Capabilities.Set(capability.Shallow) == nil {
 		req.Depth = packp.DepthCommits(1)
 	}
@@ -283,6 +313,9 @@ func tips(ar *packp.AdvRefs, hashes []plumbing.Hash) bool {
 // resolve is the commit ref names among ar's refs, and the tag it names: a
 // full SHA as it is, then refs/heads/ref, then refs/tags/ref, peeled.
 func resolve(ar *packp.AdvRefs, ref string) (plumbing.Hash, string, error) {
+	if ref == "HEAD" && ar.Head != nil {
+		return *ar.Head, "", nil
+	}
 	if isHash(ref) {
 		return plumbing.NewHash(ref), "", nil
 	}

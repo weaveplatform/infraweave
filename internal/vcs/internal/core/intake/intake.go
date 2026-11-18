@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -46,6 +47,7 @@ var (
 	errParse        = errors.New("vcs: webhook payload could not be parsed")
 	errBody         = errors.New("vcs: webhook body could not be read")
 	errPayload      = errors.New("vcs: invalid delivery job payload")
+	errDispatch     = errors.New("vcs: delivery preparation failed")
 )
 
 // Integration is the lookup's opened webhook secrets, never provider credentials.
@@ -138,19 +140,32 @@ type Jobs interface {
 	DeadByKeyTx(context.Context, queue.Kind, string, kernel.ULID) (bool, error)
 }
 
+// DispatchPlan commits prepared VCS work under the processor's queue fence.
+// Its implementation owns business rows and child jobs; it makes no remote call.
+type DispatchPlan interface {
+	Commit(context.Context) error
+}
+
+// Dispatcher prepares full event data and target stacks outside the completion
+// transaction. Every prepared row/child commits with dispatched and CompleteTx.
+type Dispatcher interface {
+	Prepare(context.Context, Delivery, []vcsapi.Event) (DispatchPlan, error)
+}
+
 // Deps supplies the durable boundaries and the clock used for secret overlap and
 // processing deadlines. Rejected counts only bounded provider/reason labels.
 type Deps struct {
-	DB        tx.Beginner
-	Store     Store
-	Objects   Objects
-	Jobs      Jobs
-	Providers map[string]port.Webhooks
-	Now       func() time.Time
-	Timeout   time.Duration
-	Retention time.Duration
-	Rejected  func(context.Context, string, string)
-	Log       *slog.Logger
+	DB         tx.Beginner
+	Store      Store
+	Objects    Objects
+	Jobs       Jobs
+	Providers  map[string]port.Webhooks
+	Now        func() time.Time
+	Timeout    time.Duration
+	Retention  time.Duration
+	Rejected   func(context.Context, string, string)
+	Log        *slog.Logger
+	Dispatcher Dispatcher
 }
 
 // Service receives deliveries and processes the work they commit.

@@ -116,6 +116,7 @@ type Fake struct {
 	requests    int
 	issued      int
 	logins      map[string]string
+	treeLimit   int
 }
 
 // New returns a fake with no App, installation or repository, whose
@@ -294,6 +295,8 @@ func (f *Fake) Handler() http.Handler {
 			r.Route("/repos/{owner}/{repo}", func(r chi.Router) {
 				r.Use(f.reachable)
 				f.deploymentRoutes(r)
+				r.Get("/", f.repositoryMetadata)
+				r.Get("/git/trees/{tree}", f.gitTree)
 				r.Get("/commits/*", f.commit)
 				r.Get("/git/ref/tags/*", f.tagRef)
 				r.Get("/contents/*", f.contents)
@@ -567,6 +570,7 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 			host(r), chi.URLParam(r, "owner"), chi.URLParam(r, "repo"), c.Hash),
 		"commit": map[string]any{
 			"message": c.Message,
+			"tree":    map[string]string{"sha": c.TreeHash.String()},
 			"author": map[string]string{
 				"name": c.Author.Name, "email": c.Author.Email,
 				"date": c.Author.When.UTC().Format(time.RFC3339),
@@ -605,8 +609,9 @@ func (f *Fake) contents(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	base, head, ok := strings.Cut(chi.URLParam(r, "*"), "...")
-	changes, err := repo.Changes(r.Context(), base, head)
-	if !ok || err != nil {
+	mergeBase, mergeErr := repo.MergeBase(base, head)
+	changes, err := repo.Changes(r.Context(), mergeBase, head)
+	if !ok || mergeErr != nil || err != nil {
 		answer(w, http.StatusNotFound, message("Not Found"))
 		return
 	}
@@ -624,7 +629,7 @@ func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	paged(w, r, files, func(page []map[string]any) any {
-		return map[string]any{"status": "ahead", "files": page}
+		return map[string]any{"status": "ahead", "files": page, "merge_base_commit": map[string]string{"sha": mergeBase}}
 	})
 }
 

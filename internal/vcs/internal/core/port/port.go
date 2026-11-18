@@ -71,7 +71,9 @@ type Source interface {
 	ReadFile(ctx context.Context, repo Repository, ref, path string) ([]byte, error)
 	// AffectedFiles lists the paths that differ between the commits base
 	// and head of repo; ErrNotFound when either is missing.
-	AffectedFiles(ctx context.Context, repo Repository, base, head string) ([]string, error)
+	// PushDiff explicitly chooses complete trees, new-branch default merge
+	// bases and deleted-branch no-ops; omission keeps the legacy comparison.
+	AffectedFiles(ctx context.Context, repo Repository, base, head string, mode ...DiffMode) ([]string, error)
 	// SourceURL is the HTTPS Git URL a worker fetches commit of repo from.
 	SourceURL(repo Repository, commit string) string
 }

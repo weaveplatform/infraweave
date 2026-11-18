@@ -66,6 +66,10 @@ func (UnimplementedStrict) AccountUpdateSecurityEmail(context.Context, AccountUp
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateSecurityEmail", Route: "POST /account/update-security-email"}
 }
 
+func (UnimplementedStrict) AccountUpdateVCSEventTriggeredRunsLimit(context.Context, AccountUpdateVCSEventTriggeredRunsLimitRequestObject) (AccountUpdateVCSEventTriggeredRunsLimitResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountUpdateVCSEventTriggeredRunsLimit", Route: "POST /account/update-vcs-event-triggered-runs-limit"}
+}
+
 func (UnimplementedStrict) ActionCatalogue(context.Context, ActionCatalogueRequestObject) (ActionCatalogueResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "actionCatalogue", Route: "GET /actions"}
 }
@@ -1384,6 +1388,10 @@ func (UnimplementedStrict) SearchVCSIntegrations(context.Context, SearchVCSInteg
 
 func (UnimplementedStrict) SearchVCSIntegrationsSuggestions(context.Context, SearchVCSIntegrationsSuggestionsRequestObject) (SearchVCSIntegrationsSuggestionsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchVCSIntegrationsSuggestions", Route: "POST /v-cs-integrations/search/suggestions"}
+}
+
+func (UnimplementedStrict) VcsEventTriggeredRunsLimit(context.Context, VcsEventTriggeredRunsLimitRequestObject) (VcsEventTriggeredRunsLimitResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "vcsEventTriggeredRunsLimit", Route: "GET /vcs-event-triggered-runs-limit"}
 }
 
 func (UnimplementedStrict) VcsIntegrations(context.Context, VcsIntegrationsRequestObject) (VcsIntegrationsResponseObject, error) {

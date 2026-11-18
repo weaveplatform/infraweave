@@ -241,6 +241,10 @@ func (*stacks) ByRepository(context.Context, kernel.AccountID, *kernel.ULID, str
 	return nil, errors.ErrUnsupported
 }
 
+func (*stacks) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
+	return nil, errors.ErrUnsupported
+}
+
 func (*stacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
 	return nil, errors.ErrUnsupported
 }

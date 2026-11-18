@@ -1,0 +1,39 @@
+package source
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+)
+
+// PreparePush reads the immutable head and its full before/after diff once for
+// all affected stacks, before the dispatcher acquires any creation lock.
+func (s *Service) PreparePush(ctx context.Context, acct kernel.AccountID, id kernel.ULID, provider string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
+	source := s.providers[provider]
+	if source == nil {
+		return stacksapi.Commit{}, nil, fmt.Errorf("%w: event source provider", kernel.ErrUnavailable)
+	}
+	in, found, err := s.integrations.Use(ctx, acct, provider, &id)
+	if err != nil {
+		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push integration: %w", err)
+	}
+	if !found {
+		return stacksapi.Commit{}, nil, port.ErrNoIntegration
+	}
+	repository := port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}
+	commit, err := source.ResolveRef(ctx, repository, event.Head)
+	if err != nil {
+		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push head: %w", err)
+	}
+	files, err := source.AffectedFiles(ctx, repository, event.Before, event.Head, port.PushDiff)
+	if err != nil {
+		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push diff: %w", err)
+	}
+	out := stackCommit(commit)
+	out.Branch = event.Branch
+	return out, files, nil
+}

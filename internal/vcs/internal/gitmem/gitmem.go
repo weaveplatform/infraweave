@@ -14,6 +14,7 @@ import (
 	"github.com/go-git/go-billy/v5/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
 )
@@ -34,9 +35,10 @@ var epoch = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 // Repo is a Git repository in memory. Its methods are safe for concurrent
 // use.
 type Repo struct {
-	mu      sync.Mutex
-	git     *git.Repository
-	commits int
+	mu            sync.Mutex
+	git           *git.Repository
+	commits       int
+	defaultBranch string
 }
 
 // New returns an empty repository.
@@ -62,6 +64,9 @@ func (r *Repo) signature() *object.Signature {
 func (r *Repo) Commit(branch, message string, files map[string]string) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.defaultBranch == "" {
+		r.defaultBranch = branch
+	}
 	wt, err := r.git.Worktree()
 	must(err)
 	ref := plumbing.NewBranchReferenceName(branch)
@@ -93,6 +98,75 @@ func (r *Repo) Commit(branch, message string, files map[string]string) string {
 	})
 	must(err)
 	return h.String()
+}
+
+// DefaultBranch is repository metadata, independent of the last checked-out ref.
+func (r *Repo) DefaultBranch() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.defaultBranch
+}
+
+// SetDefaultBranch changes the metadata only after the named branch exists.
+func (r *Repo) SetDefaultBranch(branch string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, err := r.git.Reference(plumbing.NewBranchReferenceName(branch), true)
+	must(err)
+	r.defaultBranch = branch
+}
+
+// MergeBase is the common ancestor used by provider comparison APIs.
+func (r *Repo) MergeBase(base, head string) (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	a, err := r.resolve(base)
+	if err != nil {
+		return "", err
+	}
+	b, err := r.resolve(head)
+	if err != nil {
+		return "", err
+	}
+	bases, err := a.MergeBase(b)
+	if err != nil {
+		return "", fmt.Errorf("gitmem: merge base: %w", err)
+	}
+	if len(bases) == 0 {
+		return "", fmt.Errorf("%w: merge base", ErrNotFound)
+	}
+	return bases[0].Hash.String(), nil
+}
+
+// TreeEntry is a Git tree's path, object identity, type and executable mode.
+type TreeEntry struct{ Path, SHA, Type, Mode string }
+
+// Tree returns one level without flattening or truncating its subtrees.
+func (r *Repo) Tree(ref string) (string, []TreeEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var tree *object.Tree
+	var err error
+	if commit, resolveErr := r.resolve(ref); resolveErr == nil {
+		tree, err = commit.Tree()
+	} else {
+		tree, err = r.git.TreeObject(plumbing.NewHash(ref))
+	}
+	if err != nil {
+		return "", nil, fmt.Errorf("%w: tree %s", ErrNotFound, ref)
+	}
+	entries := make([]TreeEntry, 0, len(tree.Entries))
+	for _, entry := range tree.Entries {
+		kind := "blob"
+		switch entry.Mode {
+		case filemode.Dir:
+			kind = "tree"
+		case filemode.Submodule:
+			kind = "commit"
+		}
+		entries = append(entries, TreeEntry{Path: entry.Name, SHA: entry.Hash.String(), Type: kind, Mode: fmt.Sprintf("%06o", entry.Mode)})
+	}
+	return tree.Hash.String(), entries, nil
 }
 
 // Branch points branch at commit, creating it when it does not exist.

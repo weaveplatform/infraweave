@@ -31,7 +31,7 @@ func TestUnitCreateOptionProblems(t *testing.T) {
 				integration.GitLab, integration.GitHubEnterprise, integration.BitbucketCloud,
 				integration.BitbucketDC, integration.AzureDevOps,
 			},
-		}), nil, nil)
+		}), nil, nil, nil)
 		ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{OrganizationID: kernel.NewOrganizationID()})
 		no := false
 		for _, value := range []*bool{nil, &no} {

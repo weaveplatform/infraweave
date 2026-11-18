@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type job struct {
@@ -46,16 +47,53 @@ func (s *Service) Processed(ctx context.Context, j queue.Job) error {
 	if provider == nil {
 		return s.failed(ctx, j, p, errParse)
 	}
-	if _, err := provider.Parse(d.Headers, body); err != nil {
+	events, err := provider.Parse(d.Headers, body)
+	if err != nil {
 		// A parser error may contain the raw payload. Only this fixed error
 		// reaches last_error, queue errors and logs.
 		return s.failed(ctx, j, p, errParse)
+	}
+	var plan DispatchPlan
+	if s.d.Dispatcher != nil {
+		plan, err = s.d.Dispatcher.Prepare(ctx, d, events)
+		if err != nil {
+			now := s.d.Now()
+			if !now.Before(d.Deadline) {
+				return s.complete(ctx, j, p, Expired)
+			}
+			// Provider diagnostics may echo raw data or credentials. Only
+			// the bounded reset time survives a rate-limit refusal.
+			if limited, ok := errors.AsType[*port.RateLimited](err); ok {
+				return queue.Snooze(min(max(time.Second, limited.Reset.Sub(now)), d.Deadline.Sub(now))) //nolint:wrapcheck // the queue interprets its scheduling control
+			}
+			return s.failed(ctx, j, p, errDispatch)
+		}
 	}
 	state := Dispatched
 	if !s.d.Now().Before(d.Deadline) {
 		state = Expired
 	}
-	return s.complete(ctx, j, p, state)
+	if state == Expired {
+		return s.complete(ctx, j, p, state)
+	}
+	return s.dispatched(ctx, j, p, plan)
+}
+
+func (s *Service) dispatched(ctx context.Context, j queue.Job, p job, plan DispatchPlan) error {
+	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error { //nolint:wrapcheck // each fenced step names its boundary
+		if err := s.d.Jobs.HoldTx(ctx, j); err != nil {
+			return err //nolint:wrapcheck // the queue names the lost claim
+		}
+		if plan != nil {
+			if err := plan.Commit(ctx); err != nil {
+				return err //nolint:wrapcheck // the dispatcher names the prepared write
+			}
+		}
+		if err := s.d.Store.State(ctx, p.Account, p.ID, Dispatched, ""); err != nil {
+			return err //nolint:wrapcheck // the store names the metadata write
+		}
+		return s.d.Jobs.CompleteTx(ctx, j) //nolint:wrapcheck // the queue names the completion
+	})
 }
 
 func (s *Service) body(ctx context.Context, d Delivery) ([]byte, error) {

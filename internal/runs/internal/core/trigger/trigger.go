@@ -30,10 +30,12 @@ func (e *RuntimeConfigDenied) Error() string {
 
 // Deps are what the trigger reads and writes through, the authorizer a
 // batch and custom-runtime trigger decide each stack's actions with, and the objects local
-// workspaces are uploaded to.
+// workspaces are uploaded to. Spaces holds the owner of an internal creation
+// until its caller's transaction ends.
 type Deps struct {
 	DB        tx.Beginner
 	Stacks    stacksapi.Stacks
+	Spaces    accessapi.Spaces
 	Authz     accessapi.Authorizer
 	Lifecycle *lifecycle.Lifecycle
 	Views     *read.Service

@@ -73,7 +73,7 @@ CREATE TABLE stacks (
 );
 
 CREATE INDEX stacks_space ON stacks (account_id, space_id);
-CREATE INDEX stacks_repository ON stacks (account_id, repository, branch);
+CREATE INDEX stacks_repository ON stacks (account_id, vcs_integration_id, namespace, repository, branch);
 CREATE INDEX stacks_state ON stacks (account_id, state);
 
 -- One row per hook command, in the order each phase runs them.

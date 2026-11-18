@@ -110,6 +110,7 @@ type Store interface {
 	// ByRepository lists acct's stacks that track branch of repository
 	// through integration, nil for none, by slug.
 	ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error)
+	ByVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, namespace, repository string) ([]stacksapi.Stack, error)
 	// Create writes a new stack with its hooks and labels; a *SlugTaken
 	// when another stack of its account holds its slug.
 	Create(ctx context.Context, st Stack) error
@@ -404,6 +405,11 @@ func (s *Service) Settings(ctx context.Context, acct kernel.AccountID, id kernel
 func (s *Service) ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]stacksapi.Stack, error) {
 	//nolint:wrapcheck // as above
 	return s.store.ByRepository(ctx, acct, integration, repository, branch)
+}
+
+// ByVCSRepository lists each branch's attached stacks on a provider repository.
+func (s *Service) ByVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, namespace, repository string) ([]stacksapi.Stack, error) {
+	return s.store.ByVCSRepository(ctx, acct, u, namespace, repository) //nolint:wrapcheck // the store names the read
 }
 
 // LockForRun reads acct's stack id's settings, locking its row in the

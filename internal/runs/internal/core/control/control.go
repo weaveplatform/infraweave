@@ -98,14 +98,19 @@ type Store interface {
 	// Discardable reads acct's stack's runs in QUEUED, READY or
 	// UNCONFIRMED, oldest first.
 	Discardable(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) ([]lifecycle.Run, error)
+	// PlanningProposed locks this branch's older proposed runs still planning,
+	// without a stop already requested, in ID order.
+	PlanningProposed(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, branch, newHash string) ([]lifecycle.Run, error)
 }
 
 // Deps are what the actions read and write through; Now is the clock,
-// time.Now when nil.
+// time.Now when nil. Spaces holds the owner while an internal superseding
+// request records worker signals.
 type Deps struct {
 	DB        tx.Beginner
 	Store     Store
 	Stacks    stacksapi.Stacks
+	Spaces    accessapi.Spaces
 	Authz     accessapi.Authorizer
 	Lifecycle *lifecycle.Lifecycle
 	Views     *read.Service

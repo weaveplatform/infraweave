@@ -23,7 +23,7 @@ import (
 var (
 	// ErrNoTransaction reports a call outside a transaction, whose writes
 	// could commit apart.
-	ErrNoTransaction = errors.New("runs: a run moves only in a transaction")
+	ErrNoTransaction = runsapi.ErrNoTransaction
 	// ErrNotFound reports a run the account lacks.
 	ErrNotFound = errors.New("runs: run not found")
 	// ErrConflict reports a transition whose expected state_version is
@@ -239,6 +239,9 @@ type Store interface {
 	// local workspace workspace, none when empty, that has not ended and
 	// has no environment overrides, the oldest when several have not.
 	Active(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash, workspace string) (Run, bool, error)
+	// OnCommit reads the oldest run of this stack, type and commit in any
+	// state and from any trigger. The caller holds the stack's creation lock.
+	OnCommit(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, typ kernel.RunType, hash string) (Run, bool, error)
 	// SetOverrides seals ovs, run's environment overrides, to its row.
 	SetOverrides(ctx context.Context, run Run, ovs []Override) error
 	// Track makes run the tracked run of its stack.
@@ -405,6 +408,12 @@ type NewRun struct {
 	// AlwaysCreate is an operation's explicit request for a fresh run.
 	// RuntimeConfig alone does not imply it: retries can reuse an active run.
 	AlwaysCreate bool
+	// OncePerCommit checks every prior run, including terminal runs and
+	// runs with overrides or local workspaces, under the stack's row lock.
+	OncePerCommit bool
+	// BeforeCreate admits a genuinely new run in this transaction. It is
+	// skipped for every refusal and reused run, before any insert or event.
+	BeforeCreate func(context.Context) error
 }
 
 // Override is a run-local environment value from a proposal or a trigger's
@@ -417,7 +426,10 @@ type Override struct {
 // Create creates n's run in QUEUED, T1, in the transaction ctx carries,
 // and reports whether it created one: a run of the stack, type, commit
 // and local workspace that has not ended is returned instead, unless n
-// has overrides, a task or AlwaysCreate. It locks the stack's row first, so two
+// has overrides, a task or AlwaysCreate. OncePerCommit instead reuses any
+// matching run, including one that ended or has overrides. BeforeCreate runs
+// only after refusals and reuse checks, before any new run or consequence.
+// It locks the stack's row first, so two
 // creations of one run wait on each other and a delete of the stack
 // waits for the creation to commit. A disabled stack refuses with
 // ErrDisabled, a deleting one with ErrDeleting, a stack locked by another
@@ -454,11 +466,21 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	}
 	// Overrides and tasks always create a run. Other operations explicitly
 	// choose fresh creation; retries keep their normal active-run reuse.
-	if len(n.Overrides) == 0 && n.Task == nil && !n.AlwaysCreate {
+	if n.OncePerCommit {
+		existing, found, err := l.d.Store.OnCommit(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash)
+		if err != nil || found {
+			return existing, false, err //nolint:wrapcheck // the store names the read
+		}
+	} else if len(n.Overrides) == 0 && n.Task == nil && !n.AlwaysCreate {
 		existing, found, err := l.d.Store.Active(ctx, n.Account, n.Stack, n.Type, n.Commit.Hash,
 			n.LocalWorkspace)
 		if err != nil || found {
 			return existing, false, err //nolint:wrapcheck // the store names the read
+		}
+	}
+	if n.BeforeCreate != nil {
+		if err := n.BeforeCreate(ctx); err != nil {
+			return Run{}, false, err //nolint:wrapcheck // the caller identifies its admission refusal
 		}
 	}
 	now := l.now()

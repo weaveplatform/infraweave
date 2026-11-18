@@ -143,6 +143,9 @@ type Stacks interface {
 	// through integration, nil for the stacks that name no VCS
 	// integration, by slug.
 	ByRepository(ctx context.Context, acct kernel.AccountID, integration *kernel.ULID, repository, branch string) ([]Stack, error)
+	// ByVCSRepository lists every branch's stacks using u on the exact
+	// namespace and repository, excluding detached sources, by slug.
+	ByVCSRepository(ctx context.Context, acct kernel.AccountID, u Use, namespace, repository string) ([]Stack, error)
 	// LockForRun reads acct's stack id's settings and locks its row FOR
 	// UPDATE in the context's transaction, so no write changes them
 	// before a run created in that transaction commits; ErrNotFound when
