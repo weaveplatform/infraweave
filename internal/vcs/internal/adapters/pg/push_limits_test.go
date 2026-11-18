@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
@@ -128,5 +130,74 @@ func TestAccDeliveryRunAdmission(t *testing.T) {
 		return err
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAccDeliveryRunAdmissionFailureRollsBackCompletion(t *testing.T) {
+	w := newWebhookWorld(t)
+	w.receive(t, "reservation-failure", webhookBody(128))
+	delivery := w.delivery(t, "reservation-failure")
+	job := w.claim(t, w.queue, "admission")
+	if _, err := w.f.db.Exec(t.Context(), `CREATE FUNCTION refuse_event_run_reservation() RETURNS trigger LANGUAGE plpgsql AS $$
+	BEGIN RAISE EXCEPTION 'reservation storage unavailable' USING ERRCODE='P0001'; END $$;
+	CREATE TRIGGER refuse_event_run_reservation BEFORE UPDATE OF runs_created ON vcs_deliveries
+	FOR EACH ROW EXECUTE FUNCTION refuse_event_run_reservation()`); err != nil {
+		t.Fatal(err)
+	}
+	allowed, attempts := false, 0
+	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		attempts++
+		if err := w.queue.HoldTx(ctx, job); err != nil {
+			return err
+		}
+		// Write completion first so the reservation failure must roll back an
+		// actual acknowledgement, rather than skip one that was never written.
+		if err := w.queue.CompleteTx(ctx, job); err != nil {
+			return err
+		}
+		var err error
+		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+		return err
+	})
+	if cause, ok := errors.AsType[*pgconn.PgError](err); !ok || cause.Code != "P0001" || allowed || attempts != 1 {
+		t.Fatalf("reservation failure became a cap or was retried: allowed=%t attempts=%d error=%v", allowed, attempts, err)
+	}
+	if got := w.delivery(t, "reservation-failure").RunsCreated; got != 0 {
+		t.Fatalf("failed reservation consumed %d slots", got)
+	}
+	var state string
+	var finished, sameAttempt bool
+	if err := w.f.db.QueryRow(t.Context(), `SELECT state,finished_at IS NOT NULL,generation=$2 AND attempt=$3
+		FROM jobs WHERE id=$1`, job.ID, job.Generation, job.Attempt).Scan(&state, &finished, &sameAttempt); err != nil ||
+		state != "running" || finished || !sameAttempt {
+		t.Fatalf("failed reservation committed completion: state=%s finished=%t same_attempt=%t error=%v", state, finished, sameAttempt, err)
+	}
+	if _, err := w.f.db.Exec(t.Context(), `DROP TRIGGER refuse_event_run_reservation ON vcs_deliveries;
+		DROP FUNCTION refuse_event_run_reservation()`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if err := w.queue.HoldTx(ctx, job); err != nil {
+			return err
+		}
+		var err error
+		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return errors.New("failed reservation left no slot for retry")
+		}
+		return w.queue.CompleteTx(ctx, job)
+	}); err != nil {
+		t.Fatal("same-attempt admission retry failed", err)
+	}
+	if got := w.delivery(t, "reservation-failure").RunsCreated; got != 1 {
+		t.Fatalf("recovered reservation consumed %d slots, want 1", got)
+	}
+	if err := w.f.db.QueryRow(t.Context(), `SELECT state,finished_at IS NOT NULL,generation=$2 AND attempt=$3
+		FROM jobs WHERE id=$1`, job.ID, job.Generation, job.Attempt).Scan(&state, &finished, &sameAttempt); err != nil ||
+		state != "succeeded" || !finished || !sameAttempt {
+		t.Fatalf("recovered reservation did not complete its attempt: state=%s finished=%t same_attempt=%t error=%v", state, finished, sameAttempt, err)
 	}
 }
