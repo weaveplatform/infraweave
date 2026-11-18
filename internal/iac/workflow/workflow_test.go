@@ -84,8 +84,8 @@ func TestUnitWorkflowParseRefuses(t *testing.T) {
 }
 
 // TestUnitWorkflowDefaults are the built-in templates under each binary,
-// and a Terragrunt run's through run --all, and the variables are the run
-// parameters, each with a schema.
+// and a Terragrunt run's phase commands according to its mode. Read commands
+// stay in one unit; variables are the run parameters, each with a schema.
 func TestUnitWorkflowDefaults(t *testing.T) {
 	for _, bin := range []string{"terraform", "tofu"} {
 		d := workflow.Defaults(bin)
@@ -103,13 +103,22 @@ func TestUnitWorkflowDefaults(t *testing.T) {
 		if len(tg) != len(workflow.Keys) {
 			t.Errorf("terragrunt: %d templates", len(tg))
 		}
-		prefix := "terragrunt run -- "
-		if runAll {
-			prefix = "terragrunt run --all -- "
-		}
 		for _, k := range workflow.Keys {
+			prefix := "terragrunt run -- "
+			if runAll && k != workflow.ShowState && k != workflow.ShowPlan && k != workflow.GetOutputs {
+				prefix = "terragrunt run --all -- "
+			}
 			if !strings.HasPrefix(tg[k], prefix) {
 				t.Errorf("terragrunt runAll=%t %s: %s", runAll, k, tg[k])
+			}
+		}
+		for key, want := range map[workflow.Key]string{
+			workflow.ShowState:  "terragrunt run -- show -json",
+			workflow.ShowPlan:   "terragrunt run -- show -json ${{ planFileName }}",
+			workflow.GetOutputs: "terragrunt run -- output -json",
+		} {
+			if tg[key] != want {
+				t.Errorf("terragrunt runAll=%t %s read: got %s, want %s", runAll, key, tg[key], want)
 			}
 		}
 		for _, k := range []workflow.Key{workflow.Apply, workflow.Destroy} {

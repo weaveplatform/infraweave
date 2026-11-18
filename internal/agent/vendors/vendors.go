@@ -138,7 +138,9 @@ var phases = map[wire.WorkerState][]workflow.Key{
 	wire.WorkerStateDESTROYING:   {workflow.Destroy},
 }
 
-// unitPhases are the keys each state's phase of a Terragrunt run runs.
+// unitPhases leaves plan JSON to TG_JSON_OUT_DIR and outputs to per-unit
+// readers. Running show across units can require unapplied dependency outputs;
+// output across units concatenates documents without their unit names.
 var unitPhases = map[wire.WorkerState][]workflow.Key{
 	wire.WorkerStateINITIALIZING: {workflow.Init},
 	wire.WorkerStatePLANNING:     {workflow.Plan},
@@ -151,9 +153,10 @@ var unitPhases = map[wire.WorkerState][]workflow.Key{
 // INITIALIZING; plan, then showPlan with its output to o.PlanJSON, for
 // PLANNING; apply, then getOutputs with its output to o.OutputsJSON, for
 // APPLYING; and destroy for DESTROYING. A Terragrunt run, whose o names
-// UnitPlans, plans with UnitPlansVariable naming it and runs no showPlan
-// or getOutputs. A template whose evaluation fails is an error naming its
-// key.
+// UnitPlans, plans with UnitPlansVariable naming it and schedules no showPlan
+// or getOutputs. The runner may separately read a single unit's saved plan if
+// Terragrunt writes no JSON for that unit. A template whose evaluation fails
+// is an error naming its key.
 func (w *Workflow) Commands(ctx context.Context, state wire.WorkerState, o Options) ([]Command, error) {
 	keys, ok := phases[state]
 	if o.UnitPlans != "" {

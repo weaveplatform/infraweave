@@ -145,30 +145,32 @@ func Defaults(bin string) Templates {
 // that names it writes the plan Terragrunt reads.
 const TerragruntPlanFile = "tfplan.tfplan"
 
-// Terragrunt are the built-in templates of a Terragrunt run: each runs
-// the command Defaults would through terragrunt run, with --all across
-// the stack's units when runAll is true, otherwise in the root unit alone,
-// with the tool TG_TF_PATH names. Single-unit apply and destroy explicitly
-// approve; Terragrunt approves under --all. Apply plans again in both modes.
+// Terragrunt returns the built-in templates using the tool TG_TF_PATH names.
+// Phase commands take --all when runAll is true. Read commands stay in one
+// unit: showing plans across units can require unapplied dependency outputs,
+// and output across units concatenates documents without their unit names.
+// Single-unit apply and destroy explicitly approve; Terragrunt approves under
+// --all. Apply plans again in both modes.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func Terragrunt(runAll bool) Templates {
-	all, approve := "terragrunt run -- ", "-auto-approve "
+	unit := "terragrunt run -- "
+	phase, approve := unit, "-auto-approve "
 	if runAll {
-		all, approve = "terragrunt run --all -- ", ""
+		phase, approve = "terragrunt run --all -- ", ""
 	}
 	return Templates{
-		Init:            all + "init -input=false -lock-timeout=${{ lockTimeout }}",
-		WorkspaceSelect: all + "workspace select ${{ workspaceName }}",
-		WorkspaceNew:    all + "workspace new -lock-timeout=${{ lockTimeout }} ${{ workspaceName }}",
-		Plan: all + "plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} " +
+		Init:            phase + "init -input=false -lock-timeout=${{ lockTimeout }}",
+		WorkspaceSelect: phase + "workspace select ${{ workspaceName }}",
+		WorkspaceNew:    phase + "workspace new -lock-timeout=${{ lockTimeout }} ${{ workspaceName }}",
+		Plan: phase + "plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} " +
 			`${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ` +
 			`${{ targets.map(t, "-target=" + t) }}`,
-		ShowState:  all + "show -json",
-		ShowPlan:   all + "show -json ${{ planFileName }}",
-		GetOutputs: all + "output -json",
-		Apply:      all + "apply " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
-		Destroy:    all + "destroy " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
+		ShowState:  unit + "show -json",
+		ShowPlan:   unit + "show -json ${{ planFileName }}",
+		GetOutputs: unit + "output -json",
+		Apply:      phase + "apply " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
+		Destroy:    phase + "destroy " + approve + "-input=false -lock-timeout=${{ lockTimeout }}",
 	}
 }
 

@@ -31,6 +31,11 @@ while [ "$1" != -- ]; do
   shift
 done
 shift
+if [ "$FORBID_UNIT_READS" = true ]; then
+  case "$1" in
+    show|output) echo "dependency read outside planning" >&2; exit 97 ;;
+  esac
+fi
 if [ "$1" = plan ] && [ -n "$TG_JSON_OUT_DIR" ]; then
   if [ "$all" = true ]; then
     [ -d "$UNIT_PLANS" ] && mkdir -p "$TG_JSON_OUT_DIR" && cp -R "$UNIT_PLANS"/. "$TG_JSON_OUT_DIR"/
@@ -187,6 +192,77 @@ func TestUnitExecTerragruntApplies(t *testing.T) {
 	}
 	if len(w.w.reports) != 3 || strings.Contains(strings.Join(w.w.taken, "\n"), "artifacts") {
 		t.Errorf("a proposed run: %q, taken %q", w.events(), w.w.taken)
+	}
+}
+
+// Dependent units need their planning mocks alone. The runner consumes their
+// JSON documents without invoking a read command that re-evaluates dependencies.
+func TestUnitExecTerragruntDependentUnitsDoNotReadAcrossUnits(t *testing.T) {
+	for _, custom := range []bool{false, true} {
+		t.Run(map[bool]string{false: "built-in workflow", true: "workflow file"}[custom], func(t *testing.T) {
+			w := terragruntWorld(t)
+			w.w.autodeploy = true
+			w.environ = append(w.environ, "FORBID_UNIT_READS=true")
+			if err := os.Remove(filepath.Join(w.checkout, "terragrunt.hcl")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.RemoveAll(filepath.Join(w.checkout, "a")); err != nil {
+				t.Fatal(err)
+			}
+			plans := filepath.Join(filepath.Dir(w.workspace), "unit-plans")
+			if err := os.RemoveAll(plans); err != nil {
+				t.Fatal(err)
+			}
+			files := map[string]string{
+				filepath.Join(w.checkout, "network", "terragrunt.hcl"): "",
+				filepath.Join(w.checkout, "network", "main.tf"):        "resource \"terraform_data\" \"network\" { input = \"network\" }\noutput \"network_id\" { value = terraform_data.network.id }\n",
+				filepath.Join(w.checkout, "app", "terragrunt.hcl"): `dependency "network" {
+  config_path = "../network"
+  mock_outputs = { network_id = "mock-network-id" }
+  mock_outputs_allowed_terraform_commands = ["plan", "validate"]
+}
+inputs = { network_id = dependency.network.outputs.network_id }
+`,
+				filepath.Join(w.checkout, "app", "main.tf"):    "variable \"network_id\" { type = string }\nresource \"terraform_data\" \"app\" { input = var.network_id }\n",
+				filepath.Join(plans, "network", "tfplan.json"): planJSON,
+				filepath.Join(plans, "app", "tfplan.json"):     planJSON,
+			}
+			for path, content := range files {
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if custom {
+				templates := workflow.Terragrunt(true)
+				templates[workflow.ShowPlan] = "terragrunt run --all -- show -json tfplan.tfplan"
+				templates[workflow.GetOutputs] = "terragrunt run --all -- output -json"
+				var file strings.Builder
+				for _, key := range workflow.Keys {
+					file.WriteString(string(key) + ": |\n  " + templates[key] + "\n")
+				}
+				w.workflow(file.String())
+			}
+			if err := w.run(); err != nil {
+				t.Fatal(err)
+			}
+			equal(t, "dependent-unit reports", w.events(), []string{
+				"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5", "APPLYING succeeded 6",
+			})
+			if delta := w.w.reports[2].Delta; delta == nil || delta.Add != 2 {
+				t.Errorf("dependent units' plan delta = %+v", delta)
+			}
+			equal(t, "dependent-unit commands", w.traced(), []string{
+				"terragrunt run --all -- init -input=false -lock-timeout=5m0s tf=terraform ni=true json=",
+				"terragrunt run --all -- plan -input=false -lock-timeout=5m0s -lock=true -out=tfplan.tfplan tf=terraform ni=true json=set",
+				"terragrunt run --all -- apply -input=false -lock-timeout=5m0s tf=terraform ni=true json=",
+			})
+			if strings.Contains(strings.Join(w.w.taken, "\n"), exec.OutputsArtifact) {
+				t.Error("run-all read unnamed output documents")
+			}
+		})
 	}
 }
 
