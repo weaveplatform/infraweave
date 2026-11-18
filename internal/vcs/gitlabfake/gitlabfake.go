@@ -295,6 +295,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Delete("/access_tokens/{token}", f.revoke)
 		})
 	})
+	r.Handle("/*", http.HandlerFunc(f.gitHTTP))
 	return r
 }
 
