@@ -18,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	cerrdefs "github.com/containerd/errdefs"
 	"github.com/go-chi/chi/v5"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -223,27 +222,12 @@ func (l *Launchers) RunImage(ctx context.Context, run string) (string, error) {
 }
 
 // Remove removes every container labelled with the label key=value, run
-// containers and forwarders alike, running or not. A container already
+// containers and forwarders alike, running or not. Runs end and hand their
+// workspace directories back before removal. A container already
 // gone, or whose removal is in progress, such as one its launcher removes
 // as it stops, counts as removed.
 func (l *Launchers) Remove(ctx context.Context, key, value string) error {
-	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
-		All: true, Filters: client.Filters{}.Add("label", key+"="+value),
-	})
-	if err != nil {
-		return fmt.Errorf("docker: %w", err)
-	}
-	var errs error
-	for _, c := range list.Items {
-		_, err := l.cli.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{Force: true})
-		if !cerrdefs.IsConflict(err) && !cerrdefs.IsNotFound(err) {
-			errs = errors.Join(errs, err)
-		}
-	}
-	if errs != nil {
-		return fmt.Errorf("docker: %w", errs)
-	}
-	return nil
+	return removeContainers(ctx, l.cli, key, value)
 }
 
 // Close stops the tool mirror and the run containers' caps, removes
