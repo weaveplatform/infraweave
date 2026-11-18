@@ -27,4 +27,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	lab.register(sc)
 	(&vcsSteps{w: w}).register(sc)
 	registerAccountSteps(sc, w)
+	(&webhookSteps{w: w}).register(sc)
 }

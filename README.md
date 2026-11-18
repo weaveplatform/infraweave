@@ -312,6 +312,8 @@ To bootstrap an installation:
 | `objectstore.part_size` | | `INFRAWEAVE_OBJECTSTORE_PART_SIZE` | `16777216` (16 MiB; at least 5 MiB) |
 | `objectstore.signed_url_ttl` | | `INFRAWEAVE_OBJECTSTORE_SIGNED_URL_TTL` | `15m` |
 | `vcs.ca_file` | | `INFRAWEAVE_VCS_CA_FILE` | none: a PEM file of certificate authorities trusted beside the system's when reaching a repository's host, for a host under a private CA; read at start |
+| `vcs.deliveries.retention` | | `INFRAWEAVE_VCS_DELIVERIES_RETENTION` | `168h`, positive; delivery rows are pruned hourly, separately from the inbox bodies' `48h` object retention |
+| `policy.timeouts.push_event` | | `INFRAWEAVE_POLICY_TIMEOUTS_PUSH_EVENT` | `10m`, positive; verified deliveries keep a received-time deadline across queue attempts |
 | `log.format` | | `INFRAWEAVE_LOG_FORMAT` | `json` (or `text`) |
 | `log.level` | `--log-level` | `INFRAWEAVE_LOG_LEVEL` | `info` (`debug`, `warn`, `error`) |
 

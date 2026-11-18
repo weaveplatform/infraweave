@@ -28,6 +28,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
+	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 )
 
 var param = regexp.MustCompile(`\{[^}]+\}`)
@@ -89,6 +90,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		"POST /oauth/token":                           {Public: true},
 		"GET /blobs/{token}":                          {Public: true},
 		"PUT /blobs/{token}":                          {Public: true, OwnBodyBound: true},
+		"POST " + vcsassembly.WebhookPattern:          {Public: true, Unkeyed: true, OwnBodyBound: true, Cost: ratelimit.Expensive},
 		"LOCK /state/v1/stacks/{stack}":               {State: true, OwnBodyBound: true},
 		"GET /state/v1/download/{token}":              {Public: true},
 		"PUT /state/v1/uploads/{token}":               {Public: true, OwnBodyBound: true},
@@ -106,8 +108,8 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: %+v, want %+v", key, got, want)
 		}
 	}
-	// Only the blob PUT, the state upload PUT and the state backend depart
-	// from the body bound; the state URLs' routes are public.
+	// Blob/state transfers and webhook intake enforce their protocol's own
+	// body bounds; the state URLs' routes are public.
 	// ref: decision 0003 § "API surfaces"
 	signedState := map[string]bool{
 		http.MethodGet + " " + stateapi.DownloadPattern: true,
@@ -119,16 +121,15 @@ func TestUnitAPIOperations(t *testing.T) {
 			t.Errorf("%s: State %v", key, op.State)
 		}
 		ownBound := key == http.MethodPut+" "+fs.Pattern ||
-			key == http.MethodPut+" "+stateapi.UploadPattern || state
+			key == http.MethodPut+" "+stateapi.UploadPattern || state || key == http.MethodPost+" "+vcsassembly.WebhookPattern
 		if op.OwnBodyBound != ownBound {
-			t.Errorf("%s: OwnBodyBound %v; only the blob PUT, the state upload PUT and the "+
-				"state backend bound their own bodies", key, op.OwnBodyBound)
+			t.Errorf("%s: OwnBodyBound %v; only blob/state transfers and webhook intake bound their own bodies", key, op.OwnBodyBound)
 		}
 	}
-	// Only the state URL operations ignore Idempotency-Key by intent.
+	// State URL operations and provider-delivery identities ignore Idempotency-Key.
 	for key, op := range ops {
 		want := key == "POST "+BaseURL+"/state/upload-url" ||
-			key == "POST "+BaseURL+"/stacks/{stackId}/state/download-url"
+			key == "POST "+BaseURL+"/stacks/{stackId}/state/download-url" || key == http.MethodPost+" "+vcsassembly.WebhookPattern
 		if op.Unkeyed != want {
 			t.Errorf("%s: Unkeyed %v", key, op.Unkeyed)
 		}
@@ -147,6 +148,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		f, known := features.Lookup(op.Gate.Feature)
 		switch {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
+			key == http.MethodPost+" "+vcsassembly.WebhookPattern,
 			strings.HasSuffix(key, " "+fs.Pattern), signedState[key],
 			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"),
 			op.Worker, op.State:

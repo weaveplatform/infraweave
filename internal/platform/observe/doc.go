@@ -17,7 +17,9 @@
 // GET /livez answers 200 while the process serves HTTP, /startupz and
 // /readyz answer 200 or 503 from the checks, as ok or fail or, with
 // ?verbose, as JSON; every other path or method is a problem detail.
-// OpenTelemetry and /metrics join it with P18b.
+// WebhookRejected records refused VCS signatures through an OpenTelemetry
+// meter, with the provider and fixed refusal reason as attributes. Exporter
+// configuration and /metrics join it with P18b; the caller supplies the meter.
 //
 // ref: decision 0017
 //
@@ -32,6 +34,7 @@
 // # Dependencies
 //
 // It imports platform/httpkit/middleware for the router and the request ID,
-// and platform/buildinfo for the version. internal/app and app/config import
+// platform/buildinfo for the version and the OpenTelemetry metric API for
+// counters. internal/app and app/config import
 // it, and the agent process modes may (repo layout, agent-isolation).
 package observe

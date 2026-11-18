@@ -36,6 +36,7 @@ CREATE TABLE vcs_integrations (
     updated_at                     timestamptz NOT NULL DEFAULT now(),
     version                        bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
+    UNIQUE (id),
     UNIQUE (account_id, provider, slug),
     CONSTRAINT vcs_integrations_default_top CHECK (NOT is_default OR space_id = account_id)
 );
@@ -78,3 +79,33 @@ CREATE TABLE vcs_run_tokens (
     created_at     timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (account_id, run_id, token_id)
 );
+
+-- Verified deliveries and their jobs commit together. Provider is retained so
+-- processing can finish after integration deletion; intake holds the live
+-- integration in its insert transaction. Large bodies use unique inbox keys,
+-- committed with the row, so a racing duplicate cannot remove the winner.
+CREATE TABLE vcs_deliveries (
+    account_id uuid NOT NULL,
+    id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    provider text NOT NULL,
+    delivery_id text NOT NULL,
+    event text NOT NULL,
+    received_at timestamptz NOT NULL,
+    headers jsonb NOT NULL,
+    signature bytea NOT NULL,
+    body bytea,
+    body_key text,
+    repository text NOT NULL,
+    state text NOT NULL CHECK (state IN ('received','dispatched','failed','expired')),
+    deadline timestamptz NOT NULL,
+    runs_created integer NOT NULL DEFAULT 0 CHECK (runs_created >= 0),
+    last_error text NOT NULL DEFAULT '',
+    PRIMARY KEY (account_id,id),
+    UNIQUE (integration_id,delivery_id),
+    CHECK ((body IS NULL) <> (body_key IS NULL)),
+    CHECK (body IS NULL OR octet_length(body) <= 262144)
+);
+
+CREATE INDEX vcs_deliveries_retention ON vcs_deliveries (received_at,id);
+CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id) WHERE state='received';

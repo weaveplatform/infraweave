@@ -15,7 +15,11 @@
 // Each claim increments the job's generation, and every transition of the
 // Job it returns (Extend, Complete, CompleteTx, Fail, Kill, Snooze, Release)
 // holds only while that generation does, otherwise ErrLeaseLost. CompleteTx
-// commits a handler's writes with its completion. Fail retries after
+// commits a handler's writes with its completion. HoldTx fences attempt
+// metadata in a transaction without settling the job, leaving retries and
+// their metrics to the worker's normal settlement. DeadByKeyTx locks
+// dead/discarded work by account, kind and unique key while domains reconcile
+// a crash's metadata, fencing concurrent operator retry. Fail retries after
 // Backoff, with full jitter, until the job's attempts run out and it is
 // dead. Recover returns running jobs whose lease lapsed to pending. Prune
 // deletes finished jobs past their retention; ListDead, ReadDead, Retry and

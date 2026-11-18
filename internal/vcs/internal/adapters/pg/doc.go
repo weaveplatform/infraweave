@@ -10,6 +10,11 @@
 // provider's ID of each token minted for a run in vcs_run_tokens, never
 // the token, until the run's revocation forgets it; a purge deletes them
 // with the account.
+// Deliveries reads the current and valid previous webhook secrets without
+// opening access credentials. It holds the integration while inserting a
+// verified delivery, and retains its provider for jobs after integration
+// deletion. Delivery/job/blob transitions share the caller's transaction;
+// retention and account purge return body keys for deferred blob deletion.
 //
 // # Input and output
 //

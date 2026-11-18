@@ -33,6 +33,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
+	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 )
 
 // Operation is what the controls in front of the router need to know about
@@ -524,6 +525,21 @@ var apiOperations = sync.OnceValue(func() Operations {
 		panic(err.Error())
 	}
 	maps.Copy(ops, some)
+	// Webhook intake uses provider protocols, with these control deviations:
+	// Authentication: no authenticator credential; the handler verifies the
+	// integration secret, with empty 401 and no WWW-Authenticate on refusal.
+	// Authorization: no account action; that integration secret is the credential.
+	// Feature gates: none at intake; the durable job is gated when claimed.
+	// Idempotency keys: ignored; the provider delivery ID deduplicates instead.
+	// Strict bodies: the provider parses its own payload shape.
+	// Bounded bodies: the handler's 25 MiB limit, not server.max_body_bytes.
+	// Problem details: every answer is status-only, including guard failures.
+	// Every request is an expensive draw on its client's address, regardless
+	// of verification; all other shared controls remain in effect.
+	// ref: decision 0003 § "API surfaces"; decision 0012
+	ops[http.MethodPost+" "+vcsassembly.WebhookPattern] = Operation{
+		Public: true, Unkeyed: true, OwnBodyBound: true, Cost: ratelimit.Expensive,
+	}
 	// The break-glass login is a page, not an operation of either API, but
 	// the same controls stand in front of it: no credential, and each
 	// sign-in an expensive draw on the client's address, which slows a
@@ -677,9 +693,11 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards, auth a
 			return func(next http.Handler) http.Handler { return next }
 		}
 	}
-	r = middleware.NewRouter(log,
-		middleware.Uncacheable,
-		middleware.AccessLog(log),
+	r = chi.NewRouter()
+	r.Use(middleware.RequestID, middleware.Uncacheable, middleware.AccessLog(log), webhookAnswers, middleware.Recover(log))
+	r.NotFound(middleware.NotFound)
+	r.MethodNotAllowed(middleware.MethodNotAllowed)
+	r.Use(
 		middleware.LimitBodies(c.MaxBodyBytes, func(req *http.Request) bool {
 			op, _ := resolve(req)
 			return op.OwnBodyBound
