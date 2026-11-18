@@ -506,6 +506,12 @@ func (p *Provider) Branches(ctx context.Context, repo port.Repository) ([]string
 // port.ErrNotFound; a refused e-mail or token, or one lacking a scope,
 // is ErrCredential; a host that fails is kernel.ErrUnavailable.
 func classify(resp *http.Response, what string) error {
+	if resp.StatusCode == http.StatusForbidden {
+		if reset, ok := port.RetryReset(resp.Header, time.Now()); ok {
+			return &port.RateLimited{Reset: reset}
+		}
+	}
+
 	var body struct {
 		Error struct {
 			Message string `json:"message"`
@@ -533,6 +539,10 @@ func classify(resp *http.Response, what string) error {
 // Retry-After's seconds from now, or Backoff from now when it names
 // neither.
 func rateLimit(resp *http.Response) *port.RateLimited {
+	if reset, ok := port.RetryReset(resp.Header, time.Now()); ok {
+		return &port.RateLimited{Reset: reset}
+	}
+
 	if s, err := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
 		return &port.RateLimited{Reset: time.Unix(s, 0)}
 	}

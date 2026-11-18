@@ -101,6 +101,7 @@ type token struct {
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
 type Fake struct {
+	checks      checkStore
 	deployments deploymentStore
 	mu          sync.Mutex
 	apps        map[int64]*App
@@ -295,6 +296,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Route("/repos/{owner}/{repo}", func(r chi.Router) {
 				r.Use(f.reachable)
 				f.deploymentRoutes(r)
+				f.checkRoutes(r)
 				r.Get("/", f.repositoryMetadata)
 				r.Get("/git/trees/{tree}", f.gitTree)
 				r.Get("/commits/*", f.commit)

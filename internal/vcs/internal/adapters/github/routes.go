@@ -19,6 +19,7 @@ type RoutePurpose string
 const (
 	ReadOnly        RoutePurpose = "read"
 	DeploymentWrite RoutePurpose = "deployment"
+	CheckWrite      RoutePurpose = "check"
 	AppSetup        RoutePurpose = "app_setup"
 	allRoutes       RoutePurpose = "all"
 )
@@ -35,6 +36,9 @@ type Route struct {
 //
 // ref: decision 0012 § "VCS agent pools"
 var Routes = []Route{
+	{http.MethodGet, "/repos/{owner}/{repo}/commits/{ref}/check-runs", ReadOnly},
+	{http.MethodPost, "/repos/{owner}/{repo}/check-runs", CheckWrite},
+	{http.MethodPatch, "/repos/{owner}/{repo}/check-runs/{check}", CheckWrite},
 	{http.MethodGet, "/app", ReadOnly},
 	{http.MethodGet, "/app/installations", ReadOnly},
 	{http.MethodPost, "/app/installations/{installation}/access_tokens", ReadOnly},
@@ -76,7 +80,7 @@ func Allowed(method, escaped string) bool { return AllowedFor(allRoutes, method,
 // Methods are exact: ServeMux's implicit HEAD-for-GET is not an inventory entry.
 func AllowedFor(purpose RoutePurpose, method, escaped string) bool {
 	switch purpose {
-	case ReadOnly, DeploymentWrite, AppSetup, allRoutes:
+	case ReadOnly, DeploymentWrite, CheckWrite, AppSetup, allRoutes:
 	default:
 		return false
 	}

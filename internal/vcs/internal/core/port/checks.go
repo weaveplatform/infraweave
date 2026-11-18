@@ -3,8 +3,12 @@ package port
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
+	"unicode/utf8"
 )
 
 var ErrCheckInput = errors.New("vcs: invalid commit check input")
@@ -67,6 +71,37 @@ type Checks interface {
 // or network calls. Shared status ownership spans integrations on that host.
 type CheckHost interface {
 	CheckHost(Settings) (string, error)
+}
+
+// CheckText keeps a native description inside its documented UTF-8 byte limit.
+// The check's immutable URL supplies the full run details when a status API has
+// less room than GitHub's check output.
+func CheckText(text string, limit int) string {
+	if len(text) <= limit {
+		return text
+	}
+	text = text[:limit-3]
+	for !utf8.ValidString(text) {
+		text = text[:len(text)-1]
+	}
+	return text + "..."
+}
+
+// RetryReset recognizes explicit provider reset headers. An ordinary forbidden
+// response without a valid reset remains a credential or permission refusal.
+func RetryReset(h http.Header, now time.Time) (time.Time, bool) {
+	for _, name := range []string{"X-RateLimit-Reset", "RateLimit-Reset"} {
+		if epoch, err := strconv.ParseInt(h.Get(name), 10, 64); err == nil && epoch >= 0 {
+			return time.Unix(epoch, 0), true
+		}
+	}
+	if seconds, err := strconv.Atoi(h.Get("Retry-After")); err == nil && seconds >= 0 {
+		return now.Add(time.Duration(seconds) * time.Second).Truncate(time.Second), true
+	}
+	if reset, err := http.ParseTime(h.Get("Retry-After")); err == nil {
+		return reset, true
+	}
+	return time.Time{}, false
 }
 
 // CheckOrigin normalizes host aliases while preserving private installation

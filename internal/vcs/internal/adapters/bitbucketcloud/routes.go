@@ -25,6 +25,8 @@ type Route struct {
 //
 // ref: decision 0012 § "VCS agent"
 var Routes = []Route{
+	{http.MethodGet, "/repositories/{workspace}/{repo_slug}/commit/{commit}/statuses/build/{key}"},
+	{http.MethodPost, "/repositories/{workspace}/{repo_slug}/commit/{commit}/statuses/build"},
 	{http.MethodGet, "/user"},
 	{http.MethodGet, "/user/workspaces"},
 	{http.MethodGet, "/repositories/{workspace}"},

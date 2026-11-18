@@ -517,6 +517,9 @@ func rateLimit(resp *http.Response) *port.RateLimited {
 	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusTooManyRequests {
 		return nil
 	}
+	if reset, ok := port.RetryReset(resp.Header, time.Now()); ok {
+		return &port.RateLimited{Reset: reset}
+	}
 	if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil {
 		return &port.RateLimited{
 			Reset: time.Now().Add(time.Duration(s) * time.Second).Truncate(time.Second),
