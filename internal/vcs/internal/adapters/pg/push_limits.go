@@ -43,12 +43,12 @@ func (s *Store) SetRunLimit(ctx context.Context, acct kernel.AccountID, limit *i
 
 // ReserveRun conditionally increments the shared counter. It must run after
 // lifecycle deduplication and in the same transaction as insertion/completion.
-func (s *Store) ReserveRun(ctx context.Context, acct kernel.AccountID, delivery kernel.ULID, limit int) (bool, error) {
+func (s *Store) ReserveRun(ctx context.Context, acct kernel.AccountID, delivery kernel.ULID, replays int64, limit int) (bool, error) {
 	if !tx.In(ctx) {
 		return false, push.ErrNoTransaction
 	}
 	result, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_deliveries SET runs_created=runs_created+1
-		WHERE account_id=$1 AND id=$2 AND runs_created<$3`, acct, delivery, limit)
+		WHERE account_id=$1 AND id=$2 AND runs_created<$3 AND replays=$4`, acct, delivery, limit, replays)
 	if err != nil {
 		return false, fmt.Errorf("vcs: reserve event run slot: %w", sql.Unavailable(err))
 	}

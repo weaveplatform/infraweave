@@ -215,7 +215,7 @@ func New(d Deps) (*Domain, error) {
 				integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			},
 		}),
-		api: http.New(integrations, d.Spaces, nil, limits),
+		api: http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox),
 	}, nil
 }
 

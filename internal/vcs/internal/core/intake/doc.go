@@ -16,9 +16,19 @@
 // Receive takes provider headers and bounded body bytes from the HTTP adapter,
 // and reads the current and still-valid previous webhook secrets through Store.
 // It stores safe headers, a retained HMAC, exact body bytes or an inbox key, and
-// queue payloads containing IDs alone. Jobs parse through the provider's pure
-// Webhooks capability; they make no VCS calls and create no runs or policies.
+// queue payloads containing IDs and replay generations. Jobs parse through the
+// provider's pure Webhooks capability, then prepare through the injected
+// dispatcher outside the completion transaction. Its commit owns prepared
+// events and stack children; policy routing is outside this package.
 // Now is injected for secret overlap, received-time deadlines and retention.
+//
+// Admin listing reads metadata only and projects terminal child failures without
+// stopping still-active siblings. Replay holds all related queue rows before
+// the integration and delivery, verifies retained bytes under a current or
+// eligible previous secret, then resets generation, facts and budget with its
+// new job and caller audit. Blob expiry is checked against its actual deadline,
+// including objects awaiting the expiry sweep. Inline bytes live with the row.
+// Old generations cannot change state, prepared facts or admission counters.
 //
 // # Dependencies
 //

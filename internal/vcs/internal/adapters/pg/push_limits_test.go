@@ -84,12 +84,12 @@ func TestAccDeliveryRunAdmission(t *testing.T) {
 	w := newWebhookWorld(t)
 	w.receive(t, "capped", webhookBody(128))
 	delivery := w.delivery(t, "capped")
-	if _, err := w.f.store.ReserveRun(t.Context(), w.f.acct, delivery.ID, 1); !errors.Is(err, push.ErrNoTransaction) {
+	if _, err := w.f.store.ReserveRun(t.Context(), w.f.acct, delivery.ID, 0, 1); !errors.Is(err, push.ErrNoTransaction) {
 		t.Fatal("admission ran outside a creation transaction", err)
 	}
 	cause := errors.New("run insertion failed")
 	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
-		allowed, err := w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+		allowed, err := w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 0, 1)
 		if err != nil || !allowed {
 			t.Fatal("first admission was refused", allowed, err)
 		}
@@ -107,7 +107,7 @@ func TestAccDeliveryRunAdmission(t *testing.T) {
 			allowed := false
 			err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
 				var err error
-				allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+				allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 0, 1)
 				return err
 			})
 			if err != nil {
@@ -123,7 +123,7 @@ func TestAccDeliveryRunAdmission(t *testing.T) {
 		t.Fatal("concurrent admission exceeded the shared budget", admitted.Load())
 	}
 	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
-		allowed, err := w.f.store.ReserveRun(ctx, kernel.NewAccountID(), delivery.ID, 2)
+		allowed, err := w.f.store.ReserveRun(ctx, kernel.NewAccountID(), delivery.ID, 0, 2)
 		if allowed {
 			t.Error("foreign account consumed a delivery slot")
 		}
@@ -156,7 +156,7 @@ func TestAccDeliveryRunAdmissionFailureRollsBackCompletion(t *testing.T) {
 			return err
 		}
 		var err error
-		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 0, 1)
 		return err
 	})
 	if cause, ok := errors.AsType[*pgconn.PgError](err); !ok || cause.Code != "P0001" || allowed || attempts != 1 {
@@ -181,7 +181,7 @@ func TestAccDeliveryRunAdmissionFailureRollsBackCompletion(t *testing.T) {
 			return err
 		}
 		var err error
-		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 1)
+		allowed, err = w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 0, 1)
 		if err != nil {
 			return err
 		}

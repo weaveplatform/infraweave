@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/oapi-codegen/runtime"
 )
@@ -2696,6 +2697,30 @@ func (e VCSCheck) Valid() bool {
 	case ALL:
 		return true
 	case INDIVIDUAL:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VCSDeliveryState.
+const (
+	VCSDeliveryStateDISPATCHED VCSDeliveryState = "DISPATCHED"
+	VCSDeliveryStateEXPIRED    VCSDeliveryState = "EXPIRED"
+	VCSDeliveryStateFAILED     VCSDeliveryState = "FAILED"
+	VCSDeliveryStateRECEIVED   VCSDeliveryState = "RECEIVED"
+)
+
+// Valid indicates whether the value is a known member of the VCSDeliveryState enum.
+func (e VCSDeliveryState) Valid() bool {
+	switch e {
+	case VCSDeliveryStateDISPATCHED:
+		return true
+	case VCSDeliveryStateEXPIRED:
+		return true
+	case VCSDeliveryStateFAILED:
+		return true
+	case VCSDeliveryStateRECEIVED:
 		return true
 	default:
 		return false
@@ -9824,6 +9849,43 @@ type VCSCheckOptionsInput struct {
 	IndividualSkipUnchanged *bool `json:"individualSkipUnchanged,omitempty"`
 }
 
+// VCSDeliveriesOutput defines model for VCSDeliveriesOutput.
+type VCSDeliveriesOutput struct {
+	Edges    []VCSDeliveryConnection `json:"edges"`
+	PageInfo PageInfo                `json:"pageInfo"`
+}
+
+// VCSDelivery Metadata for a verified webhook delivery. Payloads and signatures are never returned.
+type VCSDelivery struct {
+	DeliveryId string `json:"deliveryId"`
+	Event      string `json:"event"`
+	Id         string `json:"id"`
+
+	// LastError A safe processing diagnostic, empty when none is recorded.
+	LastError   string           `json:"lastError"`
+	ReceivedAt  time.Time        `json:"receivedAt"`
+	RunsCreated int32            `json:"runsCreated"`
+	State       VCSDeliveryState `json:"state"`
+}
+
+// VCSDeliveryState defines model for VCSDelivery.State.
+type VCSDeliveryState string
+
+// VCSDeliveryConnection defines model for VCSDeliveryConnection.
+type VCSDeliveryConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node Metadata for a verified webhook delivery. Payloads and signatures are never returned.
+	Node VCSDelivery `json:"node"`
+}
+
+// VCSDeliverySearchInput Search paging in newest-received order. Page size defaults to 20 and is clamped to 1 through 100.
+type VCSDeliverySearchInput struct {
+	After         *string                   `json:"after,omitempty"`
+	First         *int32                    `json:"first,omitempty"`
+	RequestedPage *SearchQueryRequestedPage `json:"requestedPage,omitempty"`
+}
+
 // VCSIntegration defines model for VCSIntegration.
 type VCSIntegration struct {
 	// CreatedAt CreatedAt is unix timestamp (in seconds) at which the blueprint was created
@@ -12151,6 +12213,17 @@ type VcsIntegrationsParams struct {
 // VcsIntegrationParams defines parameters for VcsIntegration.
 type VcsIntegrationParams struct {
 	Provider VCSProvider `form:"provider" json:"provider"`
+}
+
+// VcsIntegrationDeliveriesParams defines parameters for VcsIntegrationDeliveries.
+type VcsIntegrationDeliveriesParams struct {
+	Input VCSDeliverySearchInput `form:"input" json:"input"`
+}
+
+// VcsIntegrationDeliveryReplayParams defines parameters for VcsIntegrationDeliveryReplay.
+type VcsIntegrationDeliveryReplayParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // VcsIntegrationSearchUsersParams defines parameters for VcsIntegrationSearchUsers.
@@ -18668,6 +18741,20 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
 	VcsIntegration(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrationDeliveries List integration deliveries
+	//
+	// List retained webhook deliveries newest first, with search cursors and page size. A failed child is reported as FAILED while other children may still be processing. Stored bodies, headers and signatures are private.
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/deliveries (the `VcsIntegrationDeliveries` operationId).
+	VcsIntegrationDeliveries(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VcsIntegrationDeliveryReplay Replay an integration delivery
+	//
+	// Verify the retained body with the current or eligible previous webhook secret and schedule a new processing attempt. Existing runs on the same stack, type and commit are preserved. Active work, an expired inbox body or a signature that no longer verifies is refused with 409.
+	//
+	// Corresponds with POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay (the `VcsIntegrationDeliveryReplay` operationId).
+	VcsIntegrationDeliveryReplay(ctx context.Context, vcsIntegrationId string, deliveryId string, params *VcsIntegrationDeliveryReplayParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// VcsIntegrationSearchUsers Vcs integration search users
 	//
@@ -27911,6 +27998,40 @@ func (c *Client) VcsIntegrations(ctx context.Context, params *VcsIntegrationsPar
 // Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
 func (c *Client) VcsIntegration(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVcsIntegrationRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrationDeliveries List integration deliveries
+//
+// List retained webhook deliveries newest first, with search cursors and page size. A failed child is reported as FAILED while other children may still be processing. Stored bodies, headers and signatures are private.
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/deliveries (the `VcsIntegrationDeliveries` operationId).
+func (c *Client) VcsIntegrationDeliveries(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationDeliveriesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationDeliveriesRequest(c.Server, vcsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VcsIntegrationDeliveryReplay Replay an integration delivery
+//
+// Verify the retained body with the current or eligible previous webhook secret and schedule a new processing attempt. Existing runs on the same stack, type and commit are preserved. Active work, an expired inbox body or a signature that no longer verifies is refused with 409.
+//
+// Corresponds with POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay (the `VcsIntegrationDeliveryReplay` operationId).
+func (c *Client) VcsIntegrationDeliveryReplay(ctx context.Context, vcsIntegrationId string, deliveryId string, params *VcsIntegrationDeliveryReplayParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsIntegrationDeliveryReplayRequest(c.Server, vcsIntegrationId, deliveryId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -47051,6 +47172,117 @@ func NewVcsIntegrationRequest(server string, vcsIntegrationId string, params *Vc
 	return req, nil
 }
 
+// NewVcsIntegrationDeliveriesRequest constructs an http.Request for the VcsIntegrationDeliveries method
+func NewVcsIntegrationDeliveriesRequest(server string, vcsIntegrationId string, params *VcsIntegrationDeliveriesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s/deliveries", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVcsIntegrationDeliveryReplayRequest constructs an http.Request for the VcsIntegrationDeliveryReplay method
+func NewVcsIntegrationDeliveryReplayRequest(server string, vcsIntegrationId string, deliveryId string, params *VcsIntegrationDeliveryReplayParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "vcsIntegrationId", vcsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "deliveryId", deliveryId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-integrations/%s/deliveries/%s/replay", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewVcsIntegrationSearchUsersRequest constructs an http.Request for the VcsIntegrationSearchUsers method
 func NewVcsIntegrationSearchUsersRequest(server string, vcsIntegrationId string, params *VcsIntegrationSearchUsersParams) (*http.Request, error) {
 	var err error
@@ -52863,6 +53095,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /vcs-integrations/{vcsIntegrationId} (the `VcsIntegration` operationId).
 	VcsIntegrationWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationParams, reqEditors ...RequestEditorFn) (*VcsIntegrationResponse, error)
+
+	// VcsIntegrationDeliveriesWithResponse List integration deliveries
+	//
+	// List retained webhook deliveries newest first, with search cursors and page size. A failed child is reported as FAILED while other children may still be processing. Stored bodies, headers and signatures are private.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/deliveries (the `VcsIntegrationDeliveries` operationId).
+	VcsIntegrationDeliveriesWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationDeliveriesParams, reqEditors ...RequestEditorFn) (*VcsIntegrationDeliveriesResponse, error)
+
+	// VcsIntegrationDeliveryReplayWithResponse Replay an integration delivery
+	//
+	// Verify the retained body with the current or eligible previous webhook secret and schedule a new processing attempt. Existing runs on the same stack, type and commit are preserved. Active work, an expired inbox body or a signature that no longer verifies is refused with 409.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay (the `VcsIntegrationDeliveryReplay` operationId).
+	VcsIntegrationDeliveryReplayWithResponse(ctx context.Context, vcsIntegrationId string, deliveryId string, params *VcsIntegrationDeliveryReplayParams, reqEditors ...RequestEditorFn) (*VcsIntegrationDeliveryReplayResponse, error)
 
 	// VcsIntegrationSearchUsersWithResponse Vcs integration search users
 	//
@@ -88014,6 +88264,217 @@ func (r VcsIntegrationResponse) ContentType() string {
 	return ""
 }
 
+// VcsIntegrationDeliveriesResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrationDeliveries
+type VcsIntegrationDeliveriesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationDeliveriesResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrationDeliveries
+type VcsIntegrationDeliveriesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationDeliveriesResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrationDeliveries
+type VcsIntegrationDeliveriesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationDeliveriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VCSDeliveriesOutput
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsIntegrationDeliveriesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationDeliveriesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationDeliveriesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsIntegrationDeliveriesResponse) GetJSON200() *VCSDeliveriesOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r VcsIntegrationDeliveriesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationDeliveriesResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationDeliveriesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationDeliveriesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationDeliveriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationDeliveriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationDeliveriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationDeliveriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationDeliveriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// VcsIntegrationDeliveryReplayResponse202Headers the declared response headers of an HTTP 202 response for VcsIntegrationDeliveryReplay
+type VcsIntegrationDeliveryReplayResponse202Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationDeliveryReplayResponse429Headers the declared response headers of an HTTP 429 response for VcsIntegrationDeliveryReplay
+type VcsIntegrationDeliveryReplayResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsIntegrationDeliveryReplayResponse503Headers the declared response headers of an HTTP 503 response for VcsIntegrationDeliveryReplay
+type VcsIntegrationDeliveryReplayResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsIntegrationDeliveryReplayResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *VCSDelivery
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers202 the parsed response headers for an HTTP 202 response
+	Headers202 *VcsIntegrationDeliveryReplayResponse202Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsIntegrationDeliveryReplayResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsIntegrationDeliveryReplayResponse503Headers
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetJSON202() *VCSDelivery {
+	return r.JSON202
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsIntegrationDeliveryReplayResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsIntegrationDeliveryReplayResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsIntegrationDeliveryReplayResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsIntegrationDeliveryReplayResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsIntegrationDeliveryReplayResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // VcsIntegrationSearchUsersResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrationSearchUsers
 type VcsIntegrationSearchUsersResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -97782,6 +98243,36 @@ func (c *ClientWithResponses) VcsIntegrationWithResponse(ctx context.Context, vc
 		return nil, err
 	}
 	return ParseVcsIntegrationResponse(rsp)
+}
+
+// VcsIntegrationDeliveriesWithResponse List integration deliveries
+//
+// List retained webhook deliveries newest first, with search cursors and page size. A failed child is reported as FAILED while other children may still be processing. Stored bodies, headers and signatures are private.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-integrations/{vcsIntegrationId}/deliveries (the `VcsIntegrationDeliveries` operationId).
+func (c *ClientWithResponses) VcsIntegrationDeliveriesWithResponse(ctx context.Context, vcsIntegrationId string, params *VcsIntegrationDeliveriesParams, reqEditors ...RequestEditorFn) (*VcsIntegrationDeliveriesResponse, error) {
+	rsp, err := c.VcsIntegrationDeliveries(ctx, vcsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationDeliveriesResponse(rsp)
+}
+
+// VcsIntegrationDeliveryReplayWithResponse Replay an integration delivery
+//
+// Verify the retained body with the current or eligible previous webhook secret and schedule a new processing attempt. Existing runs on the same stack, type and commit are preserved. Active work, an expired inbox body or a signature that no longer verifies is refused with 409.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /vcs-integrations/{vcsIntegrationId}/deliveries/{deliveryId}/replay (the `VcsIntegrationDeliveryReplay` operationId).
+func (c *ClientWithResponses) VcsIntegrationDeliveryReplayWithResponse(ctx context.Context, vcsIntegrationId string, deliveryId string, params *VcsIntegrationDeliveryReplayParams, reqEditors ...RequestEditorFn) (*VcsIntegrationDeliveryReplayResponse, error) {
+	rsp, err := c.VcsIntegrationDeliveryReplay(ctx, vcsIntegrationId, deliveryId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsIntegrationDeliveryReplayResponse(rsp)
 }
 
 // VcsIntegrationSearchUsersWithResponse Vcs integration search users
@@ -142895,6 +143386,271 @@ func ParseVcsIntegrationResponse(rsp *http.Response) (*VcsIntegrationResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers VcsIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationDeliveriesResponse parses an HTTP response from a VcsIntegrationDeliveriesWithResponse call
+func ParseVcsIntegrationDeliveriesResponse(rsp *http.Response) (*VcsIntegrationDeliveriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationDeliveriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VCSDeliveriesOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsIntegrationDeliveriesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationDeliveriesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationDeliveriesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsIntegrationDeliveryReplayResponse parses an HTTP response from a VcsIntegrationDeliveryReplayWithResponse call
+func ParseVcsIntegrationDeliveryReplayResponse(rsp *http.Response) (*VcsIntegrationDeliveryReplayResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsIntegrationDeliveryReplayResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest VCSDelivery
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 202:
+		var headers VcsIntegrationDeliveryReplayResponse202Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers202 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsIntegrationDeliveryReplayResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsIntegrationDeliveryReplayResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

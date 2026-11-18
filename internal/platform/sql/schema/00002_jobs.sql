@@ -42,6 +42,6 @@ CREATE UNIQUE INDEX jobs_unique ON jobs (kind, unique_key)
 CREATE INDEX jobs_ordering ON jobs (ordering_key, id)
     WHERE ordering_key IS NOT NULL AND state IN ('pending', 'running');
 CREATE INDEX jobs_lease ON jobs (lease_until) WHERE state = 'running';
--- Domains reconcile terminal attempts by their own stable unique key without
--- scanning unrelated jobs, and lock the dead row against operator retry.
-CREATE INDEX jobs_dead_key ON jobs (kind, unique_key, account_id) WHERE state IN ('dead','cancelled');
+-- Domains inspect and lock their account's keyed work, including terminal
+-- attempts that an operator may retry, without scanning unrelated accounts.
+CREATE INDEX jobs_key_scope ON jobs (account_id, kind, unique_key, id);

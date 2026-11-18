@@ -13,7 +13,11 @@ type cursor struct {
 	After kernel.ULID `json:"after"`
 }
 
-const exhausted = "vcs: delivery processing failed"
+// ProcessingFailed is deliberately independent of raw queue/provider errors.
+const (
+	ProcessingFailed = "vcs: delivery processing failed"
+	exhausted        = ProcessingFailed
+)
 
 // Reconciled settles jobs whose final attempt died without returning through the
 // handler, such as lease recovery after a crash. Each job checks at most one
@@ -31,12 +35,12 @@ func (s *Service) Reconciled(ctx context.Context, j queue.Job) error {
 	//nolint:wrapcheck // each settlement step names its boundary
 	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
 		for _, ref := range refs {
-			dead, err := s.d.Jobs.DeadByKeyTx(ctx, Process, ref.ID.String(), ref.Account.ULID)
+			status, err := s.d.Jobs.HoldByKeyPrefixTx(ctx, ref.Account.ULID, s.kinds(), ReplayPrefix(ref.ID, ref.Replays))
 			if err != nil {
 				return err //nolint:wrapcheck // the queue names the terminal lookup
 			}
-			if dead {
-				if err := s.d.Store.State(ctx, ref.Account, ref.ID, Failed, exhausted); err != nil {
+			if terminal(status) {
+				if err := s.d.Store.Failure(ctx, ref); err != nil {
 					return err //nolint:wrapcheck // the store names the metadata write
 				}
 			}

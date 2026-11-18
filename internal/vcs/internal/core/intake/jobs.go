@@ -17,6 +17,7 @@ import (
 type job struct {
 	Account kernel.AccountID `json:"account"`
 	ID      kernel.ULID      `json:"id"`
+	Replays int64            `json:"replays"`
 }
 
 // Processed parses a verified delivery, then commits its state and the job's
@@ -33,7 +34,7 @@ func (s *Service) Processed(ctx context.Context, j queue.Job) error {
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the read
 	}
-	if d.State != Received {
+	if d.State != Received || d.Replays != p.Replays {
 		return s.complete(ctx, j, p, "")
 	}
 	if !s.d.Now().Before(d.Deadline) {
@@ -84,12 +85,19 @@ func (s *Service) dispatched(ctx context.Context, j queue.Job, p job, plan Dispa
 		if err := s.d.Jobs.HoldTx(ctx, j); err != nil {
 			return err //nolint:wrapcheck // the queue names the lost claim
 		}
+		current, err := s.d.Store.Hold(ctx, Ref{Account: p.Account, ID: p.ID, Replays: p.Replays, State: Received})
+		if err != nil {
+			return err //nolint:wrapcheck // the store names the generation hold
+		}
+		if !current {
+			return s.d.Jobs.CompleteTx(ctx, j)
+		}
 		if plan != nil {
 			if err := plan.Commit(ctx); err != nil {
 				return err //nolint:wrapcheck // the dispatcher names the prepared write
 			}
 		}
-		if err := s.d.Store.State(ctx, p.Account, p.ID, Dispatched, ""); err != nil {
+		if err := s.d.Store.State(ctx, p.Account, p.ID, p.Replays, Dispatched, ""); err != nil {
 			return err //nolint:wrapcheck // the store names the metadata write
 		}
 		return s.d.Jobs.CompleteTx(ctx, j) //nolint:wrapcheck // the queue names the completion
@@ -119,7 +127,7 @@ func (s *Service) complete(ctx context.Context, j queue.Job, p job, state string
 			if err := s.d.Jobs.HoldTx(ctx, j); err != nil {
 				return err //nolint:wrapcheck // the queue names a lost claim
 			}
-			if err := s.d.Store.State(ctx, p.Account, p.ID, state, ""); err != nil {
+			if err := s.d.Store.State(ctx, p.Account, p.ID, p.Replays, state, ""); err != nil {
 				return err //nolint:wrapcheck // the store names the state write
 			}
 		}
@@ -136,7 +144,7 @@ func (s *Service) failed(ctx context.Context, j queue.Job, p job, cause error) e
 		if err := s.d.Jobs.HoldTx(ctx, j); err != nil {
 			return err //nolint:wrapcheck // the queue names a lost claim
 		}
-		return s.d.Store.State(ctx, p.Account, p.ID, state, cause.Error())
+		return s.d.Store.State(ctx, p.Account, p.ID, p.Replays, state, cause.Error())
 	}); err != nil {
 		return err //nolint:wrapcheck // the fenced write names its failure
 	}

@@ -61,10 +61,11 @@ type Domains struct {
 }
 
 // Objects are the objects the domains record in blob_objects: those runs'
-// workers upload and state's versions; blobs.Objects is one.
+// workers upload, state's versions and retained VCS bodies; blobs.Objects is one.
 type Objects interface {
 	runsassembly.Objects
 	stateassembly.Objects
+	vcsassembly.Objects
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
