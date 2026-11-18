@@ -130,10 +130,10 @@ func (s *Service) SeedReferenceAt(
 		return nil
 	}
 	repo.ID = CanonicalID(repo.ID)
-	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error {
+	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error { //nolint:wrapcheck // the called boundary names the failed operation
 		found, err := s.Store.HoldRepositoryIntegration(ctx, acct, id)
 		if err != nil || !found {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		} //nolint:wrapcheck // store names the read
 		if err := s.Check(ctx, acct, id, repo.Namespace, repo.Name); err != nil {
 			return err
@@ -141,7 +141,7 @@ func (s *Service) SeedReferenceAt(
 		for _, path := range []stacksapi.VCSRepository{requested, {Namespace: repo.Namespace, Name: repo.Name}} {
 			occupant, occupied, err := s.Store.RepositoryPath(ctx, acct, id, path.Namespace, path.Name)
 			if err != nil {
-				return err
+				return err //nolint:wrapcheck // the called boundary names the failed operation
 			} //nolint:wrapcheck // store names the read
 			if occupied && occupant.ID != repo.ID {
 				if s.Log != nil {
@@ -152,14 +152,14 @@ func (s *Service) SeedReferenceAt(
 		}
 		previous, known, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		} //nolint:wrapcheck // store names the read
 		if err := s.observe(ctx, acct, id, use, repo, at); err != nil {
 			return err
 		}
 		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
 		if err != nil || !found {
-			return err
+			return err //nolint:wrapcheck // the called boundary names the failed operation
 		} //nolint:wrapcheck // store names the read
 		target := stacksapi.VCSRepository{Namespace: current.Namespace, Name: current.Name}
 		if requested == target {

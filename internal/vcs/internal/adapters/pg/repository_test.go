@@ -763,13 +763,18 @@ func TestAccHeldEventUseFencesConcurrentBindingWrite(t *testing.T) {
 		if _, found, err := metadata.HeldEventUse(ctx, w.f.acct, w.id); err != nil || !found {
 			return fmt.Errorf("held binding missing: %w", err)
 		}
-		blocked := tx.Do(t.Context(), w.f.db, tx.Options{NoRetry: true}, func(other context.Context) error {
-			if _, err := tx.Q(other, w.f.db).Exec(other, `SET LOCAL lock_timeout='40ms'`); err != nil {
+		blocked := tx.Do( //nolint:contextcheck // a separate connection must contend with the inherited transaction
+			t.Context(),
+			w.f.db,
+			tx.Options{NoRetry: true},
+			func(other context.Context) error {
+				if _, err := tx.Q(other, w.f.db).Exec(other, `SET LOCAL lock_timeout='40ms'`); err != nil {
+					return err
+				}
+				_, err := tx.Q(other, w.f.db).Exec(other, `UPDATE vcs_integrations SET is_default=NOT is_default WHERE account_id=$1 AND id=$2`, w.f.acct, w.id)
 				return err
-			}
-			_, err := tx.Q(other, w.f.db).Exec(other, `UPDATE vcs_integrations SET is_default=NOT is_default WHERE account_id=$1 AND id=$2`, w.f.acct, w.id)
-			return err
-		})
+			},
+		)
 		if cause, ok := errors.AsType[*pgconn.PgError](blocked); !ok || cause.Code != "55P03" {
 			return fmt.Errorf("binding writer bypassed held row: %w", blocked)
 		}

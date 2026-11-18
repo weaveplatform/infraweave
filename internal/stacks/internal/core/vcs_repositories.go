@@ -8,8 +8,9 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// RepointVCSRepository joins a provider event's completing transaction. Source
-// resolution follows the canonical Changed event; rename policy belongs to VCS.
+// RepointVCSRepository joins a provider event's completing transaction. The
+// native repository and branch retain their identity, so the Changed event
+// cannot reinitialize tracked commits outside VCS push admission.
 func (s *Service) RepointVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, from, to stacksapi.VCSRepository) error {
 	if !tx.In(ctx) {
 		return stacksapi.ErrNoTransaction
@@ -22,7 +23,7 @@ func (s *Service) RepointVCSRepository(ctx context.Context, acct kernel.AccountI
 		return err //nolint:wrapcheck // the store names the write
 	}
 	for _, stack := range changed {
-		if err := s.changed(ctx, stack, stacksapi.ChangeUpdated, true); err != nil {
+		if err := s.changed(ctx, stack, stacksapi.ChangeUpdated, false); err != nil {
 			return err
 		}
 	}

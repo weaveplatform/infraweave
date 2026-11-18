@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -54,7 +55,7 @@ func (s *Service) prepare(ctx context.Context, d intake.Delivery, event vcsapi.E
 	p := event.PullRequest
 	r := Request{
 		ID: kernel.NewULID(), Account: d.Account, Integration: d.Integration,
-		RepositoryID: event.Repository.ID, Namespace: event.Repository.Namespace, Repository: event.Repository.Name,
+		RepositoryID: lifecycle.CanonicalID(event.Repository.ID), Namespace: event.Repository.Namespace, Repository: event.Repository.Name,
 		Number: strconv.Itoa(p.Number), BaseBranch: p.BaseBranch, HeadBranch: p.HeadBranch, HeadSHA: event.Head,
 		AuthorLogin: p.AuthorLogin, Title: p.Title, URL: p.URL, HeadBranchURL: p.HeadBranchURL,
 		Draft: p.Draft, State: p.State, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
@@ -118,7 +119,7 @@ func (p *plan) Commit(ctx context.Context) error {
 		}
 	}
 	if p.pushes != nil {
-		return p.pushes.Commit(ctx) //nolint:wrapcheck // the push plan names its fenced write
-	}
+		return p.pushes.Commit(ctx) //nolint:wrapcheck // the called boundary names the failed operation
+	} //nolint:wrapcheck // push plan names its fenced write
 	return nil
 }

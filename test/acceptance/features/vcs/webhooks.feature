@@ -665,6 +665,10 @@ Feature: VCS webhook protocol, event run budgets and request history
     And local tenancy is checkpointed before provider lifecycle events
     And the GitLab project "acme/platform/infra" commits files on "main" as "head":
       | main.tf | resource "terraform_data" "this" {\n  input = "renamed"\n}\n |
+    And the GitLab project "acme/platform/infra" branches "feature" from "head"
+    And GitLab sends request snapshots for integration "integration" through B:
+      | id | action | project             | head    | base | commit | draft |
+      | 17 | open   | acme/platform/infra | feature | main | head   | false |
     When GitLab renames project "acme/platform/infra" to "renamed/platform/project"
     And GitLab pushes renamed project "renamed/platform/project" as "renamedPush" for integration "integration" from "seed" to "head" on "main" through A
     Then it answers 202
@@ -680,6 +684,8 @@ Feature: VCS webhook protocol, event run budgets and request history
     And the "TRACKED" event run on stack "infra" for commit "head" is kept as "renamedRun"
     And token "h" eventually reads the run "renamedRun" in the state "UNCONFIRMED" through B
     And the event run "renamedRun" has a real tool plan through B
+    And stack "infra" lists requests "17" through A with token "h"
+    And request "17" on stack "infra" links runs "renamedRun" through B
     And token "h" sends "GET /api/v1/stacks/infra" through A
     And the answer's repository is '"project"'
     And the answer's namespace is '"renamed/platform"'

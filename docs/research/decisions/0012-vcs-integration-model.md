@@ -354,7 +354,11 @@ user: infraweave never creates or deletes provider hooks.
 - **Renames (D15).** `vcs` maps integration plus stable provider repository
   ID to path. A changed path renames every stack on the old path through
   a `stacksapi` method that bumps its version and appends `stack.changed`,
-  without an audit entry. GitHub `installation_target` and `organization`
+  without an audit entry. This identity-preserving change leaves the event's
+  `source` flag false: background tracking must not advance commits on behalf of
+  a capped or refused push. Initial and manually changed sources still initialize
+  their pointers, including when native resolution first canonicalizes their
+  coordinates. GitHub `installation_target` and `organization`
   renamed events re-point all stacks on the owner's repositories. Provider API
   resolution seeds the account/integration-scoped native-ID map. Event processing
   changes the map and calls the Stacks-owned repoint port in the same fenced

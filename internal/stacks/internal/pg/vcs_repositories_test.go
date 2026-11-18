@@ -166,7 +166,7 @@ func TestAccRepointVCSRepository(t *testing.T) {
 			var valid bool
 			err = f.db.QueryRow(t.Context(), `SELECT count(*),coalesce(bool_and(kind=$2 AND schema_version=1 AND sequence=2
 				AND subject_kind='stack' AND subject_id=document->>'stack' AND space=$3
-				AND document->>'change'='updated' AND (document->>'source')::boolean),false),
+				AND document->>'change'='updated' AND NOT coalesce((document->>'source')::boolean,false)),false),
 				(SELECT count(*) FROM audit_trail_entries WHERE account_id=$1),
 				(SELECT coalesce(sum(version-1),0) FROM stacks) FROM events WHERE account_id=$1`,
 				f.acct, stacksapi.ChangedKind, f.hidden.String()).Scan(&events, &valid, &audits, &advances)

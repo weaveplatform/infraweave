@@ -157,7 +157,7 @@ func TestUnitReviewDefaultSwitchBetweenPrepareAndCommit(t *testing.T) {
 						index, row.binding, binding.currentDefault, row.namespace, row.name, want, binding.reads)
 				}
 			}
-			var got []kernel.ULID
+			got := make([]kernel.ULID, 0, len(jobs.inputs))
 			for _, child := range jobs.inputs {
 				got = append(got, child.Stack)
 			}

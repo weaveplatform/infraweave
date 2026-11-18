@@ -251,3 +251,18 @@ func TestUnitRequestPreparationRequiresOpenHead(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitRequestRepositoryUUIDIdentity(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{{"{7BF80420-965B-4F23-90C0-EC114B064264}", "7bf80420-965b-4f23-90c0-ec114b064264"}, {"42", "42"}, {"OpaqueRepo", "OpaqueRepo"}} {
+		t.Run(tc.input, func(t *testing.T) {
+			svc := New(Deps{})
+			event := requestEvent()
+			event.Repository.ID = tc.input
+			event.PullRequest.AuthorLogin = "creator"
+			got, err := svc.prepare(t.Context(), requestDelivery(), event)
+			if err != nil || got.RepositoryID != tc.want {
+				t.Fatal("native repository identity did not match lifecycle normalization", got, err)
+			}
+		})
+	}
+}

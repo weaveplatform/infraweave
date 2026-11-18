@@ -466,7 +466,8 @@ const (
 // Changed is a ChangedKind event's document: the stack's ULID and slug
 // after the change, which change it was, and whether it gave the stack
 // its source or changed it: its provider, VCS integration, namespace,
-// repository, repository URL or branch.
+// repository, repository URL or branch. A provider rename preserving the native
+// repository and branch identity leaves Source false and preserves its commits.
 type Changed struct {
 	Stack  kernel.ULID `json:"stack"`
 	Slug   string      `json:"slug"`

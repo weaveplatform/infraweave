@@ -88,7 +88,7 @@ func (p *plan) Commit(ctx context.Context) error {
 	}
 	use, found, err := p.s.d.Integrations.HeldEventUse(ctx, p.delivery.Account, p.delivery.Integration)
 	if err != nil || !found {
-		return err
+		return err //nolint:wrapcheck // the called boundary names the failed operation
 	} //nolint:wrapcheck // integration names the metadata read
 	if use.Provider != p.delivery.Provider {
 		return fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)

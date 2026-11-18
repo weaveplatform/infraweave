@@ -132,7 +132,7 @@ func (s *repositoryLifecycleSteps) snapshot(ctx context.Context, token, slug str
 		return st, fmt.Errorf("lifecycle stack identity: %w", err)
 	}
 	err = s.w.Row(ctx, `SELECT s.account_id,s.id,s.namespace,s.repository,s.branch,s.version,
-		(SELECT count(*) FROM events WHERE account_id=s.account_id AND kind='stack.changed' AND subject_id=$2 AND (document->>'source')::boolean),
+		(SELECT count(*) FROM events WHERE account_id=s.account_id AND kind='stack.changed' AND subject_id=$2),
 		(SELECT count(*) FROM audit_trail_entries WHERE account_id=s.account_id AND affected_id IN ($2,$3))
 		FROM stacks s WHERE s.id=$1`, []any{id, id.String(), slug}, &st.account, &st.id, &st.namespace, &st.name, &st.branch, &st.version, &st.events, &st.audits)
 	return st, err

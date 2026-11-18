@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -44,8 +45,10 @@ type aliasRow struct {
 }
 type aliasStacks struct {
 	stacksapi.Stacks
-	rows    map[kernel.ULID]aliasRow
-	tracked int
+	rows         map[kernel.ULID]aliasRow
+	tracked      int
+	failTracked  bool
+	head, commit *stacksapi.Commit
 }
 
 func (s *aliasStacks) Settings(_ context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
@@ -56,8 +59,16 @@ func (s *aliasStacks) Settings(_ context.Context, acct kernel.AccountID, id kern
 	return stacksapi.Settings{Provider: row.provider, Namespace: row.namespace, Repository: row.name, Branch: "main", VCSIntegration: row.binding}, nil
 }
 
-func (s *aliasStacks) SetTracked(context.Context, kernel.AccountID, kernel.ULID, *stacksapi.Commit, *stacksapi.Commit, string) error {
+func (s *aliasStacks) SetTracked(_ context.Context, _ kernel.AccountID, _ kernel.ULID, head, commit *stacksapi.Commit, by string) error {
 	s.tracked++
+	if s.failTracked {
+		s.failTracked = false
+		return errOffline
+	}
+	if by != "infraweave" {
+		return errOffline
+	}
+	s.head, s.commit = head, commit
 	return nil
 }
 
@@ -162,6 +173,9 @@ func TestUnitTrackAssociatesRequestedAliasWithNativeCoordinates(t *testing.T) {
 			if err := svc.Track(t.Context(), acct, own); err != nil {
 				t.Fatal(err)
 			}
+			if rows.tracked != 1 || rows.head == nil || rows.commit == nil || rows.head.Hash != "native-head" || *rows.head != *rows.commit {
+				t.Fatal("initial source tracking lost resolved pointers after canonical repoint", rows.tracked, rows.head, rows.commit)
+			}
 			for stack, row := range rows.rows {
 				affected := collision == "none" && (stack == own || stack == named)
 				if affected && (row.namespace != "canonical" || row.name != "renamed" || row.version != 2) {
@@ -177,5 +191,34 @@ func TestUnitTrackAssociatesRequestedAliasWithNativeCoordinates(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestUnitTrackRetriesPointerInitializationAfterCanonicalRepoint(t *testing.T) {
+	acct, id, stack := kernel.NewAccountID(), kernel.NewULID(), kernel.NewULID()
+	rows := &aliasStacks{failTracked: true, rows: map[kernel.ULID]aliasRow{
+		stack: {account: acct, binding: &id, provider: "GITHUB_ENTERPRISE", namespace: "alias", name: "before", version: 1},
+	}}
+	store := &aliasStore{repos: map[string]lifecycle.Repository{}}
+	use := stacksapi.Use{Integration: id, Provider: "GITHUB_ENTERPRISE"}
+	identities := &lifecycle.Service{DB: aliasDB{}, Store: store, Stacks: rows, Now: func() time.Time { return now }}
+	svc := New(Deps{
+		Stacks:       rows,
+		Providers:    map[string]port.Source{"GITHUB_ENTERPRISE": aliasNativeSource{t: t}},
+		Identities:   identities,
+		Integrations: aliasBinding{integrations: integrations{in: port.Integration{ID: id, Provider: "GITHUB_ENTERPRISE"}, found: true}, use: use},
+		Now:          func() time.Time { return now },
+	})
+	if err := svc.Track(t.Context(), acct, stack); !errors.Is(err, errOffline) {
+		t.Fatal("initial pointer write did not fail", err)
+	}
+	if row := rows.rows[stack]; row.version != 2 || row.namespace != "canonical" || row.name != "renamed" || rows.commit != nil {
+		t.Fatal("canonical repoint was not committed before failed pointer write", row, rows.commit)
+	}
+	if err := svc.Track(t.Context(), acct, stack); err != nil {
+		t.Fatal(err)
+	}
+	if rows.rows[stack].version != 2 || rows.tracked != 2 || rows.head == nil || rows.commit == nil || rows.head.Hash != "native-head" || *rows.head != *rows.commit {
+		t.Fatal("retry lost pointer initialization or repeated version bump", rows.rows[stack], rows.tracked, rows.head, rows.commit)
 	}
 }
