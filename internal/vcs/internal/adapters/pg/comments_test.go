@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -312,5 +314,42 @@ func TestAccCommentsRollbackAndSupersededPlanOrdering(t *testing.T) {
 	}
 	if got := w.fake.Comments("acme", "infra", "7"); len(got) != 3 || got[0].Minimized || got[1].Minimized || got[2].Minimized {
 		t.Fatal("unsupported provider minimization changed native history", got)
+	}
+}
+
+func TestAccCommentNativeEffectIsNotReplayedByDatabaseRetry(t *testing.T) {
+	w := newCommentWorld(t)
+	w.enqueue(t, w.targets(t))
+	// nextval survives rollback, so this counts real SQL attempts even when
+	// the provider's create and local reference acknowledgement cannot commit.
+	if _, err := w.f.db.Exec(t.Context(), `CREATE SEQUENCE comment_record_attempts;
+CREATE FUNCTION reject_comment_record() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN PERFORM nextval('comment_record_attempts');
+RAISE EXCEPTION 'refuse reference acknowledgement' USING ERRCODE='40001'; END $$;
+CREATE TRIGGER reject_comment_record BEFORE UPDATE OF reference ON vcs_pr_comments
+FOR EACH ROW EXECUTE FUNCTION reject_comment_record()`); err != nil {
+		t.Fatal(err)
+	}
+	j := w.commentJob(t)
+	err := w.service.Commented(t.Context(), j)
+	cause, ok := errors.AsType[*pgconn.PgError](err)
+	if !ok || cause.Code != "40001" {
+		t.Fatal("lost the acknowledgement failure", err)
+	}
+	var attempts int
+	if err := w.f.db.QueryRow(t.Context(), `SELECT last_value FROM comment_record_attempts`).Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatal("completion transaction replayed its provider callback", attempts, err)
+	}
+	if got := w.fake.Comments("acme", "infra", "7"); len(got) != 1 {
+		t.Fatal("native effect was not independently preserved", got)
+	}
+	if _, err := w.f.db.Exec(t.Context(), `DROP TRIGGER reject_comment_record ON vcs_pr_comments`); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.service.Commented(t.Context(), j); err != nil {
+		t.Fatal("later queue attempt could not recover", err)
+	}
+	if writes := w.fake.CommentWrites("acme", "infra", "7"); len(writes) != 1 {
+		t.Fatal("acknowledgement recovery duplicated the comment", writes)
 	}
 }
