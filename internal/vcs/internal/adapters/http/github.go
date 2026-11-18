@@ -104,13 +104,7 @@ func (s Server) GithubEnterpriseIntegrationUpdate(
 	}, nil
 }
 
-func (s Server) updateGitHub(
-	ctx context.Context,
-	p kernel.Principal,
-	id string,
-	expect kernel.Expect,
-	b gitHubUpdateInput,
-) (integration.Integration, error) {
+func (s Server) updateGitHub(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, b gitHubUpdateInput) (integration.Integration, error) {
 	cur, _, err := s.svc.Read(ctx, p, id, integration.GitHubEnterprise)
 	if err != nil {
 		return integration.Integration{}, integrationError(err)
