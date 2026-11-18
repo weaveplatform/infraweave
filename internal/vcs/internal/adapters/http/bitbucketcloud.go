@@ -65,7 +65,9 @@ func (s Server) BitbucketCloudIntegration(ctx context.Context, req api.Bitbucket
 	if err != nil {
 		return nil, err
 	}
-	return api.BitbucketCloudIntegration200JSONResponse{Body: v}, nil
+	return api.BitbucketCloudIntegration200JSONResponse{
+		Body: v, Headers: api.BitbucketCloudIntegration200ResponseHeaders{ETag: new(strict.ETag(in.Version))},
+	}, nil
 }
 
 // BitbucketCloudIntegrationUpdateV2 replaces a Bitbucket Cloud
@@ -79,10 +81,29 @@ func (s Server) BitbucketCloudIntegrationUpdateV2(
 	if err != nil {
 		return nil, err
 	}
-	id, b := req.BitbucketCloudIntegrationId, req.Body
+	out, err := s.updateBitbucketCloud(ctx, p, req.BitbucketCloudIntegrationId, strict.IfMatch(req.Params.IfMatch), *req.Body)
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.bitbucketCloud(ctx, p, out, true)
+	if err != nil {
+		return nil, err
+	}
+	return api.BitbucketCloudIntegrationUpdateV2200JSONResponse{
+		Body: v, Headers: api.BitbucketCloudIntegrationUpdateV2200ResponseHeaders{ETag: new(strict.ETag(out.Version))},
+	}, nil
+}
+
+func (s Server) updateBitbucketCloud(
+	ctx context.Context,
+	p kernel.Principal,
+	id string,
+	expect kernel.Expect,
+	b api.BitbucketCloudIntegrationUpdateInputBody,
+) (integration.Integration, error) {
 	cur, _, err := s.svc.Read(ctx, p, id, integration.BitbucketCloud)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
 	in := customUpdate(cur, b.CustomInput)
 	in.Settings = cur.Settings
@@ -91,15 +112,11 @@ func (s Server) BitbucketCloudIntegrationUpdateV2(
 	if b.ApiToken != nil {
 		in.Secrets = &integration.Secrets{Credential: []byte(*b.ApiToken)}
 	}
-	out, err := s.svc.Update(ctx, p, id, strict.IfMatch(req.Params.IfMatch), in)
+	out, err := s.svc.Update(ctx, p, id, expect, in)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
-	v, err := s.bitbucketCloud(ctx, p, out, true)
-	if err != nil {
-		return nil, err
-	}
-	return api.BitbucketCloudIntegrationUpdateV2200JSONResponse{Body: v}, nil
+	return out, nil
 }
 
 // BitbucketCloudIntegrationDelete deletes a Bitbucket Cloud integration,

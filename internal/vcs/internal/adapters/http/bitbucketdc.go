@@ -67,7 +67,9 @@ func (s Server) BitbucketDatacenterIntegration(ctx context.Context, req api.Bitb
 	if err != nil {
 		return nil, err
 	}
-	return api.BitbucketDatacenterIntegration200JSONResponse{Body: v}, nil
+	return api.BitbucketDatacenterIntegration200JSONResponse{
+		Body: v, Headers: api.BitbucketDatacenterIntegration200ResponseHeaders{ETag: new(strict.ETag(in.Version))},
+	}, nil
 }
 
 // BitbucketDatacenterIntegrationUpdate replaces a Bitbucket Data Center
@@ -81,10 +83,29 @@ func (s Server) BitbucketDatacenterIntegrationUpdate(
 	if err != nil {
 		return nil, err
 	}
-	id, b := req.BitbucketDatacenterIntegrationId, req.Body
+	out, err := s.updateBitbucketDC(ctx, p, req.BitbucketDatacenterIntegrationId, strict.IfMatch(req.Params.IfMatch), *req.Body)
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.bitbucketDC(ctx, p, out, true)
+	if err != nil {
+		return nil, err
+	}
+	return api.BitbucketDatacenterIntegrationUpdate200JSONResponse{
+		Body: v, Headers: api.BitbucketDatacenterIntegrationUpdate200ResponseHeaders{ETag: new(strict.ETag(out.Version))},
+	}, nil
+}
+
+func (s Server) updateBitbucketDC(
+	ctx context.Context,
+	p kernel.Principal,
+	id string,
+	expect kernel.Expect,
+	b api.BitbucketDatacenterIntegrationUpdateRequest,
+) (integration.Integration, error) {
 	cur, _, err := s.svc.Read(ctx, p, id, integration.BitbucketDC)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
 	in := customUpdate(cur, b.CustomInput)
 	in.Settings = cur.Settings
@@ -94,15 +115,11 @@ func (s Server) BitbucketDatacenterIntegrationUpdate(
 	if b.AccessToken != nil {
 		in.Secrets = &integration.Secrets{Credential: []byte(*b.AccessToken)}
 	}
-	out, err := s.svc.Update(ctx, p, id, strict.IfMatch(req.Params.IfMatch), in)
+	out, err := s.svc.Update(ctx, p, id, expect, in)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
-	v, err := s.bitbucketDC(ctx, p, out, true)
-	if err != nil {
-		return nil, err
-	}
-	return api.BitbucketDatacenterIntegrationUpdate200JSONResponse{Body: v}, nil
+	return out, nil
 }
 
 // BitbucketDatacenterIntegrationDelete deletes a Bitbucket Data Center

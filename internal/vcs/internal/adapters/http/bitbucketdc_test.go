@@ -38,6 +38,10 @@ func (f fixture) bitbucketDCCalls(ctx context.Context) map[string]func() error {
 				})
 			return err
 		},
+		"patch": func() error {
+			_, err := s.BitbucketDatacenterIntegrationPatch(ctx, api.BitbucketDatacenterIntegrationPatchRequestObject{BitbucketDatacenterIntegrationId: id})
+			return err
+		},
 		"delete": func() error {
 			_, err := s.BitbucketDatacenterIntegrationDelete(
 				ctx,
@@ -107,7 +111,7 @@ func TestUnitBitbucketDC(t *testing.T) {
 	}
 	f.spaces.fail = nil
 	f.store.fail = errBoom
-	for _, name := range []string{"read", "update", "test"} {
+	for _, name := range []string{"read", "update", "patch", "test"} {
 		if err := f.bitbucketDCCalls(f.ctx)[name](); !errors.Is(err, errBoom) {
 			t.Errorf("%s on a failing store = %v", name, err)
 		}

@@ -38,6 +38,7 @@ Feature: Bitbucket Cloud integrations
     Then it answers 200
     When token "h" sends "PUT /api/v1/bitbucket-cloud-integrations/{c}" with '{"email":"dev@acme.example","customInput":{"space":"{team}","description":"The team workspace","vcsChecks":"AGGREGATED"}}' through A
     Then it answers 200
+    And the answer's ETag is kept as "updated"
     And the answer's description is '"The team workspace"'
     And the answer's vcsChecks is '"AGGREGATED"'
     When token "h" sends "POST /api/v1/bitbucket-cloud-integrations/{c}/test" through B
@@ -122,3 +123,121 @@ Feature: Bitbucket Cloud integrations
     Then it answers 200
     And the answer's items is '["main"]'
     And the answer leaves out "nextCursor"
+
+  @op:bitbucketCloudIntegration @op:bitbucketCloudIntegrationDelete @case:failure
+  Scenario: A missing Bitbucket Cloud integration cannot be read or deleted, and deletion succeeds only once
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Secret","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And the answer's id is the space "secret"
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/missing-integration" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/bitbucket-cloud-integrations/missing-integration" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Evidence","spaceID":"{secret}","labels":["infra"]}}' through A
+    Then it answers 201
+    And the answer's id names "hidden"
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{hidden}" through A
+    Then it answers 200
+    And the answer's name is '"Evidence"'
+    When token "h" sends "DELETE /api/v1/bitbucket-cloud-integrations/{hidden}" through B
+    Then it answers 200
+    When token "h" sends "DELETE /api/v1/bitbucket-cloud-integrations/{hidden}" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{hidden}" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:bitbucketCloudIntegration @op:vcsIntegrationTest @case:denial
+  Scenario: A Bitbucket Cloud integration in an unreadable space is hidden from reads and connection tests
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Secret","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And the answer's id is the space "secret"
+    And token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Evidence","spaceID":"{secret}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "hidden"
+    When token "m" sends "GET /api/v1/bitbucket-cloud-integrations/{hidden}" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/vcs-integrations/{hidden}/test?provider=BITBUCKET_CLOUD" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{hidden}" through B
+    Then it answers 200
+    And the answer's name is '"Evidence"'
+
+  @op:bitbucketCloudIntegrationPatch @op:vcsIntegrationTest @case:success
+  Scenario: A Bitbucket Cloud merge patch changes one member, preserves the rest and returns a new ETag
+    Given token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"],"useGitCheckout":true,"vcsChecks":"ALL","vcsCheckOptions":{"individualFailuresOnly":true,"individualSkipUnchanged":true}}}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    And token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through B
+    And it answers 200
+    And the answer's ETag is kept as "before"
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"description":"Patched description"}}' if matching the ETag "before" through A
+    Then it answers 200
+    And the answer's ETag differs from "before"
+    And the answer's ETag is kept as "after"
+    And the answer's description is '"Patched description"'
+    And the answer's name is '"Evidence"'
+    And the answer's labels is '["infra"]'
+    And the answer's vcsChecks is '"ALL"'
+    And the answer's vcsCheckOptions is '{"individualFailuresOnly":true,"individualSkipUnchanged":true}'
+    And the answer's useGitCheckout is 'true'
+    And the answer's email is '"dev@acme.example"'
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through B
+    Then it answers 200
+    And the answer's description is '"Patched description"'
+    And the answer's labels is '["infra"]'
+    When token "h" sends "GET /api/v1/vcs-integrations/{probe}/test?provider=BITBUCKET_CLOUD" through B
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"apiToken":null,"customInput":{"description":null,"labels":null,"vcsChecks":null,"useGitCheckout":null,"vcsCheckOptions":null}}' if matching the ETag "after" through A
+    Then it answers 200
+    And the answer's ETag differs from "after"
+    And the answer's description is '""'
+    And the answer's labels is '[]'
+    And the answer's vcsChecks is '"INDIVIDUAL"'
+    And the answer's vcsCheckOptions is '{"individualFailuresOnly":false,"individualSkipUnchanged":false}'
+    And the answer's useGitCheckout is 'true'
+    When token "h" sends "GET /api/v1/vcs-integrations/{probe}/test?provider=BITBUCKET_CLOUD" through B
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+
+  @op:bitbucketCloudIntegrationPatch @case:denial
+  Scenario: A Bitbucket Cloud reader cannot merge patch an integration it can read
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    When token "m" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through B
+    Then it answers 200
+    When token "m" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"description":"Forbidden description"}}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through B
+    Then it answers 200
+    And the answer's description is '""'
+    And the answer's labels is '["infra"]'
+
+  @op:bitbucketCloudIntegrationPatch @case:failure
+  Scenario: A Bitbucket Cloud merge patch refuses a stale ETag and unknown members without changing the integration
+    Given token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    And token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through B
+    And it answers 200
+    And the answer's ETag is kept as "before"
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"description":"Current description"}}' if matching the ETag "before" through A
+    Then it answers 200
+    And the answer's ETag differs from "before"
+    And the answer's ETag is kept as "current"
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"description":"Stale description"}}' if matching the ETag "before" through B
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"unrecognizedSetting":true}' if matching the ETag "current" through A
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"unrecognizedSetting":true}}' if matching the ETag "current" through B
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "GET /api/v1/bitbucket-cloud-integrations/{probe}" through A
+    Then it answers 200
+    And the answer's description is '"Current description"'
+    And the answer's labels is '["infra"]'
+    When token "h" sends "PATCH /api/v1/bitbucket-cloud-integrations/{probe}" with '{"customInput":{"description":"Final description"}}' if matching the ETag "current" through B
+    Then it answers 200
+    And the answer's description is '"Final description"'

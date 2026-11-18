@@ -57,7 +57,9 @@ func (s Server) GitlabIntegration(ctx context.Context, req api.GitlabIntegration
 	if err != nil {
 		return nil, err
 	}
-	return api.GitlabIntegration200JSONResponse{Body: v}, nil
+	return api.GitlabIntegration200JSONResponse{
+		Body: v, Headers: api.GitlabIntegration200ResponseHeaders{ETag: new(strict.ETag(in.Version))},
+	}, nil
 }
 
 // GitlabIntegrationUpdate replaces a GitLab integration's settings,
@@ -67,10 +69,23 @@ func (s Server) GitlabIntegrationUpdate(ctx context.Context, req api.GitlabInteg
 	if err != nil {
 		return nil, err
 	}
-	id, b := req.GitlabIntegrationId, req.Body
+	out, err := s.updateGitLab(ctx, p, req.GitlabIntegrationId, strict.IfMatch(req.Params.IfMatch), *req.Body)
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.gitlab(ctx, p, out, true)
+	if err != nil {
+		return nil, err
+	}
+	return api.GitlabIntegrationUpdate200JSONResponse{
+		Body: v, Headers: api.GitlabIntegrationUpdate200ResponseHeaders{ETag: new(strict.ETag(out.Version))},
+	}, nil
+}
+
+func (s Server) updateGitLab(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, b api.GitlabIntegrationUpdateRequest) (integration.Integration, error) {
 	cur, _, err := s.svc.Read(ctx, p, id, integration.GitLab)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
 	in := customUpdate(cur, b.CustomInput)
 	in.Settings = cur.Settings
@@ -81,15 +96,11 @@ func (s Server) GitlabIntegrationUpdate(ctx context.Context, req api.GitlabInteg
 	if b.PrivateToken != nil {
 		in.Secrets = &integration.Secrets{Credential: []byte(*b.PrivateToken)}
 	}
-	out, err := s.svc.Update(ctx, p, id, strict.IfMatch(req.Params.IfMatch), in)
+	out, err := s.svc.Update(ctx, p, id, expect, in)
 	if err != nil {
-		return nil, integrationError(err)
+		return integration.Integration{}, integrationError(err)
 	}
-	v, err := s.gitlab(ctx, p, out, true)
-	if err != nil {
-		return nil, err
-	}
-	return api.GitlabIntegrationUpdate200JSONResponse{Body: v}, nil
+	return out, nil
 }
 
 // GitlabIntegrationDelete deletes a GitLab integration, detaching the

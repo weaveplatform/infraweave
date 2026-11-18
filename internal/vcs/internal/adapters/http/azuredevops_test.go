@@ -38,6 +38,10 @@ func (f fixture) azureDevOpsCalls(ctx context.Context) map[string]func() error {
 				})
 			return err
 		},
+		"patch": func() error {
+			_, err := s.AzureDevOpsRepoIntegrationPatch(ctx, api.AzureDevOpsRepoIntegrationPatchRequestObject{AzureDevOpsRepoIntegrationId: id})
+			return err
+		},
 		"delete": func() error {
 			_, err := s.AzureDevOpsRepoIntegrationDelete(
 				ctx,
@@ -108,7 +112,7 @@ func TestUnitAzureDevOps(t *testing.T) {
 	}
 	f.spaces.fail = nil
 	f.store.fail = errBoom
-	for _, name := range []string{"read", "update", "test"} {
+	for _, name := range []string{"read", "update", "patch", "test"} {
 		if err := f.azureDevOpsCalls(f.ctx)[name](); !errors.Is(err, errBoom) {
 			t.Errorf("%s on a failing store = %v", name, err)
 		}

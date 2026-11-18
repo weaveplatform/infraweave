@@ -20,10 +20,23 @@ type updateSteps struct {
 
 func (u *updateSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer's ETag is kept as "(\w+)"$`, u.keep)
+	sc.Step(`^the answer's ETag differs from "(\w+)"$`, u.changed)
 	sc.Step(
 		`^token "(\w+)" sends "([A-Z]+) ([^"]+)"(?: with '([^']*)')? if matching the ETag "(\w+)" through ([AB])$`,
 		u.send,
 	)
+}
+
+func (u *updateSteps) changed(name string) error {
+	before, ok := u.etags[name]
+	if !ok {
+		return fmt.Errorf("%w: no ETag kept as %q", harness.ErrStep, name)
+	}
+	after := u.w.Last().Header.Get("ETag")
+	if after == "" || after == before {
+		return fmt.Errorf("%w: ETag %q did not change from %q", harness.ErrStep, after, before)
+	}
+	return nil
 }
 
 // keep names the last answer's ETag.

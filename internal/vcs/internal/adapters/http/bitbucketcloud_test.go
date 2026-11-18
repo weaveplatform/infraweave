@@ -34,6 +34,10 @@ func (f fixture) bitbucketCloudCalls(ctx context.Context) map[string]func() erro
 				})
 			return err
 		},
+		"patch": func() error {
+			_, err := s.BitbucketCloudIntegrationPatch(ctx, api.BitbucketCloudIntegrationPatchRequestObject{BitbucketCloudIntegrationId: id})
+			return err
+		},
 		"delete": func() error {
 			_, err := s.BitbucketCloudIntegrationDelete(ctx,
 				api.BitbucketCloudIntegrationDeleteRequestObject{BitbucketCloudIntegrationId: id})
@@ -92,7 +96,7 @@ func TestUnitBitbucketCloud(t *testing.T) {
 	}
 	f.spaces.fail = nil
 	f.store.fail = errBoom
-	for _, name := range []string{"read", "update", "test"} {
+	for _, name := range []string{"read", "update", "patch", "test"} {
 		if err := f.bitbucketCloudCalls(f.ctx)[name](); !errors.Is(err, errBoom) {
 			t.Errorf("%s on a failing store = %v", name, err)
 		}
