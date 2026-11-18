@@ -111,7 +111,7 @@ func TestAccEventsRunUpdates(t *testing.T) {
 	if err := w.box.Subscribe(runsapi.UpdatedKind, "events.sinks", w.d.Events.Consume); !errors.Is(err, outbox.ErrConsumer) {
 		t.Fatalf("all-domain wiring did not subscribe events.sinks: %v", err)
 	}
-	var keys []string
+	keys := make([]string, 0, 2)
 	for _, bound := range []bool{false, true} {
 		event := w.cancel(t, bound)
 		keys = append(keys, event.ID.String()+":events.sinks")
