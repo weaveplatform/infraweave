@@ -24,6 +24,10 @@
 // neither api nor read_api reads a project's repository routes alone,
 // answering 403 for any other. Seeding a repository panics on a go-git
 // failure, which no test recovers from.
+// Webhook payload builders follow GitLab's documented push, tag, merge
+// request and merge request comment shapes. WebhookSender makes one request
+// per Send, records only identity/event/status and never follows redirects.
+// Another explicit Send models GitLab's resend; no retry is scheduled.
 //
 // # Dependencies
 //

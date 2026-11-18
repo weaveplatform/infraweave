@@ -1,0 +1,23 @@
+{
+  "object_kind": "merge_request",
+  "event_type": "merge_request",
+  "user": {"username": "author", "email": "author@example.com"},
+  "project": {"id": 15, "namespace": "Acme Platform", "path_with_namespace": "acme/platform/infra"},
+  "object_attributes": {
+    "id": 9001,
+    "iid": 42,
+    "action": "open",
+    "source_branch": "feature",
+    "target_branch": "main",
+    "source_project_id": 99,
+    "target_project_id": 15,
+    "source": {"id": 99, "namespace": "forks/team", "path_with_namespace": "forks/team/infra"},
+    "last_commit": {"id": "2222222222222222222222222222222222222222", "author": {"name": "Example Author", "email": "author@example.com"}},
+    "draft": false,
+    "merge_status": "can_be_merged",
+    "detailed_merge_status": "checking",
+    "blocking_discussions_resolved": true
+  },
+  "labels": [{"id": 1, "title": "review"}],
+  "changes": {}
+}

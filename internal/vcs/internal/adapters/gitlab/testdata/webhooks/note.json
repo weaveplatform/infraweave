@@ -1,0 +1,25 @@
+{
+  "object_kind": "note",
+  "user": {"username": "reviewer", "email": "reviewer@example.com"},
+  "project": {"id": 15, "namespace": "Acme Platform", "path_with_namespace": "acme/platform/infra"},
+  "object_attributes": {
+    "id": 1234,
+    "action": "create",
+    "note": "/spacelift plan",
+    "noteable_type": "MergeRequest",
+    "noteable_id": 9001
+  },
+  "merge_request": {
+    "id": 9001,
+    "iid": 42,
+    "source_branch": "feature",
+    "target_branch": "main",
+    "source_project_id": 99,
+    "target_project_id": 15,
+    "source": {"id": 99, "namespace": "forks/team", "path_with_namespace": "forks/team/infra"},
+    "last_commit": {"id": "2222222222222222222222222222222222222222"},
+    "draft": true,
+    "labels": [{"title": "review"}],
+    "detailed_merge_status": "checking"
+  }
+}
