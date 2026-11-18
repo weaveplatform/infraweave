@@ -5,30 +5,53 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
+
+// Rotation is the committed integration and its request's private secret
+// snapshot. A later rotation cannot change the value this request answers.
+type Rotation struct {
+	Integration
+	secret, credential crypt.Value
+}
+
+// Format keeps fmt from reflecting private fields without invoking the
+// nested secret values' formatters.
+func (r Rotation) Format(f fmt.State, verb rune) { r.secret.Format(f, verb) }
 
 // RotateWebhookSecret replaces the webhook secret under the integration's
 // row lock. The prior value and the audit entry commit with the new one.
 // The route has decided SPACE_ADMIN on the integration's space.
-func (s *Service) RotateWebhookSecret(ctx context.Context, p kernel.Principal, id, provider, remoteIP string) (Integration, error) {
-	var out Integration
+func (s *Service) RotateWebhookSecret(ctx context.Context, p kernel.Principal, id, provider, remoteIP string) (Rotation, error) {
+	var out Rotation
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		var err error
-		if out, err = s.locked(ctx, p.AccountID, id, provider); err != nil {
+		in, err := s.locked(ctx, p.AccountID, id, provider)
+		if err != nil {
 			return err
 		}
+		out = Rotation{Integration: in}
 		// The printable form matches create: 32 bytes of entropy, hex
 		// encoded for provider password/token fields and JSON views.
 		var entropy [32]byte
 		_, _ = rand.Read(entropy[:])
 		secret := []byte(hex.EncodeToString(entropy[:]))
+		out.secret = crypt.NewValue(secret)
 		out.UpdatedAt = s.now()
 		out.Version++
-		if err := s.store.RotateWebhookSecret(ctx, out, secret, out.UpdatedAt.Add(s.secretOverlap)); err != nil {
+		if err := s.store.RotateWebhookSecret(ctx, out.Integration, secret, out.UpdatedAt.Add(s.secretOverlap)); err != nil {
 			return err //nolint:wrapcheck // the store names the atomic write
+		}
+		if out.Settings.AppID != "" && s.apps != nil {
+			sec, err := s.store.Secrets(ctx, out.Account, out.ID)
+			if err != nil {
+				return err //nolint:wrapcheck // the store names the credential read
+			}
+			out.credential = crypt.NewValue(sec.Credential)
 		}
 		actor := kernel.AuditActor{Username: p.Login}
 		if actor.Username == "" {
@@ -44,7 +67,24 @@ func (s *Service) RotateWebhookSecret(ctx context.Context, p kernel.Principal, i
 			RemoteIP:         remoteIP, CreatedAt: out.UpdatedAt,
 		})
 	})
-	return out, err //nolint:wrapcheck // each transaction step names its failure
+	if err != nil {
+		return Rotation{}, err //nolint:wrapcheck // each transaction step names its failure
+	}
+	return out, nil
+}
+
+// RotationDetails answers the rotation's captured secret and App details.
+// Provider requests run after commit, outside the integration's row lock.
+func (s *Service) RotationDetails(ctx context.Context, in Rotation) Details {
+	d := Details{WebhookSecret: string(in.secret.Reveal()), WebhookURL: s.WebhookURL(in.Provider, in.ID)}
+	if in.Settings.AppID != "" && s.apps != nil {
+		app := s.apps.App(ctx, port.Integration{
+			ID: in.ID, Provider: in.Provider, Settings: in.Settings,
+			Credential: in.credential.Reveal(), WebhookSecret: in.secret.Reveal(),
+		})
+		d.App = &app
+	}
+	return d
 }
 
 // WebhookEndpoint is the provider's account-default integration URL, or

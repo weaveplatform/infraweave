@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type rotationSnapshot struct {
@@ -210,6 +211,48 @@ func TestAccWebhookRotationAtomicity(t *testing.T) {
 	}
 	if !sameSnapshot(before, snapshot(t, f, in.ID)) {
 		t.Fatal("refused rotation changed secrets")
+	}
+}
+
+type rotationCredentialRefusal struct {
+	*pg.Store
+	version  int64
+	sawWrite bool
+}
+
+func (s *rotationCredentialRefusal) Secrets(ctx context.Context, account kernel.AccountID, id kernel.ULID) (integration.Secrets, error) {
+	in, err := s.Get(ctx, account, id, false)
+	if err != nil {
+		return integration.Secrets{}, err
+	}
+	s.sawWrite = in.Version == s.version+1
+	return integration.Secrets{}, errDown
+}
+
+func TestAccWebhookRotationCredentialSnapshotAtomicity(t *testing.T) {
+	f := newFixture(t)
+	in, err := f.svc.Create(t.Context(), f.admin, integration.Input{
+		Provider: integration.GitHubEnterprise, Name: "App", Space: "acme", IsDefault: true,
+		Settings: port.Settings{APIHost: "https://api.github.com", AppID: "42"},
+		Secrets:  &integration.Secrets{Credential: appKey(), WebhookSecret: []byte("hook-secret")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, f, in.ID)
+	store := &rotationCredentialRefusal{Store: f.store, version: in.Version}
+	deps := f.deps
+	deps.Store = store
+	out, err := integration.New(deps).RotateWebhookSecret(t.Context(), f.admin, in.ID.String(), integration.GitHubEnterprise, "")
+	if !errors.Is(err, errDown) || !store.sawWrite || !out.ID.IsZero() {
+		t.Fatalf("credential failure did not discard the transaction result: saw=%t err=%v", store.sawWrite, err)
+	}
+	if !sameSnapshot(before, snapshot(t, f, in.ID)) {
+		t.Fatal("credential snapshot failure committed part of the rotation")
+	}
+	var audits int
+	if err := f.db.QueryRow(t.Context(), `SELECT count(*) FROM audit_trail_entries WHERE account_id=$1`, f.acct).Scan(&audits); err != nil || audits != 0 {
+		t.Fatal("credential snapshot failure retained audit", audits, err)
 	}
 }
 

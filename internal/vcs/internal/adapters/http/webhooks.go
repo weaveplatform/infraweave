@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 )
@@ -21,11 +22,11 @@ func (s Server) GitlabIntegrationRegenerateWebhookSecret(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	v, err := s.gitlab(ctx, p, in, true)
+	slugs, details, err := s.rotationView(ctx, p, in)
 	if err != nil {
 		return nil, err
 	}
-	return api.GitlabIntegrationRegenerateWebhookSecret200JSONResponse{Body: v}, nil
+	return api.GitlabIntegrationRegenerateWebhookSecret200JSONResponse{Body: gitlabView(in.Integration, slugs, &details)}, nil
 }
 
 // GitlabWebhooksEndpoint reads the configured integration's delivery URL.
@@ -50,11 +51,11 @@ func (s Server) BitbucketCloudIntegrationRegenerateWebhookSecret(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	v, err := s.bitbucketCloud(ctx, p, in, true)
+	slugs, details, err := s.rotationView(ctx, p, in)
 	if err != nil {
 		return nil, err
 	}
-	return api.BitbucketCloudIntegrationRegenerateWebhookSecret200JSONResponse{Body: v}, nil
+	return api.BitbucketCloudIntegrationRegenerateWebhookSecret200JSONResponse{Body: bitbucketCloudView(in.Integration, slugs, &details)}, nil
 }
 
 // BitbucketCloudWebhooksEndpoint reads the configured integration's delivery URL.
@@ -79,11 +80,11 @@ func (s Server) BitbucketDatacenterIntegrationRegenerateWebhookSecret(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	v, err := s.bitbucketDC(ctx, p, in, true)
+	slugs, details, err := s.rotationView(ctx, p, in)
 	if err != nil {
 		return nil, err
 	}
-	return api.BitbucketDatacenterIntegrationRegenerateWebhookSecret200JSONResponse{Body: v}, nil
+	return api.BitbucketDatacenterIntegrationRegenerateWebhookSecret200JSONResponse{Body: bitbucketDCView(in.Integration, slugs, &details)}, nil
 }
 
 // BitbucketDatacenterWebhooksEndpoint reads the configured integration's delivery URL.
@@ -111,11 +112,11 @@ func (s Server) AzureDevOpsRepoIntegrationRegenerateWebhookSecret(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	v, err := s.azureDevOps(ctx, p, in, true)
+	slugs, details, err := s.rotationView(ctx, p, in)
 	if err != nil {
 		return nil, err
 	}
-	return api.AzureDevOpsRepoIntegrationRegenerateWebhookSecret200JSONResponse{Body: v}, nil
+	return api.AzureDevOpsRepoIntegrationRegenerateWebhookSecret200JSONResponse{Body: azureDevOpsView(in.Integration, slugs, &details)}, nil
 }
 
 // AzureDevOpsWebhooksEndpoint reads the configured integration's delivery URL.
@@ -140,11 +141,11 @@ func (s Server) GithubEnterpriseIntegrationRegenerateWebhookSecret(
 	if err != nil {
 		return nil, integrationError(err)
 	}
-	v, err := s.enterprise(ctx, p, in, true)
+	slugs, details, err := s.rotationView(ctx, p, in)
 	if err != nil {
 		return nil, err
 	}
-	return api.GithubEnterpriseIntegrationRegenerateWebhookSecret200JSONResponse{Body: v}, nil
+	return api.GithubEnterpriseIntegrationRegenerateWebhookSecret200JSONResponse{Body: enterpriseView(in.Integration, slugs, &details, true)}, nil
 }
 
 // GithubEnterpriseWebhooksEndpoint reads the configured integration's delivery URL.
@@ -166,4 +167,12 @@ func (s Server) webhookEndpoint(ctx context.Context, provider, id string) (strin
 	}
 	endpoint, err := s.svc.WebhookEndpoint(ctx, p, provider, id)
 	return endpoint, integrationError(err)
+}
+
+func (s Server) rotationView(ctx context.Context, p kernel.Principal, in integration.Rotation) (map[kernel.ULID]string, integration.Details, error) {
+	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
+	if err != nil {
+		return nil, integration.Details{}, err //nolint:wrapcheck // the access domain names the read
+	}
+	return slugs, s.svc.RotationDetails(ctx, in), nil
 }
