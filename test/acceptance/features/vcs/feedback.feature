@@ -230,3 +230,20 @@ Feature: Repository runs report native checks and deployments
     And token "h" eventually reads the run "noActions" in the state "FINISHED" through A
     And check events for run "noActions" have settled
     And the GitHub check "infraweave/infra" for run "noActions" has actions ""
+
+  # ref: decisions 0012 D9/D11/D18 and 0016
+  @terraform
+  Scenario: A real GitLab push posts the admitted run and failed checks for every capped stack
+    Given a "GitLab" check stack "first" using "terraform" with mode "INDIVIDUAL" and options '{}'
+    And a "GitLab" check stack "second" using "terraform" with mode "INDIVIDUAL" and options '{}'
+    And a "GitLab" check stack "third" using "terraform" with mode "INDIVIDUAL" and options '{}'
+    And token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":1}' through B
+    And it answers 200
+    When GitLab pushes a changed commit to the check repository
+    Then the check push's tracked run is kept as "pushCheck"
+    And token "h" eventually reads the run "pushCheck" in the state "UNCONFIRMED" through A
+    And the check push records 2 native cap failures naming limit 1
+    When token "h" sends "POST /api/v1/stacks/{checkPushStack}/runs/discard" with '{"run":"{pushCheck}"}' through B
+    Then it answers 200
+    And token "h" eventually reads the run "pushCheck" in the state "DISCARDED" through A
+    And check events for run "pushCheck" have settled

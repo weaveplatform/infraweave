@@ -11,6 +11,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/vcs/azuredevopsfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketcloudfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketdcfake"
@@ -27,6 +28,7 @@ type checkRepository interface {
 	ReleaseUploadPacks()
 }
 type checkSteps struct {
+	pushRun                                      string
 	originalETag                                 string
 	w                                            *harness.World
 	github                                       *githubSteps
@@ -44,6 +46,10 @@ type nativeCheck struct {
 }
 
 func (s *checkSteps) register(sc *godog.ScenarioContext) {
+	sc.Step(`^GitLab pushes a changed commit to the check repository$`, s.push)
+	sc.Step(`^the check push's tracked run is kept as "(\w+)"$`, s.keepPush)
+	sc.Step(`^the check push records (\d+) native cap failures naming limit (\d+)$`, func(ctx context.Context, count, limit int) error { return s.capFailures(ctx, limit, count) })
+
 	sc.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
 		if strings.HasPrefix(scenario.Name, "Operator-disabled aggregate") {
 			s.w.Settings["features"] = map[string]any{"disabled": []string{"aggregated-vcs-checks"}}
@@ -364,6 +370,7 @@ func (s *checkSteps) states(ctx context.Context, provider, name, run, commit, ra
 	if provider != s.provider {
 		return fmt.Errorf("%w: different check provider", harness.ErrStep)
 	}
+	name = s.w.Resolve(name)
 	want := strings.Split(raw, ", ")
 	return deps.Eventually(ctx, "native check states "+name+" for "+run, func(context.Context) (bool, error) {
 		states := []string{}
@@ -422,6 +429,8 @@ func (s *checkSteps) aggregate(ctx context.Context, name, state, text string) er
 }
 
 func (s *checkSteps) metadata(ctx context.Context, name, run, slug, text string) error {
+	name = s.w.Resolve(name)
+	slug = s.w.Resolve(slug)
 	return deps.Eventually(ctx, "native check metadata "+name, func(context.Context) (bool, error) {
 		for _, r := range s.snapshots(true) {
 			if r.Name == name && r.SHA == s.w.IDs["checkCommit"] && strings.HasSuffix(r.URL, "/runs/"+s.w.IDs[run]) && strings.Contains(r.Summary, text) {
@@ -557,4 +566,114 @@ func (s *checkSteps) unchangedIntegration(ctx context.Context) error {
 		return fmt.Errorf("%w: refused option stored another integration", harness.ErrStep)
 	}
 	return nil
+}
+
+func (s *checkSteps) push(ctx context.Context) error {
+	if s.provider != "GitLab" {
+		return fmt.Errorf("%w: push proof requires GitLab", harness.ErrStep)
+	}
+	r, err := s.w.Do(ctx, "A", "h", http.MethodGet, s.path+"/"+s.integration, nil)
+	if err != nil {
+		return err
+	}
+	if r.Status != 200 {
+		return fmt.Errorf("%w: webhook secret read failed", harness.ErrStep)
+	}
+	hooks := &gitlabWebhookSteps{w: s.w, provider: s.gitlab}
+	if err := hooks.keepSecret(); err != nil {
+		return err
+	}
+	before := s.w.IDs["checkCommit"]
+	head := s.repo.Commit("main", "event check changes", deploymentFiles("two"))
+	s.w.IDs["checkPushCommit"] = head
+	delivery, err := s.gitlab.fake.PushWebhook(s.namespace, "infra", "main", before, head)
+	if err != nil {
+		return err
+	}
+	delivery.ID = kernel.NewULID().UUID()
+	if err := hooks.sendDelivery(ctx, "checkIntegration", "A", hooks.secret.Reveal(), delivery); err != nil {
+		return err
+	}
+	if s.w.Last().Status != 202 {
+		return fmt.Errorf("%w: check push intake answered %d", harness.ErrStep, s.w.Last().Status)
+	}
+	return nil
+}
+
+func (s *checkSteps) keepPush(ctx context.Context, key string) error {
+	if err := (&pushSteps{w: s.w}).keepAny(ctx, "TRACKED", "checkPushCommit", key); err != nil {
+		return err
+	}
+	var slug string
+	if err := s.w.Row(
+		ctx,
+		`SELECT s.slug FROM runs r JOIN stacks s ON s.account_id=r.account_id AND s.id=r.stack_id WHERE r.account_id=$1 AND r.id=$2`,
+		[]any{harness.UUIDOf(harness.Home.Account), harness.UUIDOf(s.w.IDs[key])},
+		&slug,
+	); err != nil {
+		return err
+	}
+	s.w.IDs["checkPushStack"] = slug
+	s.pushRun = s.w.IDs[key]
+	return nil
+}
+
+func (s *checkSteps) capFailures(ctx context.Context, limit, count int) error {
+	return deps.Eventually(ctx, "cap diagnostics and completed native effects", func(ctx context.Context) (bool, error) {
+		var raw string
+		var runs int
+		err := s.w.Row(
+			ctx,
+			`SELECT coalesce(jsonb_agg(DISTINCT payload->'binding'->>'slug'),'[]')::text FROM jobs WHERE account_id=$1 AND kind='vcs.report_check' AND state='succeeded' AND payload->'binding'->>'commit'=$2 AND payload->'binding'->>'cap'='true'`,
+			[]any{harness.UUIDOf(harness.Home.Account), s.w.IDs["checkPushCommit"]},
+			&raw,
+		)
+		if err != nil {
+			return false, err
+		}
+		var slugs []string
+		if json.Unmarshal([]byte(raw), &slugs) != nil {
+			return false, fmt.Errorf("%w: invalid cap receipts", harness.ErrStep)
+		}
+		if len(slugs) != count {
+			return false, nil
+		}
+		err = s.w.Row(
+			ctx,
+			`SELECT count(*) FROM runs WHERE account_id=$1 AND commit->>'hash'=$2 AND triggered_by='vcs/commit'`,
+			[]any{harness.UUIDOf(harness.Home.Account), s.w.IDs["checkPushCommit"]},
+			&runs,
+		)
+		if err != nil {
+			return false, err
+		}
+		if runs != 1 {
+			return false, fmt.Errorf("%w: capped event created %d runs", harness.ErrStep, runs)
+		}
+		admitted := false
+		for _, r := range s.snapshots(true) {
+			if r.Name == "infraweave/"+s.w.IDs["checkPushStack"]+"/tracked" && r.SHA == s.w.IDs["checkPushCommit"] && strings.HasSuffix(r.URL, "/runs/"+s.pushRun) &&
+				r.State == "running" &&
+				strings.Contains(r.Summary, "1 added") {
+				admitted = true
+			}
+		}
+		if !admitted {
+			return false, nil
+		}
+		for _, slug := range slugs {
+			found := false
+			for _, r := range s.snapshots(true) {
+				if r.Name == "infraweave/"+slug+"/tracked" && r.SHA == s.w.IDs["checkPushCommit"] && r.State == "failed" &&
+					strings.Contains(r.Summary, "limit of "+strconv.Itoa(limit)+" runs") {
+					found = true
+				}
+			}
+			if !found {
+				return false, nil
+			}
+		}
+		fmt.Printf("Check cap evidence: admitted=%d excluded=%d limit=%d native-failures=%s\n", runs, len(slugs), limit, strings.Join(slugs, ","))
+		return true, nil
+	})
 }
