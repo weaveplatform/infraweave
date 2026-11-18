@@ -85,6 +85,8 @@ jobs:
         include:
           - partition: core
             timeout: 20
+          - partition: terraform
+            timeout: 30
           - partition: runs
             timeout: 30
           - partition: integrations
