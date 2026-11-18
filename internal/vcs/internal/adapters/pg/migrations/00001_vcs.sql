@@ -235,6 +235,7 @@ CREATE TABLE vcs_check_resources (
     owner_id uuid,
     owner_epoch timestamptz,
     sequence bigint NOT NULL DEFAULT 0,
+    is_aggregate boolean NOT NULL DEFAULT false,
     PRIMARY KEY (account_id,resource_key)
 );
 CREATE INDEX vcs_check_resources_binding ON vcs_check_resources(account_id,binding_key);

@@ -417,3 +417,126 @@ func TestAccCommitCheckSafeFailureAndSnooze(t *testing.T) {
 		t.Fatal("exhaustion diagnostics unsafe or unhelpful", w.logs.String())
 	}
 }
+
+func TestAccCommitCheckAggregateNativeOwnership(t *testing.T) {
+	t.Run("newer integration and equal-owner progress", func(t *testing.T) {
+		w := newCheckWorld(t)
+		older := w.b
+		older.Policy.Mode = "AGGREGATED"
+		w.state(older.Run, kernel.RunStateFinished, 1)
+		in, err := w.f.store.Get(t.Context(), w.f.acct, older.Integration, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		secrets, err := w.f.store.Secrets(t.Context(), w.f.acct, in.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		in.ID = kernel.NewULID()
+		in.Slug = "other-integration"
+		in.Name = "Other integration"
+		if err := w.f.store.Create(t.Context(), in, secrets); err != nil {
+			t.Fatal(err)
+		}
+		newer := older
+		newer.Run = kernel.NewULID()
+		newer.Key = "run:" + newer.Run.String()
+		newer.Stack = kernel.NewULID()
+		newer.Slug = "newer"
+		newer.Integration = in.ID
+		newer.CreatedAt = older.CreatedAt.Add(time.Minute)
+		w.facts.settings[newer.Stack] = stacksapi.Settings{
+			ID:             newer.Stack,
+			Slug:           newer.Slug,
+			Provider:       newer.Provider,
+			Namespace:      newer.Namespace,
+			Repository:     newer.Repository,
+			VCSIntegration: &newer.Integration,
+		}
+		w.facts.runs[newer.Run] = runsapi.CheckRun{
+			ID:        newer.Run,
+			Stack:     newer.Stack,
+			Type:      newer.Type,
+			State:     kernel.RunStateFailed,
+			Sequence:  1,
+			CommitSHA: newer.Commit,
+			CreatedAt: newer.CreatedAt,
+		}
+		enqueue := func(b feedback.CheckBinding, sequence int64) {
+			t.Helper()
+			target := w.target(t, b, "infraweave/proposed", true, sequence)
+			if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error { return w.service.Enqueue(ctx, target) }); err != nil {
+				t.Fatal(err)
+			}
+		}
+		enqueue(newer, 1)
+		w.report(t)
+		enqueue(older, 1)
+		w.report(t)
+		writes := w.fake.CheckWrites("acme", "infra")
+		if len(writes) != 1 || writes[0].Status != "failed" {
+			t.Fatal("older integration aggregate stole newer native owner", writes)
+		}
+		previous := newer
+		previous.Run = kernel.NewULID()
+		previous.Key = "run:" + previous.Run.String()
+		previous.CreatedAt = newer.CreatedAt.Add(-time.Second)
+		w.facts.runs[previous.Run] = runsapi.CheckRun{
+			ID:        previous.Run,
+			Stack:     previous.Stack,
+			Type:      previous.Type,
+			State:     kernel.RunStatePlanning,
+			Sequence:  1,
+			CommitSHA: previous.Commit,
+			CreatedAt: previous.CreatedAt,
+		}
+		enqueue(previous, 1)
+		w.report(t)
+		writes = w.fake.CheckWrites("acme", "infra")
+		if writes[len(writes)-1].Status != "running" {
+			t.Fatal("older run's current progress was hidden by latest owner", writes)
+		}
+		w.state(previous.Run, kernel.RunStateFinished, 2)
+		enqueue(previous, 2)
+		w.report(t)
+		writes = w.fake.CheckWrites("acme", "infra")
+		if len(writes) != 3 || writes[2].Status != "failed" {
+			t.Fatal("aggregate failed to refresh equal-owner facts", writes)
+		}
+	})
+	t.Run("aggregate wins equal-owner reserved name", func(t *testing.T) {
+		w := newCheckWorld(t)
+		w.b.Slug = "proposed"
+		setting := w.facts.settings[w.b.Stack]
+		setting.Slug = "proposed"
+		w.facts.settings[w.b.Stack] = setting
+		w.enqueue(t, w.b, 1)
+		w.report(t)
+		all := w.b
+		all.Run = kernel.NewULID()
+		all.Key = "run:" + all.Run.String()
+		all.CreatedAt = all.CreatedAt.Add(-time.Second)
+		all.Policy.Mode = "ALL"
+		w.facts.runs[all.Run] = runsapi.CheckRun{
+			ID:        all.Run,
+			Stack:     all.Stack,
+			Type:      all.Type,
+			State:     kernel.RunStateFinished,
+			Sequence:  1,
+			CommitSHA: all.Commit,
+			CreatedAt: all.CreatedAt,
+		}
+		w.state(w.b.Run, kernel.RunStateFailed, 2)
+		target := w.target(t, all, "infraweave/proposed", true, 1)
+		if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error { return w.service.Enqueue(ctx, target) }); err != nil {
+			t.Fatal(err)
+		}
+		w.report(t)
+		w.enqueue(t, w.b, 2)
+		w.report(t)
+		writes := w.fake.CheckWrites("acme", "infra")
+		if len(writes) != 2 || writes[1].Status != "failed" || !strings.Contains(writes[1].Description, "proposed: FAILED") {
+			t.Fatal("old individual replaced the aggregate outcome/counts", writes)
+		}
+	})
+}

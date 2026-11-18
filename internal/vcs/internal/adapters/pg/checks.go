@@ -70,8 +70,8 @@ func (s *Store) HoldCheck(ctx context.Context, r feedback.CheckResource) (feedba
 		return r, fmt.Errorf("vcs: establish native check resource: %w", sql.Unavailable(err))
 	}
 	err := tx.Q(ctx, s.db).
-		QueryRow(ctx, `SELECT binding_key,native_id,digest,owner_id,coalesce(owner_epoch,'epoch'::timestamptz),sequence FROM vcs_check_resources WHERE account_id=$1 AND resource_key=$2 FOR UPDATE`, r.Account, r.Key).
-		Scan(&r.Binding, &r.NativeID, &r.Digest, &r.Owner, &r.Epoch, &r.Sequence)
+		QueryRow(ctx, `SELECT binding_key,native_id,digest,owner_id,coalesce(owner_epoch,'epoch'::timestamptz),sequence,is_aggregate FROM vcs_check_resources WHERE account_id=$1 AND resource_key=$2 FOR UPDATE`, r.Account, r.Key).
+		Scan(&r.Binding, &r.NativeID, &r.Digest, &r.Owner, &r.Epoch, &r.Sequence, &r.Aggregate)
 	if err != nil {
 		return r, fmt.Errorf("vcs: hold native check resource: %w", sql.Unavailable(err))
 	}
@@ -87,7 +87,7 @@ func (s *Store) ReserveCheck(ctx context.Context, r feedback.CheckResource) erro
 	}
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_check_resources(account_id,resource_key,binding_key,owner_id,owner_epoch)
 		VALUES($1,$2,$3,$4,$5) ON CONFLICT(account_id,resource_key) DO UPDATE
-		SET binding_key=EXCLUDED.binding_key,owner_id=EXCLUDED.owner_id,owner_epoch=EXCLUDED.owner_epoch,sequence=0
+		SET binding_key=EXCLUDED.binding_key,owner_id=EXCLUDED.owner_id,owner_epoch=EXCLUDED.owner_epoch,sequence=0,is_aggregate=false
 		WHERE (coalesce(vcs_check_resources.owner_epoch,'epoch'::timestamptz),coalesce(vcs_check_resources.owner_id,'00000000-0000-0000-0000-000000000000'::uuid)) < (EXCLUDED.owner_epoch,EXCLUDED.owner_id)`, r.Account, r.Key, r.Binding, r.Owner, r.Epoch)
 	if err != nil {
 		return fmt.Errorf("vcs: reserve native check owner: %w", sql.Unavailable(err))
@@ -100,7 +100,7 @@ func (s *Store) ReportedCheck(ctx context.Context, r feedback.CheckResource) err
 		return queue.ErrNoTransaction
 	}
 	tag, err := tx.Q(ctx, s.db).
-		Exec(ctx, `UPDATE vcs_check_resources SET binding_key=$3,native_id=$4,digest=$5,owner_id=$6,owner_epoch=$7,sequence=$8 WHERE account_id=$1 AND resource_key=$2`, r.Account, r.Key, r.Binding, r.NativeID, r.Digest, r.Owner, r.Epoch, r.Sequence)
+		Exec(ctx, `UPDATE vcs_check_resources SET binding_key=$3,native_id=$4,digest=$5,owner_id=$6,owner_epoch=$7,sequence=$8,is_aggregate=$9 WHERE account_id=$1 AND resource_key=$2`, r.Account, r.Key, r.Binding, r.NativeID, r.Digest, r.Owner, r.Epoch, r.Sequence, r.Aggregate)
 	if err != nil {
 		return fmt.Errorf("vcs: acknowledge native check resource: %w", sql.Unavailable(err))
 	}

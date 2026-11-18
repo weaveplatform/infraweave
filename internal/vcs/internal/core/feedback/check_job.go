@@ -70,7 +70,7 @@ func (s *Service) checkHeld(ctx context.Context, job queue.Job, request CheckReq
 		if b.Cap {
 			owner = b.Stack
 		}
-		if resource.Owner != owner || !resource.Epoch.Equal(b.CreatedAt) {
+		if resource.Owner != owner || !resource.Epoch.Equal(b.CreatedAt) || resource.Aggregate {
 			return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // queue acknowledgement joins the fenced transaction
 		}
 	}
@@ -80,6 +80,12 @@ func (s *Service) checkHeld(ctx context.Context, job queue.Job, request CheckReq
 	}
 	if !found || individual && resource.Sequence >= sequence {
 		return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // queue acknowledgement joins the fenced transaction
+	}
+	// Within one aggregate cohort, every refresh recomputes the newest owner
+	// from current facts, so older run transitions still contribute. A different
+	// integration sharing the native context cannot move that owner backwards.
+	if request.Aggregate && newerCheckOwner(checkOwner{ID: resource.Owner, CreatedAt: resource.Epoch}, owner) {
+		return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // older native cohort is settled atomically
 	}
 	encoded, err := json.Marshal(report)
 	if err != nil {
@@ -102,6 +108,7 @@ func (s *Service) checkHeld(ctx context.Context, job queue.Job, request CheckReq
 	resource.Owner = owner.ID
 	resource.Epoch = owner.CreatedAt
 	resource.Sequence = sequence
+	resource.Aggregate = request.Aggregate
 	if err := s.checks.Store.ReportedCheck(ctx, resource); err != nil {
 		return err //nolint:wrapcheck // boundary names its failure
 	}

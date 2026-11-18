@@ -61,6 +61,7 @@ type CheckResource struct {
 	Owner                          kernel.ULID
 	Epoch                          time.Time
 	Sequence                       int64
+	Aggregate                      bool
 }
 
 type checkOwner struct {
