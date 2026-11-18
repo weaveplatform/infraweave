@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -36,4 +37,34 @@ func (s *Service) PreparePush(ctx context.Context, acct kernel.AccountID, id ker
 	out := stackCommit(commit)
 	out.Branch = event.Branch
 	return out, files, nil
+}
+
+// PrepareTag resolves only the delivered immutable head, never the tag's
+// mutable current name. Providers may peel a tag object to its canonical commit;
+// the resolved hash is retained alongside the delivered tag's name.
+func (s *Service) PrepareTag(ctx context.Context, acct kernel.AccountID, id kernel.ULID, provider string, event vcsapi.Event) (stacksapi.Commit, error) {
+	if len(event.Head) != 40 && len(event.Head) != 64 || port.ZeroCommit(event.Head) {
+		return stacksapi.Commit{}, fmt.Errorf("%w: invalid delivered tag head", kernel.ErrUnavailable)
+	}
+	if _, err := hex.DecodeString(event.Head); err != nil {
+		return stacksapi.Commit{}, fmt.Errorf("%w: invalid delivered tag head", kernel.ErrUnavailable)
+	}
+	source := s.providers[provider]
+	if source == nil {
+		return stacksapi.Commit{}, fmt.Errorf("%w: tag source provider", kernel.ErrUnavailable)
+	}
+	in, found, err := s.integrations.Use(ctx, acct, provider, &id)
+	if err != nil {
+		return stacksapi.Commit{}, fmt.Errorf("vcs: prepare tag integration: %w", err)
+	}
+	if !found {
+		return stacksapi.Commit{}, port.ErrNoIntegration
+	}
+	commit, err := source.ResolveRef(ctx, port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}, event.Head)
+	if err != nil {
+		return stacksapi.Commit{}, fmt.Errorf("vcs: prepare tagged commit: %w", err)
+	}
+	out := stackCommit(commit)
+	out.Tag = event.Tag
+	return out, nil
 }

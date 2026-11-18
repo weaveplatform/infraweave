@@ -219,6 +219,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
 	access.GuardSpaces(vcs.SpaceGuard())
+	stacks.GuardStacks(vcs.StackGuard())
 	access.ResolveSubjects(vcsassembly.Entity, vcs.SpaceOf())
 	stacks.BindSources(vcs.StackSources())
 	runs.BindSources(vcs.RunSources(), vcs.StackSources())

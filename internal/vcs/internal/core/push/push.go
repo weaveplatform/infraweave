@@ -62,6 +62,13 @@ type Integrations interface {
 // Sources computes one full push diff and head metadata before any write lock.
 type Sources interface {
 	PreparePush(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, []string, error)
+	PrepareTag(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, error)
+}
+
+// IgnoredRecorder persists a reason under the same live account/stack holds and
+// queue completion transaction as evaluation. Tier gates apply only to reads.
+type IgnoredRecorder interface {
+	Record(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Commit, string) error
 }
 
 // Deps is the forward domain graph and transactional stores used by VCS jobs.
@@ -76,6 +83,7 @@ type Deps struct {
 	Supersede    runsapi.Supersede
 	Jobs         intake.Jobs
 	Limits       *Limits
+	Ignored      IgnoredRecorder
 	Now          func() time.Time
 	Log          *slog.Logger
 }

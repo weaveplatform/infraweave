@@ -30,9 +30,22 @@ const (
 // ignored triggers and custom push-policy decisions belong to later consumers.
 type Decision struct{ Outcome, Reason string }
 
+// recordIgnored is deliberately narrower than every capped decision: other-
+// branch proposals and non-push/non-tag inputs leave no ignored-trigger row.
+func recordIgnored(event vcsapi.Event, stack stacksapi.Settings, decision Decision) bool {
+	if decision.Outcome == Ignored && event.Type == "tag" && decision.Reason == TagsIgnored {
+		return true
+	}
+	return event.Type == "push" && event.Branch == stack.Branch &&
+		(decision.Outcome == Ignored && decision.Reason == NoAffectedFiles || decision.Outcome == Capped && decision.Reason == RunLimitReached)
+}
+
 // Default applies only the default branch/path behavior. It does not interpret
 // pull requests, comments or policy source. Tag ignores stand on their own.
 func Default(event vcsapi.Event, stack stacksapi.Settings, files []string) Decision {
+	if (event.Type == "tag" || event.Type == "push") && port.ZeroCommit(event.Head) {
+		return Decision{Outcome: NoAction}
+	}
 	if event.Type == "tag" {
 		return Decision{Ignored, TagsIgnored}
 	}

@@ -87,9 +87,16 @@ func (d *Domain) Cron() []cron.Task {
 		return nil
 	}
 	return []cron.Task{
-		{Kind: intake.Prune, Every: time.Hour, Handler: d.intake.Pruned},
+		{Kind: intake.Prune, Every: time.Hour, Handler: d.pruned},
 		{Kind: intake.Reconcile, Every: time.Minute, Handler: d.intake.Reconciled},
 	}
+}
+
+func (d *Domain) pruned(ctx context.Context, j queue.Job) error {
+	if err := d.intake.Pruned(ctx, j); err != nil {
+		return err
+	} //nolint:wrapcheck // the intake service names its retention boundary
+	return d.ignored.Pruned(ctx) //nolint:wrapcheck // the ignored service names its retention boundary
 }
 
 // ProcessDelivery is the durable inbox job kind, gated when claimed, never at

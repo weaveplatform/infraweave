@@ -94,6 +94,14 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 		if err != nil {
 			return err
 		}
+		if recordIgnored(event.Event, stack, decision) {
+			if s.d.Ignored == nil {
+				return fmt.Errorf("%w: ignored trigger recording is unavailable", kernel.ErrUnavailable)
+			}
+			if err := s.d.Ignored.Record(ctx, input.Account, input.Stack, event.Commit, decision.Reason); err != nil {
+				return err
+			} //nolint:wrapcheck // the recorder names the write
+		}
 		s.report(ctx, input, decision)
 	}
 	if !matched {
@@ -223,8 +231,7 @@ func (s *Service) report(ctx context.Context, input Evaluation, decision Decisio
 			s.d.Log.WarnContext(ctx, "VCS event run refused by stack", args...)
 			return
 		}
-		// Persistent ignored-trigger records belong to their consumer. A
-		// duplicate is silent above debug, including after the run cap.
+		// A duplicate is silent above debug, including after the run cap.
 		s.d.Log.DebugContext(ctx, "VCS event evaluated", args...)
 	})
 }

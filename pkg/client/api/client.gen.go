@@ -1779,6 +1779,7 @@ const (
 	CUSTOMPOLICYNOTRIGGER        RunIgnoredTriggerReasonType = "CUSTOM_POLICY_NO_TRIGGER"
 	DISABLEDBYLABEL              RunIgnoredTriggerReasonType = "DISABLED_BY_LABEL"
 	NOAFFECTEDFILESINPROJECTROOT RunIgnoredTriggerReasonType = "NO_AFFECTED_FILES_IN_PROJECT_ROOT"
+	RUNLIMITREACHED              RunIgnoredTriggerReasonType = "RUN_LIMIT_REACHED"
 	TAGSIGNOREDBYDEFAULT         RunIgnoredTriggerReasonType = "TAGS_IGNORED_BY_DEFAULT"
 )
 
@@ -1792,6 +1793,8 @@ func (e RunIgnoredTriggerReasonType) Valid() bool {
 	case DISABLEDBYLABEL:
 		return true
 	case NOAFFECTEDFILESINPROJECTROOT:
+		return true
+	case RUNLIMITREACHED:
 		return true
 	case TAGSIGNOREDBYDEFAULT:
 		return true
@@ -6745,7 +6748,10 @@ type RunIgnoredTrigger struct {
 	CreatedAt         int32                                `json:"createdAt"`
 	Id                string                               `json:"id"`
 	PolicyAttachments []RunIgnoredTriggerPolicyAttachments `json:"policyAttachments"`
-	ReasonType        RunIgnoredTriggerReasonType          `json:"reasonType"`
+
+	// ReasonType Why an event created no run on a stack. RUN_LIMIT_REACHED means the
+	// event's admitted runs reached the effective account or operator cap.
+	ReasonType RunIgnoredTriggerReasonType `json:"reasonType"`
 }
 
 // RunIgnoredTriggerPolicyAttachments defines model for RunIgnoredTriggerPolicyAttachments.
@@ -6755,7 +6761,8 @@ type RunIgnoredTriggerPolicyAttachments struct {
 	PolicyName *string    `json:"policyName,omitempty"`
 }
 
-// RunIgnoredTriggerReasonType defines model for RunIgnoredTriggerReasonType.
+// RunIgnoredTriggerReasonType Why an event created no run on a stack. RUN_LIMIT_REACHED means the
+// event's admitted runs reached the effective account or operator cap.
 type RunIgnoredTriggerReasonType string
 
 // RunIgnoredTriggersConnection defines model for RunIgnoredTriggersConnection.
