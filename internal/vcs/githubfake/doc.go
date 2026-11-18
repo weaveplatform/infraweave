@@ -10,6 +10,9 @@
 // secondary rate limit, a server error or no answer at all, so the
 // provider's handling of each is tested without the real service, which
 // the scheduled vcs-lab job checks.
+// Sender posts signed App deliveries once and records each attempt's status;
+// only an explicit Redeliver resends one. Payload builds documented webhook
+// shapes with synthetic identities and example.com e-mail addresses.
 //
 // ref: decision 0012 § "Every provider is a peer"
 //
@@ -23,6 +26,8 @@
 // request naming a repository the installation lacks, or a permission
 // above the App's, is refused with 422. Seeding a repository panics on a
 // go-git failure, which no test recovers from.
+// The sender uses GitHub's event, delivery and SHA-256 signature headers. It
+// follows no redirects and retries no failed response or transport operation.
 //
 // # Dependencies
 //

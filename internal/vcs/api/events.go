@@ -13,11 +13,13 @@ type Event struct {
 	Tag          string        `json:"tag,omitempty"`
 	Before       string        `json:"before,omitempty"`
 	Head         string        `json:"head,omitempty"`
+	Forced       bool          `json:"forced,omitempty"`
 	Author       string        `json:"author,omitempty"`
 	PullRequest  *PullRequest  `json:"pullRequest,omitempty"`
 	Comment      *Comment      `json:"comment,omitempty"`
 	CheckAction  *CheckAction  `json:"checkAction,omitempty"`
 	Installation *Installation `json:"installation,omitempty"`
+	OwnerRename  *OwnerRename  `json:"ownerRename,omitempty"`
 }
 
 // Repository identifies the provider's repository and its current path.
@@ -61,5 +63,21 @@ type CheckAction struct {
 type Installation struct {
 	ID           string       `json:"id"`
 	Action       string       `json:"action"`
+	Owner        Owner        `json:"owner"`
 	Repositories []Repository `json:"repositories"`
+	Added        []Repository `json:"added,omitempty"`
+	Removed      []Repository `json:"removed,omitempty"`
+}
+
+// Owner is the provider's stable account identity, never an infraweave account.
+type Owner struct {
+	ID    string `json:"id"`
+	Login string `json:"login"`
+}
+
+// OwnerRename retains identity across a provider account's login change.
+type OwnerRename struct {
+	ID            string `json:"id"`
+	PreviousLogin string `json:"previousLogin"`
+	Login         string `json:"login"`
 }
