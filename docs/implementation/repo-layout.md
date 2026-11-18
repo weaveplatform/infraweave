@@ -561,7 +561,7 @@ it adds no import.
 | `registry` | features, access, workers, configuration, policies, runs, cloud | |
 | `vcs` | features, access, stacks, runs, registry, policies | |
 | `schedules` | features, access, stacks, runs | |
-| `events` | vcs (P12b); features, access, workers, stacks and runs (P18); policies (edge allowed when P13 introduces it, used in P18) | |
+| `events` | runs and vcs (P12b); features, access, workers and stacks (P18); policies (edge allowed when P13 introduces it, used in P18) | |
 | `templates` | features, access, stacks, runs | |
 | `resources` | features, access, stacks, runs, state, workers | |
 | `intelligence` | features, access, workers, stacks, policies, runs, cloud | `platform/httpkit/dispatch` for the `query` and `mutate` tools |
