@@ -302,6 +302,7 @@ func (f *Fake) Handler() http.Handler {
 			})
 		})
 	})
+	f.gitRoutes(r)
 	return r
 }
 
