@@ -74,7 +74,7 @@ type webhookRequest struct {
 		Web struct {
 			Href string `json:"href"`
 		} `json:"web"`
-	} `json:"_links"`
+	} `json:"_links"` //nolint:tagliatelle // Azure DevOps' native links envelope.
 	Repository            *webhookRepository `json:"repository"`
 	PullRequestID         int                `json:"pullRequestId"`
 	SourceRefName         string             `json:"sourceRefName"`

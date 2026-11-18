@@ -2,7 +2,6 @@ package gitlab
 
 import (
 	"encoding/json"
-	"errors"
 	"net/url"
 	"strconv"
 	"strings"
@@ -154,7 +153,7 @@ type webhookTime struct{ time.Time }
 func (t *webhookTime) UnmarshalJSON(body []byte) error {
 	var raw string
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return err
+		return errWebhookPayload
 	}
 	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05 MST", "2006-01-02 15:04:05 -0700"} {
 		parsed, err := time.Parse(layout, raw)
@@ -163,7 +162,7 @@ func (t *webhookTime) UnmarshalJSON(body []byte) error {
 			return nil
 		}
 	}
-	return errors.New("gitlab: invalid request timestamp")
+	return errWebhookPayload
 }
 
 //nolint:tagliatelle,misspell // GitLab's documented routing field spellings.

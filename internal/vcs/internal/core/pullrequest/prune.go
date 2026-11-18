@@ -2,6 +2,7 @@ package pullrequest
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -22,7 +23,7 @@ func (s *Service) prune(ctx context.Context, acct *kernel.AccountID, before *tim
 	for {
 		n, err := s.d.Store.Prune(ctx, acct, before, Batch)
 		if err != nil {
-			return err
+			return fmt.Errorf("vcs: prune request history: %w", err)
 		}
 		if n < Batch {
 			return nil

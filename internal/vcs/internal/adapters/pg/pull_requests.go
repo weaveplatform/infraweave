@@ -109,7 +109,7 @@ func (s *Store) Candidates(
 			&r.CreatedAt,
 			&r.UpdatedAt,
 		)
-		return r, err
+		return r, err //nolint:wrapcheck // CollectRows is wrapped at the query boundary below
 	})
 	if err != nil {
 		return nil, fmt.Errorf("vcs: collect request candidates: %w", sql.Unavailable(err))

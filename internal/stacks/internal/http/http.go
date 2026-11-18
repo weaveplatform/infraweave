@@ -428,7 +428,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	}
 	requests, err := s.edges.requests.PullRequests(ctx, p.AccountID, settings)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck // the VCS read port names its failed boundary
 	}
 	releases := resolver{catalog: s.catalog, seen: map[resolution]*string{}}
 	for _, st := range all {

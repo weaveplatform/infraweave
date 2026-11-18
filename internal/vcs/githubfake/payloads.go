@@ -39,6 +39,9 @@ func Payload(event, action string) ([]byte, error) {
 	case "pull_request", "pull_request_review":
 		pr := pullRequestPayload(repo, sender)
 		pr["draft"] = action == "converted_to_draft"
+		if action == "closed" {
+			pr["state"] = "closed"
+		}
 		d["number"], d["pull_request"] = 12, pr
 		if event == "pull_request_review" {
 			state := "approved"
@@ -85,13 +88,16 @@ func Payload(event, action string) ([]byte, error) {
 func repositoryPayload(id int64, owner, name string) map[string]any {
 	return map[string]any{
 		"id": id, "name": name, "full_name": owner + "/" + name,
-		"owner": map[string]any{"id": 41, "login": owner, "email": "owner@example.com"},
+		"html_url": "https://github.example.com/" + owner + "/" + name,
+		"owner":    map[string]any{"id": 41, "login": owner, "email": "owner@example.com"},
 	}
 }
 
 func pullRequestPayload(repo, sender map[string]any) map[string]any {
 	return map[string]any{
 		"number": 12, "user": sender, "draft": false, "merged": false,
+		"state": "open", "title": "Infrastructure change", "html_url": "https://github.example.com/acme/infra/pull/12",
+		"created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:01:00Z",
 		"mergeable": true, "mergeable_state": "clean",
 		"labels": []any{map[string]string{"name": "infrastructure"}},
 		"head":   map[string]any{"ref": "feature", "sha": HeadSHA, "repo": repositoryPayload(9, "contributor", "infra")},

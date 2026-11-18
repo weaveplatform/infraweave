@@ -26600,20 +26600,20 @@ components:
         searchUsersSuggestions: takes arguments; not reachable from an item route
       x-graphql-type: PublicWorkerPool
     PullRequest:
-      description: PullRequest is infraweave's representation of a pull request on GitHub.
+      description: A pull or merge request retained from the stack's VCS provider.
       properties:
         authorLogin:
-          description: GitHub username of the PullRequest creator.
+          description: Provider login of the original request creator.
           type: string
         createdAt:
-          description: Unix timestamp representing Run creation.
+          description: Unix timestamp of request creation.
           format: int32
           type: integer
         draft:
           description: Draft status of the PullRequest.
           type: boolean
         headBranch:
-          description: Immutable name of the branch from which the Pull Request is created.
+          description: Name of the request's source branch.
           type: string
         headBranchURL:
           description: Web URL of the branch from which the Pull Request is created.
@@ -26623,11 +26623,13 @@ components:
           type: string
         id:
           description: |-
-            Locally (within the scope of a Stack) unique identifier of the PullRequest,
-            given by GitHub.
+            Provider-assigned request identifier within the tracked repository.
           type: string
         runs:
-          description: Most recent Runs on the Pull Request.
+          description: |-
+            Stack runs on any recorded request head, including historical heads.
+            Current-head runs appear first, then newest creation time and ID.
+            One run may appear on multiple requests that share a head.
           items:
             $ref: '#/components/schemas/RunRef'
           type: array
@@ -26639,7 +26641,7 @@ components:
           format: int32
           type: integer
         url:
-          description: Immutable URL of the Pull Request on GitHub.
+          description: Provider web URL of the request.
           type: string
       required:
         - authorLogin
@@ -29933,8 +29935,10 @@ components:
           $ref: '#/components/schemas/VCSProvider'
         pullRequests:
           description: |-
-            List of up to 50 most recent open Pull Requests targeting Stack's tracked
-            branch.
+            Up to 50 open pull or merge requests against the tracked branch and
+            current repository binding, with a stack run on any recorded head.
+            Membership is evaluated before the cap. Requests are ordered by
+            latest update time, then stable identity.
           items:
             $ref: '#/components/schemas/PullRequest'
           type: array

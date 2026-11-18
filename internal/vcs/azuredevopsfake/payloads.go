@@ -54,7 +54,12 @@ func (f *Fake) webhookRepository(projectName, name string) map[string]any {
 	defer f.mu.Unlock()
 	project := f.projects[projectName]
 	repository := project.repos[name]
-	return map[string]any{"id": repository.id, "name": repository.name, "project": map[string]string{"id": project.id, "name": project.name}}
+	return map[string]any{
+		"id":        repository.id,
+		"name":      repository.name,
+		"project":   map[string]string{"id": project.id, "name": project.name},
+		"remoteUrl": "https://dev.azure.com/acme/" + projectName + "/_git/" + name,
+	}
 }
 
 func (f *Fake) webhookRequest(project, repository string, in WebhookPullRequest) map[string]any {
@@ -80,6 +85,7 @@ func (f *Fake) webhookRequest(project, repository string, in WebhookPullRequest)
 		"repository": f.webhookRepository(project, repository), "pullRequestId": in.ID,
 		"sourceRefName": "refs/heads/" + in.SourceBranch, "targetRefName": "refs/heads/" + in.TargetBranch,
 		"lastMergeSourceCommit": map[string]string{"commitId": in.Head}, "status": status, "mergeStatus": mergeStatus,
+		"title": "Infrastructure change", "creationDate": "2026-01-01T00:00:00Z",
 		"isDraft": in.Draft, "createdBy": webhookIdentity("author"), "reviewers": reviewers, "labels": labels,
 	}
 	if in.Fork {

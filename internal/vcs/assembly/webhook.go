@@ -93,9 +93,9 @@ func (d *Domain) Cron() []cron.Task {
 
 func (d *Domain) pruned(ctx context.Context, j queue.Job) error {
 	if err := d.intake.Pruned(ctx, j); err != nil {
-		return err
+		return err //nolint:wrapcheck // the intake service names the failed retention boundary
 	}
-	return d.requests.Pruned(ctx)
+	return d.requests.Pruned(ctx) //nolint:wrapcheck // the request service names the failed retention boundary
 }
 
 // ProcessDelivery is the durable inbox job kind, gated when claimed, never at

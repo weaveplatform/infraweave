@@ -3,6 +3,7 @@ package pullrequest
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -23,7 +24,7 @@ func (s *Service) PullRequests(ctx context.Context, acct kernel.AccountID, stack
 		}
 		in, found, err := s.d.Integrations.Binding(ctx, acct, stack.Provider, stack.VCSIntegration)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vcs: resolve stack request binding: %w", err)
 		}
 		if !found {
 			continue
@@ -32,7 +33,7 @@ func (s *Service) PullRequests(ctx context.Context, acct kernel.AccountID, stack
 		for len(out[stack.ID]) < Limit {
 			page, err := s.d.Store.Candidates(ctx, acct, in.ID, stack.Namespace, stack.Repository, stack.Branch, after, Batch)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("vcs: read stack request candidates: %w", err)
 			}
 			if len(page) == 0 {
 				break
@@ -59,7 +60,7 @@ func (s *Service) match(ctx context.Context, acct kernel.AccountID, stack kernel
 	}
 	heads, err := s.d.Store.Heads(ctx, acct, ids)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("vcs: read stack request heads: %w", err)
 	}
 	unique := map[string]bool{}
 	for _, hashes := range heads {
@@ -80,7 +81,7 @@ func (s *Service) match(ctx context.Context, acct kernel.AccountID, stack kernel
 	}
 	runs, err := s.d.Runs.OnCommits(ctx, acct, stack, hashes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("vcs: read stack request runs: %w", err)
 	}
 	bySHA := map[string][]runsapi.CommitRun{}
 	for _, run := range runs {

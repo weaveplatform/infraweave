@@ -126,8 +126,8 @@ type webhookUser struct {
 type webhookRequest struct {
 	Title     string    `json:"title"`
 	State     string    `json:"state"`
-	CreatedOn time.Time `json:"created_on"`
-	UpdatedOn time.Time `json:"updated_on"`
+	CreatedOn time.Time `json:"created_on"` //nolint:tagliatelle // Bitbucket Cloud's native field.
+	UpdatedOn time.Time `json:"updated_on"` //nolint:tagliatelle // Bitbucket Cloud's native field.
 	Links     struct {
 		HTML struct {
 			Href string `json:"href"`

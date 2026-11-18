@@ -19,11 +19,20 @@ type plan struct {
 
 // Prepare keeps all remote lookups outside the processor's completion fence.
 func (s *Service) Prepare(ctx context.Context, d intake.Delivery, events []vcsapi.Event) (intake.DispatchPlan, error) {
+	if !d.Deadline.IsZero() {
+		ctx, cancel := context.WithTimeout(ctx, max(0, d.Deadline.Sub(s.d.Now())))
+		defer cancel()
+		return s.prepareAll(ctx, d, events)
+	}
+	return s.prepareAll(ctx, d, events)
+}
+
+func (s *Service) prepareAll(ctx context.Context, d intake.Delivery, events []vcsapi.Event) (intake.DispatchPlan, error) {
 	out := &plan{service: s}
 	if s.d.Pushes != nil {
 		p, err := s.d.Pushes.Prepare(ctx, d, events)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vcs: prepare compound delivery: %w", err)
 		}
 		out.pushes = p
 	}
@@ -68,7 +77,7 @@ func (s *Service) prepare(ctx context.Context, d intake.Delivery, event vcsapi.E
 	if r.AuthorLogin == "" && p.AuthorID != "" {
 		login, err := s.d.Store.Author(ctx, d.Account, d.Integration, r.RepositoryID, r.Number)
 		if err != nil {
-			return Request{}, err
+			return Request{}, fmt.Errorf("vcs: read retained request creator: %w", err)
 		}
 		if login == "" {
 			provider := s.d.Authors[d.Provider]
@@ -77,12 +86,12 @@ func (s *Service) prepare(ctx context.Context, d intake.Delivery, event vcsapi.E
 			}
 			in, found, err := s.d.Integrations.Use(ctx, d.Account, d.Provider, &d.Integration)
 			if err != nil {
-				return Request{}, err
+				return Request{}, fmt.Errorf("vcs: resolve request creator integration: %w", err)
 			}
 			if found {
 				login, err = provider.AuthorLogin(ctx, in, p.AuthorID)
 				if err != nil {
-					return Request{}, err
+					return Request{}, fmt.Errorf("vcs: resolve request creator: %w", err)
 				}
 				if login == "" {
 					return Request{}, fmt.Errorf("%w: request author is unavailable", kernel.ErrUnavailable)
@@ -101,11 +110,11 @@ func (p *plan) Commit(ctx context.Context) error {
 	}
 	for _, request := range p.requests {
 		if err := p.service.d.Store.Upsert(ctx, request); err != nil {
-			return err
+			return fmt.Errorf("vcs: commit request upkeep: %w", err)
 		}
 	}
 	if p.pushes != nil {
-		return p.pushes.Commit(ctx)
+		return p.pushes.Commit(ctx) //nolint:wrapcheck // the push plan names its fenced write
 	}
 	return nil
 }

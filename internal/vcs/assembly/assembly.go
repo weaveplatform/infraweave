@@ -266,7 +266,7 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 			}
 			if d.requests != nil {
 				if err := d.requests.Purge(ctx, acct); err != nil {
-					return err
+					return err //nolint:wrapcheck // the request service names the failed purge
 				}
 			}
 			return d.limits.Store.PurgeRunLimit(ctx, acct) //nolint:wrapcheck // the VCS setting store names the purge

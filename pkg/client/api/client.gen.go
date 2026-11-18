@@ -6277,18 +6277,18 @@ type PublicWorkerPool struct {
 	UsersCount int32 `json:"usersCount"`
 }
 
-// PullRequest PullRequest is infraweave's representation of a pull request on GitHub.
+// PullRequest A pull or merge request retained from the stack's VCS provider.
 type PullRequest struct {
-	// AuthorLogin GitHub username of the PullRequest creator.
+	// AuthorLogin Provider login of the original request creator.
 	AuthorLogin string `json:"authorLogin"`
 
-	// CreatedAt Unix timestamp representing Run creation.
+	// CreatedAt Unix timestamp of request creation.
 	CreatedAt int32 `json:"createdAt"`
 
 	// Draft Draft status of the PullRequest.
 	Draft bool `json:"draft"`
 
-	// HeadBranch Immutable name of the branch from which the Pull Request is created.
+	// HeadBranch Name of the request's source branch.
 	HeadBranch string `json:"headBranch"`
 
 	// HeadBranchURL Web URL of the branch from which the Pull Request is created.
@@ -6297,11 +6297,12 @@ type PullRequest struct {
 	// HeadSHA Git commit SHA of the latest commit to the branch.
 	HeadSHA string `json:"headSHA"`
 
-	// Id Locally (within the scope of a Stack) unique identifier of the PullRequest,
-	// given by GitHub.
+	// Id Provider-assigned request identifier within the tracked repository.
 	Id string `json:"id"`
 
-	// Runs Most recent Runs on the Pull Request.
+	// Runs Stack runs on any recorded request head, including historical heads.
+	// Current-head runs appear first, then newest creation time and ID.
+	// One run may appear on multiple requests that share a head.
 	Runs []RunRef `json:"runs"`
 
 	// Title Current title of the Pull Request.
@@ -6310,7 +6311,7 @@ type PullRequest struct {
 	// UpdatedAt Unix timestamp of the last update.
 	UpdatedAt int32 `json:"updatedAt"`
 
-	// Url Immutable URL of the Pull Request on GitHub.
+	// Url Provider web URL of the request.
 	Url string `json:"url"`
 }
 
@@ -8197,8 +8198,10 @@ type Stack struct {
 	// Provider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 	Provider VCSProvider `json:"provider"`
 
-	// PullRequests List of up to 50 most recent open Pull Requests targeting Stack's tracked
-	// branch.
+	// PullRequests Up to 50 open pull or merge requests against the tracked branch and
+	// current repository binding, with a stack run on any recorded head.
+	// Membership is evaluated before the cap. Requests are ordered by
+	// latest update time, then stable identity.
 	PullRequests []PullRequest `json:"pullRequests"`
 
 	// Repository GitHub repository tracked by this stack, as account/repo.
