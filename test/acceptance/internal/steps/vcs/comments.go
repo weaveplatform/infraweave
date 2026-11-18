@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -506,7 +507,7 @@ func (c *commentSteps) log(ctx context.Context, run string) (string, error) {
 	for range 64 {
 		path := "/api/v1/runs/" + c.w.IDs[run] + "/logs?state=PLANNING&sanitize=false"
 		if next != "" {
-			path += "&nextToken=" + url.QueryEscape(next)
+			path += "&token=" + url.QueryEscape(next)
 		}
 		response, err := c.w.Do(ctx, "B", "h", http.MethodGet, path, nil)
 		if err != nil {
@@ -533,12 +534,55 @@ func (c *commentSteps) log(ctx context.Context, run string) (string, error) {
 
 var omittedCommentLines = regexp.MustCompile(`(?m)^([0-9]+) lines omitted(?:; first shown line shortened)?\. \[Full planning log\]\(`)
 
+// rawLog reads the served compacted object because paged messages reconstruct
+// newlines rather than preserving every original chunk byte.
+func (c *commentSteps) rawLog(ctx context.Context, run string) (string, error) {
+	var signed string
+	if err := deps.Eventually(ctx, "the exact planning log download", func(ctx context.Context) (bool, error) {
+		response, err := c.w.Do(ctx, "B", "h", http.MethodGet,
+			"/api/v1/runs/"+c.w.IDs[run]+"/logs-download-url?state=PLANNING", nil)
+		if err != nil {
+			return false, err
+		}
+		var download api.LogsDownloadURL
+		if response.Status != http.StatusOK || json.Unmarshal(response.Body, &download) != nil || download.Deleted || download.Expired {
+			return false, fmt.Errorf("%w: completed planning log download unavailable", harness.ErrStep)
+		}
+		if download.Url == nil || *download.Url == "" {
+			if download.Ongoing {
+				return false, nil
+			}
+			return false, fmt.Errorf("%w: completed planning log has no download URL", harness.ErrStep)
+		}
+		signed = *download.Url
+		return true, nil
+	}); err != nil {
+		return "", fmt.Errorf("%w: await planning log download: %w", harness.ErrStep, err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, signed, nil)
+	if err != nil {
+		return "", fmt.Errorf("%w: construct planning log download: %w", harness.ErrStep, err)
+	}
+	client := &http.Client{Timeout: 30 * time.Second}
+	response, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("%w: download planning log: %w", harness.ErrStep, err)
+	}
+	defer response.Body.Close()
+	const bound = 8 << 20
+	text, err := io.ReadAll(io.LimitReader(response.Body, bound+1))
+	if err != nil || response.StatusCode != http.StatusOK || len(text) > bound {
+		return "", fmt.Errorf("%w: planning log download answered %d, bytes %d: %w", harness.ErrStep, response.StatusCode, len(text), err)
+	}
+	return string(text), nil
+}
+
 func (c *commentSteps) oversized(ctx context.Context, run string, pr int) error {
 	record, err := c.comment(run, strconv.Itoa(pr))
 	if err != nil {
 		return err
 	}
-	stored, err := c.log(ctx, run)
+	stored, err := c.rawLog(ctx, run)
 	if err != nil {
 		return err
 	}
