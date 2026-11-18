@@ -18,6 +18,13 @@
 // scheduler registers: Revoke's, which revokes a run's minted tokens once
 // vcsapi.Sources.Release enqueues it. API is its partial of the API's
 // strict server, aliased VCSAPI.
+// Routes mounts provider webhook intake outside that JSON API. The intake
+// commits each verified delivery and its processing job together, with large
+// bodies in inbox; Jobs also registers its feature-gated processor, and Cron
+// prunes retained delivery rows hourly. Purge deletes integrations to fence new
+// intake, then drops deliveries and schedules their bodies for deletion.
+// A minute reconciliation task settles deliveries whose processing jobs died or
+// were discarded, using bounded pages and durable cursor continuations.
 //
 // # Input and output
 //

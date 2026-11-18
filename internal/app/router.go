@@ -124,6 +124,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 	}
 	d.Access.Routes(r)
 	d.State.Routes(r)
+	d.VCS.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
 		apiServer{
 			AccessAPI:        d.Access.API(),
@@ -219,6 +220,8 @@ func (b byPrefix) Middleware(access func(*http.Request) accessapi.Access) func(h
 		})(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch p := routePath(r); {
+			case under(p, "/webhooks/vcs"):
+				next.ServeHTTP(w, r)
 			case under(p, OperatorBaseURL):
 				operator.ServeHTTP(w, r)
 			case under(p, WorkerBaseURL):

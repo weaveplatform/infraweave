@@ -69,7 +69,8 @@ type Config struct {
 	// repository's host and provider API locations.
 	//
 	// ref: decision 0012
-	VCS vcsassembly.Settings `mapstructure:"vcs"`
+	VCS    vcsassembly.Settings `mapstructure:"vcs"`
+	Policy PolicySettings       `mapstructure:"policy"`
 	// Worker is the workers domain's: the longest a worker's poll is
 	// held, and how long a worker goes unseen before it is offline.
 	//
@@ -140,6 +141,8 @@ func Defaults() Config {
 		Run:         runsassembly.DefaultSettings(),
 		Runs:        runsassembly.DefaultRuntimeSettings(),
 		State:       stateassembly.DefaultSettings(),
+		VCS:         vcsassembly.DefaultSettings(),
+		Policy:      defaultPolicy(),
 	}
 }
 
@@ -287,6 +290,8 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Run.Validate(),
 		c.Runs.Validate(),
 		c.State.Validate(),
+		c.VCS.Validate(),
+		c.Policy.Validate(),
 		c.liveness(),
 	); err != nil {
 		return nil, fmt.Errorf("config: %w", err)

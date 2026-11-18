@@ -24,6 +24,10 @@
 // each sorted and paged by its last name, a repository the provider lacks
 // answering 404 and a credential it refuses 502; and searches the stacks
 // that use an integration.
+// Webhook is the separate hand-written provider protocol route: it bounds the
+// body before lookup, passes verified intake to the core service and answers
+// statuses with empty bodies. The app's shared controls and protocol wrapper
+// also make throttle and guard-failure answers empty.
 //
 // # Input and output
 //

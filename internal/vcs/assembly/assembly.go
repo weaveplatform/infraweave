@@ -29,6 +29,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
@@ -66,8 +67,9 @@ type DB interface {
 // authorities trusted beside the system's when reaching a repository's
 // host, for a host under a private CA; BitbucketCloud is where its API is.
 type Settings struct {
-	CAFile         string         `mapstructure:"ca_file"`
-	BitbucketCloud BitbucketCloud `mapstructure:"bitbucket_cloud"`
+	CAFile         string           `mapstructure:"ca_file"`
+	BitbucketCloud BitbucketCloud   `mapstructure:"bitbucket_cloud"`
+	Deliveries     DeliverySettings `mapstructure:"deliveries"`
 }
 
 // BitbucketCloud is where every BITBUCKET_CLOUD integration reaches
@@ -87,14 +89,17 @@ var ErrConfig = errors.New("invalid vcs configuration")
 // stacks it reads and detaches, its settings, and the server's public
 // origin, which webhook and manifest URLs start with.
 type Deps struct {
-	DB       DB
-	Keys     pg.Sealer
-	Spaces   accessapi.Spaces
-	Authz    accessapi.Authorizer
-	Stacks   stacksapi.Stacks
-	Settings Settings
-	Public   string
-	Log      *slog.Logger
+	DB               DB
+	Keys             pg.Sealer
+	Spaces           accessapi.Spaces
+	Authz            accessapi.Authorizer
+	Stacks           stacksapi.Stacks
+	Settings         Settings
+	Public           string
+	Log              *slog.Logger
+	Objects          Objects
+	Now              func() time.Time
+	PushEventTimeout time.Duration
 }
 
 // Domain is the vcs domain, constructed once per process.
@@ -102,6 +107,7 @@ type Domain struct {
 	sources      *source.Service
 	integrations *integration.Service
 	api          http.Server
+	intake       *intake.Service
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
@@ -130,6 +136,13 @@ func New(d Deps) (*Domain, error) {
 	bbdc := bitbucketdc.New(bitbucketdc.Options{RootCAs: roots})
 	ado := azuredevops.New(azuredevops.Options{RootCAs: roots})
 	git := rawgit.New(rawgit.Options{RootCAs: roots})
+	inbox, err := newIntake(d, map[string]any{
+		integration.GitHubEnterprise: gh, integration.GitLab: gl,
+		integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
+	})
+	if err != nil {
+		return nil, err
+	}
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers,
@@ -164,6 +177,7 @@ func New(d Deps) (*Domain, error) {
 			Log:          d.Log,
 		}),
 		integrations: integrations,
+		intake:       inbox,
 		api:          http.New(integrations, d.Spaces, nil),
 	}, nil
 }
@@ -188,8 +202,11 @@ const PurgeBatch = 500
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 	for {
 		done, err := d.integrations.Purge(ctx, acct, PurgeBatch)
-		if err != nil || done {
+		if err != nil {
 			return err //nolint:wrapcheck // the store names the purge
+		}
+		if done {
+			return d.purgeDeliveries(ctx, acct)
 		}
 	}
 }
@@ -218,7 +235,7 @@ var Revoke = source.Revoke
 // Jobs are the domain's job handlers, which the scheduler registers:
 // Revoke's.
 func (d *Domain) Jobs() []queue.Registration {
-	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}}
+	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}, d.deliveryJob()}
 }
 
 // Subscribe subscribes the domain's consumers on events.
