@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -190,11 +191,17 @@ func TestAccBitbucketWebhookPreviousAndFailure(t *testing.T) {
 			if got := w.delivery(t, "previous"); !bytes.Equal(got.Signature, []byte(h.Get("X-Hub-Signature"))) {
 				t.Fatal("previous header not retained exactly")
 			}
+			if err = w.svc.Processed(t.Context(), w.claim(t, w.queue, "previous")); err != nil {
+				t.Fatal(err)
+			}
+			if len(parsed) != 1 || w.delivery(t, "previous").State != intake.Dispatched {
+				t.Fatal("previous-secret delivery did not parse and dispatch")
+			}
 			w.deps.Now = func() time.Time { return until }
 			w.svc = intake.New(w.deps)
 			for _, header := range []http.Header{h, bitbucketHeaders(tc, "wrong", tc.event, body, []byte("unrelated-hook-secret-32-bytes-long")), {}} {
 				code, err = w.svc.Receive(t.Context(), tc.route, w.id.String(), header, body)
-				if err != nil || code != 401 {
+				if !errors.Is(err, intake.ErrVerification) || code != 0 {
 					t.Fatalf("invalid/expired signature=%d %v", code, err)
 				}
 			}
@@ -208,11 +215,16 @@ func TestAccBitbucketWebhookPreviousAndFailure(t *testing.T) {
 			if code, err = w.svc.Receive(t.Context(), tc.route, w.id.String(), bad, malformed); err != nil || code != 202 {
 				t.Fatalf("malformed intake=%d %v", code, err)
 			}
-			if err = w.svc.Processed(t.Context(), w.claim(t, w.queue, "previous")); err != nil {
+			if _, err = w.f.db.Exec(t.Context(), `UPDATE jobs SET max_attempts=1 WHERE account_id=$1 AND kind=$2`, w.f.acct, intake.Process.Name); err != nil {
 				t.Fatal(err)
 			}
-			if err = w.svc.Processed(t.Context(), w.claim(t, w.queue, "malformed")); err != nil {
-				t.Fatal(err)
+			malformedJob := w.claim(t, w.queue, "malformed")
+			err = w.svc.Processed(t.Context(), malformedJob)
+			if err == nil || strings.Contains(err.Error(), "private-payload") {
+				t.Fatalf("unsafe/missing processor refusal: %v", err)
+			}
+			if dead, failure := w.queue.Fail(t.Context(), malformedJob, err); failure != nil || !dead {
+				t.Fatalf("queue settlement dead=%t err=%v", dead, failure)
 			}
 			failed := w.delivery(t, "malformed")
 			if failed.State != intake.Failed || failed.LastError == "" || strings.Contains(failed.LastError, "private-payload") {
