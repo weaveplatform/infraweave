@@ -31,8 +31,8 @@ var Labs = []Partition{
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
 // placed: the first partition that lists one of its tags takes it, so a
-// scenario that needs a run and a VCS runs with the runs. accept-core
-// also takes every untagged scenario.
+// scenario with @terraform goes to terraform even when it needs a VCS;
+// other run scenarios go to runs. accept-core also takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
