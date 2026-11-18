@@ -211,6 +211,7 @@ func TestUnitRoutes(t *testing.T) {
 	for _, p := range []string{
 		"/user", "/user/workspaces", "/repositories/acme",
 		"/repositories/acme/infra/refs/branches",
+		"/repositories/acme/infra/hooks",
 		"/repositories/acme/infra/refs/branches/release/1",
 		"/repositories/acme/infra/refs/tags/v1",
 		"/repositories/acme/infra/commit/abc",
@@ -225,7 +226,7 @@ func TestUnitRoutes(t *testing.T) {
 	for _, c := range [][2]string{
 		{http.MethodPost, "/user"},
 		{http.MethodDelete, "/repositories/acme/infra/refs/branches/main"},
-		{http.MethodGet, "/repositories/acme/infra/hooks"},
+		{http.MethodPost, "/repositories/acme/infra/hooks"},
 		{http.MethodGet, "/repositories/acme/infra/src/abc/../../hooks"},
 		{http.MethodGet, "/repositories/acme/infra/commit/a/b"},
 		{http.MethodGet, "/user/"},
@@ -240,7 +241,7 @@ func TestUnitRoutes(t *testing.T) {
 	}
 	l := newLab(t)
 	before := l.fake.Requests()
-	if err := l.bb.Send(t.Context(), l.in, "/repositories/acme/infra/hooks"); !errors.Is(
+	if err := l.bb.Send(t.Context(), l.in, "/repositories/acme/infra/hooks/123"); !errors.Is(
 		err, bitbucketcloud.ErrRoute) {
 		t.Errorf("a route outside the allowlist = %v", err)
 	}

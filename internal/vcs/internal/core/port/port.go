@@ -114,22 +114,22 @@ const (
 
 // Check is one check of a test: its kind, whether it passed, and why not.
 type Check struct {
-	Type   string
-	Passed bool
-	Reason string
-	WebHooks *WebhookCheck
-	Permissions []string
+	Type            string
+	Passed          bool
+	Reason          string
+	WebHooks        *WebhookCheck
+	Permissions     []string
 	GithubAppEvents []string
 }
 
 // WebhookCheck compares the required hook configuration with bounded
 // diagnostics for the repositories whose configured hooks do not match.
-type WebhookCheck struct { Expected, Actual string }
+type WebhookCheck struct{ Expected, Actual string }
 
 // WebhookInput is the URL and distinct repositories whose hooks an
 // integration admin tests; it carries no stack identities or credentials.
 type WebhookInput struct {
-	URL string
+	URL          string
 	Repositories []Listed
 }
 

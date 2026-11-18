@@ -299,3 +299,128 @@ Feature: GitHub integrations
     When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Final description"}}' if matching the ETag "current" through B
     Then it answers 200
     And the answer's description is '"Final description"'
+
+  @op:githubEnterpriseIntegrationRegenerateWebhookSecret @op:githubEnterpriseWebhooksEndpoint @case:success @webhook-controls
+  Scenario: A GitHub App admin rotates secrets once per key and reads the configured delivery URL
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Webhook control","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "originalHook"
+    When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
+    Then it answers 200
+    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"'
+    When token "h" regenerates the webhook secret at "/api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
+    Then it answers 200
+    And the answer's webhook secret differs from "originalHook"
+    And the answer's webhook secret is kept as "firstHook"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    When token "h" regenerates the webhook secret at "/api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    And integration "hookIntegration" has 1 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" through B
+    Then it answers 200
+    And the answer's webhook secret differs from "firstHook"
+    And the answer's webhook secret is kept as "secondHook"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hookIntegration}" through A
+    Then it answers 200
+    And the answer's webhookSecret is '"{secondHook}"'
+    And integration "hookIntegration" has 2 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook, secondHook"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Named webhook App","spaceID":"{team}"}}' through B
+    Then it answers 201
+    And the answer's id names "namedHookApp"
+    When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id={namedHookApp}" through A
+    Then it answers 200
+    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{namedHookApp}"'
+    When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
+    Then it answers 200
+    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{hookIntegration}"'
+
+  @op:githubEnterpriseIntegrationRegenerateWebhookSecret @op:githubEnterpriseWebhooksEndpoint @case:denial @webhook-controls
+  Scenario: A GitHub App space reader cannot rotate a secret or read the delivery URL
+    Given the member key is space-reader on the space "acme"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Protected webhook","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "untouchedHook"
+    When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "m" sends "POST /api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{untouchedHook}"'
+    And integration "hookIntegration" has 0 secret rotation audit entries and never logs or audits secrets "untouchedHook"
+
+  @op:githubEnterpriseIntegrationRegenerateWebhookSecret @op:githubEnterpriseWebhooksEndpoint @case:failure @webhook-controls
+  Scenario: GitHub App webhook controls refuse missing defaults and missing or hidden integrations
+    Given the member key is space-reader on the space "{team}"
+    When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations/missing-integration/regenerate-webhook-secret" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Private hooks","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    Then it answers 201
+    And the answer's id is the space "privateHooks"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Hidden hook","spaceID":"{privateHooks}"}}' through B
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    When token "m" sends "POST /api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id={hookIntegration}" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id=missing-integration" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/github-enterprise-integrations/{hookIntegration}" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/github-enterprise-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+
+  @op:githubEnterpriseWebhooksEndpoint @case:success @webhook-controls
+  Scenario: The named App endpoint uses that integration's space rather than the default's top space
+    Given the member key is space-admin on the space "{team}"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Top webhook App","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Team webhook App","spaceID":"{team}"}}' through B
+    And it answers 201
+    And the answer's id names "teamHookApp"
+    When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint?id={teamHookApp}" through A
+    Then it answers 200
+    And the answer is '"http://infraweave.test/webhooks/vcs/github_enterprise/{teamHookApp}"'
+    When token "m" sends "GET /api/v1/github-enterprise-webhooks-endpoint" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+
+  @op:vcsIntegrationTest @case:failure @webhook-controls
+  Scenario: The GitHub App check names a missing consumed event and a missing write permission
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"App event checks","spaceID":"{team}"}}' through A
+    And it answers 201
+    And the answer's id names "checkedApp"
+    When the GitHub App "ent" lacks required event "check_run"
+    And token "h" sends "GET /api/v1/vcs-integrations/{checkedApp}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the answer's GITHUB_APP_EVENTS check is FAIL
+    And the failed GitHub App check names missing event "check_run"
+    When the GitHub App "ent" lacks required permission "deployments"
+    And token "h" sends "GET /api/v1/vcs-integrations/{checkedApp}/test?provider=GITHUB_ENTERPRISE" through A
+    Then it answers 200
+    And the answer's GITHUB_APP_EVENTS check is FAIL
+    And the failed GitHub App check names missing permission "deployments"
+
+  @op:githubAppCreateFromManifest @op:vcsIntegrationTest @case:success @webhook-controls
+  Scenario: The manifest-created App requests every permission and subscribed event its check needs
+    When token "h" sends "POST /api/v1/github-app-manifests" with '{"ownerType":"ORG","ownerName":"acme","host":"{githubHost}","apiHost":"{githubHost}"}' through A
+    Then it answers 200
+    And the answer's manifest state is kept as "hookManifestState"
+    And the GitHub host hands back a manifest code kept as "hookManifestCode"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations/from-manifest" with '{"code":"{hookManifestCode}","state":"{hookManifestState}"}' through B
+    Then it answers 201
+    And the answer's id names "manifestHookApp"
+    When token "h" sends "GET /api/v1/vcs-integrations/{manifestHookApp}/test?provider=GITHUB_ENTERPRISE" through A
+    Then it answers 200
+    And the answer's GITHUB_APP_EVENTS check is SUCCESS
+    And the answer's status is '"SUCCESS"'

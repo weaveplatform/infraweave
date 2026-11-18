@@ -329,3 +329,98 @@ Feature: GitLab integrations
     Then it answers a 404 problem "not-found"
     When token "m" sends "GET /api/v1/vcs-integrations/{hidden}/search-users-suggestions?input=%7B%7D" through A
     Then it answers a 404 problem "not-found"
+
+  @op:gitlabIntegrationRegenerateWebhookSecret @op:gitlabWebhooksEndpoint @case:success @webhook-controls
+  Scenario: A GitLab admin rotates secrets once per key and reads the configured delivery URL
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Webhook control","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "originalHook"
+    When token "h" sends "GET /api/v1/gitlab-webhooks-endpoint" through B
+    Then it answers 200
+    And the answer is '"http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}"'
+    When token "h" regenerates the webhook secret at "/api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
+    Then it answers 200
+    And the answer's webhook secret differs from "originalHook"
+    And the answer's webhook secret is kept as "firstHook"
+    When token "h" sends "GET /api/v1/gitlab-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    When token "h" regenerates the webhook secret at "/api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    And integration "hookIntegration" has 1 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook"
+    When token "h" sends "POST /api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" through B
+    Then it answers 200
+    And the answer's webhook secret differs from "firstHook"
+    And the answer's webhook secret is kept as "secondHook"
+    When token "h" sends "GET /api/v1/gitlab-integrations/{hookIntegration}" through A
+    Then it answers 200
+    And the answer's webhookSecret is '"{secondHook}"'
+    And integration "hookIntegration" has 2 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook, secondHook"
+
+  @op:gitlabIntegrationRegenerateWebhookSecret @op:gitlabWebhooksEndpoint @case:denial @webhook-controls
+  Scenario: A GitLab space reader cannot rotate a secret or read the delivery URL
+    Given the member key is space-reader on the space "acme"
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Protected webhook","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "untouchedHook"
+    When token "m" sends "GET /api/v1/gitlab-webhooks-endpoint" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "m" sends "POST /api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "h" sends "GET /api/v1/gitlab-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{untouchedHook}"'
+    And integration "hookIntegration" has 0 secret rotation audit entries and never logs or audits secrets "untouchedHook"
+
+  @op:gitlabIntegrationRegenerateWebhookSecret @op:gitlabWebhooksEndpoint @case:failure @webhook-controls
+  Scenario: GitLab webhook controls refuse missing defaults and missing or hidden integrations
+    Given the member key is space-reader on the space "{team}"
+    When token "h" sends "GET /api/v1/gitlab-webhooks-endpoint" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/gitlab-integrations/missing-integration/regenerate-webhook-secret" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Private hooks","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    Then it answers 201
+    And the answer's id is the space "privateHooks"
+    When token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Hidden hook","spaceID":"{privateHooks}"}}' through B
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    When token "m" sends "POST /api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/gitlab-integrations/{hookIntegration}" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/gitlab-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+
+  @op:vcsIntegrationTest @case:failure @webhook-controls
+  Scenario: A GitLab connection test checks the delivery URL and every consumed hook event
+    Given token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Hook check","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "hookIntegration"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hook source","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","vcsIntegrationId":"{hookIntegration}","space":"{team}"},"manageState":false}' through B
+    And it answers 201
+    And the GitLab repository "acme/platform/infra" has no webhook
+    When token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=GITLAB" through A
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "acme/platform/infra" against "http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}"
+    When the GitLab repository "acme/platform/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "push_events, tag_push_events, merge_requests_events, note_events"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=GITLAB" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "acme/platform/infra" against "http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}"
+    When the GitLab repository "acme/platform/infra" has a webhook to "http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}" for events "push_events"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=GITLAB" through A
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "acme/platform/infra" against "http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}"
+    When the GitLab repository "acme/platform/infra" has a webhook to "http://infraweave.test/webhooks/vcs/gitlab/{hookIntegration}" for events "push_events, tag_push_events, merge_requests_events, note_events"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=GITLAB" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is SUCCESS
+    And the answer's status is '"SUCCESS"'

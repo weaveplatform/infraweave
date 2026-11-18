@@ -15,39 +15,53 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 )
 
-type rotationDB struct{ fail error }
-type rotationTx struct{ pgx.Tx }
+type (
+	rotationDB struct{ fail error }
+	rotationTx struct{ pgx.Tx }
+)
 
 func (rotationTx) Commit(context.Context) error   { return nil }
 func (rotationTx) Rollback(context.Context) error { return nil }
 
-func (d rotationDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return rotationTx{}, d.fail }
+func (d rotationDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return rotationTx{}, d.fail
+}
 
 type rotationStore struct {
 	integration.Store
-	row integration.Integration
-	current, previous []byte
-	until time.Time
-	audits []kernel.AuditEntry
+	row                            integration.Integration
+	current, previous              []byte
+	until                          time.Time
+	audits                         []kernel.AuditEntry
 	failGet, failRotate, failAudit error
 }
 
 func (s *rotationStore) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (integration.Integration, error) {
-	if !lock { panic("rotation must lock its integration") }
-	if s.failGet != nil { return integration.Integration{}, s.failGet }
-	if acct != s.row.Account || id != s.row.ID { return integration.Integration{}, integration.ErrNotFound }
+	if !lock {
+		panic("rotation must lock its integration")
+	}
+	if s.failGet != nil {
+		return integration.Integration{}, s.failGet
+	}
+	if acct != s.row.Account || id != s.row.ID {
+		return integration.Integration{}, integration.ErrNotFound
+	}
 	return s.row, nil
 }
 
 func (s *rotationStore) RotateWebhookSecret(_ context.Context, in integration.Integration, secret []byte, until time.Time) error {
-	if s.failRotate != nil { return s.failRotate }
+	if s.failRotate != nil {
+		return s.failRotate
+	}
 	s.previous, s.current = slices.Clone(s.current), slices.Clone(secret)
 	s.row, s.until = in, until
 	return nil
 }
 
 func (s *rotationStore) Audit(_ context.Context, entry kernel.AuditEntry) error {
-	if s.failAudit != nil { return s.failAudit }
+	if s.failAudit != nil {
+		return s.failAudit
+	}
 	s.audits = append(s.audits, entry)
 	return nil
 }
@@ -57,7 +71,7 @@ func TestUnitWebhookRotationClock(t *testing.T) {
 		p := kernel.Principal{AccountID: kernel.NewAccountID(), Login: "admin", ActorID: kernel.NewULID()}
 		id := kernel.NewULID()
 		store := &rotationStore{
-			row: integration.Integration{Account: p.AccountID, ID: id, Provider: integration.GitLab, Version: 1},
+			row:     integration.Integration{Account: p.AccountID, ID: id, Provider: integration.GitLab, Version: 1},
 			current: []byte("old-secret"),
 		}
 		svc := integration.New(integration.Deps{Store: store, DB: rotationDB{}})
@@ -69,7 +83,7 @@ func TestUnitWebhookRotationClock(t *testing.T) {
 			t.Fatalf("first rotation: %+v %v, entropy=%d until=%s", first, err, len(entropy), store.until)
 		}
 		firstSecret := slices.Clone(store.current)
-		time.Sleep(2*time.Hour)
+		time.Sleep(2 * time.Hour)
 		if _, err := svc.RotateWebhookSecret(t.Context(), p, id.String(), integration.GitLab, "192.0.2.1"); err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +100,7 @@ func TestUnitWebhookRotationClock(t *testing.T) {
 			}
 		}
 		p.Kind, p.Login = kernel.PrincipalRun, ""
-		svc = integration.New(integration.Deps{Store: store, DB: rotationDB{}, SecretOverlap: 90*time.Minute})
+		svc = integration.New(integration.Deps{Store: store, DB: rotationDB{}, SecretOverlap: 90 * time.Minute})
 		if _, err := svc.RotateWebhookSecret(t.Context(), p, id.String(), integration.GitLab, ""); err != nil {
 			t.Fatal(err)
 		}
@@ -107,19 +121,28 @@ func TestUnitWebhookRotationFailures(t *testing.T) {
 			db := rotationDB{}
 			provider, want := integration.GitLab, cause
 			switch where {
-			case "begin": db.fail = cause
-			case "read": store.failGet = cause
-			case "rotate": store.failRotate = cause
-			case "audit": store.failAudit = cause
-			case "missing": id, want = kernel.NewULID().String(), integration.ErrNotFound
-			case "provider": provider, want = integration.BitbucketCloud, integration.ErrNotFound
-			case "bad-id": id, want = "bad", integration.ErrNotFound
+			case "begin":
+				db.fail = cause
+			case "read":
+				store.failGet = cause
+			case "rotate":
+				store.failRotate = cause
+			case "audit":
+				store.failAudit = cause
+			case "missing":
+				id, want = kernel.NewULID().String(), integration.ErrNotFound
+			case "provider":
+				provider, want = integration.BitbucketCloud, integration.ErrNotFound
+			case "bad-id":
+				id, want = "bad", integration.ErrNotFound
 			}
 			svc := integration.New(integration.Deps{Store: store, DB: db})
 			if _, err := svc.RotateWebhookSecret(t.Context(), p, id, provider, ""); !errors.Is(err, want) {
 				t.Fatalf("%s: %v", where, err)
 			}
-			if len(store.audits) != 0 { t.Fatal("failed rotation recorded an audit") }
+			if len(store.audits) != 0 {
+				t.Fatal("failed rotation recorded an audit")
+			}
 		})
 	}
 }

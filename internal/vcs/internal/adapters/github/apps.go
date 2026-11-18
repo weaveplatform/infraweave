@@ -23,8 +23,8 @@ type permission struct {
 }
 
 // permissions are what infraweave needs of an App: reading a repository's
-// source, and writing its checks, pull request comments and commit
-// statuses. The manifest asks for them and Test checks them, so both
+// source, writing checks, comments and deployments, and reading member
+// changes. The manifest asks for them and Test checks them, so both
 // read this one list.
 var permissions = []permission{
 	{"checks", "write", func(p *github.InstallationPermissions) *string { return p.Checks }},
@@ -35,11 +35,13 @@ var permissions = []permission{
 		"write",
 		func(p *github.InstallationPermissions) *string { return p.PullRequests },
 	},
-	{"statuses", "write", func(p *github.InstallationPermissions) *string { return p.Statuses }},
+	{"issues", "write", func(p *github.InstallationPermissions) *string { return p.Issues }},
+	{"deployments", "write", func(p *github.InstallationPermissions) *string { return p.Deployments }},
+	{"members", "read", func(p *github.InstallationPermissions) *string { return p.Members }},
 }
 
 // events are the webhook events infraweave needs an App to send.
-var events = []string{"pull_request", "push"}
+var events = []string{"check_run", "installation_target", "issue_comment", "organization", "pull_request", "pull_request_review", "push", "repository"}
 
 // Test checks that in's App can be read, holds permissions, and sends
 // events. An App that cannot be read fails every check, with the reason.
@@ -61,11 +63,15 @@ func (p *Provider) Test(ctx context.Context, in port.Integration) ([]port.Check,
 	if err != nil {
 		return failed(classify(err, "App").Error()), nil
 	}
-	var missing []string
+	var missing, missingNames []string
 	for _, want := range permissions {
-		got := want.get(ga.GetPermissions())
-		if got == nil || (want.level == "write" && *got != "write") {
+		var got *string
+		if perms := ga.GetPermissions(); perms != nil {
+			got = want.get(perms)
+		}
+		if got == nil || (*got != "write" && (*got != "read" || want.level == "write")) {
 			missing = append(missing, want.name+":"+want.level)
+			missingNames = append(missingNames, want.name)
 		}
 	}
 	var unsent []string
@@ -74,11 +80,15 @@ func (p *Provider) Test(ctx context.Context, in port.Integration) ([]port.Check,
 			unsent = append(unsent, e)
 		}
 	}
-	return []port.Check{
-		{Type: port.CheckConnection, Passed: true},
-		check(port.CheckPermissions, "The App lacks the permissions ", missing),
-		check(port.CheckGithubAppEvents, "The App does not send the events ", unsent),
-	}, nil
+	permissionCheck := check(port.CheckPermissions, "The App lacks the permissions ", missing)
+	permissionCheck.Permissions = missingNames
+	appCheck := check(port.CheckGithubAppEvents, "The App does not send the events ", unsent)
+	appCheck.GithubAppEvents, appCheck.Permissions = unsent, slices.Clone(missingNames)
+	if len(missing) > 0 {
+		appCheck.Passed = false
+		appCheck.Reason = strings.TrimSpace(appCheck.Reason + " " + permissionCheck.Reason)
+	}
+	return []port.Check{{Type: port.CheckConnection, Passed: true}, permissionCheck, appCheck}, nil
 }
 
 func check(kind, reason string, lacking []string) port.Check {

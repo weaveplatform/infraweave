@@ -104,11 +104,16 @@ func (s *Service) users(ctx context.Context, p kernel.Principal, id string) (sta
 	if err != nil {
 		return stacksapi.Use{}, err
 	}
+	return stackUse(in), nil
+}
+
+// stackUse includes every provider spelling that inherits this default.
+func stackUse(in Integration) stacksapi.Use {
 	use := stacksapi.Use{Integration: in.ID, Provider: in.Provider, Default: in.IsDefault}
 	if in.Provider == GitHubEnterprise {
 		use.Aliases = []string{GitHub}
 	}
-	return use, nil
+	return use
 }
 
 // browsed is the integration p browses, with its secrets opened: the

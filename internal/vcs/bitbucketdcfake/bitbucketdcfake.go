@@ -115,6 +115,7 @@ type Minted struct {
 // served under API, and the repository access tokens a repository's
 // admin mints, served under Tokens.
 type Fake struct {
+	webhooks map[string][]Hook
 	mu       sync.Mutex
 	users    map[string]*user
 	tokens   map[string]*user
@@ -256,6 +257,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Get("/repos", f.list)
 		r.Route("/projects/{project}/repos/{slug}", func(r chi.Router) {
 			r.Use(f.member)
+			r.Get("/webhooks", f.listWebhooks)
 			r.Get("/branches", f.branches)
 			r.Get("/tags/*", f.tag)
 			r.Get("/commits/{commit}", f.commit)

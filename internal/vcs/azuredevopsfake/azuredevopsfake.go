@@ -115,6 +115,7 @@ type repository struct {
 // users, and projects with the roles users hold in them and their Git
 // repositories, served under /acme.
 type Fake struct {
+	webhooks map[string][]Hook
 	mu       sync.Mutex
 	tokens   map[string]*token
 	projects map[string]*project
@@ -239,7 +240,7 @@ func (f *Fake) Handler() http.Handler {
 	r.Route("/"+Organization, func(r chi.Router) {
 		r.Use(f.authenticated)
 		r.With(f.scoped(ScopeProject)).Get("/_apis/projects", f.listProjects)
-		r.With(f.scoped(ScopeHooks)).Get("/_apis/hooks/subscriptions", f.subscriptions)
+		r.With(f.scoped(ScopeHooks)).Get("/_apis/hooks/subscriptions", f.listWebhooks)
 		r.Route("/{project}/_apis/git/repositories", func(r chi.Router) {
 			r.Use(f.scoped(ScopeCode), f.member)
 			r.Get("/", f.repositories)
@@ -398,11 +399,6 @@ func (f *Fake) listProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	f.mu.Unlock()
 	paged(w, r, out)
-}
-
-// subscriptions lists no service hook subscription.
-func (f *Fake) subscriptions(w http.ResponseWriter, _ *http.Request) {
-	answer(w, http.StatusOK, map[string]any{"count": 0, "value": []any{}})
 }
 
 func (f *Fake) repositories(w http.ResponseWriter, r *http.Request) {

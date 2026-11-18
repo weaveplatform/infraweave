@@ -41,7 +41,7 @@ func (s *Service) RotateWebhookSecret(ctx context.Context, p kernel.Principal, i
 			AccountID: p.AccountID.ULID, Actor: actor,
 			Action: "vcs_integration.rotate_webhook_secret", EventType: "UPDATE",
 			AffectedResource: kernel.AuditResource{Type: "VCS_INTEGRATION", ID: out.ID.String()},
-			RemoteIP: remoteIP, CreatedAt: out.UpdatedAt,
+			RemoteIP:         remoteIP, CreatedAt: out.UpdatedAt,
 		})
 	})
 	return out, err //nolint:wrapcheck // each transaction step names its failure

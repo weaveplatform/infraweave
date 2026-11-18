@@ -86,6 +86,7 @@ type repository struct {
 // repositories in workspaces with the roles accounts hold on them, served
 // under /2.0.
 type Fake struct {
+	webhooks map[string][]Hook
 	mu       sync.Mutex
 	accounts map[string]*account
 	tokens   map[string]*account
@@ -216,6 +217,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Get("/repositories/{workspace}", f.list)
 		r.Route("/repositories/{workspace}/{slug}", func(r chi.Router) {
 			r.Use(f.member)
+			r.Get("/hooks", f.listWebhooks)
 			r.Get("/refs/branches", f.branches)
 			r.Get("/refs/branches/*", f.branch)
 			r.Get("/refs/tags/*", f.tag)

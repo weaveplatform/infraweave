@@ -90,18 +90,19 @@ func (h *webhookControlSteps) rotate(ctx context.Context, token, path, key, repl
 // complete audit/event rows and server output without printing a secret.
 func (h *webhookControlSteps) audit(ctx context.Context, integration string, want int, keys string) error {
 	var n int
+	var caller bool
 	account, id := harness.UUIDOf(harness.Home.Account), h.w.IDs[integration]
 	if id == "" {
 		return fmt.Errorf("%w: no integration kept as %s", harness.ErrStep, integration)
 	}
-	if err := h.w.Row(ctx, `SELECT count(*) FROM audit_trail_entries
+	if err := h.w.Row(ctx, `SELECT count(*), coalesce(bool_and(actor_username = $3
+AND actor_run IS NULL AND coalesce(remote_ip, '') <> ''), true) FROM audit_trail_entries
 WHERE account_id = $1 AND action = 'vcs_integration.rotate_webhook_secret'
 AND event_type = 'UPDATE' AND affected_type = 'VCS_INTEGRATION' AND affected_id = $2
-AND actor_username <> '' AND actor_run IS NULL AND coalesce(remote_ip, '') <> ''`,
-		[]any{account, id}, &n); err != nil {
+`, []any{account, id, harness.Home.Key}, &n, &caller); err != nil {
 		return err
 	}
-	if n != want {
+	if n != want || !caller {
 		return fmt.Errorf("%w: %d caller-attributed rotation audit entries, want %d", harness.ErrStep, n, want)
 	}
 	for _, key := range strings.Split(keys, ", ") {
@@ -177,14 +178,16 @@ type controlCheck struct {
 	Type     string `json:"type"`
 	Status   string `json:"status"`
 	Metadata struct {
-		WebHooks struct{ Expected, Actual string } `json:"webHooks"`
-		Permissions []string `json:"permissions"`
-		Events      []string `json:"githubAppEvents"`
+		WebHooks    struct{ Expected, Actual string } `json:"webHooks"`
+		Permissions []string                          `json:"permissions"`
+		Events      []string                          `json:"githubAppEvents"`
 	} `json:"metadata"`
 }
 
 func (h *webhookControlSteps) result(kind string) (controlCheck, error) {
-	var result struct{ Checks []controlCheck `json:"checks"` }
+	var result struct {
+		Checks []controlCheck `json:"checks"`
+	}
 	if json.Unmarshal(h.w.Last().Body, &result) == nil {
 		for _, check := range result.Checks {
 			if check.Type == kind {

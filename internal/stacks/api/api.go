@@ -202,7 +202,7 @@ type Stacks interface {
 
 // VCSRepository is a used repository's provider coordinates, without any
 // stack identity or setting unrelated to webhook configuration.
-type VCSRepository struct { Namespace, Name string }
+type VCSRepository struct{ Namespace, Name string }
 
 // Use names the stacks that use a VCS integration: those bound to
 // Integration and, when Default is set, those on Provider that name no

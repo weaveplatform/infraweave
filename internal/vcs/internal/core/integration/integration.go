@@ -325,11 +325,7 @@ func (s *Service) Test(ctx context.Context, p kernel.Principal, id, provider str
 	if !ok {
 		return checks, nil
 	}
-	u, err := s.users(ctx, p, id)
-	if err != nil {
-		return nil, err
-	}
-	repositories, err := s.stacks.VCSRepositories(ctx, p.AccountID, u)
+	repositories, err := s.stacks.VCSRepositories(ctx, p.AccountID, stackUse(in))
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the stacks domain names the repository read
 	}

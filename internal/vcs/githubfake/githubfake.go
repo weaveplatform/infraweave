@@ -49,9 +49,9 @@ const (
 var (
 	Permissions = map[string]string{
 		"checks": "write", "contents": "read", "metadata": "read",
-		"pull_requests": "write", "statuses": "write",
+		"pull_requests": "write", "issues": "write", "deployments": "write", "members": "read",
 	}
-	Events = []string{"pull_request", "push"}
+	Events = []string{"check_run", "installation_target", "issue_comment", "organization", "pull_request", "pull_request_review", "push", "repository"}
 )
 
 // App is a GitHub App the fake knows, with the PEM private key it signs

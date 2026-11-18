@@ -130,9 +130,10 @@ func (p *Provider) client(in port.Integration) (*gitlab.Client, host, error) {
 	if tok == "" {
 		return nil, host{}, fmt.Errorf("%w: no access token", ErrCredential)
 	}
+	base, _ := url.Parse(h.api) // hostOf has validated the absolute API URL.
 	c, err := gitlab.NewClient(tok,
 		gitlab.WithBaseURL(h.api),
-		gitlab.WithHTTPClient(&http.Client{Transport: p.rt}),
+		gitlab.WithHTTPClient(&http.Client{Transport: routeTransport{base: base, next: p.rt}}),
 		gitlab.WithoutRetries(),
 		gitlab.WithCustomLimiter(rate.NewLimiter(rate.Inf, 0)),
 	)
