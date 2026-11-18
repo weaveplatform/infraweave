@@ -27,7 +27,12 @@ func TestUnitGitHTTP(t *testing.T) {
 	owner := fake.AddToken("owner", "api")
 	reader := fake.AddToken("owner", "read_repository")
 	metadata := fake.AddToken("owner", "read_api")
+	guest := fake.AddToken("guest", "read_repository")
+	reporter := fake.AddToken("reporter", "read_repository")
+	outsider := fake.AddToken("outsider", "read_repository")
 	fake.AddMember("acme/platform", "infra", "owner", gitlabfake.Maintainer)
+	fake.AddMember("acme/platform", "infra", "guest", gitlabfake.Guest)
+	fake.AddMember("acme/platform", "infra", "reporter", gitlabfake.Reporter)
 	fake.AddMember("acme", "other", "owner", gitlabfake.Maintainer)
 	repo := fake.Repo("acme/platform", "infra")
 	first := repo.Commit("main", "first", map[string]string{"infra/main.tf": "first"})
@@ -54,6 +59,15 @@ func TestUnitGitHTTP(t *testing.T) {
 	}
 	if err := json.Unmarshal(mint.Body.Bytes(), &token); err != nil || mint.Code != http.StatusCreated || token.Token == "" {
 		t.Fatalf("mint project token: status %d, decode error %v", mint.Code, err)
+	}
+	guestMint := request(http.MethodPost, "/api/v4/projects/acme%2Fplatform%2Finfra/access_tokens", owner,
+		`{"name":"guest","scopes":["read_repository"],"access_level":10,"expires_at":"`+expires+`"}`)
+	var guestToken struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(guestMint.Body.Bytes(), &guestToken); err != nil ||
+		guestMint.Code != http.StatusCreated || guestToken.Token == "" {
+		t.Fatalf("mint Guest token: status %d, decode error %v", guestMint.Code, err)
 	}
 	server := fake.Start()
 	t.Cleanup(server.Close)
@@ -100,6 +114,10 @@ func TestUnitGitHTTP(t *testing.T) {
 		{"bad", http.MethodGet, refs, "glpat-invalid", http.StatusUnauthorized},
 		{"metadata-only", http.MethodGet, refs, metadata, http.StatusForbidden},
 		{"reader", http.MethodGet, refs, reader, http.StatusOK},
+		{"reporter", http.MethodGet, refs, reporter, http.StatusOK},
+		{"guest", http.MethodGet, refs, guest, http.StatusNotFound},
+		{"minted-guest", http.MethodGet, refs, guestToken.Token, http.StatusNotFound},
+		{"nonmember", http.MethodGet, refs, outsider, http.StatusNotFound},
 		{"minted", http.MethodGet, refs, token.Token, http.StatusOK},
 		{"wrong-project", http.MethodGet, "/acme/other.git/info/refs?service=git-upload-pack", token.Token, http.StatusNotFound},
 		{"missing-project", http.MethodGet, "/acme/missing.git/info/refs?service=git-upload-pack", reader, http.StatusNotFound},

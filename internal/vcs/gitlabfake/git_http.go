@@ -39,7 +39,7 @@ func (f *Fake) gitHTTP(w http.ResponseWriter, r *http.Request) {
 	project := f.projects[projectPath]
 	allowed := project != nil
 	if allowed {
-		_, allowed = project.members[tok.user.id]
+		allowed = project.members[tok.user.id] >= Reporter
 	}
 	if tok.mint != nil && (tok.mint.Project != projectPath ||
 		tok.mint.ExpiresAt <= time.Now().UTC().Format(time.DateOnly)) {
