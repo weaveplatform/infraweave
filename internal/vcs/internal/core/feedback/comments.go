@@ -144,6 +144,9 @@ func (s *Service) commentTargets(ctx context.Context, event outbox.Event) ([]vcs
 	if err != nil {
 		return nil, fmt.Errorf("VCS comment pull requests: %w", err)
 	}
+	if err := s.commentSelectionCurrent(ctx, acct, st, in); err != nil {
+		return nil, err
+	}
 	out := make([]vcsapi.FeedbackTarget, 0, len(requests))
 	for _, pr := range requests {
 		c := Comment{
@@ -161,6 +164,33 @@ func (s *Service) commentTargets(ctx context.Context, event outbox.Event) ([]vcs
 		})
 	}
 	return out, nil
+}
+
+// commentSelectionCurrent also verifies empty lookups: a rename commits its map
+// and stack together, so mixed reads must retry before consuming an event.
+func (s *Service) commentSelectionCurrent(ctx context.Context, acct kernel.AccountID, st stacksapi.Settings, in port.Integration) error {
+	live, err := s.comments.Stacks.Settings(ctx, acct, st.ID)
+	if errors.Is(err, stacksapi.ErrNotFound) {
+		return fmt.Errorf("VCS comment stack changed during selection: %w", kernel.ErrUnavailable)
+	}
+	if err != nil {
+		return fmt.Errorf("VCS comment stack recheck: %w", err)
+	}
+	integrationChanged := (live.VCSIntegration == nil) != (st.VCSIntegration == nil) ||
+		live.VCSIntegration != nil && st.VCSIntegration != nil && *live.VCSIntegration != *st.VCSIntegration
+	if live.Version != st.Version || live.Slug != st.Slug || live.Provider != st.Provider ||
+		live.Namespace != st.Namespace || live.Repository != st.Repository || live.VCSDetached != st.VCSDetached ||
+		integrationChanged {
+		return fmt.Errorf("VCS comment stack changed during selection: %w", kernel.ErrUnavailable)
+	}
+	binding, found, err := s.comments.Integrations.Binding(ctx, acct, live.Provider, live.VCSIntegration)
+	if err != nil {
+		return fmt.Errorf("VCS comment integration recheck: %w", err)
+	}
+	if !found || binding.ID != in.ID || commentHost(binding.Settings) != commentHost(in.Settings) {
+		return fmt.Errorf("VCS comment integration changed during selection: %w", kernel.ErrUnavailable)
+	}
+	return nil
 }
 
 func commentPlanningVersion(h runsapi.RunHistory, u runsapi.Updated, sequence int64) int64 {

@@ -10,21 +10,34 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type commentFacts struct {
 	*deploymentFacts
 	CommentStore
-	requests []CommentPullRequest
-	readErr  error
+	requests  []CommentPullRequest
+	readErr   error
+	afterRead func()
+	settings  port.Settings
+}
+
+func (f *commentFacts) Binding(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
+	in, found, err := f.deploymentFacts.Binding(ctx, acct, provider, id)
+	in.Settings = f.settings
+	return in, found, err
 }
 
 func (f *commentFacts) CommentPullRequests(_ context.Context, acct kernel.AccountID, binding kernel.ULID, namespace, repository, sha string) ([]CommentPullRequest, error) {
 	if acct.IsZero() || binding != f.binding || namespace != f.stack.Namespace || repository != f.stack.Repository || sha != f.history.CommitHash {
 		return nil, errors.New("comment selection escaped its binding")
 	}
-	return slices.Clone(f.requests), f.readErr
+	requests := slices.Clone(f.requests)
+	if f.afterRead != nil {
+		f.afterRead()
+	}
+	return requests, f.readErr
 }
 
 type unusedComments struct{ port.Comments }
@@ -119,6 +132,56 @@ func TestUnitPlanCommentTargetErrors(t *testing.T) {
 		alter(f)
 		if targets, err := s.Targets(t.Context(), event); !errors.Is(err, failure) || len(targets) != 0 {
 			t.Fatalf("lost fact error: %+v, %v", targets, err)
+		}
+	}
+}
+
+func TestUnitPlanCommentSelectionSnapshot(t *testing.T) {
+	for name, change := range map[string]func(*commentFacts){
+		"repository rename":     func(f *commentFacts) { f.stack.Repository = "renamed"; f.stack.Version++ },
+		"default binding swap":  func(f *commentFacts) { f.binding = kernel.NewULID() },
+		"stack disappeared":     func(f *commentFacts) { f.stackError = stacksapi.ErrNotFound },
+		"binding disappeared":   func(f *commentFacts) { f.binding = kernel.ULID{} },
+		"stack version changed": func(f *commentFacts) { f.stack.Version++ },
+		"native host changed":   func(f *commentFacts) { f.settings.APIHost = "https://other.example" },
+		"app identity changed":  func(f *commentFacts) { f.settings.AppID = "different-app" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			s, f, event := commentTargetWorld(t)
+			f.requests = nil
+			f.afterRead = func() { change(f) }
+			if targets, err := s.Targets(t.Context(), event); !errors.Is(err, kernel.ErrUnavailable) || len(targets) != 0 {
+				t.Fatalf("changed empty selection consumed as stable: targets=%v err=%v", targets, err)
+			}
+			f.afterRead, f.stackError = nil, nil
+			if f.binding.IsZero() {
+				f.binding = kernel.NewULID()
+			}
+			f.requests = []CommentPullRequest{{
+				ID: kernel.NewULID(), Integration: f.binding, RepositoryID: "one", Number: "7",
+				Namespace: f.stack.Namespace, Repository: f.stack.Repository, Head: f.history.CommitHash, Open: true, Provider: f.stack.Provider,
+			}}
+			if targets, err := s.Targets(t.Context(), event); err != nil || len(targets) != 1 {
+				t.Fatalf("stable retry lost target: targets=%v err=%v", targets, err)
+			}
+			f.requests = nil
+			if targets, err := s.Targets(t.Context(), event); err != nil || len(targets) != 0 {
+				t.Fatalf("genuine stable empty selection retried: targets=%v err=%v", targets, err)
+			}
+		})
+	}
+}
+
+func TestUnitPlanCommentSelectionRecheckErrors(t *testing.T) {
+	failure := errors.New("snapshot read failed")
+	for _, change := range []func(*commentFacts){
+		func(f *commentFacts) { f.stackError = failure },
+		func(f *commentFacts) { f.bindingError = failure },
+	} {
+		s, f, event := commentTargetWorld(t)
+		f.afterRead = func() { change(f) }
+		if targets, err := s.Targets(t.Context(), event); len(targets) != 0 || !errors.Is(err, failure) {
+			t.Fatalf("snapshot read error lost: targets=%v err=%v", targets, err)
 		}
 	}
 }
