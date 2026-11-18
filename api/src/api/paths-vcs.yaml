@@ -351,21 +351,6 @@ components:
         - webhookSecret
       type: object
       x-graphql-args-of: githubEnterpriseIntegrationUpdate
-    GithubIntegrationUpdateRequest:
-      additionalProperties: false
-      description: The arguments of githubIntegrationUpdate not carried in the path.
-      properties:
-        useGitCheckout:
-          nullable: true
-          type: boolean
-        vcsCheckOptions:
-          $ref: '#/components/schemas/VCSCheckOptionsInput'
-        vcsChecks:
-          $ref: '#/components/schemas/VCSCheck'
-      required:
-        - vcsChecks
-      type: object
-      x-graphql-args-of: githubIntegrationUpdate
     GitlabIntegrationCreateRequest:
       additionalProperties: false
       description: The arguments of gitlabIntegrationCreate not carried in the path.
@@ -2451,92 +2436,7 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
-  /github-integration:
-    get:
-      description: Build-in GitHub Integration settings.
-      operationId: githubIntegration
-      x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GithubIntegration'
-          description: The githubIntegration result.
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/RateLimitLimit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimitRemaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/RateLimitReset'
-        "429":
-          $ref: '#/components/responses/TooManyRequests'
-        "503":
-          $ref: '#/components/responses/ApiDisabled'
-        default:
-          $ref: '#/components/responses/Problem'
-      summary: Get GitHub Integration
-      tags:
-        - VCS Integrations
-      x-bruno: VCS Integrations/GitHub/Get GitHub Integration.bru
-      x-graphql:
-        field: githubIntegration
-        operation: query
-        type: Query
-      x-infraweave-cost: standard
-      x-infraweave-divergence:
-        - rate-limit
-      x-rest-style: singleton
-    put:
-      description: Updates the build-in GitHub integration
-      operationId: githubIntegrationUpdate
-      x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_ADMIN
-      x-infraweave-subject: account
-      requestBody:
-        content:
-          application/json:
-            example:
-              useGitCheckout: false
-              vcsChecks: ALL
-            schema:
-              $ref: '#/components/schemas/GithubIntegrationUpdateRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GithubIntegration'
-          description: The githubIntegrationUpdate result.
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/RateLimitLimit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimitRemaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/RateLimitReset'
-        "429":
-          $ref: '#/components/responses/TooManyRequests'
-        "503":
-          $ref: '#/components/responses/ApiDisabled'
-        default:
-          $ref: '#/components/responses/Problem'
-      summary: Update GitHub Integration
-      tags:
-        - VCS Integrations
-      x-bruno: VCS Integrations/GitHub/Update GitHub Integration.bru
-      x-graphql:
-        field: githubIntegrationUpdate
-        operation: mutation
-        type: Mutation
-      x-infraweave-cost: standard
-      x-infraweave-divergence:
-        - rate-limit
-      x-rest-style: singleton
+
   /gitlab-integrations:
     post:
       description: Creates the GitLab integration.

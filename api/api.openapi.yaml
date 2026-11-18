@@ -5988,92 +5988,6 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
-  /github-integration:
-    get:
-      description: Build-in GitHub Integration settings.
-      operationId: githubIntegration
-      x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_READ
-      x-infraweave-subject: list
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GithubIntegration'
-          description: The githubIntegration result.
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/RateLimitLimit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimitRemaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/RateLimitReset'
-        "429":
-          $ref: '#/components/responses/TooManyRequests'
-        "503":
-          $ref: '#/components/responses/ApiDisabled'
-        default:
-          $ref: '#/components/responses/Problem'
-      summary: Get GitHub Integration
-      tags:
-        - VCS Integrations
-      x-bruno: VCS Integrations/GitHub/Get GitHub Integration.bru
-      x-graphql:
-        field: githubIntegration
-        operation: query
-        type: Query
-      x-infraweave-cost: standard
-      x-infraweave-divergence:
-        - rate-limit
-      x-rest-style: singleton
-    put:
-      description: Updates the build-in GitHub integration
-      operationId: githubIntegrationUpdate
-      x-infraweave-feature: vcs-integrations
-      x-infraweave-action: SPACE_ADMIN
-      x-infraweave-subject: account
-      requestBody:
-        content:
-          application/json:
-            example:
-              useGitCheckout: false
-              vcsChecks: ALL
-            schema:
-              $ref: '#/components/schemas/GithubIntegrationUpdateRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GithubIntegration'
-          description: The githubIntegrationUpdate result.
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/RateLimitLimit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/RateLimitRemaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/RateLimitReset'
-        "429":
-          $ref: '#/components/responses/TooManyRequests'
-        "503":
-          $ref: '#/components/responses/ApiDisabled'
-        default:
-          $ref: '#/components/responses/Problem'
-      summary: Update GitHub Integration
-      tags:
-        - VCS Integrations
-      x-bruno: VCS Integrations/GitHub/Update GitHub Integration.bru
-      x-graphql:
-        field: githubIntegrationUpdate
-        operation: mutation
-        type: Mutation
-      x-infraweave-cost: standard
-      x-infraweave-divergence:
-        - rate-limit
-      x-rest-style: singleton
   /gitlab-integrations:
     post:
       description: Creates the GitLab integration.
@@ -24232,47 +24146,6 @@ components:
         - webhookSecret
       type: object
       x-graphql-args-of: githubEnterpriseIntegrationUpdate
-    GithubIntegration:
-      description: GithubIntegration shows build-in GitHub integration details.
-      properties:
-        apiHost:
-          type: string
-        isEnterprise:
-          type: boolean
-        kind:
-          description: The concrete type, for union and interface responses.
-          enum:
-            - GithubIntegration
-          type: string
-        useGitCheckout:
-          type: boolean
-        vcsCheckOptions:
-          $ref: '#/components/schemas/VCSCheckOptions'
-        vcsChecks:
-          $ref: '#/components/schemas/VCSCheck'
-      required:
-        - apiHost
-        - isEnterprise
-        - kind
-        - useGitCheckout
-        - vcsChecks
-      type: object
-      x-graphql-type: GithubIntegration
-    GithubIntegrationUpdateRequest:
-      additionalProperties: false
-      description: The arguments of githubIntegrationUpdate not carried in the path.
-      properties:
-        useGitCheckout:
-          nullable: true
-          type: boolean
-        vcsCheckOptions:
-          $ref: '#/components/schemas/VCSCheckOptionsInput'
-        vcsChecks:
-          $ref: '#/components/schemas/VCSCheck'
-      required:
-        - vcsChecks
-      type: object
-      x-graphql-args-of: githubIntegrationUpdate
     GitlabIntegration:
       description: GitlabIntegration shows Gitlab integration details.
       properties:
@@ -32736,12 +32609,10 @@ components:
           BitbucketDatacenterIntegration: '#/components/schemas/BitbucketDatacenterIntegration'
           BlobStorageIntegration: '#/components/schemas/BlobStorageIntegration'
           GithubEnterpriseIntegration: '#/components/schemas/GithubEnterpriseIntegration'
-          GithubIntegration: '#/components/schemas/GithubIntegration'
           GitlabIntegration: '#/components/schemas/GitlabIntegration'
           OriginIntegration: '#/components/schemas/OriginIntegration'
         propertyName: kind
       oneOf:
-        - $ref: '#/components/schemas/GithubIntegration'
         - $ref: '#/components/schemas/GithubEnterpriseIntegration'
         - $ref: '#/components/schemas/GitlabIntegration'
         - $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
@@ -32876,7 +32747,7 @@ components:
       type: object
       x-graphql-type: VCSIntegrationsConnection
     VCSProvider:
-      description: VCSProvider is the type of VCS provider.
+      description: VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
       enum:
         - BITBUCKET_CLOUD
         - BITBUCKET_DATACENTER
@@ -32896,7 +32767,7 @@ components:
         BITBUCKET_DATACENTER: Self-hosted Bitbucket Datacenter.
         BLOB: Blob Storage VCS provider reading commit archives from an object store.
         GIT: Git link VCS provider.
-        GITHUB: Managed GitHub (github.com).
+        GITHUB: The account's named GitHub App integration, or its default when none is named.
         GITHUB_ENTERPRISE: |-
           GitHub Enterprise - either self-hosted or as an extra organization on
           github.com.

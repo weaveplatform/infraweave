@@ -466,14 +466,6 @@ func (UnimplementedStrict) GithubEnterpriseWebhooksEndpoint(context.Context, Git
 	return nil, &problem.NotImplementedError{OperationID: "githubEnterpriseWebhooksEndpoint", Route: "GET /github-enterprise-webhooks-endpoint"}
 }
 
-func (UnimplementedStrict) GithubIntegration(context.Context, GithubIntegrationRequestObject) (GithubIntegrationResponseObject, error) {
-	return nil, &problem.NotImplementedError{OperationID: "githubIntegration", Route: "GET /github-integration"}
-}
-
-func (UnimplementedStrict) GithubIntegrationUpdate(context.Context, GithubIntegrationUpdateRequestObject) (GithubIntegrationUpdateResponseObject, error) {
-	return nil, &problem.NotImplementedError{OperationID: "githubIntegrationUpdate", Route: "PUT /github-integration"}
-}
-
 func (UnimplementedStrict) GitlabIntegrationCreate(context.Context, GitlabIntegrationCreateRequestObject) (GitlabIntegrationCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "gitlabIntegrationCreate", Route: "POST /gitlab-integrations"}
 }

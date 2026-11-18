@@ -69,6 +69,7 @@ func newClaimWorldConfig(t *testing.T, c config.Config) *claimWorld {
 		if _, err := h.d.Stacks.API().StackCreate(h.admin, api.StackCreateRequestObject{
 			Body: &api.StackCreateRequest{Input: api.StackInput{
 				Name: name, Repository: "infra", Branch: "main", Space: &space,
+				Provider: new(api.VCSProviderGIT),
 			}},
 		}); err != nil {
 			t.Fatal(err)

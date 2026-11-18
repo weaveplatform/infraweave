@@ -95,8 +95,8 @@ type Settings struct {
 // its credential and webhook secret opened. Nothing but the provider's
 // client sees them.
 type Integration struct {
-	// ID is the stored integration's, zero for an operator's built-in
-	// integration, which a run's minted token names to revoke it by.
+	// ID names the account's stored integration, which a run's minted
+	// token names to revoke it by.
 	ID            kernel.ULID
 	Provider      string
 	Settings      Settings

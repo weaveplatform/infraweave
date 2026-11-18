@@ -1301,21 +1301,6 @@ func (e GithubEnterpriseIntegrationKind) Valid() bool {
 	}
 }
 
-// Defines values for GithubIntegrationKind.
-const (
-	GithubIntegrationKindGithubIntegration GithubIntegrationKind = "GithubIntegration"
-)
-
-// Valid indicates whether the value is a known member of the GithubIntegrationKind enum.
-func (e GithubIntegrationKind) Valid() bool {
-	switch e {
-	case GithubIntegrationKindGithubIntegration:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GitlabIntegrationKind.
 const (
 	GitlabIntegrationKindGitlabIntegration GitlabIntegrationKind = "GitlabIntegration"
@@ -4989,32 +4974,6 @@ type GithubEnterpriseIntegrationUpdateRequest struct {
 	WebhookSecret  string                   `json:"webhookSecret"`
 }
 
-// GithubIntegration GithubIntegration shows build-in GitHub integration details.
-type GithubIntegration struct {
-	ApiHost      string `json:"apiHost"`
-	IsEnterprise bool   `json:"isEnterprise"`
-
-	// Kind The concrete type, for union and interface responses.
-	Kind           GithubIntegrationKind `json:"kind"`
-	UseGitCheckout bool                  `json:"useGitCheckout"`
-
-	// VcsCheckOptions Additional options for configuring VCS check behavior.
-	VcsCheckOptions *VCSCheckOptions `json:"vcsCheckOptions,omitempty"`
-	VcsChecks       VCSCheck         `json:"vcsChecks"`
-}
-
-// GithubIntegrationKind The concrete type, for union and interface responses.
-type GithubIntegrationKind string
-
-// GithubIntegrationUpdateRequest The arguments of githubIntegrationUpdate not carried in the path.
-type GithubIntegrationUpdateRequest struct {
-	UseGitCheckout *bool `json:"useGitCheckout,omitempty"`
-
-	// VcsCheckOptions Input for configuring additional VCS check options.
-	VcsCheckOptions *VCSCheckOptionsInput `json:"vcsCheckOptions,omitempty"`
-	VcsChecks       VCSCheck              `json:"vcsChecks"`
-}
-
 // GitlabIntegration GitlabIntegration shows Gitlab integration details.
 type GitlabIntegration struct {
 	ApiHost     string `json:"apiHost"`
@@ -7037,7 +6996,7 @@ type RunWithPosition struct {
 	IsModule bool  `json:"isModule"`
 	Position int32 `json:"position"`
 
-	// Provider VCSProvider is the type of VCS provider.
+	// Provider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 	Provider VCSProvider `json:"provider"`
 
 	// Run A reference to a Run; fetch it with GET /runs/{runId}.
@@ -8229,7 +8188,7 @@ type Stack struct {
 	// ProtectFromDeletion Indicates whether deletion protection is currently "on" for the stack.
 	ProtectFromDeletion bool `json:"protectFromDeletion"`
 
-	// Provider VCSProvider is the type of VCS provider.
+	// Provider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 	Provider VCSProvider `json:"provider"`
 
 	// PullRequests List of up to 50 most recent open Pull Requests targeting Stack's tracked
@@ -9002,7 +8961,7 @@ type StackInput struct {
 	// ProtectFromDeletion Indicates whether deletion protection is currently "on" for the stack.
 	ProtectFromDeletion *bool `json:"protectFromDeletion,omitempty"`
 
-	// Provider VCSProvider is the type of VCS provider.
+	// Provider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 	Provider *VCSProvider `json:"provider,omitempty"`
 
 	// Repository Name of the repository to track.
@@ -9883,7 +9842,7 @@ type VCSIntegration struct {
 	// Name The name of the integration.
 	Name string `json:"name"`
 
-	// Provider VCSProvider is the type of VCS provider.
+	// Provider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 	Provider VCSProvider `json:"provider"`
 
 	// Space A reference to a Space; fetch it with GET /spaces/{spaceId}.
@@ -9975,7 +9934,7 @@ type VCSIntegrationsConnection struct {
 	Node VCSIntegrationRef `json:"node"`
 }
 
-// VCSProvider VCSProvider is the type of VCS provider.
+// VCSProvider VCS provider. GITHUB uses the account's GitHub App integration, its default when no integration is named.
 type VCSProvider string
 
 // Version Version represents a single version of the Module.
@@ -12416,9 +12375,6 @@ type GithubEnterpriseIntegrationPatchApplicationMergePatchPlusJSONRequestBody = 
 // GithubEnterpriseIntegrationUpdateJSONRequestBody defines body for GithubEnterpriseIntegrationUpdate for application/json ContentType.
 type GithubEnterpriseIntegrationUpdateJSONRequestBody = GithubEnterpriseIntegrationUpdateRequest
 
-// GithubIntegrationUpdateJSONRequestBody defines body for GithubIntegrationUpdate for application/json ContentType.
-type GithubIntegrationUpdateJSONRequestBody = GithubIntegrationUpdateRequest
-
 // GitlabIntegrationCreateJSONRequestBody defines body for GitlabIntegrationCreate for application/json ContentType.
 type GitlabIntegrationCreateJSONRequestBody = GitlabIntegrationCreateRequest
 
@@ -14238,40 +14194,6 @@ func (t *TerraformEntity) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// AsGithubIntegration returns the union data inside the VCSIntegrationDetails as a GithubIntegration
-func (t VCSIntegrationDetails) AsGithubIntegration() (GithubIntegration, error) {
-	var body GithubIntegration
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGithubIntegration overwrites any union data inside the VCSIntegrationDetails as the provided GithubIntegration
-func (t *VCSIntegrationDetails) FromGithubIntegration(v GithubIntegration) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	b, err = runtime.JSONMerge(b, []byte(`{"kind":"GithubIntegration"}`))
-	t.union = b
-	return err
-}
-
-// MergeGithubIntegration performs a merge with any union data inside the VCSIntegrationDetails, using the provided GithubIntegration
-func (t *VCSIntegrationDetails) MergeGithubIntegration(v GithubIntegration) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	b, err = runtime.JSONMerge(b, []byte(`{"kind":"GithubIntegration"}`))
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
 // AsGithubEnterpriseIntegration returns the union data inside the VCSIntegrationDetails as a GithubEnterpriseIntegration
 func (t VCSIntegrationDetails) AsGithubEnterpriseIntegration() (GithubEnterpriseIntegration, error) {
 	var body GithubEnterpriseIntegration
@@ -14534,8 +14456,6 @@ func (t VCSIntegrationDetails) ValueByDiscriminator() (interface{}, error) {
 		return t.AsBlobStorageIntegration()
 	case "GithubEnterpriseIntegration":
 		return t.AsGithubEnterpriseIntegration()
-	case "GithubIntegration":
-		return t.AsGithubIntegration()
 	case "GitlabIntegration":
 		return t.AsGitlabIntegration()
 	case "OriginIntegration":
@@ -15939,31 +15859,6 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
 	GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GithubIntegration Get GitHub Integration
-	//
-	// Build-in GitHub Integration settings.
-	//
-	// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
-	GithubIntegration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GithubIntegrationUpdateWithBody Update GitHub Integration
-	//
-	// Updates the build-in GitHub integration.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-	GithubIntegrationUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GithubIntegrationUpdate Update GitHub Integration
-	//
-	// Updates the build-in GitHub integration.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-	GithubIntegrationUpdate(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GitlabIntegrationCreateWithBody Create GitLab Integration
 	//
@@ -21855,61 +21750,6 @@ func (c *Client) GithubEnterpriseIntegrationTest(ctx context.Context, githubEnte
 // Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
 func (c *Client) GithubEnterpriseWebhooksEndpoint(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubEnterpriseWebhooksEndpointRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GithubIntegration Get GitHub Integration
-//
-// Build-in GitHub Integration settings.
-//
-// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
-func (c *Client) GithubIntegration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubIntegrationRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GithubIntegrationUpdateWithBody Update GitHub Integration
-//
-// Updates the build-in GitHub integration.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-func (c *Client) GithubIntegrationUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubIntegrationUpdateRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GithubIntegrationUpdate Update GitHub Integration
-//
-// Updates the build-in GitHub integration.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-func (c *Client) GithubIntegrationUpdate(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubIntegrationUpdateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -34299,73 +34139,6 @@ func NewGithubEnterpriseWebhooksEndpointRequest(server string, params *GithubEnt
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewGithubIntegrationRequest constructs an http.Request for the GithubIntegration method
-func NewGithubIntegrationRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/github-integration")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGithubIntegrationUpdateRequest calls the generic GithubIntegrationUpdate builder with application/json body
-func NewGithubIntegrationUpdateRequest(server string, body GithubIntegrationUpdateJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewGithubIntegrationUpdateRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewGithubIntegrationUpdateRequestWithBody constructs an http.Request for the GithubIntegrationUpdate method, with any body, and a specified content type
-func NewGithubIntegrationUpdateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/github-integration")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -49775,33 +49548,6 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /github-enterprise-webhooks-endpoint (the `GithubEnterpriseWebhooksEndpoint` operationId).
 	GithubEnterpriseWebhooksEndpointWithResponse(ctx context.Context, params *GithubEnterpriseWebhooksEndpointParams, reqEditors ...RequestEditorFn) (*GithubEnterpriseWebhooksEndpointResponse, error)
 
-	// GithubIntegrationWithResponse Get GitHub Integration
-	//
-	// Build-in GitHub Integration settings.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
-	GithubIntegrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubIntegrationResponse, error)
-
-	// GithubIntegrationUpdateWithBodyWithResponse Update GitHub Integration
-	//
-	// Updates the build-in GitHub integration.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-	GithubIntegrationUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error)
-
-	// GithubIntegrationUpdateWithResponse Update GitHub Integration
-	//
-	// Updates the build-in GitHub integration.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-	GithubIntegrationUpdateWithResponse(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error)
-
 	// GitlabIntegrationCreateWithBodyWithResponse Create GitLab Integration
 	//
 	// Creates the GitLab integration.
@@ -64335,182 +64081,6 @@ func (r GithubEnterpriseWebhooksEndpointResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GithubEnterpriseWebhooksEndpointResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// GithubIntegrationResponse200Headers the declared response headers of an HTTP 200 response for GithubIntegration
-type GithubIntegrationResponse200Headers struct {
-	XRateLimitLimit     *int
-	XRateLimitRemaining *int
-	XRateLimitReset     *int
-}
-
-// GithubIntegrationResponse429Headers the declared response headers of an HTTP 429 response for GithubIntegration
-type GithubIntegrationResponse429Headers struct {
-	RetryAfter          *int
-	XRateLimitLimit     *int
-	XRateLimitRemaining *int
-	XRateLimitReset     *int
-}
-
-// GithubIntegrationResponse503Headers the declared response headers of an HTTP 503 response for GithubIntegration
-type GithubIntegrationResponse503Headers struct {
-	RetryAfter *int
-}
-
-type GithubIntegrationResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *GithubIntegration
-	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
-	ApplicationproblemJSON429 *TooManyRequests
-	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
-	ApplicationproblemJSON503 *ApiDisabled
-	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
-	ApplicationproblemJSONDefault *Problem
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *GithubIntegrationResponse200Headers
-	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *GithubIntegrationResponse429Headers
-	// Headers503 the parsed response headers for an HTTP 503 response
-	Headers503 *GithubIntegrationResponse503Headers
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GithubIntegrationResponse) GetJSON200() *GithubIntegration {
-	return r.JSON200
-}
-
-// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
-func (r GithubIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
-	return r.ApplicationproblemJSON429
-}
-
-// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
-func (r GithubIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
-	return r.ApplicationproblemJSON503
-}
-
-// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
-func (r GithubIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
-	return r.ApplicationproblemJSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r GithubIntegrationResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GithubIntegrationResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GithubIntegrationResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GithubIntegrationResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// GithubIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for GithubIntegrationUpdate
-type GithubIntegrationUpdateResponse200Headers struct {
-	XRateLimitLimit     *int
-	XRateLimitRemaining *int
-	XRateLimitReset     *int
-}
-
-// GithubIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for GithubIntegrationUpdate
-type GithubIntegrationUpdateResponse429Headers struct {
-	RetryAfter          *int
-	XRateLimitLimit     *int
-	XRateLimitRemaining *int
-	XRateLimitReset     *int
-}
-
-// GithubIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for GithubIntegrationUpdate
-type GithubIntegrationUpdateResponse503Headers struct {
-	RetryAfter *int
-}
-
-type GithubIntegrationUpdateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *GithubIntegration
-	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
-	ApplicationproblemJSON429 *TooManyRequests
-	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
-	ApplicationproblemJSON503 *ApiDisabled
-	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
-	ApplicationproblemJSONDefault *Problem
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *GithubIntegrationUpdateResponse200Headers
-	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *GithubIntegrationUpdateResponse429Headers
-	// Headers503 the parsed response headers for an HTTP 503 response
-	Headers503 *GithubIntegrationUpdateResponse503Headers
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GithubIntegrationUpdateResponse) GetJSON200() *GithubIntegration {
-	return r.JSON200
-}
-
-// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
-func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
-	return r.ApplicationproblemJSON429
-}
-
-// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
-func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
-	return r.ApplicationproblemJSON503
-}
-
-// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
-func (r GithubIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
-	return r.ApplicationproblemJSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r GithubIntegrationUpdateResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GithubIntegrationUpdateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GithubIntegrationUpdateResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GithubIntegrationUpdateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -92571,51 +92141,6 @@ func (c *ClientWithResponses) GithubEnterpriseWebhooksEndpointWithResponse(ctx c
 	return ParseGithubEnterpriseWebhooksEndpointResponse(rsp)
 }
 
-// GithubIntegrationWithResponse Get GitHub Integration
-//
-// Build-in GitHub Integration settings.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with GET /github-integration (the `GithubIntegration` operationId).
-func (c *ClientWithResponses) GithubIntegrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubIntegrationResponse, error) {
-	rsp, err := c.GithubIntegration(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubIntegrationResponse(rsp)
-}
-
-// GithubIntegrationUpdateWithBodyWithResponse Update GitHub Integration
-//
-// Updates the build-in GitHub integration.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-func (c *ClientWithResponses) GithubIntegrationUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error) {
-	rsp, err := c.GithubIntegrationUpdateWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubIntegrationUpdateResponse(rsp)
-}
-
-// GithubIntegrationUpdateWithResponse Update GitHub Integration
-//
-// Updates the build-in GitHub integration.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PUT /github-integration (the `GithubIntegrationUpdate` operationId).
-func (c *ClientWithResponses) GithubIntegrationUpdateWithResponse(ctx context.Context, body GithubIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubIntegrationUpdateResponse, error) {
-	rsp, err := c.GithubIntegrationUpdate(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubIntegrationUpdateResponse(rsp)
-}
-
 // GitlabIntegrationCreateWithBodyWithResponse Create GitLab Integration
 //
 // Creates the GitLab integration.
@@ -112514,236 +112039,6 @@ func ParseGithubEnterpriseWebhooksEndpointResponse(rsp *http.Response) (*GithubE
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers GithubEnterpriseWebhooksEndpointResponse503Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		response.Headers503 = &headers
-	}
-
-	return response, nil
-}
-
-// ParseGithubIntegrationResponse parses an HTTP response from a GithubIntegrationWithResponse call
-func ParseGithubIntegrationResponse(rsp *http.Response) (*GithubIntegrationResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GithubIntegrationResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GithubIntegration
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ApiDisabled
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON503 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers GithubIntegrationResponse200Headers
-		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitLimit = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitRemaining = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitReset = &value
-		}
-		response.Headers200 = &headers
-	case rsp.StatusCode == 429:
-		var headers GithubIntegrationResponse429Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitLimit = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitRemaining = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitReset = &value
-		}
-		response.Headers429 = &headers
-	case rsp.StatusCode == 503:
-		var headers GithubIntegrationResponse503Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		response.Headers503 = &headers
-	}
-
-	return response, nil
-}
-
-// ParseGithubIntegrationUpdateResponse parses an HTTP response from a GithubIntegrationUpdateWithResponse call
-func ParseGithubIntegrationUpdateResponse(rsp *http.Response) (*GithubIntegrationUpdateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GithubIntegrationUpdateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GithubIntegration
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest ApiDisabled
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSON503 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest Problem
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.ApplicationproblemJSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers GithubIntegrationUpdateResponse200Headers
-		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitLimit = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitRemaining = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitReset = &value
-		}
-		response.Headers200 = &headers
-	case rsp.StatusCode == 429:
-		var headers GithubIntegrationUpdateResponse429Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitLimit = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitRemaining = &value
-		}
-		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XRateLimitReset = &value
-		}
-		response.Headers429 = &headers
-	case rsp.StatusCode == 503:
-		var headers GithubIntegrationUpdateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -264,7 +264,10 @@ func TestAccStackHoldRace(t *testing.T) {
 	}
 	d.Stacks.GuardStacks(holders{q: q})
 	in := func(name, space string) api.StackInput {
-		return api.StackInput{Name: name, Repository: "infra", Branch: "main", Space: &space}
+		return api.StackInput{
+			Name: name, Repository: "infra", Branch: "main", Space: &space,
+			Provider: new(api.VCSProviderGIT),
+		}
 	}
 	ids := map[string]kernel.ULID{}
 	for _, name := range []string{"moved", "kept", "deleted"} {

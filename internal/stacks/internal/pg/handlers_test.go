@@ -112,7 +112,7 @@ func TestAccHandlers(t *testing.T) {
 	in.Description = new("ours")
 
 	tofu := api.StackInput{
-		Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"),
+		Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"), Provider: new(api.VCSProviderGIT),
 		VendorConfig: &api.StackConfigVendorInput{Opentofu: &api.StackConfigVendorOpenTofuInput{
 			Concise: new(true),
 		}},
@@ -339,7 +339,7 @@ func TestAccHandlersUnavailable(t *testing.T) {
 	f := newFixture(t)
 	s := http.New(f.svc, f.authz, f.spaces, f.catalog)
 	ctx := kernel.WithPrincipal(t.Context(), f.admin)
-	in := api.StackInput{Name: "Infra", Repository: "infra", Branch: "main", Space: new("team")}
+	in := api.StackInput{Name: "Infra", Repository: "infra", Branch: "main", Space: new("team"), Provider: new(api.VCSProviderGIT)}
 	if _, err := s.StackCreate(ctx, api.StackCreateRequestObject{
 		Body: &api.StackCreateRequest{Input: in},
 	}); err != nil {
@@ -407,7 +407,7 @@ func TestAccHandlersTerragrunt(t *testing.T) {
 		t.Helper()
 		res, err := s.StackCreate(admin, api.StackCreateRequestObject{
 			Body: &api.StackCreateRequest{ManageState: true, Input: api.StackInput{
-				Name: name, Repository: "infra", Branch: "main", Space: new("team"),
+				Name: name, Repository: "infra", Branch: "main", Space: new("team"), Provider: new(api.VCSProviderGIT),
 				TerraformVersion: top,
 				VendorConfig:     &api.StackConfigVendorInput{Terragrunt: &tg},
 			}},
@@ -468,7 +468,7 @@ func TestAccHandlersTerragrunt(t *testing.T) {
 	// An update keeps the state management the create decided.
 	updated, err := s.StackUpdate(admin, api.StackUpdateRequestObject{
 		StackId: "tofu", Body: &api.StackInput{
-			Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"),
+			Name: "Tofu", Repository: "infra", Branch: "main", Space: new("team"), Provider: new(api.VCSProviderGIT),
 			VendorConfig: &api.StackConfigVendorInput{Terragrunt: &api.StackConfigVendorTerragruntInput{
 				UseStateManagement: new(true),
 			}},

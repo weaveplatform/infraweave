@@ -51,6 +51,13 @@ func TestUnitLoadDefaults(t *testing.T) {
 	}
 }
 
+func TestUnitLoadRejectsRetiredGitHubApp(t *testing.T) {
+	file := writeFile(t, "vcs:\n  github_app:\n    app_id: '7'\n")
+	if _, err := loadArgs(t, "--config", file); err == nil || !strings.Contains(err.Error(), "github_app") {
+		t.Fatalf("retired App setting was not named by strict configuration: %v", err)
+	}
+}
+
 // TestUnitLoadKeysWithoutFlags checks that a key no flag binds is still set
 // by the file and, over it, by the environment.
 func TestUnitLoadKeysWithoutFlags(t *testing.T) {

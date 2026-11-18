@@ -86,11 +86,17 @@ func refused(err error, pointer string) bool {
 }
 
 // TestUnitBrowse checks that repositories page by path through a
-// provider's default, an integration and a built-in one, with a filter
+// provider's default, an integration and a GitHub alias, with a filter
 // ignoring case, and that branches list sorted by URL and through an
 // integration, including one in a space the caller's inherits from.
 func TestUnitBrowse(t *testing.T) {
 	f := newFixture(t)
+	gh := kernel.NewULID()
+	f.store.rows[gh] = integration.Integration{
+		Account: f.acct, ID: gh,
+		Provider: "GITHUB_ENTERPRISE", Space: f.acct.ULID, IsDefault: true,
+	}
+
 	gitlab := api.VCSProviderGITLAB
 	first, err := f.repositories(f.ctx, api.RepositoriesParams{
 		Provider: &gitlab, Filter: ptr("INFRA"), Limit: ptr(api.Limit(1)),
@@ -119,7 +125,7 @@ func TestUnitBrowse(t *testing.T) {
 	github := api.VCSProviderGITHUB
 	if got, err := f.repositories(f.ctx, api.RepositoriesParams{Provider: &github}); err != nil ||
 		len(got.Items) != 3 {
-		t.Errorf("built in = %+v, %v", got, err)
+		t.Errorf("GitHub alias = %+v, %v", got, err)
 	}
 
 	git, err := f.branches(f.ctx, api.BranchesParams{

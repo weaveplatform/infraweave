@@ -304,9 +304,9 @@ Feature: Role bindings
   Scenario: A stack bound in another space holds the role there, keeps its binding when it moves and loses it when deleted
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Child","description":"","inheritEntities":true,"parentSpace":"legacy"}' through A
     And the answer's id is the space "child"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"web","branch":"main","space":"{child}"},"manageState":false}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Web","repository":"web","branch":"main","space":"{child}"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through A
     When token "h" lists the stacks with access to the space "legacy" through B
     Then the answer lists 1 holder
     And the holder "infra" holds the role "space-reader" on the space "legacy" as RESIDENT by its own read
@@ -340,7 +340,7 @@ Feature: Role bindings
     When token "h" sends "POST /api/v1/stack-role-binding-batches" with '{"bindings":[{"stackID":"infra","roleID":"space-reader","spaceID":"{child}"},{"stackID":"top","roleID":"space-admin","spaceID":"acme"}]}' through B
     Then it answers 201
     And the home account holds 3 stack role bindings
-    When token "h" sends "PUT /api/v1/stacks/web" with '{"name":"Web","repository":"web","branch":"main","space":"acme"}' through A
+    When token "h" sends "PUT /api/v1/stacks/web" with '{"provider":"GIT","name":"Web","repository":"web","branch":"main","space":"acme"}' through A
     Then it answers 200
     When token "h" sends "GET /api/v1/stacks/web/role-bindings" through B
     Then the answer lists 1 binding
@@ -357,8 +357,8 @@ Feature: Role bindings
 
   @op:stackRoleBindingCreate @op:stackRoleBinding @op:stackRoleBindingUpdate @op:stackRoleBindingPatch @op:stackRoleBindingDelete @op:stackRoleBindingBatchCreate @op:stackRoleBindings @op:stacksWithAccessToSpace @op:stacksWithAccessToSpaceSuggestions @case:denial
   Scenario: A stack's binding needs STACK_MANAGE on the stack's space and SPACE_ADMIN on the space it binds in
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through B
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Top","repository":"top","branch":"main","space":"acme"},"manageState":false}' through B
     And token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"legacy"}' through A
     And the answer's id names "b"
     When token "m" sends "GET /api/v1/stack-role-bindings/{b}" through B
@@ -409,7 +409,7 @@ Feature: Role bindings
 
   @op:stackRoleBindingCreate @op:stackRoleBinding @op:stackRoleBindingUpdate @op:stackRoleBindingPatch @op:stackRoleBindingDelete @op:stackRoleBindingBatchCreate @op:stackRoleBindings @op:stacksWithAccessToSpace @op:stacksWithAccessToSpaceSuggestions @case:failure
   Scenario: A top-space binding of a stack below it, an unknown stack, role, space or binding, a duplicate and a stale change are refused
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     When token "h" sends "POST /api/v1/stack-role-bindings" with '{"stackID":"infra","roleID":"space-reader","spaceID":"acme"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/spaceID"

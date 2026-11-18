@@ -66,7 +66,7 @@ type Config struct {
 	// ref: decision 0011
 	Vendors vendorsassembly.Settings `mapstructure:"vendors"`
 	// VCS is the vcs domain's: the certificate authorities trusted for a
-	// repository's host, and the operator's GitHub App.
+	// repository's host and provider API locations.
 	//
 	// ref: decision 0012
 	VCS vcsassembly.Settings `mapstructure:"vcs"`

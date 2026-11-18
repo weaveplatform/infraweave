@@ -21,9 +21,7 @@ func (limited) Test(context.Context, port.Integration) ([]port.Check, error) {
 	return nil, &port.RateLimited{Reset: time.Unix(1_700_000_000, 0)}
 }
 
-// gitHubFixture is a server over the operator's App, with check options
-// stored, and a GitHub Enterprise integration whose tester is rate
-// limited; builtin false leaves the operator's App unconfigured.
+// gitHubFixture serves an account-owned App whose tester is rate limited.
 type gitHubFixture struct {
 	srv    http.Server
 	store  *store
@@ -32,15 +30,11 @@ type gitHubFixture struct {
 	ghe    string
 }
 
-func newGitHubFixture(t *testing.T, builtin bool) gitHubFixture {
+func newGitHubFixture(t *testing.T) gitHubFixture {
 	t.Helper()
 	acct := kernel.NewAccountID()
-	op, ghe := kernel.NewULID(), kernel.NewULID()
+	ghe := kernel.NewULID()
 	st := &store{rows: map[kernel.ULID]integration.Integration{
-		op: {
-			Account: acct, ID: op, Provider: integration.GitHub, Space: acct.ULID,
-			IsDefault: true, Checks: integration.Checks{Mode: "ALL"},
-		},
 		ghe: {
 			Account: acct, ID: ghe, Provider: integration.GitHubEnterprise, Name: "Enterprise",
 			Space: acct.ULID, Settings: port.Settings{APIHost: "https://ghe.example", AppID: "7"},
@@ -53,12 +47,6 @@ func newGitHubFixture(t *testing.T, builtin bool) gitHubFixture {
 		Testers:   map[string]port.Tester{integration.GitHubEnterprise: limited{}},
 		Now:       time.Now,
 	}
-	if builtin {
-		d.Builtin = map[string]port.Integration{integration.GitHub: {
-			Provider: integration.GitHub,
-			Settings: port.Settings{APIHost: "https://api.github.com"},
-		}}
-	}
 	return gitHubFixture{
 		srv: http.New(integration.New(d), sp, nil), store: st, spaces: sp,
 		ctx: kernel.WithPrincipal(t.Context(), kernel.Principal{AccountID: acct}),
@@ -69,23 +57,7 @@ func newGitHubFixture(t *testing.T, builtin bool) gitHubFixture {
 // calls are the GitHub operations, each answering only its error.
 func (f gitHubFixture) calls(ctx context.Context) map[string]func() error {
 	s, id := f.srv, f.ghe
-	yes := true
 	return map[string]func() error{
-		"github": func() error {
-			_, err := s.GithubIntegration(ctx, api.GithubIntegrationRequestObject{})
-			return err
-		},
-		"github update": func() error {
-			_, err := s.GithubIntegrationUpdate(ctx, api.GithubIntegrationUpdateRequestObject{
-				Body: &api.GithubIntegrationUpdateJSONRequestBody{
-					VcsChecks: api.ALL, UseGitCheckout: &yes,
-					VcsCheckOptions: &api.VCSCheckOptionsInput{
-						IndividualFailuresOnly: &yes, IndividualSkipUnchanged: &yes,
-					},
-				},
-			})
-			return err
-		},
 		"create": func() error {
 			_, err := s.GithubEnterpriseIntegrationCreate(ctx,
 				api.GithubEnterpriseIntegrationCreateRequestObject{
@@ -138,32 +110,13 @@ func (f gitHubFixture) calls(ctx context.Context) map[string]func() error {
 	}
 }
 
-// TestUnitGitHub checks that the operator's App answers its stored check
-// options, and its details to an admin of the integration's space as a
-// GitHub Enterprise integration's are; that a rate-limited test answers
-// upstream-error; that no principal is unauthenticated; that an
-// unconfigured operator's App and manifest flow answer
-// service-unavailable; and that failing slugs and a failing store answer
-// their error.
+// TestUnitGitHub checks account-owned App reads, alias reads, upstream
+// failures and manifest work without an App client.
 func TestUnitGitHub(t *testing.T) {
-	f := newGitHubFixture(t, true)
-	got, err := f.srv.GithubIntegration(f.ctx, api.GithubIntegrationRequestObject{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if v := got.(api.GithubIntegration200JSONResponse).Body; v.VcsChecks != api.ALL ||
-		v.IsEnterprise {
-		t.Errorf("github = %+v", v)
-	}
+	f := newGitHubFixture(t)
 	for _, provider := range []api.VCSProvider{api.VCSProviderGITHUB, api.VCSProviderGITHUBENTERPRISE} {
-		var id string
-		for k, in := range f.store.rows {
-			if in.Provider == string(provider) {
-				id = k.String()
-			}
-		}
 		read, err := f.srv.VcsIntegration(f.ctx, api.VcsIntegrationRequestObject{
-			VcsIntegrationId: id, Params: api.VcsIntegrationParams{Provider: provider},
+			VcsIntegrationId: f.ghe, Params: api.VcsIntegrationParams{Provider: provider},
 		})
 		if err != nil || read.(api.VcsIntegration200JSONResponse).Body.Details == nil {
 			t.Errorf("details of %s = %+v, %v", provider, read, err)
@@ -177,32 +130,18 @@ func TestUnitGitHub(t *testing.T) {
 			t.Errorf("%s with no principal = %v", name, err)
 		}
 	}
-
-	bare := newGitHubFixture(t, false)
-	for _, name := range []string{"github", "github update", "manifest", "from manifest"} {
-		if err := bare.calls(bare.ctx)[name](); !is(err, problem.ServiceUnavailable) {
-			t.Errorf("%s with no operator App = %v", name, err)
+	for _, name := range []string{"manifest", "from manifest"} {
+		if err := f.calls(f.ctx)[name](); !is(err, problem.ServiceUnavailable) {
+			t.Errorf("%s with no App client = %v", name, err)
 		}
 	}
-	for k, in := range bare.store.rows {
-		if in.Provider == integration.GitHub {
-			_, err := bare.srv.VcsIntegration(bare.ctx, api.VcsIntegrationRequestObject{
-				VcsIntegrationId: k.String(),
-				Params:           api.VcsIntegrationParams{Provider: api.VCSProviderGITHUB},
-			})
-			if !is(err, problem.ServiceUnavailable) {
-				t.Errorf("details of an unconfigured operator's App = %v", err)
-			}
-		}
-	}
-
 	f.spaces.fail = errBoom
 	if err := f.calls(f.ctx)["read"](); !errors.Is(err, errBoom) {
 		t.Errorf("read with failing slugs = %v", err)
 	}
 	f.spaces.fail = nil
 	f.store.fail = errBoom
-	for _, name := range []string{"github", "github update", "read", "update", "test"} {
+	for _, name := range []string{"read", "update", "test"} {
 		if err := f.calls(f.ctx)[name](); !errors.Is(err, errBoom) {
 			t.Errorf("%s on a failing store = %v", name, err)
 		}

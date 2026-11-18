@@ -57,67 +57,17 @@ var appKey = sync.OnceValue(func() []byte {
 	})
 })
 
-// TestAccBuiltin checks that the operator's App answers its defaults until
-// an account stores its check options, keeps a nil option, refuses an
-// unknown mode, and is what a GITHUB stack uses; and that a service with
-// no operator App answers integration.ErrNotConfigured.
-func TestAccBuiltin(t *testing.T) {
-	ctx := t.Context()
+// TestAccNoApps preserves the manifest failure when no App client is bound.
+func TestAccNoApps(t *testing.T) {
 	f := newFixture(t)
-	in, err := f.svc.Builtin(ctx, f.admin, "GITHUB")
-	if err != nil || in.Checks.Mode != "INDIVIDUAL" || in.Settings.AppID != "1" || !in.IsDefault {
-		t.Fatalf("Builtin before a write = %+v, %v", in, err)
-	}
-	yes := true
-	in, err = f.svc.SetBuiltin(ctx, f.admin, "GITHUB", integration.Checks{Mode: "ALL"}, &yes)
-	if err != nil || in.Checks.Mode != "ALL" || !in.UseGitCheckout || in.Version != 1 {
-		t.Fatalf("SetBuiltin = %+v, %v", in, err)
-	}
-	in, err = f.svc.SetBuiltin(ctx, f.admin, "GITHUB", integration.Checks{
-		Mode: "AGGREGATED", IndividualFailuresOnly: true,
-	}, nil)
-	if err != nil || in.Checks.Mode != "AGGREGATED" || !in.UseGitCheckout || in.Version != 2 ||
-		!in.Checks.IndividualFailuresOnly {
-		t.Fatalf("second SetBuiltin = %+v, %v", in, err)
-	}
-	if _, err := f.svc.SetBuiltin(
-		ctx,
-		f.admin,
-		"GITHUB",
-		integration.Checks{Mode: "SOME"},
-		nil,
-	); !slices.Equal(
-		pointers(t, err),
-		[]string{"/vcsChecks"},
-	) {
-		t.Errorf("an unknown mode = %v", err)
-	}
-	use, ok, err := f.svc.Use(ctx, f.acct, "GITHUB", &in.ID)
-	if err != nil || !ok || string(use.Credential) != "operator-key" {
-		t.Errorf("Use(GITHUB) = %+v, %v, %v", use, ok, err)
-	}
-
 	bare := f.deps
-	bare.Builtin, bare.Apps = nil, nil
+	bare.Apps = nil
 	svc := integration.New(bare)
-	for name, err := range map[string]error{
-		"Builtin": func() error { _, err := svc.Builtin(ctx, f.admin, "GITHUB"); return err }(),
-		"SetBuiltin": func() error {
-			_, err := svc.SetBuiltin(ctx, f.admin, "GITHUB", integration.Checks{Mode: "ALL"}, nil)
-			return err
-		}(),
-		"OpenManifest": func() error {
-			_, err := svc.OpenManifest(ctx, f.admin, "", "", "acme")
-			return err
-		}(),
-		"FromManifest": func() error {
-			_, err := svc.FromManifest(ctx, f.admin, "good", "state")
-			return err
-		}(),
-	} {
-		if !errors.Is(err, integration.ErrNotConfigured) {
-			t.Errorf("%s with no operator App = %v", name, err)
-		}
+	if _, err := svc.OpenManifest(t.Context(), f.admin, "", "", "acme"); !errors.Is(err, integration.ErrNotConfigured) {
+		t.Errorf("OpenManifest with no App client = %v", err)
+	}
+	if _, err := svc.FromManifest(t.Context(), f.admin, "good", "state"); !errors.Is(err, integration.ErrNotConfigured) {
+		t.Errorf("FromManifest with no App client = %v", err)
 	}
 }
 

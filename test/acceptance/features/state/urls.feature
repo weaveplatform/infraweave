@@ -26,9 +26,9 @@ Feature: Signed state upload and download URLs
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Closed","repository":"infra","branch":"main","space":"legacy"},"manageState":true}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Closed","repository":"infra","branch":"main","space":"legacy"},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
 
   @op:stateUploadUrl @case:success
   Scenario: An upload URL takes one state file with no credential and keeps it sealed
@@ -96,7 +96,7 @@ Feature: Signed state upload and download URLs
     When 14 minutes pass for the URL "up"
     And '{"version":4,"serial":1,"lineage":"l","outputs":{},"resources":[]}' is put with no credential at the URL "up" through B
     Then it answers 200
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true,"stackObjectID":"{obj}"}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{"externalStateAccessEnabled":true}}},"manageState":true,"stackObjectID":"{obj}"}' through A
     Then it answers 201
     When token "h" sends "POST /api/v1/stacks/copy/state/download-url" with '{}' through B
     Then it answers 200
@@ -122,7 +122,7 @@ Feature: Signed state upload and download URLs
     Then "blob.expire" eventually runs once more, as one job
     And the upload of the URL "old" is gone from the uploads store
     And the upload of the URL "young" is one sealed object in the uploads store
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{old}"}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{old}"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/stackObjectID" as "not-found"
     When token "h" sends "POST /api/v1/stacks/infra/lock" through A

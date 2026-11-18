@@ -169,7 +169,7 @@ Feature: A stack's state is rolled back as a new version, and its versions are s
     And the answer's url is kept as "one"
     And the answer's objectId names "one"
     And '{"version":4,"serial":1,"lineage":"l","outputs":{},"resources":[]}' is put with no credential at the URL "one" through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{one}"}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Copy","repository":"infra","branch":"main","space":"legacy"},"manageState":true,"stackObjectID":"{one}"}' through A
     And token "h" sends "POST /api/v1/stacks/copy/lock" through B
     And token "h" sends "POST /api/v1/state/upload-url" with '{}' through A
     And the answer's url is kept as "two"
@@ -215,7 +215,7 @@ Feature: A stack's state is rolled back as a new version, and its versions are s
 
   @op:stackManagedStateRollback @case:failure
   Scenario: A rollback is refused of a stack without managed state, to its current version or one it lacks, with a body it does not take, unlocked, locked by another, or with a tracked run under way
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Plain","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/state/upload-url" with '{}' through B
     And the answer's url is kept as "up"
     And the answer's objectId names "obj"

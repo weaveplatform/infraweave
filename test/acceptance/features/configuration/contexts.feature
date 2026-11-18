@@ -26,7 +26,7 @@ Feature: Contexts
     And the answer's id is the space "team"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Child","description":"","inheritEntities":true,"parentSpace":"{team}"}' through B
     And the answer's id is the space "child"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{child}"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{child}"},"manageState":false}' through A
 
   @op:contextCreateV2 @op:context @op:contexts @op:contextUpdateV2 @op:contextPatch @op:contextDelete @op:contextConfigElement @case:success
   Scenario: An account admin creates a context attached to a stack, reads, changes and deletes it
@@ -114,7 +114,7 @@ Feature: Contexts
 
   @op:contexts @op:context @op:contextCreateV2 @op:contextUpdateV2 @op:contextPatch @op:contextDelete @op:contextConfigAdd @op:contextConfigSet @op:contextConfigDelete @op:contextConfigElement @op:contextAttach @op:contextDetach @op:contextAttachedStack @op:searchContexts @op:searchContextsSuggestions @op:attachableContextsInSpace @op:searchSpaceContexts @op:searchSpaceContextsSuggestions @case:denial
   Scenario: A space reader reads the contexts of its spaces alone and changes none
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"web","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Web","repository":"web","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Open","space":"legacy","configAttachments":[{"id":"A","type":"ENVIRONMENT_VARIABLE","value":"1","writeOnly":false}]}' through B
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Closed","space":"{team}","configAttachments":[{"id":"A","type":"ENVIRONMENT_VARIABLE","value":"1","writeOnly":false}],"stackAttachments":[{"stack":"infra","priority":0}]}' through A
     And token "h" sends "PUT /api/v1/stacks/web/contexts/open" with '{"priority":0}' through B
@@ -232,7 +232,7 @@ Feature: Contexts
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Far","space":"legacy"}' through B
     When token "h" sends "PUT /api/v1/stacks/infra/contexts/far" with '{"priority":0}' through A
     Then it answers a 422 problem "validation-failed"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy"}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem's detail names "context shared"
     And the problem's detail names "stack infra"
@@ -259,12 +259,12 @@ Feature: Contexts
   Scenario: A context attaches itself to the stacks in its reach that carry the label it names
     Given token "h" sends "POST /api/v1/spaces" with '{"name":"Solo","description":"","inheritEntities":false,"parentSpace":"{team}"}' through B
     And the answer's id is the space "solo"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lone","repository":"lone","branch":"main","space":"{solo}","labels":["infra"]},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Lone","repository":"lone","branch":"main","space":"{solo}","labels":["infra"]},"manageState":false}' through A
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Hand","space":"{team}","stackAttachments":[{"stack":"infra","priority":1}]}' through B
     When token "h" sends "POST /api/v1/contexts" with '{"name":"Infra Wide","space":"{team}","labels":["autoattach:infra"]}' through A
     Then it answers 201
     And the stack "infra" read through B with token "h" eventually attaches the contexts "hand"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{child}","labels":["infra"]}' through A
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{child}","labels":["infra"]}' through A
     Then it answers 200
     And the stack "infra" read through B with token "h" eventually attaches the contexts "hand, auto:infra-wide"
     When token "h" sends "POST /api/v1/contexts" with '{"name":"Everything","space":"acme","labels":["autoattach:*"]}' through B
@@ -272,13 +272,13 @@ Feature: Contexts
     And the stack "infra" read through A with token "h" eventually attaches the contexts "hand, auto:everything, auto:infra-wide"
     And the stack "lone" read through B with token "h" eventually attaches the contexts ""
     When token "h" sends "POST /api/v1/contexts" with '{"name":"Below","space":"{child}","labels":["autoattach:infra"]}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Web","repository":"web","branch":"main","space":"{team}","labels":["infra"]},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Web","repository":"web","branch":"main","space":"{team}","labels":["infra"]},"manageState":false}' through B
     Then it answers 201
     And the stack "web" read through A with token "h" eventually attaches the contexts "auto:everything, auto:infra-wide"
     When token "h" sends "PUT /api/v1/contexts/everything" with '{"input":{"name":"Everything","space":"acme"}}' through B
     Then it answers 200
     And the stack "infra" read through A with token "h" eventually attaches the contexts "hand, auto:below, auto:infra-wide"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{child}"}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{child}"}' through B
     Then it answers 200
     And the stack "infra" read through A with token "h" eventually attaches the contexts "hand"
     And the stack "web" read through B with token "h" eventually attaches the contexts "auto:infra-wide"

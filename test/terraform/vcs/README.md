@@ -43,7 +43,8 @@ repositories.
   - an owner's classic token with `repo` and `delete_repo`, or a
     fine-grained token on the organization with repository
     Administration write;
-  - a GitHub App owned by the organization, with read access to
+  - a GitHub App owned by the organization, registered through the API
+    as the lab account's default GitHub App integration, with read access to
     contents and metadata, no webhook, installed on all the
     organization's repositories; the lab holds nothing else for it to
     reach.

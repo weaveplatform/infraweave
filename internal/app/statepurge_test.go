@@ -52,6 +52,7 @@ func TestAccStatePurge(t *testing.T) {
 		if _, err := w.d.Stacks.API().StackCreate(w.admin, api.StackCreateRequestObject{
 			Body: &api.StackCreateRequest{Input: api.StackInput{
 				Name: name, Repository: "infra", Branch: "main", Space: &space,
+				Provider: new(api.VCSProviderGIT),
 			}},
 		}); err != nil {
 			t.Fatal(err)

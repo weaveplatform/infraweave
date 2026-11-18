@@ -35,14 +35,14 @@ Feature: Terragrunt stacks
   Scenario: A Terragrunt stack driving OpenTofu reads back as Terragrunt, with its effective versions and state management
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","terraformVersion":"~> 1.6.0","useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","terraformVersion":"~> 1.6.0","useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}},"manageState":true}' through A
     Then it answers 201
     And the answer's managesStateFile is 'false'
     And the answer's vendorConfig's kind is '"StackConfigVendorTerragrunt"'
     And the answer's vendorConfig's useStateManagement is 'false'
     And token "h" eventually reads the stack "infra" through B with the effective versions '{"tool":"OPEN_TOFU","effectiveTerragruntVersion":"0.73.16","effectiveTerraformVersion":"1.6.3"}'
     And the answer's vendorConfig is '{"kind":"StackConfigVendorTerragrunt","effectiveVersions":{"tool":"OPEN_TOFU","effectiveTerragruntVersion":"0.73.16","effectiveTerraformVersion":"1.6.3"},"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","terraformVersion":"~> 1.6.0","useRunAll":true,"useSmartSanitization":false,"useStateManagement":false,"skipReplan":false}'
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"TERRAFORM_FOSS","terragruntVersion":"0.73.11","useRunAll":false,"useSmartSanitization":false,"useStateManagement":true}}}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"TERRAFORM_FOSS","terragruntVersion":"0.73.11","useRunAll":false,"useSmartSanitization":false,"useStateManagement":true}}}' through B
     Then it answers 200
     And the answer's managesStateFile is 'false'
     And the answer's vendorConfig's useStateManagement is 'false'
@@ -58,15 +58,15 @@ Feature: Terragrunt stacks
   Scenario: A Terragrunt stack's useStateManagement decides whether infraweave keeps its state, and manageState when it is null
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Kept","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Kept","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
     Then it answers 201
     And the answer's managesStateFile is 'true'
     And the answer's vendorConfig's useStateManagement is 'true'
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Unkept","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Unkept","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":false}' through B
     Then it answers 201
     And the answer's managesStateFile is 'false'
     And the answer's vendorConfig's useStateManagement is 'false'
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Forced","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":true}}},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Forced","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":true}}},"manageState":false}' through A
     Then it answers 201
     And the answer's managesStateFile is 'true'
     And the answer's vendorConfig's useStateManagement is 'true'
@@ -75,19 +75,19 @@ Feature: Terragrunt stacks
   Scenario: Each setting infraweave does not run yet answers 422 naming it
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Manual","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"MANUALLY_PROVISIONED","useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Manual","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"MANUALLY_PROVISIONED","useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/vendorConfig/terragrunt/tool" as "rule"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Later","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":true,"skipReplan":true,"skipReplanWhenRunAll":true,"prefixResourceNamesWithModuleName":true,"terragruntVersion":"latest"}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Later","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":true,"skipReplan":true,"skipReplanWhenRunAll":true,"prefixResourceNamesWithModuleName":true,"terragruntVersion":"latest"}}},"manageState":true}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/vendorConfig/terragrunt/useSmartSanitization" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/skipReplan" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/skipReplanWhenRunAll" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/prefixResourceNamesWithModuleName" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/terragruntVersion" as "format"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
     Then it answers 201
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"skipReplan":true}}}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"skipReplan":true}}}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/vendorConfig/terragrunt/skipReplan" as "rule"
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"vendorConfig":{"terragrunt":{"useSmartSanitization":true}}}' through A
@@ -102,12 +102,12 @@ Feature: Terragrunt stacks
     Given the installation switches off the features "vendor-terragrunt"
     And two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
     Then it answers a 403 problem "feature-disabled"
     And the problem names the feature "vendor-terragrunt"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terraform":{}}},"manageState":true}' through B
     Then it answers 201
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}}' through A
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}}' through A
     Then it answers a 403 problem "feature-disabled"
     And the problem names the feature "vendor-terragrunt"
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"vendorConfig":{"terraform":null,"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}}' through B
@@ -122,12 +122,12 @@ Feature: Terragrunt stacks
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
     And the member key is space-reader on the space "legacy"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.73.0","useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through A
     When token "m" eventually reads the stack "infra" through B with the effective versions '{"tool":"OPEN_TOFU","effectiveTerragruntVersion":"0.73.16","effectiveTerraformVersion":"{opentofu.newest}"}'
     Then the answer's canWrite is 'false'
     When token "m" sends "GET /api/v1/stacks" through A
     Then the answer lists the stacks "infra"
-    When token "m" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}}' through B
+    When token "m" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false,"useStateManagement":false}}}' through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"STACK_UPDATE"'
     When token "m" sends "PATCH /api/v1/stacks/infra" with '{"vendorConfig":{"terragrunt":{"terragruntVersion":"0.73.11"}}}' through A
@@ -209,7 +209,7 @@ Feature: Terragrunt stacks
     And the answer's id names "pool"
     And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
     And the launcher "l" registers with the key of "csr" and the certificate "cert" through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Probe","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Probe","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
     And token "h" eventually reads the stack "probe" through A with the effective versions '{"tool":"TERRAFORM_FOSS","effectiveTerragruntVersion":"{terragrunt.newest}","effectiveTerraformVersion":"{terraform.newest}"}'
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terragrunt":{"tool":"OPEN_TOFU","terragruntVersion":"~> 0.50.0","terraformVersion":"~> 1.6.0","useRunAll":true,"useSmartSanitization":false}}},"manageState":true}' through B
     When token "h" sends "GET /api/v1/stacks/infra" through A

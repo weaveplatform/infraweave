@@ -25,9 +25,8 @@
 // authorizer, the stacks domain's api, the vcs settings, the server's
 // public origin and the log a run's fallback credential is noted in, in
 // Deps; a vcs.ca_file it cannot read, or that holds no
-// certificate, and a vcs.github_app whose private key or webhook secret
-// file it cannot read, fail it with ErrConfig. vcs.github_app's App is
-// the GITHUB provider; with no app_id, that provider answers 503.
+// certificate fail it with ErrConfig. Accounts register their own GitHub
+// Apps; GITHUB aliases their GITHUB_ENTERPRISE integrations.
 // vcs.bitbucket_cloud.api_host is where BITBUCKET_CLOUD integrations
 // reach Bitbucket Cloud.
 //

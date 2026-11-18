@@ -1,7 +1,6 @@
 package assembly
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
@@ -65,12 +64,9 @@ type DB interface {
 
 // Settings are the vcs settings: CAFile is a PEM file of certificate
 // authorities trusted beside the system's when reaching a repository's
-// host, for a host under a private CA; GitHubApp the operator's GitHub
-// App, which the GITHUB provider is; and BitbucketCloud where Bitbucket
-// Cloud's API is.
+// host, for a host under a private CA; BitbucketCloud is where its API is.
 type Settings struct {
 	CAFile         string         `mapstructure:"ca_file"`
-	GitHubApp      GitHubApp      `mapstructure:"github_app"`
 	BitbucketCloud BitbucketCloud `mapstructure:"bitbucket_cloud"`
 }
 
@@ -80,19 +76,6 @@ type Settings struct {
 // stand-in for Bitbucket Cloud, such as a proxy, sets it here.
 type BitbucketCloud struct {
 	APIHost string `mapstructure:"api_host"`
-}
-
-// GitHubApp is the GitHub App the operator registers for the GITHUB
-// provider: its ID, the files holding its private key and webhook secret,
-// and its API host, https://api.github.com when empty. With no ID the
-// GITHUB provider answers 503.
-//
-// ref: decision 0012 § "Integrations, the default and spaces"
-type GitHubApp struct {
-	AppID             string `mapstructure:"app_id"`
-	PrivateKeyFile    string `mapstructure:"private_key_file"`
-	WebhookSecretFile string `mapstructure:"webhook_secret_file"`
-	APIHost           string `mapstructure:"api_host"`
 }
 
 // ErrConfig reports a vcs setting the server could not start with.
@@ -124,8 +107,7 @@ type Domain struct {
 // New constructs the domain over d, reaching raw Git repositories, served
 // as the GIT provider, GitHub's, GitLab's, Bitbucket Cloud's, Bitbucket
 // Data Center's and Azure DevOps's, over https with the system's roots and those of vcs.ca_file. It fails when vcs.ca_file cannot be read or
-// holds no certificate, and when vcs.github_app names an App whose files
-// cannot be read.
+// holds no certificate.
 func New(d Deps) (*Domain, error) {
 	var roots *x509.CertPool
 	if f := d.Settings.CAFile; f != "" {
@@ -139,10 +121,6 @@ func New(d Deps) (*Domain, error) {
 		if !roots.AppendCertsFromPEM(pem) {
 			return nil, fmt.Errorf("%w: vcs.ca_file %s holds no PEM certificate", ErrConfig, f)
 		}
-	}
-	builtin, err := operatorApp(d.Settings.GitHubApp)
-	if err != nil {
-		return nil, err
 	}
 	gh := github.New(github.Options{RootCAs: roots})
 	gl := gitlab.New(gitlab.Options{RootCAs: roots})
@@ -165,7 +143,7 @@ func New(d Deps) (*Domain, error) {
 			integration.GitLab: gl, integration.BitbucketCloud: bbc,
 			integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
 		},
-		Builtin: builtin, Apps: gh, Public: d.Public,
+		Apps: gh, Public: d.Public,
 	})
 	return &Domain{
 		sources: source.New(source.Deps{
@@ -188,32 +166,6 @@ func New(d Deps) (*Domain, error) {
 		integrations: integrations,
 		api:          http.New(integrations, d.Spaces, nil),
 	}, nil
-}
-
-// operatorApp is the GITHUB provider's integration from the operator's
-// App settings, none when they name no App.
-func operatorApp(a GitHubApp) (map[string]port.Integration, error) {
-	if a.AppID == "" {
-		return map[string]port.Integration{}, nil
-	}
-	key, err := os.ReadFile(a.PrivateKeyFile)
-	if err != nil {
-		return nil, fmt.Errorf("%w: vcs.github_app.private_key_file: %w", ErrConfig, err)
-	}
-	var secret []byte
-	if f := a.WebhookSecretFile; f != "" {
-		if secret, err = os.ReadFile(f); err != nil {
-			return nil, fmt.Errorf("%w: vcs.github_app.webhook_secret_file: %w", ErrConfig, err)
-		}
-	}
-	host := a.APIHost
-	if host == "" {
-		host = "https://api.github.com"
-	}
-	return map[string]port.Integration{integration.GitHub: {
-		Provider: integration.GitHub, Credential: key, WebhookSecret: bytes.TrimSpace(secret),
-		Settings: port.Settings{APIHost: host, UserFacingHost: host, AppID: a.AppID},
-	}}, nil
 }
 
 // SpaceGuard is the domain's say in the access domain's space deletes and

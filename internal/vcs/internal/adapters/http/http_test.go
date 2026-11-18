@@ -124,7 +124,7 @@ func (tester) Test(context.Context, port.Integration) ([]port.Check, error) {
 
 // fixture is a server over a GITLAB integration with a tester, a
 // BITBUCKET_CLOUD, a BITBUCKET_DATACENTER and an AZURE_DEVOPS one, and one of OTHER, a provider with no tester whose
-// details fail to describe. GITHUB is built in; it, GIT and GITLAB browse
+// details fail to describe. GIT, GITHUB_ENTERPRISE and GITLAB browse
 // through a browser, and BITBUCKET_CLOUD through one that fails.
 type fixture struct {
 	srv                             http.Server
@@ -173,6 +173,7 @@ func newFixture(t *testing.T) fixture {
 		Authz:  authz{top: acct.ULID},
 		Stacks: us,
 		Providers: []string{
+			"GITHUB_ENTERPRISE",
 			"GITLAB",
 			"BITBUCKET_CLOUD",
 			"BITBUCKET_DATACENTER",
@@ -184,11 +185,10 @@ func newFixture(t *testing.T) fixture {
 			"BITBUCKET_DATACENTER": tester{}, "AZURE_DEVOPS": tester{},
 		},
 		Browse: map[string]port.Brancher{
-			"GIT": browser{}, "GITHUB": browser{}, "GITLAB": browser{},
+			"GIT": browser{}, "GITHUB_ENTERPRISE": browser{}, "GITLAB": browser{},
 			"BITBUCKET_CLOUD": browser{fail: errBoom},
 		},
-		Builtin: map[string]port.Integration{"GITHUB": {Provider: "GITHUB"}},
-		Now:     time.Now,
+		Now: time.Now,
 	})
 	srv := http.New(svc, sp, map[string]http.Describe{
 		"GITLAB": func(integration.Integration) (api.VCSIntegrationDetails, error) {

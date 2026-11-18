@@ -66,8 +66,7 @@ var (
 	ErrDefaultTaken = errors.New("vcs: default integration taken")
 	// ErrNoTester reports a provider whose integrations no test checks.
 	ErrNoTester = errors.New("vcs: no test for the provider")
-	// ErrNotConfigured reports a built-in provider whose credentials the
-	// operator has not set, or GitHub App work with no Apps bound.
+	// ErrNotConfigured reports GitHub App work with no Apps bound.
 	ErrNotConfigured = errors.New("vcs: provider not configured")
 )
 
@@ -136,9 +135,7 @@ type Store interface {
 // writes begin transactions on, the spaces integrations live in, the
 // authorizer, the stacks a delete detaches, each provider infraweave
 // stores integrations of, and the Tester of each provider that has one;
-// Builtin, the integration of each provider whose credentials the
-// operator sets, with no row of its own; Apps, the GitHub provider's App
-// work; and Public, the server's public origin, which webhook and
+// Apps, the GitHub provider's App work; and Public, the server's public origin, which webhook and
 // manifest URLs start with.
 type Deps struct {
 	Store     Store
@@ -149,7 +146,6 @@ type Deps struct {
 	Providers []string
 	Testers   map[string]port.Tester
 	Browse    map[string]port.Brancher
-	Builtin   map[string]port.Integration
 	Apps      port.Apps
 	Public    string
 	Now       func() time.Time
@@ -166,7 +162,6 @@ type Service struct {
 	providers []string
 	testers   map[string]port.Tester
 	browse    map[string]port.Brancher
-	builtin   map[string]port.Integration
 	apps      port.Apps
 	public    string
 	now       func() time.Time
@@ -180,7 +175,7 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
-		providers: d.Providers, testers: d.Testers, browse: d.Browse, builtin: d.Builtin,
+		providers: d.Providers, testers: d.Testers, browse: d.Browse,
 		apps:   d.Apps,
 		public: strings.TrimSuffix(d.Public, "/"), now: now,
 	}
@@ -232,7 +227,7 @@ func (s *Service) get(ctx context.Context, acct kernel.AccountID, id, provider s
 	if err != nil {
 		return Integration{}, err //nolint:wrapcheck // the store names the read
 	}
-	if provider != "" && in.Provider != provider {
+	if provider != "" && in.Provider != canonicalProvider(provider) {
 		return Integration{}, fmt.Errorf("%w: %s %s", ErrNotFound, provider, id)
 	}
 	return in, nil
@@ -523,7 +518,7 @@ func (s *Service) locked(ctx context.Context, acct kernel.AccountID, id, provide
 	if err != nil {
 		return Integration{}, err //nolint:wrapcheck // the store names the read
 	}
-	if in.Provider != provider {
+	if in.Provider != canonicalProvider(provider) {
 		return Integration{}, fmt.Errorf("%w: %s %s", ErrNotFound, provider, id)
 	}
 	return in, nil
@@ -532,7 +527,7 @@ func (s *Service) locked(ctx context.Context, acct kernel.AccountID, id, provide
 // Bindable implements stacksapi.StackIntegrations.
 func (s *Service) Bindable(ctx context.Context, acct kernel.AccountID, space kernel.ULID, provider string, id kernel.ULID) error {
 	in, err := s.store.Get(ctx, acct, id, false)
-	if errors.Is(err, ErrNotFound) || err == nil && in.Provider != provider {
+	if errors.Is(err, ErrNotFound) || err == nil && in.Provider != canonicalProvider(provider) {
 		return fmt.Errorf("%w: %s %s", stacksapi.ErrNoIntegration, provider, id)
 	}
 	if err != nil {
@@ -552,12 +547,11 @@ func (s *Service) Bindable(ctx context.Context, acct kernel.AccountID, space ker
 // secrets opened: its own, id, or the provider's default when id is nil.
 // It is false when the stack names none and the provider has no default,
 // and for a provider infraweave stores no integrations of, such as raw
-// Git, without a read. A built-in provider's stack uses the operator's
-// integration, whose row holds only the account's check options.
+// Git, without a read. GITHUB resolves to the account's GitHub App provider;
+// a missing default for that alias is a validation refusal naming provider.
 func (s *Service) Use(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
-	if use, ok := s.builtin[provider]; ok {
-		return use, true, nil
-	}
+	alias := provider == GitHub
+	provider = canonicalProvider(provider)
 	if !slices.Contains(s.providers, provider) {
 		return port.Integration{}, false, nil
 	}
@@ -569,10 +563,22 @@ func (s *Service) Use(ctx context.Context, acct kernel.AccountID, provider strin
 		in, err = s.store.Get(ctx, acct, *id, false)
 	}
 	if errors.Is(err, ErrNotFound) {
+		if alias && id == nil {
+			return port.Integration{}, false, &kernel.Invalid{
+				Detail: "The account has no default GitHub App integration. Mark one default or name an integration.",
+				Errors: []kernel.FieldError{{
+					Pointer: "/provider", Reason: kernel.ReasonRule,
+					Message: "Mark a GitHub App integration default or name one in vcsIntegrationId.",
+				}},
+			}
+		}
 		return port.Integration{}, false, nil
 	}
 	if err != nil {
 		return port.Integration{}, false, err //nolint:wrapcheck // the store names the read
+	}
+	if in.Provider != provider {
+		return port.Integration{}, false, fmt.Errorf("%w: %s %s", ErrNotFound, provider, in.ID)
 	}
 	use, err := s.use(ctx, in)
 	return use, err == nil, err

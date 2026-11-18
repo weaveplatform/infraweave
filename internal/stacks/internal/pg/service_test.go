@@ -232,7 +232,7 @@ func (f fixture) changes(t *testing.T, id kernel.ULID) []string {
 }
 
 func input(name string) core.Input {
-	return core.Input{Space: "team", Name: name, Repository: "infra", Branch: "main"}
+	return core.Input{Space: "team", Name: name, Repository: "infra", Branch: "main", Provider: new("GIT")}
 }
 
 // pointers are the refused fields' pointers of err, a *kernel.Invalid.
@@ -275,7 +275,7 @@ func TestAccServiceCreate(t *testing.T) {
 			map[string][]string{stacksapi.BeforePlan: {"echo 1", "echo 2"}},
 		) ||
 		got.Vendor != "opentofu" || string(got.VendorConfig) != `{"version": "~> 1.8.0"}` ||
-		got.Provider != core.DefaultProvider || !got.GithubActionDeploy {
+		got.Provider != "GIT" || !got.GithubActionDeploy {
 		t.Errorf("read back %+v", got)
 	}
 	if !slices.Contains(f.spaces.holds, f.team) {
@@ -285,7 +285,7 @@ func TestAccServiceCreate(t *testing.T) {
 		t.Errorf("events %v", c)
 	}
 	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, "", core.Input{
-		Name: "Plain", Repository: "r", Branch: "b",
+		Name: "Plain", Repository: "r", Branch: "b", Provider: new("GIT"),
 	})
 	if err != nil || plain.Slug != "custom-1" || plain.Space != f.acct.ULID ||
 		plain.Vendor != "terraform" {
@@ -894,15 +894,25 @@ func TestAccServiceTracked(t *testing.T) {
 // integrations binds only bound, of provider GITLAB, and fails with err
 // when it is set.
 type integrations struct {
-	bound kernel.ULID
-	err   error
+	bound            kernel.ULID
+	err              error
+	provider         string
+	defaultAvailable bool
+}
+
+func (i integrations) DefaultAvailable(context.Context, kernel.AccountID, string) (bool, error) {
+	return i.defaultAvailable, i.err
 }
 
 func (i integrations) Bindable(_ context.Context, _ kernel.AccountID, _ kernel.ULID, provider string, id kernel.ULID) error {
+	providerMatches := provider == "GITLAB"
+	if i.provider != "" {
+		providerMatches = provider == i.provider || i.provider == "GITHUB_ENTERPRISE" && provider == "GITHUB"
+	}
 	switch {
 	case i.err != nil:
 		return i.err
-	case id != i.bound || provider != "GITLAB":
+	case id != i.bound || !providerMatches:
 		return stacksapi.ErrNoIntegration
 	}
 	return nil

@@ -648,32 +648,6 @@ components:
         - installationId
       type: object
       x-graphql-type: GithubEnterpriseIntegrationInstallation
-    GithubIntegration:
-      description: GithubIntegration shows build-in GitHub integration details.
-      properties:
-        apiHost:
-          type: string
-        isEnterprise:
-          type: boolean
-        kind:
-          description: The concrete type, for union and interface responses.
-          enum:
-            - GithubIntegration
-          type: string
-        useGitCheckout:
-          type: boolean
-        vcsCheckOptions:
-          $ref: '#/components/schemas/VCSCheckOptions'
-        vcsChecks:
-          $ref: '#/components/schemas/VCSCheck'
-      required:
-        - apiHost
-        - isEnterprise
-        - kind
-        - useGitCheckout
-        - vcsChecks
-      type: object
-      x-graphql-type: GithubIntegration
     GitlabIntegration:
       description: GitlabIntegration shows Gitlab integration details.
       properties:
@@ -1921,12 +1895,10 @@ components:
           BitbucketDatacenterIntegration: '#/components/schemas/BitbucketDatacenterIntegration'
           BlobStorageIntegration: '#/components/schemas/BlobStorageIntegration'
           GithubEnterpriseIntegration: '#/components/schemas/GithubEnterpriseIntegration'
-          GithubIntegration: '#/components/schemas/GithubIntegration'
           GitlabIntegration: '#/components/schemas/GitlabIntegration'
           OriginIntegration: '#/components/schemas/OriginIntegration'
         propertyName: kind
       oneOf:
-        - $ref: '#/components/schemas/GithubIntegration'
         - $ref: '#/components/schemas/GithubEnterpriseIntegration'
         - $ref: '#/components/schemas/GitlabIntegration'
         - $ref: '#/components/schemas/AzureDevOpsRepoIntegration'

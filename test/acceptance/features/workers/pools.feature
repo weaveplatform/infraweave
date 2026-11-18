@@ -211,7 +211,7 @@ Feature: Private worker pools
     Then the answer lists the worker pools "{top}, {teampool}"
     When token "h" sends "GET /api/v1/attachable-worker-pools-in-space?id={solo}" through A
     Then the answer lists the worker pools "{solopool}"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{teampool}"},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{teampool}"},"manageState":false}' through A
     Then it answers 201
     And the answer's workerPool is '{"id":"{teampool}"}'
     When token "h" sends "GET /api/v1/stacks/infra" through B
@@ -227,7 +227,7 @@ Feature: Private worker pools
     Then it answers a 409 problem "invalid-state"
     When token "h" sends "PUT /api/v1/worker-pools/{teampool}" with '{"name":"B Team","space":"acme"}' through A
     Then it answers 200
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{team}"}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}"}' through B
     Then it answers 200
     And the answer leaves out "workerPool"
     When token "h" sends "DELETE /api/v1/worker-pools/{teampool}" through A
@@ -239,14 +239,14 @@ Feature: Private worker pools
     And the answer's id is the space "solo"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Solo","space":"{solo}","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "solopool"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"},"manageState":false}' through B
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/workerPool" as "not-found"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"nope"},"manageState":false}' through A
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"nope"},"manageState":false}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/input/workerPool" as "not-found"
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}","workerPool":"{solopool}"}' through A
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/workerPool" as "not-found"
     When token "h" sends "GET /api/v1/stacks/nope/attachable-worker-pools" through B
@@ -259,7 +259,7 @@ Feature: Private worker pools
     Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Team","space":"{team}","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "teampool"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Legacy","space":"legacy","certificateSigningRequest":"{csr}"}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"{team}"},"manageState":false}' through B
     And the member key is space-reader on the space "{team}"
     When token "m" sends "GET /api/v1/attachable-worker-pools-in-space?id={team}" through B
     Then the answer lists the worker pools "{teampool}"

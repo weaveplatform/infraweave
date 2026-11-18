@@ -641,10 +641,11 @@ func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 		out.Where += fmt.Sprintf(" AND s.id = ANY($%d::uuid[])", len(out.Args))
 	}
 	if u := scope.Use; u != nil {
-		out.Args = append(out.Args, u.Integration, u.Default, u.Provider)
+		providers := append([]string{u.Provider}, u.Aliases...)
+		out.Args = append(out.Args, u.Integration, u.Default, providers)
 		n := len(out.Args)
 		out.Where += fmt.Sprintf(" AND (s.vcs_integration_id = $%d OR ($%d AND "+
-			"s.vcs_integration_id IS NULL AND s.provider = $%d))", n-2, n-1, n)
+			"s.vcs_integration_id IS NULL AND s.provider = ANY($%d::text[])))", n-2, n-1, n)
 	}
 	return out
 }

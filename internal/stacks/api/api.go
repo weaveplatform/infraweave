@@ -197,10 +197,12 @@ type Stacks interface {
 
 // Use names the stacks that use a VCS integration: those bound to
 // Integration and, when Default is set, those on Provider that name no
-// integration, which use their provider's default.
+// integration, which use their provider's default. Aliases are additional
+// provider names with that same default; they never match a named binding.
 type Use struct {
 	Integration kernel.ULID
 	Provider    string
+	Aliases     []string
 	Default     bool
 }
 
@@ -217,6 +219,9 @@ var ErrNoIntegration = errors.New("stacks: no such VCS integration")
 // ref: decisions 0004 and 0012
 type StackIntegrations interface {
 	Bindable(ctx context.Context, acct kernel.AccountID, space kernel.ULID, provider string, id kernel.ULID) error
+	// DefaultAvailable reports whether the account has a default for provider,
+	// without reading credentials or persisting that integration on the stack.
+	DefaultAvailable(ctx context.Context, acct kernel.AccountID, provider string) (bool, error)
 }
 
 // ErrRefNotFound reports a branch or commit a stack's repository lacks.

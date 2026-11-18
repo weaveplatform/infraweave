@@ -2,10 +2,11 @@ package vcs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/cucumber/godog"
 
@@ -33,6 +34,14 @@ func (l *labSteps) repository() error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
+	if slices.Contains(l.w.Tags, "@lab:github") && lab.Host == "" {
+		lab.Host = "https://api.github.com"
+	}
+	escaped, err := json.Marshal(lab.Token)
+	if err != nil {
+		return fmt.Errorf("encode lab credential: %w", err)
+	}
+	l.w.IDs["labKey"] = strings.Trim(string(escaped), `"`)
 	for k, v := range map[string]string{
 		"labHost": lab.Host, "labUser": lab.User, "labToken": lab.Token,
 		"labNamespace": lab.Namespace, "labRepository": lab.Repository,
@@ -56,23 +65,11 @@ func (*labSteps) Stop() {}
 
 // labVCS adds to vcs the settings a @vcs-lab scenario's servers need to
 // reach its lab, and returns the certificates they must trust beyond the
-// system's: an @lab:github scenario's servers act as the lab's App,
-// whose private key it writes to dir, and every lab's servers trust the
-// lab's CA file, when it names one.
-func labVCS(dir string, tags []string, vcs map[string]any) ([]byte, error) {
+// system's. Every lab's servers trust its CA file when it names one;
+// each scenario registers its account's integration through the API.
+func labVCS(_ string, tags []string, _ map[string]any) ([]byte, error) {
 	if !slices.Contains(tags, "@vcs-lab") {
 		return nil, nil
-	}
-	if slices.Contains(tags, "@lab:github") {
-		lab, err := vcslab.FromEnv(vcslab.EnvUser, vcslab.EnvToken)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", harness.ErrStep, err)
-		}
-		key := filepath.Join(dir, "lab-app.pem")
-		if err := os.WriteFile(key, []byte(lab.Token), 0o600); err != nil {
-			return nil, fmt.Errorf("lab App key: %w", err)
-		}
-		vcs["github_app"] = map[string]any{"app_id": lab.User, "private_key_file": key}
 	}
 	f := os.Getenv(vcslab.EnvCAFile)
 	if f == "" {

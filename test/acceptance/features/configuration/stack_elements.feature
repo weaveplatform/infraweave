@@ -27,8 +27,8 @@ Feature: A stack's own config elements and resolved environment
     And the member key is exchanged through A for token "m"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hidden","repository":"hidden","branch":"main","space":"{team}"},"manageState":false}' through A
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Hidden","repository":"hidden","branch":"main","space":"{team}"},"manageState":false}' through A
 
   @op:stackConfigAdd @op:stackConfigSet @op:stackConfigElement @op:stackConfigDelete @op:stack @op:stackDelete @case:success
   Scenario: A stack's elements are added, replaced, read and deleted, and go with the stack
@@ -57,7 +57,7 @@ Feature: A stack's own config elements and resolved environment
     Then the answer's config lists the elements "app.toml"
     When token "h" sends "DELETE /api/v1/stacks/infra" through A
     Then it answers 200
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
     Then it answers 201
     And the answer's config lists the elements ""
 
@@ -79,7 +79,7 @@ Feature: A stack's own config elements and resolved environment
     When token "h" sends "POST /api/v1/contexts/shared/configs" with '{"id":"LATE","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}' through A
     Then it answers 201
     Given token "h" sends "POST /api/v1/contexts" with '{"name":"Labelled","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through B
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through A
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through A
     Then it answers 200
     And the stack "infra" read through B with token "h" eventually attaches the contexts "shared, auto:labelled"
     When token "h" sends "DELETE /api/v1/context-attachments/{att}" through A
@@ -105,7 +105,7 @@ Feature: A stack's own config elements and resolved environment
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/configId" as "duplicate"
     Given token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"ZONE","type":"ENVIRONMENT_VARIABLE","value":"a","writeOnly":false}]}' through A
-    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
     And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
     When token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"ZONE","type":"ENVIRONMENT_VARIABLE","value":"b","writeOnly":false}' through B
     Then it answers a 422 problem "validation-failed"
@@ -242,7 +242,7 @@ Feature: A stack's own config elements and resolved environment
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"CTX_ONLY","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
     And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":1}' through B
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"AUTO","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through A
-    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
     And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
     When token "h" sends "GET /api/v1/stacks/infra" through A
     Then it answers 200
@@ -279,7 +279,7 @@ Feature: A stack's own config elements and resolved environment
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Shared","space":"legacy","configAttachments":[{"id":"CTX_ONLY","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false},{"id":"LEVEL","type":"ENVIRONMENT_VARIABLE","value":"context","writeOnly":false}]}' through A
     And token "h" sends "PUT /api/v1/stacks/infra/contexts/shared" with '{"priority":1}' through B
     And token "h" sends "POST /api/v1/contexts" with '{"name":"Automatic","space":"legacy","labels":["autoattach:infra"],"configAttachments":[{"id":"AUTO","type":"ENVIRONMENT_VARIABLE","value":"automatic","writeOnly":false}]}' through A
-    And token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
+    And token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","labels":["infra"]}' through B
     And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
     When token "h" sends "GET /api/v1/stacks/infra" through A
     Then the stack "infra" in the answer keeps its runtime configuration as "resolved"
@@ -305,7 +305,7 @@ Feature: A stack's own config elements and resolved environment
   @op:stack @case:failure
   Scenario: Unknown stacks and stacks held by another account expose no runtime configuration
     Given the sibling key is exchanged through A for token "s"
-    And token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Foreign","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
+    And token "s" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Foreign","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through B
     Then it answers 201
     When token "h" sends "GET /api/v1/stacks/foreign" through A
     Then it answers a 404 problem "not-found"

@@ -20,7 +20,7 @@ Feature: A stack's queued runs are scheduled in one evaluation
     And a commit to "main" of "infra" changing "main.tf"
     And the head of "main" of "infra" is kept as "pushed"
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy"},"manageState":false}' through A
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Idle","repository":"idle","branch":"main","space":"legacy"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Idle","repository":"idle","branch":"main","space":"legacy"},"manageState":false}' through B
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "first"
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{pushed}"}' through B

@@ -16,7 +16,7 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
 
   @op:stackCreate @op:stackPatch @op:stackUpdate @case:success
   Scenario: On a stack, a PATCH keeps what it leaves out and a PUT resets it
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy","description":"ours","labels":["a","b"],"autodeploy":true,"githubActionDeploy":false},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","description":"ours","labels":["a","b"],"autodeploy":true,"githubActionDeploy":false},"manageState":false}' through A
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"branch":"dev"}' through B
     Then it answers 200
     And the answer's branch is '"dev"'
@@ -29,7 +29,7 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
     And the answer's autodeploy is 'false'
     And the answer's githubActionDeploy is 'true'
     And the answer's branch is '"dev"'
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy","description":null}' through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy","description":null}' through B
     Then it answers 200
     And the answer leaves out "ours"
     And the answer's labels is '[]'
@@ -59,13 +59,13 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
 
   @op:stack @op:stackUpdate @op:stackPatch @op:stackDelete @case:failure @case:success
   Scenario: On a stack, an If-Match of a version since changed answers 412
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     And token "h" sends "GET /api/v1/stacks/infra" through B
     And the answer's ETag is kept as "first"
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"branch":"dev"}' if matching the ETag "first" through A
     Then it answers 200
     And the answer's ETag is kept as "second"
-    When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","repository":"infra","branch":"main","space":"legacy"}' if matching the ETag "first" through B
+    When token "h" sends "PUT /api/v1/stacks/infra" with '{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"}' if matching the ETag "first" through B
     Then it answers a 412 problem "precondition-failed"
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"branch":"main"}' if matching the ETag "first" through A
     Then it answers a 412 problem "precondition-failed"
@@ -98,7 +98,7 @@ Feature: A PUT replaces an entity and a PATCH changes what it names
 
   @op:stackConfigSet @case:success
   Scenario: A stack's config element PUT at its own path creates it, then replaces it
-    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Infra","repository":"infra","branch":"main","space":"legacy"},"manageState":false}' through A
     When token "h" sends "PUT /api/v1/stacks/infra/configs/REGION" with '{"type":"ENVIRONMENT_VARIABLE","value":"eu","writeOnly":false}' through B
     Then it answers 201
     And the answer's value is '"eu"'
