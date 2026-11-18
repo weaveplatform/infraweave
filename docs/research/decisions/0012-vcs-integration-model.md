@@ -208,6 +208,18 @@ The handler does, in order:
    follows [GitLab's action meanings](https://docs.gitlab.com/user/project/integrations/webhook_events/#merge-request-events)
    and report 11's provider-specific approval and mergeability rules.
 
+   Azure DevOps reads routing from the body. An authenticated invalid JSON
+   envelope, or missing, empty or non-string `eventType`, is retained under a
+   private invalid-envelope marker and fails parsing durably; a valid unsupported
+   event type is filtered. Comment repository identity comes from
+   `resource.pullRequest.repository`, as in the documented service-hook shape.
+   Payload approval requires an approving reviewer vote (5 or 10). A successful
+   preview merge is not proof that every blocking policy passed or that the
+   source is up to date, so absent that evidence `mergeable` and `undiverged`
+   remain false. The fake follows the documented transient retry schedule for
+   408/502/503/504 (eight retries); enduring failures and subscription probation
+   are separate from sending a delivery.
+
 5. **Store and enqueue (D3).** In one transaction insert `vcs_deliveries`
    with integration, delivery ID, provider event, received time, selected
    headers, body and state `received`, and enqueue `vcs.process_delivery`.

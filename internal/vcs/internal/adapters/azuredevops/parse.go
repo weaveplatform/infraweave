@@ -134,6 +134,9 @@ func parseWebhookPush(resource *webhookResource) ([]vcsapi.Event, error) {
 	}
 	result := make([]vcsapi.Event, 0, len(resource.RefUpdates))
 	for _, ref := range resource.RefUpdates {
+		if ref.Name == "" {
+			return nil, errWebhookPayload
+		}
 		kind, name := "push", ""
 		if value, ok := strings.CutPrefix(ref.Name, "refs/heads/"); ok {
 			name = value

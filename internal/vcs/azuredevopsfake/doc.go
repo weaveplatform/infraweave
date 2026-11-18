@@ -11,7 +11,14 @@
 // is tested without the real service, which the scheduled vcs-lab job
 // checks.
 //
+// PushWebhook, PullRequestWebhook and CommentWebhook build documented service
+// hook envelopes. WebhookSender preserves their body and event ID across at
+// most eight transient retries after 408/502/503/504, waiting 1,2,4,8,16,32,60,60
+// seconds. Other answers stop the sender; subscription probation and disablement
+// are outside its scope. Its attempt history contains identity and status only.
+//
 // ref: decision 0012 § "Every provider is a peer"
+// ref: https://learn.microsoft.com/azure/devops/service-hooks/troubleshoot
 //
 // # Input and output
 //

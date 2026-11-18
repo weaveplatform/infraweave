@@ -1,0 +1,28 @@
+{
+  "id": "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb",
+  "eventType": "ms.vss-code.git-pullrequest-comment-event",
+  "publisherId": "tfs",
+  "resource": {
+    "comment": {"id": 2, "parentCommentId": 1, "content": "/spacelift plan", "commentType": "text", "author": {"uniqueName": "reviewer@example.com"}},
+    "pullRequest": {
+      "repository": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "name": "infra",
+        "project": {"id": "22222222-3333-4444-5555-666666666666", "name": "Platform"}
+      },
+      "pullRequestId": 42,
+      "status": "active",
+      "sourceRefName": "refs/heads/feature",
+      "targetRefName": "refs/heads/main",
+      "lastMergeSourceCommit": {"commitId": "2222222222222222222222222222222222222222"},
+      "mergeStatus": "succeeded",
+      "isDraft": true,
+      "createdBy": {"uniqueName": "author@example.com"},
+      "reviewers": [{"vote": 5}],
+      "labels": [{"name": "review"}],
+      "forkSource": {
+        "repository": {"id": "33333333-4444-5555-6666-777777777777", "name": "infra-fork", "project": {"id": "44444444-5555-6666-7777-888888888888", "name": "Fork"}}
+      }
+    }
+  }
+}

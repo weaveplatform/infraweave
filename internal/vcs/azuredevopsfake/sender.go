@@ -30,7 +30,7 @@ type WebhookSenderOptions struct {
 }
 
 // WebhookSender models the documented transient retry schedule. Enduring
-// failures and410 stop here; subscription probation/disablement is outside the
+// failures and 410 stop here; subscription probation/disablement is outside the
 // sender. Attempts never retain credentials, headers or payload bytes.
 type WebhookSender struct {
 	client   http.Client
@@ -62,7 +62,7 @@ func webhookWait(ctx context.Context, delay time.Duration) error {
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("azuredevopsfake: webhook wait: %w", ctx.Err())
 	case <-timer.C:
 		return nil
 	}
@@ -76,7 +76,7 @@ func (s *WebhookSender) Attempts() []WebhookAttempt {
 }
 
 // Send preserves body, event ID and credentials over at most eight retries
-// after408/502/503/504. Delays are1,2,4,8,16,32,60,60 seconds, as documented at
+// after 408/502/503/504. Delays are 1,2,4,8,16,32,60,60 seconds, as documented at
 // https://learn.microsoft.com/en-us/azure/devops/service-hooks/troubleshoot .
 // Another explicit Send represents a separate operator resend.
 func (s *WebhookSender) Send(ctx context.Context, endpoint, username string, password []byte, delivery WebhookDelivery) (int, error) {
@@ -90,7 +90,7 @@ func (s *WebhookSender) Send(ctx context.Context, endpoint, username string, pas
 	}
 	for attempt := 0; ; attempt++ {
 		status, err := s.sendOne(ctx, endpoint, username, secret, body, WebhookAttempt{ID: identity.ID, Event: identity.Event})
-		if err != nil || !transientWebhookStatus(status) || attempt == 8 {
+		if !transientWebhookStatus(status) || attempt == 8 {
 			return status, err
 		}
 		delay := time.Duration(min(1<<attempt, 60)) * time.Second

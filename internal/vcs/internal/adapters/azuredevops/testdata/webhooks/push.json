@@ -1,0 +1,19 @@
+{
+  "id": "aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb",
+  "eventType": "git.push",
+  "publisherId": "tfs",
+  "resource": {
+    "repository": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "name": "infra",
+      "project": {"id": "22222222-3333-4444-5555-666666666666", "name": "Platform"}
+    },
+    "refUpdates": [
+      {"name": "refs/heads/main", "oldObjectId": "1111111111111111111111111111111111111111", "newObjectId": "2222222222222222222222222222222222222222"},
+      {"name": "refs/tags/v1", "oldObjectId": "0000000000000000000000000000000000000000", "newObjectId": "3333333333333333333333333333333333333333"}
+    ],
+    "pushedBy": {"id": "55555555-6666-7777-8888-999999999999", "displayName": "Example Author", "uniqueName": "author@example.com"},
+    "commits": [],
+    "pushId": 14
+  }
+}
