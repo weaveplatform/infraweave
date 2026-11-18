@@ -103,6 +103,9 @@ CREATE TABLE runs (
 -- runs in a time range by creation; a run search filters an account's runs
 -- by state.
 CREATE INDEX runs_stack ON runs (account_id, stack_id, type, id DESC);
+-- Event deduplication reads all states and triggers while holding the stack
+-- creation lock; an ended run suppresses another event of its type and commit.
+CREATE INDEX runs_commit ON runs (account_id, stack_id, type, (commit->>'hash'));
 CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at);
 CREATE INDEX runs_state ON runs (account_id, state);
 
