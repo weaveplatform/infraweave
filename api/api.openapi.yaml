@@ -3022,6 +3022,57 @@ paths:
         - merge-patch
         - rate-limit
       x-rest-style: update
+  /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret:
+    post:
+      description: Regenerates the webhook secret for Azure DevOps integration.
+      operationId: azureDevOpsRepoIntegrationRegenerateWebhookSecret
+      x-infraweave-feature: vcs-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureDevOpsRepoIntegrationId:vcs_integration
+      parameters:
+        - in: path
+          name: azureDevOpsRepoIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureDevOpsRepoIntegration'
+          description: The azureDevOpsRepoIntegrationRegenerateWebhookSecret result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Regenerate Webhook Secret
+      tags:
+        - VCS Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+        - DV-132
+      x-rest-style: action
+      x-upstream: none
   /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test:
     post:
       description: Tests the Azure DevOps Repo integration.

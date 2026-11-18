@@ -246,6 +246,10 @@ func (UnimplementedStrict) AzureDevOpsRepoIntegrationUpdate(context.Context, Azu
 	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationUpdate", Route: "PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}"}
 }
 
+func (UnimplementedStrict) AzureDevOpsRepoIntegrationRegenerateWebhookSecret(context.Context, AzureDevOpsRepoIntegrationRegenerateWebhookSecretRequestObject) (AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationRegenerateWebhookSecret", Route: "POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret"}
+}
+
 func (UnimplementedStrict) AzureDevOpsRepoIntegrationTest(context.Context, AzureDevOpsRepoIntegrationTestRequestObject) (AzureDevOpsRepoIntegrationTestResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationTest", Route: "POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/test"}
 }

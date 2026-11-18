@@ -117,6 +117,27 @@ type Check struct {
 	Type   string
 	Passed bool
 	Reason string
+	WebHooks *WebhookCheck
+	Permissions []string
+	GithubAppEvents []string
+}
+
+// WebhookCheck compares the required hook configuration with bounded
+// diagnostics for the repositories whose configured hooks do not match.
+type WebhookCheck struct { Expected, Actual string }
+
+// WebhookInput is the URL and distinct repositories whose hooks an
+// integration admin tests; it carries no stack identities or credentials.
+type WebhookInput struct {
+	URL string
+	Repositories []Listed
+}
+
+// WebhookTester reads hooks without registering, changing or deleting any.
+// A provider's failed read is a failed CheckWebhook; the service names a
+// database failure while collecting the integration's repository set.
+type WebhookTester interface {
+	TestWebhooks(ctx context.Context, in Integration, expected WebhookInput) (Check, error)
 }
 
 // Tester checks that an integration reaches its provider with the

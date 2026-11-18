@@ -89,6 +89,7 @@ type Scope struct {
 // Store is what the service needs of the stacks' storage. Every method
 // joins the transaction its context carries.
 type Store interface {
+	VCSRepositories(ctx context.Context, acct kernel.AccountID, u stacksapi.Use) ([]stacksapi.VCSRepository, error)
 	// DetachVCS detaches acct's stacks bound to integration, leaving
 	// their versions as they are.
 	DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error
@@ -527,6 +528,11 @@ func (s *Service) SearchUsers(ctx context.Context, p kernel.Principal, u stacksa
 		out.Edges[i] = search.Edge[stacksapi.Stack]{Cursor: e.Cursor, Node: e.Node.Stack}
 	}
 	return out, nil
+}
+
+// VCSRepositories is the integration-admin test's account-scoped projection.
+func (s *Service) VCSRepositories(ctx context.Context, acct kernel.AccountID, u stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	return s.store.VCSRepositories(ctx, acct, u) //nolint:wrapcheck // the store names the read
 }
 
 // SuggestUsers lists the values the stacks of p's account in the spaces

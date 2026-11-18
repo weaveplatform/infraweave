@@ -193,7 +193,16 @@ type Stacks interface {
 	// SuggestUsers lists the values those stacks hold under in's
 	// predicates, and counts them.
 	SuggestUsers(ctx context.Context, p kernel.Principal, u Use, in search.SuggestionsInput) (search.Suggestions, error)
+	// VCSRepositories lists the distinct repository coordinates of every
+	// stack using u in acct, including implicit default bindings, without
+	// an actor's search filter. Only the integration-admin connection test
+	// consumes this repository-only projection.
+	VCSRepositories(ctx context.Context, acct kernel.AccountID, u Use) ([]VCSRepository, error)
 }
+
+// VCSRepository is a used repository's provider coordinates, without any
+// stack identity or setting unrelated to webhook configuration.
+type VCSRepository struct { Namespace, Name string }
 
 // Use names the stacks that use a VCS integration: those bound to
 // Integration and, when Default is set, those on Provider that name no
