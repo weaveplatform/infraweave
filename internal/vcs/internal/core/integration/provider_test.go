@@ -64,8 +64,10 @@ func TestUnitGitHubProviderAlias(t *testing.T) {
 		{Account: acct, ID: named, Provider: integration.GitHubEnterprise, Space: acct.ULID},
 		{Account: acct, ID: wrong, Provider: integration.GitLab, Space: acct.ULID},
 	}}
-	svc := integration.New(integration.Deps{Store: store, Providers: []string{integration.GitHubEnterprise, integration.GitLab},
-		Spaces: providerSpaces{nodes: []accessapi.SpaceNode{{ID: acct.ULID}}}})
+	svc := integration.New(integration.Deps{
+		Store: store, Providers: []string{integration.GitHubEnterprise, integration.GitLab},
+		Spaces: providerSpaces{nodes: []accessapi.SpaceNode{{ID: acct.ULID}}},
+	})
 	for _, id := range []*kernel.ULID{nil, &named} {
 		use, ok, err := svc.Use(t.Context(), acct, integration.GitHub, id)
 		if err != nil || !ok || use.Provider != integration.GitHubEnterprise || string(use.Credential) != "account-key" {
@@ -106,8 +108,10 @@ func TestUnitGitHubProviderAlias(t *testing.T) {
 
 func TestUnitDefaultAvailability(t *testing.T) {
 	acct := kernel.NewAccountID()
-	store := &providerStore{rows: []integration.Integration{{Account: acct, ID: kernel.NewULID(),
-		Provider: integration.GitHubEnterprise, IsDefault: true}}}
+	app := integration.Integration{
+		Account: acct, ID: kernel.NewULID(), Provider: integration.GitHubEnterprise, IsDefault: true,
+	}
+	store := &providerStore{rows: []integration.Integration{app}}
 	svc := integration.New(integration.Deps{Store: store})
 	if ok, err := svc.DefaultAvailable(t.Context(), acct, integration.GitHub); err != nil || !ok {
 		t.Fatalf("default alias unavailable: %t %v", ok, err)

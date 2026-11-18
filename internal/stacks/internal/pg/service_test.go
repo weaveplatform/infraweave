@@ -275,7 +275,7 @@ func TestAccServiceCreate(t *testing.T) {
 			map[string][]string{stacksapi.BeforePlan: {"echo 1", "echo 2"}},
 		) ||
 		got.Vendor != "opentofu" || string(got.VendorConfig) != `{"version": "~> 1.8.0"}` ||
-		got.Provider != core.DefaultProvider || !got.GithubActionDeploy {
+		got.Provider != "GIT" || !got.GithubActionDeploy {
 		t.Errorf("read back %+v", got)
 	}
 	if !slices.Contains(f.spaces.holds, f.team) {
@@ -285,7 +285,7 @@ func TestAccServiceCreate(t *testing.T) {
 		t.Errorf("events %v", c)
 	}
 	plain, err := f.svc.Create(ctx, f.admin, "custom-1", false, "", core.Input{
-		Name: "Plain", Repository: "r", Branch: "b",
+		Name: "Plain", Repository: "r", Branch: "b", Provider: new("GIT"),
 	})
 	if err != nil || plain.Slug != "custom-1" || plain.Space != f.acct.ULID ||
 		plain.Vendor != "terraform" {

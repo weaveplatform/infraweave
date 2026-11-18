@@ -92,8 +92,10 @@ func refused(err error, pointer string) bool {
 func TestUnitBrowse(t *testing.T) {
 	f := newFixture(t)
 	gh := kernel.NewULID()
-	f.store.rows[gh] = integration.Integration{Account: f.acct, ID: gh,
-		Provider: "GITHUB_ENTERPRISE", Space: f.acct.ULID, IsDefault: true}
+	f.store.rows[gh] = integration.Integration{
+		Account: f.acct, ID: gh,
+		Provider: "GITHUB_ENTERPRISE", Space: f.acct.ULID, IsDefault: true,
+	}
 
 	gitlab := api.VCSProviderGITLAB
 	first, err := f.repositories(f.ctx, api.RepositoriesParams{

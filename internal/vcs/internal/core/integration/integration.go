@@ -566,8 +566,10 @@ func (s *Service) Use(ctx context.Context, acct kernel.AccountID, provider strin
 		if alias && id == nil {
 			return port.Integration{}, false, &kernel.Invalid{
 				Detail: "The account has no default GitHub App integration. Mark one default or name an integration.",
-				Errors: []kernel.FieldError{{Pointer: "/provider", Reason: kernel.ReasonRule,
-					Message: "Mark a GitHub App integration default or name one in vcsIntegrationId."}},
+				Errors: []kernel.FieldError{{
+					Pointer: "/provider", Reason: kernel.ReasonRule,
+					Message: "Mark a GitHub App integration default or name one in vcsIntegrationId.",
+				}},
 			}
 		}
 		return port.Integration{}, false, nil

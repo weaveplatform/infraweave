@@ -26,4 +26,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	azureDevOps.register(sc)
 	lab.register(sc)
 	(&vcsSteps{w: w}).register(sc)
+	registerAccountSteps(sc, w)
 }

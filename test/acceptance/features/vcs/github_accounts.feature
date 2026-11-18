@@ -36,7 +36,7 @@ Feature: Each account reaches GitHub through its own App
     And the answer's provider is '"GITHUB"'
     When token "h" sends "GET /api/v1/stacks/infra" through B
     Then it answers 200
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
     And token "h" eventually reads the stack "infra" tracking the commit kept as "homeHead" through B
     When token "s" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme-dev","repository":"infra","branch":"main","provider":"GITHUB"},"manageState":false}' through B
     Then it answers 201
@@ -55,7 +55,7 @@ Feature: Each account reaches GitHub through its own App
     When token "h" sends "POST /api/v1/stacks/foreign-repository/sync-commit" through A
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "GET /api/v1/stacks/foreign-repository" through B
-    Then the answer leaves out "trackedCommit"
+    Then the answer's optional "trackedCommit" is unset
 
   @op:stackCreate @op:stackUpdate @op:stackPatch @op:stack @case:success
   Scenario: Omitted and explicit GITHUB writes keep the account default implicit
@@ -68,23 +68,23 @@ Feature: Each account reaches GitHub through its own App
     And the answer's provider is '"GITHUB"'
     When token "h" sends "GET /api/v1/stacks/infra" through A
     Then it answers 200
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
     And token "h" eventually reads the stack "infra" tracking the commit kept as "head" through A
     When token "h" sends "PUT /api/v1/stacks/infra" with '{"name":"Infra","namespace":"acme","repository":"infra","branch":"main","provider":"GITHUB","description":"updated"}' through A
     Then it answers 200
     And the answer's provider is '"GITHUB"'
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"provider":"GITHUB","description":"patched"}' through B
     Then it answers 200
     And the answer's provider is '"GITHUB"'
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"vcsIntegrationId":"{integration}"}' through A
     Then it answers 200
     And the answer's provider is '"GITHUB"'
-    And the answer's vcsIntegrationId is '"{integration}"'
+    And the answer's vcsIntegration is '{"id":"{integration}"}'
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"vcsIntegrationId":null}' through B
     Then it answers 200
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
     When token "h" sends "POST /api/v1/stacks/infra/sync-commit" through A
     Then it answers 200
     And the answer tracks the commit kept as "head" at the branch head kept as "head"
@@ -111,7 +111,7 @@ Feature: Each account reaches GitHub through its own App
     And the problem refuses the field "/provider"
     When token "h" sends "GET /api/v1/stacks/kept" through B
     Then the answer's provider is '"GIT"'
-    And the answer leaves out "description"
+    And the answer's optional "description" is unset
     Given a GitHub App "named" installed on the organization "acme"
     And a commit to "main" of the GitHub repository "acme/infra" is kept as "head"
     And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{namedID}","privateKey":"{namedKey}","customInput":{"name":"Named","spaceID":"acme"}}' through A
@@ -119,7 +119,7 @@ Feature: Each account reaches GitHub through its own App
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Named","namespace":"acme","repository":"infra","branch":"main","provider":"GITHUB","vcsIntegrationId":"{integration}"},"manageState":false}' through B
     Then it answers 201
     And the answer's provider is '"GITHUB"'
-    And the answer's vcsIntegrationId is '"{integration}"'
+    And the answer's vcsIntegration is '{"id":"{integration}"}'
     And token "h" eventually reads the stack "named" tracking the commit kept as "head" through A
 
   @op:stackCreate @op:stackUpdate @op:stackPatch @case:denial
@@ -158,4 +158,4 @@ Feature: Each account reaches GitHub through its own App
     Then it answers 200
     And the answer tracks the commit kept as "nextHead" at the branch head kept as "nextHead"
     And the answer's provider is '"GITHUB"'
-    And the answer leaves out "vcsIntegrationId"
+    And the answer's optional "vcsIntegration" is unset
