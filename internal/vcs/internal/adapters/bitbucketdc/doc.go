@@ -35,8 +35,17 @@
 // further than the byte past the limit. A Test turns a host's failure
 // into a failed check rather than an error.
 //
+// Webhooks verifies the exact SHA-256 signature against every eligible active
+// secret and normalizes documented push, pull request and comment payloads
+// without API calls. Stable repository identities survive renames; each changed
+// branch or tag emits its own event. Approval requires an identifiable reviewer
+// other than the author. Neither an OPEN state nor approval alone establishes
+// mergeability or target ancestry, so those unknown facts remain false.
+// Malformed consumed payloads fail safely in the durable inbox processor.
+//
 // # Dependencies
 //
 // It imports internal/kernel and the domain's api and port packages. The
-// domain's assembly constructs it.
+// domain's assembly constructs it. Webhook verification uses the private,
+// standard-library-only webhookauth adapter.
 package bitbucketdc

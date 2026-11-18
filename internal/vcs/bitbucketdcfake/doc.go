@@ -24,9 +24,16 @@
 // Bitbucket's envelope. Seeding a repository panics on a go-git failure,
 // which no test recovers from.
 //
+// Payload builds documented webhook shapes from synthetic identities and
+// example.com addresses. Sender signs exact bodies and records each HTTP
+// status; Redeliver explicitly repeats the same delivery ID and bytes.
+// Data Center sends once; circuit breaking does not establish a documented
+// per-delivery retry policy. Redirects remain separate responses.
+//
 // # Dependencies
 //
 // It imports chi, go-git's object package and the domain's gitmem, which
 // holds its repositories. The bitbucketdc provider's tests and the
-// acceptance suite construct it.
+// acceptance suite construct it. The private deliveryfake package shares only
+// the two fakes' HTTP sending mechanics, without production dependencies.
 package bitbucketdcfake

@@ -20,9 +20,16 @@
 // role on. Seeding a repository panics on a go-git failure, which no test
 // recovers from.
 //
+// Payload builds documented webhook shapes from synthetic identities and
+// example.com addresses. Sender signs exact bodies and records each HTTP
+// status; Redeliver explicitly repeats the same delivery ID and bytes.
+// Cloud retries only 5xx, up to three total attempts; retry timing is not
+// modeled. Transport errors, other statuses and redirects are never retried.
+//
 // # Dependencies
 //
 // It imports chi, go-git's object package and the domain's gitmem, which
 // holds its repositories. The bitbucketcloud provider's tests and the
-// acceptance suite construct it.
+// acceptance suite construct it. The private deliveryfake package shares only
+// the two fakes' HTTP sending mechanics, without production dependencies.
 package bitbucketcloudfake
