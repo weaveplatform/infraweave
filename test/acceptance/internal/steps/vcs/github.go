@@ -69,6 +69,7 @@ func (g *githubSteps) app(key, org string) error {
 	}
 	g.w.IDs[key+"ID"] = strconv.FormatInt(app.ID, 10)
 	g.w.IDs[key+"Key"] = strings.Trim(string(pem), `"`)
+	g.w.IDs[key+"WebhookSecret"] = app.WebhookSecret
 	return nil
 }
 

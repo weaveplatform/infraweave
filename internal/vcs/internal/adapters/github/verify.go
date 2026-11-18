@@ -1,6 +1,7 @@
 package github
 
 import (
+	"crypto/fips140"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -28,7 +29,9 @@ func (*Provider) Verify(h http.Header, body []byte, secrets [][]byte) ([]byte, e
 	}
 	matched := 0
 	for _, secret := range secrets {
-		if len(secret) == 0 {
+		// Strict FIPS requires at least 112 key bits. Check before hmac.New
+		// so a configured short key produces the ordinary verification refusal.
+		if len(secret) == 0 || (fips140.Enforced() && len(secret) < 14) {
 			continue
 		}
 		m := hmac.New(sha256.New, secret)

@@ -1,6 +1,7 @@
 package github_test
 
 import (
+	"crypto/fips140"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,6 +12,22 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
 )
+
+// Configuration can contain an older, short secret. Enforced FIPS must
+// refuse it without panicking; other modes preserve GitHub's HMAC semantics.
+func TestUnitGitHubShortSignature(t *testing.T) {
+	const signature = "sha256=310ffbc4b633f00b468311d85b2223a88b30547e5ddf9ab24dd8404b52a39702"
+	got, err := github.New(github.Options{}).Verify(
+		http.Header{"X-Hub-Signature-256": {signature}}, []byte("Hello, World!"), [][]byte{[]byte("hook")},
+	)
+	if fips140.Enforced() {
+		if !errors.Is(err, github.ErrSignature) || got != nil {
+			t.Fatalf("weak FIPS key = %q, %v", got, err)
+		}
+	} else if err != nil || string(got) != signature {
+		t.Fatalf("ordinary GitHub HMAC = %q, %v", got, err)
+	}
+}
 
 // GitHub's documented validation example uses the exact body bytes. These
 // independent fixtures use longer keys so they also run in certified FIPS.
@@ -33,6 +50,8 @@ func TestUnitGitHubSignature(t *testing.T) {
 	}{
 		{name: "current", header: http.Header{"X-Hub-Signature-256": {sign(current)}}, body: body, keys: [][]byte{current, previous}, want: sign(current)},
 		{name: "previous", header: http.Header{"X-Hub-Signature-256": {sign(previous)}}, body: body, keys: [][]byte{current, previous}, want: sign(previous)},
+		{name: "short candidate before strong", header: http.Header{"X-Hub-Signature-256": {sign(current)}}, body: body, keys: [][]byte{[]byte("hook"), current}, want: sign(current)},
+		{name: "short candidate after strong", header: http.Header{"X-Hub-Signature-256": {sign(current)}}, body: body, keys: [][]byte{current, []byte("hook")}, want: sign(current)},
 		{name: "missing", body: body, keys: [][]byte{current}},
 		{name: "wrong", header: http.Header{"X-Hub-Signature-256": {sign(previous)}}, body: body, keys: [][]byte{current}},
 		{name: "changed body", header: http.Header{"X-Hub-Signature-256": {sign(current)}}, body: append([]byte(" "), body...), keys: [][]byte{current}},
