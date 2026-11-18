@@ -26,9 +26,10 @@ type memoryStore struct {
 	failure  error
 }
 type member struct {
-	installation string
-	repo         Repository
-	present      bool
+	installation  string
+	coordinatesAt time.Time
+	repo          Repository
+	present       bool
 }
 
 func (m *memoryStore) HoldRepositoryIntegration(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
@@ -99,12 +100,21 @@ func (m *memoryStore) PutInstallation(_ context.Context, _ kernel.AccountID, _ k
 	return m.failure
 }
 
-func (m *memoryStore) PutMembership(_ context.Context, _ kernel.AccountID, _ kernel.ULID, installation string, r Repository, present bool) (bool, error) {
+func (m *memoryStore) PutMembership(_ context.Context, _ kernel.AccountID, _ kernel.ULID, installation string, observation Membership) (bool, error) {
+	r := observation.Repository
 	if old, found := m.members[r.ID]; found && old.repo.ObservedAt.After(r.ObservedAt) {
 		return false, nil
 	}
-	m.members[r.ID] = member{repo: r, present: present, installation: installation}
+	m.members[r.ID] = member{repo: r, present: observation.Present, installation: installation, coordinatesAt: observation.CoordinatesAt}
 	return true, m.failure
+}
+
+func (m *memoryStore) MembershipIdentity(_ context.Context, _ kernel.AccountID, _ kernel.ULID, native string) (Membership, bool, error) {
+	member, found := m.members[native]
+	if !found || !m.installs[member.installation].Current {
+		return Membership{}, false, m.failure
+	}
+	return Membership{Repository: member.repo, Present: member.present, CoordinatesAt: member.coordinatesAt}, true, m.failure
 }
 
 func (m *memoryStore) MembershipRemoved(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ns, name, native string) (bool, error) {
@@ -319,6 +329,7 @@ func (m *memoryStore) MoveMembership(_ context.Context, _ kernel.AccountID, _ ke
 		observed := member.repo.ObservedAt
 		member.repo = r
 		member.repo.ObservedAt = observed
+		member.coordinatesAt = r.ObservedAt
 		m.members[r.ID] = member
 	}
 	return m.failure
@@ -328,7 +339,7 @@ func (m *memoryStore) OwnerMemberships(_ context.Context, _ kernel.AccountID, _ 
 	var out []Membership
 	for _, member := range m.members {
 		if (member.repo.OwnerID == owner || member.repo.OwnerID == "" && member.repo.Namespace == previous) && m.installs[member.installation].Current {
-			out = append(out, Membership{member.repo, member.present})
+			out = append(out, Membership{Repository: member.repo, Present: member.present, CoordinatesAt: member.coordinatesAt})
 		}
 	}
 	return out, m.failure

@@ -180,3 +180,38 @@ func TestUnitLateSnapshotCannotReplaceNewerInstallation(t *testing.T) {
 		t.Fatal("late provider snapshot replaced newer installation identity", reason, err, w.store.installs)
 	}
 }
+
+func TestUnitMembershipRestorationKeepsNewerCoordinates(t *testing.T) {
+	w := newWorld()
+	base := w.now
+	owner := vcsapi.Owner{ID: "9", Login: "old"}
+	original := vcsapi.Repository{ID: "7", Namespace: "old", Name: "infra", OwnerID: owner.ID}
+	steps := []struct {
+		offset time.Duration
+		event  vcsapi.Event
+	}{
+		{0, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "created", Repositories: []vcsapi.Repository{original}}}},
+		{time.Second, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "removed", Removed: []vcsapi.Repository{original}}}},
+		{3 * time.Second, vcsapi.Event{OwnerRename: &vcsapi.OwnerRename{ID: owner.ID, PreviousLogin: "old", Login: "new"}}},
+		{2 * time.Second, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "added", Added: []vcsapi.Repository{original}}}},
+	}
+	for _, step := range steps {
+		w.now = base.Add(step.offset)
+		if err := w.apply(t, step.event); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mapped := w.store.repos[original.ID]
+	member := w.store.members[original.ID]
+	if mapped.Namespace != "new" || mapped.ObservedAt.Before(base.Add(3*time.Second)) || member.repo.Namespace != "new" || !member.present ||
+		!member.repo.ObservedAt.Equal(base.Add(2*time.Second)) {
+		t.Fatalf("restoration accepted presence but lost newer coordinates: map=%+v membership=%+v", mapped, member)
+	}
+	if err := w.s.Check(t.Context(), w.acct, w.id, "new", "infra"); err != nil {
+		t.Fatal(err)
+	}
+	current, err := w.s.EventRepository(t.Context(), w.acct, w.id, base.Add(2*time.Second), original)
+	if err != nil || current.Namespace != "new" {
+		t.Fatal("old event no longer routes to current owner", current, err)
+	}
+}

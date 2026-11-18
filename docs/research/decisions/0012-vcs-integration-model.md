@@ -375,7 +375,10 @@ user: infraweave never creates or deletes provider hooks.
   late jobs for superseded IDs cannot poison that replacement. Removed repository
   membership is retained separately from the current map, so background tracking
   cannot restore removed access. A replacement installation's unknown membership
-  keeps the ordinary native lookup, while known inactive or removed access fails
+  keeps the ordinary native lookup. Membership presence and coordinates retain
+  separate observation times: a delayed add can restore access without undoing
+  an owner rename learned after removal dropped the current map. Known inactive
+  or removed access fails
   before a source lookup or token mint. Connection testing refreshes installation
   availability through the App-authenticated installation list and reports a
   failed `PERMISSIONS` check naming the affected owner/state. No credential is

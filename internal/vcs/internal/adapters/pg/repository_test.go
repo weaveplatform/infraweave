@@ -393,7 +393,17 @@ func TestAccInstallationReplacementAndMembershipClocks(t *testing.T) {
 	if _, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7"); err != nil || !found {
 		t.Fatal("stale removal deleted replacement map", found, err)
 	}
+	// Generic repository observations carry no membership fact. Their newer
+	// map time must not mask this installation's queued removal.
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		return native.Apply(ctx, w.f.acct, w.id, use, at.Add(6*time.Second), []vcsapi.Event{{Repository: repository}})
+	}); err != nil {
+		t.Fatal(err)
+	}
 	apply("1", "removed", 5*time.Second)
+	if _, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7"); err != nil || found {
+		t.Fatal("map-only observation masked removal", found, err)
+	}
 	apply("1", "deleted", 6*time.Second)
 	// The replacement's created event need not contain repositories. Its unknown
 	// membership must retain the native lookup instead of inheriting an old deny.
@@ -431,5 +441,47 @@ func TestAccInstallationReplacementAndMembershipClocks(t *testing.T) {
 	installations, err := w.f.store.Installations(t.Context(), w.f.acct, w.id)
 	if err != nil || len(installations) != 2 || installations[0].Current || !installations[1].Current {
 		t.Fatal("current-owner identity did not persist", installations, err)
+	}
+}
+
+func TestAccMembershipRestorationKeepsNewerCoordinates(t *testing.T) {
+	w := newWebhookWorld(t)
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: &routedTargets{}, Now: time.Now}
+	use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+	base := time.Now().UTC().Truncate(time.Microsecond)
+	owner := vcsapi.Owner{ID: "9", Login: "old"}
+	original := vcsapi.Repository{ID: "7", Namespace: owner.Login, Name: "infra", OwnerID: owner.ID}
+	apply := func(offset time.Duration, event vcsapi.Event) {
+		t.Helper()
+		if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+			return native.Apply(ctx, w.f.acct, w.id, use, base.Add(offset), []vcsapi.Event{event})
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apply(0, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "created", Repositories: []vcsapi.Repository{original}}})
+	apply(time.Second, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "removed", Removed: []vcsapi.Repository{original}}})
+	apply(3*time.Second, vcsapi.Event{OwnerRename: &vcsapi.OwnerRename{ID: owner.ID, PreviousLogin: "old", Login: "new"}})
+	tombstone, found, err := w.f.store.MembershipIdentity(t.Context(), w.f.acct, w.id, original.ID)
+	if err != nil || !found || tombstone.Namespace != "new" || tombstone.Present || !tombstone.ObservedAt.Equal(base.Add(time.Second)) ||
+		!tombstone.CoordinatesAt.Equal(base.Add(3*time.Second)) {
+		t.Fatal("rename lost independent tombstone clocks", tombstone, found, err)
+	}
+	apply(2*time.Second, vcsapi.Event{Installation: &vcsapi.Installation{ID: "1", Owner: owner, Action: "added", Added: []vcsapi.Repository{original}}})
+	mapped, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, original.ID)
+	if err != nil || !found || mapped.Namespace != "new" || !mapped.ObservedAt.Equal(base.Add(3*time.Second)) {
+		t.Fatal("delayed add restored obsolete source coordinates", mapped, found, err)
+	}
+	member, found, err := w.f.store.MembershipIdentity(t.Context(), w.f.acct, w.id, original.ID)
+	if err != nil || !found || member.Namespace != "new" || !member.Present || !member.ObservedAt.Equal(base.Add(2*time.Second)) ||
+		!member.CoordinatesAt.Equal(base.Add(3*time.Second)) {
+		t.Fatal("presence and coordinate freshness were conflated", member, found, err)
+	}
+	if err := native.Check(t.Context(), w.f.acct, w.id, "new", "infra"); err != nil {
+		t.Fatal("restored membership remains unavailable", err)
+	}
+	current, err := native.EventRepository(t.Context(), w.f.acct, w.id, base.Add(2*time.Second), original)
+	if err != nil || current.Namespace != "new" {
+		t.Fatal("old retained event lost current route", current, err)
 	}
 }

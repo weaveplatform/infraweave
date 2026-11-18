@@ -89,11 +89,18 @@ func (f *failingStore) PutInstallation(ctx context.Context, a kernel.AccountID, 
 	return f.Store.PutInstallation(ctx, a, i, in)
 }
 
-func (f *failingStore) PutMembership(ctx context.Context, a kernel.AccountID, i kernel.ULID, installation string, r Repository, present bool) (bool, error) {
+func (f *failingStore) PutMembership(ctx context.Context, a kernel.AccountID, i kernel.ULID, installation string, m Membership) (bool, error) {
 	if err := f.fail("membership"); err != nil {
 		return false, err
 	}
-	return f.Store.PutMembership(ctx, a, i, installation, r, present)
+	return f.Store.PutMembership(ctx, a, i, installation, m)
+}
+
+func (f *failingStore) MembershipIdentity(ctx context.Context, a kernel.AccountID, i kernel.ULID, native string) (Membership, bool, error) {
+	if err := f.fail("member-identity"); err != nil {
+		return Membership{}, false, err
+	}
+	return f.Store.MembershipIdentity(ctx, a, i, native)
 }
 
 func (f *failingStore) MembershipRemoved(ctx context.Context, a kernel.AccountID, i kernel.ULID, ns, name, native string) (bool, error) {
@@ -133,20 +140,24 @@ func TestUnitLifecycleBoundaryFailuresRemainFailures(t *testing.T) {
 		{"owner", []string{"hold", "owner-members", "owner", "identity", "path", "put", "move", "installations", "put-installation"}, func(t *testing.T, w *world) error {
 			return w.apply(t, vcsapi.Event{OwnerRename: &vcsapi.OwnerRename{ID: "41", PreviousLogin: "old", Login: "new"}})
 		}},
-		{"installation", []string{"hold", "installations", "put-installation", "membership", "identity", "path", "put", "move"}, func(t *testing.T, w *world) error {
-			return w.apply(
-				t,
-				vcsapi.Event{
-					Installation: &vcsapi.Installation{
-						ID:           "71",
-						Owner:        vcsapi.Owner{ID: "41", Login: "old"},
-						Action:       "created",
-						Repositories: []vcsapi.Repository{repo("1", "old", "infra")},
+		{
+			"installation",
+			[]string{"hold", "installations", "put-installation", "membership", "member-identity", "identity", "path", "put", "move"},
+			func(t *testing.T, w *world) error {
+				return w.apply(
+					t,
+					vcsapi.Event{
+						Installation: &vcsapi.Installation{
+							ID:           "71",
+							Owner:        vcsapi.Owner{ID: "41", Login: "old"},
+							Action:       "created",
+							Repositories: []vcsapi.Repository{repo("1", "old", "infra")},
+						},
 					},
-				},
-			)
-		}},
-		{"removal", []string{"hold", "installations", "put-installation", "membership", "drop"}, func(t *testing.T, w *world) error {
+				)
+			},
+		},
+		{"removal", []string{"hold", "installations", "put-installation", "membership", "member-identity", "drop"}, func(t *testing.T, w *world) error {
 			return w.apply(
 				t,
 				vcsapi.Event{

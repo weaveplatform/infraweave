@@ -129,12 +129,29 @@ func (s *Store) PutInstallation(ctx context.Context, acct kernel.AccountID, id k
 }
 
 // PutMembership preserves both known membership and explicit removal.
-func (s *Store) PutMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, installation string, r lifecycle.Repository, present bool) (bool, error) {
-	tag, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installation_repositories(account_id,integration_id,installation_id,repository_id,namespace,name,present,observed_at)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(account_id,integration_id,repository_id) DO UPDATE
- SET installation_id=EXCLUDED.installation_id,namespace=EXCLUDED.namespace,name=EXCLUDED.name,present=EXCLUDED.present,observed_at=EXCLUDED.observed_at
- WHERE vcs_installation_repositories.observed_at <= EXCLUDED.observed_at`, acct, id, installation, r.ID, r.Namespace, r.Name, present, r.ObservedAt)
+func (s *Store) PutMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, installation string, m lifecycle.Membership) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).
+		Exec(ctx, `INSERT INTO vcs_installation_repositories(account_id,integration_id,installation_id,repository_id,namespace,name,present,observed_at,coordinates_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(account_id,integration_id,repository_id) DO UPDATE
+ SET installation_id=EXCLUDED.installation_id,namespace=EXCLUDED.namespace,name=EXCLUDED.name,present=EXCLUDED.present,
+ observed_at=EXCLUDED.observed_at,coordinates_at=EXCLUDED.coordinates_at
+ WHERE vcs_installation_repositories.observed_at <= EXCLUDED.observed_at`, acct, id, installation, m.ID, m.Namespace, m.Name, m.Present, m.ObservedAt, m.CoordinatesAt)
 	return tag.RowsAffected() > 0, repositoryError(err)
+}
+
+// MembershipIdentity reads coordinates even after removal dropped the map. A
+// superseded installation's ledger cannot constrain its replacement's input.
+func (s *Store) MembershipIdentity(ctx context.Context, acct kernel.AccountID, id kernel.ULID, native string) (lifecycle.Membership, bool, error) {
+	var m lifecycle.Membership
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT m.repository_id,m.namespace,m.name,i.owner_id,m.observed_at,m.present,m.coordinates_at
+ FROM vcs_installation_repositories m JOIN vcs_installations i
+ ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
+ WHERE m.account_id=$1 AND m.integration_id=$2 AND m.repository_id=$3 AND i.is_current`, acct, id, native).
+		Scan(&m.ID, &m.Namespace, &m.Name, &m.OwnerID, &m.ObservedAt, &m.Present, &m.CoordinatesAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return m, false, nil
+	}
+	return m, err == nil, repositoryError(err)
 }
 
 // MembershipRemoved answers only positively known absence, never an unknown App.
@@ -150,14 +167,14 @@ func (s *Store) MembershipRemoved(ctx context.Context, acct kernel.AccountID, id
 
 // MoveMembership follows a known repository path without changing presence.
 func (s *Store) MoveMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, r lifecycle.Repository) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_installation_repositories SET namespace=$4,name=$5
- WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 AND observed_at<=$6`, acct, id, r.ID, r.Namespace, r.Name, r.ObservedAt)
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_installation_repositories SET namespace=$4,name=$5,coordinates_at=$6
+ WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 AND coordinates_at<=$6`, acct, id, r.ID, r.Namespace, r.Name, r.ObservedAt)
 	return repositoryError(err)
 }
 
 // OwnerMemberships includes removed repositories whose current map was dropped.
 func (s *Store) OwnerMemberships(ctx context.Context, acct kernel.AccountID, id kernel.ULID, owner, previous string) ([]lifecycle.Membership, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT m.repository_id,m.namespace,m.name,i.owner_id,m.observed_at,m.present
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT m.repository_id,m.namespace,m.name,i.owner_id,m.observed_at,m.present,m.coordinates_at
  FROM vcs_installation_repositories m JOIN vcs_installations i
  ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
  WHERE m.account_id=$1 AND m.integration_id=$2 AND i.is_current AND (i.owner_id=$3 OR (i.owner_id='' AND m.namespace=$4))
@@ -169,7 +186,7 @@ func (s *Store) OwnerMemberships(ctx context.Context, acct kernel.AccountID, id 
 	var out []lifecycle.Membership
 	for rows.Next() {
 		var m lifecycle.Membership
-		if err := rows.Scan(&m.ID, &m.Namespace, &m.Name, &m.OwnerID, &m.ObservedAt, &m.Present); err != nil {
+		if err := rows.Scan(&m.ID, &m.Namespace, &m.Name, &m.OwnerID, &m.ObservedAt, &m.Present, &m.CoordinatesAt); err != nil {
 			return nil, repositoryError(err)
 		}
 		out = append(out, m)

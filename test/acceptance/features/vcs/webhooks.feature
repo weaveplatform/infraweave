@@ -752,7 +752,7 @@ Feature: VCS webhook protocol, event run budgets and request history
       | organization        |
       | installation_target |
 
-  @github @objectstore @docker @op:vcsIntegrationTest @case:failure
+  @github @objectstore @docker @op:vcsIntegrationTest @case:success @case:failure
   Scenario Outline: GitHub installation unavailability fails before provider calls and restoration permits a real plan
     Given the release indexes serve the recorded fixtures
     And two infraweave servers, A and B, on one database
@@ -810,7 +810,7 @@ Feature: VCS webhook protocol, event run budgets and request history
       | state   | action  | restore | recovery           | vendor   |
       | deleted | deleted | created | a new installation | opentofu |
 
-  @github @op:vcsIntegrationTest @case:failure
+  @github @op:vcsIntegrationTest @case:success @case:failure
   Scenario: GitHub repository membership and authoritative installation refresh control source availability
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
@@ -845,7 +845,7 @@ Feature: VCS webhook protocol, event run budgets and request history
     Then it answers 200
     And the GitHub installation check names owner "acme" and state "deleted"
     And GitHub source resolution on stack "infra" refuses "deleted" without a provider call through A
-    Given the native GitHub installation of App "app" becomes "active"
+    Given GitHub restores App "app" on "acme" using "a new installation"
     When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through A
     Then it answers 200
     And the answer's status is '"SUCCESS"'

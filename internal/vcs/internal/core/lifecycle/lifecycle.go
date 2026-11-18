@@ -25,7 +25,8 @@ type Repository struct {
 // Membership retains availability independently of the current map row.
 type Membership struct {
 	Repository
-	Present bool
+	Present       bool
+	CoordinatesAt time.Time
 }
 
 // Installation keeps provider ownership and availability, never a local account.
@@ -48,7 +49,8 @@ type Store interface {
 	DropRepositoryIdentity(context.Context, kernel.AccountID, kernel.ULID, string) error
 	Installations(context.Context, kernel.AccountID, kernel.ULID) ([]Installation, error)
 	PutInstallation(context.Context, kernel.AccountID, kernel.ULID, Installation) error
-	PutMembership(context.Context, kernel.AccountID, kernel.ULID, string, Repository, bool) (bool, error)
+	PutMembership(context.Context, kernel.AccountID, kernel.ULID, string, Membership) (bool, error)
+	MembershipIdentity(context.Context, kernel.AccountID, kernel.ULID, string) (Membership, bool, error)
 	MembershipRemoved(context.Context, kernel.AccountID, kernel.ULID, string, string, string) (bool, error)
 	MoveMembership(context.Context, kernel.AccountID, kernel.ULID, Repository) error
 	OwnerMemberships(context.Context, kernel.AccountID, kernel.ULID, string, string) ([]Membership, error)
@@ -211,7 +213,7 @@ func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id ker
 	// Removed repositories have no current map entry, but their stacks and
 	// membership tombstone still follow the stable native owner.
 	for _, member := range members {
-		if member.Present || member.ObservedAt.After(at) {
+		if member.Present || member.CoordinatesAt.After(at) {
 			continue
 		}
 		occupied, found, err := s.Store.RepositoryPath(ctx, acct, id, owner.Login, member.Name)
@@ -261,39 +263,13 @@ func (s *Service) install(ctx context.Context, acct kernel.AccountID, id kernel.
 		return nil
 	}
 	for _, repo := range slices.Concat(event.Repositories, event.Added) {
-		repo.ID, repo.OwnerID = CanonicalID(repo.ID), event.Owner.ID
-		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
-		if err != nil {
-			return err //nolint:wrapcheck // the store names the failed read
-		} //nolint:wrapcheck // store names the read
-		if found && current.ObservedAt.After(at) {
-			repo = current.Repository
-		}
-		if accepted, err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, true); err != nil {
-			return err //nolint:wrapcheck // the called boundary names the failed operation
-		} else if !accepted {
-			continue
-		}
-		if err := s.observe(ctx, acct, id, use, repo, at); err != nil {
+		if err := s.membership(ctx, acct, id, use, next, at, repo, true); err != nil {
 			return err
 		}
 	}
 	for _, repo := range event.Removed {
-		repo.ID, repo.OwnerID = CanonicalID(repo.ID), event.Owner.ID
-		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
-		if err != nil {
-			return err //nolint:wrapcheck // the store names the failed read
-		} //nolint:wrapcheck // store names the read
-		if found && current.ObservedAt.After(at) {
-			repo = current.Repository
-		}
-		if accepted, err := s.Store.PutMembership(ctx, acct, id, event.ID, Repository{repo, at}, false); err != nil {
-			return err //nolint:wrapcheck // the called boundary names the failed operation
-		} else if !accepted {
-			continue
-		}
-		if err := s.Store.DropRepositoryIdentity(ctx, acct, id, repo.ID); err != nil {
-			return err //nolint:wrapcheck // the called boundary names the failed operation
+		if err := s.membership(ctx, acct, id, use, next, at, repo, false); err != nil {
+			return err
 		}
 	}
 	return nil

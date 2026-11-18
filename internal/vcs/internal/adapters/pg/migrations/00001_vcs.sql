@@ -229,6 +229,7 @@ CREATE TABLE vcs_installation_repositories (
     name text NOT NULL,
     present boolean NOT NULL,
     observed_at timestamptz NOT NULL,
+    coordinates_at timestamptz NOT NULL,
     PRIMARY KEY(account_id,integration_id,repository_id),
     FOREIGN KEY(account_id,integration_id,installation_id)
         REFERENCES vcs_installations(account_id,integration_id,installation_id) ON DELETE CASCADE
