@@ -38,7 +38,7 @@ func New(jobs *queue.Queue, hold func(context.Context, kernel.AccountID) error) 
 // Kinds names the run updates the Commit checks sink consumes.
 func (*Service) Kinds() []string { return []string{runsapi.UpdatedKind} }
 
-// Targets selects deployment effects from run facts without calling providers.
+// Targets selects native feedback effects from run facts without calling providers.
 func (s *Service) Targets(ctx context.Context, event outbox.Event) ([]vcsapi.FeedbackTarget, error) {
 	targets, err := s.deploymentTargets(ctx, event)
 	if err != nil {

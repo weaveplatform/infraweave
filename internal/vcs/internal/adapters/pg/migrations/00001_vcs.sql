@@ -143,7 +143,6 @@ CREATE INDEX pull_requests_integration ON pull_requests (account_id,integration_
 CREATE INDEX pull_requests_commit_head ON pull_requests (account_id,integration_id,namespace,repository,head_sha);
 CREATE INDEX pull_requests_stack_read ON pull_requests
     (account_id,integration_id,namespace,repository,base_branch,updated_at DESC,id DESC) WHERE state='open';
-CREATE INDEX pull_requests_commit_head ON pull_requests (account_id,integration_id,namespace,repository,head_sha);
 CREATE INDEX pull_requests_retention ON pull_requests (updated_at,id) WHERE state IN ('closed','merged');
 
 CREATE TABLE pull_request_heads (
