@@ -85,6 +85,9 @@ func TestUnitWebhookSenderRetries(t *testing.T) {
 func TestUnitWebhookSenderCopiesAndRedelivery(t *testing.T) {
 	t.Parallel()
 	body, secret := []byte("original"), []byte(strings.Repeat("s", 32))
+	m := hmac.New(sha256.New, secret)
+	_, _ = m.Write(body)
+	want := "original/sha256=" + hex.EncodeToString(m.Sum(nil))
 	var seen []string
 	r := chi.NewRouter()
 	r.Post("/hook", func(w http.ResponseWriter, req *http.Request) {
@@ -105,7 +108,7 @@ func TestUnitWebhookSenderCopiesAndRedelivery(t *testing.T) {
 	if status, err := s.Redeliver(t.Context(), 0); err != nil || status != 202 {
 		t.Fatalf("redeliver=%d %v", status, err)
 	}
-	if len(seen) != 2 || seen[0] != seen[1] || !strings.HasPrefix(seen[0], "original/sha256=") || s.Attempts()[0].Event != "pr:opened" {
+	if len(seen) != 2 || seen[0] != want || seen[1] != want || s.Attempts()[0].Event != "pr:opened" {
 		t.Fatalf("snapshots not independent: %v", seen)
 	}
 	for _, index := range []int{-1, 2} {
