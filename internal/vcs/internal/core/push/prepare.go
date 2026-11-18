@@ -53,6 +53,12 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 		if !s.d.Now().Before(delivery.Deadline) {
 			return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
 		}
+		if s.d.Lifecycle != nil {
+			event.Repository, err = s.d.Lifecycle.EventRepository(ctx, delivery.Account, delivery.Integration, delivery.ReceivedAt, event.Repository)
+			if err != nil {
+				return nil, err
+			}
+		}
 		prepared := Prepared{Event: event}
 		if event.Type == "push" {
 			prepared.Commit, prepared.Files, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
@@ -93,10 +99,16 @@ func (p *plan) Commit(ctx context.Context) error {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
 	targets := map[kernel.ULID]bool{}
+	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
 	for _, prepared := range p.events {
-		stacks, err := p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, p.use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
-		if err != nil {
-			return err
+		stacks, seen := repositories[prepared.Event.Repository]
+		if !seen {
+			var err error
+			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, p.use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
+			if err != nil {
+				return err
+			}
+			repositories[prepared.Event.Repository] = stacks
 		}
 		for _, stack := range stacks {
 			targets[stack.ID] = true

@@ -199,7 +199,7 @@ func TestUnitGitHubParse(t *testing.T) {
 						Owner:        vcsapi.Owner{ID: "41", Login: "acme"},
 						Repositories: []vcsapi.Repository{},
 						Added:        []vcsapi.Repository{repo},
-						Removed:      []vcsapi.Repository{{ID: "8", Namespace: "acme", Name: "retired"}},
+						Removed:      []vcsapi.Repository{{ID: "8", Namespace: "acme", Name: "retired", OwnerID: "41"}},
 					},
 				},
 			},

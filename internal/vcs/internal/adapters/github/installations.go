@@ -2,8 +2,10 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
@@ -24,6 +26,9 @@ func (p *Provider) ReadInstallations(ctx context.Context, in port.Integration) (
 	}
 	out := make([]port.InstallationState, 0, len(list))
 	for _, native := range list {
+		if native.GetID() <= 0 || native.GetAccount().GetID() <= 0 || native.GetAccount().GetLogin() == "" {
+			return nil, fmt.Errorf("%w: github: missing installation identity", kernel.ErrUnavailable)
+		}
 		state := "active"
 		if native.SuspendedAt != nil && !native.SuspendedAt.IsZero() {
 			state = "suspended"

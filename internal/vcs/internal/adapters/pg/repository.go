@@ -128,9 +128,39 @@ func (s *Store) PutMembership(ctx context.Context, acct kernel.AccountID, id ker
 }
 
 // MembershipRemoved answers only positively known absence, never an unknown App.
-func (s *Store) MembershipRemoved(ctx context.Context, acct kernel.AccountID, id kernel.ULID, namespace, name string) (bool, error) {
+func (s *Store) MembershipRemoved(ctx context.Context, acct kernel.AccountID, id kernel.ULID, namespace, name, native string) (bool, error) {
 	var removed bool
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM vcs_installation_repositories WHERE account_id=$1 AND integration_id=$2
- AND namespace=$3 AND name=$4 AND NOT present)`, acct, id, namespace, name).Scan(&removed)
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT COALESCE((SELECT NOT present FROM vcs_installation_repositories WHERE account_id=$1 AND integration_id=$2
+ AND ((namespace=$3 AND name=$4) OR ($5<>'' AND repository_id=$5))
+ ORDER BY observed_at DESC,repository_id LIMIT 1),false)`, acct, id, namespace, name, native).Scan(&removed)
 	return removed, repositoryError(err)
+}
+
+// MoveMembership follows a known repository path without changing presence.
+func (s *Store) MoveMembership(ctx context.Context, acct kernel.AccountID, id kernel.ULID, r lifecycle.Repository) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_installation_repositories SET namespace=$4,name=$5,observed_at=$6
+ WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 AND observed_at<=$6`, acct, id, r.ID, r.Namespace, r.Name, r.ObservedAt)
+	return repositoryError(err)
+}
+
+// OwnerMemberships includes removed repositories whose current map was dropped.
+func (s *Store) OwnerMemberships(ctx context.Context, acct kernel.AccountID, id kernel.ULID, owner, previous string) ([]lifecycle.Membership, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT m.repository_id,m.namespace,m.name,i.owner_id,m.observed_at,m.present
+ FROM vcs_installation_repositories m JOIN vcs_installations i
+ ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
+ WHERE m.account_id=$1 AND m.integration_id=$2 AND (i.owner_id=$3 OR (i.owner_id='' AND m.namespace=$4))
+ ORDER BY m.repository_id`, acct, id, owner, previous)
+	if err != nil {
+		return nil, repositoryError(err)
+	}
+	defer rows.Close()
+	var out []lifecycle.Membership
+	for rows.Next() {
+		var m lifecycle.Membership
+		if err := rows.Scan(&m.ID, &m.Namespace, &m.Name, &m.OwnerID, &m.ObservedAt, &m.Present); err != nil {
+			return nil, repositoryError(err)
+		}
+		out = append(out, m)
+	}
+	return out, repositoryError(rows.Err())
 }

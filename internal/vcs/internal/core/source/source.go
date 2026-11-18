@@ -26,7 +26,7 @@ type Integrations interface {
 // Identities follows native identities and known installation availability.
 type Identities interface {
 	Check(context.Context, kernel.AccountID, kernel.ULID, string, string) error
-	Seed(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, vcsapi.Repository) error
+	SeedAt(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, vcsapi.Repository, time.Time) error
 }
 
 type Service struct {
@@ -144,6 +144,10 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 	if err != nil {
 		return err //nolint:wrapcheck // stacks names the read
 	}
+	started := time.Now()
+	if s.now != nil {
+		started = s.now()
+	}
 	var c vcsapi.Commit
 	if native, ok := src.(port.RepositorySource); ok && repo.Integration != nil && s.identities != nil {
 		var resolved port.Resolution
@@ -161,7 +165,7 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 				return readErr
 			}
 			if found {
-				err = s.identities.Seed(ctx, acct, repo.Integration.ID, use, resolved.Repository)
+				err = s.identities.SeedAt(ctx, acct, repo.Integration.ID, use, resolved.Repository, started)
 			}
 		}
 	} else {

@@ -20,6 +20,12 @@ type Repository struct {
 	ObservedAt time.Time
 }
 
+// Membership retains availability independently of the current map row.
+type Membership struct {
+	Repository
+	Present bool
+}
+
 // Installation keeps provider ownership and availability, never a local account.
 type Installation struct {
 	ID         string
@@ -40,7 +46,9 @@ type Store interface {
 	Installations(context.Context, kernel.AccountID, kernel.ULID) ([]Installation, error)
 	PutInstallation(context.Context, kernel.AccountID, kernel.ULID, Installation) error
 	PutMembership(context.Context, kernel.AccountID, kernel.ULID, string, Repository, bool) error
-	MembershipRemoved(context.Context, kernel.AccountID, kernel.ULID, string, string) (bool, error)
+	MembershipRemoved(context.Context, kernel.AccountID, kernel.ULID, string, string, string) (bool, error)
+	MoveMembership(context.Context, kernel.AccountID, kernel.ULID, Repository) error
+	OwnerMemberships(context.Context, kernel.AccountID, kernel.ULID, string, string) ([]Membership, error)
 }
 
 // Service owns repository renames and native installation availability.
@@ -64,19 +72,23 @@ func CanonicalID(id string) string {
 // Check fails only when durable provider observations establish unavailability.
 // Unknown installations retain the ordinary provider lookup for new bindings.
 func (s *Service) Check(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, namespace, name string) error {
-	removed, err := s.Store.MembershipRemoved(ctx, acct, integration, namespace, name)
+	removed, err := s.Store.MembershipRemoved(ctx, acct, integration, namespace, name, "")
 	if err != nil {
 		return err
 	}
 	if removed {
 		return &kernel.Invalid{Detail: fmt.Sprintf("The GitHub App installation on %s no longer reaches this repository.", namespace)}
 	}
+	repository, known, err := s.Store.RepositoryPath(ctx, acct, integration, namespace, name)
+	if err != nil {
+		return err
+	}
 	installs, err := s.Store.Installations(ctx, acct, integration)
 	if err != nil {
 		return err
 	}
 	for _, in := range installs {
-		if in.Owner.Login == namespace && in.State != "active" {
+		if (in.Owner.Login == namespace || known && repository.OwnerID != "" && in.Owner.ID == repository.OwnerID) && in.State != "active" {
 			return &kernel.Invalid{Detail: fmt.Sprintf("The GitHub App installation on %s is %s.", in.Owner.Login, in.State)}
 		}
 	}
@@ -86,6 +98,12 @@ func (s *Service) Check(ctx context.Context, acct kernel.AccountID, integration 
 // Seed records provider-resolved identity; a removed membership cannot be
 // restored by the stack.changed event emitted by an earlier rename.
 func (s *Service) Seed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, repo vcsapi.Repository) error {
+	return s.SeedAt(ctx, acct, id, use, repo, s.Now())
+}
+
+// SeedAt uses the time before the provider read, so waiting for a database lock
+// cannot make an older API observation newer than a concurrent rename delivery.
+func (s *Service) SeedAt(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, repo vcsapi.Repository, at time.Time) error {
 	if repo.ID == "" || repo.Namespace == "" || repo.Name == "" {
 		return nil
 	}
@@ -97,7 +115,7 @@ func (s *Service) Seed(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 		if err := s.Check(ctx, acct, id, repo.Namespace, repo.Name); err != nil {
 			return err
 		}
-		return s.observe(ctx, acct, id, use, repo, s.Now())
+		return s.observe(ctx, acct, id, use, repo, at)
 	})
 }
 
@@ -122,7 +140,7 @@ func (s *Service) Apply(ctx context.Context, acct kernel.AccountID, id kernel.UL
 			}
 		}
 		if event.Repository.ID != "" && event.Repository.Namespace != "" && event.Repository.Name != "" {
-			removed, err := s.Store.MembershipRemoved(ctx, acct, id, event.Repository.Namespace, event.Repository.Name)
+			removed, err := s.Store.MembershipRemoved(ctx, acct, id, event.Repository.Namespace, event.Repository.Name, CanonicalID(event.Repository.ID))
 			if err != nil {
 				return err
 			}
@@ -165,10 +183,18 @@ func (s *Service) observe(ctx context.Context, acct kernel.AccountID, id kernel.
 			return err
 		}
 	}
-	return s.Store.PutRepositoryIdentity(ctx, acct, id, Repository{Repository: repo, ObservedAt: at})
+	observation := Repository{Repository: repo, ObservedAt: at}
+	if err := s.Store.PutRepositoryIdentity(ctx, acct, id, observation); err != nil {
+		return err
+	}
+	return s.Store.MoveMembership(ctx, acct, id, observation)
 }
 
 func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, at time.Time, owner vcsapi.OwnerRename) error {
+	members, err := s.Store.OwnerMemberships(ctx, acct, id, owner.ID, owner.PreviousLogin)
+	if err != nil {
+		return err
+	}
 	repos, err := s.Store.OwnerRepositories(ctx, acct, id, owner.ID, owner.PreviousLogin)
 	if err != nil {
 		return err
@@ -176,6 +202,28 @@ func (s *Service) renameOwner(ctx context.Context, acct kernel.AccountID, id ker
 	for _, repo := range repos {
 		repo.Namespace, repo.OwnerID = owner.Login, owner.ID
 		if err := s.observe(ctx, acct, id, use, repo.Repository, at); err != nil {
+			return err
+		}
+	}
+	// Removed repositories have no current map entry, but their stacks and
+	// membership tombstone still follow the stable native owner.
+	for _, member := range members {
+		if member.Present || member.ObservedAt.After(at) {
+			continue
+		}
+		occupied, found, err := s.Store.RepositoryPath(ctx, acct, id, owner.Login, member.Name)
+		if err != nil {
+			return err
+		}
+		if found && occupied.ID != member.ID {
+			continue
+		}
+		if err := s.Stacks.RepointVCSRepository(ctx, acct, use, stacksapi.VCSRepository{Namespace: member.Namespace, Name: member.Name},
+			stacksapi.VCSRepository{Namespace: owner.Login, Name: member.Name}); err != nil {
+			return err
+		}
+		member.Namespace, member.ObservedAt = owner.Login, at
+		if err := s.Store.MoveMembership(ctx, acct, id, member.Repository); err != nil {
 			return err
 		}
 	}
@@ -238,4 +286,21 @@ func (s *Service) install(ctx context.Context, acct kernel.AccountID, id kernel.
 		}
 	}
 	return nil
+}
+
+// EventRepository reaches the current native path when an older delivery is
+// replayed after a later rename. The original event remains the lifecycle fact;
+// only its immutable source facts/fan-out use the newer known coordinates.
+func (s *Service) EventRepository(ctx context.Context, acct kernel.AccountID, id kernel.ULID, at time.Time, repo vcsapi.Repository) (vcsapi.Repository, error) {
+	if repo.ID == "" {
+		return repo, nil
+	}
+	current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, CanonicalID(repo.ID))
+	if err != nil {
+		return vcsapi.Repository{}, err
+	}
+	if found && current.ObservedAt.After(at) {
+		return current.Repository, nil
+	}
+	return repo, nil
 }
