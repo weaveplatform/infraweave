@@ -195,8 +195,8 @@ func TestUnitExecTerragruntApplies(t *testing.T) {
 	}
 }
 
-// Dependent units need their planning mocks alone. The runner consumes their
-// JSON documents without invoking a read command that re-evaluates dependencies.
+// Dependent units provide plan JSON while their mocks exclude read commands.
+// The runner consumes those documents without re-evaluating dependencies.
 func TestUnitExecTerragruntDependentUnitsDoNotReadAcrossUnits(t *testing.T) {
 	for _, custom := range []bool{false, true} {
 		t.Run(map[bool]string{false: "built-in workflow", true: "workflow file"}[custom], func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestUnitExecTerragruntDependentUnitsDoNotReadAcrossUnits(t *testing.T) {
 				filepath.Join(w.checkout, "app", "terragrunt.hcl"): `dependency "network" {
   config_path = "../network"
   mock_outputs = { network_id = "mock-network-id" }
-  mock_outputs_allowed_terraform_commands = ["plan", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate"]
 }
 inputs = { network_id = dependency.network.outputs.network_id }
 `,

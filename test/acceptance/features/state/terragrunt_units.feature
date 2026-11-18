@@ -39,7 +39,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
   false when its use_run_all key is absent. A missing root unit fails
   initialization, even where nested units exist.
   In a second repository, app reads network_id from network. Planning
-  uses mocks allowed for plan and validate; applying replans after network
+  uses mocks allowed for init, plan and validate; applying replans after network
   and consumes its real output. Without a mock allowed for plan, Terragrunt
   refuses planning before any state version is written.
   ref: decision 0008
@@ -62,7 +62,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
       | root.hcl                         | locals {\n  owner = "infraweave"\n}\n |
       | live/network/terragrunt.hcl      | include "root" {\n  path = find_in_parent_folders("root.hcl")\n}\n |
       | live/network/main.tf             | resource "terraform_data" "network" {\n  input = "real-network"\n}\n\noutput "network_id" {\n  value = terraform_data.network.id\n}\n |
-      | live/app/terragrunt.hcl          | include "root" {\n  path = find_in_parent_folders("root.hcl")\n}\n\nterraform {\n  source = "../../modules/app"\n}\n\ndependency "network" {\n  config_path = "../network"\n  mock_outputs = {\n    network_id = "mock-network-id"\n  }\n  mock_outputs_allowed_terraform_commands = ["plan", "validate"]\n}\n\ninputs = {\n  network_id = dependency.network.outputs.network_id\n}\n |
+      | live/app/terragrunt.hcl          | include "root" {\n  path = find_in_parent_folders("root.hcl")\n}\n\nterraform {\n  source = "../../modules/app"\n}\n\ndependency "network" {\n  config_path = "../network"\n  mock_outputs = {\n    network_id = "mock-network-id"\n  }\n  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate"]\n}\n\ninputs = {\n  network_id = dependency.network.outputs.network_id\n}\n |
       | modules/app/main.tf              | variable "network_id" {\n  type = string\n}\n\nresource "terraform_data" "app" {\n  input = var.network_id\n}\n |
     And the head of "main" of "deps" is kept as "deps_seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
@@ -313,7 +313,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
       | OPEN_TOFU | {opentofu.newest} |
 
   @op:runTrigger @case:failure
-  Scenario Outline: A dependency whose mocks allow only validation refuses planning without outputs
+  Scenario Outline: A dependency whose mocks allow initialization and validation refuses planning without outputs
     Given a commit to "main" of "deps" writing "live/app/terragrunt.hcl":
       """
       include "root" {
@@ -329,7 +329,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
         mock_outputs = {
           network_id = "mock-network-id"
         }
-        mock_outputs_allowed_terraform_commands = ["validate"]
+        mock_outputs_allowed_terraform_commands = ["init", "validate"]
       }
 
       inputs = {

@@ -659,12 +659,14 @@ coverage it would contribute is not waived.
   a missing root unit; single-unit plans use a saved-plan fallback when
   the pinned Terragrunt writes no JSON directory outside run-all.
   Its dependent-unit outlines use `network` and `app`, with `app` reading
-  `network`'s output. Mocks allow `plan` and `validate` only: planning
+  `network`'s output. Mocks allow `init`, `plan` and `validate`: explicit
+  initialization needs mocks before the dependency has outputs. Planning
   reaches two additions without a cross-unit `show`, and confirmation
   applies both units with real dependency outputs, two state versions and
-  no recorded stack outputs until P20. A commit whose mocks allow only
-  `validate` fails planning with Terragrunt's missing-outputs diagnostic
-  and writes no state version. Both outlines run on Terraform and OpenTofu.
+  no recorded stack outputs until P20. A commit whose mocks allow `init`
+  and `validate`, but not `plan`, fails planning with Terragrunt's
+  missing-outputs diagnostic and writes no state version. Both outlines
+  run on Terraform and OpenTofu.
   `vendors/terragrunt.feature` holds a Terragrunt stack's
   settings and runs. `TestAccCaptures` skips C106, C107, C108, C109, C110,
   C112, C113 and C114 as awaited against them.
