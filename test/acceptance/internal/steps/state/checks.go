@@ -39,6 +39,8 @@ func (b *backendSteps) registerChecks(sc *godog.ScenarioContext) {
 	sc.Step(`^the run "(\w+)" wrote (\d+) state versions?$`, b.wrote)
 	sc.Step(`^the state workspaces of the run "(\w+)"'s stack are "([^"]*)", each at a `+
 		`version the run wrote$`, b.workspaces)
+	sc.Step(`^the unit state workspaces of the run "(\w+)"'s stack are "([^"]*)", each at a `+
+		`version the run wrote$`, b.unitWorkspaces)
 	sc.Step(
 		`^the current state version is the run "(\w+)"'s, with the serial and lineage of its last output$`,
 		b.current,
@@ -266,6 +268,16 @@ func (b *backendSteps) wrote(ctx context.Context, run string, n int) error {
 // default workspace, and that the current version of each is one the run
 // wrote.
 func (b *backendSteps) workspaces(ctx context.Context, run, names string) error {
+	return b.checkWorkspaces(ctx, run, names, false)
+}
+
+// unitWorkspaces omits only an unwritten default workspace when no unit runs
+// at the project root. A written default or any unexpected named unit fails.
+func (b *backendSteps) unitWorkspaces(ctx context.Context, run, names string) error {
+	return b.checkWorkspaces(ctx, run, names, true)
+}
+
+func (b *backendSteps) checkWorkspaces(ctx context.Context, run, names string, skipEmptyDefault bool) error {
 	id, ok := b.w.IDs[run]
 	if !ok {
 		return fmt.Errorf("%w: no run %q", harness.ErrStep, run)
@@ -278,8 +290,9 @@ func (b *backendSteps) workspaces(ctx context.Context, run, names string) error 
 		FROM state_workspaces s
 		LEFT JOIN managed_state_versions v
 			ON v.account_id = s.account_id AND v.id = s.current_version_id
-		WHERE s.stack_id = (SELECT stack_id FROM runs WHERE id = $1)`,
-		[]any{harness.UUIDOf(id)}, &got); err != nil {
+		WHERE s.stack_id = (SELECT stack_id FROM runs WHERE id = $1)
+		  AND (NOT $2 OR s.name <> '' OR s.current_version_id IS NOT NULL)`,
+		[]any{harness.UUIDOf(id), skipEmptyDefault}, &got); err != nil {
 		return err
 	}
 	if got != names {

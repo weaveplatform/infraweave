@@ -142,8 +142,28 @@ func TestUnitVendorsTerragruntCommands(t *testing.T) {
 			t.Errorf("a workflow file's planning = %q, %v", got, err)
 		}
 		command, err := w.Command(t.Context(), workflow.ShowPlan, o)
-		if err != nil || command.Line != all+"show -json 'tfplan.tfplan'" || command.Stdout != "/p" {
+		if err != nil || command.Line != "terragrunt run -- show -json 'tfplan.tfplan'" || command.Stdout != "/p" {
 			t.Errorf("showPlan fallback = %+v, %v", command, err)
+		}
+		custom := strings.Replace(file(workflow.Plan, "echo ${{ planFileName }}"), "showPlan: true", "showPlan: echo forbidden-show-plan", 1)
+		custom = strings.Replace(custom, "getOutputs: true", "getOutputs: echo forbidden-get-outputs", 1)
+		f, err = vendors.Read([]byte(custom))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, phase := range []struct {
+			state wire.WorkerState
+			key   workflow.Key
+		}{
+			{wire.WorkerStateINITIALIZING, workflow.Init},
+			{wire.WorkerStatePLANNING, workflow.Plan},
+			{wire.WorkerStateAPPLYING, workflow.Apply},
+			{wire.WorkerStateDESTROYING, workflow.Destroy},
+		} {
+			commands, err := f.Commands(t.Context(), phase.state, o)
+			if err != nil || len(commands) != 1 || commands[0].Key != phase.key {
+				t.Errorf("runAll=%t custom %s ran a read command: %+v, %v", runAll, phase.state, commands, err)
+			}
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	gherkin "github.com/cucumber/gherkin/go/v42"
+	"github.com/cucumber/godog"
 	messages "github.com/cucumber/messages/go/v34"
 
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
@@ -86,8 +87,9 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@postgres"}, "core"},
 		{[]string{"@oidc", "@objectstore"}, "core"},
 		{[]string{"@postgres", "@vault"}, "core"},
-		{[]string{"@postgres", "@terraform"}, "runs"},
-		{[]string{"@runtime-config-reject", "@terraform"}, "runs"},
+		{[]string{"@postgres", "@terraform"}, "terraform"},
+		{[]string{"@runtime-config-reject", "@terraform"}, "terraform"},
+		{[]string{"@terraform", "@docker", "@tofu"}, "terraform"},
 		{[]string{"@runtime-config-reject", "@tofu"}, "runs"},
 		{[]string{"@vcs", "@postgres"}, "integrations"},
 		{[]string{"@webhook-controls", "@gitlab", "@postgres"}, "integrations"},
@@ -96,7 +98,7 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@postgres", "@vcs", "@terragrunt"}, "runs"},
 		{[]string{"@postgres", "@vcs", "@docker"}, "runs"},
 		{[]string{"@ai"}, "integrations"},
-		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "runs"},
+		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "terraform"},
 		{[]string{"@postgres", "@vcs", "@vcs-lab", "@lab:gitlab"}, "vcs-lab"},
 	} {
 		got, err := harness.Place(tc.tags)
@@ -115,26 +117,31 @@ func TestUnitPlace(t *testing.T) {
 }
 
 func TestUnitTagExpression(t *testing.T) {
+	runPrefix := "~@vcs-lab && ~@terraform && "
+	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	for name, want := range map[string]string{
-		"":        "~@vcs-lab",
-		"vcs-lab": "@vcs-lab",
-		"runs":    "~@vcs-lab && @docker,@terraform,@tofu,@terragrunt,@kubernetes,@flows-agent",
-		"integrations": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && " +
-			"@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai",
-		"core": "~@vcs-lab && ~@docker && ~@terraform && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"":             "~@vcs-lab",
+		"vcs-lab":      "@vcs-lab",
+		"terraform":    "~@vcs-lab && @terraform",
+		"runs":         strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
+		"integrations": strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
+		"core":         integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	} {
 		got, err := harness.TagExpression(name)
 		if err != nil || got != want {
 			t.Errorf("TagExpression(%q) = %q, %v; want %q", name, got, err, want)
 		}
 	}
+
 	if _, err := harness.TagExpression("everything"); !errors.Is(err, harness.ErrUnknownPartition) {
 		t.Errorf("an unknown partition: %v", err)
 	}
 	for want, exprs := range map[string][]string{
-		"":                        {"", ""},
-		"@vcs-lab":                {"@vcs-lab", ""},
-		"@vcs-lab && @lab:gitlab": {"@vcs-lab", "", "@lab:gitlab"},
+		"":                                    {"", ""},
+		"@vcs-lab":                            {"@vcs-lab", ""},
+		"@vcs-lab && @lab:gitlab":             {"@vcs-lab", "", "@lab:gitlab"},
+		"@a && @c,@a && @d,@b && @c,@b && @d": {"@a,@b", "@c,@d"},
+		"~@a && @b,~@a && @c":                 {"~@a", "@b,@c"},
 	} {
 		if got := harness.And(exprs...); got != want {
 			t.Errorf("And(%q) = %q, want %q", exprs, got, want)
@@ -157,4 +164,91 @@ func TestUnitSlug(t *testing.T) {
 	); got != "a-failed-scenario-s-evidence-postgres" {
 		t.Errorf("slug = %q", got)
 	}
+}
+
+// Use Godog's actual selector, including every outline example, rather than
+// equating the intended partition with the string used to request it.
+func TestUnitPartitionSelections(t *testing.T) {
+	all := godogScenarios(t, "")
+	owners := map[string][]string{}
+	partitions := append(slices.Clone(harness.Labs), harness.Partitions...)
+	for _, partition := range partitions {
+		t.Run(partition.Name, func(t *testing.T) {
+			expr, err := harness.TagExpression(partition.Name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			actual := godogScenarios(t, expr)
+			for id := range actual {
+				owners[id] = append(owners[id], partition.Name)
+			}
+			for _, selector := range []struct {
+				name string
+				tags []string
+			}{
+				{name: "all"},
+				{name: "comments", tags: []string{"@case:plan-comments"}},
+				{name: "success-or-denial", tags: []string{"@case:success", "@case:denial"}},
+			} {
+				t.Run(selector.name, func(t *testing.T) {
+					selected := godogScenarios(t, harness.And(expr, strings.Join(selector.tags, ",")))
+					for id, scenario := range all {
+						tags := pickleTags(scenario)
+						owner, err := harness.Place(tags)
+						if err != nil {
+							t.Fatal(err)
+						}
+						want := owner == partition.Name && (len(selector.tags) == 0 || slices.ContainsFunc(selector.tags, func(tag string) bool {
+							return slices.Contains(tags, tag)
+						}))
+						if _, got := selected[id]; got != want {
+							t.Errorf("%s: %s selected=%t, want %t", scenario.Uri, scenario.Name, got, want)
+						}
+					}
+				})
+			}
+			t.Logf("%d expanded scenarios", len(actual))
+		})
+	}
+	for id, scenario := range all {
+		if got := owners[id]; len(got) != 1 {
+			t.Errorf("%s: %s has %d owners: %v", scenario.Uri, scenario.Name, len(got), got)
+		}
+	}
+	expr, err := harness.TagExpression("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutLabs := godogScenarios(t, expr)
+	for id, scenario := range all {
+		want := !slices.Contains(pickleTags(scenario), "@vcs-lab")
+		if _, got := withoutLabs[id]; got != want {
+			t.Errorf("default selection of %s: %s = %t, want %t", scenario.Uri, scenario.Name, got, want)
+		}
+	}
+}
+
+func godogScenarios(t *testing.T, expr string) map[string]*messages.Pickle {
+	t.Helper()
+	suite := godog.TestSuite{Options: &godog.Options{Paths: []string{"features"}, Tags: expr}}
+	features, err := suite.RetrieveFeatures()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]*messages.Pickle{}
+	for _, feature := range features {
+		for _, scenario := range feature.Pickles {
+			// The example AST ID keeps identical outline names distinct.
+			out[scenario.Uri+":"+strings.Join(scenario.AstNodeIds, ":")] = scenario
+		}
+	}
+	return out
+}
+
+func pickleTags(scenario *messages.Pickle) []string {
+	tags := make([]string, 0, len(scenario.Tags))
+	for _, tag := range scenario.Tags {
+		tags = append(tags, tag.Name)
+	}
+	return tags
 }

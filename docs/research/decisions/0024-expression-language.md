@@ -312,6 +312,17 @@ templates.
   fails the run; a scalar is its text as written, so `init: true` runs
   `true`. The runner reads at most 256 KiB of it, and only inside the
   project root, so a committed link reads nothing outside it.
+- **Terragrunt reads.** A Terragrunt workflow file keeps all nine keys,
+  including `showPlan` and `getOutputs`, and initialization checks them all.
+  Run-all planning executes `plan` with `TG_JSON_OUT_DIR` and consumes the
+  unit JSON documents; applying executes `apply`. Neither phase executes
+  the file's or the built-in `showPlan` or `getOutputs`: showing plans
+  across units can require unapplied dependency outputs, and output across
+  units concatenates documents without unit names. A single-unit run may
+  use `showPlan` to read its own saved plan when Terragrunt writes no JSON
+  directory. The built-in read templates use `terragrunt run --` in one
+  unit's directory in both modes, as [0008](0008-run-execution-and-worker-protocol.md)
+  specifies; the run-all mode changes only the six phase-command templates.
 - **Variables** are the fixed run parameters, renamed to CEL identifiers:
   `planFileName`, `lock`, `refresh`, `targets` (a list), `workspaceName`
   (the stack's `workspace` setting, else `default`) and `lockTimeout`

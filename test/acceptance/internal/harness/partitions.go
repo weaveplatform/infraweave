@@ -31,14 +31,18 @@ var Labs = []Partition{
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
 // placed: the first partition that lists one of its tags takes it, so a
-// scenario that needs a run and a VCS runs with the runs. accept-core
-// also takes every untagged scenario.
+// scenario with @terraform goes to terraform even when it needs a VCS;
+// other run scenarios go to runs. accept-core also takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
 	{
+		Name: "terraform",
+		Tags: []string{"@terraform"},
+	},
+	{
 		Name: "runs",
-		Tags: []string{"@docker", "@terraform", "@tofu", "@terragrunt", "@kubernetes", "@flows-agent"},
+		Tags: []string{"@docker", "@tofu", "@terragrunt", "@kubernetes", "@flows-agent"},
 	},
 	{
 		Name: "integrations",
@@ -113,7 +117,7 @@ func TagExpression(name string) (string, error) {
 			if name != "core" {
 				terms = append(terms, strings.Join(p.Tags, ","))
 			}
-			return strings.Join(terms, " && "), nil
+			return And(terms...), nil
 		}
 		for _, t := range p.Tags {
 			not = append(not, "~"+t)
@@ -134,7 +138,25 @@ func TagExpression(name string) (string, error) {
 // And joins the non-empty godog tag expressions exprs, each of which a
 // scenario must match.
 func And(exprs ...string) string {
-	return strings.Join(slices.DeleteFunc(slices.Clone(exprs), func(e string) bool {
-		return e == ""
-	}), " && ")
+	var clauses []string
+	for _, expr := range exprs {
+		if expr == "" {
+			continue
+		}
+		terms := strings.Split(expr, ",")
+		if len(clauses) == 0 {
+			clauses = terms
+			continue
+		}
+		var combined []string
+		for _, clause := range clauses {
+			for _, term := range terms {
+				combined = append(combined, clause+" && "+term)
+			}
+		}
+		clauses = combined
+	}
+	// Godog splits comma alternatives before evaluating their && terms;
+	// distribute conjunctions so exclusions and focus tags apply to every arm.
+	return strings.Join(clauses, ",")
 }

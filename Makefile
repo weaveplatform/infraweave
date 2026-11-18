@@ -104,7 +104,7 @@ build:
 		done; \
 	done
 
-## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
+## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|terraform|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 # accept-core also runs the TestAcc suites beside the code; the other
@@ -115,7 +115,7 @@ build:
 # a hang still ends in a goroutine dump rather than the job's kill. One
 # partition keeps the default, under its own job's timeout.
 # ref: decision 0016
-ACCEPT_FEATURES_ONLY = $(filter runs integrations vcs-lab,$(PARTITION))
+ACCEPT_FEATURES_ONLY = $(filter terraform runs integrations vcs-lab,$(PARTITION))
 ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
