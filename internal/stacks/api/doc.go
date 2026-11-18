@@ -6,6 +6,7 @@
 // for a domain about to store its ID, sets the Commit a stack tracks and
 // its branch's head, writes the runs domain's projection of a stack's run
 // state, ends a stack's deletion once its destroy run ends, detaches the stacks bound to a deleted VCS integration, and
+// repoints attached repository users with a versioned source-change event,
 // searches the stacks that use an integration, which Use names, and
 // suggests their values;
 // ErrNotFound when the account lacks the stack. A domain whose rows name
