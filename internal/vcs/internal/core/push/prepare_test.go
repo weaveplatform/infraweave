@@ -33,6 +33,13 @@ type repositoryStacks struct {
 	err   error
 }
 
+func (s *repositoryStacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	if s.err != nil || len(s.rows) == 0 {
+		return nil, s.err
+	}
+	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
+}
+
 func (s *repositoryStacks) ByVCSRepository(context.Context, kernel.AccountID, stacksapi.Use, string, string) ([]stacksapi.Stack, error) {
 	s.calls++
 	return s.rows, s.err
@@ -155,7 +162,7 @@ func TestUnitPreparedSourceGuards(t *testing.T) {
 			if (err != nil) != wantError {
 				t.Fatal("source guard hid or fabricated failure", err)
 			}
-			if name == "deleted integration" && len(source.calls) != 0 {
+			if (name == "deleted integration" || name == "no users") && len(source.calls) != 0 {
 				t.Fatal("unneeded provider request")
 			}
 		})

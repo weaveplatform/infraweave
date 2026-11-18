@@ -29,6 +29,10 @@ type reviewRenamedStacks struct {
 	stack   kernel.ULID
 }
 
+func (s reviewRenamedStacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	return []stacksapi.VCSRepository{{Namespace: s.current.current.Namespace, Name: s.current.current.Name}}, nil
+}
+
 func (s reviewRenamedStacks) ByVCSRepository(_ context.Context, _ kernel.AccountID, _ stacksapi.Use, namespace, name string) ([]stacksapi.Stack, error) {
 	if namespace == s.current.current.Namespace && name == s.current.current.Name {
 		return []stacksapi.Stack{{ID: s.stack}}, nil
