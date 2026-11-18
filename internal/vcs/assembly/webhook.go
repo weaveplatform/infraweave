@@ -94,8 +94,8 @@ func (d *Domain) Cron() []cron.Task {
 
 func (d *Domain) pruned(ctx context.Context, j queue.Job) error {
 	if err := d.intake.Pruned(ctx, j); err != nil {
-		return err
-	} //nolint:wrapcheck // the intake service names its retention boundary
+		return fmt.Errorf("vcs: prune deliveries: %w", err)
+	}
 	return d.ignored.Pruned(ctx) //nolint:wrapcheck // the ignored service names its retention boundary
 }
 

@@ -299,9 +299,22 @@ user: infraweave never creates or deletes provider hooks.
 - **Ignored triggers (D9, D17).** Record tracked pushes with no affected
   root files, tag pushes on every stack of the repository
   (`TAGS_IGNORED_BY_DEFAULT`), and stacks beyond the cap
-  (`RUN_LIMIT_REACHED`). Other-branch pushes, pull request events and
+  (`RUN_LIMIT_REACHED`) on the tracked branch. Other-branch pushes, pull request events and
   comments record no ignored trigger. Record for every account;
   `stackSearchRunIgnoredTriggers` needs `SPACE_ADMIN` on the stack's space.
+  Recording and queue acknowledgement share the completing child transaction,
+  including its claim and replay-generation fences and live account/stack holds.
+  Rows are unique per account, stack, canonical commit hash and reason; a tag
+  ignore remains independent of a path ignore for that commit. Tag metadata is
+  resolved once from the delivered immutable head, without a diff or mutable
+  tag-name lookup. Azure annotated-tag object IDs are peeled through bounded
+  native `annotatedtags/{objectId}` reads before commit metadata is fetched;
+  lightweight tags use the delivered commit ID. Deleted tags with a zero head
+  record nothing. Retain seven days, exclude older rows from reads immediately,
+  and prune hourly; stack deletion and account purge remove their history.
+  Reads use the existing VCS serving alias, shared expensive search controls and
+  the `ignored-runs` option, with empty policy attachments. `createdAt` and
+  `reasonType` filter the current stack's history, newest first.
   P13 owns `CUSTOM_POLICY*`; capture C46 remains open for those reasons.
 - **Policy boundary (D24).** `vcs.evaluate_event` applies the default now
   and P13's push-policy outcome later, creating runs in the transaction

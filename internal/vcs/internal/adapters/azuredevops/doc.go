@@ -26,6 +26,7 @@
 // ref: decision 0012
 // ref: https://learn.microsoft.com/rest/api/azure/devops/core/projects/list
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/refs/list
+// ref: https://learn.microsoft.com/rest/api/azure/devops/git/annotated-tags/get
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/commits/get
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/items/get
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/diffs/get
@@ -33,6 +34,9 @@
 // ref: https://learn.microsoft.com/azure/devops/service-hooks/events
 //
 // # Input and output
+//
+// Tag resolution peels only delivered immutable annotated-tag object IDs,
+// with a bounded native chain; it never substitutes a current tag ref.
 //
 // It sends HTTPS requests to the integration's organization URL, naming
 // API version APIVersion, with HTTP basic authentication carrying the

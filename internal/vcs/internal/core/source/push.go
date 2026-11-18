@@ -60,7 +60,12 @@ func (s *Service) PrepareTag(ctx context.Context, acct kernel.AccountID, id kern
 	if !found {
 		return stacksapi.Commit{}, port.ErrNoIntegration
 	}
-	commit, err := source.ResolveRef(ctx, port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}, event.Head)
+	repo := port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}
+	resolve := source.ResolveRef
+	if tag, ok := source.(port.TagResolver); ok {
+		resolve = tag.ResolveTag
+	}
+	commit, err := resolve(ctx, repo, event.Head)
 	if err != nil {
 		return stacksapi.Commit{}, fmt.Errorf("vcs: prepare tagged commit: %w", err)
 	}

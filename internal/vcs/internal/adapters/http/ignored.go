@@ -27,16 +27,16 @@ func (s Server) StackSearchRunIgnoredTriggers(ctx context.Context, req api.Stack
 	}
 	rows, err := s.ignored.Search(ctx, p, req.StackId, apisearch.Input(req.Params.Input))
 	if errors.Is(err, stacksapi.ErrNotFound) {
-		return nil, problem.NotFound.Error("No such stack in this account.")
-	} //nolint:wrapcheck // public problem identity is intentional
+		return nil, problem.NotFound.Error("No such stack in this account.") //nolint:wrapcheck // public problem identity is intentional
+	}
 	if errors.Is(err, ignored.ErrForbidden) {
 		p := problem.Forbidden.New("Ignored triggers require admin access to the stack's space.")
 		p.Action = string(accessapi.ActionSpaceAdmin)
 		return nil, &problem.Error{Problem: p}
 	}
 	if err != nil {
-		return nil, err
-	} //nolint:wrapcheck // the search names its errors and preserves cursor problems
+		return nil, err //nolint:wrapcheck // preserve the search cursor problem identity
+	}
 	out := api.SearchRunIgnoredTriggersOutput{Edges: make([]api.RunIgnoredTriggersConnection, 0, len(rows.Edges)), PageInfo: apisearch.PageInfo(rows)}
 	for _, edge := range rows.Edges {
 		r := edge.Node

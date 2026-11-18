@@ -248,6 +248,7 @@ func (f *Fake) Handler() http.Handler {
 				r.Use(f.repository)
 				r.Get("/refs", f.refs)
 				r.Get("/commits/{commit}", f.commit)
+				r.Get("/annotatedtags/{object}", f.annotatedTag)
 				r.Get("/items", f.items)
 				r.Get("/diffs/commits", f.diffs)
 				r.Get("/", f.repositoryMetadata)

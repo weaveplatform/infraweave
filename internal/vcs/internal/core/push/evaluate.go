@@ -99,8 +99,8 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 				return fmt.Errorf("%w: ignored trigger recording is unavailable", kernel.ErrUnavailable)
 			}
 			if err := s.d.Ignored.Record(ctx, input.Account, input.Stack, event.Commit, decision.Reason); err != nil {
-				return err
-			} //nolint:wrapcheck // the recorder names the write
+				return fmt.Errorf("vcs: record ignored evaluation: %w", err)
+			}
 		}
 		s.report(ctx, input, decision)
 	}

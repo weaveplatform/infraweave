@@ -82,6 +82,8 @@ func (s *Service) Record(ctx context.Context, account kernel.AccountID, stack ke
 	if account.IsZero() || stack.IsZero() || !validCommit(commit.Hash) || !slices.Contains([]string{NoAffectedFiles, TagsIgnored, RunLimitReached}, reason) {
 		return ErrRecord
 	}
+	commit.Message, _, _ = strings.Cut(commit.Message, "\n")
+	commit.Message = strings.TrimSuffix(commit.Message, "\r")
 	if err := s.d.Store.RecordIgnored(ctx, Record{Account: account, ID: kernel.NewULID(), Stack: stack, Commit: commit, Reason: reason, CreatedAt: s.d.Now()}); err != nil {
 		return fmt.Errorf("vcs: record ignored trigger: %w", err)
 	}

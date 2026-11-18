@@ -78,8 +78,8 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 		} else {
 			prepared.Commit, err = s.d.Sources.PrepareTag(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
-				return nil, err
-			} //nolint:wrapcheck // intake reduces provider diagnostics to fixed errors
+				return nil, fmt.Errorf("vcs: prepare ignored tag: %w", err)
+			}
 		}
 		out.events = append(out.events, prepared)
 		for _, stack := range stacks {

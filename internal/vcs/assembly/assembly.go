@@ -261,9 +261,9 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 			}
 			if d.ignored != nil {
 				if err := d.ignored.Purge(ctx, acct); err != nil {
-					return err
+					return fmt.Errorf("vcs: purge ignored history: %w", err)
 				}
-			} //nolint:wrapcheck // the ignored service names its purge
+			}
 			return d.limits.Store.PurgeRunLimit(ctx, acct) //nolint:wrapcheck // the VCS setting store names the purge
 		}
 	}
