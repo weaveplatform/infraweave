@@ -322,7 +322,7 @@ Feature: Bitbucket Data Center integrations
     Then it answers 200
     And the answer's WEBHOOK check is FAIL
     And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
-    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:comment:added"
+    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:declined, pr:comment:added"
     And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through B
     Then it answers 200
     And the answer's WEBHOOK check is FAIL
@@ -334,6 +334,11 @@ Feature: Bitbucket Data Center integrations
     And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
     When the Bitbucket Data Center repository "ACME/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:comment:added"
     And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
+    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:declined, pr:comment:added"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through A
     Then it answers 200
     And the answer's WEBHOOK check is SUCCESS
     And the answer's status is '"SUCCESS"'
