@@ -33,7 +33,9 @@
 // Run histories validate event eligibility; current plan deltas are never
 // presented as historical transition snapshots. Captured source metadata has
 // no credentials, and each worker opens the selected integration only for its
-// bounded effect. Stack deletion removes bindings and queued requests while
+// bounded effect. Known native repository identities retain a shared resource
+// fence across renames; reporting holds their current map row and settles a
+// removed identity without falling back to a reused path. Stack deletion removes bindings and queued requests while
 // historical native cursors remain to fence old work. Account purge removes
 // all three tables. Cap failures enqueue in the evaluator's completing
 // transaction and never create a synthetic run.

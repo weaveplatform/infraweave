@@ -70,15 +70,20 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 	if len(events) == 0 {
 		return errExpired
 	}
+	// Lifecycle changes hold the integration before repointing stacks. Keep
+	// that order through cap feedback's identity lookup in this transaction.
+	use, found, err := s.d.Integrations.HeldEventUse(ctx, input.Account, meta.Integration)
+	if err != nil {
+		return err //nolint:wrapcheck // integrations names the binding hold
+	}
+	if !found || use.Provider != meta.Provider {
+		return errExpired
+	}
 	stack, err := s.lockedStack(ctx, input)
 	if err != nil {
 		return err
 	}
-	use, found, err := s.d.Integrations.EventUse(ctx, input.Account, meta.Integration)
-	if err != nil {
-		return err //nolint:wrapcheck // integrations names the binding read
-	}
-	if !found || use.Provider != meta.Provider || !uses(stack, use) {
+	if !uses(stack, use) {
 		return errExpired
 	}
 	matched := false

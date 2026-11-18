@@ -483,7 +483,10 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   `proposed`, or `modules` has the same native status key. `INDIVIDUAL`
   retains its individual name. GitHub keeps distinct individual and aggregate
   identities even when their visible names coincide. No run ID is appended
-  to visible names or status keys, and no provider CI pipeline is created.
+  to visible names or status keys, and no provider pipeline API is called.
+  GitLab and Azure DevOps append native terminal-status history through POST;
+  they do not physically retain one status row per infraweave run. A new run
+  owns the named native context while the prior run's history remains native.
   `vcs.report_check` coalesces pending updates by run and check name and
   orders them by run; aggregate updates order by repository, commit and
   check name. Store provider IDs, and look up name/external ID before
@@ -491,7 +494,13 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   GitHub uses the Checks API only (`external_id` the stack ID); GitLab
   commit statuses; both Bitbucket providers build statuses; Azure DevOps
   commit statuses and, for recorded request heads, pull request statuses
-  on the latest iteration.
+  on the latest iteration. GitHub recovery filters and verifies the owning App;
+  identical markers from another App cannot supply its resource ID. Owner/repo
+  case aliases and numeric App-ID spellings share the same native fence.
+  A known native repository ID fixes resource identity across renames, while
+  jobs resolve and hold its current mapped path through their bounded effect.
+  Removing that known identity settles pending effects without using a stale
+  path; an older binding with no known native ID retains its captured path.
 
   | Run state | Check state |
   |---|---|
@@ -510,7 +519,9 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   ended, failure if any failed, success otherwise, with per-stack counts.
   When a kind concludes, a kind with no runs concludes skipped with
   “0 runs”; modules stay skipped until P17. A later run updates that check;
-  if the provider cannot reopen it, create another under the same name.
+  if the provider explicitly refuses to reopen it, create another under the
+  same name. An uncertain server failure is retried through native recovery,
+  never treated as permission to create another GitHub check generation.
 - **Buttons (D10).** GitHub checks carry **Preview** and **Deploy** only
   while `githubActionDeploy` is on. A press creates respectively a proposed
   or tracked run on that commit, triggered by `github/<login>`, bypassing

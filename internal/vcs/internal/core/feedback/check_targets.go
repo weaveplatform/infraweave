@@ -140,26 +140,58 @@ func (s *Service) selectCheck(ctx context.Context, account kernel.AccountID, r r
 		policy.Mode = "INDIVIDUAL"
 	}
 	binding, err := d.Store.ResolveCheckRepository(ctx, CheckBinding{
-		Account:     account,
-		Key:         checkBindingKey(r.ID),
-		Run:         r.ID,
-		Stack:       r.Stack,
-		Slug:        stack.Slug,
-		Integration: in.ID,
-		Provider:    in.Provider,
-		NativeHost:  host,
-		Namespace:   stack.Namespace,
-		Repository:  stack.Repository,
-		Commit:      r.CommitSHA,
-		Ref:         r.Branch,
-		Type:        r.Type,
-		Policy:      policy,
-		CreatedAt:   r.CreatedAt,
+		Account:      account,
+		Key:          checkBindingKey(r.ID),
+		Run:          r.ID,
+		Stack:        r.Stack,
+		Slug:         stack.Slug,
+		StackVersion: stack.Version,
+		Integration:  in.ID,
+		Provider:     in.Provider,
+		NativeHost:   host,
+		Namespace:    stack.Namespace,
+		Repository:   stack.Repository,
+		Commit:       r.CommitSHA,
+		Ref:          r.Branch,
+		Type:         r.Type,
+		Policy:       policy,
+		CreatedAt:    r.CreatedAt,
 	})
 	if err != nil {
 		return CheckBinding{}, fmt.Errorf("VCS check repository selection: %w", err)
 	}
+	if err := s.verifyCheckSource(ctx, account, stack, in, host); err != nil {
+		return CheckBinding{}, err
+	}
 	return binding, nil
+}
+
+// Metadata reads run outside the event sink's transaction. Verify their
+// snapshot even when no map row was found, so a rename/default change between
+// reads requests a fresh selection instead of persisting mixed source facts.
+func (s *Service) verifyCheckSource(ctx context.Context, account kernel.AccountID, original stacksapi.Settings, binding port.Integration, host string) error {
+	current, err := s.checks.Stacks.Settings(ctx, account, original.ID)
+	if err != nil {
+		return fmt.Errorf("VCS check source verification: %w", err)
+	}
+	if current.Version != original.Version || current.Slug != original.Slug || current.Provider != original.Provider || current.Namespace != original.Namespace ||
+		current.Repository != original.Repository || current.VCSDetached != original.VCSDetached ||
+		(current.VCSIntegration == nil) != (original.VCSIntegration == nil) || current.VCSIntegration != nil && *current.VCSIntegration != *original.VCSIntegration {
+		return kernel.ErrUnavailable
+	}
+	effective, found, err := s.checks.Integrations.Binding(ctx, account, current.Provider, current.VCSIntegration)
+	if err != nil {
+		return fmt.Errorf("VCS check binding verification: %w", err)
+	}
+	provider := s.checks.Providers[effective.Provider]
+	if !found || effective.ID != binding.ID || effective.Provider != binding.Provider || effective.Checks != binding.Checks || provider == nil {
+		return kernel.ErrUnavailable
+	}
+	currentHost, err := provider.CheckHost(effective.Settings)
+	if err != nil || currentHost != host {
+		return kernel.ErrUnavailable
+	}
+	return nil
 }
 
 func validCheckBinding(b CheckBinding) bool {
@@ -183,10 +215,27 @@ func (s *Service) enqueueCheck(ctx context.Context, target vcsapi.FeedbackTarget
 	if json.Unmarshal(target.Payload, &request) != nil || !validCheckRequest(request) || request.Binding.Account.ULID != target.Account {
 		return vcsapi.ErrFeedbackTarget
 	}
+	found, err := s.checks.Store.HoldCheckIntegration(ctx, request.Binding.Account, request.Binding.Integration)
+	if err != nil {
+		return fmt.Errorf("VCS check integration hold: %w", err)
+	}
+	if !found {
+		return nil
+	}
 	if err := s.checks.Stacks.Hold(ctx, request.Binding.Account, request.Binding.Stack); errors.Is(err, stacksapi.ErrNotFound) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("VCS check stack hold: %w", err)
+	}
+	_, err = s.checks.Store.CheckBinding(ctx, request.Binding.Account, request.Binding.Key)
+	if errors.Is(err, ErrNoCheck) {
+		request.Binding, err = s.refreshCheckSource(ctx, request.Binding)
+	}
+	if errors.Is(err, ErrNoCheck) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("VCS check initial source: %w", err)
 	}
 	binding, err := s.checks.Store.BindCheck(ctx, request.Binding)
 	if errors.Is(err, ErrNoCheck) {
@@ -238,4 +287,47 @@ func checkClass(aggregate bool) string {
 		return "aggregate"
 	}
 	return "individual"
+}
+
+// Target selection runs outside the sink transaction. Re-read the effective
+// source under the integration fence before its first immutable binding, so a
+// rename between selection reads cannot downgrade a known ID to a stale path.
+func (s *Service) refreshCheckSource(ctx context.Context, b CheckBinding) (CheckBinding, error) {
+	stack, err := s.checks.Stacks.Settings(ctx, b.Account, b.Stack)
+	if errors.Is(err, stacksapi.ErrNotFound) || err == nil && stack.VCSDetached {
+		return b, ErrNoCheck
+	}
+	if err != nil {
+		return b, fmt.Errorf("VCS check current stack: %w", err)
+	}
+	in, found, err := s.checks.Integrations.Binding(ctx, b.Account, stack.Provider, stack.VCSIntegration)
+	if err != nil {
+		return b, fmt.Errorf("VCS check current binding: %w", err)
+	}
+	if !found || in.ID != b.Integration || in.Provider != b.Provider || stack.Slug != b.Slug || stack.Version != b.StackVersion || stack.Namespace != b.Namespace ||
+		stack.Repository != b.Repository {
+		return b, kernel.ErrUnavailable
+	}
+	policy := in.Checks
+	if policy.Mode == "" {
+		policy.Mode = "INDIVIDUAL"
+	}
+	provider := s.checks.Providers[in.Provider]
+	if policy != b.Policy || provider == nil {
+		return b, kernel.ErrUnavailable
+	}
+	host, err := provider.CheckHost(in.Settings)
+	if err != nil || host != b.NativeHost {
+		return b, kernel.ErrUnavailable
+	}
+	knownID := b.RepositoryID
+	b.Namespace, b.Repository, b.RepositoryID = stack.Namespace, stack.Repository, ""
+	b, err = s.checks.Store.ResolveCheckRepository(ctx, b)
+	if err != nil {
+		return b, fmt.Errorf("VCS check current identity: %w", err)
+	}
+	if knownID != "" && b.RepositoryID != knownID {
+		return b, kernel.ErrUnavailable
+	}
+	return b, nil
 }

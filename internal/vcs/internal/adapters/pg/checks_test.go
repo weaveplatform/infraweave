@@ -423,6 +423,15 @@ func TestAccCommitCheckAggregateNativeOwnership(t *testing.T) {
 		w := newCheckWorld(t)
 		older := w.b
 		older.Policy.Mode = "AGGREGATED"
+		metadata, err := w.f.store.Get(t.Context(), w.b.Account, w.b.Integration, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		metadata.Checks.Mode = "AGGREGATED"
+		metadata.Version++
+		if err := w.f.store.Write(t.Context(), metadata, nil); err != nil {
+			t.Fatal(err)
+		}
 		w.state(older.Run, kernel.RunStateFinished, 1)
 		in, err := w.f.store.Get(t.Context(), w.f.acct, older.Integration, false)
 		if err != nil {
@@ -517,6 +526,15 @@ func TestAccCommitCheckAggregateNativeOwnership(t *testing.T) {
 		all.Key = "run:" + all.Run.String()
 		all.CreatedAt = all.CreatedAt.Add(-time.Second)
 		all.Policy.Mode = "ALL"
+		metadata, err := w.f.store.Get(t.Context(), w.b.Account, w.b.Integration, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		metadata.Checks.Mode = "ALL"
+		metadata.Version++
+		if err := w.f.store.Write(t.Context(), metadata, nil); err != nil {
+			t.Fatal(err)
+		}
 		w.facts.runs[all.Run] = runsapi.CheckRun{
 			ID:        all.Run,
 			Stack:     all.Stack,

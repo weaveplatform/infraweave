@@ -16,6 +16,23 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 )
 
+// HoldCheckIntegration precedes binding, resource, stack and repository holds,
+// matching lifecycle updates and integration deletion's parent-first order.
+func (s *Store) HoldCheckIntegration(ctx context.Context, account kernel.AccountID, id kernel.ULID) (bool, error) {
+	if !tx.In(ctx) {
+		return false, queue.ErrNoTransaction
+	}
+	var found bool
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT true FROM vcs_integrations WHERE account_id=$1 AND id=$2 FOR SHARE`, account, id).Scan(&found)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("vcs: hold check integration: %w", sql.Unavailable(err))
+	}
+	return found, nil
+}
+
 func (s *Store) BindCheck(ctx context.Context, b feedback.CheckBinding) (feedback.CheckBinding, error) {
 	if !tx.In(ctx) {
 		return b, queue.ErrNoTransaction
@@ -115,6 +132,15 @@ func (s *Store) ReportedCheck(ctx context.Context, r feedback.CheckResource) err
 // that ID's current path under a shared row lock during reporting. Unknown
 // historical bindings retain their original path; known removed IDs never do.
 func (s *Store) ResolveCheckRepository(ctx context.Context, b feedback.CheckBinding) (feedback.CheckBinding, error) {
+	if tx.In(ctx) {
+		found, err := s.HoldCheckIntegration(ctx, b.Account, b.Integration)
+		if err != nil {
+			return b, err
+		}
+		if !found {
+			return b, feedback.ErrNoCheck
+		}
+	}
 	var id, namespace, repository string
 	var err error
 	q := tx.Q(ctx, s.db)

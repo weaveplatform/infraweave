@@ -23,6 +23,10 @@ type checkTargetFacts struct {
 	policy              port.CheckPolicy
 	kept                CheckBinding
 	runError, hostError error
+	settingsReads       int
+	selectionChange     func(*checkTargetFacts)
+	nativeID            string
+	host                string
 }
 
 func (f *checkTargetFacts) Run(context.Context, kernel.AccountID, kernel.ULID) (runsapi.CheckRun, error) {
@@ -44,7 +48,18 @@ func (f *checkTargetFacts) EventUse(context.Context, kernel.AccountID, kernel.UL
 }
 
 func (f *checkTargetFacts) CheckHost(port.Settings) (string, error) {
+	if f.host != "" {
+		return f.host, f.hostError
+	}
 	return "https://github.example/api/v3/app/1", f.hostError
+}
+
+func (f *checkTargetFacts) Settings(ctx context.Context, a kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	f.settingsReads++
+	if f.settingsReads == 2 && f.selectionChange != nil {
+		f.selectionChange(f)
+	}
+	return f.deploymentFacts.Settings(ctx, a, id)
 }
 
 func (*checkTargetFacts) Set(context.Context, port.Repository, string, port.CheckReport) (string, error) {
@@ -58,7 +73,8 @@ func (f *checkTargetFacts) CheckBinding(context.Context, kernel.AccountID, strin
 	return f.kept, nil
 }
 
-func (*checkTargetFacts) ResolveCheckRepository(_ context.Context, b CheckBinding) (CheckBinding, error) {
+func (f *checkTargetFacts) ResolveCheckRepository(_ context.Context, b CheckBinding) (CheckBinding, error) {
+	b.RepositoryID = f.nativeID
 	return b, nil
 }
 
@@ -298,5 +314,31 @@ func TestUnitCommitCheckNativeIdentitySurvivesRepositoryRename(t *testing.T) {
 	renamed.RepositoryID = "8"
 	if checkResourceKey(b, "infraweave/proposed", true) == checkResourceKey(renamed, "infraweave/proposed", true) {
 		t.Fatal("different native repositories shared an ownership fence")
+	}
+}
+
+func TestUnitCommitCheckSelectionRetriesMixedMetadata(t *testing.T) {
+	for _, known := range []bool{false, true} {
+		for name, change := range map[string]func(*checkTargetFacts){
+			"rename":              func(f *checkTargetFacts) { f.stack.Repository = "renamed" },
+			"version":             func(f *checkTargetFacts) { f.stack.Version++ },
+			"slug":                func(f *checkTargetFacts) { f.stack.Slug = "renamed" },
+			"detached":            func(f *checkTargetFacts) { f.stack.VCSDetached = true },
+			"named integration":   func(f *checkTargetFacts) { id := kernel.NewULID(); f.stack.VCSIntegration = &id },
+			"default integration": func(f *checkTargetFacts) { f.binding = kernel.NewULID() },
+			"App identity":        func(f *checkTargetFacts) { f.host = "https://github.example/api/v3/app/2" },
+			"mode":                func(f *checkTargetFacts) { f.policy.Mode = "ALL" },
+		} {
+			t.Run(name+map[bool]string{false: " unknown", true: " known"}[known], func(t *testing.T) {
+				s, f, event := checkTargetWorld(t)
+				if known {
+					f.nativeID = "7"
+				}
+				f.selectionChange = change
+				if targets, err := s.Targets(t.Context(), event); !errors.Is(err, kernel.ErrUnavailable) || len(targets) != 0 {
+					t.Fatal("mixed source metadata escaped selection", targets, err)
+				}
+			})
+		}
 	}
 }

@@ -30,6 +30,7 @@ type CheckBinding struct {
 	Run          kernel.ULID      `json:"run"`
 	Stack        kernel.ULID      `json:"stack"`
 	Slug         string           `json:"slug"`
+	StackVersion int64            `json:"stackVersion"`
 	Integration  kernel.ULID      `json:"integration"`
 	Provider     string           `json:"provider"`
 	NativeHost   string           `json:"nativeHost"`
@@ -72,6 +73,7 @@ type checkOwner struct {
 }
 
 type CheckStore interface {
+	HoldCheckIntegration(context.Context, kernel.AccountID, kernel.ULID) (bool, error)
 	BindCheck(context.Context, CheckBinding) (CheckBinding, error)
 	CheckBinding(context.Context, kernel.AccountID, string) (CheckBinding, error)
 	RequestCheck(context.Context, CheckRequest) (bool, error)

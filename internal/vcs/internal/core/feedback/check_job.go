@@ -38,6 +38,13 @@ func (s *Service) Checked(ctx context.Context, job queue.Job) error {
 		if err := s.jobs.HoldTx(ctx, job); err != nil {
 			return err //nolint:wrapcheck // boundary names its failure
 		}
+		found, err := s.checks.Store.HoldCheckIntegration(ctx, request.Binding.Account, request.Binding.Integration)
+		if err != nil {
+			return fmt.Errorf("VCS check integration hold: %w", err)
+		}
+		if !found {
+			return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // deleted integration settles before dependent holds
+		}
 		binding, err := s.checks.Store.CheckBinding(ctx, request.Binding.Account, request.Binding.Key)
 		if errors.Is(err, ErrNoCheck) {
 			return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // queue acknowledgement joins the fenced transaction
