@@ -177,3 +177,33 @@ func TestUnitCommitChecksPerRunActionsAndReopen(t *testing.T) {
 		t.Fatal("reopened check was not recovered", again, err)
 	}
 }
+
+func TestUnitCommitCheckUncertainReopenKeepsNativeID(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	report := port.CheckReport{
+		Name:       "infraweave/proposed",
+		State:      port.CheckSuccess,
+		Title:      "Finished",
+		Summary:    "1 added.",
+		URL:        "https://infra.example/runs/one",
+		RecoveryID: "infraweave/run:one",
+		ExternalID: kernel.NewULID().String(),
+		Actions:    []port.CheckAction{},
+	}
+	id, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.fake.FailNextCheckUpdate()
+	report.State = port.CheckQueued
+	report.Title = "Queued"
+	next, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err == nil || next != "" || len(l.fake.Checks("acme", "infra")) != 1 {
+		t.Fatal("uncertain PATCH triggered a duplicate create", next, err, l.fake.Checks("acme", "infra"))
+	}
+	current, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil || current != id || len(l.fake.Checks("acme", "infra")) != 1 {
+		t.Fatal("later attempt failed to recover applied PATCH", current, id, err)
+	}
+}

@@ -71,7 +71,7 @@ func (p *Provider) Set(ctx context.Context, repo port.Repository, sha string, re
 	// native generation retains the same visible name and recovery marker.
 	if err != nil && found != nil && found.GetStatus() == "completed" && status != "completed" {
 		e := &github.ErrorResponse{}
-		if errors.As(err, &e) {
+		if errors.As(err, &e) && e.Response != nil && e.Response.StatusCode == http.StatusUnprocessableEntity {
 			body.HeadSHA = sha
 			kept, err = writeCheck(ctx, c, http.MethodPost, fmt.Sprintf("repos/%s/%s/check-runs", repo.Namespace, repo.Name), body)
 		}

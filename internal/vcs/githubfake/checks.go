@@ -42,6 +42,7 @@ type checkStore struct {
 	records                  map[string][]CheckRecord
 	writes                   map[string][]CheckRecord
 	failCreate, rejectReopen bool
+	failUpdate               bool
 }
 
 func cloneCheck(r CheckRecord) CheckRecord { r.Actions = slices.Clone(r.Actions); return r }
@@ -70,6 +71,10 @@ func (f *Fake) CheckWrites(owner, repo string) []CheckRecord {
 
 // FailNextCheckCreate loses a successful create response exactly once.
 func (f *Fake) FailNextCheckCreate() { f.mu.Lock(); defer f.mu.Unlock(); f.checks.failCreate = true }
+
+// FailNextCheckUpdate applies a PATCH but loses its response with 500. A
+// caller must recover that same identity, not create another live check.
+func (f *Fake) FailNextCheckUpdate() { f.mu.Lock(); defer f.mu.Unlock(); f.checks.failUpdate = true }
 
 // RejectCheckReopen models installations that refuse completed-to-active PATCH.
 func (f *Fake) RejectCheckReopen(reject bool) {
@@ -173,6 +178,11 @@ func (f *Fake) updateCheck(w http.ResponseWriter, r *http.Request) {
 			body.SHA = old.SHA
 			f.checks.records[key][i] = cloneCheck(body)
 			f.checks.writes[key] = append(f.checks.writes[key], cloneCheck(body))
+			if f.checks.failUpdate {
+				f.checks.failUpdate = false
+				answer(w, 500, message("Response lost"))
+				return
+			}
 			answer(w, 200, body)
 			return
 		}
