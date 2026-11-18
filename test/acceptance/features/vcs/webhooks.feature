@@ -841,6 +841,8 @@ Feature: VCS webhook protocol, event run budgets and request history
     And GitHub delivery "added" is eventually dispatched
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     Then it answers 200
+    And the answer's id names "lifecycleRun"
+    And check events for run "lifecycleRun" have settled
     Given the native GitHub installation of App "app" becomes "suspended"
     When token "h" sends "GET /api/v1/vcs-integrations/{integration}/test?provider=GITHUB_ENTERPRISE" through A
     Then it answers 200

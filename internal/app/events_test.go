@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,7 +20,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
-	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/test/deps"
 )
 
@@ -45,6 +45,11 @@ func newEventWorld(t *testing.T) eventWorld {
 // outbox workers exercise every consumer of the resulting run update.
 func (w eventWorld) cancel(t *testing.T, bound bool) outbox.Event {
 	t.Helper()
+	return w.cancelSource(t, bound, "", "abc")
+}
+
+func (w eventWorld) cancelSource(t *testing.T, bound bool, namespace, hash string) outbox.Event {
+	t.Helper()
 	ctx := t.Context()
 	stack, run := kernel.NewULID(), kernel.NewULID()
 	slug := "plain"
@@ -59,14 +64,15 @@ func (w eventWorld) cancel(t *testing.T, bound bool) outbox.Event {
 		}
 	}
 	if _, err := w.q.Exec(ctx, `INSERT INTO stacks
-		(account_id,id,slug,name,space_id,provider,repository,branch,vendor,vcs_integration_id)
-		VALUES ($1,$2,$3,$3,$4,'GITLAB','infra','main','terraform',$5)`,
-		w.acct, stack, slug, w.kept, integration); err != nil {
+		(account_id,id,slug,name,space_id,provider,namespace,repository,branch,vendor,vcs_integration_id)
+		VALUES ($1,$2,$3,$3,$4,'GITLAB',$6,'infra','main','terraform',$5)`,
+		w.acct, stack, slug, w.kept, integration, namespace); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := w.q.Exec(ctx, `INSERT INTO runs
 		(account_id,id,stack_id,type,state,commit,triggered_by)
-		VALUES ($1,$2,$3,'TRACKED','QUEUED','{"hash":"abc"}','alice')`, w.acct, run, stack); err != nil {
+		VALUES ($1,$2,$3,'TRACKED','QUEUED',jsonb_build_object('hash',$4::text),'alice')`,
+		w.acct, run, stack, hash); err != nil {
 		t.Fatal(err)
 	}
 	result, err := w.d.Runs.API().RunCancel(w.admin, api.RunCancelRequestObject{StackId: slug, RunId: run.String()})
@@ -137,25 +143,18 @@ func TestAccEventsRunUpdates(t *testing.T) {
 	}
 }
 
-// Only target selection is synthetic; enqueue retains VCS's real account hold
-// and persistent queue write, and Consume retains the events transaction.
-type eventTargets struct{ vcsapi.Feedback }
-
-func (f eventTargets) Targets(_ context.Context, event outbox.Event) ([]vcsapi.FeedbackTarget, error) {
-	payload, err := json.Marshal(map[string]string{"run": event.Subject.ID})
-	if err != nil {
-		return nil, err
-	}
-	return []vcsapi.FeedbackTarget{{
-		Account: event.Account, EventID: event.ID, Key: event.Subject.ID + "/check", Job: "vcs.report_check",
-		Payload: payload,
-	}}, nil
-}
-
 func (w eventWorld) consume(t *testing.T, event outbox.Event) (func(context.Context) error, queue.Job) {
 	t.Helper()
+	feedback := w.d.VCS.Feedback()
+	targets, err := feedback.Targets(t.Context(), event)
+	if err != nil || len(targets) != 1 {
+		t.Fatalf("real feedback selection did not produce one target: %d, %v", len(targets), err)
+	}
+	if target := targets[0]; target.Account != event.Account || target.EventID != event.ID || target.Job != "vcs.report_check" || len(target.Payload) == 0 {
+		t.Fatal("real feedback target lost its event identity or job")
+	}
 	sinks, err := eventsassembly.New(eventsassembly.Deps{
-		DB: w.q, Feedback: eventTargets{w.d.VCS.Feedback()}, Settings: eventsassembly.Defaults(),
+		DB: w.q, Feedback: feedback, Settings: eventsassembly.Defaults(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -220,7 +219,7 @@ func TestAccEventsAccountDeletionRace(t *testing.T) {
 	for _, consumeFirst := range []bool{true, false} {
 		t.Run(fmt.Sprintf("consume-first=%t", consumeFirst), func(t *testing.T) {
 			w := newEventWorld(t)
-			event := w.cancel(t, true)
+			event := w.cancelSource(t, true, "acme", strings.Repeat("a", 40))
 			consume, job := w.consume(t, event)
 			first, second := w.delete, consume
 			if consumeFirst {
