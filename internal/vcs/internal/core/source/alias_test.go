@@ -33,7 +33,10 @@ type aliasBinding struct {
 	use stacksapi.Use
 }
 
-func (b aliasBinding) EventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error) {
+func (b aliasBinding) HeldEventUse(ctx context.Context, _ kernel.AccountID, _ kernel.ULID) (stacksapi.Use, bool, error) {
+	if !tx.In(ctx) {
+		return stacksapi.Use{}, false, errOffline
+	}
 	return b.use, true, nil
 }
 
@@ -131,13 +134,24 @@ func (*aliasStore) MoveMembership(context.Context, kernel.AccountID, kernel.ULID
 }
 
 type (
-	aliasDB struct{}
-	aliasTx struct{ pgx.Tx }
+	aliasDB struct{ rollback func() }
+	aliasTx struct {
+		pgx.Tx
+		rollback  func()
+		committed bool
+	}
 )
 
-func (aliasDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return aliasTx{}, nil }
-func (aliasTx) Commit(context.Context) error                           { return nil }
-func (aliasTx) Rollback(context.Context) error                         { return nil }
+func (d aliasDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return &aliasTx{rollback: d.rollback}, nil
+}
+func (t *aliasTx) Commit(context.Context) error { t.committed = true; return nil }
+func (t *aliasTx) Rollback(context.Context) error {
+	if !t.committed && t.rollback != nil {
+		t.rollback()
+	}
+	return nil
+}
 
 func TestUnitTrackAssociatesRequestedAliasWithNativeCoordinates(t *testing.T) {
 	for _, collision := range []string{"none", "requested occupied", "canonical occupied"} {
@@ -163,6 +177,7 @@ func TestUnitTrackAssociatesRequestedAliasWithNativeCoordinates(t *testing.T) {
 			identities := &lifecycle.Service{DB: aliasDB{}, Store: store, Stacks: rows, Now: func() time.Time { return now }}
 			svc := New(
 				Deps{
+					DB:           aliasDB{},
 					Stacks:       rows,
 					Providers:    map[string]port.Source{"GITHUB": aliasNativeSource{t: t}},
 					Identities:   identities,
@@ -201,8 +216,14 @@ func TestUnitTrackRetriesPointerInitializationAfterCanonicalRepoint(t *testing.T
 	}}
 	store := &aliasStore{repos: map[string]lifecycle.Repository{}}
 	use := stacksapi.Use{Integration: id, Provider: "GITHUB_ENTERPRISE"}
-	identities := &lifecycle.Service{DB: aliasDB{}, Store: store, Stacks: rows, Now: func() time.Time { return now }}
+	initial := rows.rows[stack]
+	db := aliasDB{rollback: func() {
+		rows.rows[stack] = initial
+		store.repos = map[string]lifecycle.Repository{}
+	}}
+	identities := &lifecycle.Service{DB: db, Store: store, Stacks: rows, Now: func() time.Time { return now }}
 	svc := New(Deps{
+		DB:           db,
 		Stacks:       rows,
 		Providers:    map[string]port.Source{"GITHUB_ENTERPRISE": aliasNativeSource{t: t}},
 		Identities:   identities,
@@ -212,8 +233,8 @@ func TestUnitTrackRetriesPointerInitializationAfterCanonicalRepoint(t *testing.T
 	if err := svc.Track(t.Context(), acct, stack); !errors.Is(err, errOffline) {
 		t.Fatal("initial pointer write did not fail", err)
 	}
-	if row := rows.rows[stack]; row.version != 2 || row.namespace != "canonical" || row.name != "renamed" || rows.commit != nil {
-		t.Fatal("canonical repoint was not committed before failed pointer write", row, rows.commit)
+	if row := rows.rows[stack]; row != initial || rows.commit != nil || len(store.repos) != 0 {
+		t.Fatal("failed pointer write committed canonical repoint", row, rows.commit, store.repos)
 	}
 	if err := svc.Track(t.Context(), acct, stack); err != nil {
 		t.Fatal(err)

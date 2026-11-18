@@ -177,6 +177,7 @@ func New(d Deps) (*Domain, error) {
 		Apps: gh, Public: d.Public, Now: d.Now, SecretOverlap: d.Settings.WebhookSecretOverlap,
 	})
 	sources := source.New(source.Deps{
+		DB:         d.DB,
 		Identities: identities,
 		Stacks:     d.Stacks,
 		Providers: map[string]port.Source{

@@ -358,7 +358,10 @@ user: infraweave never creates or deletes provider hooks.
   `source` flag false: background tracking must not advance commits on behalf of
   a capped or refused push. Initial and manually changed sources still initialize
   their pointers, including when native resolution first canonicalizes their
-  coordinates. GitHub `installation_target` and `organization`
+  coordinates. Native lookup stays outside the database transaction; subsequent
+  canonicalization and pointer initialization share one held current integration
+  binding. An implicit source resolved through a former default cannot update
+  either coordinates or pointers. GitHub `installation_target` and `organization`
   renamed events re-point all stacks on the owner's repositories. Provider API
   resolution seeds the account/integration-scoped native-ID map. Event processing
   changes the map and calls the Stacks-owned repoint port in the same fenced

@@ -9,6 +9,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -30,6 +31,7 @@ type Identities interface {
 }
 
 type Service struct {
+	db           tx.Beginner
 	identities   Identities
 	stacks       stacksapi.Stacks
 	providers    map[string]port.Source
@@ -42,12 +44,14 @@ type Service struct {
 
 var _ vcsapi.Sources = (*Service)(nil)
 
-// Deps are what the service reads and writes through: the stacks
+// Deps are what the service reads and writes through: the database fencing
+// native identity and pointer initialization, the stacks
 // domain's api, each provider's Source keyed by its served VCSProvider
 // value, the domain's Integrations, the Tokens minted for runs, the queue
 // Release enqueues on, the clock and the log a run's fallback to an
 // integration's own token is noted in.
 type Deps struct {
+	DB           tx.Beginner
 	Identities   Identities
 	Stacks       stacksapi.Stacks
 	Providers    map[string]port.Source
@@ -61,7 +65,7 @@ type Deps struct {
 // New returns the service over d.
 func New(d Deps) *Service {
 	return &Service{
-		identities: d.Identities, stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
+		db: d.DB, identities: d.Identities, stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
 		tokens: d.Tokens, jobs: d.Jobs, now: d.Now, log: d.Log,
 	}
 }
@@ -154,26 +158,9 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 		resolved, err = native.ResolveRepositoryRef(ctx, repo, st.Branch)
 		c = resolved.Commit
 		if err == nil {
-			bindings, ok := s.integrations.(interface {
-				EventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
-			})
-			if !ok {
-				return fmt.Errorf("%w: vcs repository binding unavailable", kernel.ErrUnavailable)
-			}
-			use, found, readErr := bindings.EventUse(ctx, acct, repo.Integration.ID)
-			if readErr != nil {
-				return readErr //nolint:wrapcheck // the called boundary names the failed operation
-			}
-			if found {
-				err = s.identities.SeedReferenceAt(
-					ctx,
-					acct,
-					repo.Integration.ID,
-					use,
-					stacksapi.VCSRepository{Namespace: repo.Namespace, Name: repo.Name},
-					resolved.Repository,
-					started,
-				)
+			err = s.trackRepository(ctx, acct, stack, st, repo, resolved, started)
+			if err == nil {
+				return nil
 			}
 		}
 	} else {
