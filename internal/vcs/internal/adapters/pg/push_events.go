@@ -15,10 +15,12 @@ import (
 )
 
 // EventContext reads no body or credentials while checking a child's owner.
+// Key share fences retention of the delivery and its prepared rows without
+// blocking other children from updating the non-key admission counter.
 func (s *Store) EventContext(ctx context.Context, acct kernel.AccountID, delivery kernel.ULID) (push.EventContext, bool, error) {
 	var out push.EventContext
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT integration_id,provider,state,deadline FROM vcs_deliveries
-		WHERE account_id=$1 AND id=$2`, acct, delivery).Scan(&out.Integration, &out.Provider, &out.State, &out.Deadline)
+		WHERE account_id=$1 AND id=$2 FOR KEY SHARE`, acct, delivery).Scan(&out.Integration, &out.Provider, &out.State, &out.Deadline)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, false, nil
 	}

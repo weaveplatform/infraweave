@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -28,7 +30,50 @@ func (s *pushSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the "(TRACKED|PROPOSED)" event run on stack "([\w-]+)" for commit "(\w+)" is kept as "(\w+)"$`, s.keepRun)
 	sc.Step(`^the only "(TRACKED|PROPOSED)" event run for commit "(\w+)" is kept as "(\w+)"$`, s.keepAny)
 	sc.Step(`^commit "(\w+)" has exactly (\d+) event runs across all stacks$`, s.totalRuns)
+	sc.Step(`^all event runs for commit "(\w+)" finish through ([AB])$`, s.finished)
+	sc.Step(`^the event run "(\w+)" has a real tool plan through ([AB])$`, s.planningEvidence)
 	sc.Step(`^stack "([\w-]+)" has exactly (\d+) event runs for commit "(\w+)"$`, s.runCount)
+}
+
+func (s *pushSteps) planningEvidence(ctx context.Context, run, replica string) error {
+	next := ""
+	found := false
+	for range 100 {
+		path := "/api/v1/runs/" + s.w.IDs[run] + "/logs?sanitize=true&state=PLANNING"
+		if next != "" {
+			path += "&token=" + url.QueryEscape(next)
+		}
+		if err := s.w.SendAs(ctx, `token "h"`, http.MethodGet, path, "", replica); err != nil {
+			return err
+		}
+		var page struct {
+			Messages []struct {
+				Message string `json:"message"`
+			} `json:"messages"`
+			Next     string `json:"nextToken"`
+			Finished bool   `json:"finished"`
+		}
+		if s.w.Last().Status != http.StatusOK || json.Unmarshal(s.w.Last().Body, &page) != nil {
+			return fmt.Errorf("%w: event planning log was not readable", harness.ErrStep)
+		}
+		for _, message := range page.Messages {
+			for line := range strings.SplitSeq(message.Message, "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "Plan:") || strings.HasPrefix(line, "No changes.") {
+					fmt.Printf("Event planning evidence: %s\n", line)
+					found = true
+				}
+			}
+		}
+		if page.Finished {
+			if !found {
+				return fmt.Errorf("%w: event planning log has no tool plan", harness.ErrStep)
+			}
+			return nil
+		}
+		next = page.Next
+	}
+	return fmt.Errorf("%w: event planning log exceeded page bound", harness.ErrStep)
 }
 
 func (s *pushSteps) commit(path, branch, key string, table *godog.Table) error {
@@ -191,6 +236,34 @@ func (s *pushSteps) keepAny(ctx context.Context, kind, commit, key string) error
 
 func (s *pushSteps) totalRuns(ctx context.Context, commit string, count int) error {
 	return s.runCount(ctx, "", count, commit)
+}
+
+func (s *pushSteps) finished(ctx context.Context, commit, replica string) error {
+	ids, err := s.matchingRuns(ctx, "", commit, "")
+	if err != nil {
+		return err
+	}
+	for _, raw := range ids {
+		var id kernel.ULID
+		if err := id.Scan(raw); err != nil {
+			return fmt.Errorf("event run identity: %w", err)
+		}
+		if err := deps.Eventually(ctx, "admitted event run to finish", func(ctx context.Context) (bool, error) {
+			if err := s.w.SendAs(ctx, `token "h"`, "GET", "/api/v1/runs/"+id.String(), "", replica); err != nil {
+				return false, err
+			}
+			var view struct {
+				State string `json:"state"`
+			}
+			if s.w.Last().Status != 200 || json.Unmarshal(s.w.Last().Body, &view) != nil {
+				return false, fmt.Errorf("%w: event run read failed", harness.ErrStep)
+			}
+			return view.State == "FINISHED", nil
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *pushSteps) keepRun(ctx context.Context, kind, stack, commit, key string) error {

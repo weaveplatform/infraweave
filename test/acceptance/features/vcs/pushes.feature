@@ -41,7 +41,7 @@ Feature: Default VCS push runs
     And the "TRACKED" event run on stack "infra" for commit "tracked" is kept as "trackedRun"
     And token "h" eventually reads the run "trackedRun" in the state "FINISHED" through B
     And the answer's triggeredBy is '"vcs/commit"'
-    And token "h" records the run "trackedRun"'s PLANNING runtime evidence through B
+    And the event run "trackedRun" has a real tool plan through B
     And token "h" sends "GET /api/v1/stacks/infra" through A
     And the answer tracks the commit kept as "tracked" at the branch head kept as "tracked"
     When GitLab explicitly resends delivery "trackedPush" for integration "integration" through B
@@ -65,7 +65,18 @@ Feature: Default VCS push runs
     And GitLab push "proposedPush" for integration "integration" settles with 1 runs and 1 stack jobs
     And the "PROPOSED" event run on stack "infra" for commit "proposed" is kept as "proposedRun"
     And token "h" eventually reads the run "proposedRun" in the state "FINISHED" through A
-    And token "h" records the run "proposedRun"'s PLANNING runtime evidence through A
+    And the event run "proposedRun" has a real tool plan through A
+    When the GitLab project "acme/platform/infra" branches "main" from "proposed"
+    And GitLab pushes "fastForward" for integration "integration" from "outside" to "proposed" on "main" through A
+    Then it answers 202
+    And GitLab push "fastForward" for integration "integration" settles with 1 runs and 1 stack jobs
+    And the "TRACKED" event run on stack "infra" for commit "proposed" is kept as "fastForwardRun"
+    And token "h" eventually reads the run "fastForwardRun" in the state "FINISHED" through B
+    And stack "infra" has exactly 2 event runs for commit "proposed"
+    When GitLab sends a "merge-request" delivery "request" for integration "integration" with "current" token through B
+    Then it answers 202
+    And GitLab push "request" for integration "integration" settles with 0 runs and 0 stack jobs
+    And stack "infra" has exactly 2 event runs for commit "proposed"
     When GitLab sends a "tag" delivery "tagPush" for integration "integration" with "current" token through A
     Then it answers 202
     And GitLab push "tagPush" for integration "integration" settles with 0 runs and 1 stack jobs
@@ -100,11 +111,18 @@ Feature: Default VCS push runs
     And GitLab push "forced" for integration "integration" settles with 1 runs and 1 stack jobs
     And the "PROPOSED" event run on stack "infra" for commit "head" is kept as "forcedRun"
     And token "h" eventually reads the run "forcedRun" in the state "FINISHED" through A
-    And token "h" records the run "forcedRun"'s PLANNING runtime evidence through B
+    And the event run "forcedRun" has a real tool plan through B
     When GitLab pushes "deleted" for integration "integration" from "head" to "zero" on "diverged" through B
     Then it answers 202
     And GitLab push "deleted" for integration "integration" settles with 0 runs and 0 stack jobs
     And stack "infra" has exactly 1 event runs for commit "head"
+    When the GitLab project "acme/platform/infra" branches "same-tree" from "seed"
+    And the GitLab project "acme/platform/infra" commits files on "same-tree" as "same":
+      | root/main.tf | resource "terraform_data" "this" {\n  input = "default-advanced"\n}\n |
+    And GitLab pushes "unchangedTrees" for integration "integration" from "advanced" to "same" on "same-tree" through A
+    Then it answers 202
+    And GitLab push "unchangedTrees" for integration "integration" settles with 0 runs and 1 stack jobs
+    And stack "infra" has exactly 0 event runs for commit "same"
 
     @terraform
     Examples:
@@ -140,7 +158,7 @@ Feature: Default VCS push runs
     And the answer's last state transition's note is "superseded by commit {new}"
     And the "PROPOSED" event run on stack "infra" for commit "new" is kept as "newRun"
     And token "h" eventually reads the run "newRun" in the state "FINISHED" through B
-    And token "h" records the run "newRun"'s PLANNING runtime evidence through A
+    And the event run "newRun" has a real tool plan through A
 
   @terraform
   Scenario: Parallel stack children share one delivery cap and retain the admitted run
@@ -153,18 +171,16 @@ Feature: Default VCS push runs
     And token "h" eventually reads the stack "alpha" tracking the commit kept as "seed" through A
     And token "h" eventually reads the stack "beta" tracking the commit kept as "seed" through B
     And token "h" eventually reads the stack "gamma" tracking the commit kept as "seed" through A
-    And token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":1}' through B
+    And token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":2}' through B
     And it answers 200
     And the GitLab project "acme/platform/infra" branches "feature" from "seed"
     And the GitLab project "acme/platform/infra" commits files on "feature" as "limited":
       | root/main.tf | resource "terraform_data" "this" {\n  input = "limited"\n}\n |
     When GitLab pushes "limitedPush" for integration "integration" from "seed" to "limited" on "feature" through A
     Then it answers 202
-    And GitLab push "limitedPush" for integration "integration" settles with 1 runs and 3 stack jobs
-    And commit "limited" has exactly 1 event runs across all stacks
-    And the only "PROPOSED" event run for commit "limited" is kept as "limitedRun"
-    And token "h" eventually reads the run "limitedRun" in the state "FINISHED" through B
-    And token "h" records the run "limitedRun"'s PLANNING runtime evidence through A
+    And GitLab push "limitedPush" for integration "integration" settles with 2 runs and 3 stack jobs
+    And commit "limited" has exactly 2 event runs across all stacks
+    And all event runs for commit "limited" finish through B
     And token "h" sends "GET /api/v1/stacks/alpha" through A
     And the answer tracks the commit kept as "seed" at the branch head kept as "seed"
     And token "h" sends "GET /api/v1/stacks/beta" through B

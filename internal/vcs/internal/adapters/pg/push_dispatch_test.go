@@ -10,11 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/webhooktest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
@@ -23,6 +27,69 @@ import (
 type dispatchProvider struct {
 	webhooktest.Provider
 	events []vcsapi.Event
+}
+
+func TestAccEvaluationHoldsDeliveryRetention(t *testing.T) {
+	w := newWebhookWorld(t)
+	w.receive(t, "held", webhookBody(128))
+	delivery := w.delivery(t, "held")
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		return w.f.store.PutPrepared(ctx, w.f.acct, delivery.ID, []push.Prepared{{Event: vcsapi.Event{Type: "tag", Tag: "v1"}}})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	held, err := w.f.db.BeginTx(t.Context(), pgx.TxOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Rollback(context.WithoutCancel(t.Context())) //nolint:errcheck // rollback after commit is harmless
+	reader := pg.New(held, w.f.keys)
+	if _, found, err := reader.EventContext(t.Context(), w.f.acct, delivery.ID); err != nil || !found {
+		t.Fatal("delivery hold failed", found, err)
+	}
+	// Another stack child can hold the same delivery and update its non-key
+	// counter while this child retains its key-share read lock.
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if _, err := tx.Q(ctx, w.f.db).Exec(ctx, `SET LOCAL lock_timeout='20ms'`); err != nil {
+			return err
+		}
+		if _, found, err := w.f.store.EventContext(ctx, w.f.acct, delivery.ID); err != nil || !found {
+			return fmt.Errorf("second child hold: %w", err)
+		}
+		allowed, err := w.f.store.ReserveRun(ctx, w.f.acct, delivery.ID, 2)
+		if err != nil || !allowed {
+			return fmt.Errorf("second child counter: %w", err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal("compatible stack children blocked each other", err)
+	}
+	before := time.Now().Add(time.Hour)
+	blocked := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if _, err := tx.Q(ctx, w.f.db).Exec(ctx, `SET LOCAL lock_timeout='20ms'`); err != nil {
+			return err
+		}
+		_, _, err := w.store.Drop(ctx, &w.f.acct, &before, 1)
+		return err
+	})
+	if cause, ok := errors.AsType[*pgconn.PgError](blocked); !ok || cause.Code != "55P03" {
+		t.Fatal("retention deleted active evaluation data", blocked)
+	}
+	if events, err := reader.Prepared(t.Context(), w.f.acct, delivery.ID); err != nil || len(events) != 1 {
+		t.Fatal("held prepared facts disappeared", events, err)
+	}
+	if err := held.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, deleted, err := w.store.Drop(t.Context(), &w.f.acct, &before, 1); err != nil || deleted != 1 {
+		t.Fatal("released delivery was not retained/deleted normally", deleted, err)
+	}
+	if _, found, err := w.f.store.EventContext(t.Context(), w.f.acct, delivery.ID); err != nil || found {
+		t.Fatal("purged delivery remained visible", found, err)
+	}
+	if events, err := w.f.store.Prepared(t.Context(), w.f.acct, delivery.ID); err != nil || len(events) != 0 {
+		t.Fatal("purged delivery retained prepared facts", events, err)
+	}
 }
 
 func (p dispatchProvider) Parse(http.Header, []byte) ([]vcsapi.Event, error) { return p.events, nil }

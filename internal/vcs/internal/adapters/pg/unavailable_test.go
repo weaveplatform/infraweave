@@ -3,10 +3,12 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 )
@@ -69,7 +71,9 @@ func TestAccUnavailable(t *testing.T) {
 			t.Errorf("%s on a closed pool = %v", name, err)
 		}
 	}
-	if len(pg.Held()) != 9 || len(pg.SealedColumns()) != 3 {
+	if len(pg.Held()) != 10 || !slices.ContainsFunc(pg.Held(), func(h integrity.Held) bool {
+		return h.Entity == "account" && h.Table == "vcs_account_settings" && slices.Equal(h.Columns, []string{"account_id"})
+	}) || len(pg.SealedColumns()) != 3 {
 		t.Errorf("held %v, sealed %v", pg.Held(), pg.SealedColumns())
 	}
 	if (&integration.Missing{Kind: "space", ID: "x"}).Error() == "" {

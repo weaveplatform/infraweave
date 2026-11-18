@@ -34,25 +34,35 @@ func (evaluationTx) Commit(context.Context) error   { return nil }
 func (evaluationTx) Rollback(context.Context) error { return nil }
 
 type evaluationWorld struct {
-	t         *testing.T
-	s         *Service
-	input     Evaluation
-	job       queue.Job
-	stack     stacksapi.Settings
-	meta      EventContext
-	events    []Prepared
-	order     []string
-	created   map[string]bool
-	requests  []runsapi.CreateRequest
-	heads     []string
-	tracked   []string
-	cap       int
-	used      int
-	complete  int
-	holdErr   error
-	createErr error
-	found     bool
-	delay     time.Duration
+	t             *testing.T
+	s             *Service
+	input         Evaluation
+	job           queue.Job
+	stack         stacksapi.Settings
+	meta          EventContext
+	events        []Prepared
+	order         []string
+	created       map[string]bool
+	requests      []runsapi.CreateRequest
+	heads         []string
+	tracked       []string
+	cap           int
+	used          int
+	complete      int
+	holdErr       error
+	createErr     error
+	metaErr       error
+	readErr       error
+	ownerErr      error
+	initialErr    error
+	lockErr       error
+	projectionErr error
+	supersedeErr  error
+	limitErr      error
+	admissionErr  error
+	changedSpace  bool
+	found         bool
+	delay         time.Duration
 }
 
 type evaluationStore struct{ w *evaluationWorld }
@@ -62,11 +72,11 @@ func (s evaluationStore) PutPrepared(context.Context, kernel.AccountID, kernel.U
 }
 
 func (s evaluationStore) Prepared(context.Context, kernel.AccountID, kernel.ULID) ([]Prepared, error) {
-	return s.w.events, nil
+	return s.w.events, s.w.readErr
 }
 
 func (s evaluationStore) EventContext(context.Context, kernel.AccountID, kernel.ULID) (EventContext, bool, error) {
-	return s.w.meta, s.w.found, nil
+	return s.w.meta, s.w.found, s.w.metaErr
 }
 
 type evaluationLimit struct {
@@ -75,11 +85,14 @@ type evaluationLimit struct {
 }
 
 func (s evaluationLimit) RunLimit(context.Context, kernel.AccountID) (*int, error) {
-	return &s.w.cap, nil
+	return &s.w.cap, s.w.limitErr
 }
 
 func (s evaluationLimit) ReserveRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, limit int) (bool, error) {
 	s.w.step(ctx, "admit")
+	if s.w.admissionErr != nil {
+		return false, s.w.admissionErr
+	}
 	if s.w.used == limit {
 		return false, nil
 	}
@@ -93,12 +106,16 @@ type evaluationStacks struct {
 }
 
 func (s evaluationStacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
-	return s.w.stack, nil
+	return s.w.stack, s.w.initialErr
 }
 
 func (s evaluationStacks) LockForRun(ctx context.Context, _ kernel.AccountID, _ kernel.ULID) (stacksapi.Settings, error) {
 	s.w.step(ctx, "stack lock")
-	return s.w.stack, nil
+	stack := s.w.stack
+	if s.w.changedSpace {
+		stack.Space = kernel.NewULID()
+	}
+	return stack, s.w.lockErr
 }
 
 func (s evaluationStacks) SetTracked(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, head, tracked *stacksapi.Commit, setter string) error {
@@ -112,7 +129,7 @@ func (s evaluationStacks) SetTracked(ctx context.Context, _ kernel.AccountID, _ 
 		}
 		s.w.tracked = append(s.w.tracked, tracked.Hash)
 	}
-	return nil
+	return s.w.projectionErr
 }
 
 type evaluationSpaces struct {
@@ -122,7 +139,7 @@ type evaluationSpaces struct {
 
 func (s evaluationSpaces) Hold(ctx context.Context, _ kernel.AccountID, _ kernel.ULID) error {
 	s.w.step(ctx, "owner hold")
-	return nil
+	return s.w.ownerErr
 }
 
 type evaluationJobs struct {
@@ -148,7 +165,7 @@ func (r evaluationRuns) Supersede(ctx context.Context, _ kernel.AccountID, _ ker
 	if !slices.Contains(r.w.order, "stack lock") {
 		r.w.t.Fatal("supersede acquired run locks before stack creation lock")
 	}
-	return 0, nil
+	return 0, r.w.supersedeErr
 }
 
 func (r evaluationRuns) Create(ctx context.Context, in runsapi.CreateRequest) (runsapi.CreatedRun, error) {
@@ -321,5 +338,97 @@ func TestUnitEvaluationPayloadAndExpiry(t *testing.T) {
 				t.Fatal("expired work kept retrying")
 			}
 		})
+	}
+}
+
+func TestUnitEvaluationBoundaryFailures(t *testing.T) {
+	for _, name := range []string{"delivery read", "prepared read", "owner hold", "initial stack read", "stack lock", "head projection", "supersede", "limit read", "admission", "space moved"} {
+		t.Run(name, func(t *testing.T) {
+			w := newEvaluation(t)
+			w.events = []Prepared{w.push("main", strings.Repeat("1", 40), "main.tf")}
+			cause := errors.New("boundary unavailable")
+			switch name {
+			case "delivery read":
+				w.metaErr = cause
+			case "prepared read":
+				w.readErr = cause
+			case "owner hold":
+				w.ownerErr = cause
+			case "initial stack read":
+				w.initialErr = cause
+			case "stack lock":
+				w.lockErr = cause
+			case "head projection":
+				w.projectionErr = cause
+			case "supersede":
+				w.supersedeErr = cause
+			case "limit read":
+				w.limitErr = cause
+			case "admission":
+				w.admissionErr = cause
+			case "space moved":
+				w.changedSpace = true
+				cause = errChanged
+			}
+			if err := w.s.Evaluated(t.Context(), w.job); !errors.Is(err, cause) || w.complete != 0 {
+				t.Fatal("boundary failure was hidden or completed", err, w.complete)
+			}
+		})
+	}
+}
+
+func TestUnitEvaluationDeletedOwners(t *testing.T) {
+	for _, name := range []string{"deleted stack", "deleted locked stack", "deleted account", "deleted space", "missing owner port"} {
+		t.Run(name, func(t *testing.T) {
+			w := newEvaluation(t)
+			w.events = []Prepared{w.push("main", strings.Repeat("1", 40), "main.tf")}
+			switch name {
+			case "deleted stack":
+				w.initialErr = stacksapi.ErrNotFound
+			case "deleted locked stack":
+				w.lockErr = stacksapi.ErrNotFound
+			case "deleted account":
+				w.ownerErr = accessapi.ErrNoAccount
+			case "deleted space":
+				w.ownerErr = accessapi.ErrNoSpace
+			case "missing owner port":
+				w.s.d.Spaces = nil
+			}
+			err := w.s.Evaluated(t.Context(), w.job)
+			if name == "missing owner port" {
+				if !errors.Is(err, kernel.ErrUnavailable) {
+					t.Fatal("missing owner seam was accepted", err)
+				}
+			} else if err != nil || w.complete != 1 {
+				t.Fatal("gone owner was retried", err)
+			}
+			if len(w.requests) != 0 || len(w.heads) != 0 {
+				t.Fatal("gone owner received event work")
+			}
+		})
+	}
+}
+
+func TestUnitDefaultIntegrationAliases(t *testing.T) {
+	id, other := kernel.NewULID(), kernel.NewULID()
+	use := stacksapi.Use{Integration: id, Provider: "GITHUB_ENTERPRISE", Aliases: []string{"GITHUB"}, Default: true}
+	for _, check := range []struct {
+		stack stacksapi.Settings
+		want  bool
+	}{
+		{stacksapi.Settings{Provider: "GITHUB"}, true},
+		{stacksapi.Settings{Provider: "GITHUB_ENTERPRISE"}, true},
+		{stacksapi.Settings{Provider: "GITLAB"}, false},
+		{stacksapi.Settings{Provider: "GITHUB", VCSIntegration: &id}, true},
+		{stacksapi.Settings{Provider: "GITHUB", VCSIntegration: &other}, false},
+		{stacksapi.Settings{Provider: "GITHUB", VCSDetached: true}, false},
+	} {
+		if got := uses(check.stack, use); got != check.want {
+			t.Fatal("effective binding crossed provider/default/named identity", got, check.want)
+		}
+	}
+	use.Default = false
+	if uses(stacksapi.Settings{Provider: "GITHUB"}, use) {
+		t.Fatal("nondefault integration acquired an implicit stack")
 	}
 }
