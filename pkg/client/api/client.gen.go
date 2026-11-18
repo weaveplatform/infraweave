@@ -9885,15 +9885,21 @@ type VCSIntegrationTestResult struct {
 
 // VCSIntegrationTestResultMetadata defines model for VCSIntegrationTestResultMetadata.
 type VCSIntegrationTestResultMetadata struct {
-	GithubAppEvents []string                                  `json:"githubAppEvents"`
-	Permissions     []string                                  `json:"permissions"`
-	Reason          *string                                   `json:"reason,omitempty"`
-	WebHooks        *VCSIntegrationTestResultMetadataWebhooks `json:"webHooks,omitempty"`
+	// GithubAppEvents Missing subscribed GitHub App events.
+	GithubAppEvents []string `json:"githubAppEvents"`
+
+	// Permissions Missing permissions by name; reason states each required level.
+	Permissions []string                                  `json:"permissions"`
+	Reason      *string                                   `json:"reason,omitempty"`
+	WebHooks    *VCSIntegrationTestResultMetadataWebhooks `json:"webHooks,omitempty"`
 }
 
 // VCSIntegrationTestResultMetadataWebhooks defines model for VCSIntegrationTestResultMetadataWebhooks.
 type VCSIntegrationTestResultMetadataWebhooks struct {
-	Actual   string `json:"actual"`
+	// Actual Hook diagnostics for up to ten failing repositories, with a count of the remainder. Credential-bearing URL parts are omitted.
+	Actual string `json:"actual"`
+
+	// Expected The integration's delivery URL and the consumed events its hooks must cover.
 	Expected string `json:"expected"`
 }
 
@@ -10724,6 +10730,12 @@ type AzureDevOpsRepoIntegrationPatchParams struct {
 type AzureDevOpsRepoIntegrationUpdateParams struct {
 	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams defines parameters for AzureDevOpsRepoIntegrationRegenerateWebhookSecret.
+type AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // AzureDevOpsRepoIntegrationTestParams defines parameters for AzureDevOpsRepoIntegrationTest.
@@ -15203,6 +15215,13 @@ type ClientInterface interface {
 	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
 	AzureDevOpsRepoIntegrationUpdate(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AzureDevOpsRepoIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+	//
+	// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
+	AzureDevOpsRepoIntegrationRegenerateWebhookSecret(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AzureDevOpsRepoIntegrationTest Test Azure DevOps Integration
 	//
 	// Tests the Azure DevOps Repo integration.
@@ -15380,7 +15399,7 @@ type ClientInterface interface {
 
 	// BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
 	BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15469,7 +15488,7 @@ type ClientInterface interface {
 
 	// BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
 	BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15841,7 +15860,7 @@ type ClientInterface interface {
 
 	// GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitHub Enterprise integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
 	GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15931,7 +15950,7 @@ type ClientInterface interface {
 
 	// GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitLab integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
 	GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -20303,6 +20322,23 @@ func (c *Client) AzureDevOpsRepoIntegrationUpdate(ctx context.Context, azureDevO
 	return c.Client.Do(req)
 }
 
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
+//
+// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
+func (c *Client) AzureDevOpsRepoIntegrationRegenerateWebhookSecret(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureDevOpsRepoIntegrationRegenerateWebhookSecretRequest(c.Server, azureDevOpsRepoIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AzureDevOpsRepoIntegrationTest Test Azure DevOps Integration
 //
 // Tests the Azure DevOps Repo integration.
@@ -20690,7 +20726,7 @@ func (c *Client) BitbucketCloudIntegrationUpdateV2(ctx context.Context, bitbucke
 
 // BitbucketCloudIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Cloud integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /bitbucket-cloud-integrations/{bitbucketCloudIntegrationId}/regenerate-webhook-secret (the `BitbucketCloudIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) BitbucketCloudIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketCloudIntegrationId string, params *BitbucketCloudIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -20889,7 +20925,7 @@ func (c *Client) BitbucketDatacenterIntegrationUpdate(ctx context.Context, bitbu
 
 // BitbucketDatacenterIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Datacenter integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /bitbucket-datacenter-integrations/{bitbucketDatacenterIntegrationId}/regenerate-webhook-secret (the `BitbucketDatacenterIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) BitbucketDatacenterIntegrationRegenerateWebhookSecret(ctx context.Context, bitbucketDatacenterIntegrationId string, params *BitbucketDatacenterIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21711,7 +21747,7 @@ func (c *Client) GithubEnterpriseIntegrationUpdate(ctx context.Context, githubEn
 
 // GithubEnterpriseIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitHub Enterprise integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /github-enterprise-integrations/{githubEnterpriseIntegrationId}/regenerate-webhook-secret (the `GithubEnterpriseIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) GithubEnterpriseIntegrationRegenerateWebhookSecret(ctx context.Context, githubEnterpriseIntegrationId string, params *GithubEnterpriseIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21911,7 +21947,7 @@ func (c *Client) GitlabIntegrationUpdate(ctx context.Context, gitlabIntegrationI
 
 // GitlabIntegrationRegenerateWebhookSecret Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitLab integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Corresponds with POST /gitlab-integrations/{gitlabIntegrationId}/regenerate-webhook-secret (the `GitlabIntegrationRegenerateWebhookSecret` operationId).
 func (c *Client) GitlabIntegrationRegenerateWebhookSecret(ctx context.Context, gitlabIntegrationId string, params *GitlabIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -31344,6 +31380,55 @@ func NewAzureDevOpsRepoIntegrationUpdateRequestWithBody(server string, azureDevO
 			}
 
 			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureDevOpsRepoIntegrationRegenerateWebhookSecretRequest constructs an http.Request for the AzureDevOpsRepoIntegrationRegenerateWebhookSecret method
+func NewAzureDevOpsRepoIntegrationRegenerateWebhookSecretRequest(server string, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureDevOpsRepoIntegrationId", azureDevOpsRepoIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-dev-ops-repo-integrations/%s/regenerate-webhook-secret", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
 	}
@@ -48831,6 +48916,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId} (the `AzureDevOpsRepoIntegrationUpdate` operationId).
 	AzureDevOpsRepoIntegrationUpdateWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationUpdateParams, body AzureDevOpsRepoIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationUpdateResponse, error)
 
+	// AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+	//
+	// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
+	AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse, error)
+
 	// AzureDevOpsRepoIntegrationTestWithResponse Test Azure DevOps Integration
 	//
 	// Tests the Azure DevOps Repo integration.
@@ -49022,7 +49116,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Cloud integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49121,7 +49215,7 @@ type ClientWithResponsesInterface interface {
 
 	// BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for Bitbucket Datacenter integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49523,7 +49617,7 @@ type ClientWithResponsesInterface interface {
 
 	// GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitHub Enterprise integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -49623,7 +49717,7 @@ type ClientWithResponsesInterface interface {
 
 	// GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 	//
-	// Regenerates the webhook secret for GitLab integration.
+	// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -58560,6 +58654,115 @@ func (r AzureDevOpsRepoIntegrationUpdateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AzureDevOpsRepoIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse200Headers the declared response headers of an HTTP 200 response for AzureDevOpsRepoIntegrationRegenerateWebhookSecret
+type AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse429Headers the declared response headers of an HTTP 429 response for AzureDevOpsRepoIntegrationRegenerateWebhookSecret
+type AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse503Headers the declared response headers of an HTTP 503 response for AzureDevOpsRepoIntegrationRegenerateWebhookSecret
+type AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureDevOpsRepoIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetJSON200() *AzureDevOpsRepoIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -90944,6 +91147,21 @@ func (c *ClientWithResponses) AzureDevOpsRepoIntegrationUpdateWithResponse(ctx c
 	return ParseAzureDevOpsRepoIntegrationUpdateResponse(rsp)
 }
 
+// AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
+//
+// Regenerates the Azure DevOps webhook password and returns the admin integration view, including webhookPassword. The preceding password remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding password.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-dev-ops-repo-integrations/{azureDevOpsRepoIntegrationId}/regenerate-webhook-secret (the `AzureDevOpsRepoIntegrationRegenerateWebhookSecret` operationId).
+func (c *ClientWithResponses) AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse(ctx context.Context, azureDevOpsRepoIntegrationId string, params *AzureDevOpsRepoIntegrationRegenerateWebhookSecretParams, reqEditors ...RequestEditorFn) (*AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse, error) {
+	rsp, err := c.AzureDevOpsRepoIntegrationRegenerateWebhookSecret(ctx, azureDevOpsRepoIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse(rsp)
+}
+
 // AzureDevOpsRepoIntegrationTestWithResponse Test Azure DevOps Integration
 //
 // Tests the Azure DevOps Repo integration.
@@ -91261,7 +91479,7 @@ func (c *ClientWithResponses) BitbucketCloudIntegrationUpdateV2WithResponse(ctx 
 
 // BitbucketCloudIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Cloud integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -91426,7 +91644,7 @@ func (c *ClientWithResponses) BitbucketDatacenterIntegrationUpdateWithResponse(c
 
 // BitbucketDatacenterIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for Bitbucket Datacenter integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92098,7 +92316,7 @@ func (c *ClientWithResponses) GithubEnterpriseIntegrationUpdateWithResponse(ctx 
 
 // GithubEnterpriseIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitHub Enterprise integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -92264,7 +92482,7 @@ func (c *ClientWithResponses) GitlabIntegrationUpdateWithResponse(ctx context.Co
 
 // GitlabIntegrationRegenerateWebhookSecretWithResponse Regenerate Webhook Secret
 //
-// Regenerates the webhook secret for GitLab integration.
+// Regenerates the webhook secret and returns the admin integration view. The preceding secret remains accepted for vcs.webhook_secret_overlap (24 hours by default). A second regeneration replaces that preceding secret.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -104931,6 +105149,142 @@ func ParseAzureDevOpsRepoIntegrationUpdateResponse(rsp *http.Response) (*AzureDe
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AzureDevOpsRepoIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse parses an HTTP response from a AzureDevOpsRepoIntegrationRegenerateWebhookSecretWithResponse call
+func ParseAzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureDevOpsRepoIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureDevOpsRepoIntegrationRegenerateWebhookSecretResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

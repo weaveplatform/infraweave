@@ -69,9 +69,10 @@ type DB interface {
 // authorities trusted beside the system's when reaching a repository's
 // host, for a host under a private CA; BitbucketCloud is where its API is.
 type Settings struct {
-	CAFile         string           `mapstructure:"ca_file"`
-	BitbucketCloud BitbucketCloud   `mapstructure:"bitbucket_cloud"`
-	Deliveries     DeliverySettings `mapstructure:"deliveries"`
+	CAFile               string           `mapstructure:"ca_file"`
+	BitbucketCloud       BitbucketCloud   `mapstructure:"bitbucket_cloud"`
+	Deliveries           DeliverySettings `mapstructure:"deliveries"`
+	WebhookSecretOverlap time.Duration    `mapstructure:"webhook_secret_overlap"`
 }
 
 // BitbucketCloud is where every BITBUCKET_CLOUD integration reaches
@@ -160,7 +161,7 @@ func New(d Deps) (*Domain, error) {
 			integration.GitLab: gl, integration.BitbucketCloud: bbc,
 			integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
 		},
-		Apps: gh, Public: d.Public,
+		Apps: gh, Public: d.Public, Now: d.Now, SecretOverlap: d.Settings.WebhookSecretOverlap,
 	})
 	return &Domain{
 		sources: source.New(source.Deps{

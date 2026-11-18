@@ -28,15 +28,18 @@ type DeliverySettings struct {
 // Objects is the platform blob lifecycle used by durable delivery bodies.
 type Objects = intake.Objects
 
-// DefaultSettings are the settings of VCS intake when none are supplied.
+// DefaultSettings are the VCS retention and secret rotation defaults.
 func DefaultSettings() Settings {
-	return Settings{Deliveries: DeliverySettings{Retention: 7 * 24 * time.Hour}}
+	return Settings{Deliveries: DeliverySettings{Retention: 7 * 24 * time.Hour}, WebhookSecretOverlap: 24 * time.Hour}
 }
 
-// Validate refuses retention that could prune an accepted delivery immediately.
+// Validate refuses non-positive delivery retention or secret overlap.
 func (s Settings) Validate() error {
 	if s.Deliveries.Retention <= 0 {
 		return fmt.Errorf("%w: vcs.deliveries.retention must be positive", ErrConfig)
+	}
+	if s.WebhookSecretOverlap <= 0 {
+		return fmt.Errorf("%w: vcs.webhook_secret_overlap must be positive", ErrConfig)
 	}
 	return nil
 }

@@ -114,6 +114,7 @@ func (allowOptions) AllowOrganization(context.Context, kernel.OrganizationID, st
 
 type fixture struct {
 	db            *pgxpool.Pool
+	keys          *crypt.Keyring
 	store         *pg.Store
 	deps          integration.Deps
 	svc           *integration.Service
@@ -141,6 +142,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	f := &fixture{
 		db:     db,
+		keys:   keys,
 		acct:   kernel.NewAccountID(),
 		team:   kernel.NewULID(),
 		hidden: kernel.NewULID(),

@@ -242,3 +242,98 @@ Feature: Bitbucket Data Center integrations
     When token "h" sends "PATCH /api/v1/bitbucket-datacenter-integrations/{probe}" with '{"customInput":{"description":"Final description"}}' if matching the ETag "current" through B
     Then it answers 200
     And the answer's description is '"Final description"'
+
+  @op:bitbucketDatacenterIntegrationRegenerateWebhookSecret @op:bitbucketDatacenterWebhooksEndpoint @case:success @webhook-controls
+  Scenario: A Bitbucket Data Center admin rotates secrets once per key and reads the configured delivery URL
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","username":"dev","customInput":{"name":"Webhook control","spaceID":"acme","isDefault":true}}' through A
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "originalHook"
+    When token "h" sends "GET /api/v1/bitbucket-datacenter-webhooks-endpoint" through B
+    Then it answers 200
+    And the webhook endpoint in the answer is "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
+    When token "h" regenerates the webhook secret at "/api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through A
+    Then it answers 200
+    And the answer's webhook secret differs from "originalHook"
+    And the answer's webhook secret is kept as "firstHook"
+    When token "h" sends "GET /api/v1/bitbucket-datacenter-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    When token "h" regenerates the webhook secret at "/api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" with idempotency key "webhook-control-first" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{firstHook}"'
+    And integration "hookIntegration" has 1 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" through B
+    Then it answers 200
+    And the answer's webhook secret differs from "firstHook"
+    And the answer's webhook secret is kept as "secondHook"
+    When token "h" sends "GET /api/v1/bitbucket-datacenter-integrations/{hookIntegration}" through A
+    Then it answers 200
+    And the answer's webhookSecret is '"{secondHook}"'
+    And integration "hookIntegration" has 2 secret rotation audit entries and never logs or audits secrets "originalHook, firstHook, secondHook"
+
+  @op:bitbucketDatacenterIntegrationRegenerateWebhookSecret @op:bitbucketDatacenterWebhooksEndpoint @case:denial @webhook-controls
+  Scenario: A Bitbucket Data Center space reader cannot rotate a secret or read the delivery URL
+    Given the member key is space-reader on the space "acme"
+    And token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","username":"dev","customInput":{"name":"Protected webhook","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "hookIntegration"
+    And the answer's webhook secret is kept as "untouchedHook"
+    When token "m" sends "GET /api/v1/bitbucket-datacenter-webhooks-endpoint" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "m" sends "POST /api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "h" sends "GET /api/v1/bitbucket-datacenter-integrations/{hookIntegration}" through B
+    Then it answers 200
+    And the answer's webhookSecret is '"{untouchedHook}"'
+    And integration "hookIntegration" has 0 secret rotation audit entries and never logs or audits secrets "untouchedHook"
+
+  @op:bitbucketDatacenterIntegrationRegenerateWebhookSecret @op:bitbucketDatacenterWebhooksEndpoint @case:failure @webhook-controls
+  Scenario: Bitbucket Data Center webhook controls refuse missing defaults and missing or hidden integrations
+    Given the member key is space-reader on the space "{team}"
+    When token "h" sends "GET /api/v1/bitbucket-datacenter-webhooks-endpoint" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations/missing-integration/regenerate-webhook-secret" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/spaces" with '{"name":"Private hooks","description":"","inheritEntities":false,"parentSpace":"acme"}' through A
+    Then it answers 201
+    And the answer's id is the space "privateHooks"
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","username":"dev","customInput":{"name":"Hidden hook","spaceID":"{privateHooks}"}}' through B
+    Then it answers 201
+    And the answer's id names "hookIntegration"
+    When token "m" sends "POST /api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/bitbucket-datacenter-integrations/{hookIntegration}" through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/bitbucket-datacenter-integrations/{hookIntegration}/regenerate-webhook-secret" through A
+    Then it answers a 404 problem "not-found"
+
+  @op:vcsIntegrationTest @case:failure @webhook-controls
+  Scenario: A Bitbucket Data Center connection test checks the delivery URL and every consumed hook event
+    Given token "h" sends "POST /api/v1/bitbucket-datacenter-integrations" with '{"apiHost":"{bitbucketDCHost}","userFacingHost":"{bitbucketDCHost}","accessToken":"{tok}","username":"dev","customInput":{"name":"Hook check","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "hookIntegration"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hook source","namespace":"ACME","repository":"infra","branch":"main","provider":"BITBUCKET_DATACENTER","vcsIntegrationId":"{hookIntegration}","space":"{team}"},"manageState":false}' through B
+    And it answers 201
+    And the Bitbucket Data Center repository "ACME/infra" has no webhook
+    When token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through A
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
+    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:comment:added"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
+    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}" for events "repo:refs_changed"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through A
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "ACME/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}"
+    When the Bitbucket Data Center repository "ACME/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_datacenter/{hookIntegration}" for events "repo:refs_changed, pr:opened, pr:from_ref_updated, pr:modified, pr:reviewer:approved, pr:reviewer:unapproved, pr:merged, pr:comment:added"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_DATACENTER" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is SUCCESS
+    And the answer's status is '"SUCCESS"'

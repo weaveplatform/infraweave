@@ -226,6 +226,7 @@ func TestUnitRoutes(t *testing.T) {
 		{http.MethodGet, api + "/projects/ACME/repos/infra/branches"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/tags/release/1"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/commits/abc"},
+		{http.MethodGet, api + "/projects/ACME/repos/infra/webhooks"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/raw/modules/a%20b.tf"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/compare/changes"},
 		{http.MethodPut, tokens + "/projects/ACME/repos/infra"},
@@ -239,7 +240,7 @@ func TestUnitRoutes(t *testing.T) {
 		{http.MethodGet, "/repos"},
 		{http.MethodPost, api + "/repos"},
 		{http.MethodDelete, api + "/projects/ACME/repos/infra/branches"},
-		{http.MethodGet, api + "/projects/ACME/repos/infra/webhooks"},
+		{http.MethodPost, api + "/projects/ACME/repos/infra/webhooks"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/raw/../../webhooks"},
 		{http.MethodGet, api + "/projects/ACME/repos/infra/commits/a/b"},
 		{http.MethodGet, api + "/repos/"},
@@ -257,7 +258,7 @@ func TestUnitRoutes(t *testing.T) {
 	}
 	l := newLab(t)
 	before := l.fake.Requests()
-	if err := l.bb.Send(t.Context(), l.in, "/projects/ACME/repos/infra/webhooks"); !errors.Is(
+	if err := l.bb.Send(t.Context(), l.in, "/projects/ACME/repos/infra/webhooks/123"); !errors.Is(
 		err, bitbucketdc.ErrRoute) {
 		t.Errorf("a route outside the allowlist = %v", err)
 	}

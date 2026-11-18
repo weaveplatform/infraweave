@@ -241,6 +241,10 @@ func (*stacks) ByRepository(context.Context, kernel.AccountID, *kernel.ULID, str
 	return nil, errors.ErrUnsupported
 }
 
+func (*stacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	return nil, errors.ErrUnsupported
+}
+
 func (*stacks) LockForRun(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return stacksapi.Settings{}, errors.ErrUnsupported
 }

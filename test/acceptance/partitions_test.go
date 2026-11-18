@@ -90,6 +90,8 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@runtime-config-reject", "@terraform"}, "runs"},
 		{[]string{"@runtime-config-reject", "@tofu"}, "runs"},
 		{[]string{"@vcs", "@postgres"}, "integrations"},
+		{[]string{"@webhook-controls", "@gitlab", "@postgres"}, "integrations"},
+		{[]string{"@webhook-controls", "@postgres"}, "core"},
 		{[]string{"@vcs", "@tofu"}, "runs"},
 		{[]string{"@postgres", "@vcs", "@terragrunt"}, "runs"},
 		{[]string{"@postgres", "@vcs", "@docker"}, "runs"},
@@ -142,7 +144,7 @@ func TestUnitTagExpression(t *testing.T) {
 
 func TestUnitDockerTags(t *testing.T) {
 	got := harness.DockerTags([]string{
-		"@postgres", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject",
+		"@postgres", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
 	})
 	if !slices.Equal(got, []string{"@postgres", "@vcs"}) {
 		t.Errorf("dockerTags = %q", got)

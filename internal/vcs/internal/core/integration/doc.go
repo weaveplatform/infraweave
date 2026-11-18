@@ -27,6 +27,12 @@
 // Non-default creation checks the multiple-vcs-integrations option on its
 // effective isDefault value; existing integrations remain usable after
 // an entitlement change.
+// RotateWebhookSecret replaces the current secret and reseals the previous
+// one for the configured overlap, recording a secret-free audit entry in
+// that same transaction. WebhookEndpoint reads a provider's default URL
+// or a named GitHub App's URL without opening credentials. Connection
+// tests also inspect hook registrations for every used repository through
+// the stacks domain's account-scoped projection.
 //
 // ref: decisions 0007, 0012 and 0013
 //
@@ -38,7 +44,7 @@
 // providers infraweave stores integrations of, each one's Tester, each
 // one's Brancher, which a provider listing repositories extends to
 // port.Browse, the GitHub provider's Apps and the
-// server's public origin.
+// server's public origin, the secret overlap and an optional clock.
 //
 // # Dependencies
 //

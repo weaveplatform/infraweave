@@ -3,6 +3,7 @@ package github_test
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/url"
 	"slices"
 	"strconv"
@@ -35,9 +36,24 @@ func TestUnitTest(t *testing.T) {
 	}, []string{"push"})
 	got, _ = l.gh.Test(ctx, l.in)
 	if !slices.Equal(passed(got), []bool{true, false, false}) ||
-		got[1].Reason != "The App lacks the permissions checks:write, pull_requests:write." ||
-		got[2].Reason != "The App does not send the events pull_request." {
+		got[1].Reason != "The App lacks the permissions checks:write, pull_requests:write, issues:write, deployments:write, members:read." ||
+		!slices.Equal(got[1].Permissions, []string{"checks", "pull_requests", "issues", "deployments", "members"}) ||
+		!slices.Equal(got[2].GithubAppEvents, []string{"check_run", "installation_target", "issue_comment", "organization", "pull_request", "pull_request_review", "repository"}) ||
+		!slices.Equal(got[2].Permissions, got[1].Permissions) {
 		t.Errorf("a lacking App = %+v", got)
+	}
+	for _, permission := range []string{"deployments", "members"} {
+		perms := maps.Clone(githubfake.Permissions)
+		perms[permission] = "none"
+		l.fake.SetApp(l.app.ID, perms, slices.Clone(githubfake.Events))
+		got, err := l.gh.Test(ctx, l.in)
+		if err != nil || got[2].Passed || !slices.Equal(got[2].Permissions, []string{permission}) || len(got[2].GithubAppEvents) != 0 {
+			t.Fatalf("missing %s alone: %+v %v", permission, got, err)
+		}
+	}
+	l.fake.SetApp(l.app.ID, nil, nil)
+	if got, err := l.gh.Test(ctx, l.in); err != nil || got[1].Passed || got[2].Passed || len(got[2].Permissions) != 7 {
+		t.Fatalf("omitted permissions: %+v %v", got, err)
 	}
 
 	for name, in := range map[string]port.Integration{
@@ -107,8 +123,14 @@ func TestUnitManifest(t *testing.T) {
 	}
 	if got.URL != "https://iw.example" || got.Public ||
 		got.HookAttributes.URL != "https://iw.example/webhooks/github" ||
-		got.DefaultPermissions["contents"] != "read" ||
-		!slices.Equal(got.DefaultEvents, []string{"pull_request", "push"}) {
+		!maps.Equal(
+			got.DefaultPermissions,
+			map[string]string{"checks": "write", "contents": "read", "metadata": "read", "pull_requests": "write", "issues": "write", "deployments": "write", "members": "read"},
+		) ||
+		!slices.Equal(
+			got.DefaultEvents,
+			[]string{"check_run", "installation_target", "issue_comment", "organization", "pull_request", "pull_request_review", "push", "repository"},
+		) {
 		t.Errorf("manifest = %+v", got)
 	}
 	m, err = gh.Manifest("https://ghe.example/", "", "w", "https://iw.example/back", "s")

@@ -219,7 +219,10 @@ func testResult(checks []port.Check) api.VCSIntegrationTestResult {
 			check.Status, out.Status = api.FAIL, api.FAIL
 			reason := c.Reason
 			check.Metadata = &api.VCSIntegrationTestResultMetadata{
-				GithubAppEvents: []string{}, Permissions: []string{}, Reason: &reason,
+				GithubAppEvents: append([]string{}, c.GithubAppEvents...), Permissions: append([]string{}, c.Permissions...), Reason: &reason,
+			}
+			if c.WebHooks != nil {
+				check.Metadata.WebHooks = &api.VCSIntegrationTestResultMetadataWebhooks{Expected: c.WebHooks.Expected, Actual: c.WebHooks.Actual}
 			}
 		}
 		out.Checks = append(out.Checks, check)

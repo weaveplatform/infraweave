@@ -104,6 +104,11 @@ type Store interface {
 	// Write replaces the integration's fields and sets its version, and
 	// its secrets when sec is not nil.
 	Write(ctx context.Context, in Integration, sec *Secrets) error
+	// RotateWebhookSecret replaces the current secret, reseals its old
+	// value as previous, and records the overlap expiry and version.
+	RotateWebhookSecret(ctx context.Context, in Integration, current []byte, until time.Time) error
+	// Audit records a secret-free mutation in the caller's transaction.
+	Audit(ctx context.Context, entry kernel.AuditEntry) error
 	// Get reads acct's integration id, locked FOR UPDATE when lock is set;
 	// ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Integration, error)
@@ -139,35 +144,37 @@ type Store interface {
 // Apps, the GitHub provider's App work; and Public, the server's public origin, which webhook and
 // manifest URLs start with.
 type Deps struct {
-	Store     Store
-	DB        tx.Beginner
-	Spaces    accessapi.Spaces
-	Authz     accessapi.Authorizer
-	Stacks    stacksapi.Stacks
-	Providers []string
-	Testers   map[string]port.Tester
-	Browse    map[string]port.Brancher
-	Apps      port.Apps
-	Public    string
-	Now       func() time.Time
-	Features  featuresapi.Options
+	Store         Store
+	DB            tx.Beginner
+	Spaces        accessapi.Spaces
+	Authz         accessapi.Authorizer
+	Stacks        stacksapi.Stacks
+	Providers     []string
+	Testers       map[string]port.Tester
+	Browse        map[string]port.Brancher
+	Apps          port.Apps
+	Public        string
+	Now           func() time.Time
+	Features      featuresapi.Options
+	SecretOverlap time.Duration
 }
 
 // Service is the integrations' logic. Every write runs in one
 // transaction.
 type Service struct {
-	store     Store
-	db        tx.Beginner
-	spaces    accessapi.Spaces
-	authz     accessapi.Authorizer
-	stacks    stacksapi.Stacks
-	providers []string
-	testers   map[string]port.Tester
-	browse    map[string]port.Brancher
-	apps      port.Apps
-	public    string
-	now       func() time.Time
-	features  featuresapi.Options
+	store         Store
+	db            tx.Beginner
+	spaces        accessapi.Spaces
+	authz         accessapi.Authorizer
+	stacks        stacksapi.Stacks
+	providers     []string
+	testers       map[string]port.Tester
+	browse        map[string]port.Brancher
+	apps          port.Apps
+	public        string
+	now           func() time.Time
+	features      featuresapi.Options
+	secretOverlap time.Duration
 }
 
 // New returns the service over d.
@@ -176,11 +183,15 @@ func New(d Deps) *Service {
 	if now == nil {
 		now = time.Now
 	}
+	overlap := d.SecretOverlap
+	if overlap == 0 {
+		overlap = 24 * time.Hour
+	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
 		providers: d.Providers, testers: d.Testers, browse: d.Browse,
 		apps: d.Apps, features: d.Features,
-		public: strings.TrimSuffix(d.Public, "/"), now: now,
+		public: strings.TrimSuffix(d.Public, "/"), now: now, secretOverlap: overlap,
 	}
 }
 
@@ -306,7 +317,27 @@ func (s *Service) Test(ctx context.Context, p kernel.Principal, id, provider str
 	if err != nil {
 		return nil, err
 	}
-	return t.Test(ctx, use) //nolint:wrapcheck // the provider names its failure
+	checks, err := t.Test(ctx, use)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the provider names its failure
+	}
+	hooks, ok := t.(port.WebhookTester)
+	if !ok {
+		return checks, nil
+	}
+	repositories, err := s.stacks.VCSRepositories(ctx, p.AccountID, stackUse(in))
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the stacks domain names the repository read
+	}
+	expected := port.WebhookInput{URL: s.WebhookURL(in.Provider, in.ID)}
+	for _, repo := range repositories {
+		expected.Repositories = append(expected.Repositories, port.Listed{Namespace: repo.Namespace, Name: repo.Name})
+	}
+	check, err := hooks.TestWebhooks(ctx, use, expected)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the provider names its failure
+	}
+	return append(checks, check), nil
 }
 
 // Input is an integration's fields as a create or an update gives them,
