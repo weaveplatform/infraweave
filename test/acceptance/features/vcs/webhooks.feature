@@ -452,3 +452,168 @@ Feature: VCS webhook protocol, event run budgets and request history
     Then it answers a 409 problem "invalid-state"
     And delivery "delivery" keeps replay generation 0
     And the home account has 0 caller-attributed delivery replay audits
+
+  # ref: decision 0012 D9/D17/D18; decision 0021; report 28
+  @gitlab @objectstore @op:stackSearchRunIgnoredTriggers @case:success
+  Scenario: Path and tag ignores survive entitlement changes, delivery replay and account cleanup
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the operator key is exchanged through A for token "op"
+    And the home key is exchanged through A for token "h"
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
+    And the GitLab project "acme/platform/infra" commits files on "main" as "seed":
+      | root/main.tf | resource "terraform_data" "this" {} |
+      | outside.txt | base |
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Ignored","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Alpha","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "alpha" tracking the commit kept as "seed" through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Beta","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "beta" tracking the commit kept as "seed" through B
+    And token "op" turns billing on through A
+    And token "op" gives the home organization a seeded tier with "stacks" lacking "ignored-runs" through B
+    When the GitLab project "acme/platform/infra" commits files on "main" as "outside":
+      | outside.txt | outside-only |
+    And GitLab pushes "outsidePush" for integration "integration" from "seed" to "outside" on "main" through A
+    Then it answers 202
+    And GitLab push "outsidePush" for integration "integration" settles with 0 runs and 2 stack jobs
+    And stack "alpha" has exactly 1 stored ignored triggers
+    And stack "beta" has exactly 1 stored ignored triggers
+    When token "h" searches ignored triggers of stack "alpha" with '{}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    And the problem lists the catalogue tiers holding "ignored-runs"
+    When token "op" gives the home organization a seeded tier with "stacks" holding "ignored-runs" through A
+    And token "h" searches ignored triggers of stack "alpha" with '{}' through B
+    Then the ignored-trigger answer has 1 records for commit "outside" with reason "NO_AFFECTED_FILES_IN_PROJECT_ROOT" and tag ""
+    When GitLab tags commit "outside" as "release-one" in delivery "firstTag" for integration "integration" through B
+    Then it answers 202
+    And GitLab push "firstTag" for integration "integration" settles with 0 runs and 2 stack jobs
+    When GitLab tags commit "outside" as "release-two" in delivery "secondTag" for integration "integration" through A
+    Then it answers 202
+    And GitLab push "secondTag" for integration "integration" settles with 0 runs and 2 stack jobs
+    And stack "alpha" has exactly 2 stored ignored triggers
+    And stack "beta" has exactly 2 stored ignored triggers
+    When token "h" searches ignored triggers of stack "alpha" with '{"predicates":[{"field":"reasonType","constraint":{"enumEquals":["TAGS_IGNORED_BY_DEFAULT"]}}]}' through B
+    Then the ignored-trigger answer has 1 records for commit "outside" with reason "TAGS_IGNORED_BY_DEFAULT" and tag "release-one"
+    When token "h" searches ignored triggers of stack "alpha" with '{"first":1}' through A
+    Then the ignored-trigger answer has 1 records and keeps cursor "ignoredCursor"
+    When token "h" searches ignored triggers of stack "alpha" with '{"first":1,"after":"{ignoredCursor}"}' through B
+    Then the ignored-trigger answer has 1 records and keeps cursor "ignoredLast"
+    When token "h" searches ignored triggers of stack "alpha" with '{"predicates":[{"field":"createdAt","constraint":{"timeInLast":"LAST7D"}}]}' through A
+    Then the ignored-trigger answer has 2 records and keeps cursor "ignoredAll"
+    Given delivery "firstTag" of integration "integration" is kept as "tagDelivery"
+    When token "h" replays delivery "tagDelivery" of integration "integration" with key "ignored-replay" through B
+    Then it answers 202
+    And delivery "tagDelivery" generation 1 settles with 0 newly created runs
+    And stack "alpha" has exactly 2 stored ignored triggers
+    And stack "beta" has exactly 2 stored ignored triggers
+    When token "h" sends "DELETE /api/v1/stacks/alpha" through A
+    Then it answers 200
+    And the deleted stack "alpha" has no ignored triggers
+    When GitLab tags commit "outside" as "release-three" in delivery "afterDelete" for integration "integration" through B
+    Then it answers 202
+    And GitLab push "afterDelete" for integration "integration" settles with 0 runs and 1 stack jobs
+    And the deleted stack "alpha" has no ignored triggers
+    And stack "beta" has exactly 2 stored ignored triggers
+    Given the sibling key is exchanged through A for token "s"
+    When "POST /api/v1/account/toggle-deletion-mark" through A with token "h" and '{"reason":"cleanup proof"}' answers 'true'
+    And "POST /api/v1/account/confirm-delete" through B with token "h" answers 'true'
+    Then the home account has no retained ignored triggers
+
+  @gitlab @objectstore @op:stackSearchRunIgnoredTriggers @case:success
+  Scenario: Only a capped tracked-branch push records a run-limit ignore
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the home key is exchanged through A for token "h"
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
+    And the GitLab project "acme/platform/infra" commits files on "main" as "seed":
+      | root/main.tf | resource "terraform_data" "this" {} |
+      | outside.txt | base |
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Ignored","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Alpha","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "alpha" tracking the commit kept as "seed" through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Beta","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "beta" tracking the commit kept as "seed" through B
+    And token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":1}' through A
+    And it answers 200
+    And the GitLab project "acme/platform/infra" branches "feature" from "seed"
+    When the GitLab project "acme/platform/infra" commits files on "feature" as "proposed":
+      | root/main.tf | resource "terraform_data" "this" { input = "proposed" } |
+    And GitLab pushes "proposedPush" for integration "integration" from "seed" to "proposed" on "feature" through B
+    Then it answers 202
+    And GitLab push "proposedPush" for integration "integration" settles with 1 runs and 2 stack jobs
+    And stack "alpha" has exactly 0 stored ignored triggers
+    And stack "beta" has exactly 0 stored ignored triggers
+    When the GitLab project "acme/platform/infra" commits files on "main" as "tracked":
+      | root/main.tf | resource "terraform_data" "this" { input = "tracked" } |
+    And GitLab pushes "trackedPush" for integration "integration" from "seed" to "tracked" on "main" through A
+    Then it answers 202
+    And GitLab push "trackedPush" for integration "integration" settles with 1 runs and 2 stack jobs
+    And the only capped tracked stack is kept as "capped"
+    When token "h" searches ignored triggers of stack "{capped}" with '{}' through B
+    Then the ignored-trigger answer has 1 records for commit "tracked" with reason "RUN_LIMIT_REACHED" and tag ""
+    When GitLab pushes "trackedAgain" for integration "integration" from "seed" to "tracked" on "main" through B
+    Then it answers 202
+    And GitLab push "trackedAgain" for integration "integration" settles with 1 runs and 2 stack jobs
+    And commit "tracked" has exactly 2 event runs across all stacks
+    When token "h" searches ignored triggers of stack "{capped}" with '{}' through A
+    Then the ignored-trigger answer has 1 records for commit "tracked" with reason "RUN_LIMIT_REACHED" and tag ""
+
+  @gitlab @objectstore @op:stackSearchRunIgnoredTriggers @case:denial
+  Scenario: Hidden stacks stay hidden and readers cannot read ignored-trigger history
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the home key is exchanged through A for token "h"
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
+    And the GitLab project "acme/platform/infra" commits files on "main" as "seed":
+      | root/main.tf | resource "terraform_data" "this" {} |
+      | outside.txt | base |
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Ignored","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Alpha","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "alpha" tracking the commit kept as "seed" through B
+    And the member key is exchanged through B for token "m"
+    When token "m" searches ignored triggers of stack "alpha" with '{}' through A
+    Then it answers a 404 problem "not-found"
+    Given the member key is space-reader on the space "acme"
+    When token "m" searches ignored triggers of stack "alpha" with '{}' through B
+    Then it answers a 403 problem "forbidden"
+    When "GET /api/v1/stacks/alpha/search-run-ignored-triggers?input=%7B%7D" with no credential through A answers a 401 problem "unauthenticated"
+    Given the member key is space-admin on the space "acme"
+    When token "m" searches ignored triggers of stack "alpha" with '{}' through A
+    Then the ignored-trigger answer has 0 records and keeps cursor "empty"
+
+  @gitlab @objectstore @op:stackSearchRunIgnoredTriggers @case:failure
+  Scenario: Invalid ignored-trigger search cursors and filters are refused
+    Given two infraweave servers, A and B, on one database, with an operator key
+    And the home key is exchanged through A for token "h"
+    And a GitLab user "dev" with a token kept as "tok"
+    And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
+    And the GitLab project "acme/platform/infra" commits files on "main" as "seed":
+      | root/main.tf | resource "terraform_data" "this" {} |
+      | outside.txt | base |
+    And token "h" sends "POST /api/v1/gitlab-integrations" with '{"apiHost":"{gitlabHost}","privateToken":"{tok}","customInput":{"name":"Ignored","spaceID":"acme","isDefault":true}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And the GitLab webhook secret is kept privately
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Alpha","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And it answers 201
+    And token "h" eventually reads the stack "alpha" tracking the commit kept as "seed" through B
+    When token "h" searches ignored triggers of stack "alpha" with '{"after":"broken"}' through B
+    Then it answers a 400 problem "invalid-cursor"
+    When token "h" searches ignored triggers of stack "alpha" with '{"predicates":[{"field":"reasonType","constraint":{"enumEquals":["NOT_A_REASON"]}}]}' through A
+    Then it answers a 422 problem "validation-failed"
+    When token "h" searches ignored triggers of stack "alpha" with '{}' through B
+    Then the ignored-trigger answer has 0 records and keeps cursor "empty"

@@ -51,6 +51,8 @@ func Held() []integrity.Held {
 		{Entity: "account", Table: "vcs_deployment_states", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_deployment_resources", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_account_settings", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_ignored_triggers", Columns: []string{"account_id"}},
+		{Entity: "stack", Table: "vcs_ignored_triggers", Columns: []string{"account_id", "stack_id"}},
 		{Entity: "account", Table: "pull_requests", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "pull_request_heads", Columns: []string{"account_id"}},
 		{

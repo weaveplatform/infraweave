@@ -31,6 +31,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/ignored"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -122,6 +123,7 @@ type Domain struct {
 	intake       *intake.Service
 	limits       *push.Limits
 	push         *push.Service
+	ignored      *ignored.Service
 	requests     *pullrequest.Service
 }
 
@@ -188,10 +190,11 @@ func New(d Deps) (*Domain, error) {
 		Now:          clock,
 		Log:          d.Log,
 	})
+	ignoredTriggers := ignored.New(ignored.Deps{Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Authz: d.Authz, Now: clock})
 	pushes := push.New(push.Deps{
 		DB: d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
 		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
-		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log,
+		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 	})
 	requests := pullrequest.New(pullrequest.Deps{
 		Store: pg.New(d.DB, d.Keys), Integrations: integrations,
@@ -212,6 +215,7 @@ func New(d Deps) (*Domain, error) {
 		integrations: integrations,
 		intake:       inbox,
 		limits:       limits,
+		ignored:      ignoredTriggers,
 		feedback: feedback.NewDeployments(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
 			if d.Spaces == nil {
 				return accessapi.ErrNoAccount
@@ -224,7 +228,7 @@ func New(d Deps) (*Domain, error) {
 				integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			},
 		}),
-		api: http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox),
+		api: http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox).WithIgnored(ignoredTriggers),
 	}, nil
 }
 
@@ -269,10 +273,18 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 					return err //nolint:wrapcheck // the request service names the failed purge
 				}
 			}
+			if d.ignored != nil {
+				if err := d.ignored.Purge(ctx, acct); err != nil {
+					return fmt.Errorf("vcs: purge ignored history: %w", err)
+				}
+			}
 			return d.limits.Store.PurgeRunLimit(ctx, acct) //nolint:wrapcheck // the VCS setting store names the purge
 		}
 	}
 }
+
+// StackGuard removes stack-owned ignored records in the deletion transaction.
+func (d *Domain) StackGuard() stacksapi.StackGuard { return d.ignored }
 
 // Sources resolves the commits of a stack's repository for other domains.
 func (d *Domain) Sources() vcsapi.Sources { return d.sources }

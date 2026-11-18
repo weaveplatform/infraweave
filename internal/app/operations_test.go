@@ -67,9 +67,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		t.Fatalf("%d operations, want every scaffolded one", len(ops))
 	}
 	for key, want := range map[string]Operation{
-		"POST /api/v1/stacks/search":            {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
-		"POST /api/v1/stack-dependencies/batch": {Cost: ratelimit.Expensive, Gate: gate("stacks")},
-		"GET /api/v1/stacks":                    {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		"POST /api/v1/stacks/search":                               {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
+		"POST /api/v1/stack-dependencies/batch":                    {Cost: ratelimit.Expensive, Gate: gate("stacks")},
+		"GET /api/v1/stacks":                                       {Cost: ratelimit.Standard, Gate: gate("stacks")},
+		"GET /api/v1/stacks/{stackId}/search-run-ignored-triggers": {Cost: ratelimit.Expensive, Search: true, Gate: gate("ignored-runs")},
 		// A stack input's vendorConfig member needs its vendor's option.
 		"POST /api/v1/stacks": {Cost: ratelimit.Standard, Gate: featuresapi.Gate{
 			Feature: "stacks", Options: []featuresapi.OptionGate{
@@ -138,6 +139,12 @@ func TestUnitAPIOperations(t *testing.T) {
 	if r := ops["POST "+BaseURL+"/stacks"].Required; r == nil ||
 		r.Action != accessapi.ActionStackCreate || r.Subject.Field != "input.space" {
 		t.Errorf("stackCreate requires %+v", r)
+	}
+	if r := ops["GET "+BaseURL+"/stacks/{stackId}/search-run-ignored-triggers"].Required; r == nil || r.Action != accessapi.ActionSpaceAdmin ||
+		r.Subject.Kind != accessapi.SubjectPath ||
+		r.Subject.Param != "stackId" ||
+		r.Subject.Entity != "stack" {
+		t.Fatalf("ignored-trigger search controls: %+v", r)
 	}
 	for key, op := range ops {
 		if api := strings.Contains(key, " "+BaseURL+"/"); api != (op.Required != nil) {

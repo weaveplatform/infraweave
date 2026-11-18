@@ -34,7 +34,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	ctx, cancel := context.WithTimeout(ctx, max(0, delivery.Deadline.Sub(s.d.Now())))
 	defer cancel()
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
-		return event.Type != "push" && event.Type != "tag" || event.Type == "push" && port.ZeroCommit(event.Head)
+		return event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head)
 	})
 	if len(selected) == 0 {
 		return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
@@ -75,6 +75,11 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			}
 			prepared.Commit.Branch = event.Branch
 			prepared.Files = slices.Clone(prepared.Files)
+		} else {
+			prepared.Commit, err = s.d.Sources.PrepareTag(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
+			if err != nil {
+				return nil, fmt.Errorf("vcs: prepare ignored tag: %w", err)
+			}
 		}
 		out.events = append(out.events, prepared)
 		for _, stack := range stacks {

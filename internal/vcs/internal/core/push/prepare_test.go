@@ -41,9 +41,21 @@ func (s *repositoryStacks) ByVCSRepository(context.Context, kernel.AccountID, st
 type pushSource struct {
 	t         *testing.T
 	calls     []string
+	tags      []string
 	files     []string
 	err       error
 	wrongHead bool
+}
+
+func (s *pushSource) PrepareTag(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, error) {
+	if tx.In(ctx) {
+		s.t.Fatal("tag lookup held a transaction")
+	}
+	if _, ok := ctx.Deadline(); !ok {
+		s.t.Fatal("tag lookup has no delivery budget")
+	}
+	s.tags = append(s.tags, event.Head)
+	return stacksapi.Commit{Hash: event.Head, Tag: event.Tag}, s.err
 }
 
 func (s *pushSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
@@ -83,7 +95,9 @@ func TestUnitPreparedMultiRefFanout(t *testing.T) {
 	if stacks.calls != 1 || !slices.Equal(source.calls, []string{"main", "feature"}) || len(plan.events) != 3 || len(plan.stacks) != 2 {
 		t.Fatal("refs were dropped, source work repeated per stack, or child targets duplicated")
 	}
-	if plan.events[0].Commit.Branch != "main" || plan.events[1].Commit.Branch != "feature" || plan.events[2].Event.Tag != "v1" {
+	if plan.events[0].Commit.Branch != "main" || plan.events[1].Commit.Branch != "feature" || plan.events[2].Event.Tag != "v1" || plan.events[2].Commit.Hash != events[2].Head ||
+		plan.events[2].Commit.Tag != "v1" ||
+		len(source.tags) != 1 {
 		t.Fatal("prepared event order or source branches changed")
 	}
 	source.files[0] = "mutated"
@@ -138,7 +152,7 @@ func TestUnitPreparedSourceGuards(t *testing.T) {
 
 func TestUnitPreparationNoop(t *testing.T) {
 	s := New(Deps{})
-	for _, event := range []vcsapi.Event{{Type: "comment"}, {Type: "pull_request"}, {Type: "push", Head: strings.Repeat("0", 40)}} {
+	for _, event := range []vcsapi.Event{{Type: "comment"}, {Type: "pull_request"}, {Type: "push", Head: strings.Repeat("0", 40)}, {Type: "tag", Head: strings.Repeat("0", 40)}} {
 		if plan, err := s.Prepare(t.Context(), intake.Delivery{Deadline: time.Now().Add(time.Minute)}, []vcsapi.Event{event}); err != nil || plan != nil {
 			t.Fatal("non-actionable event performed work", plan, err)
 		}

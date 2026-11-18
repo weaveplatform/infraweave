@@ -169,3 +169,19 @@ CREATE TABLE vcs_prepared_events (
     PRIMARY KEY(account_id,delivery_id,event_no),
     FOREIGN KEY(account_id,delivery_id) REFERENCES vcs_deliveries(account_id,id) ON DELETE CASCADE
 );
+
+-- A stack owns these rows through its deletion guard, not a cross-domain FK.
+-- Tags and path ignores for one commit remain independent observations.
+CREATE TABLE vcs_ignored_triggers (
+    account_id uuid NOT NULL,
+    id uuid NOT NULL,
+    stack_id uuid NOT NULL,
+    commit_hash text NOT NULL,
+    commit jsonb NOT NULL,
+    reason text NOT NULL CHECK(reason IN ('NO_AFFECTED_FILES_IN_PROJECT_ROOT','TAGS_IGNORED_BY_DEFAULT','RUN_LIMIT_REACHED')),
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY(account_id,id),
+    UNIQUE(account_id,stack_id,commit_hash,reason)
+);
+CREATE INDEX vcs_ignored_triggers_stack ON vcs_ignored_triggers(account_id,stack_id,created_at DESC,id);
+CREATE INDEX vcs_ignored_triggers_retention ON vcs_ignored_triggers(created_at,id);

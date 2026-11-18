@@ -551,6 +551,7 @@ installation is a plan decision.
 | Table | Key | Main columns | Foreign keys | Indexes | Driven by |
 |---|---|---|---|---|---|
 | `vcs_integrations` | `(account, id)` | provider, name, space, `is_default`, labels, check mode, check options, provider settings and encrypted credentials, webhook secret | `space` | partial unique `(account, provider)` where default; `(space)` | Report 11 sections 2 to 8 |
+| `vcs_ignored_triggers` | `(account, id)` | stack, canonical commit hash, complete commit metadata, reason, created time | held account and stack references; no peer-domain FK | unique `(account, stack, commit_hash, reason)`; `(account, stack, created_at DESC, id)`; `(created_at, id)` retention | Seven-day history; stack deletion/account purge; decision 0012 D9/D17/D18 |
 | `vcs_agent_pools` | `(account, ulid)` | name, description, encrypted config | none | unique `(account, name)` for `private://<pool>` | Report 11 section 14 |
 | `repos` | `(account, slug)` | name, space, labels, `is_default`, check mode | `space` | `(space)` | Report 11 section 10 |
 | `repo_commits` | `(repo, sha)` | message, author, parent | `repo`, parent | `(repo, created_at)` | [G] `RepoCommit` |
