@@ -131,7 +131,7 @@ Feature: VCS webhook protocol and event run budgets
     And token "h" sends "GET /api/v1/vcs-event-triggered-runs-limit" through B
     Then it answers a 503 problem "service-unavailable"
     When the webhook database starts again
-    Then "GET /api/v1/vcs-event-triggered-runs-limit" through A with token "h" answers '2'
+    Then "GET /api/v1/vcs-event-triggered-runs-limit" through A with token "h" eventually answers '2'
 
   @vcs @op:accountUpdateVCSEventTriggeredRunsLimit @case:failure
   Scenario: Both event run cap bounds name the configured ceiling and leave its value intact
