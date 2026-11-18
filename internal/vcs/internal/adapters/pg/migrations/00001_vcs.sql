@@ -185,3 +185,49 @@ CREATE TABLE vcs_ignored_triggers (
 );
 CREATE INDEX vcs_ignored_triggers_stack ON vcs_ignored_triggers(account_id,stack_id,created_at DESC,id);
 CREATE INDEX vcs_ignored_triggers_retention ON vcs_ignored_triggers(created_at,id);
+
+-- Native repository identity survives provider path changes. Paths remain
+-- exclusive until an unambiguous event moves the previous occupant. All rows
+-- are owned by the integration and disappear with its deletion/account purge.
+CREATE TABLE vcs_repository_map (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    repository_id text NOT NULL,
+    namespace text NOT NULL,
+    name text NOT NULL,
+    owner_id text NOT NULL DEFAULT '',
+    observed_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id,integration_id,repository_id),
+    UNIQUE (account_id,integration_id,namespace,name),
+    FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+CREATE INDEX vcs_repository_owner ON vcs_repository_map(account_id,integration_id,owner_id);
+
+CREATE TABLE vcs_installations (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    installation_id text NOT NULL,
+    owner_id text NOT NULL,
+    owner_login text NOT NULL,
+    state text NOT NULL CHECK(state IN ('active','suspended','deleted')),
+    observed_at timestamptz NOT NULL,
+    PRIMARY KEY(account_id,integration_id,installation_id),
+    FOREIGN KEY(account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+
+-- Membership remains after removal drops the current map row, so stack.changed
+-- cannot accidentally restore a repository the App no longer reaches.
+CREATE TABLE vcs_installation_repositories (
+    account_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    installation_id text NOT NULL,
+    repository_id text NOT NULL,
+    namespace text NOT NULL,
+    name text NOT NULL,
+    present boolean NOT NULL,
+    observed_at timestamptz NOT NULL,
+    PRIMARY KEY(account_id,integration_id,repository_id),
+    FOREIGN KEY(account_id,integration_id,installation_id)
+        REFERENCES vcs_installations(account_id,integration_id,installation_id) ON DELETE CASCADE
+);
+CREATE INDEX vcs_installation_repository_path ON vcs_installation_repositories(account_id,integration_id,namespace,name);

@@ -19,10 +19,11 @@ import (
 var _ intake.Dispatcher = (*Service)(nil)
 
 type plan struct {
-	s        *Service
-	delivery intake.Delivery
-	events   []Prepared
-	stacks   []kernel.ULID
+	s          *Service
+	delivery   intake.Delivery
+	events     []Prepared
+	normalized []vcsapi.Event
+	use        stacksapi.Use
 }
 
 // Prepare resolves each diff once, then groups every ref into one child per
@@ -36,9 +37,10 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
 		return event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head)
 	})
-	if len(selected) == 0 {
-		return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
-	}
+
+	if len(selected) == 0 && s.d.Lifecycle == nil {
+		return nil, nil
+	} //nolint:nilnil // legacy dispatchers have no lifecycle work
 	use, found, err := s.d.Integrations.EventUse(ctx, delivery.Account, delivery.Integration)
 	if err != nil || !found {
 		return nil, err //nolint:wrapcheck // the integration service names the metadata read
@@ -46,23 +48,10 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	if use.Provider != delivery.Provider {
 		return nil, fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
 	}
-	out := &plan{s: s, delivery: delivery}
-	targets := map[kernel.ULID]bool{}
-	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
+	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events), use: use}
 	for _, event := range selected {
 		if !s.d.Now().Before(delivery.Deadline) {
 			return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
-		}
-		stacks, seen := repositories[event.Repository]
-		if !seen {
-			stacks, err = s.d.Stacks.ByVCSRepository(ctx, delivery.Account, use, event.Repository.Namespace, event.Repository.Name)
-			if err != nil {
-				return nil, err //nolint:wrapcheck // stacks names the account-scoped lookup
-			}
-			repositories[event.Repository] = stacks
-		}
-		if len(stacks) == 0 {
-			continue
 		}
 		prepared := Prepared{Event: event}
 		if event.Type == "push" {
@@ -82,14 +71,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			}
 		}
 		out.events = append(out.events, prepared)
-		for _, stack := range stacks {
-			targets[stack.ID] = true
-		}
 	}
-	for id := range targets {
-		out.stacks = append(out.stacks, id)
-	}
-	slices.SortFunc(out.stacks, func(a, b kernel.ULID) int { return bytes.Compare(a[:], b[:]) })
 	return out, nil
 }
 
@@ -99,24 +81,36 @@ func (p *plan) Commit(ctx context.Context) error {
 	if !tx.In(ctx) {
 		return queue.ErrNoTransaction
 	}
+	if p.s.d.Lifecycle != nil {
+		if err := p.s.d.Lifecycle.Apply(ctx, p.delivery.Account, p.delivery.Integration, p.use, p.delivery.ReceivedAt, p.normalized); err != nil {
+			return err
+		}
+	}
 	if len(p.events) == 0 {
 		return nil
 	}
 	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, p.events); err != nil {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
-	for _, stack := range p.stacks {
+	targets := map[kernel.ULID]bool{}
+	for _, prepared := range p.events {
+		stacks, err := p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, p.use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
+		if err != nil {
+			return err
+		}
+		for _, stack := range stacks {
+			targets[stack.ID] = true
+		}
+	}
+	ids := make([]kernel.ULID, 0, len(targets))
+	for id := range targets {
+		ids = append(ids, id)
+	}
+	slices.SortFunc(ids, func(a, b kernel.ULID) int { return bytes.Compare(a[:], b[:]) })
+	for _, stack := range ids {
 		payload := Evaluation{Account: p.delivery.Account, Delivery: p.delivery.ID, Stack: stack, Deadline: p.delivery.Deadline, Replays: p.delivery.Replays}
-		if _, err := p.s.d.Jobs.EnqueueTx(
-			ctx,
-			Evaluate,
-			payload,
-			queue.Account(
-				p.delivery.Account.ULID,
-			),
-			queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)),
-			queue.OrderingKey("stack:"+stack.String()),
-		); err != nil {
+		if _, err := p.s.d.Jobs.EnqueueTx(ctx, Evaluate, payload,
+			queue.Account(p.delivery.Account.ULID), queue.UniqueKey(intake.EvaluationKey(p.delivery.ID, p.delivery.Replays, stack)), queue.OrderingKey("stack:"+stack.String())); err != nil {
 			return err //nolint:wrapcheck // the queue names the bounded child write
 		}
 	}

@@ -143,7 +143,13 @@ type Store interface {
 // stores integrations of, and the Tester of each provider that has one;
 // Apps, the GitHub provider's App work; and Public, the server's public origin, which webhook and
 // manifest URLs start with.
+// InstallationStates records credential-free native App availability.
+type InstallationStates interface {
+	Refresh(context.Context, kernel.AccountID, kernel.ULID, time.Time, []port.InstallationState) (string, error)
+}
+
 type Deps struct {
+	Installations InstallationStates
 	Store         Store
 	DB            tx.Beginner
 	Spaces        accessapi.Spaces
@@ -162,6 +168,7 @@ type Deps struct {
 // Service is the integrations' logic. Every write runs in one
 // transaction.
 type Service struct {
+	installations InstallationStates
 	store         Store
 	db            tx.Beginner
 	spaces        accessapi.Spaces
@@ -188,7 +195,7 @@ func New(d Deps) *Service {
 		overlap = 24 * time.Hour
 	}
 	return &Service{
-		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
+		installations: d.Installations, store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
 		providers: d.Providers, testers: d.Testers, browse: d.Browse,
 		apps: d.Apps, features: d.Features,
 		public: strings.TrimSuffix(d.Public, "/"), now: now, secretOverlap: overlap,
@@ -317,9 +324,30 @@ func (s *Service) Test(ctx context.Context, p kernel.Principal, id, provider str
 	if err != nil {
 		return nil, err
 	}
+	started := s.now()
 	checks, err := t.Test(ctx, use)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the provider names its failure
+	}
+	if reader, ok := t.(port.InstallationReader); ok && s.installations != nil {
+		list, readErr := reader.ReadInstallations(ctx, use)
+		reason := ""
+		if readErr != nil {
+			reason = "The GitHub App installations could not be read."
+		} else {
+			reason, err = s.installations.Refresh(ctx, p.AccountID, in.ID, started, list)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if reason != "" {
+			for i := range checks {
+				if checks[i].Type == port.CheckPermissions {
+					checks[i].Passed, checks[i].Reason = false, reason
+				}
+			}
+			return append(checks, port.Check{Type: port.CheckWebhook, Reason: reason}), nil
+		}
 	}
 	hooks, ok := t.(port.WebhookTester)
 	if !ok {

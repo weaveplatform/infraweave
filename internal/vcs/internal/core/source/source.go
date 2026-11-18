@@ -23,7 +23,14 @@ type Integrations interface {
 
 // Service implements vcsapi.Sources over the provider of each stack's
 // repository.
+// Identities follows native identities and known installation availability.
+type Identities interface {
+	Check(context.Context, kernel.AccountID, kernel.ULID, string, string) error
+	Seed(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, vcsapi.Repository) error
+}
+
 type Service struct {
+	identities   Identities
 	stacks       stacksapi.Stacks
 	providers    map[string]port.Source
 	integrations Integrations
@@ -41,6 +48,7 @@ var _ vcsapi.Sources = (*Service)(nil)
 // Release enqueues on, the clock and the log a run's fallback to an
 // integration's own token is noted in.
 type Deps struct {
+	Identities   Identities
 	Stacks       stacksapi.Stacks
 	Providers    map[string]port.Source
 	Integrations Integrations
@@ -53,7 +61,7 @@ type Deps struct {
 // New returns the service over d.
 func New(d Deps) *Service {
 	return &Service{
-		stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
+		identities: d.Identities, stacks: d.Stacks, providers: d.Providers, integrations: d.Integrations,
 		tokens: d.Tokens, jobs: d.Jobs, now: d.Now, log: d.Log,
 	}
 }
@@ -136,7 +144,29 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 	if err != nil {
 		return err //nolint:wrapcheck // stacks names the read
 	}
-	c, err := src.ResolveRef(ctx, repo, st.Branch)
+	var c vcsapi.Commit
+	if native, ok := src.(port.RepositorySource); ok && repo.Integration != nil && s.identities != nil {
+		var resolved port.Resolution
+		resolved, err = native.ResolveRepositoryRef(ctx, repo, st.Branch)
+		c = resolved.Commit
+		if err == nil {
+			bindings, ok := s.integrations.(interface {
+				EventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
+			})
+			if !ok {
+				return fmt.Errorf("%w: vcs repository binding unavailable", kernel.ErrUnavailable)
+			}
+			use, found, readErr := bindings.EventUse(ctx, acct, repo.Integration.ID)
+			if readErr != nil {
+				return readErr
+			}
+			if found {
+				err = s.identities.Seed(ctx, acct, repo.Integration.ID, use, resolved.Repository)
+			}
+		}
+	} else {
+		c, err = src.ResolveRef(ctx, repo, st.Branch)
+	}
 	if errors.Is(err, port.ErrNotFound) || errors.Is(err, port.ErrRepositoryURL) ||
 		errors.Is(err, port.ErrNoIntegration) {
 		//nolint:wrapcheck // marks it
@@ -195,6 +225,11 @@ func (s *Service) source(ctx context.Context, acct kernel.AccountID, stack kerne
 	}
 	if ok {
 		repo.Integration = &in
+		if s.identities != nil {
+			if err := s.identities.Check(ctx, acct, in.ID, repo.Namespace, repo.Name); err != nil {
+				return nil, port.Repository{}, err
+			}
+		}
 	}
 	return src, repo, nil
 }

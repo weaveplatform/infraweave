@@ -158,7 +158,11 @@ func repository(r *github.Repository) vcsapi.Repository {
 			namespace = owner
 		}
 	}
-	return vcsapi.Repository{ID: strconv.FormatInt(r.GetID(), 10), Namespace: namespace, Name: r.GetName()}
+	out := vcsapi.Repository{ID: strconv.FormatInt(r.GetID(), 10), Namespace: namespace, Name: r.GetName()}
+	if r.GetOwner().GetID() > 0 {
+		out.OwnerID = strconv.FormatInt(r.GetOwner().GetID(), 10)
+	}
+	return out
 }
 
 func validRepository(r vcsapi.Repository) bool {

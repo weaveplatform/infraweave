@@ -17,7 +17,12 @@ func (f *Fake) TruncateRecursiveTrees(limit int) {
 
 func (f *Fake) repositoryMetadata(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable binds the repository
-	answer(w, http.StatusOK, map[string]any{"name": chi.URLParam(r, "repo"), "default_branch": repo.DefaultBranch()})
+	owner, name := chi.URLParam(r, "owner"), chi.URLParam(r, "repo")
+	f.mu.Lock()
+	id, ownerID := f.repoIDs[repo], f.ownerIDs[owner]
+	f.mu.Unlock()
+	answer(w, http.StatusOK, map[string]any{"id": id, "name": name, "full_name": owner + "/" + name,
+		"owner": map[string]any{"id": ownerID, "login": owner}, "default_branch": repo.DefaultBranch()})
 }
 
 func (f *Fake) gitTree(w http.ResponseWriter, r *http.Request) {

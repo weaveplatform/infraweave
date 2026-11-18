@@ -71,8 +71,14 @@ type IgnoredRecorder interface {
 	Record(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Commit, string) error
 }
 
+// Lifecycle commits provider identity changes before selecting fan-out targets.
+type Lifecycle interface {
+	Apply(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, time.Time, []vcsapi.Event) error
+}
+
 // Deps is the forward domain graph and transactional stores used by VCS jobs.
 type Deps struct {
+	Lifecycle    Lifecycle
 	DB           tx.Beginner
 	Store        Store
 	Stacks       stacksapi.Stacks
