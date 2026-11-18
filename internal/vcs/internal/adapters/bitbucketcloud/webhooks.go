@@ -15,6 +15,7 @@ var webhookEvents = []string{
 	"pullrequest:approved",
 	"pullrequest:unapproved",
 	"pullrequest:fulfilled",
+	"pullrequest:rejected",
 	"pullrequest:comment_created",
 }
 

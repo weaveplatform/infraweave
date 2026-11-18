@@ -280,6 +280,7 @@ func (f *Fake) Handler() http.Handler {
 	r.Route("/api/v4", func(r chi.Router) {
 		r.Use(f.authenticated, scoped)
 		r.Get("/user", f.user)
+		r.Get("/users/{user}", f.requestAuthor)
 		r.Get("/personal_access_tokens/self", f.self)
 		r.Get("/projects", f.list)
 		r.Route("/projects/{id}", func(r chi.Router) {

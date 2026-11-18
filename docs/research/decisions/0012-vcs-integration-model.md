@@ -194,8 +194,8 @@ The handler does, in order:
    |---|---|
    | GitHub App integrations | `push`, `pull_request`, `pull_request_review`, `issue_comment` (`created` on a pull request), `check_run` (`requested_action`), `repository` (`renamed`), `installation`, `installation_repositories`, `installation_target` (`renamed`), `organization` (`renamed`) |
    | GitLab | Push, tag push, merge request, note on a merge request |
-   | Bitbucket Cloud | Push; pull request created, updated, approved, approval removed, fulfilled, comment created |
-   | Bitbucket Data Center | `repo:refs_changed`, `pr:opened`, `pr:from_ref_updated`, `pr:modified`, `pr:reviewer:approved`, `pr:reviewer:unapproved`, `pr:merged`, `pr:comment:added` |
+   | Bitbucket Cloud | Push; pull request created, updated, approved, approval removed, fulfilled, rejected, comment created |
+   | Bitbucket Data Center | `repo:refs_changed`, `pr:opened`, `pr:from_ref_updated`, `pr:modified`, `pr:reviewer:approved`, `pr:reviewer:unapproved`, `pr:merged`, `pr:declined`, `pr:comment:added` |
    | Azure DevOps | Code pushed; pull request created, updated, merge attempted, commented on |
 
    GitLab's `approved` and `unapproved` notifications normalize to the policy
@@ -367,6 +367,29 @@ user: infraweave never creates or deletes provider hooks.
   against the tracked branch that have a run on the stack, each with its
   runs matched by SHA, current head first. A run can appear on several
   requests sharing a commit; no run-to-request ownership column is implied.
+  Parent delivery completion upserts the provider snapshot and every observed
+  head in the same held job transaction, before marking it dispatched. Late
+  snapshots contribute history without reverting newer metadata. Repository
+  identity is stable; namespace/name is a separate stack-lookup projection
+  maintained by repository rename handling. Records exist before any run.
+  Reads resolve only the current integration's metadata, page candidates until
+  fifty are eligible, and join account/stack-scoped Runs commit facts; no
+  credential or provider request is needed. Equal request update times and run
+  creation times are ordered by descending internal ID. Closed and merged
+  requests expire after the delivery retention horizon; open requests remain
+  live, and account purge removes both tables.
+  Deleting their integration cascades its request records and head history.
+  Only nonzero full Git commit IDs enter head membership; an empty commit
+  from a local-workspace run never qualifies a request. A terminal notification
+  without a valid head closes the request while preserving its last real head.
+  GitLab's webhook actor is not its request creator: when only `author_id` is
+  supplied, preparation reuses a stored creator or reads `GET /users/:id`
+  outside the transaction, without refreshing the delivered head. Bitbucket
+  Cloud `pullrequest:rejected` and Data Center `pr:declined` are consumed close
+  events so declined requests leave the list. Provider-native timestamps are
+  retained, including GitLab's legacy UTC format and DC's milliseconds.
+  Cloud's native `SUPERSEDED` state also closes a request when observed in an
+  already-consumed update; it does not introduce another webhook event key.
 - **Retention and replay (D7).** Rows last 7 days
   (`vcs.deliveries.retention`), pruned hourly; `inbox` objects last 2 days.
   A dead job leaves the delivery `failed`. `vcsIntegrationDeliveries`,

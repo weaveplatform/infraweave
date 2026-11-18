@@ -29,6 +29,8 @@
 // request and merge request comment shapes. WebhookSender makes one request
 // per Send, records only identity/event/status and never follows redirects.
 // Another explicit Send models GitLab's resend; no retry is scheduled.
+// Request creator IDs and webhook actors are distinct fixtures. The regular
+// authenticated users endpoint resolves those IDs for creator preparation.
 //
 // # Dependencies
 //

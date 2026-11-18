@@ -114,6 +114,45 @@ CREATE INDEX vcs_deliveries_received ON vcs_deliveries (id)
 CREATE INDEX vcs_deliveries_integration ON vcs_deliveries
     (account_id,integration_id,received_at DESC,id DESC);
 
+-- Requests retain stable repository identity and a path projection so stack
+-- reads need no provider call. Head membership is independent of run lifetime.
+CREATE TABLE pull_requests (
+    account_id uuid NOT NULL,
+    id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    repository_id text NOT NULL,
+    namespace text NOT NULL,
+    repository text NOT NULL,
+    provider_id text NOT NULL,
+    base_branch text NOT NULL,
+    head_branch text NOT NULL,
+    head_sha text NOT NULL,
+    author_login text NOT NULL,
+    title text NOT NULL,
+    url text NOT NULL,
+    head_branch_url text NOT NULL,
+    draft boolean NOT NULL,
+    state text NOT NULL CHECK (state IN ('open','closed','merged')),
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id,id),
+    UNIQUE (integration_id,repository_id,provider_id),
+    FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+CREATE INDEX pull_requests_integration ON pull_requests (account_id,integration_id);
+CREATE INDEX pull_requests_stack_read ON pull_requests
+    (account_id,integration_id,namespace,repository,base_branch,updated_at DESC,id DESC) WHERE state='open';
+CREATE INDEX pull_requests_retention ON pull_requests (updated_at,id) WHERE state IN ('closed','merged');
+
+CREATE TABLE pull_request_heads (
+    account_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    sha text NOT NULL,
+    became_head_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id,request_id,sha),
+    FOREIGN KEY (account_id,request_id) REFERENCES pull_requests(account_id,id) ON DELETE CASCADE
+);
+
 -- An absent row means no account cap; the operator ceiling still applies.
 CREATE TABLE vcs_account_settings (
     account_id uuid PRIMARY KEY,

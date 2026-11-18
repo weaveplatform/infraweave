@@ -525,7 +525,8 @@ installation is a plan decision.
 | `managed_state_versions` | `(stack, id)` | object key, size, run, rollback, imported by and when | `stack`, `run` | `(stack, last_modified)` | Report 16 section 6 |
 | `managed_entities` | `(stack, address)` | type, name, parent, vendor, creator run, updater run, drifted, metadata | `stack`, runs | `(account, type)` and search fields | Report 21 section 2 |
 | `stack_outputs` | `(stack, name)` | value or encrypted value, sensitive | `stack` | none beyond the key | Report 18 section 4.5 |
-| `pull_requests` | `(stack, id)` | head branch, head SHA, author, title, URL, draft | `stack` | `(stack, head_sha)` | Report 11 section 12.5 |
+| `pull_requests` | `(account, id)` | integration, stable repository ID and current namespace/name, provider request ID, base/head branches and head SHA, original author, title, URLs, draft, state, provider creation/update times | same-domain `(account, integration)` with cascading deletion | unique `(integration, repository_id, provider_id)`; indexed integration owner; open-request stack lookup ordered by update time/ID; closed/merged retention | Report 11 section 12.5; decision 0012 D16 |
+| `pull_request_heads` | `(account, request, sha)` | when the commit became a head | same-domain `(account, request)` with cascading deletion | primary key | Historical and shared-head run membership, decision 0012 D16 |
 
 ### 12.4 Policies and contexts
 

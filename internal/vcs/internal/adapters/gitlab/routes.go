@@ -27,6 +27,7 @@ type Route struct {
 // ref: decision 0012 § "VCS agent"
 var Routes = []Route{
 	{http.MethodGet, "/user"},
+	{http.MethodGet, "/users/{user}"},
 	{http.MethodGet, "/personal_access_tokens/self"},
 	{http.MethodGet, "/projects"},
 	{http.MethodGet, "/projects/{project}"},

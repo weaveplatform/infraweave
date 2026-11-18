@@ -3,6 +3,8 @@ package gitlabfake
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 )
 
 const noteTypeField = "noteable_type" //nolint:misspell // GitLab's documented field name.
@@ -10,13 +12,15 @@ const noteTypeField = "noteable_type" //nolint:misspell // GitLab's documented f
 // WebhookMergeRequest supplies the documented merge-request fields. The source
 // defaults to the target project; naming another source creates a fork fixture.
 type WebhookMergeRequest struct {
-	IID                                       int
-	Action, SourceBranch, TargetBranch, Head  string
-	SourceNamespace, SourceRepository, OldRev string
-	Draft                                     bool
-	Labels, PreviousLabels                    []string
-	MergeStatus, DetailedMergeStatus          string
-	BlockingDiscussionsResolved               *bool
+	Author, Actor, Title, URL, HeadBranchURL, State string
+	CreatedAt, UpdatedAt                            time.Time
+	IID                                             int
+	Action, SourceBranch, TargetBranch, Head        string
+	SourceNamespace, SourceRepository, OldRev       string
+	Draft                                           bool
+	Labels, PreviousLabels                          []string
+	MergeStatus, DetailedMergeStatus                string
+	BlockingDiscussionsResolved                     *bool
 }
 
 // PushWebhook follows GitLab's documented push payload, including a stable
@@ -49,8 +53,15 @@ func (f *Fake) MergeRequestWebhook(namespace, repository string, in WebhookMerge
 	if in.PreviousLabels != nil {
 		changes["labels"] = map[string]any{"previous": webhookLabels(in.PreviousLabels), "current": webhookLabels(in.Labels)}
 	}
+	actor := in.Actor
+	if actor == "" {
+		actor = in.Author
+	}
+	if actor == "" {
+		actor = "author"
+	}
 	return encodeWebhook("Merge Request Hook", map[string]any{
-		"object_kind": "merge_request", "event_type": "merge_request", "user": webhookUser("author"),
+		"object_kind": "merge_request", "event_type": "merge_request", "user": f.requestUser(actor),
 		"project": f.webhookProject(namespace, repository), "object_attributes": attributes,
 		"labels": webhookLabels(in.Labels), "changes": changes,
 	})
@@ -69,7 +80,10 @@ func (f *Fake) NoteWebhook(namespace, repository string, in WebhookMergeRequest,
 
 func (f *Fake) webhookProject(namespace, repository string) map[string]any {
 	p := f.projectOf(namespace, repository)
-	return map[string]any{"id": p.id, "namespace": namespace, "path_with_namespace": namespace + "/" + repository}
+	return map[string]any{
+		"id": p.id, "namespace": namespace, "path_with_namespace": namespace + "/" + repository,
+		"web_url": "https://gitlab.example.com/" + namespace + "/" + repository,
+	}
 }
 
 func (f *Fake) webhookRequest(namespace, repository string, in WebhookMergeRequest) map[string]any {
@@ -81,10 +95,45 @@ func (f *Fake) webhookRequest(namespace, repository string, in WebhookMergeReque
 		sourceRepository = repository
 	}
 	source, target := f.projectOf(sourceNamespace, sourceRepository), f.projectOf(namespace, repository)
+	author := in.Author
+	if author == "" {
+		author = "author"
+	}
+	creator := f.requestUser(author)
+	created, updated := in.CreatedAt, in.UpdatedAt
+	if created.IsZero() {
+		created = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if updated.IsZero() {
+		updated = created
+	}
+	title := in.Title
+	if title == "" {
+		title = "Infrastructure change"
+	}
+	link := in.URL
+	if link == "" {
+		link = fmt.Sprintf("https://gitlab.example.com/%s/%s/-/merge_requests/%d", namespace, repository, in.IID)
+	}
+	state := in.State
+	if state == "" {
+		state = "opened"
+		if in.Action == "close" {
+			state = "closed"
+		}
+		if in.Action == "merge" {
+			state = "merged"
+		}
+	}
+	sourceProject := f.webhookProject(sourceNamespace, sourceRepository)
+	if in.HeadBranchURL != "" {
+		sourceProject["web_url"] = strings.Split(in.HeadBranchURL, "/-/tree/")[0]
+	}
 	return map[string]any{
+		"author_id": creator["id"], "title": title, "url": link, "state": state, "created_at": created.Format(time.RFC3339Nano), "updated_at": updated.Format(time.RFC3339Nano),
 		"id": 9001, "iid": in.IID, "source_branch": in.SourceBranch, "target_branch": in.TargetBranch,
 		"source_project_id": source.id, "target_project_id": target.id,
-		"source":      f.webhookProject(sourceNamespace, sourceRepository),
+		"source":      sourceProject,
 		"last_commit": map[string]any{"id": in.Head, "author": webhookUser("author")},
 		"draft":       in.Draft, "labels": webhookLabels(in.Labels), "merge_status": in.MergeStatus,
 		"detailed_merge_status": in.DetailedMergeStatus, "blocking_discussions_resolved": in.BlockingDiscussionsResolved,

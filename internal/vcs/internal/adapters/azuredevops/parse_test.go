@@ -45,6 +45,7 @@ func TestUnitAzureDevOpsWebhookParse(t *testing.T) {
 	provider := azuredevops.New(azuredevops.Options{})
 	repository := vcsapi.Repository{ID: azureRepositoryID, Namespace: "Platform", Name: "infra"}
 	request := vcsapi.PullRequest{
+		AuthorLogin: "author@example.com", State: "open",
 		Number:     42,
 		HeadBranch: "feature",
 		BaseBranch: "main",

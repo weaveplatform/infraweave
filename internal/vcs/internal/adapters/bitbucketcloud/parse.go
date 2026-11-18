@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -23,7 +24,7 @@ func (*Provider) DeliveryID(h http.Header, _ []byte) string { return h.Get("X-Re
 func (*Provider) Consumed(event string) bool {
 	switch event {
 	case "repo:push", "pullrequest:created", "pullrequest:updated", "pullrequest:approved",
-		"pullrequest:unapproved", "pullrequest:fulfilled", "pullrequest:comment_created":
+		"pullrequest:unapproved", "pullrequest:fulfilled", "pullrequest:rejected", "pullrequest:comment_created":
 		return true
 	}
 	return false
@@ -102,6 +103,11 @@ type webhookPayload struct {
 
 //nolint:tagliatelle // provider-owned transport names
 type webhookRepository struct {
+	Links struct {
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
+	} `json:"links"`
 	UUID      string `json:"uuid"`
 	Slug      string `json:"slug"`
 	FullName  string `json:"full_name"`
@@ -118,6 +124,15 @@ type webhookUser struct {
 }
 
 type webhookRequest struct {
+	Title     string    `json:"title"`
+	State     string    `json:"state"`
+	CreatedOn time.Time `json:"created_on"` //nolint:tagliatelle // Bitbucket Cloud's native field.
+	UpdatedOn time.Time `json:"updated_on"` //nolint:tagliatelle // Bitbucket Cloud's native field.
+	Links     struct {
+		HTML struct {
+			Href string `json:"href"`
+		} `json:"html"`
+	} `json:"links"`
 	ID           int         `json:"id"`
 	Author       webhookUser `json:"author"`
 	Draft        bool        `json:"draft"`
@@ -231,7 +246,10 @@ func cloudChange(c webhookChange, repo vcsapi.Repository, author string) (vcsapi
 
 func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsapi.Event, error) {
 	r := d.PullRequest
-	if r == nil || r.ID <= 0 || r.Source.Branch.Name == "" || r.Destination.Branch.Name == "" || r.Source.Commit.Hash == "" {
+	if r == nil || r.ID <= 0 || r.Source.Branch.Name == "" || r.Destination.Branch.Name == "" {
+		return vcsapi.Event{}, ErrWebhookPayload
+	}
+	if !port.ValidCommit(r.Source.Commit.Hash) && event != "pullrequest:fulfilled" && event != "pullrequest:rejected" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	source, sourceOK := cloudRepository(r.Source.Repository)
@@ -262,6 +280,8 @@ func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsap
 		e.Action = "opened"
 	case "pullrequest:fulfilled":
 		e.Action = "merged"
+	case "pullrequest:rejected":
+		e.Action = "closed"
 	}
 	// OPEN and an individual approval prove neither branch ancestry nor
 	// conflict/branch-protection requirements. No provider fetch runs here.
@@ -275,6 +295,7 @@ func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsap
 		Approved:   cloudApproved(d, event),
 		Labels:     []string{},
 	}
+	cloudMetadata(r, e.PullRequest)
 	return e, nil
 }
 

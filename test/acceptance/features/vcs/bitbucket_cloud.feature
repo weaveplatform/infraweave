@@ -321,7 +321,7 @@ Feature: Bitbucket Cloud integrations
     Then it answers 200
     And the answer's WEBHOOK check is FAIL
     And the failed webhook check explains "acme/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_cloud/{hookIntegration}"
-    When the Bitbucket Cloud repository "acme/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "repo:push, pullrequest:created, pullrequest:updated, pullrequest:approved, pullrequest:unapproved, pullrequest:fulfilled, pullrequest:comment_created"
+    When the Bitbucket Cloud repository "acme/infra" has a webhook to "https://elsewhere.invalid/hooks" for events "repo:push, pullrequest:created, pullrequest:updated, pullrequest:approved, pullrequest:unapproved, pullrequest:fulfilled, pullrequest:rejected, pullrequest:comment_created"
     And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_CLOUD" through B
     Then it answers 200
     And the answer's WEBHOOK check is FAIL
@@ -333,6 +333,11 @@ Feature: Bitbucket Cloud integrations
     And the failed webhook check explains "acme/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_cloud/{hookIntegration}"
     When the Bitbucket Cloud repository "acme/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_cloud/{hookIntegration}" for events "repo:push, pullrequest:created, pullrequest:updated, pullrequest:approved, pullrequest:unapproved, pullrequest:fulfilled, pullrequest:comment_created"
     And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_CLOUD" through B
+    Then it answers 200
+    And the answer's WEBHOOK check is FAIL
+    And the failed webhook check explains "acme/infra" against "http://infraweave.test/webhooks/vcs/bitbucket_cloud/{hookIntegration}"
+    When the Bitbucket Cloud repository "acme/infra" has a webhook to "http://infraweave.test/webhooks/vcs/bitbucket_cloud/{hookIntegration}" for events "repo:push, pullrequest:created, pullrequest:updated, pullrequest:approved, pullrequest:unapproved, pullrequest:fulfilled, pullrequest:rejected, pullrequest:comment_created"
+    And token "h" sends "GET /api/v1/vcs-integrations/{hookIntegration}/test?provider=BITBUCKET_CLOUD" through A
     Then it answers 200
     And the answer's WEBHOOK check is SUCCESS
     And the answer's status is '"SUCCESS"'

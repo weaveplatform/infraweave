@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -37,6 +38,9 @@ func payload(t *testing.T, kind, action string, edit func(map[string]any)) []byt
 func TestUnitGitHubParse(t *testing.T) {
 	repo := vcsapi.Repository{ID: "7", Namespace: "acme", Name: "infra"}
 	pr := &vcsapi.PullRequest{
+		AuthorLogin: githubfake.AuthorLogin, Title: "Infrastructure change", URL: "https://github.example.com/acme/infra/pull/12",
+		HeadBranchURL: "https://github.example.com/contributor/infra/tree/feature", State: "open",
+		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 1, 1, 0, 1, 0, 0, time.UTC),
 		Number: 12, HeadBranch: "feature", BaseBranch: "main", HeadOwner: "contributor",
 		Fork: true, Mergeable: true, Labels: []string{"infrastructure"},
 	}
@@ -99,6 +103,9 @@ func TestUnitGitHubParse(t *testing.T) {
 	}...)
 	for _, action := range []string{"opened", "reopened", "synchronize", "edited", "closed", "labeled", "unlabeled", "ready_for_review", "converted_to_draft"} {
 		request := *pr
+		if action == "closed" {
+			request.State = "closed"
+		}
 		request.Draft = action == "converted_to_draft"
 		cases = append(
 			cases,
@@ -117,6 +124,8 @@ func TestUnitGitHubParse(t *testing.T) {
 			},
 		)
 	}
+	merged := *pr
+	merged.State = "merged"
 	cases = append(
 		cases,
 		example{
@@ -130,7 +139,7 @@ func TestUnitGitHubParse(t *testing.T) {
 				Author:      githubfake.AuthorLogin,
 				Branch:      "feature",
 				Head:        githubfake.HeadSHA,
-				PullRequest: pr,
+				PullRequest: &merged,
 			},
 		},
 	)

@@ -96,6 +96,9 @@ func (d *Domain) pruned(ctx context.Context, j queue.Job) error {
 	if err := d.intake.Pruned(ctx, j); err != nil {
 		return fmt.Errorf("vcs: prune deliveries: %w", err)
 	}
+	if err := d.requests.Pruned(ctx); err != nil {
+		return err //nolint:wrapcheck // the request service names its retention boundary
+	}
 	return d.ignored.Pruned(ctx) //nolint:wrapcheck // the ignored service names its retention boundary
 }
 

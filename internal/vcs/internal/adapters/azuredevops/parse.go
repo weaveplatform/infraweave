@@ -124,6 +124,7 @@ func (p *Provider) Parse(headers http.Header, body []byte) ([]vcsapi.Event, erro
 	if event == webhookCommented {
 		return parseWebhookComment(envelope.Resource)
 	}
+	envelope.Resource.UpdatedAt = envelope.CreatedDate
 	return parseWebhookRequest(event, envelope.Resource.webhookRequest)
 }
 

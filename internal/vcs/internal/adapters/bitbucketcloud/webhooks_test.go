@@ -18,6 +18,7 @@ func TestUnitWebhookConfiguration(t *testing.T) {
 		"pullrequest:approved",
 		"pullrequest:unapproved",
 		"pullrequest:fulfilled",
+		"pullrequest:rejected",
 		"pullrequest:comment_created",
 	}
 	expected := port.WebhookInput{URL: "https://iw.example/webhooks/vcs/provider/id", Repositories: []port.Listed{{Namespace: "acme", Name: "infra"}}}
