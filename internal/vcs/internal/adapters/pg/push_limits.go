@@ -18,7 +18,7 @@ func (s *Store) RunLimit(ctx context.Context, acct kernel.AccountID) (*int, erro
 	var limit int
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT event_runs_limit FROM vcs_account_settings WHERE account_id=$1`, acct).Scan(&limit)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no configured row is the public nullable account cap
 	}
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read event run limit: %w", sql.Unavailable(err))

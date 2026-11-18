@@ -169,6 +169,9 @@ func (p *Provider) get(ctx context.Context, in port.Integration, rel string, q u
 	if tok == "" {
 		return nil, fmt.Errorf("%w: no personal access token", ErrCredential)
 	}
+	if q == nil {
+		q = url.Values{}
+	}
 	q.Set("api-version", APIVersion)
 	req, err := http.NewRequestWithContext(context.WithValue(ctx, baseKey{}, o.base),
 		http.MethodGet, o.api+rel+"?"+q.Encode(), nil)
@@ -381,12 +384,32 @@ type change struct {
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names,
 // resolving each ref that is not a full SHA first.
-func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("azuredevops: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff && port.ZeroCommit(head) {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return nil, err
+	}
+	newBranch := comparison == port.PushDiff && port.ZeroCommit(base)
+	if newBranch {
+		var metadata struct {
+			DefaultBranch string `json:"defaultBranch"`
+		}
+		if _, err := p.decode(ctx, *repo.Integration, rp, nil, "default branch", &metadata); err != nil {
+			return nil, err
+		}
+		if metadata.DefaultBranch == "" {
+			return nil, fmt.Errorf("%w: azuredevops: default branch", port.ErrNotFound)
+		}
+		base = strings.TrimPrefix(metadata.DefaultBranch, "refs/heads/")
 	}
 	from, err := p.commitOf(ctx, repo, base)
 	if err != nil {
@@ -401,11 +424,15 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 		var pg struct {
 			Changes []change `json:"changes"`
 		}
-		if _, err := p.decode(ctx, *repo.Integration, rp+"/diffs/commits", url.Values{
+		query := url.Values{
 			"baseVersion": {from}, "baseVersionType": {"commit"},
 			"targetVersion": {to}, "targetVersionType": {"commit"},
 			"$top": {strconv.Itoa(top)}, "$skip": {strconv.Itoa(skip)},
-		}, base+"..."+head, &pg); err != nil {
+		}
+		if comparison == port.PushDiff {
+			query.Set("diffCommonCommit", strconv.FormatBool(newBranch))
+		}
+		if _, err := p.decode(ctx, *repo.Integration, rp+"/diffs/commits", query, base+"..."+head, &pg); err != nil {
 			return nil, err
 		}
 		for _, c := range pg.Changes {

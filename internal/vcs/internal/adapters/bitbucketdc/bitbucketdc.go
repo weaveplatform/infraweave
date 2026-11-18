@@ -410,12 +410,22 @@ func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, name, fil
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a moved file under both its names, from
 // Bitbucket's compare, which compares from head to base.
-func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("bitbucketdc: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff && port.ZeroCommit(head) {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return nil, err
+	}
+	if comparison == port.PushDiff {
+		return p.pushAffectedFiles(ctx, repo, base, head)
 	}
 	type path struct {
 		String string `json:"toString"`
@@ -423,8 +433,7 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	changes, err := all[struct {
 		Path    *path `json:"path"`
 		SrcPath *path `json:"srcPath"`
-	}](ctx, p, *repo.Integration, rp+"/compare/changes",
-		url.Values{"from": {head}, "to": {base}}, base+"..."+head)
+	}](ctx, p, *repo.Integration, rp+"/compare/changes", url.Values{"from": {head}, "to": {base}}, base+"..."+head)
 	if err != nil {
 		return nil, err
 	}

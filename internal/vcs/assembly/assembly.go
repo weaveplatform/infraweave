@@ -107,6 +107,8 @@ type Deps struct {
 	Now              func() time.Time
 	PushEventTimeout time.Duration
 	Features         featuresapi.Options
+	Creator          runsapi.Creator
+	Supersede        runsapi.Supersede
 }
 
 // Domain is the vcs domain, constructed once per process.
@@ -117,6 +119,7 @@ type Domain struct {
 	api          http.Server
 	intake       *intake.Service
 	limits       *push.Limits
+	push         *push.Service
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
@@ -150,13 +153,6 @@ func New(d Deps) (*Domain, error) {
 		clock = time.Now
 	}
 	limits := &push.Limits{DB: d.DB, Store: pg.New(d.DB, d.Keys), Spaces: d.Spaces, Ceiling: d.Settings.EventRunsCeiling, Now: clock}
-	inbox, err := newIntake(d, map[string]any{
-		integration.GitHubEnterprise: gh, integration.GitLab: gl,
-		integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
-	})
-	if err != nil {
-		return nil, err
-	}
 	integrations := integration.New(integration.Deps{
 		Store: pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers, Features: d.Features,
@@ -172,24 +168,38 @@ func New(d Deps) (*Domain, error) {
 		},
 		Apps: gh, Public: d.Public, Now: d.Now, SecretOverlap: d.Settings.WebhookSecretOverlap,
 	})
+	sources := source.New(source.Deps{
+		Stacks: d.Stacks,
+		Providers: map[string]port.Source{
+			integration.Git:              git,
+			integration.GitHub:           gh,
+			integration.GitHubEnterprise: gh,
+			integration.GitLab:           gl,
+			integration.BitbucketCloud:   bbc,
+			integration.BitbucketDC:      bbdc,
+			integration.AzureDevOps:      ado,
+		},
+		Integrations: integrations,
+		Tokens:       pg.NewTokens(d.DB),
+		Jobs:         queue.New(d.DB),
+		Now:          clock,
+		Log:          d.Log,
+	})
+	pushes := push.New(push.Deps{
+		DB: d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
+		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
+		Jobs: queue.New(d.DB), Limits: limits, Now: clock, Log: d.Log,
+	})
+	inbox, err := newIntake(d, pushes, map[string]any{
+		integration.GitHubEnterprise: gh, integration.GitLab: gl,
+		integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &Domain{
-		sources: source.New(source.Deps{
-			Stacks: d.Stacks,
-			Providers: map[string]port.Source{
-				integration.Git:              git,
-				integration.GitHub:           gh,
-				integration.GitHubEnterprise: gh,
-				integration.GitLab:           gl,
-				integration.BitbucketCloud:   bbc,
-				integration.BitbucketDC:      bbdc,
-				integration.AzureDevOps:      ado,
-			},
-			Integrations: integrations,
-			Tokens:       pg.NewTokens(d.DB),
-			Jobs:         queue.New(d.DB),
-			Now:          time.Now,
-			Log:          d.Log,
-		}),
+		sources:      sources,
+		push:         pushes,
 		integrations: integrations,
 		intake:       inbox,
 		limits:       limits,
@@ -242,7 +252,10 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 			return err //nolint:wrapcheck // the store names the purge
 		}
 		if done {
-			return d.purgeDeliveries(ctx, acct)
+			if err := d.purgeDeliveries(ctx, acct); err != nil {
+				return err
+			}
+			return d.limits.Store.PurgeRunLimit(ctx, acct) //nolint:wrapcheck // the VCS setting store names the purge
 		}
 	}
 }
@@ -275,6 +288,10 @@ func (d *Domain) Jobs() []queue.Registration {
 		{Kind: Revoke, Handler: d.sources.Revoked},
 		d.deliveryJob(),
 		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported},
+		{
+			Kind: push.Evaluate, Handler: d.push.Evaluated,
+			Options: queue.HandlerOptions{Feature: "vcs-integrations"},
+		},
 	}
 }
 

@@ -29,7 +29,7 @@ func (s source) ReadFile(context.Context, port.Repository, string, string) ([]by
 	return s.file, s.err
 }
 
-func (s source) AffectedFiles(context.Context, port.Repository, string, string) ([]string, error) {
+func (s source) AffectedFiles(context.Context, port.Repository, string, string, ...port.DiffMode) ([]string, error) {
 	return s.paths, s.err
 }
 
@@ -110,7 +110,7 @@ func (keeper) ReadFile(_ context.Context, _ port.Repository, _, path string) ([]
 	return repo.Content, nil
 }
 
-func (keeper) AffectedFiles(_ context.Context, _ port.Repository, base, _ string) ([]string, error) {
+func (keeper) AffectedFiles(_ context.Context, _ port.Repository, base, _ string, _ ...port.DiffMode) ([]string, error) {
 	if base != repo.Base {
 		return nil, port.ErrNotFound
 	}

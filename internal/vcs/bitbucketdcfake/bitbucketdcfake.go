@@ -263,6 +263,10 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/commits/{commit}", f.commit)
 			r.Get("/raw/*", f.raw)
 			r.Get("/compare/changes", f.changes)
+			r.Get("/files", f.files)
+			r.Get("/diff/*", f.fileDiff)
+			r.Get("/commits/{commit}/merge-base", f.mergeBase)
+			r.Get("/branches/default", f.defaultBranch)
 		})
 	})
 	r.Route(Tokens+"/projects/{project}/repos/{slug}", func(r chi.Router) {
@@ -537,8 +541,18 @@ func (f *Fake) raw(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) changes(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	q := r.URL.Query()
-	changes, err := repo.repo.Changes(r.Context(), q.Get("to"), q.Get("from"))
-	if q.Get("from") == "" || q.Get("to") == "" || err != nil {
+	base, head := q.Get("since"), q.Get("until")
+	var err error
+	if strings.HasSuffix(r.URL.Path, "/compare/changes") {
+		head = q.Get("from")
+		base, err = repo.repo.MergeBase(q.Get("to"), head)
+	}
+	if err != nil {
+		answer(w, http.StatusNotFound, problem("A commit does not exist in repository."))
+		return
+	}
+	changes, err := repo.repo.Changes(r.Context(), base, head)
+	if head == "" || base == "" || err != nil {
 		answer(w, http.StatusNotFound, problem("A commit does not exist in repository."))
 		return
 	}

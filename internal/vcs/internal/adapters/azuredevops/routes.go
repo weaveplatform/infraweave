@@ -28,6 +28,7 @@ var Routes = []Route{
 	{http.MethodGet, "/_apis/projects"},
 	{http.MethodGet, "/_apis/hooks/subscriptions"},
 	{http.MethodGet, "/{project}/_apis/git/repositories"},
+	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/refs"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/commits/{commit}"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/items"},

@@ -3,7 +3,8 @@
 // with their members' access levels and repositories kept in memory by
 // go-git, so refs, annotated tags, file contents and the files two
 // commits differ in behave as Git's do. Handler serves the routes the
-// gitlab provider calls under /api/v4; Start serves it over TLS and gives
+// gitlab provider calls under /api/v4 and authenticates read-only Git smart
+// HTTP checkouts against the same project/token permissions. Start serves it over TLS and gives
 // the certificate a client trusts, such as through vcs.ca_file. A
 // Maintainer's token with the api scope mints and revokes project access
 // tokens, each acting as a bot user that is a member of its project

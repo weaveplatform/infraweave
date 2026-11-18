@@ -232,14 +232,35 @@ func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, ref, name
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names.
 // GitLab's comparison lists the files within its diff limits.
-func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("gitlab: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff && port.ZeroCommit(head) {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, pid, err := p.repo(repo)
 	if err != nil {
 		return nil, err
 	}
-	cmp, resp, err := c.Repositories.Compare(pid, &gitlab.CompareOptions{From: &base, To: &head},
+	options := &gitlab.CompareOptions{From: &base, To: &head}
+	if comparison == port.PushDiff {
+		options.Straight = new(!port.ZeroCommit(base))
+		if port.ZeroCommit(base) {
+			project, response, err := c.Projects.GetProject(pid, nil, gitlab.WithContext(ctx))
+			if err != nil {
+				return nil, classify(response, err, "default branch")
+			}
+			if project.DefaultBranch == "" {
+				return nil, fmt.Errorf("%w: gitlab: default branch", port.ErrNotFound)
+			}
+			base = project.DefaultBranch
+		}
+	}
+	cmp, resp, err := c.Repositories.Compare(pid, options,
 		gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, classify(resp, err, base+"..."+head)

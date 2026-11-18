@@ -22,6 +22,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.7.12
 	github.com/aws/aws-sdk-go-v2/service/kms v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
+	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/containerd/errdefs v1.0.0
 	github.com/cucumber/gherkin/go/v42 v42.0.1

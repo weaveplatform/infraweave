@@ -210,6 +210,7 @@ func TestUnitHosts(t *testing.T) {
 func TestUnitRoutes(t *testing.T) {
 	for _, p := range []string{
 		"/user", "/user/workspaces", "/repositories/acme",
+		"/repositories/acme/infra",
 		"/repositories/acme/infra/refs/branches",
 		"/repositories/acme/infra/hooks",
 		"/repositories/acme/infra/refs/branches/release/1",

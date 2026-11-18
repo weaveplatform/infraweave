@@ -268,7 +268,8 @@ func (f *Fake) Requests() int {
 	return f.requests
 }
 
-// Handler serves the fake's routes under /api/v4. A project is named by
+// Handler serves the REST routes under /api/v4 and authenticated read-only Git
+// under each project's clone URL. A project is named by
 // its ID or its URL-encoded full path, a ref and a file path URL-encoded,
 // as GitLab names them. A token with neither the api nor the read_api
 // scope reads a project's repository routes alone, as read_repository
@@ -489,7 +490,16 @@ func (f *Fake) raw(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
 	q := r.URL.Query()
-	changes, err := p.repo.Changes(r.Context(), q.Get("from"), q.Get("to"))
+	base := q.Get("from")
+	var err error
+	if q.Get("straight") != "true" {
+		base, err = p.repo.MergeBase(base, q.Get("to"))
+	}
+	if err != nil {
+		answer(w, http.StatusNotFound, message("404 Ref Not Found"))
+		return
+	}
+	changes, err := p.repo.Changes(r.Context(), base, q.Get("to"))
 	if err != nil {
 		answer(w, http.StatusNotFound, message("404 Ref Not Found"))
 		return
@@ -604,7 +614,8 @@ func (f *Fake) revoke(w http.ResponseWriter, r *http.Request) {
 
 func projectJSON(r *http.Request, p *project) map[string]any {
 	return map[string]any{
-		"id": p.id, "name": p.path, "path": p.path, "path_with_namespace": p.fullPath(),
+		"default_branch": p.repo.DefaultBranch(),
+		"id":             p.id, "name": p.path, "path": p.path, "path_with_namespace": p.fullPath(),
 		"web_url": host(r) + "/" + p.fullPath(), "visibility": "private",
 		"namespace": map[string]any{
 			"name": path.Base(p.namespace), "path": path.Base(p.namespace),

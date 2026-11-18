@@ -224,6 +224,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/commit/{commit}", f.commit)
 			r.Get("/src/{commit}/*", f.src)
 			r.Get("/diffstat/{spec}", f.diffstat)
+			r.Get("/", f.repositoryMetadata)
 		})
 	})
 	return r
@@ -441,6 +442,14 @@ func (f *Fake) diffstat(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	spec, _ := url.PathUnescape(chi.URLParam(r, "spec"))
 	head, base, ok := strings.Cut(spec, "..")
+	if ok && r.URL.Query().Get("topic") == "true" {
+		mergeBase, err := repo.repo.MergeBase(base, head)
+		if err != nil {
+			answer(w, http.StatusNotFound, problem("Commit not found"))
+			return
+		}
+		base = mergeBase
+	}
 	changes, err := repo.repo.Changes(r.Context(), base, head)
 	if !ok || err != nil {
 		answer(w, http.StatusNotFound, problem("Commit not found"))

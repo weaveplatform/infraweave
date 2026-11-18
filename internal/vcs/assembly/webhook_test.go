@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/webhooktest"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
 
 // purgeBoundary commits a verified request at the integration deletion boundary.
@@ -83,6 +84,10 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	boundary := &purgeBoundary{Store: w.store, before: func(ctx context.Context) error { return receive(ctx, "racing") }}
+	limit := 2
+	if err := w.store.SetRunLimit(t.Context(), w.acct, &limit); err != nil {
+		t.Fatal(err)
+	}
 	deployment := feedback.Deployment{
 		Account: w.acct, Integration: id, Provider: "GITHUB_ENTERPRISE", Namespace: "acme", Repository: "infra",
 		Run:   port.DeploymentRun{ID: kernel.NewULID(), Commit: strings.Repeat("a", 40), Ref: "main"},
@@ -102,6 +107,7 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 	d := &Domain{
 		integrations: integration.New(integration.Deps{Store: boundary}), intake: svc,
 		feedback: feedback.NewDeployments(q, nil, feedback.DeploymentDeps{DB: w.db, Store: w.store}),
+		limits:   &push.Limits{Store: w.store},
 	}
 	if err := d.Purge(t.Context(), w.acct); err != nil {
 		t.Fatal(err)
@@ -123,5 +129,8 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 	}
 	if _, err := svc.Receive(t.Context(), "github_enterprise", id.String(), http.Header{}, nil); err == nil {
 		t.Fatal("purged integration still accepts intake")
+	}
+	if got, err := w.store.RunLimit(t.Context(), w.acct); err != nil || got != nil {
+		t.Fatalf("purged account run limit = %v, %v", got, err)
 	}
 }

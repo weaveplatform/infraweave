@@ -251,6 +251,7 @@ func TestUnitRoutes(t *testing.T) {
 	for _, p := range []string{
 		"/_apis/projects", "/_apis/hooks/subscriptions",
 		"/Platform/_apis/git/repositories",
+		"/Platform/_apis/git/repositories/infra",
 		"/My%20Project/_apis/git/repositories/the%20infra/refs",
 		"/Platform/_apis/git/repositories/infra/commits/abc",
 		"/Platform/_apis/git/repositories/infra/items",
@@ -263,7 +264,6 @@ func TestUnitRoutes(t *testing.T) {
 	for _, c := range [][2]string{
 		{http.MethodPost, "/_apis/hooks/subscriptions"},
 		{http.MethodDelete, "/Platform/_apis/git/repositories/infra"},
-		{http.MethodGet, "/Platform/_apis/git/repositories/infra"},
 		{http.MethodGet, "/Platform/_apis/git/repositories/infra/pushes"},
 		{http.MethodGet, "/Platform/_apis/git/repositories/infra/items/../../../_apis/projects"},
 		{http.MethodGet, "/_apis/projects/"},

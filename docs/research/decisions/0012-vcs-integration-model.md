@@ -287,6 +287,15 @@ user: infraweave never creates or deletes provider hooks.
   the root propose on the head, with no pull request needed. Pull request
   events record the request and its head commits and create no run. Fork
   pull requests get runs only through P13's `allow_fork`.
+
+  Push comparisons use complete before/after trees rather than the head
+  commit's changed-file list. GitHub walks single-level trees if its recursive
+  response is truncated. Bitbucket Data Center enumerates both paged file sets
+  and compares common paths individually, avoiding the global changes hard cap;
+  binary or mode-only diff identities still count when no text hunks exist.
+  New-branch comparisons there require the merge-base endpoint from Data Center
+  8.16 or later. An unsupported or incomplete provider response fails preparation
+  safely rather than silently substituting another comparison.
 - **Ignored triggers (D9, D17).** Record tracked pushes with no affected
   root files, tag pushes on every stack of the repository
   (`TAGS_IGNORED_BY_DEFAULT`), and stacks beyond the cap

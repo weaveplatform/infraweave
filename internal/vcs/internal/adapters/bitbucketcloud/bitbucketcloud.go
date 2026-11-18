@@ -351,12 +351,38 @@ func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, name, fil
 // AffectedFiles lists, sorted, the paths that differ between head and its
 // merge base with base in repo, a renamed file under both its names, from
 // Bitbucket's diffstat, which names head first.
-func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("bitbucketcloud: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff && port.ZeroCommit(head) {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return nil, err
+	}
+	query := url.Values{}
+	if comparison == port.PushDiff {
+		newBranch := port.ZeroCommit(base)
+		query.Set("topic", strconv.FormatBool(newBranch))
+		if newBranch {
+			var metadata struct {
+				MainBranch struct {
+					Name string `json:"name"`
+				} `json:"mainbranch"`
+			}
+			if err := p.decode(ctx, *repo.Integration, p.api+rp, "default branch", &metadata); err != nil {
+				return nil, err
+			}
+			if metadata.MainBranch.Name == "" {
+				return nil, fmt.Errorf("%w: bitbucketcloud: default branch", port.ErrNotFound)
+			}
+			base = metadata.MainBranch.Name
+		}
 	}
 	type side struct {
 		Path string `json:"path"`
@@ -365,7 +391,7 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 		Old *side `json:"old"`
 		New *side `json:"new"`
 	}](ctx, p, *repo.Integration,
-		rp+"/diffstat/"+url.PathEscape(head)+".."+url.PathEscape(base), url.Values{},
+		rp+"/diffstat/"+url.PathEscape(head)+".."+url.PathEscape(base), query,
 		base+"..."+head)
 	if err != nil {
 		return nil, err

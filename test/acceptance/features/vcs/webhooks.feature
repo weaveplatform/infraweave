@@ -108,14 +108,18 @@ Feature: VCS webhook protocol and event run budgets
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
-    When token "m" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":2}' through A
+    When token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":2}' through A
+    Then the answer is '2'
+    When token "m" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":3}' through A
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"ACCOUNT_ADMIN"'
+    And "GET /api/v1/vcs-event-triggered-runs-limit" through B with token "h" answers '2'
     When token "m" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":null}' through B
     Then it answers a 403 problem "forbidden"
+    And "GET /api/v1/vcs-event-triggered-runs-limit" through A with token "h" answers '2'
     And "POST /api/v1/account/update-vcs-event-triggered-runs-limit" without a credential answers a 401 problem "unauthenticated"
-    And "GET /api/v1/vcs-event-triggered-runs-limit" through B with token "h" answers 'null'
-    And the home account has 0 caller-attributed VCS event run limit audit entries
+    And "GET /api/v1/vcs-event-triggered-runs-limit" through B with token "h" answers '2'
+    And the home account has 1 caller-attributed VCS event run limit audit entries
 
   @op:vcsEventTriggeredRunsLimit @case:failure
   Scenario: An unavailable database fails a cap read without losing its setting

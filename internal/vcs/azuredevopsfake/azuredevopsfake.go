@@ -250,6 +250,7 @@ func (f *Fake) Handler() http.Handler {
 				r.Get("/commits/{commit}", f.commit)
 				r.Get("/items", f.items)
 				r.Get("/diffs/commits", f.diffs)
+				r.Get("/", f.repositoryMetadata)
 			})
 		})
 	})
@@ -477,8 +478,12 @@ func (f *Fake) items(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) diffs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	base, target := q.Get("baseVersion"), q.Get("targetVersion")
+	var mergeErr error
+	if sha.MatchString(base) && sha.MatchString(target) && q.Get("diffCommonCommit") == "true" {
+		base, mergeErr = repoOf(r).repo.MergeBase(base, target)
+	}
 	changes, err := repoOf(r).repo.Changes(r.Context(), base, target)
-	if !sha.MatchString(base) || !sha.MatchString(target) || err != nil {
+	if !sha.MatchString(base) || !sha.MatchString(target) || mergeErr != nil || err != nil {
 		answer(w, http.StatusNotFound, problem("TF401175: The version descriptor could not be "+
 			"resolved to a version in the repository."))
 		return

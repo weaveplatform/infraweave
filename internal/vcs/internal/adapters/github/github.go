@@ -331,7 +331,17 @@ func (p *Provider) ReadFile(ctx context.Context, repo port.Repository, ref, path
 // AffectedFiles lists, sorted, the paths that differ between base and
 // head of repo, a renamed file under both its names. GitHub's comparison
 // lists at most 300 files.
-func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string) ([]string, error) {
+func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base, head string, mode ...port.DiffMode) ([]string, error) {
+	comparison, err := port.Comparison(mode)
+	if err != nil {
+		return nil, fmt.Errorf("github: push comparison: %w", err)
+	}
+	if comparison == port.PushDiff {
+		if port.ZeroCommit(head) {
+			return nil, nil
+		}
+		return p.pushAffectedFiles(ctx, repo, base, head)
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	c, _, err := p.repo(ctx, repo)
