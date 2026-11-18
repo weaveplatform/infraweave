@@ -324,6 +324,7 @@ Feature: VCS webhook protocol and event run budgets
   @gitlab @objectstore @op:stackSearchRunIgnoredTriggers @case:success
   Scenario: Path and tag ignores survive entitlement changes, delivery replay and account cleanup
     Given two infraweave servers, A and B, on one database, with an operator key
+    And the operator key is exchanged through A for token "op"
     And the home key is exchanged through A for token "h"
     And a GitLab user "dev" with a token kept as "tok"
     And a GitLab project "acme/platform/infra" that "dev" maintains, its head of "main" kept as "initial"
@@ -373,7 +374,7 @@ Feature: VCS webhook protocol and event run budgets
     Then the ignored-trigger answer has 2 records and keeps cursor "ignoredAll"
     Given delivery "firstTag" of integration "integration" is kept as "tagDelivery"
     When token "h" replays delivery "tagDelivery" of integration "integration" with key "ignored-replay" through B
-    Then it answers 200
+    Then it answers 202
     And delivery "tagDelivery" generation 1 settles with 0 newly created runs
     And stack "alpha" has exactly 2 stored ignored triggers
     And stack "beta" has exactly 2 stored ignored triggers
