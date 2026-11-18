@@ -15,8 +15,10 @@
 // one workspace's answer, and the releases the home account's audit
 // trail records with the caller's address, and the state workspaces of
 // a run's stack, one per Terragrunt unit, each at a version the run
-// wrote, from the database. Force-unlock scenarios seed the locks a stopped
-// server could leave, inspect their complete audit metadata and broken-lock
+// wrote, from the database. The unit-only check omits the stack's unwritten
+// default workspace when the project root holds no unit, while retaining
+// unexpected named workspaces and any written default. Force-unlock scenarios
+// seed the locks a stopped server could leave, inspect their complete audit metadata and broken-lock
 // records, and arrange the proposed holder as a writing caller so its next
 // write reaches the broken-lock check. A
 // scenario can instead hand a run it took over to

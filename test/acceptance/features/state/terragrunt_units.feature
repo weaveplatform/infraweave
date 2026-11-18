@@ -42,6 +42,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
   uses mocks allowed for init, plan and validate; applying replans after network
   and consumes its real output. Without a mock allowed for plan, Terragrunt
   refuses planning before any state version is written.
+  The default workspace stays empty when only app and network run.
   ref: decision 0008
   ref: decision 0010
   ref: decision 0016
@@ -298,7 +299,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     And token "h" reads the run "run"'s APPLYING log through B, which holds "Apply complete!" and not "mock-network-id"
     And token "h" reads the run "run"'s APPLYING log through A, which holds "terragrunt run --all -- apply" and not "terragrunt run --all -- output"
     And the run "run" wrote 2 state versions
-    And the state workspaces of the run "run"'s stack are "app, network", each at a version the run wrote
+    And the unit state workspaces of the run "run"'s stack are "app, network", each at a version the run wrote
     When token "h" sends "GET /api/v1/stacks/deps" through B
     Then the answer's outputs is '[]'
 
