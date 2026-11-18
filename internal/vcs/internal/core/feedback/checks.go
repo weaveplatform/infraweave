@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -140,7 +141,12 @@ func sharedNameCollision(b CheckBinding) bool {
 }
 
 func checkResourceKey(b CheckBinding, name string, aggregate bool) string {
-	parts := []any{b.Provider, b.NativeHost, b.Namespace, b.Repository, b.Commit, name}
+	namespace, repository := b.Namespace, b.Repository
+	if b.Provider == "GITHUB_ENTERPRISE" {
+		namespace = strings.ToLower(namespace)
+		repository = strings.ToLower(repository)
+	}
+	parts := []any{b.Provider, b.NativeHost, namespace, repository, b.Commit, name}
 	if b.Provider == "GITHUB_ENTERPRISE" && !aggregate {
 		parts = append(parts, b.Key)
 	}

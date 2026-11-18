@@ -243,3 +243,18 @@ func TestUnitCommitCheckRecoveryIsAppScoped(t *testing.T) {
 		t.Fatal("foreign App check was mutated", records)
 	}
 }
+
+func TestUnitCommitCheckHostUsesNativeAppIdentity(t *testing.T) {
+	l := newLab(t)
+	for _, appID := range []string{"42", "0042"} {
+		host, err := l.gh.CheckHost(port.Settings{APIHost: "https://GitHub.EXAMPLE:443/", AppID: appID})
+		if err != nil || host != "https://github.example/api/v3/app/42" {
+			t.Fatal("native App alias split host fence", host, err)
+		}
+	}
+	for _, appID := range []string{"", "0", "-1", "invalid", "9223372036854775808"} {
+		if _, err := l.gh.CheckHost(port.Settings{AppID: appID}); err == nil {
+			t.Fatal("invalid native App ID accepted", appID)
+		}
+	}
+}

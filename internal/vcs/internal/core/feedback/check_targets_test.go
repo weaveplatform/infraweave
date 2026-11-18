@@ -258,3 +258,27 @@ func TestUnitCommitCheckReservedNames(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitGitHubNativeResourceCaseAliases(t *testing.T) {
+	b := CheckBinding{
+		Provider:   "GITHUB_ENTERPRISE",
+		NativeHost: "https://github.example/api/v3/app/42",
+		Namespace:  "acme",
+		Repository: "infra",
+		Commit:     strings.Repeat("a", 40),
+		Key:        "run:first",
+	}
+	alias := b
+	alias.Namespace = "Acme"
+	alias.Repository = "Infra"
+	if checkResourceKey(b, "infraweave/proposed", true) != checkResourceKey(alias, "infraweave/proposed", true) {
+		t.Fatal("GitHub path casing split one native aggregate fence")
+	}
+	for _, provider := range []string{"GITLAB", "BITBUCKET_CLOUD", "BITBUCKET_DATACENTER", "AZURE_DEVOPS"} {
+		b.Provider = provider
+		alias.Provider = provider
+		if checkResourceKey(b, "infraweave/proposed", true) == checkResourceKey(alias, "infraweave/proposed", true) {
+			t.Fatal("provider path case was incorrectly discarded", provider)
+		}
+	}
+}
