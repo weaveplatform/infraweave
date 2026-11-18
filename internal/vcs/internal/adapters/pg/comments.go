@@ -16,11 +16,15 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
-const commentRequestColumns = `p.id,p.integration_id,p.repository_id,p.provider_id,p.namespace,p.repository,p.head_sha,p.state='open',i.provider`
+const commentRequestColumns = `r.id,r.integration_id,` + requestRepositoryIDSQL +
+	`,r.provider_id,coalesce(m.namespace,r.namespace),coalesce(m.name,r.repository),r.head_sha,r.state='open',i.provider,m.repository_id IS NOT NULL`
+
+const commentRequestFrom = ` FROM pull_requests r JOIN vcs_integrations i ON (i.account_id,i.id)=(r.account_id,r.integration_id)
+	LEFT JOIN vcs_repository_map m ON m.account_id=r.account_id AND m.integration_id=r.integration_id AND m.repository_id=` + requestRepositoryIDSQL
 
 func commentRequest(row pgx.Row) (feedback.CommentPullRequest, error) {
 	var p feedback.CommentPullRequest
-	err := row.Scan(&p.ID, &p.Integration, &p.RepositoryID, &p.Number, &p.Namespace, &p.Repository, &p.Head, &p.Open, &p.Provider)
+	err := row.Scan(&p.ID, &p.Integration, &p.RepositoryID, &p.Number, &p.Namespace, &p.Repository, &p.Head, &p.Open, &p.Provider, &p.Mapped)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, feedback.ErrNoComment
 	}
@@ -32,11 +36,11 @@ func commentRequest(row pgx.Row) (feedback.CommentPullRequest, error) {
 
 // CommentPullRequests reads every open current head, with no historical-head
 // join or branch restriction: shared heads can target several pull requests.
+// Native IDs follow repository renames and canonicalize historical UUID forms.
 func (s *Store) CommentPullRequests(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, namespace, repository, sha string) ([]feedback.CommentPullRequest, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+commentRequestColumns+`
-		FROM pull_requests p JOIN vcs_integrations i ON (i.account_id,i.id)=(p.account_id,p.integration_id)
-		WHERE p.account_id=$1 AND p.integration_id=$2 AND p.namespace=$3 AND p.repository=$4 AND p.head_sha=$5 AND p.state='open'
-		ORDER BY p.id`, acct, integration, namespace, repository, sha)
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+commentRequestColumns+commentRequestFrom+`
+		WHERE r.account_id=$1 AND r.integration_id=$2 AND coalesce(m.namespace,r.namespace)=$3 AND coalesce(m.name,r.repository)=$4
+		AND r.head_sha=$5 AND r.state='open' ORDER BY r.id`, acct, integration, namespace, repository, sha)
 	if err != nil {
 		return nil, fmt.Errorf("VCS comment requests: %w", sql.Unavailable(err))
 	}
@@ -49,9 +53,8 @@ func (s *Store) CommentPullRequests(ctx context.Context, acct kernel.AccountID, 
 
 // CommentPullRequest resolves a local target only within its owning account.
 func (s *Store) CommentPullRequest(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (feedback.CommentPullRequest, error) {
-	return commentRequest(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+commentRequestColumns+`
-		FROM pull_requests p JOIN vcs_integrations i ON (i.account_id,i.id)=(p.account_id,p.integration_id)
-		WHERE p.account_id=$1 AND p.id=$2`, acct, id))
+	return commentRequest(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+commentRequestColumns+commentRequestFrom+`
+		WHERE r.account_id=$1 AND r.id=$2`, acct, id))
 }
 
 // BindComment reserves one logical native comment. Only policy comments update
@@ -69,7 +72,8 @@ func (s *Store) BindComment(ctx context.Context, c feedback.Comment) (feedback.C
 		(account_id,id,integration_id,repository_id,pull_request,request_id,dedup_key,stack_id,run_id,run_created_at,binding)
 		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		ON CONFLICT(account_id,integration_id,repository_id,pull_request,dedup_key) DO UPDATE SET
-		binding=CASE WHEN vcs_pr_comments.run_id IS NULL THEN jsonb_set(vcs_pr_comments.binding,'{body}',excluded.binding->'body') ELSE vcs_pr_comments.binding END,
+		binding=jsonb_set(CASE WHEN vcs_pr_comments.run_id IS NULL THEN jsonb_set(vcs_pr_comments.binding,'{body}',excluded.binding->'body') ELSE vcs_pr_comments.binding END,
+		'{target,mapped}',to_jsonb(coalesce((vcs_pr_comments.binding#>>'{target,mapped}')::boolean,false) OR (excluded.binding#>>'{target,mapped}')::boolean)),
 		revision=vcs_pr_comments.revision+CASE WHEN vcs_pr_comments.run_id IS NULL AND
 		vcs_pr_comments.binding->>'body' IS DISTINCT FROM excluded.binding->>'body' THEN 1 ELSE 0 END
 		RETURNING id`, c.Account, c.ID, c.Target.Integration, c.Target.RepositoryID, c.Target.Number, c.Target.ID, c.DedupKey,
@@ -138,9 +142,8 @@ func (s *Store) HoldComment(ctx context.Context, acct kernel.AccountID, id kerne
 	if err != nil {
 		return c, fmt.Errorf("VCS comment integration hold: %w", sql.Unavailable(err))
 	}
-	pr, err := commentRequest(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+commentRequestColumns+`
-		FROM pull_requests p JOIN vcs_integrations i ON (i.account_id,i.id)=(p.account_id,p.integration_id)
-		WHERE p.account_id=$1 AND p.integration_id=$2 AND p.repository_id=$3 AND p.provider_id=$4 FOR UPDATE OF p`,
+	pr, err := commentRequest(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+commentRequestColumns+commentRequestFrom+`
+		WHERE r.account_id=$1 AND r.integration_id=$2 AND `+requestRepositoryIDSQL+`=$3 AND r.provider_id=$4 FOR UPDATE OF r`,
 		acct, c.Target.Integration, c.Target.RepositoryID, c.Target.Number))
 	if err != nil {
 		return c, err
@@ -149,7 +152,8 @@ func (s *Store) HoldComment(ctx context.Context, acct kernel.AccountID, id kerne
 	if err != nil {
 		return c, err
 	}
-	if pr.Integration != c.Target.Integration || pr.RepositoryID != c.Target.RepositoryID || pr.Number != c.Target.Number || pr.Provider != c.Target.Provider {
+	if pr.Integration != c.Target.Integration || pr.RepositoryID != c.Target.RepositoryID || pr.Number != c.Target.Number || pr.Provider != c.Target.Provider ||
+		c.Target.Mapped && !pr.Mapped {
 		return c, feedback.ErrNoComment
 	}
 	c.Target = pr
@@ -165,7 +169,9 @@ func (s *Store) RecordComment(ctx context.Context, c feedback.Comment, reference
 	if err != nil {
 		return fmt.Errorf("VCS comment reference encode: %w", err)
 	}
-	_, err = tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_pr_comments SET reference=$3,reported_revision=$4 WHERE account_id=$1 AND id=$2`, c.Account, c.ID, body, c.Revision)
+	_, err = tx.Q(ctx, s.db).Exec(ctx, `UPDATE vcs_pr_comments SET reference=$3,reported_revision=$4,
+		binding=jsonb_set(binding,'{target,mapped}',to_jsonb(coalesce((binding#>>'{target,mapped}')::boolean,false) OR $5::boolean))
+		WHERE account_id=$1 AND id=$2`, c.Account, c.ID, body, c.Revision, c.Target.Mapped)
 	if err != nil {
 		return fmt.Errorf("VCS comment record: %w", sql.Unavailable(err))
 	}

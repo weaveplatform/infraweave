@@ -29,6 +29,8 @@ var ReportComment = queue.Kind{Name: "vcs.report_comment", Queue: queue.Deliveri
 var ErrNoComment = errors.New("VCS comment not found")
 
 // CommentPullRequest contains current native routing facts, without credentials.
+// Mapped records known native-identity routing; losing that map cannot redirect
+// a queued effect to an unrelated repository occupying its old path.
 type CommentPullRequest struct {
 	ID           kernel.ULID `json:"id"`
 	Integration  kernel.ULID `json:"integration"`
@@ -39,6 +41,7 @@ type CommentPullRequest struct {
 	Head         string      `json:"head"`
 	Open         bool        `json:"open"`
 	Provider     string      `json:"provider"`
+	Mapped       bool        `json:"mapped"`
 }
 
 // Comment retains the first credential-free native binding. PlanVersion names
@@ -179,7 +182,7 @@ func commentPlanningVersion(h runsapi.RunHistory, u runsapi.Updated, sequence in
 }
 
 func commentHost(settings port.Settings) string {
-	body, _ := json.Marshal([]string{settings.APIHost, settings.OrganizationURL})
+	body, _ := json.Marshal([]string{settings.APIHost, settings.OrganizationURL, settings.AppID})
 	sum := sha256.Sum256(body)
 	return hex.EncodeToString(sum[:])
 }
