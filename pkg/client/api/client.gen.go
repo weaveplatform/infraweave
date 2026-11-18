@@ -2985,6 +2985,12 @@ type AccountUpdateSecurityEmailRequest struct {
 	SecurityEmail string `json:"securityEmail"`
 }
 
+// AccountUpdateVCSEventTriggeredRunsLimitRequest The account limit for runs created by a single VCS delivery.
+type AccountUpdateVCSEventTriggeredRunsLimitRequest struct {
+	// Limit A value from 1 through the operator ceiling, or null to clear the account limit.
+	Limit *int32 `json:"limit,omitempty"`
+}
+
 // Action Action represents an action that a user can perform. The values after AI_INTEGRATION_TOGGLE act on the account's API keys, sessions, managed users and groups, which belong to the account rather than to a space, so they are held on the account's top space.
 type Action string
 
@@ -10476,6 +10482,12 @@ type AccountUpdateSecurityEmailParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AccountUpdateVCSEventTriggeredRunsLimitParams defines parameters for AccountUpdateVCSEventTriggeredRunsLimit.
+type AccountUpdateVCSEventTriggeredRunsLimitParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // ApiKeyRoleBindingBatchCreateParams defines parameters for ApiKeyRoleBindingBatchCreate.
 type ApiKeyRoleBindingBatchCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -12269,6 +12281,9 @@ type AccountUpdateDefaultWorkerPoolRunnerImagesJSONRequestBody = AccountUpdateDe
 
 // AccountUpdateSecurityEmailJSONRequestBody defines body for AccountUpdateSecurityEmail for application/json ContentType.
 type AccountUpdateSecurityEmailJSONRequestBody = AccountUpdateSecurityEmailRequest
+
+// AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody defines body for AccountUpdateVCSEventTriggeredRunsLimit for application/json ContentType.
+type AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody = AccountUpdateVCSEventTriggeredRunsLimitRequest
 
 // ApiKeyRoleBindingBatchCreateJSONRequestBody defines body for ApiKeyRoleBindingBatchCreate for application/json ContentType.
 type ApiKeyRoleBindingBatchCreateJSONRequestBody = ApiKeyRoleBindingBatchInput
@@ -14734,6 +14749,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 	AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateVCSEventTriggeredRunsLimitWithBody Account Update VCSEvent Triggered Runs Limit
+	//
+	// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+	AccountUpdateVCSEventTriggeredRunsLimitWithBody(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateVCSEventTriggeredRunsLimit Account Update VCSEvent Triggered Runs Limit
+	//
+	// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+	AccountUpdateVCSEventTriggeredRunsLimit(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, body AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActionCatalogue Action Catalogue
 	//
@@ -18615,6 +18648,13 @@ type ClientInterface interface {
 	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
 	SearchVCSIntegrationsSuggestions(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// VcsEventTriggeredRunsLimit Vcs Event Triggered Runs Limit
+	//
+	// Read the account limit on runs created by one VCS delivery. Null is the default and uses the operator ceiling (500 by default). A configured limit is from 1 through that ceiling and can never exceed it.
+	//
+	// Corresponds with GET /vcs-event-triggered-runs-limit (the `VcsEventTriggeredRunsLimit` operationId).
+	VcsEventTriggeredRunsLimit(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// VcsIntegrations List VCS Integrations
 	//
 	// List of all VCS integrations available in the account.
@@ -19242,6 +19282,44 @@ func (c *Client) AccountUpdateSecurityEmailWithBody(ctx context.Context, params 
 // Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 func (c *Client) AccountUpdateSecurityEmail(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAccountUpdateSecurityEmailRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitWithBody Account Update VCSEvent Triggered Runs Limit
+//
+// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+func (c *Client) AccountUpdateVCSEventTriggeredRunsLimitWithBody(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateVCSEventTriggeredRunsLimitRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimit Account Update VCSEvent Triggered Runs Limit
+//
+// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+func (c *Client) AccountUpdateVCSEventTriggeredRunsLimit(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, body AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateVCSEventTriggeredRunsLimitRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -27792,6 +27870,23 @@ func (c *Client) SearchVCSIntegrationsSuggestions(ctx context.Context, body Sear
 	return c.Client.Do(req)
 }
 
+// VcsEventTriggeredRunsLimit Vcs Event Triggered Runs Limit
+//
+// Read the account limit on runs created by one VCS delivery. Null is the default and uses the operator ceiling (500 by default). A configured limit is from 1 through that ceiling and can never exceed it.
+//
+// Corresponds with GET /vcs-event-triggered-runs-limit (the `VcsEventTriggeredRunsLimit` operationId).
+func (c *Client) VcsEventTriggeredRunsLimit(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVcsEventTriggeredRunsLimitRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // VcsIntegrations List VCS Integrations
 //
 // List of all VCS integrations available in the account.
@@ -28942,6 +29037,61 @@ func NewAccountUpdateSecurityEmailRequestWithBody(server string, params *Account
 	}
 
 	operationPath := fmt.Sprintf("/account/update-security-email")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountUpdateVCSEventTriggeredRunsLimitRequest calls the generic AccountUpdateVCSEventTriggeredRunsLimit builder with application/json body
+func NewAccountUpdateVCSEventTriggeredRunsLimitRequest(server string, params *AccountUpdateVCSEventTriggeredRunsLimitParams, body AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountUpdateVCSEventTriggeredRunsLimitRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountUpdateVCSEventTriggeredRunsLimitRequestWithBody constructs an http.Request for the AccountUpdateVCSEventTriggeredRunsLimit method, with any body, and a specified content type
+func NewAccountUpdateVCSEventTriggeredRunsLimitRequestWithBody(server string, params *AccountUpdateVCSEventTriggeredRunsLimitParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/update-vcs-event-triggered-runs-limit")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -46751,6 +46901,33 @@ func NewSearchVCSIntegrationsSuggestionsRequestWithBody(server string, contentTy
 	return req, nil
 }
 
+// NewVcsEventTriggeredRunsLimitRequest constructs an http.Request for the VcsEventTriggeredRunsLimit method
+func NewVcsEventTriggeredRunsLimitRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vcs-event-triggered-runs-limit")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewVcsIntegrationsRequest constructs an http.Request for the VcsIntegrations method
 func NewVcsIntegrationsRequest(server string, params *VcsIntegrationsParams) (*http.Request, error) {
 	var err error
@@ -48373,6 +48550,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /account/update-security-email (the `AccountUpdateSecurityEmail` operationId).
 	AccountUpdateSecurityEmailWithResponse(ctx context.Context, params *AccountUpdateSecurityEmailParams, body AccountUpdateSecurityEmailJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateSecurityEmailResponse, error)
+
+	// AccountUpdateVCSEventTriggeredRunsLimitWithBodyWithResponse Account Update VCSEvent Triggered Runs Limit
+	//
+	// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+	AccountUpdateVCSEventTriggeredRunsLimitWithBodyWithResponse(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateVCSEventTriggeredRunsLimitResponse, error)
+
+	// AccountUpdateVCSEventTriggeredRunsLimitWithResponse Account Update VCSEvent Triggered Runs Limit
+	//
+	// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+	AccountUpdateVCSEventTriggeredRunsLimitWithResponse(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, body AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateVCSEventTriggeredRunsLimitResponse, error)
 
 	// ActionCatalogueWithResponse Action Catalogue
 	//
@@ -52642,6 +52837,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /v-cs-integrations/search/suggestions (the `SearchVCSIntegrationsSuggestions` operationId).
 	SearchVCSIntegrationsSuggestionsWithResponse(ctx context.Context, body SearchVCSIntegrationsSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchVCSIntegrationsSuggestionsResponse, error)
 
+	// VcsEventTriggeredRunsLimitWithResponse Vcs Event Triggered Runs Limit
+	//
+	// Read the account limit on runs created by one VCS delivery. Null is the default and uses the operator ceiling (500 by default). A configured limit is from 1 through that ceiling and can never exceed it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vcs-event-triggered-runs-limit (the `VcsEventTriggeredRunsLimit` operationId).
+	VcsEventTriggeredRunsLimitWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VcsEventTriggeredRunsLimitResponse, error)
+
 	// VcsIntegrationsWithResponse List VCS Integrations
 	//
 	// List of all VCS integrations available in the account.
@@ -54221,6 +54425,108 @@ func (r AccountUpdateSecurityEmailResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AccountUpdateSecurityEmailResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateVCSEventTriggeredRunsLimit
+type AccountUpdateVCSEventTriggeredRunsLimitResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitResponse429Headers the declared response headers of an HTTP 429 response for AccountUpdateVCSEventTriggeredRunsLimit
+type AccountUpdateVCSEventTriggeredRunsLimitResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitResponse503Headers the declared response headers of an HTTP 503 response for AccountUpdateVCSEventTriggeredRunsLimit
+type AccountUpdateVCSEventTriggeredRunsLimitResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountUpdateVCSEventTriggeredRunsLimitResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 **int32
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountUpdateVCSEventTriggeredRunsLimitResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountUpdateVCSEventTriggeredRunsLimitResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountUpdateVCSEventTriggeredRunsLimitResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetJSON200() **int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountUpdateVCSEventTriggeredRunsLimitResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -87430,6 +87736,94 @@ func (r SearchVCSIntegrationsSuggestionsResponse) ContentType() string {
 	return ""
 }
 
+// VcsEventTriggeredRunsLimitResponse200Headers the declared response headers of an HTTP 200 response for VcsEventTriggeredRunsLimit
+type VcsEventTriggeredRunsLimitResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsEventTriggeredRunsLimitResponse429Headers the declared response headers of an HTTP 429 response for VcsEventTriggeredRunsLimit
+type VcsEventTriggeredRunsLimitResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// VcsEventTriggeredRunsLimitResponse503Headers the declared response headers of an HTTP 503 response for VcsEventTriggeredRunsLimit
+type VcsEventTriggeredRunsLimitResponse503Headers struct {
+	RetryAfter *int
+}
+
+type VcsEventTriggeredRunsLimitResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 **int32
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *VcsEventTriggeredRunsLimitResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *VcsEventTriggeredRunsLimitResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *VcsEventTriggeredRunsLimitResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VcsEventTriggeredRunsLimitResponse) GetJSON200() **int32 {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r VcsEventTriggeredRunsLimitResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r VcsEventTriggeredRunsLimitResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VcsEventTriggeredRunsLimitResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VcsEventTriggeredRunsLimitResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VcsEventTriggeredRunsLimitResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VcsEventTriggeredRunsLimitResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VcsEventTriggeredRunsLimitResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // VcsIntegrationsResponse200Headers the declared response headers of an HTTP 200 response for VcsIntegrations
 type VcsIntegrationsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -90249,6 +90643,36 @@ func (c *ClientWithResponses) AccountUpdateSecurityEmailWithResponse(ctx context
 		return nil, err
 	}
 	return ParseAccountUpdateSecurityEmailResponse(rsp)
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitWithBodyWithResponse Account Update VCSEvent Triggered Runs Limit
+//
+// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+func (c *ClientWithResponses) AccountUpdateVCSEventTriggeredRunsLimitWithBodyWithResponse(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateVCSEventTriggeredRunsLimitResponse, error) {
+	rsp, err := c.AccountUpdateVCSEventTriggeredRunsLimitWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateVCSEventTriggeredRunsLimitResponse(rsp)
+}
+
+// AccountUpdateVCSEventTriggeredRunsLimitWithResponse Account Update VCSEvent Triggered Runs Limit
+//
+// Set the maximum runs one VCS delivery may create for this account. The limit is null by default, which uses the operator ceiling (500 by default). Set a value from 1 through that ceiling, or null to clear it. A value outside that range answers 422 validation-failed at /limit.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-vcs-event-triggered-runs-limit (the `AccountUpdateVCSEventTriggeredRunsLimit` operationId).
+func (c *ClientWithResponses) AccountUpdateVCSEventTriggeredRunsLimitWithResponse(ctx context.Context, params *AccountUpdateVCSEventTriggeredRunsLimitParams, body AccountUpdateVCSEventTriggeredRunsLimitJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateVCSEventTriggeredRunsLimitResponse, error) {
+	rsp, err := c.AccountUpdateVCSEventTriggeredRunsLimit(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateVCSEventTriggeredRunsLimitResponse(rsp)
 }
 
 // ActionCatalogueWithResponse Action Catalogue
@@ -97315,6 +97739,21 @@ func (c *ClientWithResponses) SearchVCSIntegrationsSuggestionsWithResponse(ctx c
 	return ParseSearchVCSIntegrationsSuggestionsResponse(rsp)
 }
 
+// VcsEventTriggeredRunsLimitWithResponse Vcs Event Triggered Runs Limit
+//
+// Read the account limit on runs created by one VCS delivery. Null is the default and uses the operator ceiling (500 by default). A configured limit is from 1 through that ceiling and can never exceed it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vcs-event-triggered-runs-limit (the `VcsEventTriggeredRunsLimit` operationId).
+func (c *ClientWithResponses) VcsEventTriggeredRunsLimitWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*VcsEventTriggeredRunsLimitResponse, error) {
+	rsp, err := c.VcsEventTriggeredRunsLimit(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVcsEventTriggeredRunsLimitResponse(rsp)
+}
+
 // VcsIntegrationsWithResponse List VCS Integrations
 //
 // List of all VCS integrations available in the account.
@@ -99435,6 +99874,135 @@ func ParseAccountUpdateSecurityEmailResponse(rsp *http.Response) (*AccountUpdate
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AccountUpdateSecurityEmailResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountUpdateVCSEventTriggeredRunsLimitResponse parses an HTTP response from a AccountUpdateVCSEventTriggeredRunsLimitWithResponse call
+func ParseAccountUpdateVCSEventTriggeredRunsLimitResponse(rsp *http.Response) (*AccountUpdateVCSEventTriggeredRunsLimitResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountUpdateVCSEventTriggeredRunsLimitResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest *int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountUpdateVCSEventTriggeredRunsLimitResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountUpdateVCSEventTriggeredRunsLimitResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountUpdateVCSEventTriggeredRunsLimitResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -141968,6 +142536,121 @@ func ParseSearchVCSIntegrationsSuggestionsResponse(rsp *http.Response) (*SearchV
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SearchVCSIntegrationsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseVcsEventTriggeredRunsLimitResponse parses an HTTP response from a VcsEventTriggeredRunsLimitWithResponse call
+func ParseVcsEventTriggeredRunsLimitResponse(rsp *http.Response) (*VcsEventTriggeredRunsLimitResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VcsEventTriggeredRunsLimitResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest *int32
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers VcsEventTriggeredRunsLimitResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers VcsEventTriggeredRunsLimitResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers VcsEventTriggeredRunsLimitResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

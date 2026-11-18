@@ -30,11 +30,14 @@ type Objects = intake.Objects
 
 // DefaultSettings are the VCS retention and secret rotation defaults.
 func DefaultSettings() Settings {
-	return Settings{Deliveries: DeliverySettings{Retention: 7 * 24 * time.Hour}, WebhookSecretOverlap: 24 * time.Hour}
+	return Settings{Deliveries: DeliverySettings{Retention: 7 * 24 * time.Hour}, WebhookSecretOverlap: 24 * time.Hour, EventRunsCeiling: 500}
 }
 
 // Validate refuses non-positive delivery retention or secret overlap.
 func (s Settings) Validate() error {
+	if s.EventRunsCeiling < 1 {
+		return fmt.Errorf("%w: vcs.event_runs_ceiling must be at least 1", ErrConfig)
+	}
 	if s.Deliveries.Retention <= 0 {
 		return fmt.Errorf("%w: vcs.deliveries.retention must be positive", ErrConfig)
 	}

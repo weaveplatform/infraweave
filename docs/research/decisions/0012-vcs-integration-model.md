@@ -315,6 +315,18 @@ user: infraweave never creates or deletes provider hooks.
   or 1 up to `vcs.event_runs_ceiling` (default 500), which always applies.
   Increment the delivery counter in the run-creating transaction. Every
   stack past the cap records `RUN_LIMIT_REACHED` and a failed check.
+
+  One child job carries the ordered prepared events for one delivery/stack,
+  preserving every ref of a multi-ref push. Full event and affected-file data
+  is stored once beside the delivery; small child references keep it outside
+  the queue's 64 KiB payload bound. Preparation and provider reads happen before
+  the fenced transaction that stores those rows, enqueues children and completes
+  dispatch. Admission runs under the stack's creation lock after stack refusals
+  and any-state deduplication, immediately before insertion. A duplicate consumes
+  no slot; a capped later event leaves the batch's earlier admitted runs intact.
+  An unexpected failure rolls back the counter, run effects and job completion
+  together. A capped/refused tracked push can update its branch head but never
+  moves the tracked commit to a commit for which no run was admitted.
 - **Superseded proposed runs.** A branch push stops its older proposed
   runs still in `PLANNING`.
 - **Renames (D15).** `vcs` maps integration plus stable provider repository

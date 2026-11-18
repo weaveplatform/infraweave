@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
 
 // Describe is a provider's details of an integration, which only a
@@ -29,12 +30,13 @@ type Server struct {
 	svc      *integration.Service
 	spaces   accessapi.Spaces
 	describe map[string]Describe
+	limits   *push.Limits
 }
 
 // New returns the partial over the service, naming spaces through
 // spaces, with each provider's details by its served VCSProvider value.
-func New(svc *integration.Service, spaces accessapi.Spaces, describe map[string]Describe) Server {
-	return Server{svc: svc, spaces: spaces, describe: describe}
+func New(svc *integration.Service, spaces accessapi.Spaces, describe map[string]Describe, limits *push.Limits) Server {
+	return Server{svc: svc, spaces: spaces, describe: describe, limits: limits}
 }
 
 // VcsIntegrations lists the integrations of the caller's account in the

@@ -114,7 +114,7 @@ func TestUnitWebhookRotationResponseKeepsOwnSecret(t *testing.T) {
 			// App runs after the second rotation, but must see the first one's snapshot.
 			app := responseRotationApps{t: t, db: db, store: st}
 			svc = integration.New(integration.Deps{Store: st, DB: db, Apps: app})
-			s := vcshttp.New(svc, sp, nil)
+			s := vcshttp.New(svc, sp, nil, nil)
 			ctx, id := kernel.WithPrincipal(t.Context(), p), row.ID.String()
 			var secret string
 			switch provider {

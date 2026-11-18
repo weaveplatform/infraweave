@@ -197,7 +197,7 @@ func newFixture(t *testing.T) fixture {
 		"OTHER": func(integration.Integration) (api.VCSIntegrationDetails, error) {
 			return api.VCSIntegrationDetails{}, errBoom
 		},
-	})
+	}, nil)
 	ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{AccountID: acct})
 	return fixture{
 		srv: srv, store: st, spaces: sp, users: us, ctx: ctx, acct: acct,

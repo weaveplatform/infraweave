@@ -34,6 +34,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
 )
 
@@ -73,6 +74,7 @@ type Settings struct {
 	BitbucketCloud       BitbucketCloud   `mapstructure:"bitbucket_cloud"`
 	Deliveries           DeliverySettings `mapstructure:"deliveries"`
 	WebhookSecretOverlap time.Duration    `mapstructure:"webhook_secret_overlap"`
+	EventRunsCeiling     int              `mapstructure:"event_runs_ceiling"`
 }
 
 // BitbucketCloud is where every BITBUCKET_CLOUD integration reaches
@@ -114,6 +116,7 @@ type Domain struct {
 	feedback     *feedback.Service
 	api          http.Server
 	intake       *intake.Service
+	limits       *push.Limits
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
@@ -142,6 +145,11 @@ func New(d Deps) (*Domain, error) {
 	bbdc := bitbucketdc.New(bitbucketdc.Options{RootCAs: roots})
 	ado := azuredevops.New(azuredevops.Options{RootCAs: roots})
 	git := rawgit.New(rawgit.Options{RootCAs: roots})
+	clock := d.Now
+	if clock == nil {
+		clock = time.Now
+	}
+	limits := &push.Limits{DB: d.DB, Store: pg.New(d.DB, d.Keys), Spaces: d.Spaces, Ceiling: d.Settings.EventRunsCeiling, Now: clock}
 	inbox, err := newIntake(d, map[string]any{
 		integration.GitHubEnterprise: gh, integration.GitLab: gl,
 		integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
@@ -184,6 +192,7 @@ func New(d Deps) (*Domain, error) {
 		}),
 		integrations: integrations,
 		intake:       inbox,
+		limits:       limits,
 		feedback: feedback.NewDeployments(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
 			if d.Spaces == nil {
 				return accessapi.ErrNoAccount
@@ -196,7 +205,7 @@ func New(d Deps) (*Domain, error) {
 				integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			},
 		}),
-		api: http.New(integrations, d.Spaces, nil),
+		api: http.New(integrations, d.Spaces, nil, limits),
 	}, nil
 }
 

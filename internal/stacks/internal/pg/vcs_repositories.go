@@ -33,3 +33,21 @@ func (s *Store) VCSRepositories(ctx context.Context, acct kernel.AccountID, u st
 	}
 	return repositories, nil
 }
+
+// ByVCSRepository preserves the integration/default binding rule while matching
+// exact repository coordinates across branches. Detached stacks receive no events.
+func (s *Store) ByVCSRepository(ctx context.Context, acct kernel.AccountID, u stacksapi.Use, namespace, repository string) ([]stacksapi.Stack, error) {
+	providers := append([]string{u.Provider}, u.Aliases...)
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+refColumns+` FROM stacks
+		WHERE account_id=$1 AND namespace=$2 AND repository=$3 AND NOT vcs_detached
+		AND (vcs_integration_id=$4 OR ($5 AND vcs_integration_id IS NULL AND provider=ANY($6::text[])))
+		ORDER BY slug`, acct, namespace, repository, u.Integration, u.Default, providers)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: stacks using VCS repository: %w", sql.Unavailable(err))
+	}
+	stacks, err := refs(acct, rows)
+	if err != nil {
+		return nil, fmt.Errorf("stacks: collect VCS repository stacks: %w", sql.Unavailable(err))
+	}
+	return stacks, nil
+}

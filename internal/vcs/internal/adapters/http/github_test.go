@@ -48,7 +48,7 @@ func newGitHubFixture(t *testing.T) gitHubFixture {
 		Now:       time.Now,
 	}
 	return gitHubFixture{
-		srv: http.New(integration.New(d), sp, nil), store: st, spaces: sp,
+		srv: http.New(integration.New(d), sp, nil, nil), store: st, spaces: sp,
 		ctx: kernel.WithPrincipal(t.Context(), kernel.Principal{AccountID: acct}),
 		ghe: ghe.String(),
 	}

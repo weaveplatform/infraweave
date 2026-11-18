@@ -10,7 +10,7 @@ import (
 )
 
 func TestUnitWebhookControlsRequirePrincipal(t *testing.T) {
-	s := vcshttp.New(nil, nil, nil)
+	s := vcshttp.New(nil, nil, nil, nil)
 	ctx := t.Context()
 	calls := map[string]func() error{
 		"gitlab rotate": func() error {

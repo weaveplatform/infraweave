@@ -20,7 +20,6 @@
       "accountSetSpaceliftIntelligenceEnabled",
       "accountToggleEnforcingMFA",
       "accountUpdateAuthorizationScheme",
-      "accountUpdateVCSEventTriggeredRunsLimit",
       "aiIntegrationToggle",
       "auditTrailRetentionDays",
       "authorizationScheme",
@@ -33,8 +32,7 @@
       "infraAssistantEnabled",
       "spaceliftIntelligenceEnabled",
       "spaceliftIntelligenceTermsAccepted",
-      "spaceliftIntelligenceTermsLatestVersion",
-      "vcsEventTriggeredRunsLimit"
+      "spaceliftIntelligenceTermsLatestVersion"
     ],
     "Ansible": [
       "ansibleHost",
