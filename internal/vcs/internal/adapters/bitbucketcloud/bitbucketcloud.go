@@ -18,6 +18,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -506,6 +507,12 @@ func (p *Provider) Branches(ctx context.Context, repo port.Repository) ([]string
 // port.ErrNotFound; a refused e-mail or token, or one lacking a scope,
 // is ErrCredential; a host that fails is kernel.ErrUnavailable.
 func classify(resp *http.Response, what string) error {
+	if resp.StatusCode == http.StatusForbidden {
+		if reset, ok := ratelimit.Reset(resp.Header, time.Now(), "X-RateLimit-Reset", "Retry-After", "RateLimit-Reset"); ok {
+			return &port.RateLimited{Reset: reset}
+		}
+	}
+
 	var body struct {
 		Error struct {
 			Message string `json:"message"`
@@ -533,12 +540,9 @@ func classify(resp *http.Response, what string) error {
 // Retry-After's seconds from now, or Backoff from now when it names
 // neither.
 func rateLimit(resp *http.Response) *port.RateLimited {
-	if s, err := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
-		return &port.RateLimited{Reset: time.Unix(s, 0)}
+	now := time.Now()
+	if reset, ok := ratelimit.Reset(resp.Header, now, "X-RateLimit-Reset", "Retry-After", "RateLimit-Reset"); ok {
+		return &port.RateLimited{Reset: reset}
 	}
-	wait := Backoff
-	if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil {
-		wait = time.Duration(s) * time.Second
-	}
-	return &port.RateLimited{Reset: time.Now().Add(wait).Truncate(time.Second)}
+	return &port.RateLimited{Reset: now.Add(Backoff).Truncate(time.Second)}
 }

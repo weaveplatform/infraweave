@@ -24,6 +24,7 @@ type Service struct {
 	jobs        *queue.Queue
 	hold        func(context.Context, kernel.AccountID) error
 	deployments *DeploymentDeps
+	comments    *CommentDeps
 }
 
 // ErrAccountHold refuses enqueueing when its owner fence is not configured.
@@ -39,12 +40,20 @@ func (*Service) Kinds() []string { return []string{runsapi.UpdatedKind} }
 
 // Targets selects deployment effects from run facts without calling providers.
 func (s *Service) Targets(ctx context.Context, event outbox.Event) ([]vcsapi.FeedbackTarget, error) {
-	return s.deploymentTargets(ctx, event)
+	out, err := s.deploymentTargets(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	comments, err := s.commentTargets(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	return append(out, comments...), nil
 }
 
 func valid(target vcsapi.FeedbackTarget) bool {
 	return !target.Account.IsZero() && !target.EventID.IsZero() && target.Key != "" &&
-		(target.Job == ReportCheck.Name || target.Job == ReportDeployment.Name) && json.Valid(target.Payload)
+		(target.Job == ReportCheck.Name || target.Job == ReportDeployment.Name || target.Job == ReportComment.Name) && json.Valid(target.Payload)
 }
 
 // Enqueue creates the target's job in the transaction on ctx. The event,
@@ -64,6 +73,9 @@ func (s *Service) Enqueue(ctx context.Context, target vcsapi.FeedbackTarget) err
 	}
 	if target.Job == ReportDeployment.Name {
 		return s.enqueueDeployment(ctx, target)
+	}
+	if target.Job == ReportComment.Name {
+		return s.enqueueComment(ctx, target)
 	}
 	key := fmt.Sprintf("%s:%s:commit_checks:%s:0", target.Account, target.EventID, target.Key)
 	if _, err := s.jobs.EnqueueTx(ctx, ReportCheck, target.Payload,

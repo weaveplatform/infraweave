@@ -5,6 +5,8 @@
 // ErrRefNotFound when the repository lacks the ref. Feedback exposes only
 // event kinds, target selection and transaction-bound job enqueueing to
 // the events domain; its payloads carry identifiers rather than secrets.
+// Comments exposes queued account-bound Upsert for P18 notification policies,
+// with no policy caller yet. Run-based plan comments remain a VCS decision.
 //
 // # Input and output
 //

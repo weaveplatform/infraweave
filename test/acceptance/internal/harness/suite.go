@@ -327,6 +327,12 @@ func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 		}
 		return ctx, nil
 	})
+
+	for _, register := range s.areas {
+		register(sc, w)
+	}
+	// Godog runs After hooks in registration order. Stop area-owned workers
+	// while their API, database and workspace still exist.
 	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
 		ctx = context.WithoutCancel(ctx)
 		if err != nil && w.Dir != "" {
@@ -355,7 +361,4 @@ func (s *Suite) initScenario(sc *godog.ScenarioContext) {
 		}
 		return ctx, err
 	})
-	for _, register := range s.areas {
-		register(sc, w)
-	}
 }

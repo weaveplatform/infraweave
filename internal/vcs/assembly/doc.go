@@ -15,7 +15,11 @@
 // StackIntegrations the check of the integration a stack's write names,
 // which internal/app binds in the stacks domain; and Purge deletes a
 // deleted account's integrations. Feedback exposes VCS-owned target
-// selection and job enqueueing to the events domain. Jobs are its job handlers, which the
+// selection and job enqueueing to the events domain.
+// Comments exposes queued native Upsert for notification policies. Labelled
+// plan comments read exact masked text through runsapi.PlanningLogs; their
+// provider effects and native reference mappings remain in VCS.
+// Jobs are its job handlers, which the
 // scheduler registers: Revoke's, which revokes a run's minted tokens once
 // vcsapi.Sources.Release enqueues it. API is its partial of the API's
 // strict server, aliased VCSAPI.

@@ -14,6 +14,8 @@
 // account's runs have not ended, for a domain that keeps what a run wrote
 // until the run ends; and CommitRuns, which reads minimal run identities on a
 // stack's current or historical commit hashes without filtering type or state.
+// PlanningLogs reads a bounded raw masked log tail of an exact PLANNING
+// transition without execution configuration or signed object URLs.
 //
 // # Input and output
 //
@@ -24,5 +26,5 @@
 // It imports the standard library and internal/kernel. The domains above
 // runs in the declared graph import it, the vcs domain implements
 // RunSources, and the runs domain implements StateAccess, StackRuns and
-// RunEnds and CommitRuns.
+// RunEnds, CommitRuns and PlanningLogs.
 package api
