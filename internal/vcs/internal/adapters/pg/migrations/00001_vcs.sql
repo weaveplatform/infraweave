@@ -140,6 +140,7 @@ CREATE TABLE pull_requests (
     FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
 );
 CREATE INDEX pull_requests_integration ON pull_requests (account_id,integration_id);
+CREATE INDEX pull_requests_commit_head ON pull_requests (account_id,integration_id,namespace,repository,head_sha);
 CREATE INDEX pull_requests_stack_read ON pull_requests
     (account_id,integration_id,namespace,repository,base_branch,updated_at DESC,id DESC) WHERE state='open';
 CREATE INDEX pull_requests_retention ON pull_requests (updated_at,id) WHERE state IN ('closed','merged');
@@ -185,3 +186,32 @@ CREATE TABLE vcs_ignored_triggers (
 );
 CREATE INDEX vcs_ignored_triggers_stack ON vcs_ignored_triggers(account_id,stack_id,created_at DESC,id);
 CREATE INDEX vcs_ignored_triggers_retention ON vcs_ignored_triggers(created_at,id);
+
+-- Native comment identities survive lost HTTP responses and queue completion.
+-- Historical stack/run IDs are routing facts, not cross-domain foreign keys;
+-- no credentials or worker configuration enters a binding. Policy bodies live
+-- here so provider-sized comments do not enter the queue's small JSON payload.
+CREATE TABLE vcs_pr_comments (
+    account_id uuid NOT NULL,
+    id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    repository_id text NOT NULL,
+    pull_request text NOT NULL,
+    request_id uuid NOT NULL,
+    dedup_key text NOT NULL,
+    stack_id uuid,
+    run_id uuid,
+    run_created_at timestamptz,
+    binding jsonb NOT NULL,
+    reference jsonb NOT NULL DEFAULT '{}',
+    revision bigint NOT NULL DEFAULT 1 CHECK(revision>0),
+    reported_revision bigint NOT NULL DEFAULT 0 CHECK(reported_revision>=0 AND reported_revision<=revision),
+    minimized boolean NOT NULL DEFAULT false,
+    PRIMARY KEY(account_id,id),
+    UNIQUE(account_id,integration_id,repository_id,pull_request,dedup_key),
+    CHECK((run_id IS NULL AND stack_id IS NULL AND run_created_at IS NULL) OR
+          (run_id IS NOT NULL AND stack_id IS NOT NULL AND run_created_at IS NOT NULL))
+);
+CREATE INDEX vcs_pr_comments_stack ON vcs_pr_comments
+    (account_id,integration_id,repository_id,pull_request,stack_id,run_created_at DESC,run_id DESC)
+    WHERE stack_id IS NOT NULL;
