@@ -60,3 +60,12 @@ func TestUnitCloudRequestHeadRequiredExceptTerminal(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitCloudSupersededUpdateClosesRequest(t *testing.T) {
+	p := bitbucketcloud.New(bitbucketcloud.Options{})
+	body := cloudBody(t, "pullrequest:updated", func(d map[string]any) { d["pullrequest"].(map[string]any)["state"] = "SUPERSEDED" })
+	events, err := p.Parse(cloudHeaders("pullrequest:updated"), body)
+	if err != nil || len(events) != 1 || events[0].Action != "edited" || events[0].PullRequest.State != "closed" {
+		t.Fatal("superseded update can reopen obsolete request", events, err)
+	}
+}

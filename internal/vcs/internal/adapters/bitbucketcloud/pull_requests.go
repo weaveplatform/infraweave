@@ -16,7 +16,7 @@ func cloudMetadata(r *webhookRequest, out *vcsapi.PullRequest) {
 		out.State = "open"
 	case "MERGED":
 		out.State = "merged"
-	case "DECLINED":
+	case "DECLINED", "SUPERSEDED":
 		out.State = "closed"
 	}
 	if r.Source.Repository != nil {

@@ -375,6 +375,8 @@ user: infraweave never creates or deletes provider hooks.
   Cloud `pullrequest:rejected` and Data Center `pr:declined` are consumed close
   events so declined requests leave the list. Provider-native timestamps are
   retained, including GitLab's legacy UTC format and DC's milliseconds.
+  Cloud's native `SUPERSEDED` state also closes a request when observed in an
+  already-consumed update; it does not introduce another webhook event key.
 - **Retention and replay (D7).** Rows last 7 days
   (`vcs.deliveries.retention`), pruned hourly; `inbox` objects last 2 days.
   A dead job leaves the delivery `failed`. `vcsIntegrationDeliveries`,
