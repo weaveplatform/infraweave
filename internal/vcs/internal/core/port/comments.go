@@ -109,8 +109,9 @@ func ValidateCommentRequest(comment CommentRequest, presentation CommentPresenta
 	return nil
 }
 
-// ErrCommentSearchIncomplete refuses a create when the bounded recovery scan
-// cannot establish absence. Retrying cannot silently duplicate an older post.
+// ErrCommentSearchIncomplete refuses malformed or unreliable recovery
+// responses. Exhausting the normal newest-first window alone permits a fresh
+// create; a known recorded reference is read directly outside that window.
 var ErrCommentSearchIncomplete = errors.New("vcs: pull request comment recovery incomplete")
 
 // ErrCommentResponse refuses native success without a usable comment identity.
