@@ -561,18 +561,21 @@ func (c *commentSteps) rawLog(ctx context.Context, run string) (string, error) {
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, signed, nil)
 	if err != nil {
-		return "", fmt.Errorf("%w: construct planning log download: %w", harness.ErrStep, err)
+		return "", fmt.Errorf("%w: construct planning log download request", harness.ErrStep)
 	}
 	client := &http.Client{Timeout: 30 * time.Second}
 	response, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("%w: download planning log: %w", harness.ErrStep, err)
+		return "", fmt.Errorf("%w: download planning log request failed", harness.ErrStep)
 	}
 	defer response.Body.Close()
 	const bound = 8 << 20
 	text, err := io.ReadAll(io.LimitReader(response.Body, bound+1))
-	if err != nil || response.StatusCode != http.StatusOK || len(text) > bound {
-		return "", fmt.Errorf("%w: planning log download answered %d, bytes %d: %w", harness.ErrStep, response.StatusCode, len(text), err)
+	if err != nil {
+		return "", fmt.Errorf("%w: read planning log download failed", harness.ErrStep)
+	}
+	if response.StatusCode != http.StatusOK || len(text) > bound {
+		return "", fmt.Errorf("%w: planning log download answered %d, bytes %d", harness.ErrStep, response.StatusCode, len(text))
 	}
 	return string(text), nil
 }
