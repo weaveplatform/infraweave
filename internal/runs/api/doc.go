@@ -12,7 +12,8 @@
 // ended, each an UnendedRun with its type, for a domain that changes the
 // stack only while it is idle; and RunEnds, which answers which of an
 // account's runs have not ended, for a domain that keeps what a run wrote
-// until the run ends.
+// until the run ends; and CommitRuns, which reads minimal run identities on a
+// stack's current or historical commit hashes without filtering type or state.
 //
 // # Input and output
 //
@@ -23,5 +24,5 @@
 // It imports the standard library and internal/kernel. The domains above
 // runs in the declared graph import it, the vcs domain implements
 // RunSources, and the runs domain implements StateAccess, StackRuns and
-// RunEnds.
+// RunEnds and CommitRuns.
 package api

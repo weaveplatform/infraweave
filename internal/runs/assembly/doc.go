@@ -45,7 +45,9 @@
 // API's strict server, aliased RunsAPI; Held declares the columns that
 // hold the access domain's accounts and the stacks domain's stacks, and
 // Keys the runs' key, which other domains' held columns name, for the
-// nightly orphan count; Stream is its migration stream, which
+// nightly orphan count; CommitRuns supplies runsapi.CommitRuns, the account-bound
+// identities and creation times of runs on a stack's requested commits;
+// Stream is its migration stream, which
 // internal/app registers after configuration's.
 //
 // # Input and output
