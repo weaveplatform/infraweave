@@ -123,18 +123,28 @@ func (s *repositoryLifecycleSteps) snapshot(ctx context.Context, token, slug str
 	var view struct {
 		ID string `json:"id"`
 	}
-	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &view) != nil || view.ID == "" || r.Header.Get("ETag") == "" {
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &view) != nil || view.ID != slug || r.Header.Get("ETag") == "" {
 		return lifecycleStack{}, fmt.Errorf("%w: lifecycle stack read %s: status=%d", harness.ErrStep, slug, r.Status)
 	}
 	st := lifecycleStack{etag: r.Header.Get("ETag")}
-	id, err := kernel.ParseULID(view.ID)
+	var claims harness.APIClaims
+	if err := harness.JWTPart(s.w.Tokens[token], 1, &claims); err != nil {
+		return st, err
+	}
+	key, err := kernel.ParseULID(strings.TrimPrefix(claims.Subject, "api::"))
 	if err != nil {
-		return st, fmt.Errorf("lifecycle stack identity: %w", err)
+		return st, fmt.Errorf("lifecycle caller identity: %w", err)
+	}
+	// Stack.id is the served slug. Resolve the immutable fixture identity only
+	// within the account of the API key that successfully read that slug.
+	if err := s.w.Row(ctx, `SELECT s.account_id,s.id FROM stacks s JOIN api_keys k ON k.account_id=s.account_id
+		WHERE k.id=$1 AND s.slug=$2`, []any{key, slug}, &st.account, &st.id); err != nil {
+		return st, err
 	}
 	err = s.w.Row(ctx, `SELECT s.account_id,s.id,s.namespace,s.repository,s.branch,s.version,
-		(SELECT count(*) FROM events WHERE account_id=s.account_id AND kind='stack.changed' AND subject_id=$2),
-		(SELECT count(*) FROM audit_trail_entries WHERE account_id=s.account_id AND affected_id IN ($2,$3))
-		FROM stacks s WHERE s.id=$1`, []any{id, id.String(), slug}, &st.account, &st.id, &st.namespace, &st.name, &st.branch, &st.version, &st.events, &st.audits)
+		(SELECT count(*) FROM events WHERE account_id=s.account_id AND kind='stack.changed' AND subject_id=$3),
+		(SELECT count(*) FROM audit_trail_entries WHERE account_id=s.account_id AND affected_id IN ($3,$4))
+		FROM stacks s WHERE s.account_id=$1 AND s.id=$2`, []any{st.account, st.id, st.id.String(), slug}, &st.account, &st.id, &st.namespace, &st.name, &st.branch, &st.version, &st.events, &st.audits)
 	return st, err
 }
 
@@ -194,7 +204,7 @@ func (s *repositoryLifecycleSteps) coordinates(ctx context.Context, table *godog
 			if err := s.w.Row(ctx, `SELECT count(*) FROM events WHERE account_id=$1 AND subject_id=$2
 				AND kind='stack.changed' AND schema_version=1 AND subject_kind='stack' AND sequence>$3 AND sequence<=$4
 				AND document->>'stack'=$2 AND document->>'slug'=$5 AND document->>'change'='updated'
-				AND (document->>'source')::boolean`, []any{after.account, after.id.String(), before.version, after.version, slug}, &canonical); err != nil {
+				AND NOT coalesce((document->>'source')::boolean,false)`, []any{after.account, after.id.String(), before.version, after.version, slug}, &canonical); err != nil {
 				return false, err
 			}
 			if canonical != advances {
