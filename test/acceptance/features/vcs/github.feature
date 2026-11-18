@@ -25,6 +25,7 @@ Feature: GitHub integrations
     And the answer's vcsChecks is '"INDIVIDUAL"'
     When token "h" sends "PUT /api/v1/github-enterprise-integrations/{defaultApp}" with '{"apiHost":"{githubHost}","webhookSecret":"hook","customInput":{"space":"acme","vcsChecks":"ALL","useGitCheckout":true,"vcsCheckOptions":{"individualFailuresOnly":true}}}' through B
     Then it answers 200
+    And the answer's ETag is kept as "updated"
     And the answer's vcsChecks is '"ALL"'
     When token "h" sends "PUT /api/v1/github-enterprise-integrations/{defaultApp}" with '{"apiHost":"{githubHost}","webhookSecret":"hook","customInput":{"space":"acme","vcsChecks":"AGGREGATED"}}' through A
     Then it answers 200
@@ -179,3 +180,122 @@ Feature: GitHub integrations
     Then it answers 200
     And the specification fetches its source by Git from "{githubHost}/acme/infra.git", narrowed
     And the specification's sealed part opens with the key of "csr" to the source credential of "x-access-token", whose token neither the answer nor a server's log names
+
+  @op:githubEnterpriseIntegration @op:githubEnterpriseIntegrationDelete @case:failure
+  Scenario: A missing GitHub App integration cannot be read or deleted, and deletion succeeds only once
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Secret","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And the answer's id is the space "secret"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/missing-integration" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "DELETE /api/v1/github-enterprise-integrations/missing-integration" through B
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Evidence","spaceID":"{secret}","labels":["infra"]}}' through A
+    Then it answers 201
+    And the answer's id names "hidden"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hidden}" through A
+    Then it answers 200
+    And the answer's name is '"Evidence"'
+    When token "h" sends "DELETE /api/v1/github-enterprise-integrations/{hidden}" through B
+    Then it answers 200
+    When token "h" sends "DELETE /api/v1/github-enterprise-integrations/{hidden}" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hidden}" through B
+    Then it answers a 404 problem "not-found"
+
+  @op:githubEnterpriseIntegration @op:vcsIntegrationTest @case:denial
+  Scenario: A GitHub App integration in an unreadable space is hidden from reads and connection tests
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Secret","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And the answer's id is the space "secret"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Evidence","spaceID":"{secret}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "hidden"
+    When token "m" sends "GET /api/v1/github-enterprise-integrations/{hidden}" through B
+    Then it answers a 404 problem "not-found"
+    When token "m" sends "GET /api/v1/vcs-integrations/{hidden}/test?provider=GITHUB_ENTERPRISE" through A
+    Then it answers a 404 problem "not-found"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{hidden}" through B
+    Then it answers 200
+    And the answer's name is '"Evidence"'
+
+  @op:githubEnterpriseIntegrationPatch @op:vcsIntegrationTest @case:success
+  Scenario: A GitHub App merge patch changes one member, preserves the rest and returns a new ETag
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"],"useGitCheckout":true,"vcsChecks":"ALL","vcsCheckOptions":{"individualFailuresOnly":true,"individualSkipUnchanged":true}},"webhookSecret":"preserved-hook-532"}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    And token "h" sends "GET /api/v1/github-enterprise-integrations/{probe}" through B
+    And it answers 200
+    And the answer's ETag is kept as "before"
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Patched description"}}' if matching the ETag "before" through A
+    Then it answers 200
+    And the answer's ETag differs from "before"
+    And the answer's ETag is kept as "after"
+    And the answer's description is '"Patched description"'
+    And the answer's name is '"Evidence"'
+    And the answer's labels is '["infra"]'
+    And the answer's vcsChecks is '"ALL"'
+    And the answer's vcsCheckOptions is '{"individualFailuresOnly":true,"individualSkipUnchanged":true}'
+    And the answer's useGitCheckout is 'true'
+    And the answer's appID is '"{entID}"'
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{probe}" through B
+    Then it answers 200
+    And the answer's description is '"Patched description"'
+    And the answer's labels is '["infra"]'
+    When token "h" sends "GET /api/v1/vcs-integrations/{probe}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"privateKey":null,"customInput":{"description":null,"labels":null,"vcsChecks":null,"useGitCheckout":null,"vcsCheckOptions":null},"webhookSecret":null}' if matching the ETag "after" through A
+    Then it answers 200
+    And the answer's ETag differs from "after"
+    And the answer's description is '""'
+    And the answer's labels is '[]'
+    And the answer's vcsChecks is '"INDIVIDUAL"'
+    And the answer's vcsCheckOptions is '{"individualFailuresOnly":false,"individualSkipUnchanged":false}'
+    And the answer's useGitCheckout is 'false'
+    And the answer's webhookSecret is '"preserved-hook-532"'
+    When token "h" sends "GET /api/v1/vcs-integrations/{probe}/test?provider=GITHUB_ENTERPRISE" through B
+    Then it answers 200
+    And the answer's status is '"SUCCESS"'
+
+  @op:githubEnterpriseIntegrationPatch @case:denial
+  Scenario: A GitHub App reader cannot merge patch an integration it can read
+    Given the member key is space-reader on the space "{team}"
+    And token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    When token "m" sends "GET /api/v1/github-enterprise-integrations/{probe}" through B
+    Then it answers 200
+    When token "m" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Forbidden description"}}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_ADMIN"'
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{probe}" through B
+    Then it answers 200
+    And the answer's description is '""'
+    And the answer's labels is '["infra"]'
+
+  @op:githubEnterpriseIntegrationPatch @case:failure
+  Scenario: A GitHub App merge patch refuses a stale ETag and unknown members without changing the integration
+    Given token "h" sends "POST /api/v1/github-enterprise-integrations" with '{"apiHost":"{githubHost}","appID":"{entID}","privateKey":"{entKey}","customInput":{"name":"Evidence","spaceID":"{team}","labels":["infra"]}}' through A
+    And it answers 201
+    And the answer's id names "probe"
+    And token "h" sends "GET /api/v1/github-enterprise-integrations/{probe}" through B
+    And it answers 200
+    And the answer's ETag is kept as "before"
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Current description"}}' if matching the ETag "before" through A
+    Then it answers 200
+    And the answer's ETag differs from "before"
+    And the answer's ETag is kept as "current"
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Stale description"}}' if matching the ETag "before" through B
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"unrecognizedSetting":true}' if matching the ETag "current" through A
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"unrecognizedSetting":true}}' if matching the ETag "current" through B
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "GET /api/v1/github-enterprise-integrations/{probe}" through A
+    Then it answers 200
+    And the answer's description is '"Current description"'
+    And the answer's labels is '["infra"]'
+    When token "h" sends "PATCH /api/v1/github-enterprise-integrations/{probe}" with '{"customInput":{"description":"Final description"}}' if matching the ETag "current" through B
+    Then it answers 200
+    And the answer's description is '"Final description"'

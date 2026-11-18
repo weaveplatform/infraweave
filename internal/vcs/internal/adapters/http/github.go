@@ -70,7 +70,9 @@ func (s Server) GithubEnterpriseIntegration(ctx context.Context, req api.GithubE
 	if err != nil {
 		return nil, err
 	}
-	return api.GithubEnterpriseIntegration200JSONResponse{Body: v}, nil
+	return api.GithubEnterpriseIntegration200JSONResponse{
+		Body: v, Headers: api.GithubEnterpriseIntegration200ResponseHeaders{ETag: new(strict.ETag(in.Version))},
+	}, nil
 }
 
 // GithubEnterpriseIntegrationUpdate replaces a GitHub Enterprise
@@ -84,29 +86,48 @@ func (s Server) GithubEnterpriseIntegrationUpdate(
 	if err != nil {
 		return nil, err
 	}
-	id, b := req.GithubEnterpriseIntegrationId, req.Body
-	cur, _, err := s.svc.Read(ctx, p, id, integration.GitHubEnterprise)
+	b := req.Body
+	in := gitHubUpdateInput{
+		APIHost: b.ApiHost, CustomInput: b.CustomInput, PrivateKey: b.PrivateKey,
+		UserFacingHost: b.UserFacingHost, WebhookSecret: &b.WebhookSecret,
+	}
+	out, err := s.updateGitHub(ctx, p, req.GithubEnterpriseIntegrationId, strict.IfMatch(req.Params.IfMatch), in)
 	if err != nil {
-		return nil, integrationError(err)
-	}
-	in := customUpdate(cur, b.CustomInput)
-	in.Settings = port.Settings{
-		APIHost: b.ApiHost, UserFacingHost: or(b.UserFacingHost, b.ApiHost),
-		AppID: cur.Settings.AppID,
-	}
-	in.Secrets = &integration.Secrets{WebhookSecret: []byte(b.WebhookSecret)}
-	if b.PrivateKey != nil {
-		in.Secrets.Credential = []byte(*b.PrivateKey)
-	}
-	out, err := s.svc.Update(ctx, p, id, strict.IfMatch(req.Params.IfMatch), in)
-	if err != nil {
-		return nil, integrationError(err)
+		return nil, err
 	}
 	v, err := s.enterprise(ctx, p, out, true)
 	if err != nil {
 		return nil, err
 	}
-	return api.GithubEnterpriseIntegrationUpdate200JSONResponse{Body: v}, nil
+	return api.GithubEnterpriseIntegrationUpdate200JSONResponse{
+		Body: v, Headers: api.GithubEnterpriseIntegrationUpdate200ResponseHeaders{ETag: new(strict.ETag(out.Version))},
+	}, nil
+}
+
+func (s Server) updateGitHub(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, b gitHubUpdateInput) (integration.Integration, error) {
+	cur, _, err := s.svc.Read(ctx, p, id, integration.GitHubEnterprise)
+	if err != nil {
+		return integration.Integration{}, integrationError(err)
+	}
+	in := customUpdate(cur, b.CustomInput)
+	in.Settings = port.Settings{
+		APIHost: b.APIHost, UserFacingHost: or(b.UserFacingHost, b.APIHost),
+		AppID: cur.Settings.AppID,
+	}
+	if b.PrivateKey != nil || b.WebhookSecret != nil {
+		in.Secrets = &integration.Secrets{}
+		if b.PrivateKey != nil {
+			in.Secrets.Credential = []byte(*b.PrivateKey)
+		}
+		if b.WebhookSecret != nil {
+			in.Secrets.WebhookSecret = []byte(*b.WebhookSecret)
+		}
+	}
+	out, err := s.svc.Update(ctx, p, id, expect, in)
+	if err != nil {
+		return integration.Integration{}, integrationError(err)
+	}
+	return out, nil
 }
 
 // GithubEnterpriseIntegrationDelete deletes a GitHub Enterprise

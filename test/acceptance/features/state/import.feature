@@ -333,7 +333,9 @@ Feature: A state file is imported at a stack's creation or into an existing stac
     And the problem's detail names the run "pending"
     When token "h" sends "POST /api/v1/stacks/infra/runs/{pending}/cancel" with '{}' through B
     Then it answers 200
+    And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo task"}' through A
+    Then it answers 201
     And the answer's id names "task"
     And token "h" sends "POST /api/v1/stacks/infra/managed-state-import" with '{"state":"{obj}"}' through B
     Then it answers a 409 problem "invalid-state"
