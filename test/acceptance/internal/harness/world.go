@@ -263,6 +263,7 @@ type Fake interface {
 // vcs.ca_file holding every certificate they trust.
 func (w *World) vcs(ctx context.Context, config []byte) ([]byte, error) {
 	vcs := map[string]any{}
+	maps.Copy(vcs, w.Settings["vcs"])
 	var cas []byte
 	for _, f := range w.Fakes {
 		settings, ca, err := f.VCS(ctx, w)
