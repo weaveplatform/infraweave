@@ -26,7 +26,7 @@ type Integrations interface {
 // Identities follows native identities and known installation availability.
 type Identities interface {
 	Check(context.Context, kernel.AccountID, kernel.ULID, string, string) error
-	SeedAt(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, vcsapi.Repository, time.Time) error
+	SeedReferenceAt(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Use, stacksapi.VCSRepository, vcsapi.Repository, time.Time) error
 }
 
 type Service struct {
@@ -165,7 +165,15 @@ func (s *Service) Track(ctx context.Context, acct kernel.AccountID, stack kernel
 				return readErr //nolint:wrapcheck // the called boundary names the failed operation
 			}
 			if found {
-				err = s.identities.SeedAt(ctx, acct, repo.Integration.ID, use, resolved.Repository, started)
+				err = s.identities.SeedReferenceAt(
+					ctx,
+					acct,
+					repo.Integration.ID,
+					use,
+					stacksapi.VCSRepository{Namespace: repo.Namespace, Name: repo.Name},
+					resolved.Repository,
+					started,
+				)
 			}
 		}
 	} else {

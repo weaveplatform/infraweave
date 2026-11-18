@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ type Installation struct {
 	Owner      vcsapi.Owner
 	State      string
 	Current    bool
+	Superseded bool
 	ObservedAt time.Time
 }
 
@@ -93,7 +95,7 @@ func (s *Service) Check(ctx context.Context, acct kernel.AccountID, integration 
 		return err //nolint:wrapcheck // the called boundary names the failed operation
 	}
 	for _, in := range installs {
-		if (in.Owner.Login == namespace || known && repository.OwnerID != "" && in.Owner.ID == repository.OwnerID) && in.Current && in.State != "active" {
+		if (strings.EqualFold(in.Owner.Login, namespace) || known && repository.OwnerID != "" && in.Owner.ID == repository.OwnerID) && in.Current && in.State != "active" {
 			return &kernel.Invalid{Detail: fmt.Sprintf("The GitHub App installation on %s is %s.", in.Owner.Login, in.State)}
 		}
 	}
@@ -109,19 +111,65 @@ func (s *Service) Seed(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 // SeedAt uses the time before the provider read, so waiting for a database lock
 // cannot make an older API observation newer than a concurrent rename delivery.
 func (s *Service) SeedAt(ctx context.Context, acct kernel.AccountID, id kernel.ULID, use stacksapi.Use, repo vcsapi.Repository, at time.Time) error {
+	return s.SeedReferenceAt(ctx, acct, id, use, stacksapi.VCSRepository{Namespace: repo.Namespace, Name: repo.Name}, repo, at)
+}
+
+// SeedReferenceAt associates the requested source path with the native identity
+// returned by the provider, including redirects and canonical case spellings.
+// Neither occupied path can be reassigned through an ambiguous alias.
+func (s *Service) SeedReferenceAt(
+	ctx context.Context,
+	acct kernel.AccountID,
+	id kernel.ULID,
+	use stacksapi.Use,
+	requested stacksapi.VCSRepository,
+	repo vcsapi.Repository,
+	at time.Time,
+) error {
 	if repo.ID == "" || repo.Namespace == "" || repo.Name == "" {
 		return nil
 	}
-	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error { //nolint:wrapcheck // the called boundary names the failed operation
+	repo.ID = CanonicalID(repo.ID)
+	return tx.Do(ctx, s.DB, tx.Options{}, func(ctx context.Context) error {
 		found, err := s.Store.HoldRepositoryIntegration(ctx, acct, id)
 		if err != nil || !found {
-			return err //nolint:wrapcheck // the called boundary names the failed operation
-		}
+			return err
+		} //nolint:wrapcheck // store names the read
 		if err := s.Check(ctx, acct, id, repo.Namespace, repo.Name); err != nil {
 			return err
 		}
-		return s.observe(ctx, acct, id, use, repo, at)
-	})
+		for _, path := range []stacksapi.VCSRepository{requested, {Namespace: repo.Namespace, Name: repo.Name}} {
+			occupant, occupied, err := s.Store.RepositoryPath(ctx, acct, id, path.Namespace, path.Name)
+			if err != nil {
+				return err
+			} //nolint:wrapcheck // store names the read
+			if occupied && occupant.ID != repo.ID {
+				if s.Log != nil {
+					s.Log.WarnContext(ctx, "vcs: source alias belongs to another native repository", "integration", id, "repository", repo.ID)
+				}
+				return nil
+			}
+		}
+		previous, known, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
+		if err != nil {
+			return err
+		} //nolint:wrapcheck // store names the read
+		if err := s.observe(ctx, acct, id, use, repo, at); err != nil {
+			return err
+		}
+		current, found, err := s.Store.RepositoryIdentity(ctx, acct, id, repo.ID)
+		if err != nil || !found {
+			return err
+		} //nolint:wrapcheck // store names the read
+		target := stacksapi.VCSRepository{Namespace: current.Namespace, Name: current.Name}
+		if requested == target {
+			return nil
+		}
+		if known && !previous.ObservedAt.After(at) && requested == (stacksapi.VCSRepository{Namespace: previous.Namespace, Name: previous.Name}) {
+			return nil
+		}
+		return s.Stacks.RepointVCSRepository(ctx, acct, use, requested, target) //nolint:wrapcheck // stacks names the atomic update
+	}) //nolint:wrapcheck // callback names the operation
 }
 
 // Apply runs before fan-out selection in the delivery's completing transaction.

@@ -94,7 +94,7 @@ func (s *Store) DropRepositoryIdentity(ctx context.Context, acct kernel.AccountI
 
 // Installations returns availability records without opening any credential.
 func (s *Store) Installations(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]lifecycle.Installation, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT installation_id,owner_id,owner_login,state,is_current,observed_at FROM vcs_installations
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT installation_id,owner_id,owner_login,state,is_current,is_superseded,observed_at FROM vcs_installations
  WHERE account_id=$1 AND integration_id=$2 ORDER BY installation_id`, acct, id)
 	if err != nil {
 		return nil, repositoryError(err)
@@ -103,7 +103,7 @@ func (s *Store) Installations(ctx context.Context, acct kernel.AccountID, id ker
 	var out []lifecycle.Installation
 	for rows.Next() {
 		var in lifecycle.Installation
-		if err := rows.Scan(&in.ID, &in.Owner.ID, &in.Owner.Login, &in.State, &in.Current, &in.ObservedAt); err != nil {
+		if err := rows.Scan(&in.ID, &in.Owner.ID, &in.Owner.Login, &in.State, &in.Current, &in.Superseded, &in.ObservedAt); err != nil {
 			return nil, repositoryError(err)
 		}
 		out = append(out, in)
@@ -118,13 +118,13 @@ func (s *Store) PutInstallation(ctx context.Context, acct kernel.AccountID, id k
 	}
 	if in.Current {
 		if _, err := tx.Q(ctx, s.db).
-			Exec(ctx, `UPDATE vcs_installations SET is_current=false WHERE account_id=$1 AND integration_id=$2 AND owner_id=$3 AND installation_id<>$4`, acct, id, in.Owner.ID, in.ID); err != nil {
+			Exec(ctx, `UPDATE vcs_installations SET is_current=false,is_superseded=true WHERE account_id=$1 AND integration_id=$2 AND owner_id=$3 AND installation_id<>$4`, acct, id, in.Owner.ID, in.ID); err != nil {
 			return repositoryError(err)
 		}
 	}
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installations(account_id,integration_id,installation_id,owner_id,owner_login,state,is_current,observed_at)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(account_id,integration_id,installation_id) DO UPDATE
- SET owner_id=EXCLUDED.owner_id,owner_login=EXCLUDED.owner_login,state=EXCLUDED.state,is_current=EXCLUDED.is_current,observed_at=EXCLUDED.observed_at`, acct, id, in.ID, in.Owner.ID, in.Owner.Login, in.State, in.Current, in.ObservedAt)
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO vcs_installations(account_id,integration_id,installation_id,owner_id,owner_login,state,is_current,is_superseded,observed_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(account_id,integration_id,installation_id) DO UPDATE
+ SET owner_id=EXCLUDED.owner_id,owner_login=EXCLUDED.owner_login,state=EXCLUDED.state,is_current=EXCLUDED.is_current,is_superseded=EXCLUDED.is_superseded,observed_at=EXCLUDED.observed_at`, acct, id, in.ID, in.Owner.ID, in.Owner.Login, in.State, in.Current, in.Superseded, in.ObservedAt)
 	return repositoryError(err)
 }
 
@@ -160,7 +160,7 @@ func (s *Store) MembershipRemoved(ctx context.Context, acct kernel.AccountID, id
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT COALESCE((SELECT NOT m.present FROM vcs_installation_repositories m JOIN vcs_installations i
  ON (i.account_id,i.integration_id,i.installation_id)=(m.account_id,m.integration_id,m.installation_id)
  WHERE m.account_id=$1 AND m.integration_id=$2 AND i.is_current
- AND ((m.namespace=$3 AND m.name=$4) OR ($5<>'' AND m.repository_id=$5))
+ AND ((lower(m.namespace)=lower($3) AND lower(m.name)=lower($4)) OR ($5<>'' AND m.repository_id=$5))
  ORDER BY m.observed_at DESC,m.repository_id LIMIT 1),false)`, acct, id, namespace, name, native).Scan(&removed)
 	return removed, repositoryError(err)
 }

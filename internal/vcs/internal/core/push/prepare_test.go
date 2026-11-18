@@ -194,3 +194,10 @@ type preparedStore struct{ Store }
 func (preparedStore) PutPrepared(context.Context, kernel.AccountID, kernel.ULID, []Prepared) error {
 	return nil
 }
+
+func (u eventUse) HeldEventUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Use, bool, error) {
+	if !tx.In(ctx) {
+		return stacksapi.Use{}, false, queue.ErrNoTransaction
+	}
+	return u.EventUse(ctx, acct, id)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -91,7 +92,7 @@ func (m *memoryStore) PutInstallation(_ context.Context, _ kernel.AccountID, _ k
 	if in.Current {
 		for id, old := range m.installs {
 			if id != in.ID && old.Owner.ID == in.Owner.ID {
-				old.Current = false
+				old.Current, old.Superseded = false, true
 				m.installs[id] = old
 			}
 		}
@@ -119,7 +120,8 @@ func (m *memoryStore) MembershipIdentity(_ context.Context, _ kernel.AccountID, 
 
 func (m *memoryStore) MembershipRemoved(_ context.Context, _ kernel.AccountID, _ kernel.ULID, ns, name, native string) (bool, error) {
 	for _, membership := range m.members {
-		if (membership.repo.Namespace == ns && membership.repo.Name == name || native != "" && membership.repo.ID == native) && !membership.present &&
+		if (strings.EqualFold(membership.repo.Namespace, ns) && strings.EqualFold(membership.repo.Name, name) || native != "" && membership.repo.ID == native) &&
+			!membership.present &&
 			m.installs[membership.installation].Current {
 			return true, nil
 		}

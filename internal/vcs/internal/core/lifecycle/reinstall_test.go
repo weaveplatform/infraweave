@@ -215,3 +215,27 @@ func TestUnitMembershipRestorationKeepsNewerCoordinates(t *testing.T) {
 		t.Fatal("old event no longer routes to current owner", current, err)
 	}
 }
+
+func TestUnitObservedInstallationCanLaterBecomeCurrent(t *testing.T) {
+	w := newWorld()
+	base := w.now
+	owner := vcsapi.Owner{ID: "9", Login: "acme"}
+	repository := vcsapi.Repository{ID: "7", Namespace: owner.Login, Name: "infra", OwnerID: owner.ID}
+	steps := []vcsapi.Installation{
+		{ID: "1", Owner: owner, Action: "deleted"},
+		{ID: "2", Owner: owner, Action: "added", Added: []vcsapi.Repository{repository}},
+		{ID: "2", Owner: owner, Action: "created", Repositories: []vcsapi.Repository{repository}},
+	}
+	for n, event := range steps {
+		w.now = base.Add(time.Duration(n) * time.Second)
+		if err := w.apply(t, vcsapi.Event{Installation: &event}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.s.Check(t.Context(), w.acct, w.id, owner.Login, repository.Name); err != nil {
+		t.Fatal("observed but not activated installation was treated as superseded", err)
+	}
+	if !w.store.installs["2"].Current || w.store.installs["1"].Current {
+		t.Fatal("new installation never became current", w.store.installs)
+	}
+}

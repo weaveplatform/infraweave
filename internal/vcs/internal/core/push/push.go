@@ -56,6 +56,7 @@ type EventContext struct {
 
 // Integrations reads effective bindings without opening provider credentials.
 type Integrations interface {
+	HeldEventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
 	EventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
 }
 

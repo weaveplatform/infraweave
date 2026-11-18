@@ -211,6 +211,7 @@ CREATE TABLE vcs_installations (
     owner_login text NOT NULL,
     state text NOT NULL CHECK(state IN ('active','suspended','deleted')),
     is_current boolean NOT NULL DEFAULT true,
+    is_superseded boolean NOT NULL DEFAULT false,
     observed_at timestamptz NOT NULL,
     PRIMARY KEY(account_id,integration_id,installation_id),
     FOREIGN KEY(account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE

@@ -9,12 +9,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/integration"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
@@ -483,5 +487,297 @@ func TestAccMembershipRestorationKeepsNewerCoordinates(t *testing.T) {
 	current, err := native.EventRepository(t.Context(), w.f.acct, w.id, base.Add(2*time.Second), original)
 	if err != nil || current.Namespace != "new" {
 		t.Fatal("old retained event lost current route", current, err)
+	}
+}
+
+func TestAccObservedInstallationCanLaterActivate(t *testing.T) {
+	w := newWebhookWorld(t)
+	base := time.Now().UTC().Truncate(time.Microsecond)
+	native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: &routedTargets{}, Now: time.Now}
+	use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+	owner := vcsapi.Owner{ID: "9", Login: "acme"}
+	repository := vcsapi.Repository{ID: "7", Namespace: owner.Login, Name: "infra", OwnerID: owner.ID}
+	steps := []vcsapi.Installation{
+		{ID: "1", Owner: owner, Action: "deleted"},
+		{ID: "2", Owner: owner, Action: "added", Added: []vcsapi.Repository{repository}},
+		{ID: "2", Owner: owner, Action: "created", Repositories: []vcsapi.Repository{repository}},
+	}
+	for n, event := range steps {
+		if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+			return native.Apply(ctx, w.f.acct, w.id, use, base.Add(time.Duration(n)*time.Second), []vcsapi.Event{{Installation: &event}})
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := native.Check(t.Context(), w.f.acct, w.id, "acme", "infra"); err != nil {
+		t.Fatal("observed new ID remained blocked", err)
+	}
+	states, err := w.f.store.Installations(t.Context(), w.f.acct, w.id)
+	if err != nil || len(states) != 2 || states[0].Current || !states[0].Superseded || !states[1].Current || states[1].Superseded {
+		t.Fatal("pending/superseded identity did not round trip", states, err)
+	}
+}
+
+func TestAccGitHubCaseAliasesRetainKnownUnavailability(t *testing.T) {
+	for _, action := range []string{"suspend", "deleted", "removed"} {
+		t.Run(action, func(t *testing.T) {
+			w := newWebhookWorld(t)
+			base := time.Now().UTC().Truncate(time.Microsecond)
+			native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: &routedTargets{}, Now: time.Now}
+			use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+			owner := vcsapi.Owner{ID: "9", Login: "Acme"}
+			repository := vcsapi.Repository{ID: "7", OwnerID: owner.ID, Namespace: owner.Login, Name: "Infra"}
+			events := []vcsapi.Installation{{ID: "1", Owner: owner, Action: "created", Repositories: []vcsapi.Repository{repository}}, {ID: "1", Owner: owner, Action: action}}
+			if action == "removed" {
+				events[1].Removed = []vcsapi.Repository{repository}
+			}
+			for n, event := range events {
+				if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+					return native.Apply(ctx, w.f.acct, w.id, use, base.Add(time.Duration(n)*time.Second), []vcsapi.Event{{Installation: &event}})
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, path := range [][2]string{{"Acme", "Infra"}, {"ACME", "INFRA"}, {"acme", "infra"}} {
+				if err := native.Check(t.Context(), w.f.acct, w.id, path[0], path[1]); err == nil {
+					t.Fatal("GitHub case alias bypassed durable unavailability", action, path)
+				}
+			}
+			// Case folding is limited to App installation knowledge. Native repository
+			// path indexing remains exact for case-sensitive providers such as GitLab.
+			if _, found, err := w.f.store.RepositoryPath(t.Context(), w.f.acct, w.id, "ACME", "INFRA"); err != nil || found {
+				t.Fatal("repository map became case insensitive", found, err)
+			}
+		})
+	}
+}
+
+func TestAccSourceAliasAssociationIsAtomic(t *testing.T) {
+	for _, fault := range []string{"none", "requested occupied", "canonical occupied", "repoint failure"} {
+		t.Run(fault, func(t *testing.T) {
+			w := newWebhookWorld(t)
+			targets := &lifecycleTargets{f: w.f, integration: w.id}
+			native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: targets, Now: time.Now}
+			use := stacksapi.Use{Integration: w.id, Provider: "GITHUB_ENTERPRISE"}
+			requested := stacksapi.VCSRepository{Namespace: "alias", Name: "before"}
+			resolved := vcsapi.Repository{ID: "7", Namespace: "canonical", Name: "renamed", OwnerID: "9"}
+			if strings.Contains(fault, "occupied") {
+				ns, name := requested.Namespace, requested.Name
+				if fault == "canonical occupied" {
+					ns, name = resolved.Namespace, resolved.Name
+				}
+				if err := native.Seed(t.Context(), w.f.acct, w.id, use, vcsapi.Repository{ID: "8", Namespace: ns, Name: name}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cause := errors.New("alias repoint unavailable")
+			if fault == "repoint failure" {
+				targets.err = cause
+			}
+			err := native.SeedReferenceAt(t.Context(), w.f.acct, w.id, use, requested, resolved, time.Now())
+			if fault == "repoint failure" && !errors.Is(err, cause) || fault != "repoint failure" && err != nil {
+				t.Fatal(err)
+			}
+			mapped, found, err := w.f.store.RepositoryIdentity(t.Context(), w.f.acct, w.id, "7")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fault == "none" {
+				if !found || mapped.Namespace != "canonical" || len(targets.moves) != 1 {
+					t.Fatal("alias was stranded", mapped, found, targets.moves)
+				}
+				return
+			}
+			if found {
+				t.Fatal("refused/failed alias leaked native map", fault, mapped)
+			}
+			if strings.Contains(fault, "occupied") && len(targets.moves) != 0 {
+				t.Fatal("occupied alias was repointed", targets.moves)
+			}
+		})
+	}
+}
+
+type (
+	liveBindingRow struct {
+		id, binding     kernel.ULID
+		namespace, name string
+	}
+	liveBindingStacks struct {
+		stacksapi.Stacks
+		account                 kernel.AccountID
+		rows                    []liveBindingRow
+		renamedUse, selectedUse stacksapi.Use
+	}
+)
+
+func (s *liveBindingStacks) RepointVCSRepository(ctx context.Context, acct kernel.AccountID, use stacksapi.Use, from, to stacksapi.VCSRepository) error {
+	if !tx.In(ctx) || acct != s.account {
+		return errDown
+	}
+	s.renamedUse = use
+	for n, row := range s.rows {
+		if (row.binding == use.Integration || row.binding.IsZero() && use.Default) && row.namespace == from.Namespace && row.name == from.Name {
+			s.rows[n].namespace, s.rows[n].name = to.Namespace, to.Name
+		}
+	}
+	return nil
+}
+
+func (s *liveBindingStacks) ByVCSRepository(ctx context.Context, acct kernel.AccountID, use stacksapi.Use, ns, name string) ([]stacksapi.Stack, error) {
+	if !tx.In(ctx) || acct != s.account {
+		return nil, errDown
+	}
+	s.selectedUse = use
+	var out []stacksapi.Stack
+	for _, row := range s.rows {
+		if (row.binding == use.Integration || row.binding.IsZero() && use.Default) && row.namespace == ns && row.name == name {
+			out = append(out, stacksapi.Stack{ID: row.id})
+		}
+	}
+	return out, nil
+}
+
+func TestAccCompletingDeliveryReadsHeldCurrentDefault(t *testing.T) {
+	for _, initial := range []bool{true, false} {
+		t.Run(fmt.Sprintf("initial-default-%t", initial), func(t *testing.T) {
+			w := newWebhookWorld(t)
+			other := kernel.NewULID()
+			now := time.Now().UTC()
+			if err := w.f.store.Create(
+				t.Context(),
+				integration.Integration{
+					Account:   w.f.acct,
+					ID:        other,
+					Provider:  "GITHUB_ENTERPRISE",
+					Slug:      "other",
+					Name:      "Other",
+					Space:     w.f.acct.ULID,
+					Labels:    []string{},
+					Checks:    integration.Checks{Mode: "INDIVIDUAL"},
+					CreatedAt: now,
+					UpdatedAt: now,
+					Version:   1,
+				},
+				integration.Secrets{},
+			); err != nil {
+				t.Fatal(err)
+			}
+			setDefault := func(id kernel.ULID) error {
+				return tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+					if _, err := tx.Q(ctx, w.f.db).
+						Exec(ctx, `UPDATE vcs_integrations SET is_default=false WHERE account_id=$1 AND provider='GITHUB_ENTERPRISE'`, w.f.acct); err != nil {
+						return err
+					}
+					_, err := tx.Q(ctx, w.f.db).Exec(ctx, `UPDATE vcs_integrations SET is_default=true WHERE account_id=$1 AND id=$2`, w.f.acct, id)
+					return err
+				})
+			}
+			initialID, finalID := other, w.id
+			if initial {
+				initialID, finalID = w.id, other
+			}
+			if err := setDefault(initialID); err != nil {
+				t.Fatal(err)
+			}
+			targets := &liveBindingStacks{
+				account: w.f.acct,
+				rows: []liveBindingRow{
+					{id: kernel.NewULID(), namespace: "old", name: "infra"},
+					{id: kernel.NewULID(), binding: w.id, namespace: "old", name: "infra"},
+					{id: kernel.NewULID(), binding: other, namespace: "old", name: "infra"},
+				},
+			}
+			native := &lifecycle.Service{DB: w.f.db, Store: w.f.store, Stacks: targets, Now: func() time.Time { return now.Add(-time.Minute) }}
+			use, _, err := w.f.svc.EventUse(t.Context(), w.f.acct, w.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := native.Seed(t.Context(), w.f.acct, w.id, use, vcsapi.Repository{ID: "7", Namespace: "old", Name: "infra"}); err != nil {
+				t.Fatal(err)
+			}
+			source := &dispatchSource{}
+			deps := w.deps
+			deps.Providers["GITHUB_ENTERPRISE"] = dispatchProvider{
+				events: []vcsapi.Event{{Type: "push", Repository: vcsapi.Repository{ID: "7", Namespace: "new", Name: "infra"}, Branch: "main", Head: strings.Repeat("b", 40)}},
+			}
+			barrier := preparationBarrier{
+				Dispatcher: push.New(push.Deps{DB: w.f.db, Store: w.f.store, Stacks: targets, Integrations: w.f.svc, Sources: source, Jobs: w.queue, Lifecycle: native}),
+				ready:      make(chan struct{}),
+				proceed:    make(chan struct{}),
+			}
+			deps.Dispatcher = barrier
+			w.svc = intake.New(deps)
+			if status := w.receive(t, "binding-switch", webhookBody(128)); status != 202 {
+				t.Fatal(status)
+			}
+			job := w.claim(t, w.queue, "binding-parent")
+			done := make(chan error, 1)
+			go func() { done <- w.svc.Processed(t.Context(), job) }()
+			select {
+			case <-barrier.ready:
+			case <-t.Context().Done():
+				t.Fatal(context.Cause(t.Context()))
+			}
+			err = setDefault(finalID)
+			close(barrier.proceed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+			want := !initial
+			if targets.renamedUse.Default != want || targets.selectedUse.Default != want {
+				t.Fatal("rename/fanout used stale or different binding", targets.renamedUse, targets.selectedUse)
+			}
+			for n, row := range targets.rows {
+				changed := n == 1 || n == 0 && want
+				if (row.namespace == "new") != changed {
+					t.Fatal("default switch crossed or missed stack binding", n, row)
+				}
+			}
+			var children int
+			if err := w.f.db.QueryRow(t.Context(), `SELECT count(*) FROM jobs WHERE account_id=$1 AND kind=$2`, w.f.acct, push.Evaluate.Name).Scan(&children); err != nil {
+				t.Fatal(err)
+			}
+			expected := 1
+			if want {
+				expected++
+			}
+			if children != expected || source.calls != 1 {
+				t.Fatal("current binding lost fanout or repeated provider read", children, source.calls)
+			}
+		})
+	}
+}
+
+func TestAccHeldEventUseFencesConcurrentBindingWrite(t *testing.T) {
+	w := newWebhookWorld(t)
+	// A store without a sealer proves this held projection reads metadata alone.
+	metadata := integration.New(integration.Deps{Store: pg.New(w.f.db, nil)})
+	if _, _, err := metadata.HeldEventUse(t.Context(), w.f.acct, w.id); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatal(err)
+	}
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if _, found, err := metadata.HeldEventUse(ctx, w.f.acct, w.id); err != nil || !found {
+			return fmt.Errorf("held binding missing: %w", err)
+		}
+		blocked := tx.Do(t.Context(), w.f.db, tx.Options{NoRetry: true}, func(other context.Context) error {
+			if _, err := tx.Q(other, w.f.db).Exec(other, `SET LOCAL lock_timeout='40ms'`); err != nil {
+				return err
+			}
+			_, err := tx.Q(other, w.f.db).Exec(other, `UPDATE vcs_integrations SET is_default=NOT is_default WHERE account_id=$1 AND id=$2`, w.f.acct, w.id)
+			return err
+		})
+		if cause, ok := errors.AsType[*pgconn.PgError](blocked); !ok || cause.Code != "55P03" {
+			return fmt.Errorf("binding writer bypassed held row: %w", blocked)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.f.db.Exec(t.Context(), `UPDATE vcs_integrations SET is_default=true WHERE account_id=$1 AND id=$2`, w.f.acct, w.id); err != nil {
+		t.Fatal("released binding stayed locked", err)
 	}
 }

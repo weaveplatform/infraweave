@@ -23,7 +23,6 @@ type plan struct {
 	delivery   intake.Delivery
 	events     []Prepared
 	normalized []vcsapi.Event
-	use        stacksapi.Use
 }
 
 // Prepare resolves each diff once, then groups every ref into one child per
@@ -48,7 +47,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	if use.Provider != delivery.Provider {
 		return nil, fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
 	}
-	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events), use: use}
+	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events)}
 	for _, event := range selected {
 		if !s.d.Now().Before(delivery.Deadline) {
 			return nil, nil //nolint:nilnil // no actionable work needs no dispatch plan
@@ -87,8 +86,15 @@ func (p *plan) Commit(ctx context.Context) error {
 	if !tx.In(ctx) {
 		return queue.ErrNoTransaction
 	}
+	use, found, err := p.s.d.Integrations.HeldEventUse(ctx, p.delivery.Account, p.delivery.Integration)
+	if err != nil || !found {
+		return err
+	} //nolint:wrapcheck // integration names the metadata read
+	if use.Provider != p.delivery.Provider {
+		return fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
+	}
 	if p.s.d.Lifecycle != nil {
-		if err := p.s.d.Lifecycle.Apply(ctx, p.delivery.Account, p.delivery.Integration, p.use, p.delivery.ReceivedAt, p.normalized); err != nil {
+		if err := p.s.d.Lifecycle.Apply(ctx, p.delivery.Account, p.delivery.Integration, use, p.delivery.ReceivedAt, p.normalized); err != nil {
 			return err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
@@ -118,7 +124,7 @@ func (p *plan) Commit(ctx context.Context) error {
 		stacks, seen := repositories[prepared.Event.Repository]
 		if !seen {
 			var err error
-			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, p.use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
+			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
 			if err != nil {
 				return err //nolint:wrapcheck // the called boundary names the failed operation
 			}
