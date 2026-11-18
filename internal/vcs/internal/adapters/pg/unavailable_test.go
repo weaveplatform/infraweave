@@ -71,7 +71,7 @@ func TestAccUnavailable(t *testing.T) {
 			t.Errorf("%s on a closed pool = %v", name, err)
 		}
 	}
-	if len(pg.Held()) != 12 || !slices.ContainsFunc(pg.Held(), func(h integrity.Held) bool {
+	if len(pg.Held()) != 14 || !slices.ContainsFunc(pg.Held(), func(h integrity.Held) bool {
 		return h.Entity == "account" && h.Table == "vcs_account_settings" && slices.Equal(h.Columns, []string{"account_id"})
 	}) || len(pg.SealedColumns()) != 3 {
 		t.Errorf("held %v, sealed %v", pg.Held(), pg.SealedColumns())
