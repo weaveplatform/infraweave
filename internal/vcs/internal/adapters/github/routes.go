@@ -19,6 +19,7 @@ type RoutePurpose string
 const (
 	ReadOnly        RoutePurpose = "read"
 	DeploymentWrite RoutePurpose = "deployment"
+	CommentWrite    RoutePurpose = "comment"
 	AppSetup        RoutePurpose = "app_setup"
 	allRoutes       RoutePurpose = "all"
 )
@@ -35,6 +36,12 @@ type Route struct {
 //
 // ref: decision 0012 § "VCS agent pools"
 var Routes = []Route{
+	{http.MethodGet, "/repos/{owner}/{repo}/issues/{issue}/comments", CommentWrite},
+	{http.MethodGet, "/repos/{owner}/{repo}/issues/comments/{comment}", CommentWrite},
+	{http.MethodPost, "/repos/{owner}/{repo}/issues/{issue}/comments", CommentWrite},
+	{http.MethodPatch, "/repos/{owner}/{repo}/issues/comments/{comment}", CommentWrite},
+	{http.MethodPost, "/graphql", CommentWrite},
+	{http.MethodPost, "/api/graphql", CommentWrite},
 	{http.MethodGet, "/app", ReadOnly},
 	{http.MethodGet, "/app/installations", ReadOnly},
 	{http.MethodPost, "/app/installations/{installation}/access_tokens", ReadOnly},
@@ -55,16 +62,24 @@ var Routes = []Route{
 }
 
 type routeInventory struct {
-	mux    *http.ServeMux
-	routes map[string]Route
+	mux      *http.ServeMux
+	comments *http.ServeMux
+	routes   map[string]Route
 }
 
 var inventory = sync.OnceValue(func() routeInventory {
-	i := routeInventory{mux: http.NewServeMux(), routes: map[string]Route{}}
+	i := routeInventory{mux: http.NewServeMux(), comments: http.NewServeMux(), routes: map[string]Route{}}
 	for _, route := range Routes {
 		pattern := route.Method + " " + route.Path
 		i.routes[pattern] = route
-		i.mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
+		// The native list and individual comment paths overlap for literal
+		// wildcard values (issues/comments/comments), which ServeMux rejects
+		// in one tree. Separate trees retain both exact native route shapes.
+		mux := i.mux
+		if strings.Contains(route.Path, "/issues/comments/") {
+			mux = i.comments
+		}
+		mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
 	}
 	return i
 })
@@ -76,7 +91,7 @@ func Allowed(method, escaped string) bool { return AllowedFor(allRoutes, method,
 // Methods are exact: ServeMux's implicit HEAD-for-GET is not an inventory entry.
 func AllowedFor(purpose RoutePurpose, method, escaped string) bool {
 	switch purpose {
-	case ReadOnly, DeploymentWrite, AppSetup, allRoutes:
+	case ReadOnly, DeploymentWrite, CommentWrite, AppSetup, allRoutes:
 	default:
 		return false
 	}
@@ -86,7 +101,11 @@ func AllowedFor(purpose RoutePurpose, method, escaped string) bool {
 		return false
 	}
 	i := inventory()
-	_, pattern := i.mux.Handler(&http.Request{Method: method, URL: u})
+	request := &http.Request{Method: method, URL: u}
+	_, pattern := i.mux.Handler(request)
+	if pattern == "" {
+		_, pattern = i.comments.Handler(request)
+	}
 	route, exists := i.routes[pattern]
 	return exists && route.Method == method &&
 		(purpose == allRoutes || route.Purpose == ReadOnly || route.Purpose == purpose)
@@ -99,6 +118,11 @@ type routeTransport struct {
 }
 
 func (t routeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if (t.purpose == CommentWrite || t.purpose == allRoutes) && req.Method == http.MethodPost && req.URL.Scheme == t.base.Scheme && strings.EqualFold(req.URL.Host, t.base.Host) &&
+		req.URL.EscapedPath() == commentGraphQLPath(t.base.EscapedPath()) &&
+		req.URL.RawQuery == "" && req.URL.Fragment == "" && req.URL.User == nil {
+		return t.next.RoundTrip(req) //nolint:wrapcheck // the SDK supplies request context
+	}
 	rel, ok := strings.CutPrefix(req.URL.EscapedPath(), strings.TrimSuffix(t.base.EscapedPath(), "/"))
 	if !ok || req.URL.Scheme != t.base.Scheme || !strings.EqualFold(req.URL.Host, t.base.Host) ||
 		!AllowedFor(t.purpose, req.Method, rel) {
