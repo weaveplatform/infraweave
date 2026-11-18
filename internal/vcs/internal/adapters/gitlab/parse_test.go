@@ -109,6 +109,7 @@ func TestUnitGitLabMergeActions(t *testing.T) {
 						return out
 					}
 					payload["changes"] = map[string]any{"labels": map[string]any{"previous": labels(tc.previous), "current": labels(tc.current)}}
+					payload["labels"] = labels(tc.current)
 				}
 			})
 			got, err := provider.Parse(gitlabHeaders("Merge Request Hook"), body)
@@ -121,9 +122,18 @@ func TestUnitGitLabMergeActions(t *testing.T) {
 				if event.PullRequest.Approved != (tc.action == "approved") || event.PullRequest.Number != 42 {
 					t.Fatal("approval fact or request IID lost")
 				}
+				if event.Before != tc.oldrev {
+					t.Fatal("synchronization lost its previous commit")
+				}
 			}
 			if !slices.Equal(actions, tc.want) {
 				t.Fatalf("actions %v want %v", actions, tc.want)
+			}
+			if len(got) == 2 && len(got[0].PullRequest.Labels) > 0 {
+				got[0].PullRequest.Labels[0] = "changed-by-first-consumer"
+				if got[1].PullRequest.Labels[0] != tc.current[0] {
+					t.Fatal("independent label events share mutable request state")
+				}
 			}
 		})
 	}

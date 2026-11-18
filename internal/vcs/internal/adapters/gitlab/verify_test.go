@@ -90,7 +90,9 @@ func TestUnitGitLabShortTokenPolicy(t *testing.T) {
 	}
 	headers := http.Header{}
 	headers.Set("X-Gitlab-Token", string(strong))
-	if _, err := provider.Verify(headers, body, [][]byte{[]byte("hook"), strong}); err != nil {
-		t.Fatal("unmatched short key poisoned a strong match", err)
+	for _, allowed := range [][][]byte{{[]byte("hook"), strong}, {strong, []byte("hook")}} {
+		if _, err := provider.Verify(headers, body, allowed); err != nil {
+			t.Fatal("unmatched short key poisoned a strong match", err)
+		}
 	}
 }

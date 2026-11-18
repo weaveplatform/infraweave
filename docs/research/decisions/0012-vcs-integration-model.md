@@ -198,6 +198,16 @@ The handler does, in order:
    | Bitbucket Data Center | `repo:refs_changed`, `pr:opened`, `pr:from_ref_updated`, `pr:modified`, `pr:reviewer:approved`, `pr:reviewer:unapproved`, `pr:merged`, `pr:comment:added` |
    | Azure DevOps | Code pushed; pull request created, updated, merge attempted, commented on |
 
+   GitLab's `approved` and `unapproved` notifications normalize to the policy
+   action `edited`; the provider action remains in the retained body. Only
+   the fully-approved notification proves `approved=true`. Payload-only
+   mergeability requires resolved blocking discussions and a `mergeable`
+   detailed status, or the legacy conflict-free status with that full
+   approval notification. Drafts and explicit unapproval remain unmergeable;
+   absent/checking facts stay false without an API enrichment call. This
+   follows [GitLab's action meanings](https://docs.gitlab.com/user/project/integrations/webhook_events/#merge-request-events)
+   and report 11's provider-specific approval and mergeability rules.
+
 5. **Store and enqueue (D3).** In one transaction insert `vcs_deliveries`
    with integration, delivery ID, provider event, received time, selected
    headers, body and state `received`, and enqueue `vcs.process_delivery`.
