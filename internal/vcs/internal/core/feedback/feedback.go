@@ -21,8 +21,9 @@ var ReportCheck = queue.Kind{Name: "vcs.report_check", Queue: queue.Deliveries, 
 
 // Service owns VCS feedback jobs; the events domain owns fan-out records.
 type Service struct {
-	jobs *queue.Queue
-	hold func(context.Context, kernel.AccountID) error
+	jobs        *queue.Queue
+	hold        func(context.Context, kernel.AccountID) error
+	deployments *DeploymentDeps
 }
 
 // ErrAccountHold refuses enqueueing when its owner fence is not configured.
@@ -36,16 +37,14 @@ func New(jobs *queue.Queue, hold func(context.Context, kernel.AccountID) error) 
 // Kinds names the run updates the Commit checks sink consumes.
 func (*Service) Kinds() []string { return []string{runsapi.UpdatedKind} }
 
-// Targets is empty until the provider-specific feedback handlers select
-// checks, deployments and comments. Subscribing the sink does not advertise
-// or enqueue a provider effect before its implementation exists.
-func (*Service) Targets(context.Context, outbox.Event) ([]vcsapi.FeedbackTarget, error) {
-	return nil, nil
+// Targets selects deployment effects from run facts without calling providers.
+func (s *Service) Targets(ctx context.Context, event outbox.Event) ([]vcsapi.FeedbackTarget, error) {
+	return s.deploymentTargets(ctx, event)
 }
 
 func valid(target vcsapi.FeedbackTarget) bool {
 	return !target.Account.IsZero() && !target.EventID.IsZero() && target.Key != "" &&
-		target.Job == ReportCheck.Name && json.Valid(target.Payload)
+		(target.Job == ReportCheck.Name || target.Job == ReportDeployment.Name) && json.Valid(target.Payload)
 }
 
 // Enqueue creates the target's job in the transaction on ctx. The event,
@@ -62,6 +61,9 @@ func (s *Service) Enqueue(ctx context.Context, target vcsapi.FeedbackTarget) err
 	}
 	if err := s.hold(ctx, kernel.AccountID{ULID: target.Account}); err != nil {
 		return fmt.Errorf("hold VCS feedback account: %w", err)
+	}
+	if target.Job == ReportDeployment.Name {
+		return s.enqueueDeployment(ctx, target)
 	}
 	key := fmt.Sprintf("%s:%s:commit_checks:%s:0", target.Account, target.EventID, target.Key)
 	if _, err := s.jobs.EnqueueTx(ctx, ReportCheck, target.Payload,

@@ -101,20 +101,21 @@ type token struct {
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
 type Fake struct {
-	mu       sync.Mutex
-	apps     map[int64]*App
-	installs map[int64]*Installation
-	repos    map[string]*Repo
-	tokens   map[string]token
-	minted   []TokenRequest
-	codes    map[string]string
-	nextID   int64
-	fault    Fault
-	scope    string
-	until    time.Time
-	requests int
-	issued   int
-	logins   map[string]string
+	deployments deploymentStore
+	mu          sync.Mutex
+	apps        map[int64]*App
+	installs    map[int64]*Installation
+	repos       map[string]*Repo
+	tokens      map[string]token
+	minted      []TokenRequest
+	codes       map[string]string
+	nextID      int64
+	fault       Fault
+	scope       string
+	until       time.Time
+	requests    int
+	issued      int
+	logins      map[string]string
 }
 
 // New returns a fake with no App, installation or repository, whose
@@ -292,6 +293,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/installation/repositories", f.installationRepos)
 			r.Route("/repos/{owner}/{repo}", func(r chi.Router) {
 				r.Use(f.reachable)
+				f.deploymentRoutes(r)
 				r.Get("/commits/*", f.commit)
 				r.Get("/git/ref/tags/*", f.tagRef)
 				r.Get("/contents/*", f.contents)
@@ -403,8 +405,8 @@ func (f *Fake) asInstallation(next http.Handler) http.Handler {
 // reachable admits a request for a repository the installation reaches,
 // and the token's repositories name when it is narrowed, answering 404
 // for any other, as GitHub hides what a token cannot see; a token
-// narrowed to permissions without contents is refused with 403, since
-// every repository route reads contents.
+// narrowed to permissions without contents is refused on source routes.
+// Deployment routes check their own deployments permission.
 func (f *Fake) reachable(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		owner, name := chi.URLParam(r, "owner"), chi.URLParam(r, "repo")
@@ -418,7 +420,8 @@ func (f *Fake) reachable(next http.Handler) http.Handler {
 			answer(w, http.StatusNotFound, message("Not Found"))
 			return
 		}
-		if t.perms != nil && t.perms["contents"] == "" {
+		deployment := strings.HasPrefix(r.URL.Path, "/api/v3/repos/"+owner+"/"+name+"/deployments")
+		if !deployment && t.perms != nil && t.perms["contents"] == "" {
 			answer(w, http.StatusForbidden, message("Resource not accessible by integration"))
 			return
 		}

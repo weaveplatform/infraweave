@@ -132,7 +132,7 @@ func (p *Provider) app(in port.Integration) (app, error) {
 	if err != nil {
 		return app{}, fmt.Errorf("%w: App ID %q", ErrCredential, in.Settings.AppID)
 	}
-	tr, err := ghinstallation.NewAppsTransport(p.rt, id, in.Credential)
+	tr, err := ghinstallation.NewAppsTransport(guarded(h, p.rt, allRoutes), id, in.Credential)
 	if err != nil {
 		return app{}, fmt.Errorf("%w: private key: %w", ErrCredential, err)
 	}
@@ -142,8 +142,12 @@ func (p *Provider) app(in port.Integration) (app, error) {
 
 // client is a client of h sending through rt.
 func client(h host, rt http.RoundTripper) *github.Client {
+	return clientFor(h, rt, ReadOnly)
+}
+
+func clientFor(h host, rt http.RoundTripper, purpose RoutePurpose) *github.Client {
 	c, err := github.NewClient(
-		github.WithHTTPClient(&http.Client{Transport: rt}),
+		github.WithHTTPClient(&http.Client{Transport: guarded(h, rt, purpose)}),
 		github.WithURLs(&h.api, &h.api),
 	)
 	if err != nil {
@@ -164,6 +168,10 @@ type tokenKey struct {
 // installation is a client acting as installation id of a, reusing the
 // transport, and so the token, of an earlier call.
 func (p *Provider) installation(a app, id int64) *github.Client {
+	return p.installationFor(a, id, ReadOnly)
+}
+
+func (p *Provider) installationFor(a app, id int64, purpose RoutePurpose) *github.Client {
 	k := tokenKey{api: a.host.api, app: a.id, key: a.key, installation: id}
 	p.mu.Lock()
 	tr, ok := p.tokens[k]
@@ -173,7 +181,7 @@ func (p *Provider) installation(a app, id int64) *github.Client {
 		p.tokens[k] = tr
 	}
 	p.mu.Unlock()
-	return client(a.host, tr)
+	return clientFor(a.host, tr, purpose)
 }
 
 // repo is a client acting as the installation of repo's App that reaches

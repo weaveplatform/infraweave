@@ -97,6 +97,7 @@ type Deps struct {
 	Spaces           accessapi.Spaces
 	Authz            accessapi.Authorizer
 	Stacks           stacksapi.Stacks
+	Histories        runsapi.RunHistories
 	Settings         Settings
 	Public           string
 	Log              *slog.Logger
@@ -183,11 +184,17 @@ func New(d Deps) (*Domain, error) {
 		}),
 		integrations: integrations,
 		intake:       inbox,
-		feedback: feedback.New(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
+		feedback: feedback.NewDeployments(queue.New(d.DB), func(ctx context.Context, acct kernel.AccountID) error {
 			if d.Spaces == nil {
 				return accessapi.ErrNoAccount
 			}
 			return d.Spaces.Hold(ctx, acct, acct.ULID)
+		}, feedback.DeploymentDeps{
+			DB: d.DB, Store: pg.New(d.DB, d.Keys), Histories: d.Histories,
+			Stacks: d.Stacks, Integrations: integrations,
+			Providers: map[string]port.Deployments{
+				integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
+			},
 		}),
 		api: http.New(integrations, d.Spaces, nil),
 	}, nil
@@ -211,6 +218,15 @@ const PurgeBatch = 500
 // Purge deletes the deleted account acct's integrations, PurgeBatch at a
 // time. internal/app runs it for each accessapi.Deleted.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.feedback.PurgeDeployments(ctx, acct, PurgeBatch)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+	}
 	for {
 		done, err := d.integrations.Purge(ctx, acct, PurgeBatch)
 		if err != nil {
@@ -246,7 +262,8 @@ var Revoke = source.Revoke
 // Jobs are the domain's job handlers, which the scheduler registers:
 // Revoke's.
 func (d *Domain) Jobs() []queue.Registration {
-	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}, d.deliveryJob()}
+	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}, d.deliveryJob(),
+		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported}}
 }
 
 // Subscribe subscribes the domain's consumers on events.

@@ -196,7 +196,7 @@ func (p *Provider) Convert(ctx context.Context, apiHost, code string) (port.Crea
 	if err != nil {
 		return port.Created{}, err
 	}
-	cfg, _, err := client(h, p.rt).Apps.CompleteAppManifest(ctx, code)
+	cfg, _, err := clientFor(h, p.rt, AppSetup).Apps.CompleteAppManifest(ctx, code)
 	if err != nil {
 		return port.Created{}, classify(err, "manifest code")
 	}
