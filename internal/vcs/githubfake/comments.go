@@ -28,9 +28,11 @@ type CommentWrite struct {
 	Action, Body string
 }
 type commentStore struct {
-	records    map[string][]CommentRecord
-	writes     map[string][]CommentWrite
-	failCreate bool
+	records          map[string][]CommentRecord
+	writes           map[string][]CommentWrite
+	failCreate       bool
+	minimizeAttempts map[string][]string
+	failMinimize     bool
 }
 
 // Comments returns detached snapshots in native creation order.
@@ -216,7 +218,14 @@ func (f *Fake) minimizeComment(w http.ResponseWriter, r *http.Request) {
 		Query     string            `json:"query"`
 		Variables map[string]string `json:"variables"`
 	}
-	if json.NewDecoder(r.Body).Decode(&body) != nil || !strings.Contains(body.Query, "minimizeComment") || !strings.Contains(body.Query, "classifier:OUTDATED") {
+	mutation := false
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		answer(w, http.StatusBadRequest, message("invalid GraphQL request"))
+		return
+	}
+	mutation = strings.Contains(body.Query, "minimizeComment") && strings.Contains(body.Query, "classifier:OUTDATED")
+	query := strings.Contains(body.Query, "node(id:$id)") && strings.Contains(body.Query, "isMinimized") && strings.Contains(body.Query, "minimizedReason")
+	if mutation == query {
 		answer(w, http.StatusBadRequest, message("unsupported mutation"))
 		return
 	}
@@ -237,13 +246,32 @@ func (f *Fake) minimizeComment(w http.ResponseWriter, r *http.Request) {
 					answer(w, http.StatusNotFound, message("Not Found"))
 					return
 				}
-				if perms["pull_requests"] != "write" {
+				if perms["pull_requests"] != "write" && (!query || perms["pull_requests"] != "read") {
 					answer(w, http.StatusForbidden, message("Resource not accessible by integration"))
 					return
 				}
+
+				if query {
+					reason := ""
+					if c.Minimized {
+						reason = "outdated"
+					}
+					answer(w, http.StatusOK, map[string]any{"data": map[string]any{"node": map[string]any{"id": c.NodeID, "isMinimized": c.Minimized, "minimizedReason": reason}}})
+					return
+				}
+				if f.comments.minimizeAttempts == nil {
+					f.comments.minimizeAttempts = map[string][]string{}
+				}
+				f.comments.minimizeAttempts[key] = append(f.comments.minimizeAttempts[key], c.NodeID)
 				if !c.Minimized {
 					f.comments.records[key][i].Minimized = true
 					f.commentWrite(key, c, "minimize")
+				}
+
+				if f.comments.failMinimize {
+					f.comments.failMinimize = false
+					answer(w, http.StatusBadGateway, message("minimize response lost"))
+					return
 				}
 				answer(w, http.StatusOK, map[string]any{"data": map[string]any{"minimizeComment": map[string]any{"minimizedComment": map[string]bool{"isMinimized": true}}}})
 				return
@@ -251,4 +279,19 @@ func (f *Fake) minimizeComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	answer(w, http.StatusNotFound, message("Not Found"))
+}
+
+// CommentMinimizeAttempts records actual native mutation attempts, separately
+// from accepted state changes, so client-side recovery can be proved.
+func (f *Fake) CommentMinimizeAttempts(namespace, repo, pr string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.comments.minimizeAttempts[namespace+"/"+repo+"/"+pr])
+}
+
+// FailNextCommentMinimize loses one mutation response after applying its effect.
+func (f *Fake) FailNextCommentMinimize() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.comments.failMinimize = true
 }

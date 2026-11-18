@@ -251,3 +251,72 @@ func TestUnitCommentMinimizeScope(t *testing.T) {
 		t.Fatal("refused scope changed native state")
 	}
 }
+
+func TestUnitCommentLostMinimizeRecovery(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	ref, err := l.gh.Post(t.Context(), l.repo.Repo, commentRequest("plan:minimize-crash", "body"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.fake.FailNextCommentMinimize()
+	if err := l.gh.Minimize(t.Context(), l.repo.Repo, ref); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Fatal("unknown minimize result lost", err)
+	}
+	if !l.fake.Comments("acme", "infra", "7")[0].Minimized || len(l.fake.CommentMinimizeAttempts("acme", "infra", "7")) != 1 {
+		t.Fatal("minimize did not persist before response loss")
+	}
+	if err := l.gh.Minimize(t.Context(), l.repo.Repo, ref); err != nil {
+		t.Fatal("native minimized-state recovery", err)
+	}
+	attempts := l.fake.CommentMinimizeAttempts("acme", "infra", "7")
+	if len(attempts) != 1 || attempts[0] != ref.NodeID {
+		t.Fatal("retry repeated a completed native mutation", attempts)
+	}
+}
+
+func TestUnitCommentMinimizeGraphQLRefusals(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	ref, err := l.gh.Post(t.Context(), l.repo.Repo, commentRequest("plan:graphql-errors", "body"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reset := time.Now().Add(time.Minute).Truncate(time.Second)
+	for _, tc := range []struct {
+		body string
+		want error
+		rate bool
+	}{
+		{`{"errors":[{"type":"RATE_LIMITED"}]}`, nil, true},
+		{`{"errors":[{"type":"FORBIDDEN"}]}`, port.ErrCredential, false},
+		{`{"errors":[{"type":"UNKNOWN"}]}`, port.ErrCommentResponse, false},
+		{`{"data":{"node":null}}`, port.ErrCommentResponse, false},
+		{`{"data":{"node":{"id":"wrong","isMinimized":true,"minimizedReason":"outdated"}}}`, port.ErrCommentResponse, false},
+	} {
+		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/api/graphql") {
+				w.Header().Set("Content-Type", "application/json")
+				if tc.rate {
+					w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))
+					w.Header().Set("X-RateLimit-Remaining", "0")
+				}
+				_, _ = w.Write([]byte(tc.body))
+				return
+			}
+			l.fake.Handler().ServeHTTP(w, r)
+		})
+		err := github.NewOver(memory{h}).Minimize(t.Context(), l.repo.Repo, ref)
+		if tc.rate {
+			rate, ok := errors.AsType[*port.RateLimited](err)
+			if !ok || !rate.Reset.Equal(reset) {
+				t.Fatal("GraphQL200rate limit lost", err)
+			}
+		} else if !errors.Is(err, tc.want) {
+			t.Fatal("unsafe native state allowed mutation", tc.body, err)
+		}
+	}
+	if len(l.fake.CommentMinimizeAttempts("acme", "infra", "7")) != 0 || l.fake.Comments("acme", "infra", "7")[0].Minimized {
+		t.Fatal("failed state query wrote a mutation")
+	}
+}
