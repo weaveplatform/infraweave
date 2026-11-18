@@ -64,7 +64,9 @@ func nativeCheckState(state port.CheckState) (gitlab.BuildStateValue, bool) {
 		return gitlab.BuildStateValue("failed"), true
 	case port.CheckCanceled:
 		return gitlab.BuildStateValue("canceled"), true
-	case port.CheckSuccess, port.CheckNeutral, port.CheckSkipped:
+	case port.CheckSkipped:
+		return gitlab.BuildStateValue("skipped"), true
+	case port.CheckSuccess, port.CheckNeutral:
 		return gitlab.BuildStateValue("success"), true
 	}
 	return "", false

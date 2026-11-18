@@ -115,3 +115,23 @@ func TestUnitCommitCheckLostCreate(t *testing.T) {
 		t.Fatal("zero commit accepted")
 	}
 }
+
+func TestUnitCommitCheckSkippedNativeState(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	report := port.CheckReport{
+		Name:       "infraweave/modules",
+		State:      port.CheckSkipped,
+		Title:      "0 runs",
+		Summary:    "0 runs.",
+		URL:        "https://infra.example/runs/one",
+		RecoveryID: "infraweave/aggregate/modules",
+	}
+	if _, err := l.gl.Set(t.Context(), l.repo.Repo, l.repo.Head, report); err != nil {
+		t.Fatal(err)
+	}
+	writes := l.fake.CheckWrites("acme/platform", "infra")
+	if len(writes) != 1 || writes[0].Status != "skipped" {
+		t.Fatal("native skipped aggregate became ordinary success", writes)
+	}
+}

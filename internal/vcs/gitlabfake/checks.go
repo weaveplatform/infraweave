@@ -79,7 +79,7 @@ func (f *Fake) setCheck(w http.ResponseWriter, r *http.Request) {
 		Description string `json:"description"`
 		URL         string `json:"target_url"`
 	}
-	if json.NewDecoder(r.Body).Decode(&body) != nil || body.Name == "" || !slices.Contains([]string{"pending", "running", "success", "failed", "canceled"}, body.State) {
+	if json.NewDecoder(r.Body).Decode(&body) != nil || body.Name == "" || !slices.Contains([]string{"pending", "running", "success", "failed", "canceled", "skipped"}, body.State) {
 		answer(w, 400, message("Invalid commit status"))
 		return
 	}
