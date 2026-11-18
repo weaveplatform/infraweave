@@ -105,4 +105,3 @@ Feature: Aggregate check options follow the feature catalogue
       | provider | mode |
       | Azure DevOps | AGGREGATED |
       | Azure DevOps | ALL |
-
