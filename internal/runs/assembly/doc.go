@@ -47,6 +47,8 @@
 // Keys the runs' key, which other domains' held columns name, for the
 // nightly orphan count; CommitRuns supplies runsapi.CommitRuns, the account-bound
 // identities and creation times of runs on a stack's requested commits;
+// PlanningLogs supplies an account-bound bounded tail of an exact planning
+// transition's masked log, without full run views or signed URLs;
 // Stream is its migration stream, which
 // internal/app registers after configuration's.
 //
