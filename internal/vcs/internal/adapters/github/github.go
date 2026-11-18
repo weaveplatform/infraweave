@@ -21,6 +21,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -482,14 +483,20 @@ func installations(ctx context.Context, c *github.Client) ([]*github.Installatio
 // limit is a *port.RateLimited; a refused credential is ErrCredential; a
 // host that fails or does not answer is kernel.ErrUnavailable.
 func classify(err error, what string) error {
-	if rl, ok := errors.AsType[*github.RateLimitError](err); ok {
-		return &port.RateLimited{Reset: rl.Rate.Reset.Time}
-	}
-	if ab, ok := errors.AsType[*github.AbuseRateLimitError](err); ok {
-		return &port.RateLimited{Reset: time.Now().Add(ab.GetRetryAfter()).Truncate(time.Second)}
-	}
 	var resp *http.Response
-	if er, ok := errors.AsType[*github.ErrorResponse](err); ok {
+	if rl, ok := errors.AsType[*github.RateLimitError](err); ok {
+		resp = rl.Response
+		// The SDK synthesizes headerless refusals from a cached valid reset.
+		// Native responses instead pass through our bounded header decoder.
+		if (resp == nil || len(resp.Header) == 0) && rl.Rate.Reset.After(time.Now()) {
+			return &port.RateLimited{Reset: rl.Rate.Reset.Time}
+		}
+	} else if ab, ok := errors.AsType[*github.AbuseRateLimitError](err); ok {
+		resp = ab.Response
+		if (resp == nil || len(resp.Header) == 0) && ab.GetRetryAfter() > 0 {
+			return &port.RateLimited{Reset: time.Now().Add(ab.GetRetryAfter()).Truncate(time.Second)}
+		}
+	} else if er, ok := errors.AsType[*github.ErrorResponse](err); ok {
 		resp = er.Response
 	} else if he, ok := errors.AsType[*ghinstallation.HTTPError](err); ok {
 		resp = he.Response
@@ -503,7 +510,7 @@ func classify(err error, what string) error {
 	switch s := resp.StatusCode; {
 	case s == http.StatusNotFound || s == http.StatusUnprocessableEntity:
 		return fmt.Errorf("%w: github: %s: %w", port.ErrNotFound, what, err)
-	case s == http.StatusUnauthorized:
+	case s == http.StatusUnauthorized || s == http.StatusForbidden:
 		return fmt.Errorf("%w: %s: %w", ErrCredential, what, err)
 	case s >= http.StatusInternalServerError:
 		return fmt.Errorf("%w: github: %s: %w", kernel.ErrUnavailable, what, err)
@@ -511,21 +518,14 @@ func classify(err error, what string) error {
 	return fmt.Errorf("github: %s: %w", what, err)
 }
 
-// rateLimit is resp's rate limit, from Retry-After or from
-// X-RateLimit-Reset when no request remains; nil when it carries none.
+// rateLimit prefers a secondary Retry-After to the ordinary quota reset.
+// A refusal without a valid reset keeps its ordinary classification.
 func rateLimit(resp *http.Response) *port.RateLimited {
 	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusTooManyRequests {
 		return nil
 	}
-	if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil {
-		return &port.RateLimited{
-			Reset: time.Now().Add(time.Duration(s) * time.Second).Truncate(time.Second),
-		}
-	}
-	if resp.Header.Get("X-RateLimit-Remaining") == "0" {
-		if s, err := strconv.ParseInt(resp.Header.Get("X-RateLimit-Reset"), 10, 64); err == nil {
-			return &port.RateLimited{Reset: time.Unix(s, 0)}
-		}
+	if reset, ok := ratelimit.Reset(resp.Header, time.Now(), "Retry-After", "X-RateLimit-Reset", "RateLimit-Reset"); ok {
+		return &port.RateLimited{Reset: reset}
 	}
 	return nil
 }
