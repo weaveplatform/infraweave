@@ -413,7 +413,8 @@ coverage it would contribute is not waived.
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
 | `accept-vendors` | `ubuntu-latest` | `@pulumi`, `@aws`, `@kubernetes`, `@ansible` | 30 min | yes |
-| `accept-runs` | `ubuntu-latest` | `@docker`, `@terraform`, `@tofu`, `@terragrunt`, `@flows-agent` | 30 min | yes |
+| `accept-terraform` | `ubuntu-latest` | `@terraform` | 30 min | yes |
+| `accept-runs` | `ubuntu-latest` | remaining `@docker`, `@tofu`, `@terragrunt`, `@flows-agent`; `@kubernetes` until `accept-vendors` is implemented | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
@@ -522,16 +523,25 @@ coverage it would contribute is not waived.
     that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
-- A scenario's partition is the first of `accept-vendors`, `accept-runs`,
+- A scenario's partition is the first of `accept-terraform`, `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
-  `@postgres` `@terraform` scenario runs once, in `accept-runs`, and a
-  `@docker` `@pulumi` one in `accept-vendors`.
-  `TestUnitFeaturePartitions` parses every feature and fails when a
-  scenario carries a tag no partition lists.
+  `@postgres` `@terraform` scenario runs once, in `accept-terraform`.
+  The planned `accept-vendors` precedes them when its vendors are
+  implemented: a `@docker` `@pulumi` scenario belongs there.
+  `TestUnitFeaturePartitions` fails when a scenario carries an unlisted
+  tag. `TestUnitPartitionSelections` uses Godog's actual parser on every
+  expanded scenario to prove exactly one owning job, no missing cases,
+  and conjunction with focus tags. Comma alternatives distribute their
+  exclusions and focus conditions into every arm.
 - Every required job is in the `needs` of the `Quality gate` job and, when
   it produces coverage, of `coverage`.
 - When a partition approaches its timeout, it splits by tag into two
   required jobs; scenarios are never dropped to fit.
+  Terraform-tagged cases are split from the other run cases for this
+  reason. Both retain the ten-minute test limit and thirty-minute job
+  limit; their profiles and Cucumber results all join the same gates.
+  Nightly acceptance includes both partitions, and the weekly or
+  requested stress run applies to both, preserving the full run workload.
 
 ## Rationale
 

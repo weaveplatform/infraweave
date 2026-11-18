@@ -7,8 +7,8 @@ name: go | Nightly acceptance
 # newest Terraform and OpenTofu releases; until then it runs the suite as the
 # quality gate does.
 #
-# Once a week, and on demand, the stress job runs the runs partition under
-# make accept-stress instead: refused signed uploads, a slow object store and
+# Once a week, and on demand, the stress jobs run both terraform and runs
+# under make accept-stress: refused signed uploads, a slow object store and
 # capped run containers. It is informational too, and its failures are
 # triaged as product defects or harness assumptions.
 # ref: decision 0016
@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       stress:
-        description: 'Run the runs partition under stress instead of every partition'
+        description: 'Run the terraform and runs partitions under stress instead of every partition'
         type: boolean
         default: false
       stress-settings:
@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [core, runs, integrations]
+        partition: [core, terraform, runs, integrations]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -110,8 +110,12 @@ jobs:
           retention-days: 14
 
   stress:
-    name: 'stress accept-runs'
+    name: 'stress accept-${{ matrix.partition }}'
     if: ${{ inputs.stress || github.event.schedule == '17 5 * * 6' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [terraform, runs]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -132,22 +136,25 @@ jobs:
 
       # An empty setting leaves make accept-stress's default, which an
       # empty INFRAWEAVE_ACCEPT_STRESS in the environment would replace.
-      - name: The runs partition under stress
+      - name: The ${{ matrix.partition }} partition under stress
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
           SETTINGS: ${{ inputs.stress-settings }}
+          PARTITION: ${{ matrix.partition }}
         run: |
           if [ -n "$SETTINGS" ]; then
-            make accept-stress PARTITION=runs INFRAWEAVE_ACCEPT_STRESS="$SETTINGS"
+            make accept-stress PARTITION="$PARTITION" INFRAWEAVE_ACCEPT_STRESS="$SETTINGS"
           else
-            make accept-stress PARTITION=runs
+            make accept-stress PARTITION="$PARTITION"
           fi
 
       - name: Report the partition's scenarios
         if: success()
+        env:
+          PARTITION: ${{ matrix.partition }}
         run: |
           n=$(jq '[.[].elements[]?] | length' cover/accept/cucumber.json)
-          line="accept-runs under stress ran ${n} scenarios."
+          line="accept-${PARTITION} under stress ran ${n} scenarios."
           # A stress of CPUs alone starts no store relay, so it refuses nothing.
           refusals=test/acceptance/out/store-refusals.json
           if [ -f "$refusals" ]; then
@@ -161,7 +168,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: stress-evidence-runs
+          name: stress-evidence-${{ matrix.partition }}
           path: test/acceptance/out
           retention-days: 14
 
@@ -192,7 +199,7 @@ jobs:
           set -euo pipefail
           if [ "$STRESS" = "failure" ]; then
             title="Stress acceptance failed"
-            body="The runs partition failed under stress on ${SHA}: ${RUN_URL}. Its scenarios' evidence, with each object store call, is an artefact of the run; triage each failure as a product defect or a harness assumption."
+            body="A terraform or runs partition failed under stress on ${SHA}: ${RUN_URL}. Each failed partition's scenarios' evidence, with each object store call, is an artefact of the run; triage each failure as a product defect or a harness assumption."
           else
             title="Nightly acceptance failed"
             body="The nightly acceptance run failed on ${SHA}: ${RUN_URL}. Each failed partition uploads its scenarios' evidence as an artefact of the run."
