@@ -133,28 +133,21 @@ func (s *Service) Replay(ctx context.Context, p kernel.Principal, integration, i
 			return err
 		}
 		now = s.d.Now()
-		if d.ReceivedAt.Before(now.Add(-s.d.Retention)) {
-			return ErrNotFound
-		}
 		if d.Replays != initial.Replays {
 			return &ReplayConflict{"The delivery changed while replay was being requested."}
 		}
-		if d.BodyKey != "" {
-			if _, err = s.d.Objects.LockLiveAt(ctx, objectstore.Inbox, d.BodyKey, now); err != nil {
-				if errors.Is(err, objectstore.ErrNotFound) {
-					return &ReplayConflict{"The retained inbox body has expired or is no longer available."}
-				}
-				return err
-			}
+		if err := s.lockReplayBody(ctx, d, now); err != nil {
+			return err
 		}
 		in, err := s.d.Store.Integration(ctx, integration, now)
 		if err != nil {
 			return err
 		}
-		if in.Account != p.AccountID || !verifyStored(body, d.Signature, in.Secrets(now)) {
-			return &ReplayConflict{"The stored signature no longer verifies with an eligible webhook secret."}
+		admittedAt, err := s.admitReplay(ctx, d, in, body)
+		if err != nil {
+			return err
 		}
-		out, err = s.d.Admin.Reset(ctx, d, now.Add(s.d.Timeout))
+		out, err = s.d.Admin.Reset(ctx, d, admittedAt.Add(s.d.Timeout))
 		if err != nil {
 			return err
 		}
@@ -172,7 +165,7 @@ func (s *Service) Replay(ctx context.Context, p kernel.Principal, integration, i
 		return s.d.Admin.Audit(ctx, kernel.AuditEntry{
 			AccountID: p.AccountID.ULID, Actor: actor, Action: "vcs_integration.replay_delivery", EventType: "UPDATE",
 			AffectedResource: kernel.AuditResource{Type: "VCS_INTEGRATION", ID: integration.String()},
-			RemoteIP:         remoteIP, CreatedAt: now,
+			RemoteIP:         remoteIP, CreatedAt: admittedAt,
 		})
 	})
 	if err != nil {
@@ -224,4 +217,35 @@ func verifyStored(body, signature []byte, secrets [][]byte) bool {
 		matched |= subtle.ConstantTimeCompare(expected, mac.Sum(nil))
 	}
 	return matched == 1
+}
+
+// admitReplay samples the admission clock after potentially blocking owner,
+// blob and secret reads. The second blob lookup owns its row already, and
+// checks its immutable expiry against this same final policy cutoff.
+func (s *Service) admitReplay(ctx context.Context, d Delivery, in Integration, body []byte) (time.Time, error) {
+	now := s.d.Now()
+	if d.ReceivedAt.Before(now.Add(-s.d.Retention)) {
+		return time.Time{}, &ReplayConflict{"The delivery retention period elapsed while replay was being requested."}
+	}
+	if err := s.lockReplayBody(ctx, d, now); err != nil {
+		return time.Time{}, err
+	}
+	if in.Account != d.Account || !verifyStored(body, d.Signature, in.Secrets(now)) {
+		return time.Time{}, &ReplayConflict{"The stored signature no longer verifies with an eligible webhook secret."}
+	}
+	return now, nil
+}
+
+func (s *Service) lockReplayBody(ctx context.Context, d Delivery, at time.Time) error {
+	if d.BodyKey == "" {
+		return nil
+	}
+	_, err := s.d.Objects.LockLiveAt(ctx, objectstore.Inbox, d.BodyKey, at)
+	if errors.Is(err, objectstore.ErrNotFound) {
+		return &ReplayConflict{"The retained inbox body has expired or is no longer available."}
+	}
+	if err != nil {
+		return fmt.Errorf("vcs: hold replay body: %w", err)
+	}
+	return nil
 }

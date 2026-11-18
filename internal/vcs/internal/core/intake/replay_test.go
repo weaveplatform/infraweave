@@ -329,3 +329,89 @@ func TestUnitReplayRechecksSecretWindowAfterLock(t *testing.T) {
 		t.Fatal("previous window was evaluated before the row lock", err)
 	}
 }
+
+func TestUnitReplayFreshAdmission(t *testing.T) {
+	for _, name := range []string{"previous window after lookup", "body expires during lock", "body expires during lookup", "row retention after lookup", "fresh reset deadline"} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			now := time.Now()
+			secret := []byte(strings.Repeat("s", 32))
+			body := []byte("retained-body")
+			f.svc.d.Now = func() time.Time { return now }
+			f.store.in.Current = secret
+			f.store.d = Delivery{
+				Account:     f.store.in.Account,
+				ID:          kernel.NewULID(),
+				Integration: f.store.in.ID,
+				ReceivedAt:  now,
+				Body:        body,
+				Signature:   bodyMAC(body, secret),
+				State:       Failed,
+			}
+			admin := &adminStore{s: f.store}
+			f.svc.d.Admin = admin
+			advance := func() { now = now.Add(2 * time.Second) }
+			until := now.Add(time.Second)
+			switch name {
+			case "previous window after lookup":
+				f.store.in.Current = []byte(strings.Repeat("x", 32))
+				f.store.in.Previous = secret
+				f.store.in.PreviousUntil = &until
+				f.store.onLookup = advance
+			case "body expires during lock", "body expires during lookup":
+				f.store.d.BodyKey = "external"
+				f.store.d.Body = nil
+				f.objects.bodies["external"] = body
+				f.objects.expires = &until
+				if name == "body expires during lock" {
+					f.objects.onLock = advance
+				} else {
+					f.store.onLookup = advance
+				}
+			case "row retention after lookup":
+				f.store.d.ReceivedAt = now.Add(-f.svc.d.Retention).Add(time.Second)
+				f.store.onLookup = advance
+			case "fresh reset deadline":
+				f.store.onLookup = advance
+			}
+			out, err := f.svc.Replay(t.Context(), kernel.Principal{AccountID: f.store.d.Account}, f.store.d.Integration, f.store.d.ID, "")
+			if name == "fresh reset deadline" {
+				if err != nil || !out.Deadline.Equal(now.Add(f.svc.d.Timeout)) {
+					t.Fatal("reset deadline used pre-read clock", out.Deadline, now, err)
+				}
+				return
+			}
+			var conflict *ReplayConflict
+			if !errors.As(err, &conflict) || admin.resets != 0 || f.jobs.enqueued != 0 || len(admin.entries) != 0 {
+				t.Fatal("expired admission changed replay state/job/audit", err, admin.resets, f.jobs.enqueued, len(admin.entries))
+			}
+		})
+	}
+}
+
+func TestUnitReplayExternalBodyKeepsExpiry(t *testing.T) {
+	f := newFixture(t)
+	now := time.Now()
+	secret := []byte(strings.Repeat("s", 32))
+	body := []byte("private retained bytes")
+	f.store.in.Current = secret
+	f.store.d = Delivery{
+		Account:     f.store.in.Account,
+		ID:          kernel.NewULID(),
+		Integration: f.store.in.ID,
+		ReceivedAt:  now,
+		BodyKey:     "inbox/body",
+		Signature:   bodyMAC(body, secret),
+		State:       Failed,
+	}
+	until := now.Add(time.Hour)
+	wantExpiry := until
+	f.objects.expires = &until
+	f.objects.bodies["inbox/body"] = body
+	admin := &adminStore{s: f.store}
+	f.svc.d.Admin = admin
+	out, err := f.svc.Replay(t.Context(), kernel.Principal{AccountID: f.store.d.Account}, f.store.d.Integration, f.store.d.ID, "")
+	if err != nil || out.Replays != 1 || f.objects.locked != 2 || !f.objects.expires.Equal(wantExpiry) {
+		t.Fatal("external replay did not validate both expiry gates", out, err, f.objects.locked)
+	}
+}

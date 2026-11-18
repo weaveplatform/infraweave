@@ -357,11 +357,11 @@ func TestAccDeliveryChildFailurePreservesSibling(t *testing.T) {
 }
 
 func TestAccReplayExpiredBlobAndRotatedSignature(t *testing.T) {
-	for _, fault := range []string{"expired", "rotated", "previous"} {
+	for _, fault := range []string{"expired", "rotated", "previous", "inline-old", "external-valid"} {
 		t.Run(fault, func(t *testing.T) {
 			w := newWebhookWorld(t)
 			size := 128
-			if fault == "expired" {
+			if fault == "expired" || fault == "external-valid" {
 				size = intake.InlineBody + 1
 			}
 			w.receive(t, "body", webhookBody(size))
@@ -370,11 +370,25 @@ func TestAccReplayExpiredBlobAndRotatedSignature(t *testing.T) {
 				t.Fatal(err)
 			}
 			d := w.delivery(t, "body")
-			if fault == "expired" {
+			switch fault {
+			case "external-valid":
+				if d.BodyKey == "" {
+					t.Fatal("large body did not use inbox storage")
+				}
+			case "expired":
 				if _, err := w.f.db.Exec(t.Context(), `UPDATE blob_objects SET expires_at=now()-interval '1 second' WHERE store='inbox' AND key=$1`, d.BodyKey); err != nil {
 					t.Fatal(err)
 				}
-			} else {
+			case "inline-old":
+				if _, err := w.f.db.Exec(
+					t.Context(),
+					`UPDATE vcs_deliveries SET received_at=now()-interval '3 days',deadline=now()-interval '3 days' WHERE account_id=$1 AND id=$2`,
+					w.f.acct,
+					d.ID,
+				); err != nil {
+					t.Fatal(err)
+				}
+			default:
 				current := []byte(strings.Repeat("new", 16))
 				in, err := w.f.store.Get(t.Context(), w.f.acct, w.id, false)
 				if err != nil {
@@ -389,7 +403,7 @@ func TestAccReplayExpiredBlobAndRotatedSignature(t *testing.T) {
 				}
 			}
 			_, err := w.svc.Replay(t.Context(), w.f.admin, w.id, d.ID, "")
-			if fault == "previous" {
+			if fault == "previous" || fault == "inline-old" || fault == "external-valid" {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -424,5 +438,48 @@ func TestAccConcurrentDeliveryReplay(t *testing.T) {
 	}
 	if w.delivery(t, "concurrent").Replays != 1 {
 		t.Fatal("concurrent replay reset twice")
+	}
+}
+
+func TestAccDeliveryStoreBoundaries(t *testing.T) {
+	w := newWebhookWorld(t)
+	d := w.terminal(t, "boundaries")
+	if _, err := w.store.Owned(t.Context(), w.f.acct, w.id, d.ID, time.Time{}, true); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatal("locked read without transaction", err)
+	}
+	if _, err := w.store.Reset(t.Context(), d, time.Now()); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatal("reset without transaction", err)
+	}
+	if _, err := w.store.Hold(t.Context(), intake.Ref{Account: w.f.acct, ID: d.ID}); !errors.Is(err, queue.ErrNoTransaction) {
+		t.Fatal("generation hold without transaction", err)
+	}
+	if _, err := w.store.Owned(t.Context(), w.f.acct, w.id, d.ID, time.Now().Add(time.Hour), false); !errors.Is(err, intake.ErrNotFound) {
+		t.Fatal("expired row visible", err)
+	}
+	missing := d
+	missing.ID = kernel.NewULID()
+	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if held, err := w.store.Hold(ctx, intake.Ref{Account: w.f.acct, ID: missing.ID, State: intake.Received}); err != nil || held {
+			t.Fatal("missing generation held", held, err)
+		}
+		_, err := w.store.Reset(ctx, missing, time.Now())
+		return err
+	})
+	replayConflict(t, err)
+	w.f.db.Close()
+	for name, err := range map[string]error{
+		"owned": func() error {
+			_, err := w.store.Owned(t.Context(), w.f.acct, w.id, d.ID, time.Time{}, false)
+			return err
+		}(),
+		"list": func() error {
+			_, err := w.store.List(t.Context(), w.f.acct, w.id, time.Time{}, search.Input{})
+			return err
+		}(),
+		"failure": w.store.Failure(t.Context(), intake.Ref{Account: w.f.acct, ID: d.ID}),
+	} {
+		if err == nil || errors.Is(err, intake.ErrNotFound) {
+			t.Fatal(name, "masked unavailable dependency", err)
+		}
 	}
 }

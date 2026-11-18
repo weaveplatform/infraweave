@@ -46,6 +46,7 @@ type store struct {
 	d                                 Delivery
 	calls                             *[]string
 	lookup, insert, read, state, drop error
+	onLookup                          func()
 	duplicate                         bool
 	keys                              []string
 	drops                             []int
@@ -55,6 +56,9 @@ type store struct {
 
 func (s *store) Integration(context.Context, kernel.ULID, time.Time) (Integration, error) {
 	*s.calls = append(*s.calls, "lookup")
+	if s.onLookup != nil {
+		s.onLookup()
+	}
 	return s.in, s.lookup
 }
 
@@ -147,6 +151,8 @@ func (j *jobs) HoldTx(ctx context.Context, _ queue.Job) error {
 }
 
 type objects struct {
+	onLock                    func()
+	expires                   *time.Time
 	bodies                    map[string][]byte
 	put, commit, open, delete error
 	read                      error
@@ -545,11 +551,17 @@ func (j *jobs) HoldByKeyPrefixTx(ctx context.Context, _ kernel.ULID, _ []queue.K
 	return out, j.deadError
 }
 
-func (o *objects) LockLiveAt(ctx context.Context, _ objectstore.Name, _ string, _ time.Time) (objectstore.Object, error) {
+func (o *objects) LockLiveAt(ctx context.Context, _ objectstore.Name, _ string, at time.Time) (objectstore.Object, error) {
 	if !tx.In(ctx) {
 		return objectstore.Object{}, queue.ErrNoTransaction
 	}
 	o.locked++
+	if o.expires != nil && !at.Before(*o.expires) {
+		return objectstore.Object{}, objectstore.ErrNotFound
+	}
+	if o.onLock != nil {
+		o.onLock()
+	}
 	return objectstore.Object{}, o.live
 }
 
