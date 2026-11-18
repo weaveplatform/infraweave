@@ -358,11 +358,13 @@ func optionsOf(at string, s *openapi3.Schema, open map[*openapi3.Schema]bool, ou
 				return nil, fmt.Errorf("property %s's x-infraweave-feature %q %w",
 					pointer, option, errFeature)
 			}
-			value, _ := ext["value"].(string)
-			out = append(
-				out,
-				featuresapi.OptionGate{Pointer: pointer, Value: value, Feature: option},
-			)
+			values, err := optionValues(ext)
+			if err != nil {
+				return nil, fmt.Errorf("property %s's x-infraweave-feature: %w", pointer, err)
+			}
+			for _, value := range values {
+				out = append(out, featuresapi.OptionGate{Pointer: pointer, Value: value, Feature: option})
+			}
 		}
 		if ref.Value != nil {
 			var err error
@@ -370,6 +372,39 @@ func optionsOf(at string, s *openapi3.Schema, open map[*openapi3.Schema]bool, ou
 				return nil, err
 			}
 		}
+	}
+	return out, nil
+}
+
+// Each value becomes an ordinary option condition, so the features domain
+// remains the single evaluator of entitlement and operator-switch policy.
+func optionValues(ext map[string]any) ([]string, error) {
+	raw, many := ext["values"]
+	value, one := ext["value"]
+	if many && one {
+		return nil, fmt.Errorf("%w: value and values are mutually exclusive", errFeature)
+	}
+	if !many {
+		if !one {
+			return []string{""}, nil
+		}
+		v, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%w: value must be a string", errFeature)
+		}
+		return []string{v}, nil
+	}
+	list, ok := raw.([]any)
+	if !ok || len(list) == 0 {
+		return nil, fmt.Errorf("%w: values must be a nonempty string array", errFeature)
+	}
+	out := make([]string, 0, len(list))
+	for _, raw := range list {
+		value, ok := raw.(string)
+		if !ok || value == "" {
+			return nil, fmt.Errorf("%w: values must contain nonempty strings", errFeature)
+		}
+		out = append(out, value)
 	}
 	return out, nil
 }

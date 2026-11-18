@@ -180,7 +180,11 @@ func TestUnitAPIOperations(t *testing.T) {
 		"/azure-dev-ops-repo-integrations", "/github-enterprise-integrations",
 	} {
 		if g, ok := ops["POST "+BaseURL+path]; !ok || !reflect.DeepEqual(g.Gate.Options,
-			[]featuresapi.OptionGate{{Pointer: "/customInput/isDefault", Feature: "multiple-vcs-integrations", Value: "false"}}) {
+			[]featuresapi.OptionGate{
+				{Pointer: "/customInput/isDefault", Feature: "multiple-vcs-integrations", Value: "false"},
+				{Pointer: "/customInput/vcsChecks", Feature: "aggregated-vcs-checks", Value: "AGGREGATED"},
+				{Pointer: "/customInput/vcsChecks", Feature: "aggregated-vcs-checks", Value: "ALL"},
+			}) {
 			t.Errorf("%s create's options: %+v, exists=%t", path, g.Gate.Options, ok)
 		}
 	}

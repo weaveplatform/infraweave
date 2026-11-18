@@ -23314,6 +23314,9 @@ components:
           allOf:
             - $ref: '#/components/schemas/VCSCheck'
           description: vcsChecks contains all the VCS checks enabled for this integration. If not provided, defaults to INDIVIDUAL
+          x-infraweave-feature:
+            feature: aggregated-vcs-checks
+            values: [AGGREGATED, ALL]
           x-terraform:
             - spacelift_azure_devops_integration.vcs_checks
             - spacelift_bitbucket_datacenter_integration.vcs_checks
@@ -23349,6 +23352,9 @@ components:
           $ref: '#/components/schemas/VCSCheckOptionsInput'
         vcsChecks:
           $ref: '#/components/schemas/VCSCheck'
+          x-infraweave-feature:
+            feature: aggregated-vcs-checks
+            values: [AGGREGATED, ALL]
       required:
         - space
       type: object

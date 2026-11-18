@@ -199,8 +199,15 @@ generator reads with it. There are three kinds:
 | Kind | Gates | Where the gate sits | Examples |
 |---|---|---|---|
 | Capability | A set of operations. Usually an API tag; finer where Spacelift gates part of a tag | Every operation of every served OpenAPI document carries `x-infraweave-feature` naming exactly one capability | `stacks`, `drift-detection`, `targeted-replan`, `scheduling` |
-| Option | One value or mode of a field inside an operation | The schema property carries `x-infraweave-feature` naming the option and the gated value; the catalogue entry names the same field | `aggregated-vcs-checks` (`vcsChecks: AGGREGATED`), `multiple-vcs-integrations` (`isDefault: false`), each IaC vendor (`StackVendor`) |
+| Option | One value or mode of a field inside an operation | The schema property carries `x-infraweave-feature` naming the option and the gated value; the catalogue entry names the same field | `aggregated-vcs-checks` (`vcsChecks: AGGREGATED` or `ALL`), `multiple-vcs-integrations` (`isDefault: false`), each IaC vendor (`StackVendor`) |
 | Limit | A quantity, as a whole number in a unit the entry states | The domain that creates the counted thing | `seats`, `private-workers`, `public-worker-slots`, `ai-budget` |
+
+An option mark uses `{feature, value}` for one scalar or
+`{feature, values: [...]}` for several alternatives at the same property.
+`value` and `values` are mutually exclusive. Without either member it gates
+any non-null value; omitted or null input does not select an option. Each
+alternative is checked by the same entitlement policy. The common VCS create
+and update properties mark both `AGGREGATED` and `ALL` this way.
 
 - **Coverage.** Every operation belongs to exactly one capability, and every
   option names its field. The catalogue covers Deploy; Flows, as

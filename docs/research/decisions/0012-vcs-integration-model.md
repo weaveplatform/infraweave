@@ -442,7 +442,15 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   `infraweave/<stack slug>/tracked` and `infraweave/<stack slug>` for
   proposed runs. Aggregated names are `infraweave/tracked`,
   `infraweave/proposed`, `infraweave/modules`.
-- **In-place updates (D11).** One check per run is updated in place.
+- **In-place updates (D11).** GitHub keeps one individual check run per
+  infraweave run, updated in place; the visible name stays fixed and
+  `external_id` stays the stack ID. Recovery also matches the immutable run
+  link or marker, so another run cannot take over that check. Other providers
+  use their native status keyed by repository, commit and check name. The
+  newest run owns that shared status, with creation time and ID as ties;
+  older runs and stale transition sequences cannot overwrite it. Aggregates
+  remain shared named resources on every provider. No run ID is appended to
+  visible names or status keys, and no provider CI pipeline is created.
   `vcs.report_check` coalesces pending updates by run and check name and
   orders them by run; aggregate updates order by repository, commit and
   check name. Store provider IDs, and look up name/external ID before
