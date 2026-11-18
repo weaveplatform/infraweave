@@ -7,14 +7,15 @@ import (
 	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 // Binding resolves the account's provider binding without opening credentials.
 // Feedback selection uses its ID; only its queued provider job calls Use.
-func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (kernel.ULID, bool, error) {
+func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
 	canonical := canonicalProvider(provider)
 	if !slices.Contains(s.providers, canonical) {
-		return kernel.ULID{}, false, nil
+		return port.Integration{}, false, nil
 	}
 	var in Integration
 	var err error
@@ -24,13 +25,13 @@ func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, provider s
 		in, err = s.store.Get(ctx, acct, *id, false)
 	}
 	if errors.Is(err, ErrNotFound) {
-		return kernel.ULID{}, false, nil
+		return port.Integration{}, false, nil
 	}
 	if err != nil {
-		return kernel.ULID{}, false, err //nolint:wrapcheck // the store names the read
+		return port.Integration{}, false, err //nolint:wrapcheck // the store names the read
 	}
 	if in.Provider != canonical {
-		return kernel.ULID{}, false, fmt.Errorf("%w: %s %s", ErrNotFound, canonical, in.ID)
+		return port.Integration{}, false, fmt.Errorf("%w: %s %s", ErrNotFound, canonical, in.ID)
 	}
-	return in.ID, true, nil
+	return port.Integration{ID: in.ID, Provider: in.Provider, Settings: in.Settings}, true, nil
 }

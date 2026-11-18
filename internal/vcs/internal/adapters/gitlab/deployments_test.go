@@ -25,7 +25,10 @@ func TestUnitDeploymentReport(t *testing.T) {
 		}
 	}
 	got := l.fake.Deployments("acme/platform", "infra")
-	if len(got) != 1 || len(l.fake.Environments("acme/platform", "infra")) != 1 || got[0].Environment.Name != stack.Environment || got[0].SHA != run.Commit || got[0].Ref != "main" || got[0].Tag || !slices.Equal(got[0].States, []string{"running", "success"}) {
+	if len(got) != 1 || len(l.fake.Environments("acme/platform", "infra")) != 1 || got[0].Environment.Name != stack.Environment || got[0].SHA != run.Commit ||
+		got[0].Ref != "main" ||
+		got[0].Tag ||
+		!slices.Equal(got[0].States, []string{"running", "success"}) {
 		t.Fatalf("native deployment %+v", got)
 	}
 	run.ID = kernel.NewULID()
@@ -98,5 +101,27 @@ func TestUnitDeploymentRefusals(t *testing.T) {
 	}
 	if len(l.fake.Deployments("acme/platform", "infra")) != 0 {
 		t.Fatal("refused write changed deployments")
+	}
+}
+
+func TestUnitDeploymentHost(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	for _, tc := range []struct{ input, want string }{
+		{"", "https://gitlab.com/api/v4/"},
+		{"https://GITLAB.example.com:443/", "https://gitlab.example.com/api/v4/"},
+		{"https://gitlab.example.com/api/v4/", "https://gitlab.example.com/api/v4/"},
+		{"https://gitlab.example.com/group/", "https://gitlab.example.com/group/api/v4/"},
+		{"https://gitlab.example.com:8443/", "https://gitlab.example.com:8443/api/v4/"},
+		{"http://gitlab.example.com:80/", "http://gitlab.example.com/api/v4/"},
+		{"https://[::1]:443/", "https://[::1]/api/v4/"},
+	} {
+		got, err := l.gl.DeploymentHost(port.Settings{APIHost: tc.input})
+		if err != nil || got != tc.want {
+			t.Errorf("host(%q)=%q,%v want %q", tc.input, got, err, tc.want)
+		}
+	}
+	if _, err := l.gl.DeploymentHost(port.Settings{APIHost: "mailto:invalid"}); err == nil {
+		t.Fatal("invalid host accepted")
 	}
 }

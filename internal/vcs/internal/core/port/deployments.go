@@ -47,3 +47,9 @@ type DeploymentRun struct {
 type Deployments interface {
 	Report(ctx context.Context, repo Repository, stack DeploymentStack, run DeploymentRun, state DeploymentState) error
 }
+
+// DeploymentHost canonically identifies a provider's native API without a
+// credential or a request. Shared GitLab deployment fencing uses this scope.
+type DeploymentHost interface {
+	DeploymentHost(Settings) (string, error)
+}

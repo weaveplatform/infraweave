@@ -26,7 +26,7 @@ func (s *Service) Reported(ctx context.Context, job queue.Job) error {
 	var request DeploymentRequest
 	if s.deployments == nil || json.Unmarshal(job.Payload, &request) != nil || !validDeployment(request) ||
 		job.Account != request.Deployment.Account.ULID {
-		return queue.Permanent(ErrDeploymentReport)
+		return queue.Permanent(ErrDeploymentReport) //nolint:wrapcheck // queue control classification
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -72,7 +72,7 @@ func (s *Service) Reported(ctx context.Context, job queue.Job) error {
 func (s *Service) reportDeployment(ctx context.Context, d Deployment, state kernel.RunState) error {
 	provider := s.deployments.Providers[d.Provider]
 	if provider == nil {
-		return queue.Permanent(ErrDeploymentReport)
+		return queue.Permanent(ErrDeploymentReport) //nolint:wrapcheck // queue control classification
 	}
 	in, ok, err := s.deployments.Integrations.Use(ctx, d.Account, d.Provider, &d.Integration)
 	if err != nil {
@@ -82,10 +82,18 @@ func (s *Service) reportDeployment(ctx context.Context, d Deployment, state kern
 		// A deleted binding cannot silently fall back to a replacement default.
 		return nil
 	}
+	if host, ok := provider.(port.DeploymentHost); ok {
+		current, err := host.DeploymentHost(in.Settings)
+		if err != nil || current != d.NativeHost {
+			// Credential rotation can proceed, but retargeting an integration
+			// cannot move a recorded report outside its native resource fence.
+			return queue.Permanent(ErrDeploymentReport) //nolint:wrapcheck // queue control classification
+		}
+	}
 	next, _ := deploymentState(state)
 	err = provider.Report(ctx, port.Repository{Namespace: d.Namespace, Name: d.Repository, Integration: &in}, d.Stack, d.Run, next)
 	if limit, ok := errors.AsType[*port.RateLimited](err); ok {
-		return queue.Snooze(max(time.Until(limit.Reset), time.Second))
+		return queue.Snooze(max(time.Until(limit.Reset), time.Second)) //nolint:wrapcheck // queue control classification
 	}
 	if err != nil {
 		// SDK errors can carry provider response bodies; queue diagnostics cannot.

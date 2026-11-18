@@ -34,43 +34,55 @@ type deploymentFacts struct {
 func (f *deploymentFacts) HistoryAt(context.Context, kernel.AccountID, kernel.ULID, int64) (runsapi.RunHistory, error) {
 	return f.history, f.failure
 }
+
 func (f *deploymentFacts) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
 	return f.stack, f.failure
 }
+
 func (f *deploymentFacts) Labels(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]string, error) {
 	return map[kernel.ULID][]string{f.stack.ID: slices.Clone(f.labels)}, nil
 }
-func (f *deploymentFacts) Binding(context.Context, kernel.AccountID, string, *kernel.ULID) (kernel.ULID, bool, error) {
-	return f.binding, !f.binding.IsZero(), nil
+
+func (f *deploymentFacts) Binding(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error) {
+	return port.Integration{ID: f.binding}, !f.binding.IsZero(), nil
 }
+
 func (f *deploymentFacts) Use(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error) {
 	return port.Integration{}, f.useFound, f.useError
 }
+
 func (f *deploymentFacts) Report(_ context.Context, _ port.Repository, _ port.DeploymentStack, _ port.DeploymentRun, state port.DeploymentState) error {
 	f.reports = append(f.reports, state)
 	return f.reportError
 }
+
 func (f *deploymentFacts) Deployment(context.Context, kernel.AccountID, kernel.ULID) (Deployment, error) {
 	if f.stored.Run.ID.IsZero() {
 		return Deployment{}, ErrNoDeployment
 	}
 	return f.stored, nil
 }
+
 func (*deploymentFacts) BindDeployment(context.Context, Deployment) (Deployment, error) {
 	panic("target selection must not write")
 }
+
 func (*deploymentFacts) RequestDeployment(context.Context, DeploymentRequest) (bool, error) {
 	panic("target selection must not write")
 }
+
 func (*deploymentFacts) ReserveDeployment(context.Context, Deployment, string) error {
 	panic("target selection must not write")
 }
+
 func (*deploymentFacts) HoldDeployment(context.Context, kernel.AccountID, string) (DeploymentCursor, error) {
 	panic("target selection must not lock")
 }
+
 func (*deploymentFacts) ReportedDeployment(context.Context, kernel.AccountID, string, int64) error {
 	panic("target selection must not write")
 }
+
 func (*deploymentFacts) PurgeDeployments(context.Context, kernel.AccountID, int) (bool, error) {
 	return true, nil
 }
@@ -79,15 +91,39 @@ func deploymentTargetWorld(t *testing.T) (*Service, *deploymentFacts, outbox.Eve
 	t.Helper()
 	acct, run, stack := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
 	now := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
-	f := &deploymentFacts{history: runsapi.RunHistory{ID: run, Stack: stack, Type: kernel.RunTypeTracked, CommitHash: strings.Repeat("a", 40), Branch: "main", CreatedAt: now, Through: 3,
-		Transitions: []runsapi.RunTransition{{Sequence: 1, State: kernel.RunStateQueued, At: now}, {Sequence: 3, State: kernel.RunStateUnconfirmed, At: now.Add(time.Minute)}}},
-		stack: stacksapi.Settings{Stack: stacksapi.Stack{ID: stack, Account: kernel.AccountID{ULID: acct}, Slug: "infra"}, Provider: "GITHUB", Namespace: "acme", Repository: "infra", Branch: "main"}, binding: kernel.NewULID(), useFound: true}
-	u := runsapi.Updated{State: kernel.RunStateUnconfirmed, Run: runsapi.UpdatedRun{ID: run, Type: kernel.RunTypeTracked, State: kernel.RunStateUnconfirmed, Commit: runsapi.UpdatedCommit{Hash: f.history.CommitHash}}, Stack: runsapi.UpdatedStack{ID: "infra", ULID: stack}}
+	f := &deploymentFacts{
+		history: runsapi.RunHistory{
+			ID: run, Stack: stack, Type: kernel.RunTypeTracked, CommitHash: strings.Repeat("a", 40), Branch: "main", CreatedAt: now, Through: 3,
+			Transitions: []runsapi.RunTransition{{Sequence: 1, State: kernel.RunStateQueued, At: now}, {Sequence: 3, State: kernel.RunStateUnconfirmed, At: now.Add(time.Minute)}},
+		},
+		stack: stacksapi.Settings{
+			Stack:      stacksapi.Stack{ID: stack, Account: kernel.AccountID{ULID: acct}, Slug: "infra"},
+			Provider:   "GITHUB",
+			Namespace:  "acme",
+			Repository: "infra",
+			Branch:     "main",
+		},
+		binding:  kernel.NewULID(),
+		useFound: true,
+	}
+	u := runsapi.Updated{
+		State: kernel.RunStateUnconfirmed,
+		Run:   runsapi.UpdatedRun{ID: run, Type: kernel.RunTypeTracked, State: kernel.RunStateUnconfirmed, Commit: runsapi.UpdatedCommit{Hash: f.history.CommitHash}},
+		Stack: runsapi.UpdatedStack{ID: "infra", ULID: stack},
+	}
 	body, err := json.Marshal(u)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := outbox.Event{Account: acct, ID: kernel.NewULID(), Kind: runsapi.UpdatedKind, SchemaVersion: runsapi.UpdatedVersion, Subject: outbox.Subject{Kind: "run", ID: run.String()}, Sequence: 3, Document: body}
+	e := outbox.Event{
+		Account:       acct,
+		ID:            kernel.NewULID(),
+		Kind:          runsapi.UpdatedKind,
+		SchemaVersion: runsapi.UpdatedVersion,
+		Subject:       outbox.Subject{Kind: "run", ID: run.String()},
+		Sequence:      3,
+		Document:      body,
+	}
 	s := NewDeployments(queue.New(nil), nil, DeploymentDeps{Histories: f, Stacks: f, Integrations: f, Store: f, Providers: map[string]port.Deployments{"GITHUB": f, "GITLAB": f}})
 	return s, f, e
 }
@@ -176,12 +212,34 @@ func TestUnitDeploymentTargetExclusions(t *testing.T) {
 
 func TestUnitDeploymentResourceIdentity(t *testing.T) {
 	t.Parallel()
-	d := Deployment{Integration: kernel.NewULID(), Provider: "GITLAB", Namespace: "acme", Repository: "infra", Stack: port.DeploymentStack{Environment: "production"}, Run: port.DeploymentRun{ID: kernel.NewULID(), Ref: "main", Commit: "sha"}}
+	d := Deployment{
+		Integration: kernel.NewULID(),
+		Provider:    "GITLAB",
+		NativeHost:  "https://gitlab.example.com/api/v4/",
+		Namespace:   "acme",
+		Repository:  "infra",
+		Stack:       port.DeploymentStack{Environment: "production"},
+		Run:         port.DeploymentRun{ID: kernel.NewULID(), Ref: "main", Commit: "sha"},
+	}
 	other := d
 	other.Run.ID = kernel.NewULID()
 	if resourceKey(d) != resourceKey(other) {
 		t.Fatal("GitLab native identity invented run field")
 	}
+	other.Integration = kernel.NewULID()
+	if resourceKey(d) != resourceKey(other) {
+		t.Fatal("credential bindings split the same native resource")
+	}
+	other.NativeHost = "https://other.example.com/api/v4/"
+	if resourceKey(d) == resourceKey(other) {
+		t.Fatal("distinct GitLab hosts share resource")
+	}
+	other = d
+	other.NativeHost = "https://gitlab.example.com/nested/api/v4/"
+	if resourceKey(d) == resourceKey(other) {
+		t.Fatal("distinct GitLab installation paths share resource")
+	}
+	other = d
 	other.Run.Ref = "other"
 	if resourceKey(d) == resourceKey(other) {
 		t.Fatal("GitLab ref omitted")
@@ -206,11 +264,11 @@ func TestUnitDeploymentProviderBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.reportError = errors.New("provider leaked token-secret")
-	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); err != ErrDeploymentReport || strings.Contains(err.Error(), "token-secret") {
+	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); !errors.Is(err, ErrDeploymentReport) || strings.Contains(err.Error(), "token-secret") {
 		t.Fatalf("unsafe diagnostic %v", err)
 	}
 	f.reportError = &port.RateLimited{Reset: time.Now().Add(time.Minute)}
-	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); err == nil || err == ErrDeploymentReport {
+	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); err == nil || errors.Is(err, ErrDeploymentReport) {
 		t.Fatalf("rate limit not snoozed: %v", err)
 	}
 	f.reportError = nil
@@ -223,7 +281,7 @@ func TestUnitDeploymentProviderBoundary(t *testing.T) {
 		t.Fatalf("deleted binding fallback: %v %v", err, f.reports)
 	}
 	f.useError = errors.New("credential-secret")
-	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); err != ErrDeploymentReport {
+	if err := s.reportDeployment(t.Context(), r.Deployment, r.State); !errors.Is(err, ErrDeploymentReport) {
 		t.Fatalf("credential error=%v", err)
 	}
 	if err := s.Reported(t.Context(), queue.Job{}); err == nil {

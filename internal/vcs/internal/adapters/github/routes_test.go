@@ -104,7 +104,11 @@ func TestUnitGitHubRouteTransport(t *testing.T) {
 			t.Fatal(err)
 		}
 		before := calls.Load()
-		if _, err := guarded(h, srv.Client().Transport, ReadOnly).RoundTrip(req); !errors.Is(err, ErrRoute) || calls.Load() != before {
+		resp, err := guarded(h, srv.Client().Transport, ReadOnly).RoundTrip(req)
+		if resp != nil {
+			resp.Body.Close()
+		}
+		if !errors.Is(err, ErrRoute) || calls.Load() != before {
 			t.Fatal("host/scheme scope bypassed", err)
 		}
 	}

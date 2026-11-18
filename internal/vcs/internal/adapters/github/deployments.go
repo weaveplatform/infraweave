@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/google/go-github/v93/github"
+
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -96,7 +97,7 @@ func findDeployment(ctx context.Context, c *github.Client, repo port.Repository,
 			}
 		}
 		if resp.NextPage == 0 {
-			return nil, nil
+			return nil, nil //nolint:nilnil // no existing native deployment is a successful lookup
 		}
 		opts.Page = resp.NextPage
 	}

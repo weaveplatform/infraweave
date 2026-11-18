@@ -4,13 +4,37 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
+	"strings"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 // ErrDeployment is an incomplete successful native deployment response.
 var ErrDeployment = errors.New("gitlab: invalid deployment response")
+
+// DeploymentHost uses the same API base as Report. Host casing and default
+// ports are origin aliases; relative installation paths remain distinct.
+func (*Provider) DeploymentHost(settings port.Settings) (string, error) {
+	h, err := hostOf(settings)
+	if err != nil {
+		return "", err
+	}
+	u, err := url.Parse(h.api)
+	if err != nil {
+		return "", ErrHost
+	}
+	u.Host = strings.ToLower(u.Host)
+	if u.Scheme == "https" && u.Port() == "443" || u.Scheme == "http" && u.Port() == "80" {
+		u.Host = u.Hostname()
+		if strings.Contains(u.Host, ":") {
+			u.Host = "[" + u.Host + "]"
+		}
+	}
+	return u.String(), nil
+}
 
 // Report finds the named environment and its native ref/SHA deployment before
 // creating either. GitLab exposes no per-run deployment payload; VCS's shared
@@ -126,7 +150,7 @@ func findDeployment(ctx context.Context, c *gitlab.Client, project, environment 
 			}
 		}
 		if resp.NextPage == 0 {
-			return nil, nil
+			return nil, nil //nolint:nilnil // no existing native deployment is a successful lookup
 		}
 		opts.Page = resp.NextPage
 	}

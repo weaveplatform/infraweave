@@ -221,7 +221,7 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 	for {
 		done, err := d.feedback.PurgeDeployments(ctx, acct, PurgeBatch)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck // the store names the purge
 		}
 		if done {
 			break
@@ -262,8 +262,11 @@ var Revoke = source.Revoke
 // Jobs are the domain's job handlers, which the scheduler registers:
 // Revoke's.
 func (d *Domain) Jobs() []queue.Registration {
-	return []queue.Registration{{Kind: Revoke, Handler: d.sources.Revoked}, d.deliveryJob(),
-		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported}}
+	return []queue.Registration{
+		{Kind: Revoke, Handler: d.sources.Revoked},
+		d.deliveryJob(),
+		{Kind: feedback.ReportDeployment, Handler: d.feedback.Reported},
+	}
 }
 
 // Subscribe subscribes the domain's consumers on events.

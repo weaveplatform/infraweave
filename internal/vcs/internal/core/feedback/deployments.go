@@ -37,6 +37,7 @@ type Deployment struct {
 	Provider    string               `json:"provider"`
 	Namespace   string               `json:"namespace"`
 	Repository  string               `json:"repository"`
+	NativeHost  string               `json:"nativeHost,omitempty"`
 	Epoch       time.Time            `json:"epoch"`
 	CreatedAt   time.Time            `json:"createdAt"`
 }
@@ -67,7 +68,7 @@ type DeploymentStore interface {
 
 // DeploymentBindings reads plain binding IDs, opening credentials only in Use.
 type DeploymentBindings interface {
-	Binding(context.Context, kernel.AccountID, string, *kernel.ULID) (kernel.ULID, bool, error)
+	Binding(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error)
 	Use(context.Context, kernel.AccountID, string, *kernel.ULID) (port.Integration, bool, error)
 }
 
@@ -137,8 +138,10 @@ func (s *Service) deploymentTargets(ctx context.Context, event outbox.Event) ([]
 	if err != nil {
 		return nil, fmt.Errorf("VCS deployment target: %w", err)
 	}
-	return []vcsapi.FeedbackTarget{{Account: event.Account, EventID: event.ID,
-		Key: fmt.Sprintf("deployment:%s:%s", history.ID, update.State), Job: ReportDeployment.Name, Payload: body}}, nil
+	return []vcsapi.FeedbackTarget{{
+		Account: event.Account, EventID: event.ID,
+		Key: fmt.Sprintf("deployment:%s:%s", history.ID, update.State), Job: ReportDeployment.Name, Payload: body,
+	}}, nil
 }
 
 func deploymentHistoryMatches(h runsapi.RunHistory, u runsapi.Updated, sequence int64) bool {
@@ -165,12 +168,19 @@ func (s *Service) selectDeployment(ctx context.Context, acct kernel.AccountID, h
 	if !enabled {
 		return Deployment{}, ErrNoDeployment
 	}
-	id, ok, err := d.Integrations.Binding(ctx, acct, stack.Provider, stack.VCSIntegration)
+	bound, ok, err := d.Integrations.Binding(ctx, acct, stack.Provider, stack.VCSIntegration)
 	if err != nil {
 		return Deployment{}, fmt.Errorf("VCS deployment binding: %w", err)
 	}
 	if !ok {
 		return Deployment{}, ErrNoDeployment
+	}
+	var nativeHost string
+	if host, ok := d.Providers[stack.Provider].(port.DeploymentHost); ok {
+		nativeHost, err = host.DeploymentHost(bound.Settings)
+		if err != nil {
+			return Deployment{}, fmt.Errorf("VCS deployment host: %w", err)
+		}
 	}
 	ref, tag := h.Branch, false
 	if h.Tag != "" {
@@ -186,18 +196,20 @@ func (s *Service) selectDeployment(ctx context.Context, acct kernel.AccountID, h
 			break
 		}
 	}
-	return Deployment{Account: acct, Run: port.DeploymentRun{ID: h.ID, Commit: h.CommitHash, Ref: ref, Tag: tag},
+	return Deployment{
+		Account: acct, Run: port.DeploymentRun{ID: h.ID, Commit: h.CommitHash, Ref: ref, Tag: tag},
 		Stack:       port.DeploymentStack{ID: stack.ID, Slug: stack.Slug, Environment: environment},
-		Integration: id, Provider: stack.Provider, Namespace: stack.Namespace, Repository: stack.Repository,
-		Epoch: epoch, CreatedAt: h.CreatedAt}, nil
+		Integration: bound.ID, Provider: stack.Provider, Namespace: stack.Namespace, Repository: stack.Repository, NativeHost: nativeHost,
+		Epoch: epoch, CreatedAt: h.CreatedAt,
+	}, nil
 }
 
 func resourceKey(d Deployment) string {
-	parts := []any{d.Integration, d.Namespace, d.Repository, d.Stack.Environment}
+	parts := []any{d.Namespace, d.Repository, d.Stack.Environment}
 	if d.Provider == "GITLAB" {
-		parts = append(parts, d.Run.Ref, d.Run.Commit)
+		parts = append(parts, d.NativeHost, d.Run.Ref, d.Run.Commit)
 	} else {
-		parts = append(parts, d.Run.ID)
+		parts = append(parts, d.Integration, d.Run.ID)
 	}
 	b, _ := json.Marshal(parts)
 	sum := sha256.Sum256(b)
@@ -209,7 +221,8 @@ func validDeployment(r DeploymentRequest) bool {
 	_, state := deploymentState(r.State)
 	return state && r.Sequence > 0 && !d.Account.IsZero() && !d.Run.ID.IsZero() && !d.Stack.ID.IsZero() &&
 		!d.Integration.IsZero() && d.Run.Commit != "" && d.Stack.Slug != "" && d.Stack.Environment != "" &&
-		d.Namespace != "" && d.Repository != "" && !d.Epoch.IsZero() && !d.CreatedAt.IsZero()
+		d.Namespace != "" && d.Repository != "" && !d.Epoch.IsZero() && !d.CreatedAt.IsZero() &&
+		(d.Provider != "GITLAB" || d.NativeHost != "")
 }
 
 func (s *Service) enqueueDeployment(ctx context.Context, target vcsapi.FeedbackTarget) error {
