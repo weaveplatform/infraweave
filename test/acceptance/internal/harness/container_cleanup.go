@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -70,26 +71,9 @@ func handBackContainer(ctx context.Context, cli cleanupDocker, id string) (err e
 	if err != nil {
 		return fmt.Errorf("inspect scenario run: %w", err)
 	}
-	host := &container.HostConfig{VolumesFrom: []string{id}, NetworkMode: "none"}
-	if in.Container.HostConfig != nil {
-		host.Runtime = in.Container.HostConfig.Runtime
-	}
-	helper, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
-		Config: &container.Config{
-			Image: in.Container.Image, User: docker.User, WorkingDir: docker.Workspace,
-			Entrypoint: []string{docker.BinaryPath}, Cmd: []string{"runner", "hand-back"},
-		},
-		HostConfig: host,
-	})
+	helper, err := createCleanupContainer(ctx, cli, id, in.Container)
 	if err != nil {
-		// A launcher may finish removing its own run between inspection and
-		// VolumesFrom creation. Missing images still remain genuine failures.
-		if cerrdefs.IsNotFound(err) {
-			if _, current := cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{}); cerrdefs.IsNotFound(current) {
-				return nil
-			}
-		}
-		return fmt.Errorf("create scenario hand-back: %w", err)
+		return err
 	}
 	defer func() {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
@@ -103,6 +87,51 @@ func handBackContainer(ctx context.Context, cli cleanupDocker, id string) (err e
 		return fmt.Errorf("start scenario hand-back: %w", err)
 	}
 	return waitCleanupContainer(ctx, cli, helper.ID, true)
+}
+
+func createCleanupContainer(ctx context.Context, cli cleanupDocker, id string, in container.InspectResponse) (client.ContainerCreateResult, error) {
+	host := &container.HostConfig{VolumesFrom: []string{id}, NetworkMode: "none"}
+	if in.HostConfig != nil {
+		host.Runtime = in.HostConfig.Runtime
+	}
+	options := client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image: in.Image, User: docker.User, WorkingDir: docker.Workspace,
+			Entrypoint: []string{docker.BinaryPath}, Cmd: []string{"runner", "hand-back"},
+		},
+		HostConfig: host,
+	}
+	helper, err := cli.ContainerCreate(ctx, options)
+	if err == nil {
+		return helper, nil
+	}
+	original := fmt.Errorf("create scenario hand-back: %w", err)
+	// Moby reports a missing VolumesFrom source as an invalid parameter.
+	// Confirm its disappearance separately; neither an error message nor a
+	// failed create proves that the workspace's permissions were handed back.
+	if !cerrdefs.IsInvalidArgument(err) && !cerrdefs.IsNotFound(err) {
+		return helper, original
+	}
+	_, current := cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
+	if !cerrdefs.IsNotFound(current) {
+		if current != nil {
+			return helper, errors.Join(original, fmt.Errorf("reinspect scenario run: %w", current))
+		}
+		return helper, original
+	}
+	if in.HostConfig == nil || len(in.HostConfig.Binds) == 0 {
+		return helper, original
+	}
+	// Owned run containers mount the runner, workspace and tools through
+	// explicit binds. Retaining those exact binds lets hand-back finish even
+	// after the launcher's concurrent removal discards the source container.
+	host.VolumesFrom = nil
+	host.Binds = slices.Clone(in.HostConfig.Binds)
+	helper, err = cli.ContainerCreate(ctx, options)
+	if err != nil {
+		return helper, errors.Join(original, fmt.Errorf("create retained scenario hand-back: %w", err))
+	}
+	return helper, nil
 }
 
 func waitCleanupContainer(ctx context.Context, cli cleanupDocker, id string, requireSuccess bool) error {
