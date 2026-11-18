@@ -124,7 +124,7 @@ func (t routeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return t.next.RoundTrip(req) //nolint:wrapcheck // the SDK supplies request context
 	}
 	rel, ok := strings.CutPrefix(req.URL.EscapedPath(), strings.TrimSuffix(t.base.EscapedPath(), "/"))
-	if !ok || req.URL.Scheme != t.base.Scheme || !strings.EqualFold(req.URL.Host, t.base.Host) ||
+	if !ok || rel == "/graphql" || rel == "/api/graphql" || req.URL.Scheme != t.base.Scheme || !strings.EqualFold(req.URL.Host, t.base.Host) ||
 		!AllowedFor(t.purpose, req.Method, rel) {
 		return nil, ErrRoute
 	}
