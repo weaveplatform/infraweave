@@ -1,5 +1,5 @@
 // Package gitlab is the GitLab provider: Provider implements port.Source,
-// port.Browse, port.Tester, port.Minter and port.Lender over GitLab's
+// port.Browse, port.Tester, port.Minter, port.Lender and port.Webhooks over GitLab's
 // REST API for GitLab.com and self-managed GitLab, acting with the
 // integration's access token. A repository is a project, named by its
 // namespace's full path, a subgroup's included, and its own path. A Test
@@ -25,6 +25,14 @@
 // and a file over port.MaxFileSize is port.ErrTooLarge, read no further
 // than the byte past the limit. A Test turns a host's failure into a
 // failed check rather than an error.
+//
+// Webhook verification compares every allowed token in constant time and
+// retains a body HMAC, never the token header. Parse uses only the payload:
+// pushes, tags, merge request actions and merge request notes become neutral
+// events. Unsupported kinds/actions are filtered; malformed consumed payloads
+// fail durably. Fully approved/unapproved notifications re-evaluate policy as
+// edited actions. Missing approval/mergeability facts stay false, without a
+// provider query; note bodies remain uninterpreted policy data.
 //
 // # Dependencies
 //

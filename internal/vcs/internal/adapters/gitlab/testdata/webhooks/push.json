@@ -1,0 +1,18 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "1111111111111111111111111111111111111111",
+  "after": "2222222222222222222222222222222222222222",
+  "ref": "refs/heads/main",
+  "checkout_sha": "2222222222222222222222222222222222222222",
+  "user_name": "Example Author",
+  "user_username": "author",
+  "user_email": "author@example.com",
+  "project": {
+    "id": 15,
+    "namespace": "Acme Platform",
+    "path_with_namespace": "acme/platform/infra"
+  },
+  "commits": [],
+  "total_commits_count": 0
+}

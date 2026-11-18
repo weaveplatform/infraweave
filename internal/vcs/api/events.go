@@ -34,6 +34,7 @@ type PullRequest struct {
 	BaseBranch string   `json:"baseBranch"`
 	HeadOwner  string   `json:"headOwner"`
 	Draft      bool     `json:"draft"`
+	Fork       bool     `json:"fork"`
 	Approved   bool     `json:"approved"`
 	Mergeable  bool     `json:"mergeable"`
 	Undiverged bool     `json:"undiverged"`
