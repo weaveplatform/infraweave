@@ -41,6 +41,16 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 	w := newWorld(t)
 	stack := w.integration("GITHUB_ENTERPRISE", port.Settings{}, []byte("token"), "acme", "infra")
 	id := *w.stacks.settings[stack].VCSIntegration
+	secret := bytes.Repeat([]byte("h"), 32)
+	in, err := w.store.Get(t.Context(), w.acct, id, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.store.Write(t.Context(), in, &integration.Secrets{
+		Credential: []byte("token"), WebhookSecret: secret,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	bucket, err := fs.New(objectstore.FSConfig{Root: t.TempDir()}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +68,7 @@ func TestAccWebhookAccountPurgeBoundary(t *testing.T) {
 	})
 	body := bytes.Repeat([]byte("x"), intake.InlineBody+1)
 	receive := func(ctx context.Context, delivery string) error {
-		h := http.Header{"X-Github-Event": {"push"}, "X-Github-Delivery": {delivery}, "X-Hub-Signature-256": {"sha256=" + string(webhooktest.Sign(body, []byte("hook")))}}
+		h := http.Header{"X-Github-Event": {"push"}, "X-Github-Delivery": {delivery}, "X-Hub-Signature-256": {"sha256=" + string(webhooktest.Sign(body, secret))}}
 		code, err := svc.Receive(ctx, "github_enterprise", id.String(), h, body)
 		if err != nil || code != 202 {
 			return fmt.Errorf("intake at purge boundary: %d %w", code, err)
