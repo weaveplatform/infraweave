@@ -25,23 +25,24 @@ var (
 // CheckBinding fixes the credential-free source and policy selected for a run.
 // Cap bindings have no run and retain the stack/commit/kind diagnosis instead.
 type CheckBinding struct {
-	Account     kernel.AccountID `json:"account"`
-	Key         string           `json:"key"`
-	Run         kernel.ULID      `json:"run"`
-	Stack       kernel.ULID      `json:"stack"`
-	Slug        string           `json:"slug"`
-	Integration kernel.ULID      `json:"integration"`
-	Provider    string           `json:"provider"`
-	NativeHost  string           `json:"nativeHost"`
-	Namespace   string           `json:"namespace"`
-	Repository  string           `json:"repository"`
-	Commit      string           `json:"commit"`
-	Ref         string           `json:"ref"`
-	Type        kernel.RunType   `json:"type"`
-	Policy      port.CheckPolicy `json:"policy"`
-	CreatedAt   time.Time        `json:"createdAt"`
-	Cap         bool             `json:"cap"`
-	Limit       int              `json:"limit,omitempty"`
+	Account      kernel.AccountID `json:"account"`
+	Key          string           `json:"key"`
+	Run          kernel.ULID      `json:"run"`
+	Stack        kernel.ULID      `json:"stack"`
+	Slug         string           `json:"slug"`
+	Integration  kernel.ULID      `json:"integration"`
+	Provider     string           `json:"provider"`
+	NativeHost   string           `json:"nativeHost"`
+	Namespace    string           `json:"namespace"`
+	Repository   string           `json:"repository"`
+	RepositoryID string           `json:"repositoryId,omitempty"`
+	Commit       string           `json:"commit"`
+	Ref          string           `json:"ref"`
+	Type         kernel.RunType   `json:"type"`
+	Policy       port.CheckPolicy `json:"policy"`
+	CreatedAt    time.Time        `json:"createdAt"`
+	Cap          bool             `json:"cap"`
+	Limit        int              `json:"limit,omitempty"`
 }
 
 // CheckRequest carries only a binding and the transition that requested a
@@ -77,8 +78,9 @@ type CheckStore interface {
 	ReserveCheck(context.Context, CheckResource) error
 	HoldCheck(context.Context, CheckResource) (CheckResource, error)
 	ReportedCheck(context.Context, CheckResource) error
-	CapChecks(context.Context, kernel.AccountID, kernel.ULID, string, string, string, kernel.RunType) ([]CheckBinding, error)
-	CheckPullRequests(context.Context, kernel.AccountID, kernel.ULID, string, string, string) ([]int, error)
+	ResolveCheckRepository(context.Context, CheckBinding) (CheckBinding, error)
+	CapChecks(context.Context, CheckBinding, kernel.RunType) ([]CheckBinding, error)
+	CheckPullRequests(context.Context, CheckBinding) ([]int, error)
 	DeleteStackChecks(context.Context, kernel.AccountID, kernel.ULID) error
 	PurgeChecks(context.Context, kernel.AccountID, int) (bool, error)
 }
@@ -146,7 +148,11 @@ func checkResourceKey(b CheckBinding, name string, aggregate bool) string {
 		namespace = strings.ToLower(namespace)
 		repository = strings.ToLower(repository)
 	}
-	parts := []any{b.Provider, b.NativeHost, namespace, repository, b.Commit, name}
+	identity := []string{"path", namespace, repository}
+	if b.RepositoryID != "" {
+		identity = []string{"native", b.RepositoryID}
+	}
+	parts := []any{b.Provider, b.NativeHost, identity, b.Commit, name}
 	if b.Provider == "GITHUB_ENTERPRISE" && !aggregate {
 		parts = append(parts, b.Key)
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/lifecycle"
 )
 
 func (s *Store) BindCheck(ctx context.Context, b feedback.CheckBinding) (feedback.CheckBinding, error) {
@@ -110,9 +111,47 @@ func (s *Store) ReportedCheck(ctx context.Context, r feedback.CheckResource) err
 	return nil
 }
 
-func (s *Store) CapChecks(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, namespace, repo, sha string, kind kernel.RunType) ([]feedback.CheckBinding, error) {
-	rows, err := tx.Q(ctx, s.db).
-		Query(ctx, `SELECT binding FROM vcs_check_bindings WHERE account_id=$1 AND integration_id=$2 AND namespace=$3 AND repository=$4 AND commit_hash=$5 AND run_type=$6 AND is_cap ORDER BY binding_key`, acct, integration, namespace, repo, sha, kind)
+// ResolveCheckRepository captures a known immutable ID at selection, or follows
+// that ID's current path under a shared row lock during reporting. Unknown
+// historical bindings retain their original path; known removed IDs never do.
+func (s *Store) ResolveCheckRepository(ctx context.Context, b feedback.CheckBinding) (feedback.CheckBinding, error) {
+	var id, namespace, repository string
+	var err error
+	q := tx.Q(ctx, s.db)
+	if b.RepositoryID == "" {
+		err = q.QueryRow(ctx, `SELECT repository_id,namespace,name FROM vcs_repository_map
+		WHERE account_id=$1 AND integration_id=$2 AND
+		CASE WHEN $5='GITHUB_ENTERPRISE' THEN lower(namespace)=lower($3) AND lower(name)=lower($4)
+		ELSE namespace=$3 AND name=$4 END FOR SHARE`, b.Account, b.Integration, b.Namespace, b.Repository, b.Provider).Scan(&id, &namespace, &repository)
+	} else {
+		err = q.QueryRow(ctx, `SELECT repository_id,namespace,name FROM vcs_repository_map
+		WHERE account_id=$1 AND integration_id=$2 AND repository_id=$3 FOR SHARE`, b.Account, b.Integration, lifecycle.CanonicalID(b.RepositoryID)).Scan(&id, &namespace, &repository)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		if b.RepositoryID != "" {
+			return b, feedback.ErrNoCheck
+		}
+		return b, nil
+	}
+	if err != nil {
+		return b, fmt.Errorf("vcs: resolve check repository: %w", sql.Unavailable(err))
+	}
+	b.RepositoryID, b.Namespace, b.Repository = id, namespace, repository
+	return b, nil
+}
+
+func (s *Store) CapChecks(ctx context.Context, b feedback.CheckBinding, kind kernel.RunType) ([]feedback.CheckBinding, error) {
+	query := `SELECT binding FROM vcs_check_bindings WHERE account_id=$1 AND integration_id=$2
+		AND commit_hash=$3 AND run_type=$4 AND is_cap AND `
+	args := []any{b.Account, b.Integration, b.Commit, kind}
+	if b.RepositoryID != "" {
+		query += `binding->>'repositoryId'=$5`
+		args = append(args, b.RepositoryID)
+	} else {
+		query += `namespace=$5 AND repository=$6`
+		args = append(args, b.Namespace, b.Repository)
+	}
+	rows, err := tx.Q(ctx, s.db).Query(ctx, query+` ORDER BY binding_key`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read capped commit checks: %w", sql.Unavailable(err))
 	}
@@ -127,9 +166,13 @@ func (s *Store) CapChecks(ctx context.Context, acct kernel.AccountID, integratio
 	return bindings, nil
 }
 
-func (s *Store) CheckPullRequests(ctx context.Context, acct kernel.AccountID, integration kernel.ULID, namespace, repo, sha string) ([]int, error) {
+func (s *Store) CheckPullRequests(ctx context.Context, b feedback.CheckBinding) ([]int, error) {
 	rows, err := tx.Q(ctx, s.db).
-		Query(ctx, `SELECT provider_id FROM pull_requests WHERE account_id=$1 AND integration_id=$2 AND namespace=$3 AND repository=$4 AND head_sha=$5 ORDER BY provider_id`, acct, integration, namespace, repo, sha)
+		Query(ctx, `SELECT r.provider_id FROM pull_requests r
+        LEFT JOIN vcs_repository_map m ON m.account_id=r.account_id AND m.integration_id=r.integration_id AND m.repository_id=`+requestRepositoryIDSQL+`
+        WHERE r.account_id=$1 AND r.integration_id=$2 AND coalesce(m.namespace,r.namespace)=$3
+        AND coalesce(m.name,r.repository)=$4 AND r.head_sha=$5 AND ($6='' OR `+requestRepositoryIDSQL+`=$6)
+        ORDER BY r.provider_id`, b.Account, b.Integration, b.Namespace, b.Repository, b.Commit, b.RepositoryID)
 	if err != nil {
 		return nil, fmt.Errorf("vcs: read check pull request heads: %w", sql.Unavailable(err))
 	}

@@ -64,6 +64,18 @@ func (s *Service) Checked(ctx context.Context, job queue.Job) error {
 }
 
 func (s *Service) checkHeld(ctx context.Context, job queue.Job, request CheckRequest, b CheckBinding, resource CheckResource) error {
+	// A known native identity cannot fall back to an old path after removal.
+	// Its current map row is shared-locked across the bounded provider effect.
+	if b.RepositoryID != "" {
+		current, err := s.checks.Store.ResolveCheckRepository(ctx, b)
+		if errors.Is(err, ErrNoCheck) {
+			return s.jobs.CompleteTx(ctx, job) //nolint:wrapcheck // removed repository settles without an outbound effect
+		}
+		if err != nil {
+			return fmt.Errorf("VCS check current repository: %w", err)
+		}
+		b = current
+	}
 	individual := !request.Aggregate
 	if individual {
 		owner := b.Run
@@ -132,7 +144,7 @@ func (s *Service) postCheck(ctx context.Context, b CheckBinding, report port.Che
 		return "", queue.Permanent(ErrCheckReport) //nolint:wrapcheck // queue control classification
 	}
 	if b.Provider == "AZURE_DEVOPS" {
-		report.PullRequests, err = s.checks.Store.CheckPullRequests(ctx, b.Account, b.Integration, b.Namespace, b.Repository, b.Commit)
+		report.PullRequests, err = s.checks.Store.CheckPullRequests(ctx, b)
 		if err != nil {
 			return "", fmt.Errorf("VCS check pull requests: %w", err)
 		}

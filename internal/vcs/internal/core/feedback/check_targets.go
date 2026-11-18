@@ -139,7 +139,7 @@ func (s *Service) selectCheck(ctx context.Context, account kernel.AccountID, r r
 	if policy.Mode == "" {
 		policy.Mode = "INDIVIDUAL"
 	}
-	return CheckBinding{
+	binding, err := d.Store.ResolveCheckRepository(ctx, CheckBinding{
 		Account:     account,
 		Key:         checkBindingKey(r.ID),
 		Run:         r.ID,
@@ -155,7 +155,11 @@ func (s *Service) selectCheck(ctx context.Context, account kernel.AccountID, r r
 		Type:        r.Type,
 		Policy:      policy,
 		CreatedAt:   r.CreatedAt,
-	}, nil
+	})
+	if err != nil {
+		return CheckBinding{}, fmt.Errorf("VCS check repository selection: %w", err)
+	}
+	return binding, nil
 }
 
 func validCheckBinding(b CheckBinding) bool {

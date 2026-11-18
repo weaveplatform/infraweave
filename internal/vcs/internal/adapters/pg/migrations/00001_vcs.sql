@@ -208,6 +208,7 @@ CREATE TABLE vcs_check_bindings (
 CREATE INDEX vcs_check_bindings_integration ON vcs_check_bindings(account_id,integration_id);
 CREATE INDEX vcs_check_bindings_stack ON vcs_check_bindings(account_id,stack_id);
 CREATE INDEX vcs_check_bindings_caps ON vcs_check_bindings(account_id,integration_id,namespace,repository,commit_hash,run_type) WHERE is_cap;
+CREATE INDEX vcs_check_bindings_caps_native ON vcs_check_bindings(account_id,integration_id,(binding->>'repositoryId'),commit_hash,run_type) WHERE is_cap;
 
 -- The newest requested sequence prevents a late outbox event from replacing a
 -- newer Coalesce payload before the worker reads it.

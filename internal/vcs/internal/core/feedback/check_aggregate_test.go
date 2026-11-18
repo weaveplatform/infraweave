@@ -58,8 +58,8 @@ func (f *aggregateWorld) OnCommit(_ context.Context, account kernel.AccountID, i
 	return f.rows, nil
 }
 
-func (f *aggregateWorld) CapChecks(_ context.Context, account kernel.AccountID, id kernel.ULID, ns, repo, sha string, kind kernel.RunType) ([]CheckBinding, error) {
-	if account != f.kept.Account || id != f.kept.Integration || ns != f.kept.Namespace || repo != f.kept.Repository || sha != f.kept.Commit {
+func (f *aggregateWorld) CapChecks(_ context.Context, b CheckBinding, kind kernel.RunType) ([]CheckBinding, error) {
+	if b.Account != f.kept.Account || b.Integration != f.kept.Integration || b.Namespace != f.kept.Namespace || b.Repository != f.kept.Repository || b.Commit != f.kept.Commit {
 		return nil, errors.New("wrong cap scope")
 	}
 	if f.phase == "caps" {

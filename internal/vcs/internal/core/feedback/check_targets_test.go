@@ -58,6 +58,10 @@ func (f *checkTargetFacts) CheckBinding(context.Context, kernel.AccountID, strin
 	return f.kept, nil
 }
 
+func (*checkTargetFacts) ResolveCheckRepository(_ context.Context, b CheckBinding) (CheckBinding, error) {
+	return b, nil
+}
+
 func checkTargetWorld(t *testing.T) (*Service, *checkTargetFacts, outbox.Event) {
 	t.Helper()
 	_, base, event := deploymentTargetWorld(t)
@@ -280,5 +284,19 @@ func TestUnitGitHubNativeResourceCaseAliases(t *testing.T) {
 		if checkResourceKey(b, "infraweave/proposed", true) == checkResourceKey(alias, "infraweave/proposed", true) {
 			t.Fatal("provider path case was incorrectly discarded", provider)
 		}
+	}
+}
+
+func TestUnitCommitCheckNativeIdentitySurvivesRepositoryRename(t *testing.T) {
+	_, f, _ := checkTargetWorld(t)
+	b := CheckBinding{Provider: "GITLAB", NativeHost: "https://gitlab.example", RepositoryID: "7", Namespace: "acme", Repository: "infra", Commit: f.run.CommitSHA}
+	renamed := b
+	renamed.Namespace, renamed.Repository = "new-owner", "renamed"
+	if checkResourceKey(b, "infraweave/proposed", true) != checkResourceKey(renamed, "infraweave/proposed", true) {
+		t.Fatal("rename split native resource ownership")
+	}
+	renamed.RepositoryID = "8"
+	if checkResourceKey(b, "infraweave/proposed", true) == checkResourceKey(renamed, "infraweave/proposed", true) {
+		t.Fatal("different native repositories shared an ownership fence")
 	}
 }

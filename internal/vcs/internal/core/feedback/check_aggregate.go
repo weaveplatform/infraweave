@@ -55,7 +55,7 @@ func (s *Service) aggregateFacts(ctx context.Context, b CheckBinding) (aggregate
 		}
 	}
 	for _, kind := range []kernel.RunType{kernel.RunTypeTracked, kernel.RunTypeProposed} {
-		caps, err := s.checks.Store.CapChecks(ctx, b.Account, b.Integration, b.Namespace, b.Repository, b.Commit, kind)
+		caps, err := s.checks.Store.CapChecks(ctx, b, kind)
 		if err != nil {
 			return out, fmt.Errorf("VCS aggregate cap facts: %w", err)
 		}
