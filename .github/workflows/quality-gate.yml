@@ -72,7 +72,7 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # The acceptance partitions. A scenario runs in the first of runs,
+  # The acceptance partitions. A scenario runs in the first of terraform, runs,
   # integrations and core that lists one of its tags; TestUnitFeaturePartitions
   # fails a tag no partition lists. A partition near its timeout splits by
   # tag into two jobs; scenarios are never dropped to fit.
