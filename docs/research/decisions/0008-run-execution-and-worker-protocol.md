@@ -693,6 +693,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   none under run-all. A single-unit plan that writes no JSON there falls
   back to `terragrunt run -- show -json tfplan.tfplan`, reading the root's
   saved plan. Terragrunt 1.2.2 writes the JSON directory under `--all` only.
+  Run-all planning never invokes `show -json`: it re-evaluates a unit's
+  dependencies and can fail before they have outputs when mocks allow
+  `plan` but not `show`. The built-in `showState`, `showPlan` and
+  `getOutputs` templates always use `terragrunt run --` in one unit's
+  directory, in either mode. Only `init`, `workspaceSelect`,
+  `workspaceNew`, `plan`, `apply` and `destroy` take `--all` under run-all.
   Terragrunt approves `apply` and `destroy` under run-all; single-unit
   commands carry `-auto-approve`. Without
   `skipReplan`, `apply` plans again rather than reading the saved plan, so
@@ -700,6 +706,9 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   deprecated `skipReplanWhenRunAll` under run-all, it applies each unit's
   saved `tfplan.tfplan` (C188). A tracked run whose plan changes something saves its
   workspace for the confirmation, Terragrunt's cache of each unit with it.
+  P20 owns the aggregate plan artifacts and unit-named outputs below;
+  until then, a Terragrunt run saves its workspace and applies without
+  reading or recording outputs.
   It uploads `plan.json` as `{"units": [{"path", "plan"}]}`, each unit's
   path from the project root, empty for the root unit, with its plan's
   JSON, and `changes.json` with each change's unit in a field of its own,

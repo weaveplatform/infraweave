@@ -662,12 +662,21 @@ coverage it would contribute is not waived.
   signing its token again with an earlier expiry and for an upload by
   moving its row back; `retention.feature`, with real Terraform, which
   moves time on for a stack's state versions as the runs steps do for a
-  run; and `terragrunt_units.feature`, with real Terragrunt driving
-  Terraform in both modes: all units with a workspace per unit, or the
+  run; and `terragrunt_units.feature`, with real Terragrunt and pinned
+  Terraform and OpenTofu: all units with a workspace per unit, or the
   project root's unit alone in the default workspace. It checks runtime
   mode overrides, the omitted-key default, malformed runtime refusals and
   a missing root unit; single-unit plans use a saved-plan fallback when
   the pinned Terragrunt writes no JSON directory outside run-all.
+  Its dependent-unit outlines use `network` and `app`, with `app` reading
+  `network`'s output. Mocks allow `init`, `plan` and `validate`: explicit
+  initialization needs mocks before the dependency has outputs. Planning
+  reaches two additions without a cross-unit `show`, and confirmation
+  applies both units with real dependency outputs, two state versions and
+  no recorded stack outputs until P20. A commit whose mocks allow `init`
+  and `validate`, but not `plan`, fails planning with Terragrunt's
+  missing-outputs diagnostic and writes no state version. Both outlines
+  run on Terraform and OpenTofu.
   `vendors/terragrunt.feature` holds a Terragrunt stack's
   settings and runs. `TestAccCaptures` skips C106, C107, C108, C109, C110,
   C112, C113 and C114 as awaited against them.

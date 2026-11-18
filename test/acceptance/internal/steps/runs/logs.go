@@ -49,6 +49,8 @@ func (l *logSteps) register(sc *godog.ScenarioContext) {
 		`commands "([^"]+)"$`, l.downloadsProfile)
 	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), which `+
 		`holds `+quoted+` and not `+quoted+`$`, l.holds)
+	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), which `+
+		`holds (\d+) occurrences of `+quoted+`$`, l.occurrences)
 }
 
 // unquote is s, a step's quoted string, with its escapes applied.
@@ -322,6 +324,22 @@ func (l *logSteps) holds(ctx context.Context, token, run, state, replica, want, 
 	if !strings.Contains(text, want) || strings.Contains(text, unwanted) {
 		return fmt.Errorf("%w: the %s log is %q, want %q and not %q", harness.ErrStep, state,
 			text, want, unwanted)
+	}
+	return nil
+}
+
+func (l *logSteps) occurrences(ctx context.Context, token, run, state, replica string, count int, want string) error {
+	want, err := unquote(l.w.Resolve(want))
+	if err != nil {
+		return err
+	}
+	text, err := logText(ctx, l.w, token, run, state, replica)
+	if err != nil {
+		return err
+	}
+	if got := strings.Count(text, want); got != count {
+		return fmt.Errorf("%w: the %s log holds %d occurrences of %q, want %d", harness.ErrStep,
+			state, got, want, count)
 	}
 	return nil
 }
