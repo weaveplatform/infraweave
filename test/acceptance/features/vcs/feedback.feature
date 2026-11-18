@@ -121,7 +121,7 @@ Feature: Repository runs report native checks and deployments
     Then it answers 200
     And the answer's id names "checkRun"
     And the "<provider>" check "infraweave/infra" for run "checkRun" on commit "checkCommit" has states "<queued>"
-    And a check report for run "checkRun" succeeded after retry
+    And a check report "infraweave/infra" for run "checkRun" succeeded after retry
     When the launcher "l" starts again and resumes its worker
     Then the check repository has a held authenticated upload
     And the "<provider>" check "infraweave/infra" for run "checkRun" on commit "checkCommit" has states "<progress>"
@@ -208,6 +208,7 @@ Feature: Repository runs report native checks and deployments
   @terraform
   Scenario: GitHub ALL exposes per-run checks and promotion actions beside shared aggregates
     Given a "GitHub" check stack "infra" using "terraform" with mode "ALL" and options '{}'
+    And the check stack "infra" sets GitHub promotion to "false"
     And the launcher "l" is killed
     And the check repository holds authenticated uploads
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{checkCommit}"}' through A

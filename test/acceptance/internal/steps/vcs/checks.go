@@ -76,7 +76,7 @@ func (s *checkSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the check repository releases authenticated uploads$`, s.release)
 	sc.Step(`^the check "([^"]+)" for run "(\w+)" and stack "([^"]+)" has summary containing "([^"]+)"$`, s.metadata)
 	sc.Step(`^no native check belongs to run "(\w+)"$`, s.noRun)
-	sc.Step(`^a check report for run "(\w+)" succeeded after retry$`, s.retried)
+	sc.Step(`^a check report "([^"]+)" for run "(\w+)" succeeded after retry$`, s.retried)
 	sc.Step(`^the check stack "([^"]+)" sets GitHub promotion to "(true|false)"$`, s.promotion)
 	sc.Step(`^the GitHub check "([^"]+)" for run "(\w+)" has actions "([^"]*)"$`, s.actions)
 	sc.Step(`^check events for run "(\w+)" have settled$`, s.settled)
@@ -195,7 +195,7 @@ func (s *checkSteps) stack(ctx context.Context, provider, slug, vendor, mode, ra
 	if vendor == "opentofu" {
 		version = deps.OpenTofu.Version
 	}
-	id, err := s.create(
+	_, err := s.create(
 		ctx,
 		"/api/v1/stacks",
 		map[string]any{
@@ -217,7 +217,11 @@ func (s *checkSteps) stack(ctx context.Context, provider, slug, vendor, mode, ra
 	if err != nil {
 		return err
 	}
-	s.w.IDs["checkStack:"+slug] = id
+	var stackID kernel.ULID
+	if err := s.w.Row(ctx, `SELECT id FROM stacks WHERE account_id=$1 AND slug=$2`, []any{harness.UUIDOf(harness.Home.Account), slug}, &stackID); err != nil {
+		return err
+	}
+	s.w.IDs["checkStack:"+slug] = stackID.String()
 	return deps.Eventually(ctx, "check stack immutable source", func(ctx context.Context) (bool, error) {
 		r, err := s.w.Do(ctx, "B", "h", http.MethodGet, "/api/v1/stacks/"+slug, nil)
 		if err != nil {
@@ -453,16 +457,29 @@ func (s *checkSteps) noRun(run string) error {
 	return nil
 }
 
-func (s *checkSteps) retried(ctx context.Context, run string) error {
+func (s *checkSteps) retried(ctx context.Context, name, run string) error {
 	return deps.Eventually(ctx, "check response-loss retry", func(ctx context.Context) (bool, error) {
 		var count int
 		err := s.w.Row(
 			ctx,
-			`SELECT count(*) FROM jobs WHERE account_id=$1 AND kind='vcs.report_check' AND payload->'binding'->>'run'=$2 AND state='succeeded' AND attempt>=2`,
-			[]any{harness.UUIDOf(harness.Home.Account), s.w.IDs[run]},
+			`SELECT count(*) FROM jobs WHERE account_id=$1 AND kind='vcs.report_check' AND payload->'binding'->>'run'=$2 AND payload->>'name'=$3 AND payload->>'aggregate'='false'
+            AND state='succeeded' AND generation>=2 AND last_error='VCS commit check report failed'`,
+			[]any{harness.UUIDOf(harness.Home.Account), s.w.IDs[run], name},
 			&count,
 		)
-		return count > 0, err
+		if err != nil || count == 0 {
+			return false, err
+		}
+		identities := map[string]bool{}
+		for _, r := range s.snapshots(false) {
+			if r.Name == name && r.SHA == s.w.IDs["checkCommit"] && strings.HasSuffix(r.URL, "/runs/"+s.w.IDs[run]) {
+				identities[r.ID] = true
+			}
+		}
+		if len(identities) > 1 {
+			return false, fmt.Errorf("%w: response-loss recovery created multiple native identities", harness.ErrStep)
+		}
+		return len(identities) == 1, nil
 	})
 }
 
