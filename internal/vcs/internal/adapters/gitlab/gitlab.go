@@ -19,6 +19,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
@@ -481,7 +482,7 @@ func classify(resp *gitlab.Response, err error, what string) error {
 	switch s := resp.StatusCode; {
 	case s == http.StatusNotFound:
 		return fmt.Errorf("%w: gitlab: %s: %w", port.ErrNotFound, what, err)
-	case s == http.StatusUnauthorized:
+	case s == http.StatusUnauthorized || s == http.StatusForbidden:
 		return fmt.Errorf("%w: %s: %w", ErrCredential, what, err)
 	case s >= http.StatusInternalServerError:
 		return fmt.Errorf("%w: gitlab: %s: %w", kernel.ErrUnavailable, what, err)
@@ -495,13 +496,8 @@ func rateLimit(resp *http.Response) *port.RateLimited {
 	if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusTooManyRequests {
 		return nil
 	}
-	if s, err := strconv.ParseInt(resp.Header.Get("RateLimit-Reset"), 10, 64); err == nil {
-		return &port.RateLimited{Reset: time.Unix(s, 0)}
-	}
-	if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil {
-		return &port.RateLimited{
-			Reset: time.Now().Add(time.Duration(s) * time.Second).Truncate(time.Second),
-		}
+	if reset, ok := ratelimit.Reset(resp.Header, time.Now(), "RateLimit-Reset", "Retry-After", "X-RateLimit-Reset"); ok {
+		return &port.RateLimited{Reset: reset}
 	}
 	return nil
 }

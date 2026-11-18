@@ -29,6 +29,16 @@
 // Service.RetentionDays is how many days the run-logs store keeps a log,
 // which runLogRetentionDays answers.
 //
+// NewPlanningReader constructs the PlanningLogs port independently of HTTP
+// principals. It uses PlanningStore's minimal exact-transition projection and
+// bounded chunk pages, streams raw masked objects into a bounded byte ring,
+// and counts omitted complete lines without allocating an entire line. Split
+// UTF-8 prefixes are omitted, while original newline endings remain. Deleted
+// logs are unavailable; lost, unindexed and expired chunks contribute Missing
+// placeholders and mark a partial log unavailable without discarding other
+// retained text. A zero-chunk planning transition remains an available empty log.
+// No private execution configuration or signed object URL enters the port.
+//
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0005 § "Keys"
 //

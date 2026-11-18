@@ -151,6 +151,8 @@ type Domain struct {
 	read      *read.Service
 	control   *control.Service
 	timers    *timers.Service
+
+	planningLogs *logs.PlanningReader
 }
 
 // New constructs the domain on d.
@@ -195,6 +197,8 @@ func New(d Deps) *Domain {
 		timers: timers.New(timers.Deps{
 			DB: d.DB, Store: store, Lifecycle: lc, Settings: d.Settings.Timers, Now: d.Now,
 		}),
+
+		planningLogs: logs.NewPlanningReader(store, d.Objects),
 	}
 }
 

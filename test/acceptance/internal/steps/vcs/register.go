@@ -41,5 +41,6 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&githubWebhookSteps{w: w, github: github}).register(sc)
 	(&azureWebhookSteps{w: w, azure: azureDevOps}).register(sc)
 	(&deploymentSteps{w: w, github: github, gitlab: gitlab}).register(sc)
+	(&commentSteps{w: w, github: github, gitlab: gitlab}).register(sc)
 	(&repositoryLifecycleSteps{w: w, github: github, gitlab: gitlab, hooks: gitlabHooks}).register(sc)
 }
