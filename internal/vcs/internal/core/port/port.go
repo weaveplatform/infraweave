@@ -104,6 +104,7 @@ type Integration struct {
 	Settings      Settings
 	Credential    []byte
 	WebhookSecret []byte
+	Checks        CheckPolicy
 }
 
 // The kinds of check a Tester runs.

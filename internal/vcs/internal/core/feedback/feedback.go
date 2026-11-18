@@ -17,13 +17,14 @@ import (
 // ReportCheck is the Commit checks delivery job. Target selection remains
 // empty until its provider handler is implemented, so no unfinished job
 // is produced by a run's state transition.
-var ReportCheck = queue.Kind{Name: "vcs.report_check", Queue: queue.Deliveries, Policy: queue.Ignore}
+var ReportCheck = queue.Kind{Name: "vcs.report_check", Queue: queue.Deliveries, Policy: queue.Coalesce}
 
 // Service owns VCS feedback jobs; the events domain owns fan-out records.
 type Service struct {
 	jobs        *queue.Queue
 	hold        func(context.Context, kernel.AccountID) error
 	deployments *DeploymentDeps
+	checks      *CheckDeps
 }
 
 // ErrAccountHold refuses enqueueing when its owner fence is not configured.
@@ -39,7 +40,15 @@ func (*Service) Kinds() []string { return []string{runsapi.UpdatedKind} }
 
 // Targets selects deployment effects from run facts without calling providers.
 func (s *Service) Targets(ctx context.Context, event outbox.Event) ([]vcsapi.FeedbackTarget, error) {
-	return s.deploymentTargets(ctx, event)
+	targets, err := s.deploymentTargets(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	checks, err := s.checkTargets(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+	return append(targets, checks...), nil
 }
 
 func valid(target vcsapi.FeedbackTarget) bool {
@@ -64,6 +73,9 @@ func (s *Service) Enqueue(ctx context.Context, target vcsapi.FeedbackTarget) err
 	}
 	if target.Job == ReportDeployment.Name {
 		return s.enqueueDeployment(ctx, target)
+	}
+	if s.checks != nil {
+		return s.enqueueCheck(ctx, target)
 	}
 	key := fmt.Sprintf("%s:%s:commit_checks:%s:0", target.Account, target.EventID, target.Key)
 	if _, err := s.jobs.EnqueueTx(ctx, ReportCheck, target.Payload,

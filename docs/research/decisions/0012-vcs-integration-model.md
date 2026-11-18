@@ -449,8 +449,12 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   use their native status keyed by repository, commit and check name. The
   newest run owns that shared status, with creation time and ID as ties;
   older runs and stale transition sequences cannot overwrite it. Aggregates
-  remain shared named resources on every provider. No run ID is appended to
-  visible names or status keys, and no provider CI pipeline is created.
+  remain shared named resources on every provider. In `ALL`, a fixed
+  aggregate name takes precedence when a proposed stack named `tracked`,
+  `proposed`, or `modules` has the same native status key. `INDIVIDUAL`
+  retains its individual name. GitHub keeps distinct individual and aggregate
+  identities even when their visible names coincide. No run ID is appended
+  to visible names or status keys, and no provider CI pipeline is created.
   `vcs.report_check` coalesces pending updates by run and check name and
   orders them by run; aggregate updates order by repository, commit and
   check name. Store provider IDs, and look up name/external ID before
