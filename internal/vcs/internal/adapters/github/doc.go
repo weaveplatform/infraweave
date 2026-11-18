@@ -10,6 +10,8 @@
 // webhook events infraweave needs; the manifest flow writes the form that
 // creates an App asking for exactly those, and converts the code GitHub
 // redirects back with into the App.
+// It also implements port.Webhooks: SHA-256 HMAC verification and payload-only
+// event normalization, including installation and owner identity changes.
 //
 // ref: decision 0012
 //
@@ -25,6 +27,12 @@
 // kernel.ErrUnavailable; and a file over port.MaxFileSize is
 // port.ErrTooLarge. A Test or an App report turns a host's failure into a
 // failed check or a state rather than an error.
+// Webhook verification retains the exact SHA-256 signature header. Unsupported
+// events and actions are filtered; malformed consumed payloads fail parsing.
+// Normalization makes no provider request and never creates or renames an
+// infraweave account. A single approving review cannot establish a repository's
+// required aggregate approval, so Approved remains false; Mergeable requires
+// explicit true and a clean mergeable_state from the payload.
 //
 // # Dependencies
 //
