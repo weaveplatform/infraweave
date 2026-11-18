@@ -24,10 +24,16 @@ type (
 	}
 )
 
+// CheckApp identifies the GitHub App that owns a native check run.
+type CheckApp struct {
+	ID int64 `json:"id"`
+}
+
 // CheckRecord preserves every accepted version through CheckWrites.
 //
 //nolint:tagliatelle // GitHub owns the native JSON spellings.
 type CheckRecord struct {
+	App        CheckApp      `json:"app"`
 	ID         int64         `json:"id"`
 	Name       string        `json:"name"`
 	SHA        string        `json:"head_sha"`
@@ -116,7 +122,8 @@ func (f *Fake) listChecks(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	items := []map[string]any{}
 	for _, v := range f.checks.records[deploymentRepo(r)] {
-		if v.SHA == chi.URLParam(r, "sha") && (r.URL.Query().Get("check_name") == "" || r.URL.Query().Get("check_name") == v.Name) {
+		if (r.URL.Query().Get("app_id") == "" || r.URL.Query().Get("app_id") == strconv.FormatInt(v.App.ID, 10)) && v.SHA == chi.URLParam(r, "sha") &&
+			(r.URL.Query().Get("check_name") == "" || r.URL.Query().Get("check_name") == v.Name) {
 			items = append(items, checkJSON(v))
 		}
 	}
@@ -142,6 +149,7 @@ func (f *Fake) createCheck(w http.ResponseWriter, r *http.Request) {
 		f.checks.writes = map[string][]CheckRecord{}
 	}
 	f.nextID++
+	body.App = CheckApp{ID: r.Context().Value(installKey).(*Installation).AppID} //nolint:forcetypeassert // asInstallation sets it
 	body.ID = f.nextID
 	key := deploymentRepo(r)
 	f.checks.records[key] = append(f.checks.records[key], cloneCheck(body))
@@ -170,6 +178,12 @@ func (f *Fake) updateCheck(w http.ResponseWriter, r *http.Request) {
 	key := deploymentRepo(r)
 	for i, old := range f.checks.records[key] {
 		if old.ID == id {
+			appID := r.Context().Value(installKey).(*Installation).AppID //nolint:forcetypeassert // asInstallation sets it
+			if old.App.ID != appID {
+				answer(w, 403, message("Check belongs to another App"))
+				return
+			}
+			body.App = old.App
 			if f.checks.rejectReopen && old.Status == "completed" && body.Status != "completed" {
 				answer(w, 422, message("Completed check cannot reopen"))
 				return
@@ -205,6 +219,7 @@ func validCheck(r CheckRecord) bool {
 
 func checkJSON(v CheckRecord) map[string]any {
 	return map[string]any{
+		"app":         v.App,
 		"id":          v.ID,
 		"name":        v.Name,
 		"head_sha":    v.SHA,

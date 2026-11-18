@@ -44,7 +44,7 @@ func (p *Provider) Set(ctx context.Context, repo port.Repository, sha string, re
 		return "", err
 	}
 	c := p.installationFor(a, installation, CheckWrite)
-	found, err := findCheck(ctx, c, repo, sha, report)
+	found, err := findCheck(ctx, c, repo, sha, report, a.id)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +79,7 @@ func (p *Provider) Set(ctx context.Context, repo port.Repository, sha string, re
 	if err != nil {
 		return "", classify(err, "set commit check")
 	}
-	if kept == nil || kept.GetID() <= 0 || kept.GetHeadSHA() != sha || kept.GetName() != report.Name {
+	if kept == nil || kept.GetID() <= 0 || kept.GetHeadSHA() != sha || kept.GetApp().GetID() != a.id || kept.GetName() != report.Name {
 		return "", port.ErrCheckInput
 	}
 	return strconv.FormatInt(kept.GetID(), 10), nil
@@ -87,8 +87,8 @@ func (p *Provider) Set(ctx context.Context, repo port.Repository, sha string, re
 
 func checkMarker(r port.CheckReport) string { return "<!-- " + r.RecoveryID + " -->" }
 
-func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha string, r port.CheckReport) (*github.CheckRun, error) {
-	opts := &github.ListCheckRunsOptions{CheckName: new(r.Name), Filter: new("all"), ListOptions: github.ListOptions{PerPage: 100}}
+func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha string, r port.CheckReport, appID int64) (*github.CheckRun, error) {
+	opts := &github.ListCheckRunsOptions{CheckName: new(r.Name), Filter: new("all"), AppID: new(appID), ListOptions: github.ListOptions{PerPage: 100}}
 	var found *github.CheckRun
 	for {
 		list, resp, err := c.Checks.ListCheckRunsForRef(ctx, repo.Namespace, repo.Name, sha, opts)
@@ -99,7 +99,7 @@ func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha 
 			return nil, port.ErrCheckInput
 		}
 		for _, v := range list.CheckRuns {
-			if v != nil && v.GetID() > 0 && v.GetHeadSHA() == sha && v.GetName() == r.Name && v.GetExternalID() == r.ExternalID &&
+			if v != nil && v.GetID() > 0 && v.GetApp().GetID() == appID && v.GetHeadSHA() == sha && v.GetName() == r.Name && v.GetExternalID() == r.ExternalID &&
 				strings.Contains(v.GetOutput().GetText(), checkMarker(r)) &&
 				(found == nil || v.GetID() > found.GetID()) {
 				found = v

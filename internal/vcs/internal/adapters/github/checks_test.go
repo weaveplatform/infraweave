@@ -207,3 +207,39 @@ func TestUnitCommitCheckUncertainReopenKeepsNativeID(t *testing.T) {
 		t.Fatal("later attempt failed to recover applied PATCH", current, id, err)
 	}
 }
+
+func TestUnitCommitCheckRecoveryIsAppScoped(t *testing.T) {
+	t.Parallel()
+	l := newLab(t)
+	report := port.CheckReport{
+		Name:       "infraweave/proposed",
+		State:      port.CheckSuccess,
+		Title:      "1 run",
+		Summary:    "1 run succeeded.",
+		URL:        "https://infra.example/runs/one",
+		RecoveryID: "infraweave/aggregate/proposed",
+		Actions:    []port.CheckAction{},
+	}
+	first, err := l.gh.Set(t.Context(), l.repo.Repo, l.repo.Head, report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := l.fake.AddApp("other", "acme")
+	l.fake.Install(app.ID, "acme", "Organization", "infra")
+	other := integrationOf(app, l.srv.URL)
+	repo := l.repo.Repo
+	repo.Integration = &other
+	second, err := l.gh.Set(t.Context(), repo, l.repo.Head, report)
+	if err != nil || second == first || len(l.fake.Checks("acme", "infra")) != 2 {
+		t.Fatal("second App adopted a foreign aggregate", first, second, err)
+	}
+	report.State = port.CheckInProgress
+	recovered, err := l.gh.Set(t.Context(), repo, l.repo.Head, report)
+	if err != nil || recovered != second {
+		t.Fatal("App-local recovery lost identity", recovered, second, err)
+	}
+	records := l.fake.Checks("acme", "infra")
+	if records[0].App.ID != l.app.ID || records[0].Status != "completed" || records[1].App.ID != app.ID || records[1].Status != "in_progress" {
+		t.Fatal("foreign App check was mutated", records)
+	}
+}
