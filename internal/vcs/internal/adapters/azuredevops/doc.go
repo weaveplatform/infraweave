@@ -14,6 +14,15 @@
 // integration's own personal access token, as Azure DevOps mints none
 // narrower through its API.
 //
+// Webhooks verifies empty-username Basic credentials against every allowed
+// password and returns a body HMAC under the matching password. It never
+// retains the Authorization header. Routing comes from the envelope's eventType
+// and id. An authenticated invalid routing envelope is consumed with a private
+// marker so processing fails durably; a valid unsupported event type is filtered.
+// Push refs, pull requests and nested pull-request comments become payload-only
+// facts. Preview merge success alone proves neither blocking-policy approval
+// nor ancestry, so Mergeable and Undiverged remain false without such evidence.
+//
 // ref: decision 0012
 // ref: https://learn.microsoft.com/rest/api/azure/devops/core/projects/list
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/refs/list
@@ -21,6 +30,7 @@
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/items/get
 // ref: https://learn.microsoft.com/rest/api/azure/devops/git/diffs/get
 // ref: https://learn.microsoft.com/rest/api/azure/devops/hooks/subscriptions/list
+// ref: https://learn.microsoft.com/azure/devops/service-hooks/events
 //
 // # Input and output
 //
