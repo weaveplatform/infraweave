@@ -207,8 +207,8 @@ type Stacks interface {
 	SuggestUsers(ctx context.Context, p kernel.Principal, u Use, in search.SuggestionsInput) (search.Suggestions, error)
 	// VCSRepositories lists the distinct repository coordinates of every
 	// stack using u in acct, including implicit default bindings, without
-	// an actor's search filter. Only the integration-admin connection test
-	// consumes this repository-only projection.
+	// an actor's search filter. Connection tests and webhook preparation use
+	// this projection without selecting affected stack identities.
 	VCSRepositories(ctx context.Context, acct kernel.AccountID, u Use) ([]VCSRepository, error)
 }
 

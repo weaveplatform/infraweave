@@ -38,6 +38,16 @@ type reviewBindingStacks struct {
 	rows    []reviewBindingRow
 }
 
+func (s *reviewBindingStacks) VCSRepositories(_ context.Context, account kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
+	var out []stacksapi.VCSRepository
+	for _, row := range s.rows {
+		if s.selected(account, use, row, row.namespace, row.name) {
+			out = append(out, stacksapi.VCSRepository{Namespace: row.namespace, Name: row.name})
+		}
+	}
+	return out, nil
+}
+
 // This is the owned Stacks SQL's effective binding predicate:
 // vcs_integration_id=use.Integration OR (use.Default AND integration IS NULL).
 // Every row has the same account/provider and is attached; only the binding
