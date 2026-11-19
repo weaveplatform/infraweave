@@ -34,6 +34,30 @@ says what each run did.
 | `trigger-discarded.json` | `TRIGGER` | the run a push policy discarded, `ignore` | the discard note in `states_history` |
 | `notification-finished.json` | `NOTIFICATION` | tracked run `FINISHED`, `inbox` | `run_updated` with `policy_receipts`, `plan_policy_decision`, `timing` and `urls`; `webhook_endpoints` |
 
+## C51 approval inputs captured on 2026-11-19
+
+The three `approval-c51-*.json` inputs come from the expanded C51 real-service
+capture prepared for #643, separately from the original 2026-11-17 trial inputs.
+They are decoded copies of the already redacted sample JSON strings; no field
+or value was synthesized. The source is the
+[C51 response at `54d4812f`](https://github.com/weaveplatform/infraweave/blob/54d4812f907fa7d8cc8a176069c2ecd027e9141b/test/fixtures/captures/C51/response.json),
+SHA-256 `bfdb6f983e02e68dbbfa73f7bf6897084f1dde469c4da13eafa0cb4e6c19b7ac`.
+This immutable revision holds the expanded capture; the main-branch C51 record
+may still describe the earlier observation until #643 merges.
+
+| Input | Source JSON pointer | Observed state |
+|---|---|---|
+| `approval-c51-queued.json` | `/exchanges/3/response/data/stack/run/queued/input` | `QUEUED` |
+| `approval-c51-unconfirmed.json` | `/exchanges/3/response/data/stack/run/gate/input` | `UNCONFIRMED`, with the queued review in `reviews.older` |
+| `approval-c51-reset-after.json` | `/exchanges/6/response/data/stack/run/resetAfter/input` | `UNCONFIRMED` after the new policy resets its own flag |
+
+These samples add human creator identity/federations, nullable teams, populated
+review identity/roles/session objects and concrete run/runtime configuration
+values to the contract checks. The capture's redaction uses `actor-a`,
+`subject-a`, documentation IP addresses and stable opaque identifier replacements.
+Its nanosecond timestamps retain the captured values; the timestamp shift
+below describes the original 2026-11-17 set.
+
 ## Redaction
 
 The documents keep every key, every array and every value's JSON type, so

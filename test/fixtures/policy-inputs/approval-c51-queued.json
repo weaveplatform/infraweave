@@ -1,0 +1,112 @@
+{
+  "reviews": {
+    "current": {
+      "approvals": [],
+      "rejections": []
+    },
+    "older": {
+      "approvals": [],
+      "rejections": []
+    }
+  },
+  "run": {
+    "based_on_local_workspace": false,
+    "branch": "test/643-policy-captures",
+    "changes": [],
+    "command": "",
+    "commit": {
+      "author": "actor-a",
+      "branch": "test/643-policy-captures",
+      "created_at": 1795126452000000000,
+      "exist_on_tracked_branch": true,
+      "hash": "46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd",
+      "message": "test(policy): add a provider-free live capture project",
+      "tag": "",
+      "url": "https://github.com/weaveplatform/infraweave/commit/46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd"
+    },
+    "created_at": 1795126609700094700,
+    "creator_session": {
+      "admin": true,
+      "creator_ip": "192.0.2.10",
+      "identity": {
+        "federations": {
+          "github-oauth": {
+            "id": "subject-a",
+            "username": "actor-a"
+          }
+        },
+        "ulid": "01J00000000000000000000011"
+      },
+      "idp_subject": "subject-a",
+      "login": "actor-a",
+      "machine": false,
+      "name": "actor-a",
+      "teams": null
+    },
+    "drift_detection": false,
+    "flags": [],
+    "force_apply_mode": "DISABLED",
+    "id": "01J00000000000000000000005",
+    "repository_runtime_config_changed": true,
+    "runtime_config": {
+      "after_apply": [],
+      "after_destroy": [],
+      "after_init": [],
+      "after_perform": [],
+      "after_plan": [],
+      "after_run": [],
+      "before_apply": [],
+      "before_destroy": [],
+      "before_init": [],
+      "before_perform": [],
+      "before_plan": [],
+      "environment": {},
+      "git_sparse_checkout_paths": [],
+      "project_root": "test/fixtures/policy-capture-project",
+      "runner_image": "public.ecr.aws/spacelift/runner-terraform:latest",
+      "terraform_version": "1.5.7"
+    },
+    "state": "QUEUED",
+    "trigger": null,
+    "triggered_by": "actor-a",
+    "type": "TRACKED",
+    "updated_at": 1795126609700094700,
+    "user_provided_metadata": []
+  },
+  "stack": {
+    "additional_project_globs": [],
+    "administrative": false,
+    "autodeploy": false,
+    "branch": "test/643-policy-captures",
+    "id": "stack-a",
+    "labels": [
+      "infraweave-capture:643"
+    ],
+    "locked_by": null,
+    "name": "stack-a",
+    "namespace": "weaveplatform",
+    "project_root": "test/fixtures/policy-capture-project",
+    "repository": "infraweave",
+    "roles": [],
+    "space": {
+      "id": "root",
+      "labels": [],
+      "name": "root"
+    },
+    "state": "NONE",
+    "terraform_version": "1.5.7",
+    "terraform_workflow_tool": "TERRAFORM_FOSS",
+    "tracked_commit": {
+      "author": "actor-a",
+      "branch": "test/643-policy-captures",
+      "created_at": 1795126452000000000,
+      "hash": "46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd",
+      "message": "test(policy): add a provider-free live capture project",
+      "tag": "",
+      "url": "https://github.com/weaveplatform/infraweave/commit/46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd"
+    },
+    "worker_pool": {
+      "public": true
+    }
+  }
+}

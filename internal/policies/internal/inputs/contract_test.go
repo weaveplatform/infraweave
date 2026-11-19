@@ -112,8 +112,8 @@ func TestUnitPolicyContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 18 {
-		t.Fatalf("found %d documents, want all 18 recorded inputs and decisions", len(files))
+	if len(files) != 21 {
+		t.Fatalf("found %d documents, want all 21 recorded inputs and decisions", len(files))
 	}
 	for _, file := range files {
 		name := filepath.Base(file)
