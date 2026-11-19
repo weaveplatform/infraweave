@@ -45,7 +45,7 @@ repositories.
     Administration write;
   - a GitHub App owned by the organization, registered through the API
     as the lab account's default GitHub App integration, with read access to
-    contents and metadata, no webhook, installed on all the
+    contents and metadata, installed on all the
     organization's repositories; the lab holds nothing else for it to
     reach.
 - **GitLab:** nothing. GitLab.com offers group and project access tokens
@@ -61,6 +61,63 @@ repositories.
   for each run.
 
 ## Secrets
+
+### One-time GitHub App webhook setup and key rotation
+
+The dedicated lab App has no consumers outside this lab. Give it Checks,
+Pull requests, Issues and Deployments write, Contents and Metadata read, and
+Organization members read. Subscribe to `push`, `pull_request`,
+`pull_request_review`, `issue_comment`, `check_run`, `repository` and
+`organization`; installation events need no subscription. Approve the updated
+permissions on the installation before running the lab.
+
+Activate its webhook once, with a maintainer-controlled HTTPS parking URL,
+JSON content type and certificate verification enabled. Activation and event
+subscriptions are registration settings; the hook-configuration REST endpoint
+does not expose them. This permanent App hook is restored after a lab, not
+deleted. Never use an App whose previous secret or other consumers are unknown.
+
+The signing secret is derived from the **existing dedicated App private key**;
+there is no additional long-lived workflow secret. The verification helper
+parses and validates RSA, canonicalizes PKCS1 or PKCS8 PEM to PKCS8 DER, then
+derives32bytes with HKDF-SHA256, no salt, and the context
+`infraweave/vcs-lab/github-app-webhook/v1/<canonical numeric App ID>`. The secret
+is the64lowercase hex characters of those bytes. Readiness is `v1:` followed
+by SHA256 of that same context, a zero byte and the PKIX public-key DER. The
+separately printed public-key fingerprint is SHA256 of the PKIX DER alone.
+
+On a trusted local machine, put the existing App ID and PEM key into
+`INFRAWEAVE_TEST_VCS_USER` and `INFRAWEAVE_TEST_VCS_TOKEN` without printing them,
+then run:
+
+```sh
+GOWORK=off go run ./test/acceptance/cmd/vcs-lab app-setup --secret-file /private/local/lab-hook-secret
+```
+
+The requested file must not exist: files and symlinks are refused. It is created
+with mode0600. The command makes no API calls and prints only public metadata.
+Use a private local editor to enter that file's value as the dedicated App's
+webhook secret, then remove the file. Set the `vcs-lab` environment **variable**
+`VCS_GITHUB_HOOK_READY` to the printed readiness value only after completing the
+setup. This attests the operator setup; an actual signed delivery proves that
+GitHub uses the matching secret. Do not store the derived secret in another
+environment secret, Terraform source, workflow output or log.
+
+Changing the App ID, private key or derivation version requires repeating this
+procedure and updating readiness together. Re-encoding the same private key
+does not. Missing or mismatched readiness fails before any App hook mutation.
+Runtime supplies the same secret explicitly to each served integration create,
+but **never sends a `secret` member to GitHub**, even as null, empty or a masked
+value. Its separate PATCH document contains only URL, content type and TLS
+verification. A private cleanup journal precedes mutation; uncertain responses
+still attempt restoration using fresh bounded cleanup time. Cleanup refuses a
+current configuration belonging to another session and keeps its journal for
+the workflow's always-cleanup step. Workflow concurrency serializes the App;
+GitHub provides no atomic compare-and-swap for this endpoint. Abrupt runner loss
+can prevent both in-process and workflow cleanup, so the parking baseline and
+retained private journal remain the recovery contract.
+
+### Existing environment credentials
 
 They are the `vcs-lab` environment's secrets, set with
 `gh secret set --env vcs-lab`. Give the environment a deployment branch
