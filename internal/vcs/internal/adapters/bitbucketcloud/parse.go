@@ -249,7 +249,7 @@ func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsap
 	if r == nil || r.ID <= 0 || r.Source.Branch.Name == "" || r.Destination.Branch.Name == "" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
-	if !port.ValidCommit(r.Source.Commit.Hash) && event != "pullrequest:fulfilled" && event != "pullrequest:rejected" {
+	if !cloudRequestHead(r.Source.Commit.Hash) && event != "pullrequest:fulfilled" && event != "pullrequest:rejected" {
 		return vcsapi.Event{}, ErrWebhookPayload
 	}
 	source, sourceOK := cloudRepository(r.Source.Repository)
@@ -286,17 +286,24 @@ func cloudRequest(d webhookPayload, event string, repo vcsapi.Repository) (vcsap
 	// OPEN and an individual approval prove neither branch ancestry nor
 	// conflict/branch-protection requirements. No provider fetch runs here.
 	e.PullRequest = &vcsapi.PullRequest{
-		Number:     r.ID,
-		HeadBranch: r.Source.Branch.Name,
-		BaseBranch: r.Destination.Branch.Name,
-		HeadOwner:  source.Namespace,
-		Draft:      r.Draft,
-		Fork:       fork,
-		Approved:   cloudApproved(d, event),
-		Labels:     []string{},
+		HeadRepository: &source,
+		Number:         r.ID,
+		HeadBranch:     r.Source.Branch.Name,
+		BaseBranch:     r.Destination.Branch.Name,
+		HeadOwner:      source.Namespace,
+		Draft:          r.Draft,
+		Fork:           fork,
+		Approved:       cloudApproved(d, event),
+		Labels:         []string{},
 	}
 	cloudMetadata(r, e.PullRequest)
 	return e, nil
+}
+
+// Native request payloads can abbreviate an immutable SHA. Core preparation
+// resolves that prefix before using it as a persisted or policy commit identity.
+func cloudRequestHead(head string) bool {
+	return port.ValidCommit(head) || abbreviated.MatchString(strings.ToLower(head)) && strings.Trim(head, "0") != ""
 }
 
 func cloudApproved(d webhookPayload, event string) bool {

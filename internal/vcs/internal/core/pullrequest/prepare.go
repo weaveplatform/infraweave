@@ -74,7 +74,11 @@ func (s *Service) prepare(ctx context.Context, d intake.Delivery, event vcsapi.E
 		r.CreatedAt = d.ReceivedAt
 	}
 	if r.State == Open && !port.ValidCommit(r.HeadSHA) {
-		return Request{}, ErrHead
+		var err error
+		r.HeadSHA, err = s.resolveHead(ctx, d, p.HeadRepository, r.HeadSHA)
+		if err != nil {
+			return Request{}, err
+		}
 	}
 	if r.UpdatedAt.IsZero() {
 		r.UpdatedAt = d.ReceivedAt
