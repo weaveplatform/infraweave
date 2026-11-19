@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"slices"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -35,12 +37,22 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 	}
 	work, cancel := context.WithTimeout(ctx, input.Deadline.Sub(s.d.Now()))
 	defer cancel()
-	err := tx.Do(work, s.d.DB, tx.Options{}, func(ctx context.Context) error {
-		if err := s.d.Jobs.HoldTx(ctx, job); err != nil {
-			return err //nolint:wrapcheck // the queue names the lost claim
+	attempts, err := s.prepareActions(work, job, input)
+	if limited, ok := errors.AsType[*port.RateLimited](err); ok {
+		remaining := input.Deadline.Sub(s.d.Now())
+		if remaining <= 0 {
+			return s.finish(ctx, job, input, Expired)
 		}
-		return s.evaluate(ctx, job, input)
-	})
+		return queue.Snooze(min(max(time.Second, limited.Reset.Sub(s.d.Now())), remaining)) //nolint:wrapcheck // queue scheduling control consumes no attempt
+	}
+	if err == nil {
+		err = tx.Do(work, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+			if err := s.d.Jobs.HoldTx(ctx, job); err != nil {
+				return err //nolint:wrapcheck // the queue names the lost claim
+			}
+			return s.evaluate(ctx, job, input, attempts)
+		})
+	}
 	if errors.Is(err, errExpired) || errors.Is(err, context.DeadlineExceeded) && !s.d.Now().Before(input.Deadline) {
 		return s.finish(ctx, job, input, Expired)
 	}
@@ -52,7 +64,7 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 	return err //nolint:wrapcheck // each fenced step names its boundary
 }
 
-func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation) error {
+func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation, attempts map[int]actionAttempt) error {
 	meta, found, err := s.d.Store.EventContext(ctx, input.Account, input.Delivery)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the owner check
@@ -84,18 +96,40 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 		return err
 	}
 	if !uses(stack, use) {
+		hasAction := false
+		for _, event := range events {
+			if actionFor(event.Event, input.Stack) {
+				hasAction = true
+				s.actionRefused(ctx, actionInvalidTarget)
+			}
+		}
+		if hasAction {
+			return s.d.Jobs.CompleteTx(ctx, job) //nolint:wrapcheck // queue acknowledgement joins the completion transaction
+		}
 		return errExpired
 	}
 	matched := false
-	for _, event := range events {
+	for index, event := range events {
 		if !s.d.Now().Before(input.Deadline) {
 			return errExpired
 		}
-		if event.Event.Repository.Namespace != stack.Namespace || event.Event.Repository.Name != stack.Repository {
+		selection, selectErr := s.selectEvaluation(ctx, input, meta, stack, event, attempts[index])
+		if selectErr != nil {
+			return selectErr
+		}
+		matched = matched || selection.matched
+		if !selection.apply {
 			continue
 		}
+		event = selection.prepared
 		matched = true
-		decision, err := s.apply(ctx, input, stack, event, meta.Integration)
+		var decision Decision
+		var err error
+		if event.Event.Type == "check_action" {
+			decision, err = s.applyAction(ctx, input, stack, event, meta.Integration, attempts[index])
+		} else {
+			decision, err = s.apply(ctx, input, stack, event, meta.Integration)
+		}
 		if err != nil {
 			return err
 		}

@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -28,6 +30,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/gitlab"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/http"
+	vcsobserve "github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/observe"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/rawgit"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/feedback"
@@ -236,10 +239,14 @@ func New(d Deps) (*Domain, error) {
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
 		},
 	})
+	actionRefused, err := vcsobserve.CheckActionRefused(otel.Meter("infraweave/vcs"))
+	if err != nil {
+		return nil, fmt.Errorf("vcs: action counter: %w", err)
+	}
 	pushes := push.New(push.Deps{
 		Lifecycle: identities,
 		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
-		Integrations: integrations, Sources: sources, Creator: d.Creator, Supersede: d.Supersede,
+		Integrations: integrations, Sources: sources, Actions: sources, ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
 		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 	})
 	requests := pullrequest.New(pullrequest.Deps{

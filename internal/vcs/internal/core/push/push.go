@@ -13,6 +13,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 // Evaluate is isolated per stack and deduplicated per delivery/stack.
@@ -21,9 +22,10 @@ var Evaluate = queue.Kind{Name: "vcs.evaluate_event", Queue: queue.VCSInbox, Pol
 // Prepared keeps one event's full diff outside queue payloads. Commit belongs to
 // the immutable head SHA; Branch is the ref that supplied that head.
 type Prepared struct {
-	Event  vcsapi.Event     `json:"event"`
-	Commit stacksapi.Commit `json:"commit"`
-	Files  []string         `json:"files"`
+	Event  vcsapi.Event      `json:"event"`
+	Commit stacksapi.Commit  `json:"commit"`
+	Files  []string          `json:"files"`
+	Action *port.ActionFacts `json:"action,omitempty"`
 }
 
 // Evaluation is a small durable reference, irrespective of diff or ref count.
@@ -66,6 +68,14 @@ type Sources interface {
 	PrepareTag(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, error)
 }
 
+// ActionSources prepares native facts outside transactions and checks their
+// credential-free binding under the completing integration hold.
+type ActionSources interface {
+	PrepareCheckAction(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (port.ActionFacts, error)
+	CurrentCheckAction(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Repository, port.ActionFacts) (bool, error)
+	RefreshCheckAction(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event, port.ActionFacts) (bool, error)
+}
+
 // IgnoredRecorder persists a reason under the same live account/stack holds and
 // queue completion transaction as evaluation. Tier gates apply only to reads.
 type IgnoredRecorder interface {
@@ -87,21 +97,23 @@ type Lifecycle interface {
 
 // Deps is the forward domain graph and transactional stores used by VCS jobs.
 type Deps struct {
-	Lifecycle    Lifecycle
-	DB           tx.Beginner
-	Store        Store
-	Stacks       stacksapi.Stacks
-	Spaces       accessapi.Spaces
-	Integrations Integrations
-	Sources      Sources
-	Creator      runsapi.Creator
-	Supersede    runsapi.Supersede
-	Jobs         intake.Jobs
-	Limits       *Limits
-	Checks       CapReporter
-	Ignored      IgnoredRecorder
-	Now          func() time.Time
-	Log          *slog.Logger
+	Lifecycle     Lifecycle
+	DB            tx.Beginner
+	Store         Store
+	Stacks        stacksapi.Stacks
+	Spaces        accessapi.Spaces
+	Integrations  Integrations
+	Sources       Sources
+	Actions       ActionSources
+	ActionRefused func(context.Context, string)
+	Creator       runsapi.Creator
+	Supersede     runsapi.Supersede
+	Jobs          intake.Jobs
+	Limits        *Limits
+	Checks        CapReporter
+	Ignored       IgnoredRecorder
+	Now           func() time.Time
+	Log           *slog.Logger
 }
 
 // Service prepares outside transactions and evaluates only prepared facts under
