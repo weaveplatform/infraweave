@@ -18,8 +18,9 @@ import (
 var ErrWebhookPayload = errors.New("github: malformed webhook payload")
 
 // webhook retains only documented fields consumed by normalization. GitHub's
-// SDK owns its nested payload types; changes.login also serves organization
-// renames, whose SDK event does not currently retain changes.
+// SDK owns its nested payload types except the repository identity projection;
+// changes.login also serves organization renames, whose SDK event does not
+// currently retain changes.
 //
 //nolint:tagliatelle // GitHub owns the webhook JSON field names.
 type webhook struct {
@@ -28,7 +29,7 @@ type webhook struct {
 	Before              string                      `json:"before"`
 	After               string                      `json:"after"`
 	Forced              bool                        `json:"forced"`
-	Repository          *github.Repository          `json:"repository"`
+	Repository          *webhookRepository          `json:"repository"`
 	Sender              *github.User                `json:"sender"`
 	PullRequest         *github.PullRequest         `json:"pull_request"`
 	Issue               *github.Issue               `json:"issue"`
@@ -36,12 +37,23 @@ type webhook struct {
 	CheckRun            *github.CheckRun            `json:"check_run"`
 	RequestedAction     *github.RequestedAction     `json:"requested_action"`
 	Installation        *github.Installation        `json:"installation"`
-	Repositories        []*github.Repository        `json:"repositories"`
-	RepositoriesAdded   []*github.Repository        `json:"repositories_added"`
-	RepositoriesRemoved []*github.Repository        `json:"repositories_removed"`
+	Repositories        []*webhookRepository        `json:"repositories"`
+	RepositoriesAdded   []*webhookRepository        `json:"repositories_added"`
+	RepositoriesRemoved []*webhookRepository        `json:"repositories_removed"`
 	Account             *github.User                `json:"account"`
 	Organization        *github.Organization        `json:"organization"`
 	Changes             *github.InstallationChanges `json:"changes"`
+}
+
+// Webhook repository metadata differs by event: push organization is a string,
+// while REST repository organization is an object. Routing needs only identity.
+//
+//nolint:tagliatelle // GitHub owns the webhook JSON field names.
+type webhookRepository struct {
+	ID       int64        `json:"id"`
+	Name     string       `json:"name"`
+	FullName string       `json:"full_name"`
+	Owner    *github.User `json:"owner"`
 }
 
 // Parse normalizes one delivery without provider calls or account mutations.
@@ -148,19 +160,19 @@ func (d *webhook) pullRequest(e vcsapi.Event) (vcsapi.Event, error) {
 	return e, nil
 }
 
-func repository(r *github.Repository) vcsapi.Repository {
-	if r.GetID() <= 0 {
+func repository(r *webhookRepository) vcsapi.Repository {
+	if r == nil || r.ID <= 0 {
 		return vcsapi.Repository{}
 	}
-	namespace := r.GetOwner().GetLogin()
+	namespace := r.Owner.GetLogin()
 	if namespace == "" {
-		if owner, _, ok := strings.Cut(r.GetFullName(), "/"); ok {
+		if owner, _, ok := strings.Cut(r.FullName, "/"); ok {
 			namespace = owner
 		}
 	}
-	out := vcsapi.Repository{ID: strconv.FormatInt(r.GetID(), 10), Namespace: namespace, Name: r.GetName()}
-	if r.GetOwner().GetID() > 0 {
-		out.OwnerID = strconv.FormatInt(r.GetOwner().GetID(), 10)
+	out := vcsapi.Repository{ID: strconv.FormatInt(r.ID, 10), Namespace: namespace, Name: r.Name}
+	if r.Owner.GetID() > 0 {
+		out.OwnerID = strconv.FormatInt(r.Owner.GetID(), 10)
 	}
 	return out
 }
@@ -169,7 +181,7 @@ func validRepository(r vcsapi.Repository) bool {
 	return r.ID != "" && r.Namespace != "" && r.Name != ""
 }
 
-func repositories(rs []*github.Repository) []vcsapi.Repository {
+func repositories(rs []*webhookRepository) []vcsapi.Repository {
 	out := make([]vcsapi.Repository, 0, len(rs))
 	for _, r := range rs {
 		out = append(out, repository(r))

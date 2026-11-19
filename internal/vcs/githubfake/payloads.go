@@ -28,6 +28,8 @@ func Payload(event, action string) ([]byte, error) {
 	switch event {
 	case "push":
 		delete(d, "action")
+		// Push repository metadata uses a string here, unlike the REST shape.
+		repo["organization"] = "acme"
 		d["ref"], d["before"], d["after"], d["forced"] = "refs/heads/main", BeforeSHA, AfterSHA, true
 		d["pusher"] = map[string]string{"name": AuthorLogin, "email": "author@example.com"}
 		d["head_commit"] = map[string]any{
