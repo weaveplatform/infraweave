@@ -3,8 +3,10 @@ package push
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -19,6 +21,7 @@ type actionSources struct {
 	t              *testing.T
 	write, current bool
 	refresh        int
+	seen           []vcsapi.Repository
 	err            error
 	mutate         func()
 }
@@ -30,11 +33,12 @@ func (a *actionSources) PrepareCheckAction(ctx context.Context, _ kernel.Account
 	return port.ActionFacts{Commit: port.ActionCommit{Hash: event.Head}, NativeHost: "https://github.example/api/v3/app/1"}, a.err
 }
 
-func (a *actionSources) RefreshCheckAction(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, _ vcsapi.Event, _ port.ActionFacts) (bool, error) {
+func (a *actionSources) RefreshCheckAction(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event, _ port.ActionFacts) (bool, error) {
 	if tx.In(ctx) {
 		a.t.Fatal("permission read inside transaction")
 	}
 	a.refresh++
+	a.seen = append(a.seen, event.Repository)
 	if a.mutate != nil {
 		a.mutate()
 	}
@@ -202,5 +206,78 @@ func TestUnitCheckActionCompoundTargetsAndRetry(t *testing.T) {
 	w.events = append(w.events, foreign)
 	if err := w.s.Evaluated(t.Context(), w.job); err != nil || len(w.requests) != 1 || a.refresh != 1 {
 		t.Fatal("one child acted on another stack's event", err, w.requests, a.refresh)
+	}
+}
+
+func TestUnitCheckActionCurrentRepositoryProjection(t *testing.T) {
+	for _, name := range []string{"case alias", "native rename"} {
+		t.Run(name, func(t *testing.T) {
+			w, a := newActionEvaluation(t)
+			original := actionFingerprint(w.events[0])
+			repo := w.events[0].Event.Repository
+			if name == "case alias" {
+				repo.Namespace = "ACME"
+				repo.Name = "INFRA"
+			} else {
+				repo.Namespace = "new-owner"
+				repo.Name = "new-name"
+				w.stack.Namespace = repo.Namespace
+				w.stack.Repository = repo.Name
+			}
+			w.s.d.Lifecycle = &reviewCurrentRepository{current: repo}
+			if err := w.s.Evaluated(t.Context(), w.job); err != nil {
+				t.Fatal(err)
+			}
+			if len(w.requests) != 1 || w.complete != 1 || len(a.seen) != 1 || a.seen[0] != repo || actionFingerprint(w.events[0]) != original {
+				t.Fatal("native identity projection invalidated original authorization", w.requests, a.seen, w.complete)
+			}
+		})
+	}
+}
+
+func TestUnitCheckActionNativeRetryAndDeadline(t *testing.T) {
+	for _, name := range []string{"cancelled", "deadline retry", "deadline expires", "rate at final attempt", "rate after expiration"} {
+		t.Run(name, func(t *testing.T) {
+			w, a := newActionEvaluation(t)
+			now := w.input.Deadline.Add(-10 * time.Second)
+			w.s.d.Now = func() time.Time { return now }
+			w.job.Attempt, w.job.MaxAttempts = 3, 3
+			switch name {
+			case "cancelled":
+				a.err = fmt.Errorf("private native cancellation: %w", context.Canceled)
+			case "deadline retry":
+				a.err = fmt.Errorf("private native timeout: %w", context.DeadlineExceeded)
+			case "deadline expires":
+				a.err = context.DeadlineExceeded
+				a.mutate = func() { now = w.input.Deadline }
+			case "rate at final attempt":
+				a.err = &port.RateLimited{Reset: now.Add(5 * time.Second)}
+			case "rate after expiration":
+				a.err = &port.RateLimited{Reset: now.Add(time.Minute)}
+				a.mutate = func() { now = w.input.Deadline }
+			}
+			err := w.s.Evaluated(t.Context(), w.job)
+			switch name {
+			case "cancelled":
+				if !errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "private") {
+					t.Fatal("cancellation lost safe classification", err)
+				}
+			case "deadline retry":
+				if !errors.Is(err, context.DeadlineExceeded) || w.complete != 0 {
+					t.Fatal("native deadline acknowledged claim", err, w.complete)
+				}
+			case "deadline expires", "rate after expiration":
+				if err != nil || w.complete != 1 {
+					t.Fatal("expired work was rescheduled", err, w.complete)
+				}
+			case "rate at final attempt":
+				if err == nil || err.Error() != "snoozed for 5s" || w.complete != 0 || w.failureMarkers != 0 {
+					t.Fatal("rate limit consumed final attempt or expired delay", err, w.complete, w.failureMarkers)
+				}
+			}
+			if len(w.requests) != 0 || w.used != 0 || len(w.heads) != 0 || len(w.tracked) != 0 {
+				t.Fatal("native failure changed run/cap/pointers")
+			}
+		})
 	}
 }

@@ -253,6 +253,29 @@ func (s *Service) actionSnapshots(ctx context.Context, job queue.Job, input Eval
 					item.event.Repository = repo
 				}
 			}
+			stack, reason, err := s.actionTarget(ctx, intake.Delivery{Account: input.Account, Provider: meta.Provider, Integration: meta.Integration}, item.event, use)
+			if err != nil {
+				return err
+			}
+			if reason != "" {
+				item.reason = reason
+			}
+			if reason == "" && !stack.GithubActionDeploy {
+				item.reason = actionDisabled
+			}
+			if item.reason == "" {
+				if event.Action == nil {
+					item.reason = actionSourceChanged
+				} else {
+					current, err := s.d.Actions.CurrentCheckAction(ctx, input.Account, meta.Integration, meta.Provider, item.event.Repository, *event.Action)
+					if err != nil {
+						return err
+					}
+					if !current {
+						item.reason = actionSourceChanged
+					}
+				}
+			}
 			snapshots[index] = item
 		}
 		return nil
