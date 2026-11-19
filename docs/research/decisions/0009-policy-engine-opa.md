@@ -119,7 +119,7 @@ one is a compile error at save:
 
 | Custom built-in | Signature | Available to |
 |---|---|---|
-| `sanitized(x)` | string to string | every type |
+| `sanitized(x)` | any JSON value to the same type; strings hashed | every type |
 | `exec(cmd)` | array of strings to object `{status, stdout, stderr}` | the worker-side initialization policy only |
 
 - **`sanitized`** applies the same hash the worker applies to string values in plan input
