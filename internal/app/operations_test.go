@@ -27,6 +27,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 )
@@ -86,6 +87,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /admin-login/{organization}":             {Public: true},
 		"POST /admin-login/{organization}":            {Cost: ratelimit.Expensive, Public: true},
 		"GET /.well-known/oauth-authorization-server": {Public: true},
+		"GET " + policiesassembly.ContractPattern:     {Cost: ratelimit.Standard, Gate: gate("policies")},
 		"POST /oauth/register":                        {Cost: ratelimit.Expensive, Public: true},
 		"GET /oauth/authorize":                        {Public: true},
 		"POST /oauth/token":                           {Public: true},
@@ -136,6 +138,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		}
 	}
 	// Every API operation names its action and subject; nothing else does.
+	if required := ops["GET "+policiesassembly.ContractPattern].Required; required == nil || required.Action != accessapi.ActionAuthenticated ||
+		required.Subject.Kind != accessapi.SubjectAccount {
+		t.Errorf("policy contract requires %+v", required)
+	}
 	if r := ops["POST "+BaseURL+"/stacks"].Required; r == nil ||
 		r.Action != accessapi.ActionStackCreate || r.Subject.Field != "input.space" {
 		t.Errorf("stackCreate requires %+v", r)
@@ -147,7 +153,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		t.Fatalf("ignored-trigger search controls: %+v", r)
 	}
 	for key, op := range ops {
-		if api := strings.Contains(key, " "+BaseURL+"/"); api != (op.Required != nil) {
+		if api := strings.Contains(key, " "+BaseURL+"/") || key == "GET "+policiesassembly.ContractPattern; api != (op.Required != nil) {
 			t.Errorf("%s requires %+v", key, op.Required)
 		}
 	}
@@ -157,7 +163,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		case strings.HasSuffix(key, " "+accessapi.LoginPattern),
 			key == http.MethodPost+" "+vcsassembly.WebhookPattern,
 			strings.HasSuffix(key, " "+fs.Pattern), signedState[key],
-			strings.HasPrefix(key, "GET /.well-known/"), strings.Contains(key, " /oauth/"),
+			key == "GET "+accessapi.OAuthMetadataPattern, strings.Contains(key, " /oauth/"),
 			op.Worker, op.State:
 			if op.Gate.Feature != "" {
 				t.Errorf("%s names %s; a route outside the API documents names none",
@@ -204,7 +210,7 @@ func TestUnitAPIOperations(t *testing.T) {
 	// The fs driver's routes are mounted, so a table pattern the driver
 	// does not serve fails the walk below.
 	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server),
-		Domains{Auth: byAddress{}}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
+		Domains{Auth: byAddress{}, Policies: policiesassembly.New()}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}
