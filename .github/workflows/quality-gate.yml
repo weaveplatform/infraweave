@@ -114,9 +114,6 @@ jobs:
       - name: Acceptance partition ${{ matrix.partition }}
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
-          # Temporary metadata-only diagnosis of PR 615's unexpected HTTP 500.
-          INFRAWEAVE_DIAGNOSTIC_HTTP500: ${{ matrix.partition == 'integrations' && '1' || '' }}
-          INFRAWEAVE_ACCEPT_SEED: ${{ matrix.partition == 'integrations' && '1795040557222566002' || '' }}
         run: make accept PARTITION=${{ matrix.partition }}
 
       # go test shows a passing test's output only with -v, so the count

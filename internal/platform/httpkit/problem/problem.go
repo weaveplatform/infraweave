@@ -285,7 +285,6 @@ func Failure(w http.ResponseWriter, err error) {
 		Unavailable(w)
 		return
 	}
-	diagnoseFailure(w, err)
 	Internal(w)
 }
 

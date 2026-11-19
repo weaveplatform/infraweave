@@ -25,12 +25,7 @@
 //
 // It writes the status, Content-Type application/problem+json, Retry-After
 // on a 503 and the JSON body to the response writer it is given, and reads
-// the X-Request-Id already set on it. Temporary integrations-CI diagnosis is
-// enabled only by INFRAWEAVE_DIAGNOSTIC_HTTP500=1: an unexpected 500 records the
-// request ID, bounded caller/type names, a validated SQLSTATE and cancellation
-// flags, never error text or request data. Ordinary responses and disabled
-// diagnostics log nothing. TestUnitProblemRegistry holds Types to the register
-// in both directions.
+// the X-Request-Id already set on it. It logs nothing; TestUnitProblemRegistry holds Types to the register in both directions.
 //
 // # Dependencies
 //
