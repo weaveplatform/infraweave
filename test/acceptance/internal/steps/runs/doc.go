@@ -10,6 +10,8 @@
 // the clock on for one run or one worker by ageing its timestamps, so
 // run.timers and worker.reap reach their boundaries without a wait, and
 // reads the timer a run_updated event names.
+// Lab-only run waits retain a bounded state/history summary on failure, with
+// fixed request categories and note/log presence rather than response text.
 //
 // # Input and output
 //
