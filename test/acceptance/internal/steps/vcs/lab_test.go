@@ -7,7 +7,10 @@ import (
 )
 
 func TestUnitLiveLabIgnoresInheritedFakeTags(t *testing.T) {
-	w := &harness.World{IDs: map[string]string{}, Tags: []string{"@vcs-lab", "@vcs", "@github", "@provider:github-public", "@gitlab", "@bitbucket-cloud", "@bitbucket-dc", "@azure-devops"}}
+	w := &harness.World{
+		IDs:  map[string]string{},
+		Tags: []string{"@vcs-lab", "@vcs", "@github", "@provider:github-public", "@gitlab", "@bitbucket-cloud", "@bitbucket-dc", "@azure-devops"},
+	}
 	for name, fake := range map[string]harness.Fake{
 		"github":          &githubSteps{w: w},
 		"gitlab":          &gitlabSteps{w: w},
