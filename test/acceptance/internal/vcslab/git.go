@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -108,7 +109,7 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 //
 //nolint:errorlint // Inspect one node at a time to keep traversal bounded, including go-git's nonstandard wrappers.
 func nativeGitFailure(operation string, cause error) error {
-	category, status := "other", 0
+	category, status, phase := "other", 0, "other"
 	for range 16 {
 		switch cause {
 		case context.Canceled:
@@ -136,6 +137,7 @@ func nativeGitFailure(operation string, cause error) error {
 			case *githttp.Err:
 				if e.Response != nil && e.Response.StatusCode >= 100 && e.Response.StatusCode <= 599 {
 					category, status = "http", e.Response.StatusCode
+					phase = nativeGitHTTPPhase(e.Response.Request)
 				}
 			case *tls.CertificateVerificationError, tls.RecordHeaderError,
 				x509.UnknownAuthorityError, x509.HostnameError, x509.CertificateInvalidError:
@@ -163,5 +165,29 @@ func nativeGitFailure(operation string, cause error) error {
 		}
 		break
 	}
-	return fmt.Errorf("%w: Git operation=%s category=%s status=%d", ErrNative, operation, category, status)
+	return fmt.Errorf("%w: Git operation=%s category=%s status=%d phase=%s", ErrNative, operation, category, status, phase)
+}
+
+// Only recognized wire shapes become phase names; request values never enter
+// the diagnostic. Authentication sentinels have no retained response request.
+func nativeGitHTTPPhase(request *http.Request) string {
+	if request == nil || request.URL == nil || request.URL.Opaque != "" || request.URL.ForceQuery {
+		return "other"
+	}
+	path := request.URL.EscapedPath()
+	if request.Method == http.MethodGet && strings.HasSuffix(path, "/info/refs") {
+		switch request.URL.RawQuery {
+		case "service=git-upload-pack", "service=git-receive-pack":
+			return "advertise"
+		}
+	}
+	if request.Method == http.MethodPost && request.URL.RawQuery == "" {
+		switch {
+		case strings.HasSuffix(path, "/git-upload-pack"):
+			return "upload-pack"
+		case strings.HasSuffix(path, "/git-receive-pack"):
+			return "receive-pack"
+		}
+	}
+	return "other"
 }
