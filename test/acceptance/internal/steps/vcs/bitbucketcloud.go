@@ -49,6 +49,11 @@ func (b *bitbucketCloudSteps) apiHost() string { return b.srv.APIHost }
 // vcs settings and certificate every server of the scenario needs while
 // it runs.
 func (b *bitbucketCloudSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
+	// Feature-level fake tags also reach live examples; the lab owns their endpoints.
+	if slices.Contains(w.Tags, "@vcs-lab") {
+		return nil, nil, nil
+	}
+
 	var ca []byte
 	if slices.Contains(w.Tags, "@bitbucket-cloud") && b.srv == nil {
 		ca = b.start()

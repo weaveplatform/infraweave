@@ -46,6 +46,11 @@ func (g *gitlabSteps) start() []byte {
 // vcs settings and certificate every server of the scenario needs while
 // it runs.
 func (g *gitlabSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
+	// Feature-level fake tags also reach live examples; the lab owns their endpoints.
+	if slices.Contains(w.Tags, "@vcs-lab") {
+		return nil, nil, nil
+	}
+
 	if slices.Contains(w.Tags, "@gitlab") && g.srv == nil {
 		return nil, g.start(), nil
 	}
