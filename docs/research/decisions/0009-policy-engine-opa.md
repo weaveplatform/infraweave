@@ -36,10 +36,20 @@ Report 27 compares the ways other tools run Rego
 - **OPA is linked as a Go library** through `github.com/open-policy-agent/opa/v1/rego`,
   `v1/ast` and `v1/topdown`, at the latest release. The deprecated root `rego` package,
   the `sdk` package, bundles, the decision-log plugin and an `opa` sidecar are not used.
-- **Package `internal/policy`** owns compilation, the preamble, the capability set,
-  custom built-ins, input building, combination, receipts and sampling. Every caller
-  (run scheduler, VCS intake, authentication, event routing, the launcher) goes through
-  `policy.Engine.Evaluate(ctx, Request) (Decision, error)`.
+- **`internal/platform/rego`** owns compilation, preambles, capabilities, prepared
+  queries, cancellation and print capture. It imports no domain and is usable by
+  the server and launcher.
+- **`internal/policies`** is a flat domain: policy records and attachments, input
+  construction, typed decisions, combination, samples, captures and simulation.
+  Server callers use `policiesapi.Evaluator`; the launcher uses `platform/rego`
+  directly for its private worker-side initialization policy.
+- **`internal/runs`** owns `run_policy_receipts` and `run_flags` in its migration
+  stream, because their writes commit with run state/history and outbox records.
+  Policies returns decision evidence; it imports none of its callers and never
+  writes their tables. No-run evaluations use evaluation metadata/events, not
+  fabricated run rows. Cross-domain policy/stack IDs are validated through
+  their owning APIs and use 0004's holds/guards/purges, never SQL foreign keys.
+  `internal/iac/sanitize` is the shared document/hash code.
 - **`policyRuntime.openPolicyAgentVersion`** answers the OPA module version linked into
   the binary, read from `runtime/debug.ReadBuildInfo`.
 
@@ -66,7 +76,7 @@ Report 27 compares the ways other tools run Rego
 
 - **Every body is `package infraweave`.** Another package answers `422`, problem
   `validation-failed`, at save.
-- **Preamble.** For each type, `internal/policy` holds a generated Rego v1 module in
+- **Preamble.** For each type, `internal/platform/rego` holds a generated Rego v1 module in
   `package infraweave` that defines `result` as an object naming every rule of the type,
   `default` values for its boolean rules and an always-false placeholder for each set rule
   ([09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type)).
@@ -136,8 +146,10 @@ one is a compile error at save:
 ### Compilation cache
 
 - Each policy compiles to a `rego.PreparedEvalQuery` keyed by
-  `(SHA-256 of body, engineType, policy type, preamble version)`. The key changes when the
-  body changes, so replicas need no invalidation messages.
+  `(SHA-256 of body, engineType, policy type, preamble version, effective capabilities)`. The key changes when the
+  body or capability mode changes, so replicas need no invalidation messages.
+  FIPS capability mode is part of the identity; a query compiled with MD5/SHA-1
+  available can never be reused under FIPS enforcement.
 - The cache is an LRU of 2,048 entries per process; a miss compiles on the calling
   goroutine. Prepared queries are shared across goroutines, as OPA allows.
 - Each attached policy is evaluated with its own prepared query and its own input copy,
@@ -181,7 +193,7 @@ wrong shape is an **error**, recorded on the receipt with its message. Errors fa
 
 Each type's rules for merging several policies are those of
 [09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type),
-implemented once per type in `internal/policy/combine.go`: any `deny` wins for login and
+implemented once per type in `internal/policies/internal/combine`: any `deny` wins for login and
 plan; any `ignore` wins for push; every approval policy must approve and any reject
 rejects; disagreeing push `priority` or `lock` values fail the evaluation; disagreeing
 trigger priorities fall back to `normal` with a notification; login `deny_message` values
@@ -221,7 +233,7 @@ Who calls the engine, when, and what the result does to the run of decision
 ### The worker-side initialization policy
 
 - The launcher (decision [0008](0008-run-execution-and-worker-protocol.md)) links the same
-  `internal/policy` engine. It reads the policy file named by its configuration, compiles it
+  `internal/platform/rego` engine. It reads the policy file named by its configuration, compiles it
   at start with the initialization preamble, and refuses to start when the file does not
   compile ([10 section 10](../reference/10-workers-and-execution.md#10-signed-runs-and-worker-side-policy)).
 - It evaluates the policy during the handover, before it starts the run container, as
@@ -267,7 +279,7 @@ Who calls the engine, when, and what the result does to the run of decision
 
 ### Input documents
 
-- Each type's input is a Go struct in `internal/policy/input` whose JSON names follow the
+- Each type's input is a Go struct in `internal/policies/internal/inputs` whose JSON names follow the
   per-type contract of [09 section 4](../reference/09-policies.md#4-input-documents),
   including absent versus `null` where the report records a difference.
 - **The `infraweave` namespace.** Where Spacelift's contract nests fields under a
@@ -289,9 +301,11 @@ Who calls the engine, when, and what the result does to the run of decision
   `rejections`, and each trigger `stacks[]` entry carries `queued_runs`. Values the
   documents leave null where the field is known, such as the trigger input's
   `stack.space`, infraweave fills.
-- Plan input string values are sanitized on the worker before upload, per the stack's
-  sanitization mode, so plaintext attribute values never reach the server's policy input
-  or its samples.
+- Under `DEFAULT` and `SMART`, the worker transforms the applicable string values
+  before uploading server-readable plan JSON. `NONE` deliberately retains the
+  Terraform-family values under the explicit opt-out label; it is outside that
+  sanitization guarantee. Every mode still seals artifacts. The binary plan and
+  pool-sealed workspace used for apply retain their separate 0008/0013 contracts.
 
 ### Vendor plan documents
 
@@ -373,6 +387,45 @@ gives it.
   a policy compares a Kubernetes Secret's value or a CloudFormation
   parameter the way it compares a Terraform attribute.
 
+
+### Policy phase ownership and capture gates
+
+P13 constructs `policies` after configuration and before runs. Runs and VCS use
+`policiesapi.Evaluator`; policies imports only the domain APIs in the declared
+graph. Access owns `accessapi.LoginEvaluator`, implemented by policies and bound
+by app after construction. Access never imports policiesapi. The policies check
+surface is supplied through `policies.Surfaces()` and served by expressions;
+its authorization and compiler are the same ones used by policy management.
+
+P13 emits `policy_evaluated` and `internal_error` through the transactional
+outbox and enqueues existing VCS checks. P18 adds notification policy routing,
+inbox delivery and other sinks; an emitted event is not proof of those sinks.
+P13b implements account login, TASK/server INITIALIZATION and policy tooling.
+P14 owns launcher INITIALIZATION and `exec`; P16 owns dependency execution; P17
+owns module-version triggers and C55's module-version capture. P20 owns the
+remaining vendors and full Terragrunt changes/outputs; P20b owns plugins;
+P24c owns console components; P25 owns Intent execution and attachments.
+Future input shapes do not imply those workflows are implemented.
+
+The shared sanitization transform hashes value strings, not structural names:
+resource addresses/types/provider names, actions, modes, versions and module
+paths stay readable. DEFAULT covers before/after values, planned/prior values,
+outputs and variables; both modes cover every configuration `constant_value`.
+SMART additionally follows sensitive markers and sensitive variable declarations,
+including nested modules and whole-value markers. Preserve numbers, booleans,
+nulls and JSON shape. Malformed JSON, invalid mode, invalid value/marker shape
+or an exhausted input bound fails closed; never upload the original as fallback.
+A Terragrunt `units` envelope applies the transform independently to each unit's
+`plan`; P13 must collect/upload that minimal JSON even though its runner currently
+saves only the workspace. Artifact bounds remain 0008's; policy input bounds
+remain this record's limits. The opt-out does not disable artifact sealing.
+
+Required live behavior captures block their affected implementation tickets.
+The table in plan P13 names every gate, including remaining C9 policy deletion,
+C46, C48, C50, C51, C52, C56 and C291. An inaccessible tier or support-only fact
+stays unresolved. C49/C54/C57/C192 are recorded, with explicit REST replay
+handoffs. Do not close a capture by converting an interim choice into a fixture.
+
 ## Rationale
 
 - **A library, not a sidecar or a binary per evaluation.** Login and approval sit on
@@ -434,7 +487,7 @@ gives it.
 
 ## Verification
 
-- `internal/policy` unit tests: compilation of every type's preamble under both engines;
+- `internal/platform/rego` unit tests: compilation of every type's preamble under both engines;
   each removed built-in rejected at save, and the MD5 and SHA-1 built-ins rejected when
   enforcement is on; `sanitized` and `print`; the cache key; timeouts
   through a policy that loops; every combination rule of
@@ -443,7 +496,7 @@ gives it.
 - A corpus test runs the 68 templates and 62 test files at
   `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8` (C54) of the MIT example library
   ([09 section 10](../reference/09-policies.md#10-the-example-library-at-6ff5edb08bc8)) through
-  `internal/policy` and expects every library test to pass, after the importer's rewrite of
+  `internal/platform/rego` and expects every library test to pass, after the importer's rewrite of
   the package, `input.spacelift` and `data.spacelift` in templates and tests alike, so the
   corpus also tests the rewrite.
 - A contract test, `TestUnitPolicyContract`, compares the generated

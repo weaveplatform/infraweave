@@ -704,6 +704,18 @@ ref: [plan, P19b](../../implementation/plan.md#p19b-vcs-agent-pools-and-other-so
   included. A refused request is answered `{error}` and logged with its method
   and path.
 
+
+### Policy phase boundary
+
+P13's vcs.evaluate_event calls `policiesapi.Evaluator` after durable intake.
+Run creation/cancellation and receipts/flags commit under the existing fenced
+job/stack transaction. Failed evaluation creates no run and appends durable
+internal_error/failed-check work; no inline provider feedback is introduced.
+P18 owns notification routing for those events. External dependency execution
+is P16, and module_version/registry-trigger execution plus C55's module-version
+capture is P17. Keeping fields in a typed push/trigger decision does not claim
+those future consumers exist.
+
 ## Rationale
 
 - **Store before acknowledging.** Committing the delivery and its job in one

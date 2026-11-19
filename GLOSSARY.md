@@ -341,3 +341,30 @@ _Avoid_: plugin, integration
 **Flows agent**:
 The process mode that runs Flows apps for an agent pool.
 _Avoid_: runtime, worker
+
+### Policy evidence
+
+**Policy receipt**:
+The committed record of a policy's decision about a run.
+_Avoid_: policy sample, policy log
+
+**Policy flag**:
+A value a policy gives a run, visible while at least one policy owns it.
+_Avoid_: label, annotation
+
+**Policy sample**:
+A private record of one evaluation's input, policy and result.
+_Avoid_: receipt, input capture
+
+**Policy input capture**:
+The newest sanitized example input for a space and policy kind.
+_Avoid_: sample, receipt
+
+**Authorization scheme**:
+An account's active strategy for admitting members and granting access.
+_Avoid_: authentication strategy, identity provider
+
+**Plan sanitization**:
+Replacing applicable plan value strings with comparable hashes before the plan
+is made available to server-side policy evaluation.
+_Avoid_: encryption, log masking

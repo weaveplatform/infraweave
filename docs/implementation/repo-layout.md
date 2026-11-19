@@ -337,7 +337,7 @@ them; read a record's package name through this table.
 | `internal/objectstore`, `internal/objectstore/objectstoretest` | `internal/platform/objectstore`, `internal/platform/objectstore/objectstoretest` |
 | `internal/secrets` | `internal/platform/crypt` |
 | `internal/secrets/mask` | `internal/platform/mask` |
-| `internal/policy`, `internal/policy/input`, `internal/policy/combine.go` | `internal/platform/rego` for the engine; `internal/policies` for types, inputs, combination, receipts and sampling |
+| `internal/policy`, `internal/policy/input`, `internal/policy/combine.go` | `internal/platform/rego` for the engine; `internal/policies` for types, inputs, combination and sampling; `internal/runs` for transition receipts/flags |
 | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
 | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs/internal/adapters/<provider>`; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
 | `internal/authn`, `internal/authz` | `internal/access` |
@@ -551,7 +551,7 @@ it adds no import.
 | Domain | Imports the `api/` of | Back edges bound in `internal/app` |
 |---|---|---|
 | `features` | none | |
-| `access` | features | `policiesapi.Evaluator` for `LOGIN` policies |
+| `access` | features | `accessapi.LoginEvaluator`, implemented by policies, for `LOGIN` policies |
 | `workers` | features, access | `workersapi.Scheduler` and `workersapi.Reports`, which `runs` implements, for the worker protocol's claims and reports |
 | `vendors` | features, access | |
 | `stacks` | features, access, workers, vendors | `stacksapi.StackStatus`, which `runs` implements, for the stack view's blocker; `stacksapi.StackConfiguration`, which `configuration` implements, for the stack view's `attachedContexts` and `config`; `stacksapi.StateRollbacks`, which `state` implements, for the stack view's `isStateRollback`; `stacksapi.PullRequestReader`, which `vcs` implements, for `pullRequests` |
@@ -604,3 +604,15 @@ composes it by embedding, and each domain's `assembly/` package re-exports its
 partial under its domain's name (`StacksAPI`), because `internal/app` cannot import the domain's
 `internal/.../http` package
 ([generated code](../research/architecture-options/5-modular-monolith.md#generated-code)).
+
+## Policy ownership
+
+`platform/rego` is below domains and can be imported by the agent. The flat
+`policies` domain owns policy data, inputs, combination and tooling; runs owns
+its receipt/flag migrations. Policy construction follows configuration and
+precedes runs. Runs/VCS import policiesapi; access owns its LoginEvaluator
+interface and app injects policies' implementation after both are built.
+No caller becomes a policies import to enable a read projection or a callback.
+The declared graph and `.golangci.yml` enforce the same directions. Expressions
+serves the check endpoint through `policies.Surfaces()` without importing policy
+internals. The shared `iac/sanitize` package sits below agent and policies.

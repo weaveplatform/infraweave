@@ -706,9 +706,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   deprecated `skipReplanWhenRunAll` under run-all, it applies each unit's
   saved `tfplan.tfplan` (C188). A tracked run whose plan changes something saves its
   workspace for the confirmation, Terragrunt's cache of each unit with it.
-  P20 owns the aggregate plan artifacts and unit-named outputs below;
-  until then, a Terragrunt run saves its workspace and applies without
-  reading or recording outputs.
+  P13 adds unit plan collection and the minimal sanitized `plan.json` upload
+  needed for policies, with both root-unit and run-all selection. P20 owns full
+  aggregate changes and unit-named outputs; until then no output projection is
+  advertised. Saved binary plans/workspaces remain separate from policy JSON.
   It uploads `plan.json` as `{"units": [{"path", "plan"}]}`, each unit's
   path from the project root, empty for the root unit, with its plan's
   JSON, and `changes.json` with each change's unit in a field of its own,
@@ -1548,6 +1549,20 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `SPACELIFT_DEBUG` and
   `SPACELIFT_LAUNCHER_WORKSPACE_INIT_TIMEOUT`, whose deadline the pool's
   preparing timeout bounds.
+
+
+### Policy artifact and transition ownership
+
+Runs owns run_policy_receipts and run_flags in its migration stream; state,
+history, flags, receipts, outbox and fenced queue completion commit together.
+Every targeted replan reevaluates its newly sanitized JSON. Worker JSON is
+transformed before sealing/upload under DEFAULT/SMART; NONE is the explicit
+Terraform-family opt-out and still seals artifacts. Pool-sealed binary plans
+and workspaces remain usable for apply and are not rewritten by JSON sanitization.
+The 512 MiB artifact upload bound and 0009's 64 MiB policy input bound remain
+separate. A sanitization failure never falls back to uploading raw plan JSON.
+Server INITIALIZATION is P13b before scheduling; launcher initialization and
+its exec capability are P14.
 
 ## Rationale
 

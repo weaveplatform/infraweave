@@ -1018,7 +1018,7 @@ members and the members each account admits.
 7. The [domain wiring](#adding-a-domain) of `access`, a
    hexagon, so it also takes a `core-not-adapters` entry; it is the first
    domain in `domains.go` and the migration order. Its `features` edge lands with
-   P3b and its `policiesapi.Evaluator` back edge with P13b
+   P3b and its access-owned `accessapi.LoginEvaluator` back edge with P13b
    ([declared graph](repo-layout.md#declared-graph)).
 8. The operator API ([0021](../research/decisions/0021-capability-scope-and-supersession.md)):
    `api/src/operator/` bundled to `api/operator.openapi.yaml` under
@@ -2230,7 +2230,8 @@ in as `test/fixtures/policy-inputs`
    after `configuration` and before `runs` in `domains.go` and the
    migration order: its edges to `features`, `access` and `stacks`, with
    stack attachments referencing `stacks`, and the edges waiting on it,
-   `runs` to `policies` (`run_policy_receipts` references `policies`) and
+   `runs` to `policies` (receipt policy IDs validated through policiesapi,
+   with no cross-domain SQL foreign key) and
    `vcs` to `policies` (push policies through `policiesapi.Evaluator`),
    and `registry`'s and `intelligence`'s if P17 or P25 has landed.
    `policies` imports none of its callers
@@ -2251,8 +2252,9 @@ in as `test/fixtures/policy-inputs`
    label.
 
 **Exit criteria**
-- No Terraform, OpenTofu or Terragrunt plan document reaches the object
-  store unsanitized: a scenario per vendor finds no sensitive value in the
+- Under DEFAULT and SMART, no Terraform, OpenTofu or Terragrunt plan document
+  reaches the object store without its required sanitization (NONE is the
+  explicit Terraform-family opt-out): a scenario per vendor finds no sensitive value in the
   uploaded plan, and no dummy secret of the recorded plans in
   `test/fixtures/vendor-documents` survives either mode.
 - Option 5's walkthrough holds against each provider's fake: a push opens a
@@ -2264,8 +2266,37 @@ in as `test/fixtures/policy-inputs`
 - The behaviours C37, C40 and C41 settled hold in acceptance;
   C49, C57 and C192 are recorded with offline checks; their REST replay
   follows the implementation issues in each fixture. Captures C50, C51,
-  C55's module-version part and C291 replay once recorded.
+  C291 replay once recorded. C55's module-version part belongs to P17.
 - `make gate` passes at 95% in total and 90% per package.
+
+### Policy delivery contracts and capture gates
+
+The shared runtime is platform/rego; flat policies owns data/inputs/combination
+and tooling; runs owns transition receipts/flags. Access declares LoginEvaluator
+and app injects policies' implementation. FIPS capabilities and preamble version
+are in cache identity. JSON sanitization keeps structural metadata, hashes only
+value strings, preserves non-string types, and fails closed for malformed input.
+Terragrunt unit JSON collection/upload belongs P13; full changes/outputs remain P20.
+P13 emits durable events and existing checks; P18 owns notification/inbox delivery.
+P13b prepares public APIs for the P24c console, while P14 owns worker exec.
+
+| Capture | Required behavior / implementation gate |
+|---|---|
+| C49/C54/C57/C192 | Recorded by #637; REST handoffs remain #645/#664/#640/#663 |
+| C9 (policy part), C56 | Deletion force semantics and timestamp units: #643 before #645; context/plugin-only remainder stays with its owner |
+| C46 | Ignored push-policy reasons: #643 before #652 |
+| C48 | Workflow policy entitlement mapping: #643 before the affected management/type gate |
+| C51, C291 | Flag reset eligibility and rejection states: #643 before #649/#650 |
+| C47, C50 (LOGIN), C52 | Supersession observation, no-run login flags and server initialization outcome: #644 before affected P13b handlers |
+| C53, C273 | Capture/sample privacy/cadence and page API reads: #644 before #661/#662/#665 |
+| C55 module-version part | P17 registry triggers, not P13; no module event is fabricated to close the capture |
+| C50 NOTIFICATION / INTENT | P18 / P25 execution, not a P13b LOGIN claim |
+
+An inaccessible tier, legacy record or support-only fact leaves its case blocked.
+The P13 gate requires real PostgreSQL/storage/tools and the existing real-provider
+vcs-lab walkthrough; licence-less Bitbucket Data Center is the sole optional peer.
+Research may proceed before a product gate. P13b product delivery follows P13 and
+completed RBAC epic #235.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
 
@@ -2298,7 +2329,7 @@ Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
    editor's on any change. A `LOGIN` policy outside the top space answers
    `422 validation-failed`. The accounts that admit a member are the
    entries of its account switcher, which is empty when none does. `access`
-   evaluates them through `policiesapi.Evaluator`, a back edge that
+   evaluates them through `accessapi.LoginEvaluator`, a back edge that policies implements and
    `internal/app` sets after construction (`SetEvaluator`), adding no
    import ([declared graph](repo-layout.md#declared-graph)). Features:
    `policy/login.feature`, `authz/login_policy.feature`.
@@ -2681,6 +2712,9 @@ that need no confirmation
 - Captures C129 to C134 and C293 replay once recorded; C277, the
   wizard's steps, is settled.
 - `make gate` passes at 95% in total and 90% per package.
+
+C55's module-version `queued_runs` capture is a P17 trigger-input gate;
+run-only P13 captures do not resolve it.
 
 ## P17b: Provider registry and GPG keys
 
@@ -3230,7 +3264,8 @@ image and tool.
   meet decision 0016's evidence rule, each with a `@case:success`, a
   `@case:denial` and a `@case:failure` scenario, and
   `vendors/terragrunt.feature` covers every setting of task 4.
-- No vendor's plan document reaches the object store unsanitized: a
+- Every vendor plan follows its sanitization contract, with the explicit
+  Terraform-family NONE opt-out outside DEFAULT/SMART secret-exclusion assertions: a
   scenario per vendor finds no sensitive value in the uploaded plan.
 - Captures C32, C185, C188, C189, C295, C296, C297 and C300 replay
   once recorded; C299 and C304 hold on the pinned releases; C190 and C193

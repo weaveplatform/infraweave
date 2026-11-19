@@ -509,6 +509,17 @@ inverse constraint: no capability may depend on the public worker pool
 ([26 section 2.4](../reference/26-scope-and-tiers.md#24-fedramp)). Every
 acceptance feature that runs work therefore runs it on a private pool.
 
+
+### Policy delivery gates
+
+P13 implements workflow policy management/evaluation and P13b adds login, TASK,
+server INITIALIZATION and tooling. The Policies tag remains partial until every
+in-scope operation has success, 403-denial and failure evidence. Superseded
+ACCESS/aliases stay absent; live TASK/INITIALIZATION remain deprecated. C48's
+workflow-policy entitlement mapping must be captured before its affected gate is
+frozen. P18 notification routing and P25 Intent attachments/execution retain their
+own feature gates; typed policy inputs do not advertise those workflows early.
+
 ## Rationale
 
 - **PD-02, option (b) with a lifecycle, not (a) or (c).** Building an interface
