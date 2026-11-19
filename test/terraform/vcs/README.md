@@ -58,7 +58,10 @@ repositories.
   `read:webhook:bitbucket`, `write:webhook:bitbucket` and
   `delete:webhook:bitbucket` on that existing token.
 - **Azure DevOps:** an organization with a project, and a personal access
-  token with Code (full).
+  token with Code (full). The token's owner must also have the project's
+  **View subscriptions** and **Edit subscriptions** permissions; Project
+  Administrators have both by default. See Microsoft's
+  [service-hook permissions guidance](https://learn.microsoft.com/en-us/azure/devops/service-hooks/overview?view=azure-devops#q-what-permissions-do-i-need-to-set-up-a-subscription).
 - **Bitbucket Data Center:** a licence; a developer licence will do. The
   job makes the system administrator's password and the HTTPS certificate
   for each run.
