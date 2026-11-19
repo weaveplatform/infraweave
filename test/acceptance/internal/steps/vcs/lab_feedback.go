@@ -98,6 +98,7 @@ func (s *liveLabSteps) setup(ctx context.Context, provider, comments string) err
 		}
 		path, kind = "/api/v1/github-enterprise-integrations", "GITHUB"
 		body["apiHost"], body["appID"], body["privateKey"], body["webhookSecret"] = "https://api.github.com", l.User, l.Token, key.Secret()
+		body["userFacingHost"] = "https://github.com"
 	case "gitlab":
 		path, kind = "/api/v1/gitlab-integrations", "GITLAB"
 		body["apiHost"], body["privateToken"] = l.Host, l.Token
