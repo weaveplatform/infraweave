@@ -64,10 +64,10 @@ func waitLabRun(ctx context.Context, what, want string, poll func(context.Contex
 		progress.History = nil
 		progress.Truncated = false
 		var history []struct {
-				State    kernel.RunState `json:"state"`
-				Terminal bool            `json:"terminal"`
-				HasLogs  bool            `json:"hasLogs"`
-				Note     *string         `json:"note"`
+			State    kernel.RunState `json:"state"`
+			Terminal bool            `json:"terminal"`
+			HasLogs  bool            `json:"hasLogs"`
+			Note     *string         `json:"note"`
 		}
 		if len(run.History) > 0 && json.Unmarshal(run.History, &history) != nil {
 			progress.Request = "invalid_history"
