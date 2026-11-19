@@ -15,6 +15,10 @@ import (
 )
 
 func registerPushLimitSteps(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^two infraweave servers, A and B, with account settings disabled$`, func(ctx context.Context) error {
+		w.Settings["features"] = map[string]any{"disabled": []string{"account-settings"}}
+		return w.TwoReplicas(ctx)
+	})
 	sc.Step(`^two infraweave servers, A and B, whose VCS event run ceiling is (\d+)$`, func(ctx context.Context, ceiling int) error {
 		w.Settings["vcs"] = map[string]any{"event_runs_ceiling": ceiling}
 		return w.TwoReplicas(ctx)

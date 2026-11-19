@@ -30,6 +30,7 @@ type commentSteps struct {
 	github              *githubSteps
 	gitlab              *gitlabSteps
 	fixture             *deploymentSteps
+	peers               *checkSteps
 	sender              *githubfake.Sender
 	secret              crypt.Value
 	clock               time.Time
@@ -40,7 +41,7 @@ type commentSteps struct {
 func (c *commentSteps) register(sc *godog.ScenarioContext) {
 	c.fixture = &deploymentSteps{w: c.w, github: c.github, gitlab: c.gitlab}
 	c.created = map[int]time.Time{}
-	sc.Step(`^a "(GitHub|GitLab)" plan-comment stack "([^"]+)" using "(terraform|opentofu)" with labels '([^']*)'$`, c.stack)
+	sc.Step(`^a "(GitHub|GitLab|Bitbucket Cloud|Bitbucket DC|Azure DevOps)" plan-comment stack "([^"]+)" using "(terraform|opentofu)" with labels '([^']*)'$`, c.stack)
 	sc.Step(`^the comment fixture sends shared, moved and closed requests through ([AB])$`, c.requests)
 	sc.Step(`^the comment fixture opens request (\d+) at the current head through ([AB])$`, c.open)
 	sc.Step(`^comment request (\d+) moves to another real commit through ([AB])$`, c.move)
@@ -63,7 +64,8 @@ func (c *commentSteps) stack(ctx context.Context, provider, slug, vendor, labels
 		c.clock = time.Now().UTC().Truncate(time.Second)
 		body := map[string]any{"customInput": map[string]any{"name": "Plan comments", "spaceID": "acme", "isDefault": true}}
 		path := "/api/v1/gitlab-integrations"
-		if provider == "GitHub" {
+		switch provider {
+		case "GitHub":
 			c.fixture.namespace = "acme"
 			app := c.github.fake.AddApp("plan-comments", "acme")
 			c.appID = app.ID
@@ -86,7 +88,13 @@ func (c *commentSteps) stack(ctx context.Context, provider, slug, vendor, labels
 				repo.Branch(branch, head)
 			}
 			c.w.IDs["commentMoved"] = repo.Commit("other", "different request head", deploymentFiles("two"))
-		} else {
+		case "Bitbucket Cloud", "Bitbucket DC", "Azure DevOps":
+			var err error
+			path, body, err = c.seedPeer(provider)
+			if err != nil {
+				return err
+			}
+		case "GitLab":
 			c.fixture.namespace = "acme/platform"
 			token := c.gitlab.fake.AddToken("comments", "api")
 			c.gitlab.fake.AddMember(c.fixture.namespace, "infra", "comments", gitlabfake.Maintainer)
@@ -110,14 +118,18 @@ func (c *commentSteps) stack(ctx context.Context, provider, slug, vendor, labels
 			return err
 		}
 		var answer struct {
-			ID     string `json:"id"`
-			Secret string `json:"webhookSecret"`
+			ID       string `json:"id"`
+			Secret   string `json:"webhookSecret"`
+			Password string `json:"webhookPassword"`
 		}
 		if response.Status != http.StatusCreated || json.Unmarshal(response.Body, &answer) != nil || answer.ID == "" {
 			return fmt.Errorf("%w: comment integration create answered %d without identity", harness.ErrStep, response.Status)
 		}
 		c.fixture.integration = answer.ID
-		if provider == "GitLab" {
+		if provider != "GitHub" {
+			if provider == "Azure DevOps" {
+				answer.Secret = answer.Password
+			}
 			if answer.Secret == "" {
 				return fmt.Errorf("%w: GitLab integration has no webhook token", harness.ErrStep)
 			}
@@ -170,7 +182,8 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 	}
 	var status int
 	var err error
-	if c.fixture.provider == "GitHub" {
+	switch c.fixture.provider {
+	case "GitHub":
 		nativeAction := "opened"
 		switch action {
 		case "move":
@@ -214,7 +227,9 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 			return fmt.Errorf("comment request encode: %w", encodeErr)
 		}
 		status, err = c.sender.Send(ctx, c.w.Base(replica)+"/webhooks/vcs/github_enterprise/"+c.fixture.integration, deliveryID, "pull_request", encoded)
-	} else {
+	case "Bitbucket Cloud", "Bitbucket DC", "Azure DevOps":
+		status, err = c.sendPeerRequest(ctx, deliveryID, id, action, branch, commit, created, replica)
+	case "GitLab":
 		nativeAction := "open"
 		switch action {
 		case "move":
@@ -277,10 +292,13 @@ func (c *commentSteps) eligible(ctx context.Context, want []string, _ string) er
 }
 
 func (c *commentSteps) loseCreate() {
-	if c.fixture.provider == "GitHub" {
+	switch c.fixture.provider {
+	case "GitHub":
 		c.github.fake.FailNextCommentCreate()
-	} else {
+	case "GitLab":
 		c.gitlab.fake.FailNextCommentCreate()
+	default:
+		c.losePeerComment()
 	}
 }
 
@@ -359,6 +377,7 @@ func (c *commentSteps) retried(ctx context.Context, run string) error {
 }
 
 type nativePlanComment struct {
+	ThreadID  int64
 	ID        int64
 	Body      string
 	Minimized bool
@@ -366,11 +385,14 @@ type nativePlanComment struct {
 
 func (c *commentSteps) records(pr string) []nativePlanComment {
 	var out []nativePlanComment
-	if c.fixture.provider == "GitHub" {
+	switch c.fixture.provider {
+	case "GitHub":
 		for _, record := range c.github.fake.Comments(c.fixture.namespace, "infra", pr) {
 			out = append(out, nativePlanComment{ID: record.ID, Body: record.Body, Minimized: record.Minimized})
 		}
-	} else {
+	case "Bitbucket Cloud", "Bitbucket DC", "Azure DevOps":
+		return c.peerComments(pr)
+	case "GitLab":
 		for _, record := range c.gitlab.fake.Comments(c.fixture.namespace, "infra", pr) {
 			out = append(out, nativePlanComment{ID: record.ID, Body: record.Body, Minimized: record.Minimized})
 		}
@@ -386,14 +408,15 @@ func (c *commentSteps) comment(run, pr string) (nativePlanComment, error) {
 			found = append(found, record)
 		}
 	}
-	if len(found) != 1 || found[0].ID <= 0 {
+	if len(found) != 1 || found[0].ID <= 0 || c.fixture.provider == "Azure DevOps" && found[0].ThreadID <= 0 {
 		return nativePlanComment{}, fmt.Errorf("%w: request %s has %d native comments for run %s", harness.ErrStep, pr, len(found), run)
 	}
 	body := found[0].Body
+	wantDetails := c.fixture.provider == "GitHub" || c.fixture.provider == "GitLab"
 	if !strings.HasPrefix(body, "### [infra](") || !strings.Contains(body, "/api/v1/stacks/infra)") || !strings.Contains(body, "/api/v1/runs/"+c.w.IDs[run]+")") ||
-		!strings.Contains(body, "<details>\n<summary>Planning log</summary>") ||
+		strings.Contains(body, "<details>\n<summary>Planning log</summary>") != wantDetails || !strings.Contains(body, "```text\n") ||
 		!strings.Contains(body, "Plan:") {
-		return nativePlanComment{}, fmt.Errorf("%w: native plan comment lacks heading, links, collapsed stored tool plan or footer", harness.ErrStep)
+		return nativePlanComment{}, fmt.Errorf("%w: native plan comment lacks heading, links, provider-supported stored tool plan or footer", harness.ErrStep)
 	}
 	return found[0], nil
 }
@@ -438,7 +461,8 @@ func (c *commentSteps) native(run, state string, pr int) error {
 func (c *commentSteps) previous(pr, count int, state string) error {
 	records := c.records(strconv.Itoa(pr))
 	wantMinimized := state == "outdated"
-	if len(records) != count || count < 2 || records[0].ID == records[1].ID || records[0].Minimized != wantMinimized || records[count-1].Minimized {
+	if len(records) != count || count < 2 || (records[0].ID == records[1].ID && records[0].ThreadID == records[1].ThreadID) || records[0].Minimized != wantMinimized ||
+		records[count-1].Minimized {
 		return fmt.Errorf("%w: request %d new-comment count or previous native minimization differs", harness.ErrStep, pr)
 	}
 	if c.fixture.provider == "GitHub" && wantMinimized && len(c.github.fake.CommentMinimizeAttempts(c.fixture.namespace, "infra", strconv.Itoa(pr))) != 1 {

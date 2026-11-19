@@ -306,6 +306,9 @@ Feature: Repository runs report native checks and deployments
       | provider | vendor    | previous  |
       | GitHub   | terraform | outdated  |
       | GitLab   | terraform | unchanged |
+      | Bitbucket Cloud | terraform | unchanged |
+      | Bitbucket DC | terraform | unchanged |
+      | Azure DevOps | terraform | unchanged |
 
     @tofu
     Examples:

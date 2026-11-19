@@ -88,8 +88,15 @@ func (s *deploymentSteps) stack(ctx context.Context, provider, slug, vendor, raw
 		}
 	}
 	providerKind := "GITLAB"
-	if provider == "GitHub" {
+	switch provider {
+	case "GitHub":
 		providerKind = "GITHUB_ENTERPRISE"
+	case "Bitbucket Cloud":
+		providerKind = "BITBUCKET_CLOUD"
+	case "Bitbucket DC":
+		providerKind = "BITBUCKET_DATACENTER"
+	case "Azure DevOps":
+		providerKind = "AZURE_DEVOPS"
 	}
 	_, err := s.create(ctx, "/api/v1/stacks", map[string]any{
 		"input": map[string]any{
