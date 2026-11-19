@@ -430,3 +430,48 @@ Feature: Repository runs report native checks and deployments
       | enterprise | other repository  |
       | enterprise | other integration |
       | enterprise | stale external ID |
+
+  @vcs-lab @terraform @case:success
+  Scenario Outline: Real lab plans keep one native comment per run and hide the earlier GitHub plan
+    Given a live "<provider>" lab integration and stack with plan comments "enabled"
+    When the live lab pushes a "PROPOSED" commit
+    Then the live signed push creates exactly one "PROPOSED" run kept as "first"
+    When the live lab opens its pull request without another run
+    Then the live request has the current pushed head before planning completes
+    And the live native check for run "first" is pending before its worker reports
+    And token "h" eventually reads the run "first" in the state "FINISHED" through A
+    And the live native check for run "first" reaches success in its original resource
+    And the live request has exactly one native plan comment for run "first"
+    When the live lab pushes a "PROPOSED" commit
+    Then the live signed push creates exactly one "PROPOSED" run kept as "second"
+    And the live request has the current pushed head before planning completes
+    And the live native check for run "second" is pending before its worker reports
+    And token "h" eventually reads the run "second" in the state "FINISHED" through B
+    And the live native check for run "second" reaches success in its original resource
+    And the live request keeps both runs "first" and "second" with its earlier GitHub plan minimized
+    And an ordinary live pull request comment is stored and starts no run
+
+    @lab:github
+    Examples: github
+      | provider |
+      | github |
+
+    @lab:gitlab
+    Examples: gitlab
+      | provider |
+      | gitlab |
+
+    @lab:bitbucket-cloud
+    Examples: bitbucket-cloud
+      | provider |
+      | bitbucket-cloud |
+
+    @lab:bitbucket-dc
+    Examples: bitbucket-dc
+      | provider |
+      | bitbucket-dc |
+
+    @lab:azure-devops
+    Examples: azure-devops
+      | provider |
+      | azure-devops |

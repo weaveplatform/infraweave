@@ -860,3 +860,55 @@ Feature: VCS webhook protocol, event run budgets and request history
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     Then it answers 200
     And provider lifecycle events leave every local account organization and space unchanged
+
+  @vcs-lab @objectstore @docker @terraform @case:success
+  Scenario Outline: Real lab pushes deliver tracked and proposed runs while request comments start nothing
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And it answers 201
+    And the answer's id names "pool"
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And a live "<provider>" lab integration and stack with plan comments "disabled"
+    When the live lab pushes a "TRACKED" commit
+    Then the live signed push creates exactly one "TRACKED" run kept as "tracked"
+    And the live native check for run "tracked" is pending before its worker reports
+    And token "h" eventually reads the run "tracked" in the state "FINISHED" through A
+    And the live native check for run "tracked" reaches success in its original resource
+    When the live lab pushes a "PROPOSED" commit
+    Then the live signed push creates exactly one "PROPOSED" run kept as "proposed"
+    When the live lab opens its pull request without another run
+    Then the live request has the current pushed head before planning completes
+    And the live native check for run "proposed" is pending before its worker reports
+    And token "h" eventually reads the run "proposed" in the state "FINISHED" through B
+    And the live native check for run "proposed" reaches success in its original resource
+    And an ordinary live pull request comment is stored and starts no run
+
+    @lab:github
+    Examples: github
+      | provider |
+      | github |
+
+    @lab:gitlab
+    Examples: gitlab
+      | provider |
+      | gitlab |
+
+    @lab:bitbucket-cloud
+    Examples: bitbucket-cloud
+      | provider |
+      | bitbucket-cloud |
+
+    @lab:bitbucket-dc
+    Examples: bitbucket-dc
+      | provider |
+      | bitbucket-dc |
+
+    @lab:azure-devops
+    Examples: azure-devops
+      | provider |
+      | azure-devops |

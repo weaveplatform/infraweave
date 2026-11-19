@@ -67,6 +67,21 @@ var OpenTofu = Tool{
 	},
 }
 
+// Cloudflared opens the hosted VCS lab's account-free, short-lived tunnel.
+// Checksums are published in the official release; deps-refresh keeps these
+// bare Linux builds current alongside the infrastructure tools.
+var Cloudflared = Tool{
+	Name:     "cloudflared",
+	Version:  "2026.11.1",
+	Download: "https://github.com/cloudflare/cloudflared/releases/download/%s/",
+	Build:    "cloudflared-linux-{arch}",
+	Bare:     true,
+	SHA256: map[string]string{
+		"cloudflared-linux-amd64": "97bb3b02d23a5980fc9c15a1a270e692da1923f103f920d5b16d4931d5ab55e7",
+		"cloudflared-linux-arm64": "b155cec3e48e489cfb8e5c602769fb8c771083018d8881d68b4d18a791567c5a",
+	},
+}
+
 // TerraformPrevious is the recorded catalogue's preceding stable release,
 // used when a runtime configuration selects a different actual binary.
 var TerraformPrevious = Tool{
