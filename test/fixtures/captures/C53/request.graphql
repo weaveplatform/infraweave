@@ -1,0 +1,2 @@
+# variables: {"approval":"root/APPROVAL/01J00000000000000000000090","plan":"root/PLAN/01J00000000000000000000091"}
+query Capture644ExistingInputs($approval:ID!,$plan:ID!) { approval:policyInputCapture(id:$approval) { id kind capturedAt input } plan:policyInputCapture(id:$plan) { id kind capturedAt input } }

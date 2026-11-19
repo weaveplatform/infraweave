@@ -1,0 +1,10 @@
+entry: C53
+captured: 2026-11-19
+tier: V5_FREE
+introspection: sha256:d8445fffab3b41acd2e90f36041da9945e747c27dba9edae819ffd0783d5f4f0
+capturedBy: Codex via Chrome DevTools MCP
+redacted:
+  - browser credentials are omitted
+  - people, identity subjects and source IP use the same replacements as the C51 capture
+  - run, identity and policy-input-capture IDs are replaced consistently
+  - timestamps, keys, JSON string encoding, value types and nulls are preserved

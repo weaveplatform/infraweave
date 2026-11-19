@@ -1,0 +1,6 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/662
+observed:
+  "/exchanges/0/response/data/approval/kind": "APPROVAL"
+  "/exchanges/0/response/data/approval/capturedAt": 1795126610
+  "/exchanges/0/response/data/plan/kind": "PLAN"
+  "/exchanges/0/response/data/plan/capturedAt": 1795126624
