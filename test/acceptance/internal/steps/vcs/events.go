@@ -27,6 +27,7 @@ type eventSteps struct {
 func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	s.deliveries = map[string]string{}
 	s.registerRecovery(sc)
+	sc.Step(`^an ordinary event pull request comment is stored and starts no run$`, s.ordinaryComment)
 	sc.Step(`^the event repository commits "(\w+)" on "([^"]+)"$`, s.commit)
 	sc.Step(`^the event fixture pushes "(\w+)" from "(\w+)" to "(\w+)" on "([^"]+)" with "(valid|wrong)" verification through ([AB]) and receives (\d+)$`, s.push)
 	sc.Step(`^event delivery "(\w+)" settles with (\d+) new runs$`, s.settled)
