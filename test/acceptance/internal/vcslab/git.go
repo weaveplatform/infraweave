@@ -2,7 +2,10 @@ package vcslab
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,7 +15,9 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -61,7 +66,7 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 	auth := &githttp.BasicAuth{Username: credential.User, Password: credential.Token}
 	repo, err := git.PlainCloneContext(ctx, dir, false, &git.CloneOptions{URL: n.cloneURL(), ReferenceName: plumbing.NewBranchReferenceName("main"), Auth: auth, CABundle: ca})
 	if err != nil {
-		return "", fmt.Errorf("%w: clone disposable repository", ErrNative)
+		return "", nativeGitFailure("clone", err)
 	}
 	work, err := repo.Worktree()
 	if err != nil {
@@ -92,7 +97,71 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 	}
 	ref := plumbing.NewBranchReferenceName(branch).String()
 	if err := repo.PushContext(ctx, &git.PushOptions{Auth: auth, CABundle: ca, RefSpecs: []config.RefSpec{config.RefSpec(ref + ":" + ref)}}); err != nil {
-		return "", fmt.Errorf("%w: push disposable repository", ErrNative)
+		return "", nativeGitFailure("push", err)
 	}
 	return hash.String(), nil
+}
+
+// Native Git failures may contain credentials, repository URLs and server text.
+// Keep only closed-set facts, including the HTTP client's three status sentinels.
+// go-git's UnexpectedError/PermanentError expose Err without implementing Unwrap.
+//
+//nolint:errorlint // Inspect one node at a time to keep traversal bounded, including go-git's nonstandard wrappers.
+func nativeGitFailure(operation string, cause error) error {
+	category, status := "other", 0
+	for range 16 {
+		switch cause {
+		case context.Canceled:
+			category = "canceled"
+		case context.DeadlineExceeded:
+			category = "timeout"
+		case transport.ErrAuthenticationRequired:
+			category, status = "authentication", 401
+		case transport.ErrAuthorizationFailed:
+			category, status = "authorization", 403
+		case transport.ErrRepositoryNotFound:
+			category, status = "not_found", 404
+		case plumbing.ErrReferenceNotFound, git.ErrBranchNotFound, transport.ErrEmptyRemoteRepository:
+			category = "reference"
+		case pktline.ErrInvalidPktLen, pktline.ErrInvalidErrorLine:
+			category = "protocol"
+		default:
+			switch e := cause.(type) {
+			case *plumbing.UnexpectedError:
+				cause = e.Err
+				continue
+			case *plumbing.PermanentError:
+				cause = e.Err
+				continue
+			case *githttp.Err:
+				if e.Response != nil && e.Response.StatusCode >= 100 && e.Response.StatusCode <= 599 {
+					category, status = "http", e.Response.StatusCode
+				}
+			case *tls.CertificateVerificationError, tls.RecordHeaderError,
+				x509.UnknownAuthorityError, x509.HostnameError, x509.CertificateInvalidError:
+				category = "tls"
+			case git.NoMatchingRefSpecError, *git.NoMatchingRefSpecError:
+				category = "reference"
+			case *pktline.ErrorLine:
+				category = "protocol"
+			case net.Error:
+				if e.Timeout() {
+					category = "timeout"
+					break
+				}
+				category = "transport"
+				if wrapped, ok := cause.(interface{ Unwrap() error }); ok {
+					cause = wrapped.Unwrap()
+					continue
+				}
+			default:
+				if wrapped, ok := cause.(interface{ Unwrap() error }); ok {
+					cause = wrapped.Unwrap()
+					continue
+				}
+			}
+		}
+		break
+	}
+	return fmt.Errorf("%w: Git operation=%s category=%s status=%d", ErrNative, operation, category, status)
 }
