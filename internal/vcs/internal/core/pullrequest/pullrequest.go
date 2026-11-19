@@ -7,6 +7,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
@@ -63,12 +64,19 @@ type Authors interface {
 	AuthorLogin(context.Context, port.Integration, string) (string, error)
 }
 
+// Heads expands a provider's immutable commit prefix in the source repository.
+// It never follows a branch or replaces an already complete object identity.
+type Heads interface {
+	ResolveRequestHead(context.Context, port.Integration, vcsapi.Repository, string) (string, error)
+}
+
 // Deps composes PR upkeep with existing push preparation, without moving
 // provider calls or business state into generic queue machinery.
 type Deps struct {
 	Store        Store
 	Integrations Integrations
 	Authors      map[string]Authors
+	Heads        map[string]Heads
 	Runs         runsapi.CommitRuns
 	Pushes       intake.Dispatcher
 	Now          func() time.Time

@@ -34,24 +34,27 @@ type Repository struct {
 
 // PullRequest holds the request state consumed by push policies.
 type PullRequest struct {
-	AuthorID      string    `json:"authorId,omitempty"`
-	AuthorLogin   string    `json:"authorLogin,omitempty"`
-	Title         string    `json:"title,omitempty"`
-	URL           string    `json:"url,omitempty"`
-	HeadBranchURL string    `json:"headBranchUrl,omitempty"`
-	State         string    `json:"state,omitempty"`
-	CreatedAt     time.Time `json:"createdAt,omitempty"`
-	UpdatedAt     time.Time `json:"updatedAt,omitempty"`
-	Number        int       `json:"number"`
-	HeadBranch    string    `json:"headBranch"`
-	BaseBranch    string    `json:"baseBranch"`
-	HeadOwner     string    `json:"headOwner"`
-	Draft         bool      `json:"draft"`
-	Fork          bool      `json:"fork"`
-	Approved      bool      `json:"approved"`
-	Mergeable     bool      `json:"mergeable"`
-	Undiverged    bool      `json:"undiverged"`
-	Labels        []string  `json:"labels"`
+	// HeadRepository retains the source's stable identity when a provider
+	// advertises a commit prefix that preparation must resolve before storage.
+	HeadRepository *Repository `json:"headRepository,omitempty"`
+	AuthorID       string      `json:"authorId,omitempty"`
+	AuthorLogin    string      `json:"authorLogin,omitempty"`
+	Title          string      `json:"title,omitempty"`
+	URL            string      `json:"url,omitempty"`
+	HeadBranchURL  string      `json:"headBranchUrl,omitempty"`
+	State          string      `json:"state,omitempty"`
+	CreatedAt      time.Time   `json:"createdAt,omitempty"`
+	UpdatedAt      time.Time   `json:"updatedAt,omitempty"`
+	Number         int         `json:"number"`
+	HeadBranch     string      `json:"headBranch"`
+	BaseBranch     string      `json:"baseBranch"`
+	HeadOwner      string      `json:"headOwner"`
+	Draft          bool        `json:"draft"`
+	Fork           bool        `json:"fork"`
+	Approved       bool        `json:"approved"`
+	Mergeable      bool        `json:"mergeable"`
+	Undiverged     bool        `json:"undiverged"`
+	Labels         []string    `json:"labels"`
 }
 
 // Comment includes the request identity supplied by every provider's event.

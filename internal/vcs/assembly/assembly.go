@@ -255,7 +255,8 @@ func New(d Deps) (*Domain, error) {
 	requests := pullrequest.New(pullrequest.Deps{
 		Store: pg.New(d.DB, d.Keys), Integrations: integrations,
 		Authors: map[string]pullrequest.Authors{integration.GitLab: gl}, Runs: d.CommitRuns, Pushes: pushes,
-		Now: clock, Retention: d.Settings.Deliveries.Retention,
+		Heads: map[string]pullrequest.Heads{integration.BitbucketCloud: bbc},
+		Now:   clock, Retention: d.Settings.Deliveries.Retention,
 	})
 	inbox, err := newIntake(d, requests, map[string]any{
 		integration.GitHubEnterprise: gh, integration.GitLab: gl,

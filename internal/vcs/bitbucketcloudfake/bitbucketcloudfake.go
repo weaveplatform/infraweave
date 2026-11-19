@@ -300,7 +300,19 @@ func (f *Fake) member(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := r.Context().Value(accountKey).(*account) //nolint:forcetypeassert // authenticated sets it
 		f.mu.Lock()
-		repo, ok := f.repos[chi.URLParam(r, "workspace")+"/"+chi.URLParam(r, "slug")]
+		workspace, name := chi.URLParam(r, "workspace"), chi.URLParam(r, "slug")
+		repo, ok := f.repos[workspace+"/"+name]
+		if !ok && (len(name) == 36 || len(name) == 38) {
+			if id, err := uuid.Parse(name); err == nil {
+				for _, candidate := range f.repos {
+					native, err := uuid.Parse(candidate.id)
+					if candidate.workspace == workspace && err == nil && native == id {
+						repo, ok = candidate, true
+						break
+					}
+				}
+			}
+		}
 		if ok {
 			_, ok = repo.roles[a.email]
 		}
