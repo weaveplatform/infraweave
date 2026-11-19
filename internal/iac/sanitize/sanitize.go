@@ -219,6 +219,9 @@ func terraform(doc map[string]any, op *operation) error {
 		if err != nil {
 			return err
 		}
+		if err := booleanField(declaration, "sensitive"); err != nil {
+			return err
+		}
 		if err := field(v, "value", declaration["sensitive"], op); err != nil {
 			return err
 		}
@@ -235,6 +238,17 @@ func mapping(value any) (map[string]any, error) {
 		return nil, fmt.Errorf("%w: expected object", ErrMalformed)
 	}
 	return m, nil
+}
+
+func booleanField(m map[string]any, key string) error {
+	value, exists := m[key]
+	if !exists {
+		return nil
+	}
+	if _, ok := value.(bool); !ok {
+		return fmt.Errorf("%w: %s must be a boolean", ErrMalformed, key)
+	}
+	return nil
 }
 
 func objects(value any, visit func(map[string]any) error) error {
@@ -275,6 +289,9 @@ func values(v map[string]any, op *operation) error {
 		o, err := mapping(value)
 		if err != nil || o == nil {
 			return fmt.Errorf("%w: output must be an object", ErrMalformed)
+		}
+		if err := booleanField(o, "sensitive"); err != nil {
+			return err
 		}
 		if err := field(o, "value", o["sensitive"], op); err != nil {
 			return err
@@ -395,6 +412,9 @@ func constants(value any, op *operation, path ...string) error {
 					declaration, err := mapping(value)
 					if err != nil || declaration == nil {
 						return fmt.Errorf("%w: variable declaration must be an object", ErrMalformed)
+					}
+					if err := booleanField(declaration, "sensitive"); err != nil {
+						return err
 					}
 					if err := field(declaration, "default", declaration["sensitive"], op); err != nil {
 						return err
