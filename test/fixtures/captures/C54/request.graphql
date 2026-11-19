@@ -1,0 +1,8 @@
+# Exchange 1: POST https://example.app.spacelift.io/graphql
+query Catalogue($after:String){searchPolicyTemplates(input:{first:50,after:$after}){edges{node{id name slug type description labels body}}pageInfo{endCursor hasNextPage}}}
+# variables: {"after": null}
+
+# Exchange 2: POST https://example.app.spacelift.io/graphql
+query Catalogue($after:String){searchPolicyTemplates(input:{first:50,after:$after}){edges{node{id name slug type description labels body}}pageInfo{endCursor hasNextPage}}}
+# variables: {"after": "MDFIUlBGQkpEMUhFUkZHSEIyUlo5Sk0zVDE="}
+

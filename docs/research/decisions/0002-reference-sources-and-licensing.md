@@ -22,6 +22,7 @@ redistributing material that other parties wrote.
 | `spacelift-flows/flowctl-rpcs.json` | the RPC paths and field names of spacelift-io/flowctl's `src/api.ts` at a pinned commit | MIT |
 | `spacelift-flows/sdk-identifiers.json` | the declaration and member names of the `@slflows/sdk` npm package at a pinned version; no types, comments or code | none declared, so identifiers only |
 | `spacelift-flows/schemas.yaml` | written by hand from the Flows documentation; checked against the published templates and the core app registry, of which only SHA-256 digests are committed | ours |
+| `test/fixtures/captures/C54/response.json` | public policy template bodies captured from the API and matched to spacelift-io/spacelift-policies-example-library at the fixture's pinned commit | MIT; the adjacent `NOTICE` includes its licence |
 
 Files without a directory are in `api/reference/spacelift/`.
 
@@ -54,7 +55,8 @@ Files without a directory are in `api/reference/spacelift/`.
 - The live schema has no commit hash. A schema change arrives with the next
   Bruno commit or provider release, or with a manual `force` run of the
   update workflow.
-- No Spacelift source code is copied. The providers are read only for their
+- No proprietary Spacelift service source code is copied. Public policy
+  examples follow their MIT licence and carry its notice. The providers are read only for their
   struct tags and call sites, and flowctl only for its call sites and type
   declarations.
 - The SDK states no licence, so nothing beyond its identifiers is committed.

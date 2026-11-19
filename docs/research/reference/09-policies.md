@@ -153,12 +153,15 @@ has three policy-related values, `ACCESS_POLICIES`, `NOTIFICATION_POLICIES` and
   The API's own default when the field is omitted is not stated in the schema. The
   console's editor opens every new policy on Rego V1
   ([32](32-spacelift-console-survey.md) section 16.1), so a policy created there is
-  `REGO_V1` unless its author switches; the API's default for an omitted field stays
-  *(unverified)* (C49).
+  `REGO_V1` unless its author switches. **[C] 2026-11-19:** an omitted API
+  field creates `REGO_V0` ([C49](../../../test/fixtures/captures/C49/response.json));
+  the unattached test policy was deleted and the final policy list was empty.
 - The UI's editor has a version selector and a policy can switch versions at any
   time [D] policy, [RN 2025-11-07].
 - `policyRuntime { openPolicyAgentVersion }` returns the OPA version Spacelift runs
-  [G] [D] policy. The example library's CI pins OPA 0.64.0 and Regal v0.36.1 and runs
+  [G] [D] policy. **[C] 2026-11-19:** it answers `v1.17.1`
+  ([C57](../../../test/fixtures/captures/C57/response.json)); this is a dated
+  observation, not infraweave's dependency pin. The example library's CI pins OPA 0.64.0 and Regal v0.36.1 and runs
   `opa check --strict` and `opa test` [S]
   [`continuous-integration.yaml#L16-L58`](https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc8/.github/workflows/continuous-integration.yaml#L16-L58).
   Library policies written for both engines carry an import, quoted from the MIT
@@ -704,12 +707,15 @@ Report 06 owns spacectl.
 - The example library is packaged as a Go module whose `Templates()` embeds every
   `examples/**/<name>.yml` with its sibling `.rego`, and validates name, type and body
   [S] [`templates.go`](https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc8/templates.go).
-  The console's catalogue lists 59 templates. The 50 on its first page are all
-  library templates, and the library templates missing from them are its six login
-  templates and nine others, as many as the entries left unread
-  ([32](32-spacelift-console-survey.md) section 16.1). That the in-product templates
-  are served from this module, less its login templates, is *(unverified)* (C54)
-  [I, from the matching fields `name`, `type`, `description`, `labels`, `body`].
+  The 2026-11-17 console observation listed 59 templates and read only its first
+  50 entries ([32](32-spacelift-console-survey.md) section 16.1). **[C] 2026-11-19:**
+  [C54](../../../test/fixtures/captures/C54/response.json) reads both pages through
+  `hasNextPage: false`: 62 templates, all bodies byte-identical by SHA-256 to the
+  non-login templates at library commit `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8`.
+  Its 68 templates include six LOGIN templates, absent from the catalogue; it has
+  62 test files. The checked-in `library.json` records the complete pinned inventory.
+  This proves membership and bodies at that revision, not the service's internal
+  mechanism for loading the library.
 
 ## 7. Attaching policies
 
@@ -1003,28 +1009,25 @@ comment quoted in 2.1].
   notification policies, and Intent project attachment.
 - **Limits.** Per-type timeouts, a combined per-event budget, the 10-minute push
   ceiling and the access policy 500 ms budget, configurable on self-hosted.
-- **Example library.** 67 MIT templates and 61 tests are available as a parity and
-  regression corpus.
+- **Example library.** The historical `6ff5edb08bc8` inventory below has 67
+  templates and 61 test files. The current implementation pin
+  `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8` has 68 templates and 62 test files;
+  C54 proves its 62 non-login bodies match the complete live catalogue.
 
 ## Inferred and undocumented
 
 - The server stores and returns the current names of the three alias types [I, from
   the provider's diff-suppress logic].
 - Whether `ACCESS` policies are still evaluated after 2026-05-30 *(unverified)* (C47).
-- The API's default engine when `engineType` is omitted *(unverified)* (C49); the provider
-  documents `REGO_V0`, and the console's editor opens on `REGO_V1`.
 - What a flag set by a login, access, notification or intent policy does
   *(unverified)* (C50).
 - How a policy acquires the `PolicyULID` needed to reset flags *(unverified)* (C51).
 - The run state after a server-side initialization `deny` *(unverified)* (C52).
 - When and how often Spacelift records `PolicyInputCapture` documents *(unverified)* (C53).
-- That in-product templates come from the example library module *(unverified)* (C54).
 - What `force` on `policyDelete` overrides *(unverified)* (C9).
 - Which policy types `WORKFLOW_POLICIES` gates *(unverified)* (C48).
 - Whether module-version trigger events carry `queued_runs` *(unverified)* (C55).
 - The unit of `Policy.createdAt` and `updatedAt` *(unverified)* (C56).
-- Which OPA version evaluates policies in Spacelift SaaS *(unverified)* (C57); the
-  console's policy pages do not show it.
 - The INITIALIZATION evaluation sits between `QUEUED`/`READY` and `INITIALIZING`
   [I, from "before they start"].
 
@@ -1037,7 +1040,7 @@ comment quoted in 2.1].
 | terraform-provider-spacelift | v1.57.0 (`c72b9bd2f3c3`) |
 | spacelift-policies-example-library | `6ff5edb08bc8` (2026-08-23); its CI pins OPA 0.64.0 and Regal v0.36.1 |
 | spacectl | `6bf167cb62a6` |
-| OPA version in Spacelift SaaS | not recorded; `policyRuntime` returns it *(unverified)* (C57) |
+| OPA version in Spacelift SaaS | **[C] 2026-11-19:** `v1.17.1` (C57); no OPA version was recorded at the 2026-10-28 baseline |
 
 ## Sources
 

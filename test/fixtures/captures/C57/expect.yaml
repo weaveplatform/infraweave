@@ -1,0 +1,4 @@
+# Observed upstream facts, independent of pending infraweave REST behavior.
+replayAfter: https://github.com/weaveplatform/infraweave/issues/640
+observed:
+  "/data/policyRuntime/openPolicyAgentVersion": "v1.17.1"

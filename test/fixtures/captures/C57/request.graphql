@@ -1,0 +1,4 @@
+# Exchange 1: POST https://example.app.spacelift.io/graphql
+query PolicyRuntimeCapture { policyRuntime { openPolicyAgentVersion } }
+# variables: {}
+

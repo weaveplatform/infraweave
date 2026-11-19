@@ -256,9 +256,9 @@
     {
       "id": "DV-028",
       "group": "Runs, workers and policies: decisions 0008 and 0009",
-      "spacelift": "`REGO_V0` is the provider's default engine; the API's default is unverified",
+      "spacelift": "REGO_V0 is the omitted-engine policyCreatev2 default, captured on 2026-11-19 (C49); the console editor selects REGO_V1 explicitly",
       "infraweave": "`REGO_V1` is the default when a create omits the engine",
-      "why": "Rego v1 is OPA's current language",
+      "why": "Rego v1 is OPA's current language; the maintainer intentionally retains this default after the C49 capture (2026-11-19)",
       "impact": "A policy written for v0 sets the engine explicitly",
       "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
     },
@@ -283,11 +283,12 @@
     {
       "id": "DV-031",
       "group": "Runs, workers and policies: decisions 0008 and 0009",
-      "spacelift": "The `sanitized` helper's truncation of SHA-256 is unverified ([report 20](../research/reference/20-vendors.md#13-resource-sanitization))",
-      "infraweave": "`sanitized` uses infraweave's own truncation",
-      "why": "A rule is needed until a capture shows Spacelift's",
-      "impact": "A policy comparing sanitized values with strings produced by Spacelift may not match",
-      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)"
+      "spacelift": "sanitized uses the last eight hexadecimal characters of SHA-256, captured on 2026-11-19 (C192)",
+      "infraweave": "sanitized and the worker use the same captured last-eight-hex SHA-256 algorithm",
+      "why": "Policy comparisons and uploaded plan values share the observed algorithm",
+      "impact": "No hash difference remains",
+      "source": "[0009 Rationale](../research/decisions/0009-policy-engine-opa.md#rationale)",
+      "withdrawn": "C192 settled the algorithm; decision 0009 adopts it by maintainer decision on 2026-11-19. The ID stays reserved."
     },
     {
       "id": "DV-032",

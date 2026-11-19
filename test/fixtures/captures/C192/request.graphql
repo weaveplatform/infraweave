@@ -1,0 +1,4 @@
+# Exchange 1: POST https://example.app.spacelift.io/graphql
+mutation CaptureSanitized($input:PolicySimulateInput!){policySimulatev2(input:$input)}
+# variables: {"input": {"type": "PLAN", "engineType": "REGO_V1", "input": "{}", "body": "package spacelift\nimport rego.v1\ninfo contains sanitized(\"infraweave-capture-test\")\ninfo contains sanitized(\"hello\")\nsample := false"}}
+

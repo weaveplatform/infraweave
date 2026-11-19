@@ -23,6 +23,12 @@ as no capture.
 - `TestUnitCaptureRedaction` fails on anything here that looks like a JWT,
   an API key secret, an AWS access key, a private key block, or an e-mail
   address outside `example.com`.
-- `TestAccCaptures` (`make accept`) replays every call against
+- `expect.yaml` may instead contain `observed` (JSON Pointer to recorded value)
+  and `replayAfter` (the implementation issue). Such a capture has no REST calls:
+  offline observations are checked now, and REST replay is explicitly deferred.
+  Once implemented, remove `replayAfter` and add calls. C49 intentionally expects
+  a different infraweave default (V1); C57 must check the linked OPA version rather
+  than freezing the reference service version.
+- `TestAccCaptures` (`make accept`) verifies the four policy observations and replays every enabled call against
   `infraweave serve`. A capture whose expectation fails is a parity bug,
   reported with its id, not a flaky test.

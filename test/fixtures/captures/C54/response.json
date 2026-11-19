@@ -1,0 +1,1026 @@
+{
+  "pages": [
+    {
+      "status": 200,
+      "response": {
+        "data": {
+          "searchPolicyTemplates": {
+            "edges": [
+              {
+                "node": {
+                  "id": "01HRPFBHH75YQ0XV7CKM8PT9EG",
+                  "name": "Allowlist Task Commands",
+                  "slug": "allowlist-task-commands",
+                  "type": "APPROVAL",
+                  "description": "This policy allows only specific task commands to be executed. It automatically approves runs that are not tasks,\nand those with task commands that are on the allowlist. Additionally, runs require at least two approvals.\n",
+                  "labels": [
+                    "approval",
+                    "task-commands"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Define what commands are allowed\nallowlist := [\"ls\", \"ps\"]\n\n# Approve when not a task.\napprove if {\n\tinput.run.type != \"TASK\"\n}\n\n# Approve when allowlisted.\napprove if {\n\tsome input.run.command in allowlist\n}\n\n# Approve with two or more approvals.\napprove if {\n\tcount(input.reviews.current.approvals) > 1\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHHP7QNCW7N7MVR9JMCV",
+                  "name": "Approval Outside Working Hours",
+                  "slug": "approval-outside-working-hours",
+                  "type": "APPROVAL",
+                  "description": "This policy automatically approves runs during working hours (9am to 5pm UTC) on weekdays, but requires at least \none approval outside of these hours or during weekends. It also rejects runs with any rejections to ensure that \nchanges are reviewed and approved by the appropriate personnel.\n",
+                  "labels": [
+                    "approval",
+                    "working-hours"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Extract the UTC hour from the provided timestamp and declare our variables.\nutc_hour := time.clock(input.run.created_at)[0]\n\nweekend := {\"Saturday\", \"Sunday\"}\n\nweekday := time.weekday(utc_hour)\n\n# If it's before 9am or after 5pm or earlier UTC, automatically approve\napprove if {\n\tutc_hour >= 9\n\tutc_hour <= 17\n\tweekday\n}\n\n# If it's before 9am or after 5pm UTC, require at least one approval and no rejections.\napprove if {\n\tutc_hour > 17\n\tcount(input.reviews.current.approvals) >= 1\n}\n\napprove if {\n\tutc_hour < 9\n\tcount(input.reviews.current.approvals) >= 1\n}\n\n# require approval access during weekdays\napprove if {\n\tweekend[weekday]\n\tcount(input.reviews.current.approvals) >= 1\n}\n\nreject if {\n\tcount(input.reviews.current.rejections) > 0\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHJ5S7R1RHHH3MNP7A08",
+                  "name": "Require Approval from Security Team",
+                  "slug": "require-approval-from-security-team",
+                  "type": "APPROVAL",
+                  "description": "This policy approves any runs when someone from the Security team approves the changes to the specified resources \nand rejects any runs when someone from other teams tries to approve the changes. It ensures that changes to critical \nresources are reviewed and approved by the Security team.\n",
+                  "labels": [
+                    "approval",
+                    "security"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy approves any runs when someone from Security team approves the changes to the resources in the list,\n# and rejects any runs when someone from other teams tries to approve the changes.\n\n# This policy can be combined with automatic policy attachment (https://docs.spacelift.io/concepts/policy#automatically)\n# to automatically enforce it across stacks.\n\napproval_list := [\n\t\"aws_iam_access_key\",\n\t\"aws_security_group\",\n\t\"aws_security_group_rule\",\n\t\"aws_network_acl\",\n\t\"aws_iam_policy\",\n\t\"aws_iam_role\",\n\t\"aws_iam_user_policy\",\n]\n\nrequires_approval if {\n\t# Loop over each resource change in the plan\n\tresource := input.run.changes[_]\n\n\t# Check if any of the actions on the resource is \"added\"\n\taction := resource.actions[_]\n\taction == \"added\"\n\tresource.entity.type in approval_list\n}\n\nrequires_approval if {\n\t# Loop over each resource change in the plan\n\tresource := input.run.changes[_]\n\n\t# Check if any of the actions on the resource is \"changed\"\n\taction := resource.actions[_]\n\taction == \"changed\"\n\tresource.entity.type in approval_list\n}\n\nrequires_approval if {\n\t# Loop over each resource change in the plan\n\tresource := input.run.changes[_]\n\n\t# Check if any of the actions on the resource is \"deleted\"\n\taction := resource.actions[_]\n\taction == \"deleted\"\n\tresource.entity.type in approval_list\n}\n\napprovals := input.reviews.current.approvals\n\n# Let's define what it means to be approved by Security team.\nsecurity_approval if {\n\t\"Security\" in approvals[_].session.teams\n}\n\napprove if {\n\tinput.run.state != \"UNCONFIRMED\"\n}\n\n# Approve when Security team approve and Require at least 1 approval:\napprove if {\n\tsecurity_approval\n\tcount(input.reviews.current.approvals) > 0\n}\n\n# Require at least 1 rejection\nreject if {\n\tcount(input.reviews.current.rejections) > 0\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHJHMM9R784VHPDNC929",
+                  "name": "Require Private Worker",
+                  "slug": "require-private-worker",
+                  "type": "APPROVAL",
+                  "description": "This policy approves any runs where the stack uses a private worker and rejects any runs where the stack uses a public worker. \nIt ensures that only private workers are used for running infrastructure changes.\n",
+                  "labels": [
+                    "approval",
+                    "private",
+                    "worker"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy approves any runs where the stack uses a private worker, and rejects any runs\n# where the stack uses a public worker. The policy needs to define an \"approve\" rule as well\n# as a \"reject\" rule to avoid the policy evaluation going into an \"UNDECIDED\" state for runs on private workers.\n\n# This policy can be combined with automatic policy attachment (https://docs.spacelift.io/concepts/policy#automatically)\n# to automatically enforce it across stacks.\n\n# Approve any runs on private workers\napprove if {\n\tnot input.stack.worker_pool.public\n}\n\n# Reject any runs on public workers\nreject if {\n\tinput.stack.worker_pool.public\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHJZMTQ6JD7HFT0T1HBG",
+                  "name": "Role-based Approval",
+                  "slug": "role-based-approval",
+                  "type": "APPROVAL",
+                  "description": "This approval policy requires explicit user approval for runs that are in the UNCONFIRMED state or are of type TASK. \nIt defines approval conditions based on roles such as Director, DevOps, and Security. \nRuns can be approved by a single Director or by both DevOps and Security teams.\n",
+                  "labels": [
+                    "approval",
+                    "role-based",
+                    "security"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# First, let's define all conditions that require explicit\n# user approval.\nrequires_approval if {\n\tinput.run.state == \"UNCONFIRMED\"\n}\n\nrequires_approval if {\n\tinput.run.type == \"TASK\"\n}\n\napprovals := input.reviews.current.approvals\n\n# Let's define what it means to be approved by a director, DevOps and Security.\ndirector_approval if {\n\t\"Director\" in approvals[_].session.teams\n}\n\ndevops_approval if {\n\t\"DevOps\" in approvals[_].session.teams\n}\n\nsecurity_approval if {\n\t\"Security\" in approvals[_].session.teams\n}\n\napprove if {\n\tnot requires_approval\n}\n\n# Approve when a single director approves:\napprove if {\n\tdirector_approval\n}\n\n# Approve when both DevOps and Security approve:\napprove if {\n\tdevops_approval\n\tsecurity_approval\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHKCBERY26EE4HXR6V37",
+                  "name": "Task and Run Approvals",
+                  "slug": "task-and-run-approvals",
+                  "type": "APPROVAL",
+                  "description": "This approval policy automatically approves runs that do not require explicit user approval.\nFor runs that are in the UNCONFIRMED state or are of type TASK, explicit user approval is required.\nAdditionally, certain task commands are auto-approved.\nTwo approvals are required for all runs, and there should be no rejections for approval.\n",
+                  "labels": [
+                    "approval",
+                    "decision-making"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Autoapprove some task commands. Note how we don't check for run type\n# because only tasks will the have \"command\" field set.\ntask_allowlist := [\"ls\", \"ps\"]\n\n# First, let's define all conditions that require explicit\n# user approval.\nrequires_approval if {\n\tinput.run.state == \"UNCONFIRMED\"\n}\n\nrequires_approval if {\n\tinput.run.type == \"TASK\"\n}\n\n# Then, let's automatically approve all other jobs.\napprove if {\n\tnot requires_approval\n}\n\napprove if {\n\tinput.run.command in task_allowlist\n}\n\n# Two approvals and no rejections to approve.\napprove if {\n\tcount(input.reviews.current.approvals) > 1\n\tcount(input.reviews.current.rejections) == 0\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHKW7PJGDYDRA16Y6KJM",
+                  "name": "Two Approvals, No Rejections",
+                  "slug": "two-approvals-no-rejections",
+                  "type": "APPROVAL",
+                  "description": "This approval policy requires two approvals for each unconfirmed run and fails the run on any rejections. \n",
+                  "labels": [
+                    "approval",
+                    "security"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# In this example, each Unconfirmed run will require two approvals -\n# including proposed runs triggered by Git events. Additionally,\n# the run should have no rejections. Anyone who rejects the run will\n# need to change their mind in order for the run to go through.\n\napprove if {\n\tinput.run.state != \"UNCONFIRMED\"\n}\n\napprove if {\n\tcount(input.reviews.current.approvals) > 1\n\tcount(input.reviews.current.rejections) == 0\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHM917RT6KF2NXV8RS8C",
+                  "name": "Two Approvals, Two Rejections",
+                  "slug": "two-approvals-two-rejections",
+                  "type": "APPROVAL",
+                  "description": "This approval policy requires two approvals for each unconfirmed run and allows only one rejection. \nAll reviewers who reject the run must change their decision for the run to proceed.\n",
+                  "labels": [
+                    "approval",
+                    "security"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# In this example, each Unconfirmed run will require two approvals -\n# including proposed runs triggered by Git events. Additionally,\n# the run should not have more than one rejection. Everyone who rejects the run will\n# need to change their mind in order for the run to go through.\n\napprove if {\n\tinput.run.state != \"UNCONFIRMED\"\n}\n\napprove if {\n\tcount(input.reviews.current.approvals) > 1\n}\n\nreject if {\n\tcount(input.reviews.current.rejections) > 1\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHQWCZ3RJ93F6Y5F7HRP",
+                  "name": "Drift Detection with Changes",
+                  "slug": "drift-detection-with-changes",
+                  "type": "NOTIFICATION",
+                  "description": "This policy is used send a notification to Slack when drift is detected in the infrastructure.\n",
+                  "labels": [
+                    "changes",
+                    "drift-detection",
+                    "notification",
+                    "slack"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nslack contains {\"channel_id\": \"C000000\"} if {\n\t# Checking if drift detection is present in the run update\n\tinput.run_updated.run.drift_detection\n\n\t# Condition to verify that there is at least one change\n\tcount(input.run_updated.run.changes) > 0\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHRAJ4DZP77J87GY55NZ",
+                  "name": "Notification Failure",
+                  "slug": "notification-failure",
+                  "type": "NOTIFICATION",
+                  "description": "This policy is used send a notification to Slack when a run fails.\n",
+                  "labels": [
+                    "failure",
+                    "notification",
+                    "run",
+                    "slack"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nir := input.run_updated\n\nrun := sprintf(\"https://%s.app.spacelift.io/stack/%s/run/%s\", [input.account.name, ir.stack.id, ir.run.id])\n\nfailed if {\n\tinput.run_updated.run.state == \"FAILED\"\n}\n\nslack contains {\n\t\"channel_id\": \"C05H9PV1TK9\",\n\t\"message\": msg,\n} if {\n\tfailed\n\tany_deny_or_reject\n\tsome pr in ir.policy_receipts\n\tmsg := sprintf(\"The run failed as the %s policy had a %s outcome. Details: %s\", [pr.name, pr.outcome, run])\n}\n\nslack contains {\n\t\"channel_id\": \"C05H9PV1TK9\",\n\t\"message\": msg,\n} if {\n\tfailed\n\tnot any_deny_or_reject\n\tmsg := sprintf(\"The run failed, you can review the logs to see why here: %s\", [run])\n}\n\nany_deny_or_reject if {\n\tsome pr in ir.policy_receipts\n\tpr.outcome == \"deny\"\n}\n\nany_deny_or_reject if {\n\tsome pr in ir.policy_receipts\n\tpr.outcome == \"reject\"\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHRRRKCKB1CN9439BRE9",
+                  "name": "Slack Channels with Labels",
+                  "slug": "slack-channels-with-labels",
+                  "type": "NOTIFICATION",
+                  "description": "This policy allows to route notifications to Slack channels based on labels specified on a stack.\n",
+                  "labels": [
+                    "channels",
+                    "labels",
+                    "notification",
+                    "routing",
+                    "slack",
+                    "stack"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This rule will generate an array of Slack channel names from the stack labels.\nslack_channels contains slack_channel if {\n\t# Extract labels from the stack\n\tlabel := input.run_updated.stack.labels[_]\n\n\t# Check if the label starts with \"slack:\"\n\tstartswith(label, \"slack:\")\n\n\t# Extract the actual channel name after \"slack:\"\n\tslack_channel := split(label, \":\")[1]\n}\n\nslack contains {\"channel_id\": channel} if {\n\trun := input.run_updated.run\n\trun.type == \"TRACKED\"\n\n\t# Here we're using the slack_channels rule to get all channels\n\t# and iterate over each one.\n\tsome channel in slack_channels\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHSKXXMNNMHMNQ2J58F0",
+                  "name": "Check Blast Radius",
+                  "slug": "check-blast-radius",
+                  "type": "PLAN",
+                  "description": "This policy calculates the blast radius of changes in the Terraform configuration. It assigns multipliers to different types of resources based on their impact, with deletes and updates being more \"expensive\" than new resources.\nIt fails Pull Requests with changes violating the blast radius policy and requires human action through warnings when changes hit the tracked branch.\n",
+                  "labels": [
+                    "best-practices",
+                    "blast-radius",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy attempts to create a metric called a \"blast radius\" - that is how much the change will affect the whole stack.\n# It assigns special multipliers to some types of resources changed and treats different types of changes differently:\n# deletes and updates are more \"expensive\" because they affect live resources, while new resources are generally safer\n# and thus \"cheaper\". We will fail Pull Requests with changes violating this policy, but require human action\n# through **warnings** when these changes hit the tracked branch.\n\nproposed := input.spacelift.run.type == \"PROPOSED\"\n\ndeny contains msg if {\n\tproposed\n\tmsg := blast_radius_too_high[_]\n}\n\nwarn contains msg if {\n\tnot proposed\n\tmsg := blast_radius_too_high[_]\n}\n\nblast_radius_too_high contains sprintf(\"change blast radius too high (%d/100)\", [blast_radius]) if {\n\tblast_radius := sum([blast |\n\t\tresource := input.terraform.resource_changes[_]\n\t\tblast := blast_radius_for_resource(resource)\n\t])\n\n\tblast_radius > 100\n}\n\nblast_radius_for_resource(resource) := ret if {\n\tblasts_radii_by_action := {\"delete\": 10, \"update\": 5, \"create\": 1, \"no-op\": 0}\n\n\tret := sum([value |\n\t\taction := resource.change.actions[_]\n\t\taction_impact := blasts_radii_by_action[action]\n\t\ttype_impact := blast_radius_for_type(resource.type)\n\t\tvalue := action_impact * type_impact\n\t])\n}\n\n# Let's give some types of resources special blast multipliers.\nblasts_radii_by_type := {\"aws_ecs_cluster\": 20, \"aws_ecs_user\": 10, \"aws_ecs_role\": 5}\n\n# By default, blast radius has a value of 1.\nblast_radius_for_type(type) := 1 if {\n\tnot blasts_radii_by_type[type]\n}\n\nblast_radius_for_type(type) := blasts_radii_by_type[type]\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHT3BSH55XE5N2P7P1RC",
+                  "name": "Check Sanitized Value",
+                  "slug": "check-sanitized-value",
+                  "type": "PLAN",
+                  "description": "This policy checks if any resource targets the forbidden endpoint \"forbidden.endpoint/webhook\" and denies the action if found.\nIt ensures that sensitive properties are not exposed in the Terraform configuration.\n",
+                  "labels": [
+                    "security",
+                    "sensitive",
+                    "terraform-plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Sensitive properties in \"before\" and \"after\" objects will be sanitized to protect secret values.\n# Sanitization hashes the value and takes the last 8 bytes of the hash.\n# If you need to compare a string property to a constant, you can use the sanitized(string) helper function.\n\ndeny contains \"must not target the forbidden endpoint: forbidden.endpoint/webhook\" if {\n\tresource := input.terraform.resource_changes[_]\n\n\tactions := {\"create\", \"delete\", \"update\"}\n\tactions[resource.change.actions[_]]\n\n\tresource.change.after.endpoint == sanitized(\"forbidden.endpoint/webhook\")\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHTHGRQZW56NABWN7XDV",
+                  "name": "Checkov Failed Checks",
+                  "slug": "checkov-failed-checks",
+                  "type": "PLAN",
+                  "description": "This policy warns when the number of failed Checkov checks is less than 10, but does not fail the run.\nIt provides visibility into potential issues without blocking the deployment process.\n",
+                  "labels": [
+                    "checkov",
+                    "code-quality",
+                    "plan",
+                    "warning-policy"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy will give you a warning if your failed checks are less than 10, but will not fail your run.\n\nwarn contains sprintf(message, [p]) if {\n\tmessage := \"You have a couple of failed checks: %d\"\n\tresults := input.third_party_metadata.custom.checkov.results.failed_checks\n\tp := count(results)\n\tp < 10\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n\n# Learn more about how to integrate custom inputs here:\n# https://spacelift.io/blog/integrating-security-tools-with-spacelift\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHV1G11YN455CY11174A",
+                  "name": "Deny Proposed Runs, Warn Track Runs",
+                  "slug": "deny-proposed-runs-warn-track-runs",
+                  "type": "PLAN",
+                  "description": "This policy uses both deny and warn rules to provide comprehensive feedback during code review.\nIt denies proposed runs for creating IAM users and warns for the same action in tracked runs.\nBy leveraging the run type (PROPOSED or TRACKED), it ensures appropriate handling of violations based on the Git workflow.\n",
+                  "labels": [
+                    "deny",
+                    "plan",
+                    "warn"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# The best way to use warn and deny rules together depends on your preferred Git workflow.\n# We've found short-lived feature branches with Pull Requests to the tracked branch to work relatively well.\n# In this scenario, the `type` of the `run` is important - it's _PROPOSED_ for commits to feature branches,\n# and _TRACKED_ on commits to the tracked branch. You will probably want at least some of your rules\n# to take that into account and use this mechanism to balance comprehensive feedback on Pull Requests\n# and flexibility of being able to deploy things that humans deem appropriate.\n#\n# As a general rule when using plan policies for code review, **deny** when run type is _PROPOSED_\n# and **warn** when it is _TRACKED_. Denying tracked runs unconditionally may be a good idea\n# for most egregious violations for which you will not consider an exception,\n# but when this approach is taken to an extreme it can make your life difficult.\n#\n# We suggest that you _at most_ **deny** when the run is _PROPOSED_, which will send a failure status to the GitHub commit,\n# but will give the reviewer a chance to approve the change nevertheless.\n# If you want a human to take another look before those changes go live, either set stack autodeploy to _false_,\n# or explicitly **warn** about potential violations. Here's an example of how to reuse the same rule to **deny**\n# or **warn** depending on the run type.\n\nproposed := input.spacelift.run.type == \"PROPOSED\"\n\ndeny contains reason if {\n\tproposed\n\treason := iam_user_created[_]\n}\n\nwarn contains reason if {\n\tnot proposed\n\treason := iam_user_created[_]\n}\n\niam_user_created contains sprintf(\"Do not create IAM users: (%s)\", [resource.address]) if {\n\tresource := input.terraform.resource_changes[_]\n\t\"create\" in resource.change.actions\n\n\tresource.type == \"aws_iam_user\"\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHVH2EBS3YTJWA7RNTD0",
+                  "name": "Prevent Deletion of Stateful Resources",
+                  "slug": "prevent-deletion-of-stateful-resources",
+                  "type": "PLAN",
+                  "description": "This policy prohibits the deletion of stateful resources to prevent accidental loss of data or disruption of critical services.\nBy preventing the deletion of specified resource types during the plan phase, the policy helps maintain the integrity and availability of stateful resources in the infrastructure.\n",
+                  "labels": [
+                    "deletion-prevention",
+                    "plan",
+                    "stateful-resources"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy is a plan policy, it will validate the resources during the plan phase.\n# More details at: https://docs.spacelift.io/concepts/policy/terraform-plan-policy\n# The \"deny\" rule fires when a specified resource is being deleted.\n# The result is a formatted message with the address of the offending resource.\n\ndeny contains sprintf(message, [resource.address]) if {\n\t# Define the error message format\n\tmessage := \"do not delete %s\"\n\n\t# Loop over each resource change in the plan\n\tresource := input.terraform.resource_changes[_]\n\n\t# Define a set of resource types for which deletions should be prevented.\n\tprevent_delete := {\n\t\t\"aws_db_instance\",\n\t\t\"aws_efs_file_system\",\n\t\t\"aws_dynamodb_table\",\n\t\t\"aws_s3_bucket\",\n\t}\n\n\t# Check if the resource type is one of those defined in prevent_delete\n\tprevent_delete[resource.type]\n\n\t# Check if any of the actions on the resource is \"delete\"\n\t\"delete\" in resource.change.actions\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHW35CASM316KJ7Y1A2V",
+                  "name": "Disallow AWS IAM Access Key Creation",
+                  "slug": "disallow-aws-iam-access-key-creation",
+                  "type": "PLAN",
+                  "description": "This policy prohibits the creation of AWS IAM access keys with static credentials, as they pose security risks.\nBy preventing the creation of such access keys, the policy enhances the security posture of the infrastructure and reduces the likelihood of unauthorized access to AWS resources.\nThe dynamic message captures the resource address to provide appropriate context to affected individuals, emphasizing the importance of adhering to security best practices.\n",
+                  "labels": [
+                    "access-key",
+                    "aws",
+                    "iam",
+                    "plan",
+                    "security",
+                    "static-credentials"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Note that the message here is dynamic and captures resource address to provide\n# appropriate context to anyone affected by this policy. For the sake of your\n# sanity and that of your colleagues, please a\n#\n# You can read more about plan policies here:\n# https://docs.spacelift.io/concepts/policy/terraform-plan-policy\n\ndeny contains sprintf(message, [resource.address]) if {\n\tmessage := \"Static AWS credentials are evil (%s)\"\n\n\tresource := input.terraform.resource_changes[_]\n\t\"create\" in resource.change.actions\n\n\t# This is what decides whether the rule captures a resource.\n\t# There may be an arbitrary number of conditions, and they all must\n\t# succeed for the rule to take effect.\n\tresource.type == \"aws_iam_access_key\"\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHWS2YPRJRZV5DCT45JE",
+                  "name": "Enforce Cloud Provider Policy",
+                  "slug": "enforce-cloud-provider-policy",
+                  "type": "PLAN",
+                  "description": "This policy ensures adherence to the organization's cloud provider strategy by enforcing the exclusive use of a specific cloud provider for deployments.\n",
+                  "labels": [
+                    "aws",
+                    "cloud-provider",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# While in most cases you'll want your rules to only look at resources affected by the change,\n# you're not limited to doing so. You can also look at all resources and force teams to remove certain resources.\n# Here's an example - until all AWS resources are removed all in one go, no further changes can take place.\n\ndeny contains sprintf(message, [resource.address]) if {\n\tmessage := \"We have moved to GCP, find an equivalent there (%s)\"\n\tresource := input.terraform.resource_changes[_]\n\n\tresource.provider_name == \"aws\"\n\n\t# If you're just deleting, all good.\n\tresource.change.actions != [\"delete\"]\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHXDRAHAVKRNCR8N0SF0",
+                  "name": "Enforce Instance Type",
+                  "slug": "enforce-instance-type",
+                  "type": "PLAN",
+                  "description": "This policy restricts the use of certain AWS instance types within the deployment to align with organizational standards, cost optimization goals, and security requirements.\nIt ensures that only approved instance types are utilized, thereby mitigating risks associated with unauthorized or suboptimal resource provisioning.\nBy enforcing instance type restrictions, the policy promotes consistency, efficiency, and compliance across infrastructure deployments.\n",
+                  "labels": [
+                    "aws",
+                    "cost-management",
+                    "instance-type",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Smart Sanitization should be enabled on the stack so the policy can correctly read\n# the instance type.\n\n# Define the deny list of instance types\ndeny_list := {\"t2.2xlarge\", \"t2.xlarge\"}\n\n# Define the allow list of instance types\nallow_list := {\"t2.nano\", \"t2.micro\", \"t2.small\"}\n\n# Deny if the instance type is in the deny list\ndeny contains sprintf(message, [resource.address, instance]) if {\n\tmessage := \"Instance type %s is not allowed (%s)\"\n\tresource := input.terraform.resource_changes[_]\n\tresource.type == \"aws_instance\"\n\tinstance := resource.change.after.instance_type\n\tdeny_list[instance]\n}\n\n# Warn if the instance type is not in the allow or deny lists\nwarn contains sprintf(message, [resource.address, instance]) if {\n\tmessage := \"Instance type %s is not recommended (%s)\"\n\tresource := input.terraform.resource_changes[_]\n\tresource.type == \"aws_instance\"\n\tinstance := resource.change.after.instance_type\n\tnot allow_list[instance]\n\tnot deny_list[instance]\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHXVH9S1NDC92SX6GS0T",
+                  "name": "Enforce Module Use",
+                  "slug": "enforce-module-use",
+                  "type": "PLAN",
+                  "description": "This policy enforces the use of approved Terraform modules for resource creation, enhancing consistency, maintainability, and security across infrastructure deployments.\nBy mandating the use of approved modules, it ensures adherence to organizational standards, facilitates reuse of proven infrastructure patterns, and mitigates risks associated with unauthorized resource creation.\nThe policy denies the direct creation of resources and alerts when resources are created using unapproved modules.\n",
+                  "labels": [
+                    "best-practices",
+                    "compliance",
+                    "password-security",
+                    "plan",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Note:  This policy requires the configuration of your terraform state to be provided.  In this policy,\n# we reference this via `input.third_party_metadata.custom.configuration` (line 56 below)\n# which is provided to the policy if you follow the instructions documented here:\n# https://docs.spacelift.io/concepts/policy/terraform-plan-policy#example-exposing-terraform-configuration-to-the-plan-policy\n\n# TODO:  Upgrade to take into account approved versions of the approved modules, and implement\n# ability to warn on deprecated versions, and deny on no longer supported versions!\n\n# This is a map of resource types and the list of modules which are\n# approved to be used to create them.  Note, you do not need to allow explicitly\n# any \"wrapper\" modules... this is checking the immediate module parent of the resource itself\n# Some example resources and approved module(s), you of course can specify your spacelift.io hosted modules\ncontrolled_resource_types := {\n\t\"aws_s3_bucket\": [\"terraform-aws-modules/s3-bucket/aws\"],\n\t\"aws_s3_bucket_acl\": [\"terraform-aws-modules/s3-bucket/aws\"],\n\t\"aws_s3_bucket_website_configuration\": [\"terraform-aws-modules/s3-bucket/aws\"],\n}\n\n# Deny ability to create the resource directly (aka not in a module we identify)\ndeny contains reason if {\n\tresource := input.terraform.resource_changes[_]\n\tactions := {\"create\", \"update\"}\n\tactions[resource.change.actions[_]]\n\tmodule_source = controlled_resource_types[resource.type]\n\tnot resource.module_address\n\treason := sprintf(\n\t\t\"Resource '%s' cannot be created directly. Module(s) '%s' must be used instead\",\n\t\t[resource.address, concat(\"', '\", controlled_resource_types[resource.type])],\n\t)\n}\n\n# Deny ability to create the resource in an unapproved module\ndeny contains failed_reasons if {\n\t# Did any of the resources fail to pass?\n\tcount(invalid_resources[_]) > 0\n\n\t# Build a list of reasons for each failure\n\tfailed_reasons := [sprintf(\n\t\t\"Resource '%s' in top level module named '%s' is being created with the incorrect terraform module '%s'. Module(s) '%s' must be used instead.\",\n\t\t[reason.resource_type, reason.top_level_module_name, reason.resource_module_name, concat(\"', '\", controlled_resource_types[reason.resource_type])],\n\t) |\n\t\treason := invalid_resources[_]\n\t][_]\n}\n\n# Walk the \"configuration\" tree and find all the resources which appear in our\n# \"controlled_resource_types\"\ncontrolled_resources contains resource if {\n\t# Recursively walk the module hierarchy\n\t[path, module_ref] := walk(input.third_party_metadata.custom.configuration)\n\n\t# Filter out only objects that are modules, i.e. have a source property\n\tsource := module_ref.source\n\n\t# Get all resources created in the module and their types\n\tresources := module_ref.module.resources\n\tresource_type := resources[_].type\n\n\t# Filter out resources that are considered controlled\n\tresource_type in object.keys(controlled_resource_types)\n\n\t# Create an object with the module and the resource type,\n\t# this is a set so duplicates will be removed based on this object\n\tresource := {\n\t\t\"resource_module_name\": source,\n\t\t\"top_level_module_name\": path[2],\n\t\t\"resource_type\": resource_type,\n\t\t\"resource_module_version_constraint\": module_ref.version_constraint,\n\t}\n}\n\n# When the controlled resources are collected, iterate through them and\n# see if they comply\ninvalid_resources contains resource_instance if {\n\tresource_instance := controlled_resources[_]\n\tnot resource_instance.resource_module_name in controlled_resource_types[resource_instance.resource_type]\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHYD05X5A7CFRRXDKDSG",
+                  "name": "Enforce Password Length",
+                  "slug": "enforce-password-length",
+                  "type": "PLAN",
+                  "description": "This policy enforces stringent password policies within Terraform-managed resources, specifically targeting the creation of `random_password` resources.\nIt denies the creation of passwords shorter than 16 characters to prevent the use of weak passwords and issues a warning for passwords under 20 characters, recommending stronger, more secure passwords.\nThis approach ensures adherence to security best practices, significantly enhancing the overall security posture by mandating robust password criteria.\n",
+                  "labels": [
+                    "best-practices",
+                    "compliance",
+                    "password-security",
+                    "plan",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example plan policy prevents you from creating weak passwords, and warns\n# you when passwords are meh.\n#\n# You can read more about plan policies here:\n# https://docs.spacelift.io/concepts/policy/terraform-plan-policy\n\ndeny contains sprintf(\"We require that passwords have at least 16 characters (%s)\", [resource.address]) if {\n\tresource := new_password[_]\n\tresource.change.after.length < 16\n}\n\nwarn contains sprintf(\"We advise that passwords have at least 20 characters (%s)\", [resource.address]) if {\n\tresource := new_password[_]\n\tresource.change.after.length < 20\n}\n\nnew_password contains resource if {\n\tresource := input.terraform.resource_changes[_]\n\t\"create\" in resource.change.actions\n\tresource.type == \"random_password\"\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHZ1575BM416K9Q993TV",
+                  "name": "Enforce SQLInstance Network",
+                  "slug": "enforce-sqlinstance-network",
+                  "type": "PLAN",
+                  "description": "This policy aims to enhance security by denying changes that would expose a Cloud SQL instance to the public internet (0.0.0.0/0).\nBy scrutinizing changes to Google Cloud SQL instances during the planning phase, the policy ensures that no instance is inadvertently made accessible to any IP address, thereby mitigating potential security risks.\nThe enforcement applies to both the creation and updating of resources, promoting best practices in cloud security and infrastructure management.\n",
+                  "labels": [
+                    "cloud-sql",
+                    "google",
+                    "network-security",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Deny changes that expose Cloud SQL instance to 0.0.0.0/0\ndeny contains msg if {\n\tchange := input.terraform.resource_changes[_]\n\tchange.type == \"google_sql_database_instance\"\n\tvalid_action(change.change.actions)\n\tsetting := change.change.after.settings[_]\n\tip_config := setting.ip_configuration[_]\n\tauth_network := ip_config.authorized_networks[_]\n\tauth_network.value == \"0.0.0.0/0\"\n\n\tmsg := sprintf(\"Cloud SQL instance '%s' is exposed to 0.0.0.0/0\", [change.address])\n}\n\n# Helper rule to check for valid actions\nvalid_action(actions) if {\n\taction := actions[_]\n\taction == \"update\"\n}\n\n# Helper rule to check for create action\nvalid_action(actions) if {\n\taction := actions[_]\n\taction == \"create\"\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBHZHYTGEKNS5W4VCE2RP",
+                  "name": "Enforce Tags On Resources",
+                  "slug": "enforce-tags-on-resources",
+                  "type": "PLAN",
+                  "description": "This policy ensures that all Terraform-managed resources adhere to tagging conventions by requiring the presence of specific tags: \"Name\", \"env\", and \"owner\". \nIt denies changes to resources that lack any of these required tags, emphasizing the importance of consistent tagging for resource identification, environment management, and ownership tracking. \nThe policy aids in maintaining order, facilitating cost allocation, security, and governance across the infrastructure.\n",
+                  "labels": [
+                    "compliance",
+                    "plan",
+                    "tagging",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example plan policy enforces specific tags are present on your resources\n#\n# You can read more about plan policies here:\n# https://docs.spacelift.io/concepts/policy/terraform-plan-policy\n\nrequired_tags := {\"Name\", \"env\", \"owner\"}\n\ndeny contains sprintf(\"resource %q does not have all suggested tags (%s)\", [resource.address, concat(\", \", missing_tags)]) if {\n\tresource := input.terraform.resource_changes[_]\n\ttags := resource.change.after.tags_all\n\n\tmissing_tags := {tag | required_tags[tag]; not tags[tag]}\n\n\tcount(missing_tags) > 0\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ00G520P0YKP64SN1F5",
+                  "name": "Enforce Terraform Version List",
+                  "slug": "enforce-terraform-version-list",
+                  "type": "PLAN",
+                  "description": "To maintain compatibility and security, this policy delineates specific allowed and not allowed Terraform versions. Versions such as \"1.4.1\", \"1.4.2\", and \"1.4.3\" are explicitly prohibited, whereas \"1.4.4\", \"1.4.5\", and \"1.5.0\" are endorsed.\nThe policy denies runs using disallowed versions and suggests acceptable alternatives, promoting adherence to tested and approved Terraform versions for infrastructure management.\n",
+                  "labels": [
+                    "compliance",
+                    "plan",
+                    "security",
+                    "terraform",
+                    "version-control"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Define a list of not allowed Terraform versions.\nnotallowed_versions := [\"1.4.1\", \"1.4.2\", \"1.4.3\"]\n\n# Define a list of allowed Terraform versions.\nallowed_versions := [\"1.4.4\", \"1.4.5\", \"1.5.0\"]\n\n# The \"deny\" rule fires when a blocked Terraform version is used.\n# The result is a formatted message with the blocked version.\ndeny contains sprintf(\"Not allowed to use Terraform version %s. Please consider using one of the following versions: %v\", [terraform_version, allowed_versions]) if {\n\t# Extract the Terraform version from the runtime configuration\n\tterraform_version := input.terraform.terraform_version\n\n\t# Check if the Terraform version is one of those defined in the notallowed_versions list\n\tterraform_version in notallowed_versions\n}\n\n# The \"warn\" rule fires for any other Terraform version.\nwarn contains sprintf(\"You're using Terraform version %s, which isn't explicitly allowed or denied. Consider using one of the allowed versions: %v\", [terraform_version, allowed_versions]) if {\n\t# Extract the Terraform version from the runtime configuration\n\tterraform_version := input.terraform.terraform_version\n\n\t# Ensure the version is neither in the allowed_versions nor in the notallowed_versions\n\tnot is_version_allowed(terraform_version)\n\tnot is_version_notallowed(terraform_version)\n}\n\n# Helper rule to check if a version is in the allowed_versions\nis_version_allowed(version) if {\n\tversion in allowed_versions\n}\n\n# Helper rule to check if a version is in the notallowed_versions\nis_version_notallowed(version) if {\n\tversion in notallowed_versions\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ0CCZNYQV4NM1J7Y1D4",
+                  "name": "Ensure Resource Creation Before Deletion",
+                  "slug": "ensure-resource-creation-before-deletion",
+                  "type": "PLAN",
+                  "description": "This policy ensures that the listed resource types will be created before being deleted to avoid an incident.\n",
+                  "labels": [
+                    "best-practices",
+                    "incident-prevention",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy ensures that the listed resource types will be created before being deleted to avoid an incident\n\nalways_create_first := {\"aws_batch_compute_environment\"}\n\ndeny contains sprintf(message, [resource.address]) if {\n\tmessage := \"Always create before deleting (%s)\"\n\tresource := input.terraform.resource_changes[_]\n\n\talways_create_first[resource.type]\n\n\tsome i_create, i_delete\n\tresource.change.actions[i_create] == \"create\"\n\tresource.change.actions[i_delete] == \"delete\"\n\n\ti_delete < i_create\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ0XMXY8FVX1MH5AS16D",
+                  "name": "Infracost Monthly Cost Restriction",
+                  "slug": "infracost-monthly-cost-restriction",
+                  "type": "PLAN",
+                  "description": "This policy utilizes Infracost data to enforce cost controls on infrastructure deployments by:\n- Denying changes that increase monthly costs beyond a $100 threshold, ensuring that budget limits are respected.\n- Issuing warnings for increases exceeding 5%, highlighting significant cost impacts and encouraging cost optimization discussions.\n\nBy integrating cost estimates directly into the CI/CD process, this policy helps maintain financial discipline, ensuring that infrastructure changes are both necessary and cost-effective.\n",
+                  "labels": [
+                    "budget",
+                    "cost-management",
+                    "financial-governance",
+                    "infracost"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example plan policy demonstrates using data from infracost to\n# ensure that resources can't be created if their mostly cost is greater than\n# a specific threshold while displaying a warning if their cost is above\n# a different threshold.\n#\n# You can read more about plan policies here:\n# https://docs.spacelift.io/concepts/policy/terraform-plan-policy\n\n# Prevent any changes that will cause the monthly cost to go above a certain threshold\ndeny contains sprintf(\"monthly cost greater than $%d ($%.2f)\", [threshold, monthly_cost]) if {\n\tthreshold := 100\n\tmonthly_cost := to_number(input.third_party_metadata.custom.infracost.projects[0].breakdown.totalMonthlyCost)\n\tmonthly_cost > threshold\n}\n\n# Warn if the monthly costs increase more than a certain percentage\nwarn contains sprintf(\"monthly cost increase greater than %d%% (%.2f%%)\", [threshold, percentage_increase]) if {\n\tthreshold := 5\n\tprevious_cost := to_number(input.third_party_metadata.custom.infracost.projects[0].pastBreakdown.totalMonthlyCost)\n\tprevious_cost > 0\n\n\tmonthly_cost := to_number(input.third_party_metadata.custom.infracost.projects[0].breakdown.totalMonthlyCost)\n\tpercentage_increase := ((monthly_cost - previous_cost) / previous_cost) * 100\n\n\tpercentage_increase > threshold\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ1DHZYTTEW623BNA79T",
+                  "name": "KICS Severity Counter",
+                  "slug": "kics-severity-counter",
+                  "type": "PLAN",
+                  "description": "This policy integrates with the KICS (Keeping Infrastructure as Code Secure) tool to monitor and enforce security best practices by evaluating the severity of issues detected in the infrastructure code. \nIt issues warnings for information, low, and medium severity issues, providing a detailed count for each category to help prioritize fixes.\nHowever, it takes a stricter stance on high severity issues by denying any run that contains them, ensuring that critical vulnerabilities are addressed before proceeding with deployment.\n\nThe goal is to embed security within the CI/CD process, making sure that infrastructure deployments not only meet functional requirements but also adhere to the highest security standards.\n",
+                  "labels": [
+                    "KICS",
+                    "compliance",
+                    "security",
+                    "severity"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy will give you a warning with all the info, low and medium issues number\n# and deny any run that has a high severity issue.\n\nwarn contains sprintf(message, [info, low, medium]) if {\n\tmessage := \"You have: %d info issues, %d low issues, %d medium issues\"\n\tinfo := input.third_party_metadata.custom.kics.severity_counters.INFO\n\tlow := input.third_party_metadata.custom.kics.severity_counters.LOW\n\tmedium := input.third_party_metadata.custom.kics.severity_counters.MEDIUM\n}\n\ndeny contains sprintf(message, [results, p]) if {\n\tmessage := \"The number of violated policies %d is higher than the threshold %d\"\n\tresults := input.third_party_metadata.custom.kics.severity_counters.HIGH\n\tp := 0\n\tp < results\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n\n# Learn more about how to integrate custom inputs here:\n# https://spacelift.io/blog/integrating-security-tools-with-spacelift\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ219W851DTJCGT4PB4V",
+                  "name": "Mandatory and acceptable labels gcp",
+                  "slug": "mandatory-and-acceptable-labels-gcp",
+                  "type": "PLAN",
+                  "description": "This example policy allows you to specify manadatory and acceptable labels for gcp resources.\n",
+                  "labels": [
+                    "gcp",
+                    "labels",
+                    "plan",
+                    "tags"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nmandatory_labels := {\"mandatory1\", \"mandatory2\"}\n\nacceptable_labels := {\"acceptable1\", \"acceptable2\"}\n\nmandatory_resources := {\n\t\"google_redis_instance\",\n\t\"google_spanner_instance\",\n\t\"google_storage_bucket\",\n}\n\ndeny contains msg if {\n\tsome change in input.spacelift.run.changes\n\tis_mandatory_resource(change.entity.type, mandatory_resources)\n\tlabels := change.entity.data.values.labels\n\tmissing_any_mandatory_label(labels, mandatory_labels)\n\tmsg := sprintf(\n\t\t\"Resource '%s' is missing mandatory labels: %v\",\n\t\t[change.entity.address, which_labels_missing(labels, mandatory_labels)],\n\t)\n}\n\ndeny contains msg if {\n\tsome change in input.spacelift.run.changes\n\tis_mandatory_resource(change.entity.type, mandatory_resources)\n\tlabels := change.entity.data.values.labels\n\thas_non_acceptable_labels(labels, mandatory_labels, acceptable_labels)\n\tmsg := sprintf(\"Resource '%s' has invalid labels.\", [change.entity.address])\n}\n\nis_mandatory_resource(entity_type, resources) if {\n\tentity_type in resources\n}\n\nmissing_any_mandatory_label(labels, mandatory) if {\n\tsome label in mandatory\n\tnot labels[label]\n}\n\nhas_non_acceptable_labels(labels, mandatory, acceptable) if {\n\tsome label in labels\n\tnot mandatory[label]\n\tnot acceptable[label]\n}\n\nwhich_labels_missing(labels, mandatory) := {label |\n\tsome label in mandatory\n\tnot labels[label]\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ2S9YSAQZRZXSDVAB61",
+                  "name": "Mandatory And Acceptable Labels Stack",
+                  "slug": "mandatory-and-acceptable-labels-stack",
+                  "type": "PLAN",
+                  "description": "This policy ensures that stacks adhere to labeling conventions by verifying the presence of mandatory labels and the absence of unacceptable ones. \nMandatory labels such as \"mandatory1\" and \"mandatory2\" must be present for a stack to be compliant. Additionally, while labels \"acceptable1\" and \"acceptable2\" are permitted, the presence of any labels outside these specified acceptable and mandatory categories triggers a denial.\n\nThe policy aims to enforce consistent labeling practices across stacks, facilitating better organization, filtering, and governance of infrastructure resources within Spacelift.\n",
+                  "labels": [
+                    "acceptable",
+                    "compliance",
+                    "labels",
+                    "mandatory",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# METADATA\n# description: Making sure mandatory labels are present and only allowing certain labels\n# entrypoint: true\nmandatory_labels := {\n\t\"mandatory1\",\n\t\"mandatory2\",\n}\n\nacceptable_labels := {\n\t\"acceptable1\",\n\t\"acceptable2\",\n}\n\n# Deny if mandatory labels are not present\ndeny contains msg if {\n\tnot all_mandatory_labels_present(input.spacelift.stack.labels)\n\tmsg := sprintf(\"Stack '%s' does not have all mandatory labels\", [input.spacelift.stack.id])\n}\n\n# Deny if unacceptable labels are present\ndeny contains msg if {\n\thas_unacceptable_labels(input.spacelift.stack.labels)\n\tmsg := sprintf(\"Stack '%s' has unacceptable labels\", [input.spacelift.stack.id])\n}\n\n# Helper function to check if all mandatory labels are present\nall_mandatory_labels_present(labels) if {\n\tall_labels := {label | some label in labels}\n\tmandatory := {label | some label in mandatory_labels}\n\tmandatory_subset_of_all := mandatory - all_labels\n\tcount(mandatory_subset_of_all) == 0\n}\n\n# Helper function to check if there are any unacceptable labels\nhas_unacceptable_labels(labels) if {\n\tall_labels := {label | some label in labels}\n\tallowed_labels := mandatory_labels | acceptable_labels\n\tunallowed := all_labels - allowed_labels\n\tcount(unallowed) > 0\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ3CVQSN0VP2S0M0DAJQ",
+                  "name": "Require Human Review For Drift Detection Reconciliation",
+                  "slug": "require-human-review-for-drift-detection-reconciliation",
+                  "type": "PLAN",
+                  "description": "This policy mandates manual approval for reconciling any detected drifts in infrastructure configurations.\nDrift detection is a crucial aspect of maintaining the desired state of infrastructure, identifying discrepancies between the actual state and the expected configuration as defined in code.\n\nWhen drift is detected, this policy ensures that changes aimed at reconciliation are not automatically applied but instead are subjected to human review.\nThis requirement for manual approval helps in ensuring that the proposed changes are indeed appropriate and in alignment with the organization's infrastructure management policies and practices.\n",
+                  "labels": [
+                    "drift-detection",
+                    "human-review",
+                    "manual-approval",
+                    "plan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nwarn contains \"Drift reconciliation requires manual approval\" if {\n\tinput.spacelift.run.drift_detection\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ3W5HG9QPJ6ZPYG355T",
+                  "name": "Require Human Review For Unreachable Ansible Hosts",
+                  "slug": "require-human-review-for-unreachable-ansible-hosts",
+                  "type": "PLAN",
+                  "description": "This policy targets Ansible, specifically issuing a warning when any of the Ansible hosts are unreachable during execution.\nThe presence of unreachable hosts could indicate potential issues with configuration, network connectivity, or host status, necessitating further investigation.\n\nBy requiring human review in such cases, this policy ensures that these warnings are not overlooked, promoting proactive troubleshooting and resolution to maintain the integrity and reliability of the infrastructure automation tasks.\n",
+                  "labels": [
+                    "ansible",
+                    "human-review",
+                    "plan",
+                    "troubleshooting",
+                    "unreachable-hosts"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy emits warning when some of the Ansbile hosts were unreachable\n# so that a human review is required.\n\nwarn contains \"Some hosts were unreachable\" if {\n\tinput.ansible.dark != {}\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ4CHRR5GDG3D29KCQ3S",
+                  "name": "Require Human Review For Update Deletion",
+                  "slug": "require-human-review-for-update-deletion",
+                  "type": "PLAN",
+                  "description": "Adding resources may ultimately cost a lot of money but it's generally pretty safe from an operational perspective.\nLet's use a `warn` rule to allow changes with only added resources to get automatically applied,\nand require all others to get a human review.\n",
+                  "labels": [
+                    "best-practices",
+                    "plan",
+                    "security",
+                    "warning-policy"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Adding resources may ultimately cost a lot of money but it's generally pretty safe from an operational perspective.\n# Let's use a `warn` rule to allow changes with only added resources to get automatically applied,\n# and require all others to get a human review.\n\nwarn contains sprintf(message, [action, resource.address]) if {\n\tmessage := \"action '%s' requires human review (%s)\"\n\treview := {\"update\", \"delete\"}\n\n\tresource := input.terraform.resource_changes[_]\n\taction := resource.change.actions[_]\n\n\treview[action]\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ4X20FSNK6TF1RCA5JA",
+                  "name": "Require Reasonable Commit Size",
+                  "slug": "require-reasonable-commit-size",
+                  "type": "PLAN",
+                  "description": "To enhance reviewability and manageability of changes, this policy enforces a limit on the commit size by automatically denying or warning against changes that affect more than 50 resources. \nThe threshold is set to ensure changes remain within a reasonable scope, facilitating thorough reviews and minimizing the risk of overlooked issues. \n\nFor PROPOSED runs, changes exceeding this limit will be denied, promoting smaller, more manageable updates. \nFor all other run types, a warning will be issued, still allowing for deployment but with a mandatory human review to ensure careful consideration of extensive changes.\n",
+                  "labels": [
+                    "commit-size",
+                    "manageability",
+                    "plan",
+                    "review"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Massive changes make reviewers miserable. Let's automatically fail all changes that affect more than 50 resources.\n# Let's also allow them to be deployed with mandatory human review nevertheless.\n\nproposed := input.spacelift.run.type == \"PROPOSED\"\n\ndeny contains msg if {\n\tproposed\n\tmsg := too_many_changes[_]\n}\n\nwarn contains msg if {\n\tnot proposed\n\tmsg := too_many_changes[_]\n}\n\ntoo_many_changes contains msg if {\n\tthreshold := 50\n\n\tres := input.terraform.resource_changes\n\tret := count([r | r := res[_]; r.change.actions != [\"no-op\"]])\n\tmsg := sprintf(\"More than %d changes (%d)\", [threshold, ret])\n\n\tret > threshold\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ5FVC5H3RRCJ6VQX3YM",
+                  "name": "Terrascan Violated Policies",
+                  "slug": "terrascan-violated-policies",
+                  "type": "PLAN",
+                  "description": "This policy integrates Terrascan, a comprehensive static code analysis tool for Terraform, to monitor and enforce security best practices. \nIt issues a warning if any violated policies are detected, providing a count of such incidents. \nMore critically, if the number of violated policies exceeds a set threshold (specifically, more than 2), the policy will deny the run, preventing potentially insecure infrastructure changes from being deployed.\n\nThe goal is to embed security within the CI/CD process, ensuring that infrastructure as code (IaC) deployments adhere to established security guidelines and reducing the risk of deploying vulnerable or non-compliant resources.\n",
+                  "labels": [
+                    "compliance",
+                    "plan",
+                    "policy-violation",
+                    "security",
+                    "terrascan"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy checks the number of violated terrascan policies\n# and shows a warning with the number of them, also, if the number of violated policies is greater than 2, it will deny the run.\n\nwarn contains sprintf(message, [results]) if {\n\tmessage := \"You have a couple of violated policies: %d\"\n\tresults := input.third_party_metadata.custom.terrascan.results.scan_summary.violated_policies\n}\n\ndeny contains sprintf(message, [results, p]) if {\n\tmessage := \"The number of violated policies %d is higher than the threshold %d\"\n\tresults := input.third_party_metadata.custom.terrascan.results.scan_summary.violated_policies\n\tp := 2\n\tp < results\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n\n# Learn more about how to integrate custom inputs here:\n# https://spacelift.io/blog/integrating-security-tools-with-spacelift\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ5XT0BC7HY8PF59J1NZ",
+                  "name": "Tfsec High Severity Issues",
+                  "slug": "tfsec-high-severity-issues",
+                  "type": "PLAN",
+                  "description": "This policy is designed to warn about the presence of high severity issues identified by tfsec, a security tool for Terraform code. \nIf the number of high severity issues is below a certain threshold (in this case, less than 5), a warning message is generated to highlight the need for attention and remediation. \nThis proactive approach to security ensures that significant vulnerabilities are addressed promptly, contributing to the maintenance of high security standards in infrastructure as code (IaC) projects.\n\nIntegrating tfsec with Spacelift policies allows teams to automate the security review process, ensuring that critical issues are flagged for resolution before deployment, thus embedding security within the CI/CD pipeline.\n",
+                  "labels": [
+                    "Terraform",
+                    "high-severity",
+                    "security",
+                    "tfsec"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy checks how many high severity issues has tfsec found\n\nwarn contains sprintf(message, [p]) if {\n\tmessage := \"You have a couple of high serverity issues: %d\"\n\tresults := input.third_party_metadata.custom.tfsec.results\n\tp := count({result | result := results[_]; result.severity == \"HIGH\"})\n\tp < 5\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n\n# Learn more about how to integrate custom inputs here:\n# https://spacelift.io/blog/integrating-security-tools-with-spacelift\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ6D97GPN9MPV6KYW77R",
+                  "name": "Trusted Engineers Bypass Review",
+                  "slug": "trusted-engineers-bypass-review",
+                  "type": "PLAN",
+                  "description": "This policy facilitates a streamlined workflow for trusted engineers, allowing their commits to be deployed automatically, under the assumption that the Stack is set to autodeploy and their changes have undergone code review. \nIt specifies an allowlist of individuals whose contributions are considered safe for direct deployment, thereby reducing bottlenecks in the deployment process for routine or low-risk changes.\n\nThe policy aims to balance speed and security by enabling trusted engineers to operate with greater autonomy while ensuring that contributions from others are subject to human review, maintaining a high standard of scrutiny for the majority of changes.\n",
+                  "labels": [
+                    "autodeploy",
+                    "engineers",
+                    "plan",
+                    "review",
+                    "trusted"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Sometimes there are folks who really know what they're doing and changes they introduce can get deployed automatically,\n# especially if they already went through code review.\n#\n# This policy allows commits from allowed individuals to be deployed automatically (assumes Stack is set to autodeploy).\n\nwarn contains sprintf(message, [author]) if {\n\tmessage := \"%s is not on the allow list - human review required\"\n\tauthor := input.spacelift.commit.author\n\tallowed := {\"alice\", \"bob\", \"charlie\"}\n\n\tnot allowed[author]\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ6XZ91Q7HB9S7PGGA01",
+                  "name": "Warn On Change Sensitive Resources",
+                  "slug": "warn-on-change-sensitive-resources",
+                  "type": "PLAN",
+                  "description": "This policy generates warnings for changes to sensitive resources that require human review. It is designed to elevate awareness and ensure careful consideration when performing actions like updates or deletions on critical infrastructure components. \nThe policy targets a predefined list of sensitive resource types, such as IAM users, roles, policies, and security groups within AWS, flagging any proposed updates or deletions for additional scrutiny.\n\nBy enforcing manual review for changes to these sensitive resources, the policy enhances security and governance, helping to prevent inadvertent modifications that could impact system integrity or compliance posture.\n",
+                  "labels": [
+                    "resources",
+                    "review",
+                    "security",
+                    "sensitive"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nwarn contains sprintf(message, [resource.address, action]) if {\n\tmessage := \"resource: %s action %s requires human review\"\n\n\treview := {\"delete\", \"update\"} # Review actions include both \"update\" and \"delete\"\n\n\tresource := input.terraform.resource_changes[_]\n\n\taction := resource.change.actions[_]\n\n\treview[action]\n\n\t# Check if the resource type is among the list of sensitive resource types\n\n\tsensitive_resources := {\n\t\t\"aws_iam_user\",\n\t\t\"aws_iam_role\",\n\t\t\"aws_iam_policy\",\n\t\t\"aws_security_group\",\n\t}\n\n\tsensitive_resources[resource.type]\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ7BEQ2CYT3RT618Z9JR",
+                  "name": "Allow Forks",
+                  "slug": "allow-forks",
+                  "type": "GIT_PUSH",
+                  "description": "This policy adjusts the default behavior to permit runs triggered by pull requests from forked repositories, but only for a whitelist of trusted users or organizations.\nThe intention is to balance openness and collaboration with security, especially in open-source infrastructure projects.\n\nTrusted entities are specified within the policy, ensuring that only contributions from these users or organizations can trigger a propose run, fostering a controlled yet collaborative development environment.\n",
+                  "labels": [
+                    "collaboration",
+                    "forks",
+                    "open-source",
+                    "security"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# By default, runs are not triggered when a forked repository opens a pull request against your repository.\n# This is because of a security concern: if let's say your infrastructure is open source, someone forks it,\n# implements some unwanted junk in there, then opens a pull request for the original repository,\n# it'd run automatically with the prankster's code included.\n#\n# This policy makes an exception for some trusted users/organizations.\n#\n# See https://docs.spacelift.io/concepts/policy/git-push-policy#allow-forks\n\nallow_fork if {\n\tvalid_owners := {\"johnwayne\", \"microsoft\"}\n\tvalid_owners[input.pull_request.head_owner]\n}\n\npropose := true\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ7WCBBZBGRMKN3531GE",
+                  "name": "Cancel In-Progress Runs",
+                  "slug": "cancel-in-progress-runs",
+                  "type": "GIT_PUSH",
+                  "description": "This policy is designed to pre-empt and cancel any Spacelift runs that are currently in progress but meet specific criteria. It targets PROPOSED runs that are QUEUED and associated with the same branch as the pull request initiating the current run.\nThis capability is particularly useful in fast-paced development environments where the most recent push should take precedence, ensuring resources are allocated to the latest changes and reducing wait times for integration or deployment.\n\nBy automatically cancelling queued or awaiting confirmation runs for the same branch, this policy optimizes the CI/CD pipeline's efficiency and responsiveness.\n",
+                  "labels": [
+                    "cancel",
+                    "in-progress",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# The push policy can be used to have the new run pre-empt any runs that are\n# currently in progress. The input document includes the in_progress key, which\n# contains an array of runs that are currently either still queued or are awaiting\n# human confirmation. You can use it in conjunction with the cancel rule like this:\ncancel contains run.id if {\n\trun := input.in_progress[_]\n\trun.type == \"PROPOSED\"\n\trun.state == \"QUEUED\"\n\trun.branch == input.pull_request.head.branch\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ88CVMZ4FVJAPMK92DV",
+                  "name": "Create Proposed Run From Env Pr Labels",
+                  "slug": "create-proposed-run-from-env-pr-labels",
+                  "type": "GIT_PUSH",
+                  "description": "This policy automates the creation of proposed runs based on the detection of pull request (PR) labels that are prefixed with \"env:\".\nIt's designed to facilitate environment-specific workflows, where the presence of an environment label on a PR triggers a proposed run for further review or action.\nThis capability ensures that changes intended for specific environments are automatically flagged for attention, aligning deployment strategies with environmental contexts and requirements.\n\nThe policy bridges development workflows with deployment practices, enabling a more targeted approach to managing changes across different environments.\n",
+                  "labels": [
+                    "automation",
+                    "environment",
+                    "proposed-run",
+                    "pull-request",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example Git push policy will create proposed runs when it detects\n# a pull request label that starts with env:\n# You can read more about push policies here:\n# https://docs.spacelift.io/concepts/policy/git-push-policy\n\npropose if {\n\tsome label in input.stack.labels\n\tstartswith(label, \"env:\")\n\tsome pr_label in input.pull_request.labels\n\tlabel == pr_label\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ8Q1DNXQ5NYQ32TWSMD",
+                  "name": "Deploy With Git Tag",
+                  "slug": "deploy-with-git-tag",
+                  "type": "GIT_PUSH",
+                  "description": "This policy is designed to trigger deployments based on the creation of new git tags, specifically those that follow semantic versioning (e.g., X.Y.Z). It leverages regex to ensure that only tags matching the semantic version format initiate a tracked run, focusing deployment processes on versioned releases rather than branch updates.\nThis approach aligns deployment activities with version milestones, facilitating a clear and manageable release process.\n",
+                  "labels": [
+                    "deployment",
+                    "git",
+                    "semantic-versioning",
+                    "tag"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy deploys from a newly created git tag rather than from a branch\n\ntrack if {\n\tregex.match(`^\\d+\\.\\d+\\.\\d+$`, input.push.tag)\n}\n\npropose if {\n\tinput.push.branch != input.stack.branch\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ952J6K25E57409HYZJ",
+                  "name": "Deploy With Pr Label",
+                  "slug": "deploy-with-pr-label",
+                  "type": "GIT_PUSH",
+                  "description": "This policy enables automatic deployment based on the presence of a specific label (\"deploy\") on a pull request (PR). It ensures streamlined operations where:\n- Tracked runs are triggered for PRs marked with the \"deploy\" label, facilitating immediate deployment actions for approved changes.\n- Proposals for runs are the default behavior, ensuring that all changes are evaluated, but only those with explicit deployment intent are automatically progressed.\n\nThe policy optimizes the deployment process by aligning runs with development workflows, specifically leveraging PR labels to control deployment timing and execution, enhancing both automation and control within CI/CD pipelines.\n",
+                  "labels": [
+                    "automation",
+                    "deploy",
+                    "label",
+                    "pull-request",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy responds to a particular PR label (\"deploy\") to automatically deploy changes\n\nis_pr if {\n\tnot is_null(input.pull_request)\n}\n\nlabeled if {\n\t\"deploy\" in input.pull_request.labels\n}\n\ntrack if {\n\tis_pr\n\tlabeled\n}\n\npropose := true\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJ9NMGEGAR8NMK2F7BK7",
+                  "name": "Ignore Changes Outside Root",
+                  "slug": "ignore-changes-outside-root",
+                  "type": "GIT_PUSH",
+                  "description": "Designed for Git push events, this policy filters out all changes that do not occur within a project's root directory. It standardizes the workflow by:\n- Triggering tracked runs for changes within the project root on the tracked branch.\n- Proposing runs for changes within the project root on all other branches.\n- Ignoring tag pushes and any changes outside the project root.\n\nThe policy's focus is to maintain relevance and efficiency in CI/CD pipelines by ensuring that only significant changes\u2014specifically, source files within the project root\u2014initiate Spacelift runs.\n",
+                  "labels": [
+                    "ignore-external",
+                    "project-root",
+                    "push",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example Git push policy ignores all changes that are outside a project's\n# root. Other than that, it follows the defaults - pushes to the tracked branch\n# trigger tracked runs, pushes to all other branches trigger proposed runs, tag\n# pushes are ignored.\n#\n# You can read more about push policies here:\n# https://docs.spacelift.io/concepts/policy/git-push-policy\n\ntrack if {\n\taffected\n\tinput.push.branch == input.stack.branch\n}\n\npropose if {\n\taffected\n}\n\nignore if {\n\tnot affected\n}\n\nignore if {\n\tinput.push.tag != \"\"\n}\n\n# Here's a definition of an affected file - its path must both:\n# a) start with the Stack's project root, and;\n# b) end with \".tf\", indicating that it's a Terraform source file;\naffected if {\n\tfilepath := input.push.affected_files[_]\n\n\tstartswith(filepath, input.stack.project_root)\n\tendswith(filepath, \".tf\")\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJA3ZD6XKX6VK07Q8EEM",
+                  "name": "Lock Button Pauses Runs By Pushes",
+                  "slug": "lock-button-pauses-runs-by-pushes",
+                  "type": "GIT_PUSH",
+                  "description": "This push policy introduces a condition where runs are paused if the stack is locked, ensuring that no automated processes interfere during critical periods. \n- Proposed runs are considered for all branches under the same non-locked condition.\n- Any push to a branch without changes is ignored.\n\nThe policy enhances control over the deployment pipeline, allowing users to lock the stack as a means to pause automated runs, providing an additional layer of security and management for infrastructure changes.\n",
+                  "labels": [
+                    "control",
+                    "lock",
+                    "pause",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This is the default push policy with the condition that the locked button cannot be set by anyone.\n\ntrack if {\n\taffected\n\tinput.push.branch == input.stack.branch\n\tinput.stack.locked_by == null\n}\n\npropose if {\n\taffected\n\tinput.push.branch != \"\"\n\tinput.stack.locked_by == null\n}\n\nignore if {\n\tinput.push.branch == \"\"\n}\n\naffected if {\n\tstrings.any_prefix_match(input.push.affected_files, input.stack.project_root)\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJAHZES32P3AA1YQEQ3A",
+                  "name": "PR Comment Driven Actions",
+                  "slug": "pr-comment-driven-actions",
+                  "type": "GIT_PUSH",
+                  "description": "This policy leverages the power of pull request comments to drive actions, establishing a direct line between commentary and deployment. Key requirements include:\n- Read access to `issues` and subscription to `issues:comments` events on the version control system (VCS) provider.\nIt operates under the premise that only comments starting with `/spacelift` are considered, minimizing the risk of unintended deployments.\nThis selective approach ensures that Spacelift actions, such as deployments, are explicitly triggered by designated commands within PR comments, enhancing both security and specificity in CI/CD workflows.\n",
+                  "labels": [
+                    "actions",
+                    "comments",
+                    "pull-request",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy requires the following permissions on your VCS provider:\n# - Read access to `issues` repository permissions\n# - Subscribe to `issues:comments` event\n# These are likely to be set already. If so, no action is needed.\n#\n# Assuming the above permissions are configured on your VCS application,\n# you can then access pull request comment event data from within your Push policy,\n# and build customizable workflows using this data.\n#\n# Please note that Spacelift will only evaluate comments that begin with`/spacelift`\n# to prevent users from unintended actions against their resources managed by Spacelift.\n# Furthermore, Spacelift only processes event data for new comments,\n# and will not receive event data for edited or deleted comments.\n\ntrack if {\n\tinput.pull_request.action == \"commented\"\n\tinput.pull_request.comment == concat(\" \", [\"/spacelift\", \"deploy\", input.stack.id])\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJB66GAMXAZBBVF0MVER",
+                  "name": "PR Comment Driven User",
+                  "slug": "pr-comment-driven-user",
+                  "type": "GIT_PUSH",
+                  "description": "This push policy leverages pull request comments to initiate Spacelift runs, specifically designed for customizable workflows.\nIt requires read access to repository issues and subscription to issues comments events on the VCS provider.\nThe policy processes comments beginning with `/spacelift` to trigger actions, such as deploying a stack, provided the comment is made by a member of the development team.\nThis ensures controlled execution based on team member inputs without processing edited or deleted comments.\n",
+                  "labels": [
+                    "comments",
+                    "deployment",
+                    "pull-request",
+                    "team"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy requires the following permissions on your VCS provider:\n# - Read access to `issues` repository permissions\n# - Subscribe to `issues:comments` event\n# These are likely to be set already. If so, no action is needed.\n#\n# Assuming the above permissions are configured on your VCS application,\n# you can then access pull request comment event data from within your Push policy,\n# and build customizable workflows using this data.\n#\n# Please note that Spacelift will only evaluate comments that begin with`/spacelift`\n# to prevent users from unintended actions against their resources managed by Spacelift.\n# Furthermore, Spacelift only processes event data for new comments,\n# and will not receive event data for edited or deleted comments.\n\ndevelopment_team := {\"user1\", \"user2\"}\n\n# This rule returns true if the user is in the development team\nis_development_team_member(user) if {\n\tuser in development_team\n}\n\n# This rule creates a tracked run from a comment when it is a valid team member\ntrack if {\n\tinput.pull_request.action == \"commented\"\n\tinput.pull_request.comment == concat(\" \", [\"/spacelift\", \"deploy\", input.stack.id])\n\tis_development_team_member(input.pull_request.action_initiator)\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJBQ4RDJQVQ5C9G028K4",
+                  "name": "PRs Only",
+                  "slug": "prs-only",
+                  "type": "GIT_PUSH",
+                  "description": "This policy ensures that runs are closely aligned with pull request (PR) activities, focusing on enhancing the integration and deployment workflows.\nIt triggers proposed runs for any PR event, while tracked runs are specifically reserved for PR merges into the tracked branch.\nBy ignoring all non-PR related events, this policy streamlines the deployment process, ensuring that only meaningful changes that have undergone review are considered for deployment.\nThis approach is critical for maintaining high standards of code quality and efficiency.\n",
+                  "labels": [
+                    "merge",
+                    "pull-request",
+                    "push"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy triggers proposed runs only if a PR exists,\n# and tracked runs only from PR merges.\n# All non-PR events are ignored.\n\nis_pr if {\n\tnot is_null(input.pull_request)\n}\n\ntrack if {\n\tis_pr\n\tinput.push.branch == input.stack.branch\n}\n\npropose if {\n\tis_pr\n}\n\nignore if {\n\tnot is_pr\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJC6WTYGP8NXW9S4343P",
+                  "name": "Set Head Commit No Trigger",
+                  "slug": "set-head-commit-no-trigger",
+                  "type": "GIT_PUSH",
+                  "description": "This policy is designed to set the head commit without initiating a tracked run, addressing scenarios such as where the run is triggered by external processes. \nIt ensures that the head commit is updated to reflect the latest changes in the tracked branch. \nThis approach is particularly useful in complex CI/CD workflows where multiple triggers may result in redundant runs, offering a solution to streamline the process and focus on efficiency.\n",
+                  "labels": [
+                    "commit",
+                    "no-trigger",
+                    "push",
+                    "track"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy sets the head commit but does not trigger a tracked run.\n# This is helpful when the tracked run gets triggered from elsewhere.\n# See https://docs.spacelift.io/concepts/policy/git-push-policy#corner-case-track-dont-trigger\n\ntrack if {\n\tinput.push.branch == input.stack.branch\n}\n\npropose if {\n\tnot track\n}\n\nnotrigger := true\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJCMN9ACTNERGQPG5RP2",
+                  "name": "Tag Driven Tf Module Release Flow",
+                  "slug": "tag-driven-tf-module-release-flow",
+                  "type": "GIT_PUSH",
+                  "description": "This policy facilitates a tag-driven release flow for Terraform modules.\nWhen a new tag is pushed to a module repository, the policy triggers a tracked run, ensuring that the module version is updated accordingly.\nIt specifically accounts for tags prefixed with \"v\", stripping this prefix to comply with the Terraform Module Registry's versioning format, which requires numeric \"X.X.X\" versions.\nThis approach streamlines the release process, allowing for automatic updates and version tracking within the Spacelift environment.\n",
+                  "labels": [
+                    "module",
+                    "release",
+                    "tag",
+                    "terraform"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# When attached to a module, this policy will trigger a tracked run when a tag event is detected.\n# It then parses the tag event data and uses that value for the module version.\n# Here, we remove a git tag prefixed with \"v\" as the Terraform Module Registry only supports versions in a numeric \"X.X.X\" format.\n\nmodule_version := trim_prefix(input.push.tag, \"v\")\n\ntrack if {\n\tinput.push.tag != \"\"\n}\n\npropose := true\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJD1HERFGHB2RZ9JM3T1",
+                  "name": "Terragrunt Monorepo Ignore Changes Outside Root",
+                  "slug": "terragrunt-monorepo-ignore-changes-outside-root",
+                  "type": "GIT_PUSH",
+                  "description": "This push policy is tailored for Terragrunt monorepo setups, where it's crucial to focus on changes within specific project roots. It ensures that only changes within a project's root directory trigger Spacelift runs. The policy distinguishes between:\n-Tracked runs triggered by pushes to the tracked branch with changes in the root.\n-Proposed runs for changes in the root on other branches.\n-Tag pushes are ignored to maintain focus on relevant changes.\n\nThe policy considers files affected if they are within the stack's project root and are either Terraform (.tf), HCL (.hcl), or rego (.rego) files, aligning with the common file types used in infrastructure as code environments.\n",
+                  "labels": [
+                    "git",
+                    "monorepo",
+                    "push",
+                    "terragrunt"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example Git push policy ignores all changes that are outside a project's\n# root. Other than that, it follows the defaults - pushes to the tracked branch\n# trigger tracked runs, pushes to all other branches trigger proposed runs, tag\n# pushes are ignored.\n#\n# You can read more about push policies here:\n# https://docs.spacelift.io/concepts/policy/git-push-policy\n\ntrack if {\n\taffected\n\tinput.push.branch == input.stack.branch\n}\n\npropose if {\n\taffected\n}\n\nignore if {\n\tnot affected\n}\n\nignore if {\n\tinput.push.tag != \"\"\n}\n\n# Here's a definition of an affected file - its path must:\n# a) start with the Stack's project root, and;\n# b) end with \".tf\", indicating that it's a Terraform source file;\naffected if {\n\tsome filepath in input.push.affected_files\n\n\tstartswith(filepath, input.stack.project_root)\n\tendswith(filepath, \".tf\")\n}\n\n# OR\n\n# a) start with the Stack's project root, and;\n# b) end with \".hcl\", indicating that it's a Terraform source file;\naffected if {\n\tsome filepath in input.push.affected_files\n\n\tstartswith(filepath, input.stack.project_root)\n\tendswith(filepath, \".hcl\")\n}\n\n# OR\n\n# a) start with the Stack's project root, and;\n# b) end with \".rego\", indicating that it's a rego policy file;\naffected if {\n\tsome filepath in input.push.affected_files\n\n\tstartswith(filepath, input.stack.project_root)\n\tendswith(filepath, \".rego\")\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": "MDFIUlBGQkpEMUhFUkZHSEIyUlo5Sk0zVDE=",
+              "hasNextPage": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "status": 200,
+      "response": {
+        "data": {
+          "searchPolicyTemplates": {
+            "edges": [
+              {
+                "node": {
+                  "id": "01HRPFBJDFJA0A9Y3GZJK74BPC",
+                  "name": "Track Using Labels",
+                  "slug": "track-using-labels",
+                  "type": "GIT_PUSH",
+                  "description": "This push policy is designed to enable dynamic start tracked/proposed runs within stacks, based on changes to files that match specific criteria. \nIt operates by checking for consistency between the branch of an incoming push and the stack's designated branch. \nAdditionally, it leverages stack labels to identify and act upon changes in specific directories or files with certain extensions. \nLabels such as \"trackeddirectories:\" and \"trackedextensions:\" are used to define these criteria. \nThe policy decides to trigger a track or propose run based on whether the changes affect the files in these tracked paths or extensions.\n",
+                  "labels": [
+                    "directories",
+                    "extensions",
+                    "labels",
+                    "proposed",
+                    "tracked"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\ntrack if {\n\tinput.push.branch == input.stack.branch\n\taffected\n}\n\npropose if {\n\tinput.push.branch != \"\"\n}\n\nignore if {\n\tnot affected\n}\n\n# Extract and use tracked directories and extensions from labels\ntracked_directories contains tracked_directory if {\n\tlabel := input.stack.labels[_]\n\tstartswith(label, \"trackeddirectories:\")\n\ttracked_directory := split(label, \":\")[1]\n}\n\ntracked_extensions contains tracked_extension if {\n\tlabel := input.stack.labels[_]\n\tstartswith(label, \"trackedextensions:\")\n\ttracked_extension := split(label, \":\")[1]\n}\n\naffected if {\n\tsome i, j\n\tpath := input.push.affected_files[i]\n\tstartswith(path, tracked_directories[j])\n}\n\naffected if {\n\tsome i, j\n\tpath := input.push.affected_files[i]\n\tendswith(path, tracked_extensions[j])\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJDXYG019NRP5SY72QPH",
+                  "name": "Automated Retries",
+                  "slug": "automated-retries",
+                  "type": "TRIGGER",
+                  "description": "Sometimes Terraform or Pulumi deployments fail for a reason that has nothing to do with the code \n- think eventual consistency between various cloud subsystems, transient API errors etc. \nThis trigger policy will restart the failed run.\n",
+                  "labels": [
+                    "automated",
+                    "failed",
+                    "retries",
+                    "trigger"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Sometimes Terraform or Pulumi deployments fail for a reason that has nothing to do\n# with the code - think eventual consistency between various cloud subsystems, transient\n# API errors etc. It would be great if you could restart the failed run. Oh, and let's\n# make sure new runs are not created in a crazy loop - since policy-triggered runs\n# trigger another policy evaluation:\n\ntrigger contains stack.id if {\n\tstack := input.stack\n\tinput.run.state == \"FAILED\"\n\tinput.run.type == \"TRACKED\"\n\tis_null(input.run.triggered_by)\n}\n\n# Note: This will also prevent user-triggered runs from being retried.\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJEDYB4TNB6Q1S2GH3JS",
+                  "name": "Trigger Dependencies Via Labels With State",
+                  "slug": "trigger-dependencies-via-labels-with-state",
+                  "type": "TRIGGER",
+                  "description": "This policy automates the triggering of dependencies based on specific labels and state of the stack. \n",
+                  "labels": [
+                    "dependencies",
+                    "labels",
+                    "state",
+                    "trigger"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy will cause every stack that declares dependency on the current stack\n# and state to get triggered when the conditions are met.\n#\n# You can read more about trigger policies here:\n# https://docs.spacelift.io/concepts/policy/trigger-policy\n\ntrigger contains stack.id if {\n\tinput.run.type == \"TRACKED\"\n\tsome stack in input.stacks\n\tsome label in stack.labels\n\tlabel == concat(\"\", [\n\t\t\"depends-on:\", input.stack.id,\n\t\t\"|state:\", input.run.state,\n\t])\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01HRPFBJFA58HFP7707XN3XZRD",
+                  "name": "Trigger Hardcoded Dependencies",
+                  "slug": "trigger-hardcoded-dependencies",
+                  "type": "TRIGGER",
+                  "description": "This trigger policy facilitates the management of hardcoded dependencies within your stacks. By specifying dependencies\ndirectly, it ensures that necessary precursors are met before proceeding with deployments or updates. \n",
+                  "labels": [
+                    "dependencies",
+                    "hardcoded",
+                    "order",
+                    "trigger"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy triggers a predefined list of Stacks when a Run finishes successfully\n# to create a complex workflow that spans multiple Stacks.\n\ntrigger contains \"stack-one\" if {\n\tfinished\n}\n\ntrigger contains \"stack-two\" if {\n\tfinished\n}\n\ntrigger contains \"stack-three\" if {\n\tfinished\n}\n\nfinished if {\n\tinput.run.state == \"FINISHED\"\n\tinput.run.type == \"TRACKED\"\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01J7EB0CPCR22V5FGYRVA6WQ7M",
+                  "name": "Notification to Author of Stack Failure",
+                  "slug": "notification-to-author-of-stack-failure",
+                  "type": "NOTIFICATION",
+                  "description": "This policy is used to write a comment on the GitHub Pull Request which triggered a Spacelift Stack failure and/or sends a Slack message to the user.\n",
+                  "labels": [
+                    "PR",
+                    "comment",
+                    "failure",
+                    "github",
+                    "notification",
+                    "pull-request",
+                    "run",
+                    "slack"
+                  ],
+                  "body": "# Notify author of PR/commit which potentially introduced failure of a Spacelift Stack\n\npackage spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\nrun_url := sprintf(\n\t\"https://%s.app.spacelift.io/stack/%s/run/%s\",\n\t[input.account.name, input.run_updated.stack.id, input.run_updated.run.id],\n)\n\n# Mapping of GitHub usernames to Slack user IDs since display names can't be tagged\n# https://api.slack.com/reference/surfaces/formatting#mentioning-users\ngithub_to_slack := {\n\t\"GITHUB_USERNAME_EXAMPLE1\": \"SLACK_ID_EXAMPLE1\",\n\t\"GITHUB_USERNAME_EXAMPLE2\": \"SLACK_ID_EXAMPLE2\",\n}\n\ngithub_author := input.run_updated.run.commit.author\n\n# Function to get Slack ID corresponding to GH username from the map if exists, else, mention @here for Slack notification\nretrieve_slack_user_id(github_username) := slack_id if {\n\tslack_id := github_to_slack[github_username]\n} else := \"here\"\n\n# Ensure this is a tracked run and it failed\ntracked_failed if {\n\tinput.run_updated.run.type == \"TRACKED\"\n\tinput.run_updated.run.state == \"FAILED\"\n}\n\n# Notify via Slack of the failure, mentioning author of the tracked commit that Spacelift ran on\n# Hyperlinks defined as <http://www.example.com|This message *is* a link> - https://api.slack.com/reference/surfaces/formatting#linking-urls\nslack contains {\n\t\"channel_id\": \"YOUR_SLACK_CHANNEL\",\n\t\"message\": sprintf(\n\t\tconcat(\"\", [\n\t\t\t\"\u26a0\ufe0fSpacelift Stack Failure\u26a0\ufe0f - `%s`\\n\",\n\t\t\t\"Hey <@%s>, your commit/PR introduced changes that potentially caused the failure of the `%s` stack.\\n\",\n\t\t\t\"Check out the <%s|run details here.>\\n\",\n\t\t\t\"Tracked Commit: <%s|%s>\",\n\t\t]),\n\t\t[\n\t\t\tinput.run_updated.stack.name,\n\t\t\tslack_user_id,\n\t\t\tinput.run_updated.stack.name,\n\t\t\trun_url,\n\t\t\tinput.run_updated.run.commit.url,\n\t\t\tinput.run_updated.run.commit.hash,\n\t\t],\n\t),\n} if {\n\ttracked_failed\n\tslack_user_id := retrieve_slack_user_id(github_author)\n}\n\n# Write a comment on the PR that introduced the change where this stack failed\n# Use `deduplication_key` to update existing comment related to stack in place, so multiple failures of the same stack won't comment again\npull_request contains {\n\t\"commit\": input.run_updated.run.commit.hash,\n\t\"body\": sprintf(\n\t\tconcat(\"\", [\n\t\t\t\"## \u26a0\ufe0fSpacelift Stack Failure\u26a0\ufe0f\\n\",\n\t\t\t\"@%s - This pull request was deployed and the following Spacelift stack failed:\\n\",\n\t\t\t\"* \u26d4\ufe0f `%s` - [view the run here](%s) \u26d4\ufe0f\",\n\t\t]),\n\t\t[\n\t\t\tgithub_author,\n\t\t\tinput.run_updated.stack.id,\n\t\t\trun_url,\n\t\t],\n\t),\n\t\"deduplication_key\": deduplication_key,\n} if {\n\ttracked_failed\n\tdeduplication_key := input.run_updated.stack.id\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01J7EB0CQ2TCCVXX83YHQWSXTD",
+                  "name": "Notification as a comment on your pull request which summarises your logs",
+                  "slug": "notification-as-a-comment-on-your-pull-request-which-summarises-your-logs",
+                  "type": "NOTIFICATION",
+                  "description": "This policy will add a comment to a pull request where it will list all the resources that were added, changed, deleted, moved, imported or forgotten.\n",
+                  "labels": [
+                    "PR",
+                    "comment",
+                    "github",
+                    "notification",
+                    "pull-request",
+                    "run",
+                    "slack"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# regal ignore:line-length\nheader := sprintf(\"### Resource changes ([link](%s))\\n\\n![add](https://img.shields.io/badge/add-%d-brightgreen) ![change](https://img.shields.io/badge/change-%d-yellow) ![destroy](https://img.shields.io/badge/destroy-%d-red) ![import](https://img.shields.io/badge/import-%d-blue) ![move](https://img.shields.io/badge/move-%d-purple) ![forget](https://img.shields.io/badge/forget-%d-b07878) \\n\\n| Action | Resource | Changes |\\n| --- | --- | --- |\", [input.run_updated.urls.run, count(added), count(changed), count(deleted), count(imported), count(moved), count(forgotten)])\n\naddedresources := concat(\"\\n\", added)\n\nchangedresources := concat(\"\\n\", changed)\n\ndeletedresources := concat(\"\\n\", deleted)\n\nimportedresources := concat(\"\\n\", imported)\n\nmovedresources := concat(\"\\n\", moved)\n\nforgottenresources := concat(\"\\n\", forgotten)\n\nadded contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Added | `%s` | <details><summary>Value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.action == \"added\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\nadded contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Added | `%s` | <details><summary>Value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.action == \"destroy-Before-create-replaced\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\nadded contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Added | `%s` | <details><summary>Value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.action == \"create-Before-destroy-replaced\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\nchanged contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Changed | `%s` | <details><summary>New value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.entity.entity_type == \"resource\"\n\tx.action == \"changed\"\n\tnot x.moved\n}\n\ndeleted contains row if {\n\tsome x in input.run_updated.run.changes\n\trow := sprintf(\"| Deleted | `%s` | :x: |\", [x.entity.address])\n\tx.action == \"deleted\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\ndeleted contains row if {\n\tsome x in input.run_updated.run.changes\n\trow := sprintf(\"| Deleted | `%s` | :x: |\", [x.entity.address])\n\tx.action == \"destroy-Before-create-replaced\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\ndeleted contains row if {\n\tsome x in input.run_updated.run.changes\n\trow := sprintf(\"| Deleted | `%s` | :x: |\", [x.entity.address])\n\tx.action == \"create-Before-destroy-replaced\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\nimported contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Imported | `%s` | <details><summary>New value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.action == \"import\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\nmoved contains row if {\n\tsome x in input.run_updated.run.changes\n\n\t# regal ignore:line-length\n\trow := sprintf(\"| Moved | `%s` | <details><summary>New value</summary>`%s`</details> |\", [x.entity.address, x.entity.data.values])\n\tx.entity.entity_type == \"resource\"\n\tx.moved\n}\n\nforgotten contains row if {\n\tsome x in input.run_updated.run.changes\n\trow := sprintf(\"| Forgotten | `%s` | :x: |\", [x.entity.address])\n\tx.action == \"forget\"\n\tx.entity.entity_type == \"resource\"\n\tnot x.moved\n}\n\n# regal ignore:line-length\npull_request contains {\"commit\": input.run_updated.run.commit.hash, \"body\": replace(replace(concat(\"\\n\", [header, addedresources, changedresources, deletedresources, importedresources, movedresources, forgottenresources]), \"\\n\\n\\n\", \"\\n\"), \"\\n\\n\", \"\\n\")} if {\n\tinput.run_updated.run.state == \"FINISHED\"\n\tinput.run_updated.run.type == \"PROPOSED\"\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01J7EB0D96E9M1NH7526FGVJZ8",
+                  "name": "Trivy High Severity Issues",
+                  "slug": "trivy-high-severity-issues",
+                  "type": "PLAN",
+                  "description": "This policy is designed to warn about the presence of high severity issues identified by Trivy, a security tool for scanning vulnerabilities and misconfigurations in IaC projects, including Terraform code. The policy specifically looks for high severity misconfigurations within the provided scan results.\nWhen high severity issues are detected, the policy generates a warning message to highlight these vulnerabilities. This approach ensures that significant security issues are addressed promptly, contributing to the maintenance of high security standards in IaC projects.\n\nIntegrating Trivy with Spacelift policies allows teams to automate the security review process, ensuring that critical issues are flagged for resolution before deployment.\n",
+                  "labels": [
+                    "Terraform",
+                    "high-severity",
+                    "security",
+                    "trivy"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This policy returns warnings for every high severity issue trivy finds\n\nwarn contains sprintf(\"Warning due to high severity misconfiguration: %s\", [title]) if {\n\tmisconf := input.third_party_metadata.custom.trivy.Results[_].Misconfigurations[_]\n\tmisconf.Severity == \"HIGH\"\n\tmisconf.Status == \"FAIL\"\n\ttitle := misconf.Title\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n\n# Learn more about how to integrate custom inputs here:\n# https://spacelift.io/blog/integrating-security-tools-with-spacelift\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01J7KD0GSENY0F66HBD2RZ8R7H",
+                  "name": "Advanced Automated Retries",
+                  "slug": "advanced-automated-retries",
+                  "type": "TRIGGER",
+                  "description": "Sometimes deployments fail for a reason that has nothing to do with the code\n- think eventual consistency between various cloud subsystems, transient API errors etc.\nThis trigger policy will restart the failed run up to a maximum number of times (default: 3). This policy can also be configured\non a per stack basis by setting `spacelift_retry:<number>` on the stacks labels.\n",
+                  "labels": [
+                    "automated",
+                    "failed",
+                    "retries",
+                    "trigger"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# set the maximum number of retries\ndefault max_retries := 3\n\n# label to use for stack specific retries\ndefault retry_count_key := \"spacelift_retry\"\n\n# FN: gets the value of an array of retry labels\nobtain_retries_count(arr) := {x |\n\tnew_arr := array.concat(arr, [sprintf(\"%s:0\", [retry_count_key])])\n\tsome i\n\tparts := split(new_arr[i], \":\")\n\tparts[0] == retry_count_key\n\tx := to_number(parts[1])\n}\n\n# Get the value of the highest retry stack label\nretry_label := max(obtain_retries_count(input.stack.labels))\n\n# Set the flag for the next iteration\nnew_retries := max(obtain_retries_count(input.run.flags)) + 1\n\nretry_flag := sprintf(\"%s:%d\", [retry_count_key, new_retries])\n\nflag contains retry_flag\n\nis_failed_and_tracked if {\n\tinput.run.state == \"FAILED\"\n\tinput.run.type == \"TRACKED\"\n}\n\n# trigger the stack if the max retry label is 0\ntrigger contains stack.id if {\n\tstack := input.stack\n\tis_failed_and_tracked\n\tretry_label <= 0\n\tnew_retries <= max_retries\n}\n\n# trigger the stack if the max retry label is defined but only up to the maximum retries\ntrigger contains stack.id if {\n\tstack := input.stack\n\tis_failed_and_tracked\n\tretry_label > 0\n\tnew_retries <= retry_label\n\tnew_retries <= max_retries\n}\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01JEQXP3ZN2YWZRV703DDFD3AH",
+                  "name": "Trigger Dependencies Via Labels",
+                  "slug": "trigger-dependencies-via-labels",
+                  "type": "TRIGGER",
+                  "description": "This policy automates triggering dependencies based on labels and state information. It allows for sophisticated\ndependency management within Spacelift, ensuring that infrastructure changes are propagated correctly across\ndependent stacks.\n",
+                  "labels": [
+                    "dependencies",
+                    "labels",
+                    "state",
+                    "trigger"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# This example trigger policy will cause every stack that declares dependency on\n# the current one to get triggered when the current one is successfully updated.\n#\n# You can read more about trigger policies here:\n# https://docs.spacelift.io/concepts/policy/trigger-policy\n\ntrigger contains stack.id if {\n\tinput.run.state == \"FINISHED\"\n\tsome stack in input.stacks\n\tsome label in stack.labels\n\tlabel == concat(\"\", [\"depends-on:\", input.stack.id])\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01M7Q4VN3BTNR311VC385RVT14",
+                  "name": "Discord | Drift Detection with Changes",
+                  "slug": "discord-drift-detection-with-changes",
+                  "type": "NOTIFICATION",
+                  "description": "This policy sends a notification to a Discord webhook when drift is detected on a stack and there are actual changes to be applied.\nIt sends a rich embed with links directly to the affected stack and run in Spacelift.\n",
+                  "labels": [
+                    "discord",
+                    "drift-detection",
+                    "notification",
+                    "webhook"
+                  ],
+                  "body": "package spacelift\n\n# Send updates about tracked runs to discord.\nwebhook[wbdata] {\n\t# 1. Identify the specific webhook\n\tendpoint := input.webhook_endpoints[_]\n\tendpoint.id == \"discord-webhook\" # Change this to your discord webhook ID\n\n\t# 2. Extract stack and run info\n\tstack := input.run_updated.stack\n\trun := input.run_updated.run\n\n\t# 3. Construct the payload\n\twbdata := {\n\t\t\"endpoint_id\": endpoint.id,\n\t\t\"payload\": {\n\t\t\t\"embeds\": [{\n\t\t\t\t\"title\": \"Drift detected!\",\n                # change your URL below to app.us.spacelift.io if you are using the US region or app.eu.spacelift.io if you are using the EU region\n\t\t\t\t\"description\": sprintf(\"Stack: [%s](https://%s.app.spacelift.io/stack/%s)\\nRun ID: [%s](https://%s.app.spacelift.io/stack/%s/run/%s)\\nRun state: %s\", [stack.name, input.account.name, stack.id, run.id, input.account.name, stack.id, run.id, run.state]),\n\t\t\t}],\n\t\t},\n\t}\n\n\t# 4. Trigger logic: ONLY if drift is detected with more than 0 changes\n\tinput.run_updated.run.drift_detection\n\tcount(input.run_updated.run.changes) > 0\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01M7Q4VN3P08QJ167JK61STS24",
+                  "name": "MS Teams | Drift Detection with Changes",
+                  "slug": "ms-teams-drift-detection-with-changes",
+                  "type": "NOTIFICATION",
+                  "description": "This policy sends a notification to a Microsoft Teams webhook when drift is detected on a stack and there are actual changes to be applied.\nIt uses an Adaptive Card to provide a rich visual summary of the drift, including the stack name, current state, and the number of resources affected.\n",
+                  "labels": [
+                    "drift-detection",
+                    "ms-teams",
+                    "notification",
+                    "webhook"
+                  ],
+                  "body": "package spacelift\n\nwebhook[wbdata] {\n\t# 1. Identify the specific webhook\n\tendpoint := input.webhook_endpoints[_]\n\tendpoint.id == \"teams-webhook\" # Change this to your webhook ID\n\n\t# 2. Logic: Only trigger if drift is detected and there are changes\n\tinput.run_updated.run.drift_detection\n\tcount(input.run_updated.run.changes) > 0\n\n\t# 3. Helpers for readability\n\tstack := input.run_updated.stack\n\trun := input.run_updated.run\n\n\t# 4. Construct the payload\n\twbdata := {\n\t\t\"endpoint_id\": endpoint.id,\n\t\t\"payload\": {\n\t\t\t\"type\": \"message\",\n\t\t\t\"attachments\": [{\n\t\t\t\t\"contentType\": \"application/vnd.microsoft.card.adaptive\",\n\t\t\t\t\"content\": {\n\t\t\t\t\t\"$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",\n\t\t\t\t\t\"type\": \"AdaptiveCard\",\n\t\t\t\t\t\"version\": \"1.2\",\n\t\t\t\t\t\"body\": [\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\"type\": \"TextBlock\",\n\t\t\t\t\t\t\t\"size\": \"Large\",\n\t\t\t\t\t\t\t\"weight\": \"Bolder\",\n\t\t\t\t\t\t\t\"text\": \"\ud83d\udd04 Drift Detected\",\n\t\t\t\t\t\t\t\"wrap\": true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\"type\": \"FactSet\",\n\t\t\t\t\t\t\t\"facts\": [\n\t\t\t\t\t\t\t\t{\"title\": \"Stack\", \"value\": stack.name},\n\t\t\t\t\t\t\t\t{\"title\": \"State\", \"value\": run.state},\n\t\t\t\t\t\t\t\t{\"title\": \"Changes\", \"value\": sprintf(\"%d resource(s)\", [count(run.changes)])},\n\t\t\t\t\t\t\t],\n\t\t\t\t\t\t},\n\t\t\t\t\t],\n\t\t\t\t\t\"actions\": [{\n\t\t\t\t\t\t\"type\": \"Action.OpenUrl\",\n\t\t\t\t\t\t\"title\": \"View in Spacelift\",\n                        # change your URL below to app.us.spacelift.io if you are using the US region or app.eu.spacelift.io if you are using the EU region\n\t\t\t\t\t\t\"url\": sprintf(\"https://%s.app.spacelift.io/stack/%s/run/%s\", [input.account.name, stack.id, run.id]),\n\t\t\t\t\t}],\n\t\t\t\t},\n\t\t\t}],\n\t\t},\n\t}\n}\n\nsample := true\n"
+                }
+              },
+              {
+                "node": {
+                  "id": "01M7Q4VN8B9JMD8AX42J5T87AA",
+                  "name": "Warn On Destroy",
+                  "slug": "warn-on-destroy",
+                  "type": "PLAN",
+                  "description": "This policy pauses every destroy run for a manual confirmation before any resource is destroyed.\n\nDestroy runs on OpenTofu and Terraform stacks plan the destroy first and, unless a plan policy warns,\ndestroy the resources right after the plan, whatever the stack's autodeploy setting. This policy warns\non every destroy run, so the run stops in the Unconfirmed state and waits for someone to review\nthe destroy plan and confirm it, or discard it. The warning shows how many resources the plan destroys.\n\nStack deletions that destroy resources go through a destroy run too, so they wait for the same confirmation.\nThat includes scheduled and other automated deletions: they stay pending until someone confirms or discards\nthe run, so attach this policy only where a person is around to do it.\n\nAttach it to the stacks that need the review step, or add the `autoattach:*` label to attach it to every stack\nin its space and in the spaces that inherit from it.\n\nTracked and proposed runs are not affected, even when their plan deletes resources. To review those deletions,\nuse the \"Require Human Review For Update Deletion\" template.\n",
+                  "labels": [
+                    "destroy",
+                    "human-review",
+                    "manual-approval",
+                    "plan",
+                    "warn"
+                  ],
+                  "body": "package spacelift\n\n# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.\nimport rego.v1\n\n# Destroy runs destroy the stack's resources right after the destroy plan unless a plan policy warns.\n# A warning stops the run in the Unconfirmed state, where someone has to review the destroy plan\n# and confirm or discard it.\nwarn contains sprintf(\"Destroy runs require manual confirmation (%d resources to destroy)\", [count(deleted)]) if {\n\tinput.spacelift.run.type == \"DESTROY\"\n}\n\ndeleted contains resource.address if {\n\tsome resource in input.terraform.resource_changes\n\t\"delete\" in resource.change.actions\n}\n\n# Learn more about sampling policy evaluations here:\n# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs\nsample := true\n"
+                }
+              }
+            ],
+            "pageInfo": {
+              "endCursor": "MDFNN1E0Vk44QjlKTUQ4QVg0Mko1VDg3QUE=",
+              "hasNextPage": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

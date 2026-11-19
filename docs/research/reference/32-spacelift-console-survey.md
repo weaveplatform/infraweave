@@ -781,3 +781,26 @@ and `azureIntegrationConsentClear` (P15), `isGovSlackAvailable` (P18),
 - The open-questions register,
   [`open-questions.json`](../../data/open-questions.json), and the
   feature catalogue, [`features.json`](../../data/features.json).
+
+## 17. Policy API captures — 2026-11-19
+
+The Chrome DevTools MCP session on an authorized trial account recorded C49,
+C54, C57 and C192 in `test/fixtures/captures`. The account had no stacks or runs.
+C49 created one unattached PLAN policy, omitted `engineType`, read `REGO_V0`,
+deleted the policy and verified an empty final policy list. C57 read OPA
+`v1.17.1`. C192 simulated two constants without saving a policy: `hello` became
+`938b9824`, and `infraweave-capture-test` became `9597bf47`, each the final four
+SHA-256 bytes encoded as eight hexadecimal characters.
+
+C54 reads every catalogue page through `hasNextPage: false`. Its 62 bodies
+match every non-login template at MIT library commit
+`8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8`: eight approval, seven notification,
+28 plan, 14 push and five trigger templates. That library has 68 templates
+(including six LOGIN templates) and 62 test files. The historical 59-template
+observation and 67/61 library inventory above remain observations of their
+original dates/revisions; the nine-unread-entries inference is not the current
+inventory. Membership/body equality does not reveal the service's loading mechanism.
+
+The maintainer retains infraweave's V1 default as DV-028, adopts the captured
+hash, and withdraws DV-031. No run-based behavior was captured here: C51 reset
+eligibility and the remaining policy captures stay open.

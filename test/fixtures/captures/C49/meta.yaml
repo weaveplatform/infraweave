@@ -1,0 +1,12 @@
+entry: C49
+captured: 2026-11-19
+tier: trial
+introspection: sha256:d8445fffab3b41acd2e90f36041da9945e747c27dba9edae819ffd0783d5f4f0
+capturedBy: Codex via Chrome DevTools MCP
+# Source revision: 0e0f5f454084f2ab5127e432e9a90da7cf4d0715
+# Schema fingerprint: raw response to internal/devtools/specref/introspection.graphql,
+# captured on the same account at 2026-11-19T20:55:56.969Z.
+redacted:
+  - account subdomain replaced by example; browser credentials are omitted
+  - run-owned policy ID and name replaced by policy-a where present
+  - public MIT template bodies and opaque template IDs are unchanged

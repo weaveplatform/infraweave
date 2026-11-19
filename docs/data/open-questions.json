@@ -790,13 +790,14 @@
       "id": "C49",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "What is the API's default `engineType` when `policyCreatev2` omits it? The console's editor opens every new policy on Rego V1 (report 32); the API's default for an omitted field is still unread",
+      "question": "Resolved by the 2026-11-19 real API capture in test/fixtures/captures/C49: policyCreatev2 without engineType returns REGO_V0. The unattached test policy was deleted and the final policies list was empty. infraweave intentionally retains REGO_V1 (DV-028, maintainer decision 2026-11-19).",
       "howToCapture": "Create a policy without `engineType` and read it back",
       "blocks": "the default Rego dialect",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C50",
@@ -848,13 +849,14 @@
       "id": "C54",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Are the in-product policy templates served from the spacelift-policies-example-library module? The console's catalogue lists 59 templates on 2026-11-17 against the library's 67 (report 32). The 50 entries on the catalogue's first page are all library templates; the library templates missing from them are its six login templates and nine others, as many as the entries left unread",
+      "question": "Resolved by the complete paginated catalogue capture on 2026-11-19 in test/fixtures/captures/C54: 62 templates, all byte-identical by SHA-256 to the non-LOGIN templates of spacelift-policies-example-library at 8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8. That revision contains 68 templates and 62 test files; its six LOGIN templates are excluded from the served catalogue. The 2026-11-17 59-template observation remains dated history, not the current inventory.",
       "howToCapture": "Compare `searchPolicyTemplates` with the library's 67 templates",
       "blocks": "the template corpus",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C55",
@@ -883,13 +885,14 @@
       "id": "C57",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Which OPA version evaluates policies? The console's policy pages do not show it (report 32)",
+      "question": "Resolved by policyRuntime on 2026-11-19 in test/fixtures/captures/C57: openPolicyAgentVersion is v1.17.1. This describes that account and date; infraweave links the latest OPA release.",
       "howToCapture": "Query `policyRuntime` on a live account",
       "blocks": "Rego compatibility",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C58",
@@ -2402,12 +2405,13 @@
       "id": "C192",
       "kind": "capture",
       "area": "Vendors (report 20)",
-      "question": "Is the sanitization hash the last 8 bytes of SHA-256 (policy page) or 8 hexadecimal characters (examples)?",
+      "question": "Resolved by real policySimulatev2 on 2026-11-19 in test/fixtures/captures/C192: sanitized(\"hello\") is \"938b9824\" and sanitized(\"infraweave-capture-test\") is \"9597bf47\", the last eight hexadecimal characters of SHA-256 (four bytes). infraweave adopts this algorithm (maintainer decision 2026-11-19); DV-031 is withdrawn.",
       "howToCapture": "Sanitize a known string and compare with SHA-256",
       "blocks": "`sanitized()` compatibility in existing policies",
       "reports": [
         "docs/research/reference/20-vendors.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C193",
@@ -3401,9 +3405,9 @@
     {
       "id": "RV-8",
       "kind": "re-verify",
-      "trigger": "A policy example library commit after `6ff5edb08bc8`",
+      "trigger": "A policy example library commit after `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8`",
       "recheck": "[09](../research/reference/09-policies.md) section 6.3",
-      "lookFor": "Template and test counts (67 and 61); C54",
+      "lookFor": "Template and test-file counts (68 and 62); complete catalogue membership and body digests (C54)",
       "recheckReports": [
         "docs/research/reference/09-policies.md"
       ]
