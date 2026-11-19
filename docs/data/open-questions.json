@@ -755,9 +755,9 @@
       "id": "C46",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Still blocked after the 2026-11-19 real-webhook attempt in test/fixtures/captures/C46: V5_FREE refuses ignored-trigger history with Your billing tier does not support listing ignored runs. Custom-ignore and default-policy pushes were delivered, but none of CUSTOM_POLICY, CUSTOM_POLICY_NO_TRIGGER or DISABLED_BY_LABEL was observed. An entitled account is required to settle the label and reason split.",
+      "question": "Still blocked after the 2026-11-19 real-webhook attempt in test/fixtures/captures/C46: V5_FREE refuses ignored-trigger history with Your billing tier does not support listing ignored runs. Custom-ignore and default-policy pushes were delivered, but none of CUSTOM_POLICY, CUSTOM_POLICY_NO_TRIGGER or DISABLED_BY_LABEL was observed. An entitled account is required to settle the label and reason split. Maintainer decision 2026-11-19: use clearly labelled inference for implementation (ADR 0009), so the missing comparison is no longer an implementation blocker. It remains an open evidence question, not a resolved capture.",
       "howToCapture": "Repeat the real webhook cases on an account entitled to ignored-trigger history and workflow push policy execution; capture each reason and the disabling label without guessing",
-      "blocks": "P13 policy-specific ignored-trigger reason scenarios await this capture; P12b independently asserts NO_AFFECTED_FILES_IN_PROJECT_ROOT, TAGS_IGNORED_BY_DEFAULT and RUN_LIMIT_REACHED",
+      "blocks": "No current implementation gate after maintainer-approved inference on 2026-11-19; retain for future upstream parity verification under ADR 0009",
       "reports": [
         "docs/research/reference/08-run-lifecycle.md"
       ]
@@ -778,9 +778,9 @@
       "id": "C48",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Still blocked: test/fixtures/captures/C48 records V5_FREE without WORKFLOW_POLICIES, creation of eight non-login/access types, stack attachment differences, actual PLAN/APPROVAL/INITIALIZATION evaluation and a custom-ignore push that still creates a run. Creation/attachment does not settle execution entitlement; an entitled-account comparison is missing.",
+      "question": "Still blocked: test/fixtures/captures/C48 records V5_FREE without WORKFLOW_POLICIES, creation of eight non-login/access types, stack attachment differences, actual PLAN/APPROVAL/INITIALIZATION evaluation and a custom-ignore push that still creates a run. Creation/attachment does not settle execution entitlement; an entitled-account comparison is missing. Maintainer decision 2026-11-19: use clearly labelled inference for implementation (ADR 0009), so the missing comparison is no longer an implementation blocker. It remains an open evidence question, not a resolved capture.",
       "howToCapture": "Pricing page; compare `tierFeatures` across plans",
-      "blocks": "tier mapping in report 26",
+      "blocks": "No current implementation gate after maintainer-approved inference on 2026-11-19; retain for future upstream parity verification under ADR 0009",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/26-scope-and-tiers.md",
@@ -816,9 +816,9 @@
       "id": "C51",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Partial 2026-11-19 capture in test/fixtures/captures/C51: a newly API-created policy with a slug-shaped public ID successfully resets its own flag. No policy lacking the internal PolicyULID or with a ULID-shaped public ID was available; acquisition/migration and legacy eligibility remain open. Public ID shape must not be used as the eligibility rule.",
+      "question": "Partial 2026-11-19 capture in test/fixtures/captures/C51: a newly API-created policy with a slug-shaped public ID successfully resets its own flag. No policy lacking the internal PolicyULID or with a ULID-shaped public ID was available; acquisition/migration and legacy eligibility remain open. Public ID shape must not be used as the eligibility rule. Maintainer decision 2026-11-19: use clearly labelled inference for implementation (ADR 0009), so the missing comparison is no longer an implementation blocker. It remains an open evidence question, not a resolved capture.",
       "howToCapture": "Use an authorized legacy policy lacking the internal PolicyULID and compare actual flag reset behavior with the captured new slug-ID policy; do not infer eligibility from ID syntax",
-      "blocks": "flag reset eligibility",
+      "blocks": "No current implementation gate after maintainer-approved inference on 2026-11-19; retain for future upstream parity verification under ADR 0009",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"

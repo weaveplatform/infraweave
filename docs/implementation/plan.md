@@ -2286,15 +2286,18 @@ P13b prepares public APIs for the P24c console, while P14 owns worker exec.
 |---|---|
 | C49/C54/C57/C192 | Recorded by #637; REST handoffs remain #645/#664/#640/#663 |
 | C9 (policy part), C56 | Ordinary attached-policy force deletion and Unix-second units recorded by #643; replay #645. Context/plugin remainder stays open with its owner |
-| C46 | #643 real-webhook attempt hit V5_FREE ignored-history refusal; reason codes/label remain blocked before #652 |
-| C48 | #643 records free-tier creation/attachment/evaluation differences; entitled-account comparison still blocks the affected management/type gate |
-| C51, C291 | #643 records new slug-ID flag reset and both mixed-policy rejection states; legacy C51 comparison remains blocked before the affected #649 behavior. C291 replay awaits #650 |
+| C46 | Real refusal recorded; maintainer-approved reason/label inferences in ADR 0009 unblock #652, without resolving the evidence question |
+| C48 | Free-tier facts recorded; approved inference maps WORKFLOW_POLICIES to GIT_PUSH/TRIGGER evaluation, without a blanket CRUD gate; entitled-account evidence remains open |
+| C51, C291 | New slug-ID reset and both rejection states recorded; approved owner-ID inference unblocks #649 while legacy evidence remains open. C291 replay awaits #650 |
 | C47, C50 (LOGIN), C52 | Supersession observation, no-run login flags and server initialization outcome: #644 before affected P13b handlers |
 | C53, C273 | Capture/sample privacy/cadence and page API reads: #644 before #661/#662/#665 |
 | C55 module-version part | P17 registry triggers, not P13; no module event is fabricated to close the capture |
 | C50 NOTIFICATION / INTENT | P18 / P25 execution, not a P13b LOGIN claim |
 
-An inaccessible tier, legacy record or support-only fact leaves its case blocked.
+An inaccessible tier, legacy record or support-only fact leaves its evidence case
+open. The maintainer on 2026-11-19 explicitly accepted ADR 0009's labelled
+inferences for C46/C48/C51, lifting their implementation gates; other required
+captures still block their affected behavior.
 The P13 gate requires real PostgreSQL/storage/tools and the existing real-provider
 vcs-lab walkthrough; licence-less Bitbucket Data Center is the sole optional peer.
 Research may proceed before a product gate. P13b product delivery follows P13 and

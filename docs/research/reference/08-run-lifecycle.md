@@ -677,3 +677,10 @@ and `finished` [G].
   - <https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_run.go>
   - <https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/internal/structs/wait.go>
   - <https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_stack.go>
+
+Maintainer decision, 2026-11-19: the missing C46/C48/C51 evidence may use the
+explicit implementation inferences in
+[ADR 0009](../decisions/0009-policy-engine-opa.md#maintainer-approved-inferences-for-the-remaining-captures).
+Their upstream evidence questions remain open; the missing comparisons no longer
+block implementation. In particular, CRUD permission is distinct from evaluation
+entitlement, and public policy ID syntax does not decide reset eligibility.

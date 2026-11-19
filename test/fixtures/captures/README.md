@@ -50,5 +50,7 @@ applied. Each group retains its actual request/response sequence and cleanup.
 | C291 | Mixed-policy rejection fails UNCONFIRMED and PENDING_REVIEW with the exact note | None | #650 |
 
 C56 and C291 resolve their register questions. The partial cases remain open;
-their fixtures verify the evidence or refusal, and do not satisfy the missing
-behavior. A CI pass does not remove these implementation blockers.
+their fixtures verify the evidence or refusal. The maintainer separately accepted
+ADR 0009's labelled inferences for C46/C48/C51 on 2026-11-19, lifting their
+implementation gates while keeping the evidence questions open. A CI pass alone
+would not establish a missing upstream observation.

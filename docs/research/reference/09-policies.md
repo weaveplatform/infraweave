@@ -1109,3 +1109,10 @@ comment quoted in 2.1].
   <https://github.com/spacelift-io/terraform-provider-spacelift/blob/c72b9bd2f3c3/spacelift/resource_policy_attachment.go> (MIT).
 - <https://github.com/spacelift-io/spacelift-policies-example-library/tree/6ff5edb08bc8> (MIT).
 - <https://github.com/spacelift-io/spacectl/tree/6bf167cb62a6/internal/cmd/policy> (MIT).
+
+Maintainer decision, 2026-11-19: the missing C46/C48/C51 evidence may use the
+explicit implementation inferences in
+[ADR 0009](../decisions/0009-policy-engine-opa.md#maintainer-approved-inferences-for-the-remaining-captures).
+Their upstream evidence questions remain open; the missing comparisons no longer
+block implementation. In particular, CRUD permission is distinct from evaluation
+entitlement, and public policy ID syntax does not decide reset eligibility.
