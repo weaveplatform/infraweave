@@ -13,6 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/go-github/v93/github"
+
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 )
 
 var parkedHook = HookConfig{URL: "https://parked.example.com/hook", ContentType: "form", InsecureSSL: "0"}
@@ -26,6 +28,14 @@ type hookFixture struct {
 	failRestore bool
 	getErr      bool
 	fresh       bool
+	identity    string
+}
+
+func (f *hookFixture) Identity() string {
+	if f.identity != "" {
+		return f.identity
+	}
+	return readyKey().Readiness
 }
 
 func (f *hookFixture) Get(context.Context) (HookConfig, error) {
@@ -56,7 +66,7 @@ func readyKey() AppKey {
 func TestUnitAppHookLeaseNeverOverwritesUnknownSetup(t *testing.T) {
 	for _, ready := range []string{"", "wrong"} {
 		f := &hookFixture{current: parkedHook}
-		_, err := LeaseHook(t.Context(), f, readyKey(), ready, temporaryHook, filepath.Join(t.TempDir(), "journal"))
+		_, err := LeaseHook(t.Context(), f, readyKey(), ready, parkedHook, temporaryHook, filepath.Join(t.TempDir(), "journal"))
 		if !errors.Is(err, ErrHook) || len(f.patches) != 0 {
 			t.Fatal("unready App configuration was mutated")
 		}
@@ -67,7 +77,7 @@ func TestUnitAppHookUncertainEffectRestoresAndKeepsFailedCleanupJournal(t *testi
 	for _, fail := range []bool{false, true} {
 		f := &hookFixture{current: parkedHook, lose: true, failRestore: fail}
 		path := filepath.Join(t.TempDir(), "journal")
-		_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, temporaryHook, path)
+		_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
 		if !errors.Is(err, ErrHook) || len(f.patches) != 2 {
 			t.Fatal("uncertain PATCH was not restored")
 		}
@@ -92,12 +102,11 @@ func TestUnitAppHookUncertainEffectRestoresAndKeepsFailedCleanupJournal(t *testi
 func TestUnitAppHookCanceledCleanupAndStaleOwner(t *testing.T) {
 	f := &hookFixture{current: parkedHook}
 	path := filepath.Join(t.TempDir(), "journal")
-	l, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, temporaryHook, path)
+	l, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0o600 {
+	if err := private.Check(path); err != nil {
 		t.Fatal("cleanup journal is not private")
 	}
 	f.current.URL = "https://new-owner.example.com/hook"
@@ -124,10 +133,30 @@ func TestUnitAppHookJournalRefusesReplacement(t *testing.T) {
 			t.Fatal(err)
 		}
 		f := &hookFixture{current: parkedHook}
-		_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, temporaryHook, path)
+		_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
 		if !errors.Is(err, ErrHook) || len(f.patches) != 0 {
 			t.Fatal("existing cleanup journal was replaced")
 		}
+	}
+}
+
+func TestUnitAppHookJournalCannotMoveBetweenAppIdentities(t *testing.T) {
+	f := &hookFixture{current: parkedHook}
+	path := filepath.Join(t.TempDir(), "journal")
+	_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.identity = "v1:different-App-or-key-or-version"
+	if err := RestoreHook(t.Context(), f, path); !errors.Is(err, ErrHook) || len(f.patches) != 1 {
+		t.Fatal("journal was adopted by a different App identity")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("identity refusal discarded the original recovery journal")
+	}
+	f.identity = readyKey().Readiness
+	if err := RestoreHook(t.Context(), f, path); err != nil || f.current != parkedHook {
+		t.Fatal("original App could not resume its cleanup")
 	}
 }
 
@@ -170,7 +199,15 @@ func TestUnitAppHookClientOmitsSecretOnRedirectAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l, err := LeaseHook(t.Context(), &appClient{client: client}, readyKey(), readyKey().Readiness, temporaryHook, filepath.Join(t.TempDir(), "journal"))
+	l, err := LeaseHook(
+		t.Context(),
+		&appClient{client: client, identity: readyKey().Readiness},
+		readyKey(),
+		readyKey().Readiness,
+		parkedHook,
+		temporaryHook,
+		filepath.Join(t.TempDir(), "journal"),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,5 +229,22 @@ func TestUnitAppHookClientOmitsSecretOnRedirectAndRestore(t *testing.T) {
 	}
 	if reflect.DeepEqual(bodies[0], bodies[1]) {
 		t.Fatal("redirect and restore did not exercise distinct configurations")
+	}
+}
+
+func TestUnitAppHookCannotAcquireAnotherTemporaryOwner(t *testing.T) {
+	f := &hookFixture{current: HookConfig{URL: "https://previous.trycloudflare.com/webhooks/vcs/github_enterprise/previous", ContentType: "json", InsecureSSL: "0"}}
+	path := filepath.Join(t.TempDir(), "journal")
+	original := []byte("retained-previous-owner-journal")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
+	if !errors.Is(err, ErrHook) || len(f.patches) != 0 {
+		t.Fatal("acquisition overwrote a previous temporary owner")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != string(original) {
+		t.Fatal("acquisition changed the prior owner's journal")
 	}
 }

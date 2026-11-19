@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 )
 
 func TestUnitAppSetupFileIsNewPrivateAndNeverPrinted(t *testing.T) {
@@ -24,8 +26,7 @@ func TestUnitAppSetupFileIsNewPrivateAndNeverPrinted(t *testing.T) {
 	if err != nil || string(data) != key.Secret()+"\n" {
 		t.Fatal("private setup file does not contain the derived key")
 	}
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0o600 {
+	if err := private.Check(path); err != nil {
 		t.Fatal("setup file is not private")
 	}
 	if strings.Contains(output.String(), key.Secret()) || strings.Contains(output.String(), string(one)) || !strings.Contains(output.String(), key.Readiness) {

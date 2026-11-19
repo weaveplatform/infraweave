@@ -80,9 +80,9 @@ deleted. Never use an App whose previous secret or other consumers are unknown.
 The signing secret is derived from the **existing dedicated App private key**;
 there is no additional long-lived workflow secret. The verification helper
 parses and validates RSA, canonicalizes PKCS1 or PKCS8 PEM to PKCS8 DER, then
-derives32bytes with HKDF-SHA256, no salt, and the context
+derives 32 bytes with HKDF-SHA256, no salt, and the context
 `infraweave/vcs-lab/github-app-webhook/v1/<canonical numeric App ID>`. The secret
-is the64lowercase hex characters of those bytes. Readiness is `v1:` followed
+is the 64 lowercase hex characters of those bytes. Readiness is `v1:` followed
 by SHA256 of that same context, a zero byte and the PKIX public-key DER. The
 separately printed public-key fingerprint is SHA256 of the PKIX DER alone.
 
@@ -95,10 +95,11 @@ GOWORK=off go run ./test/acceptance/cmd/vcs-lab app-setup --secret-file /private
 ```
 
 The requested file must not exist: files and symlinks are refused. It is created
-with mode0600. The command makes no API calls and prints only public metadata.
+with mode 0600. The command makes no API calls and prints only public metadata.
 Use a private local editor to enter that file's value as the dedicated App's
 webhook secret, then remove the file. Set the `vcs-lab` environment **variable**
-`VCS_GITHUB_HOOK_READY` to the printed readiness value only after completing the
+`VCS_GITHUB_HOOK_READY` to the printed readiness value, and
+`VCS_GITHUB_HOOK_PARKED_URL` to the exact configured parking URL, only after completing the
 setup. This attests the operator setup; an actual signed delivery proves that
 GitHub uses the matching secret. Do not store the derived secret in another
 environment secret, Terraform source, workflow output or log.
@@ -106,6 +107,8 @@ environment secret, Terraform source, workflow output or log.
 Changing the App ID, private key or derivation version requires repeating this
 procedure and updating readiness together. Re-encoding the same private key
 does not. Missing or mismatched readiness fails before any App hook mutation.
+Runtime refuses acquisition unless the current URL/media/TLS exactly match that
+parking baseline, so a lost previous cleanup cannot become a new baseline.
 Runtime supplies the same secret explicitly to each served integration create,
 but **never sends a `secret` member to GitHub**, even as null, empty or a masked
 value. Its separate PATCH document contains only URL, content type and TLS

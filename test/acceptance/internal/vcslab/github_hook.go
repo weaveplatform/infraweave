@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 )
 
 // ErrHook is deliberately independent of provider response bodies or credentials.
@@ -24,6 +26,7 @@ type HookConfig struct {
 // AppHooks is an App-JWT-authenticated configuration client. It must omit the
 // secret member entirely on every PATCH, including restore.
 type AppHooks interface {
+	Identity() string
 	Get(context.Context) (HookConfig, error)
 	Patch(context.Context, HookConfig) error
 }
@@ -34,6 +37,16 @@ func (h HookConfig) valid() bool {
 		(h.ContentType == "json" || h.ContentType == "form") && h.InsecureSSL == "0"
 }
 
+// ParkingConfig is the dedicated App's explicitly attested baseline. It is
+// operator configuration, never inferred from an arbitrary current destination.
+func ParkingConfig(destination string) (HookConfig, error) {
+	h := HookConfig{URL: destination, ContentType: "json", InsecureSSL: "0"}
+	if !h.valid() {
+		return HookConfig{}, fmt.Errorf("%w: invalid parked App configuration", ErrHook)
+	}
+	return h, nil
+}
+
 // HookLease points one already-active dedicated App at a scenario's integration.
 // Journal is private and created before the first PATCH. Readiness attests the
 // maintainer configured the derived secret; a signed delivery tests that fact.
@@ -42,35 +55,41 @@ type HookLease struct {
 	original HookConfig
 	target   HookConfig
 	journal  string
+	identity string
 }
 
 type hookJournal struct {
+	Identity string     `json:"identity"`
 	Original HookConfig `json:"original"`
 	Target   HookConfig `json:"target"`
 }
 
 // LeaseHook preserves GitHub's existing secret. It refuses an unknown setup
 // before mutation, and restores even when PATCH's response is lost after effect.
-func LeaseHook(ctx context.Context, client AppHooks, key AppKey, readiness, target, journal string) (*HookLease, error) {
-	if key.secret == "" || readiness == "" || readiness != key.Readiness {
+func LeaseHook(ctx context.Context, client AppHooks, key AppKey, readiness string, expected HookConfig, target, journal string) (*HookLease, error) {
+	if key.secret == "" || readiness == "" || readiness != key.Readiness || client.Identity() != key.Readiness {
 		return nil, fmt.Errorf("%w: App signing-key setup is not ready", ErrHook)
 	}
 	original, err := client.Get(ctx)
-	if err != nil || !original.valid() {
+	if err != nil || !original.valid() || !expected.valid() || original != expected {
 		return nil, fmt.Errorf("%w: read restorable App configuration", ErrHook)
 	}
 	next := HookConfig{URL: target, ContentType: "json", InsecureSSL: "0"}
 	if !next.valid() {
 		return nil, fmt.Errorf("%w: invalid temporary destination", ErrHook)
 	}
-	lease := &HookLease{client: client, original: original, target: next, journal: journal}
-	data, err := json.Marshal(hookJournal{Original: original, Target: next})
+	lease := &HookLease{client: client, original: original, target: next, journal: journal, identity: key.Readiness}
+	data, err := json.Marshal(hookJournal{Identity: key.Readiness, Original: original, Target: next})
 	if err != nil {
 		return nil, fmt.Errorf("%w: encode cleanup journal", ErrHook)
 	}
 	f, err := os.OpenFile(journal, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("%w: create cleanup journal", ErrHook)
+	}
+	if err := private.Restrict(journal); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("%w: restrict cleanup journal", ErrHook)
 	}
 	_, writeErr := f.Write(data)
 	syncErr := f.Sync()
@@ -94,6 +113,9 @@ func LeaseHook(ctx context.Context, client AppHooks, key AppKey, readiness, targ
 func (l *HookLease) Restore(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
+	if l.identity == "" || l.client.Identity() != l.identity {
+		return fmt.Errorf("%w: cleanup App identity changed", ErrHook)
+	}
 	current, err := l.client.Get(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: read current cleanup owner", ErrHook)
@@ -126,8 +148,8 @@ func RestoreHook(ctx context.Context, client AppHooks, journal string) error {
 		return nil
 	}
 	var config hookJournal
-	if err != nil || json.Unmarshal(data, &config) != nil || !config.Original.valid() || !config.Target.valid() {
+	if err != nil || json.Unmarshal(data, &config) != nil || config.Identity == "" || config.Identity != client.Identity() || !config.Original.valid() || !config.Target.valid() {
 		return fmt.Errorf("%w: read cleanup journal", ErrHook)
 	}
-	return (&HookLease{client: client, original: config.Original, target: config.Target, journal: journal}).Restore(ctx)
+	return (&HookLease{client: client, original: config.Original, target: config.Target, journal: journal, identity: config.Identity}).Restore(ctx)
 }

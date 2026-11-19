@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -83,5 +84,23 @@ func TestUnitAppHookKeyRefusesInvalidInputPrivately(t *testing.T) {
 		if !errors.Is(err, ErrAppKey) || strings.Contains(err.Error(), "private-input") {
 			t.Fatal("invalid input did not fail privately")
 		}
+	}
+}
+
+// This permanently public synthetic key is never a provider credential. Its
+// independently computed HKDF vector pins the operator setup across releases.
+func TestUnitAppHookSetupVersionOneVector(t *testing.T) {
+	encoded, err := os.ReadFile("testdata/synthetic-app-key.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := DeriveAppKey("42", encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.Secret() != "a1601615eaa2b0c4255b919d6f822da30373f32293061e9ea57aaa746af05982" ||
+		key.Readiness != "v1:24a448a31001964a1644702682428bac6979c4c3ade47cd02477f6fa90785948" ||
+		key.Fingerprint != "d470326882cd40beff7398182698ebdecdceec4c684e9ffb3946067e984e4512" {
+		t.Fatal("version-one operator setup vector changed")
 	}
 }

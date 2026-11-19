@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func TestUnitLabIngressExposesOnlyCurrentWebhookReceiver(t *testing.T) {
@@ -54,4 +56,74 @@ func TestUnitLabIngressExposesOnlyCurrentWebhookReceiver(t *testing.T) {
 		}
 	}
 	request("/webhooks/vcs/gitlab/one", 202)
+}
+
+func TestUnitLabIngressRejectsCanonicalizationAndPreservesSignedBytes(t *testing.T) {
+	var calls atomic.Int32
+	body := "{\"text\":\"line\\n\"}\r\n"
+	up := chi.NewRouter()
+	up.Use(middleware.CleanPath)
+	up.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		got, err := io.ReadAll(r.Body)
+		if err != nil || string(got) != body || r.Header.Get("X-Hub-Signature-256") != "sha256:unchanged-test-signature" {
+			t.Error("signed bytes or signature header changed")
+		}
+		w.WriteHeader(202)
+	}))
+	srv := httptest.NewServer(up)
+	defer srv.Close()
+	in, err := StartIngress(t.Context(), "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := in.Close(t.Context()); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := in.Attach(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ method, path string }{
+		{"GET", "/webhooks/vcs/gitlab/one"},
+		{"PUT", "/webhooks/vcs/gitlab/one"},
+		{"POST", "/webhooks/vcs/../../api/v1/stacks"},
+		{"POST", "/webhooks/vcs/../admin"},
+		{"POST", "/webhooks/vcs/%2e%2e/%2e%2e/api/v1/stacks"},
+		{"POST", "/webhooks/vcs/%252e%252e/%252e%252e/api/v1/stacks"},
+		{"POST", "/webhooks/vcs/gitlab%2fone"},
+		{"POST", "/webhooks/vcs/gitlab//one"},
+		{"POST", "/webhooks/vcs/gitlab/one/../../admin"},
+		{"POST", "/webhooks/vcs/gitlab/%6fne"},
+	} {
+		req, err := http.NewRequestWithContext(t.Context(), tc.method, "http://"+in.Address()+tc.path, strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = r.Body.Close()
+		if r.StatusCode != 404 {
+			t.Fatalf("noncanonical ingress status=%d", r.StatusCode)
+		}
+	}
+	if calls.Load() != 0 {
+		t.Fatal("upstream canonicalizer saw an invalid lab ingress request")
+	}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://"+in.Address()+"/webhooks/vcs/github_enterprise/one", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Hub-Signature-256", "sha256:unchanged-test-signature")
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = r.Body.Close()
+	if r.StatusCode != 202 || calls.Load() != 1 {
+		t.Fatal("canonical signed delivery did not reach exactly one receiver")
+	}
 }

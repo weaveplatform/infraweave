@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/weaveplatform/infraweave/internal/platform/private"
 )
 
 // WriteAppSetup writes the one-time secret to a newly created private file.
@@ -18,6 +20,10 @@ func WriteAppSetup(path, appID string, encoded []byte, output io.Writer) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("%w: create new private setup file", ErrHook)
+	}
+	if err := private.Restrict(path); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("%w: restrict private setup file", ErrHook)
 	}
 	_, writeErr := io.WriteString(f, key.Secret()+"\n")
 	syncErr := f.Sync()

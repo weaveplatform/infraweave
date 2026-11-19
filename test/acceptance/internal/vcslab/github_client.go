@@ -11,11 +11,20 @@ import (
 	"github.com/google/go-github/v93/github"
 )
 
-type appClient struct{ client *github.Client }
+type appClient struct {
+	client   *github.Client
+	identity string
+}
+
+func (c *appClient) Identity() string { return c.identity }
 
 // NewAppHooks reaches only the dedicated GitHub App's hook configuration with
 // its App JWT. This verification client does not expand product purpose routes.
 func NewAppHooks(appID string, privateKey []byte) (AppHooks, error) {
+	key, err := DeriveAppKey(appID, privateKey)
+	if err != nil {
+		return nil, err
+	}
 	id, err := strconv.ParseInt(appID, 10, 64)
 	if err != nil || id <= 0 {
 		return nil, ErrAppKey
@@ -28,7 +37,7 @@ func NewAppHooks(appID string, privateKey []byte) (AppHooks, error) {
 	if err != nil {
 		return nil, ErrAppKey
 	}
-	return &appClient{client: client}, nil
+	return &appClient{client: client, identity: key.Readiness}, nil
 }
 
 func (c *appClient) Get(ctx context.Context) (HookConfig, error) {

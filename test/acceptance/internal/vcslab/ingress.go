@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,8 @@ type Ingress struct {
 	target   *url.URL
 	listener net.Listener
 }
+
+var intakePath = regexp.MustCompile(`^/webhooks/vcs/[a-z][a-z0-9_]*/[A-Za-z0-9_-]+$`)
 
 // StartIngress starts an unbound webhook destination. Until Attach, all calls
 // return503. Direct container labs explicitly bind the runner's bridge address;
@@ -44,6 +47,11 @@ func StartIngress(ctx context.Context, address string) (*Ingress, error) {
 	}, ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) { w.WriteHeader(http.StatusServiceUnavailable) }}
 	r := chi.NewRouter()
 	r.Handle("/webhooks/vcs/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.RawPath != "" || req.URL.EscapedPath() != req.URL.Path || strings.Contains(req.URL.Path, "%") ||
+			!intakePath.MatchString(req.URL.Path) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		in.mu.RLock()
 		ready := in.target != nil
 		in.mu.RUnlock()
