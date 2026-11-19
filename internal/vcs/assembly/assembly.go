@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
@@ -118,6 +119,8 @@ type Deps struct {
 	Features         featuresapi.Options
 	Creator          runsapi.Creator
 	Supersede        runsapi.Supersede
+	// Meter instruments this domain; nil uses its process OpenTelemetry meter.
+	Meter metric.Meter
 }
 
 // Domain is the vcs domain, constructed once per process.
@@ -239,7 +242,7 @@ func New(d Deps) (*Domain, error) {
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc, integration.AzureDevOps: ado,
 		},
 	})
-	actionRefused, err := vcsobserve.CheckActionRefused(otel.Meter("infraweave/vcs"))
+	actionRefused, err := vcsobserve.CheckActionRefused(domainMeter(d))
 	if err != nil {
 		return nil, fmt.Errorf("vcs: action counter: %w", err)
 	}
@@ -439,4 +442,11 @@ func (d *Domain) API() VCSAPI {
 		return VCSAPI{}
 	}
 	return d.api
+}
+
+func domainMeter(d Deps) metric.Meter {
+	if d.Meter != nil {
+		return d.Meter
+	}
+	return otel.Meter("infraweave/vcs")
 }

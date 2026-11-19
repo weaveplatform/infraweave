@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -55,7 +54,7 @@ func newIntake(d Deps, dispatcher intake.Dispatcher, providers map[string]any) (
 			hooks[name] = h
 		}
 	}
-	rejected, err := observe.WebhookRejected(otel.Meter("infraweave/vcs"))
+	rejected, err := observe.WebhookRejected(domainMeter(d))
 	if err != nil {
 		return nil, fmt.Errorf("vcs: webhook rejection metric: %w", err)
 	}

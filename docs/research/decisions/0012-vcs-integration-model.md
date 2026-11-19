@@ -531,6 +531,23 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   repository write access, read through the App, and leaves the tracked
   commit unchanged. A disabled or refused action creates nothing and is
   logged and counted. Other providers have no equivalent check buttons.
+
+  The parent retains immutable commit and native host/App facts, never an
+  authorization decision. Every child attempt refreshes a Deploy sender's
+  collaborator permission through that same App connection before opening
+  the completing transaction. Known disabled promotion and inactive source
+  bindings refuse before native reads; the locked setting, effective
+  integration, native repository and source binding are checked again when
+  admitting the run. Repository renames project the current path without
+  changing the original delivered identity. Provider cancellation, deadlines
+  and rate-limit resets retain their queue scheduling meaning.
+
+  A new deliberate press creates a new run through Creator mode `None`;
+  redelivery and replay retain their delivery/generation fences. Neither
+  button writes tracked branch head, tracked commit or its setter, nor
+  supersedes runs as a push does. Refusal logging and the
+  `infraweave.vcs.check_action.refused` counter occur after commit, with only
+  a fixed reason as a metric label.
 - **Plan comments (D14).** Only `feature:add_plan_pr_comment` enables them,
   on every provider. Each run whose planning ends posts a new comment on
   each open request whose head is its commit: a heading linking stack and
