@@ -37,6 +37,11 @@ func (g *githubSteps) register(sc *godog.ScenarioContext) {
 
 // VCS starts the fake on first use and returns only its trusted certificate.
 func (g *githubSteps) VCS(_ context.Context, w *harness.World) (map[string]any, []byte, error) {
+	// Feature-level fake tags also reach live examples; the lab owns their endpoints.
+	if slices.Contains(w.Tags, "@vcs-lab") {
+		return nil, nil, nil
+	}
+
 	if slices.Contains(w.Tags, "@github") && g.srv == nil {
 		g.fake = githubfake.New()
 		g.srv = g.fake.Start()

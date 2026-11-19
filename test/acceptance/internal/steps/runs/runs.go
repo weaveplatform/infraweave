@@ -221,6 +221,12 @@ func (r *runSteps) first(name string) error {
 // eventually reads the run kept as key until it is in state, which the
 // scheduler's job moves it to after the write that queued it commits.
 func (r *runSteps) eventually(ctx context.Context, token, key, state, replica string) error {
+	if slices.Contains(r.w.Tags, "@vcs-lab") {
+		return waitLabRun(ctx, "run "+key+" to be "+state, state, func(ctx context.Context) (harness.Response, error) {
+			err := r.w.SendAs(ctx, `token "`+token+`"`, "GET", "/api/v1/runs/"+r.w.IDs[key], "", replica)
+			return r.w.Last(), err
+		})
+	}
 	//nolint:wrapcheck // names what it waited for
 	return deps.Eventually(
 		ctx,
