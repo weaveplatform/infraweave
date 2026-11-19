@@ -1,11 +1,11 @@
 # Policy input fixtures
 
 Each `*.json` file here is one input document that Spacelift's policy engine
-evaluated, as the console's policy sample view showed it on a trial account
-Spacelift authorized for captures
+evaluated, through a real policy sample or simulation on an account authorized for captures
 ([report 30, capture safety](../../../docs/research/reference/30-open-questions.md)),
-then redacted. Each `*.decision.json` is the decision document the console's
-simulation answered for an input. They are the observed counterpart of the
+then redacted. The original 2026-11-17 set came from the console on a trial
+account; later API captures have separate provenance below. Each
+`*.decision.json` is a decision returned by a real simulation. They are the observed counterpart of the
 per-type contract in
 [report 09, section 4](../../../docs/research/reference/09-policies.md#4-input-documents):
 P13's `TestUnitPolicyContract` reads them and fails when a key they hold has
@@ -49,7 +49,7 @@ may still describe the earlier observation until #643 merges.
 | Input | Source JSON pointer | Observed state |
 |---|---|---|
 | `approval-c51-queued.json` | `/exchanges/3/response/data/stack/run/queued/input` | `QUEUED` |
-| `approval-c51-unconfirmed.json` | `/exchanges/3/response/data/stack/run/gate/input` | `UNCONFIRMED`, with the queued review in `reviews.older` |
+| `approval-c51-unconfirmed.json` | `/exchanges/3/response/data/stack/run/gate/input` | `UNCONFIRMED`, with the queued flag in `run.flags` |
 | `approval-c51-reset-after.json` | `/exchanges/6/response/data/stack/run/resetAfter/input` | `UNCONFIRMED` after the new policy resets its own flag |
 
 These samples add human creator identity/federations, nullable teams, populated
