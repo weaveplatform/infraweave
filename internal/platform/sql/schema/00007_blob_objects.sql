@@ -12,7 +12,8 @@ CREATE TABLE blob_objects (
     key                text        NOT NULL,
     -- The plaintext's size and SHA-256. A signed upload declares both
     -- before it starts; a server-side write records the SHA-256 when its
-    -- upload ends, so only a pending row lacks it.
+    -- upload ends. An unfinished upload may be marked deleting; its
+    -- reaper waits for completion or abandonment before removing it.
     size               bigint      NOT NULL CHECK (size >= 0),
     sha256             bytea       CHECK (octet_length(sha256) = 32),
     state              text        NOT NULL CHECK (state IN ('pending', 'live', 'deleting')),
@@ -21,7 +22,7 @@ CREATE TABLE blob_objects (
     expires_at         timestamptz,
     created_at         timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (store, key),
-    CHECK (state = 'pending' OR sha256 IS NOT NULL)
+    CHECK (state <> 'live' OR sha256 IS NOT NULL)
 );
 COMMENT ON TABLE blob_objects IS
     'global: objects of every store; a key starts with its account, and each row that references an object carries it';
