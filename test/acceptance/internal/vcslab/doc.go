@@ -10,7 +10,8 @@
 //
 // # Dependencies
 //
-// The package uses the standard library and the repository's pinned GitHub
-// client. Calls have caller-owned deadlines. Cleanup uses an independent bounded
-// context, and a failed restore remains a failure rather than a skipped lab.
+// The package uses the standard library, pinned Git/GitHub clients, chi and the
+// platform's private-file helper. Calls have caller-owned deadlines. Cleanup
+// uses an independent bounded context, and a failed restore remains a failure
+// rather than a skipped lab.
 package vcslab

@@ -225,10 +225,29 @@ description names its variable.
 ```sh
 INFRAWEAVE_TEST_VCS_HOST=… INFRAWEAVE_TEST_VCS_TOKEN=… … \
   go test -run '^TestAccGitLabLab$' ./internal/vcs/internal/adapters/gitlab
-INFRAWEAVE_ACCEPT_TAGS=@lab:gitlab … make accept PARTITION=vcs-lab
+INFRAWEAVE_ACCEPT_FEATURES=features/vcs/sources.feature INFRAWEAVE_ACCEPT_TAGS=@lab:gitlab … make accept PARTITION=vcs-lab
 terraform destroy -var suffix=…
 docker rm -f gitlab
 ```
+
+For the full webhook/feedback proof, configure the delivery listener, public
+origin, private hook-journal directory and absolute Terraform root exactly as
+the workflow does, then select **one provider and one feature per process**:
+
+```sh
+for topic in sources webhooks feedback; do
+  INFRAWEAVE_ACCEPT_FEATURES="features/vcs/${topic}.feature" \
+    INFRAWEAVE_ACCEPT_TAGS=@lab:gitlab make accept PARTITION=vcs-lab || exit 1
+done
+```
+
+The generic combined lab corpus is not the manual recipe: the harness runs
+scenarios concurrently and in randomized order. Combining these features can
+race the single hook listener and run source-history assertions after mutations.
+For a local container, `LAB_GITLAB_CONTAINER` and `LAB_GITLAB_PORT` optionally
+name its run-owned container and host port; CI keeps the default name/port. On
+Docker Desktop, a direct webhook URL uses `host.docker.internal` to reach the
+host's webhook-only listener; Linux runners use their Docker bridge gateway.
 
 `make labs-vcs` validates every root against its lock file;
 `make labs-cloud` does the same for `test/terraform/cloud`.

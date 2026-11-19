@@ -265,9 +265,11 @@ jobs:
           umask 077
           lab=$(mktemp -d "$RUNNER_TEMP/vcs-lab-delivery.XXXXXXXX")
           mkdir -p "$RUNNER_TEMP/vcs-lab-hooks"
-          echo "INFRAWEAVE_LAB_TUNNEL_SESSION=$lab" >> "$GITHUB_ENV"
-          echo "INFRAWEAVE_LAB_HOOK_JOURNALS=$RUNNER_TEMP/vcs-lab-hooks" >> "$GITHUB_ENV"
-          echo "INFRAWEAVE_LAB_TERRAFORM_ROOT=$GITHUB_WORKSPACE/$ROOT" >> "$GITHUB_ENV"
+          {
+            echo "INFRAWEAVE_LAB_TUNNEL_SESSION=$lab"
+            echo "INFRAWEAVE_LAB_HOOK_JOURNALS=$RUNNER_TEMP/vcs-lab-hooks"
+            echo "INFRAWEAVE_LAB_TERRAFORM_ROOT=$GITHUB_WORKSPACE/$ROOT"
+          } >> "$GITHUB_ENV"
           case "$PROVIDER" in
             gitlab|bitbucket-dc)
               container=gitlab
@@ -426,6 +428,7 @@ jobs:
           set -euo pipefail
           title="vcs-lab failed on ${PROVIDER}"
           failed=$(grep -E -e '--- FAIL|^[[:space:]]*Scenario:.*# ' cloud.log 2>/dev/null | sed 's/^ *//' | sort -u || true)
+          # shellcheck disable=SC2016 # Markdown fences remain literal; values use printf arguments.
           body=$(printf 'The VCS provider checks failed against %s on %s: %s\n\nFailing cases:\n```\n%s\n```\n' \
             "$PROVIDER" "$SHA" "$RUN_URL" "${failed:-none recorded; the run failed outside the tests}")
           number=$(gh issue list --state open --search "\"${title}\" in:title" --json number,title \

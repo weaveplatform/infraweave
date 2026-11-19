@@ -15,13 +15,13 @@ variable "hook_secret" {
 }
 
 resource "gitlab_project_hook" "lab" {
-  count                 = var.hook_url == "" ? 0 : 1
-  project               = gitlab_project.lab["lab"].id
-  url                   = var.hook_url
-  token                 = var.hook_secret
+  count                   = var.hook_url == "" ? 0 : 1
+  project                 = gitlab_project.lab["lab"].id
+  url                     = var.hook_url
+  token                   = var.hook_secret
   enable_ssl_verification = true
-  push_events           = true
-  tag_push_events       = true
-  merge_requests_events = true
-  note_events           = true
+  push_events             = true
+  tag_push_events         = true
+  merge_requests_events   = true
+  note_events             = true
 }

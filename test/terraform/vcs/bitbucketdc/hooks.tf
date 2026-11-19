@@ -15,9 +15,9 @@ variable "hook_secret" {
 }
 
 resource "restapi_object" "hook" {
-  count         = var.hook_url == "" ? 0 : 1
-  path          = "/rest/api/1.0/projects/${restapi_object.project.id}/repos/${restapi_object.repository["lab"].id}/webhooks"
-  id_attribute  = "id"
+  count        = var.hook_url == "" ? 0 : 1
+  path         = "/rest/api/1.0/projects/${restapi_object.project.id}/repos/${restapi_object.repository["lab"].id}/webhooks"
+  id_attribute = "id"
   data = jsonencode({
     name   = "infraweave lab verification"
     url    = var.hook_url

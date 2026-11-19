@@ -189,7 +189,7 @@ func TestUnitQuickTunnelNeverAdoptsStaleSessionOrTerminalResult(t *testing.T) {
 	}
 }
 
-func TestUnitQuickTunnelDoesNotInheritProviderCredentialsOrAccountConfig(t *testing.T) {
+func TestUnitQuickTunnelDoesNotInheritProviderCredentials(t *testing.T) {
 	t.Setenv("LAB_GITHUB_APP_PRIVATE_KEY", "private-lab-key-must-not-reach-tunnel")
 	t.Setenv("SEED_TOKEN", "private-seed-token-must-not-reach-tunnel")
 	t.Setenv("TUNNEL_TOKEN", "preexisting-cloud-account-token-must-not-reach-tunnel")
@@ -199,8 +199,20 @@ func TestUnitQuickTunnelDoesNotInheritProviderCredentialsOrAccountConfig(t *test
 		t.Fatal(err)
 	}
 	joined := strings.Join(cmd.Env, "\n")
-	if strings.Contains(joined, "must-not-reach-tunnel") || !strings.Contains(joined, "HOME="+dir) {
-		t.Fatal("tunnel inherited provider credentials or account configuration")
+	if strings.Contains(joined, "must-not-reach-tunnel") {
+		t.Fatal("tunnel inherited provider credentials")
+	}
+	for _, name := range []string{"HOME", "USERPROFILE"} {
+		if value, ok := os.LookupEnv(name); ok && !strings.Contains("\n"+joined+"\n", "\n"+name+"="+value+"\n") {
+			t.Fatal("tunnel repurposed OS home settings")
+		}
+	}
+	var config map[string]any
+	if err := readPrivateJSON(filepath.Join(dir, "cloudflared-config.yml"), &config); err != nil || len(config) != 0 {
+		t.Fatal("tunnel did not isolate its empty session config")
+	}
+	if !strings.Contains(strings.Join(cmd.Args, " "), "--config "+filepath.Join(dir, "cloudflared-config.yml")) {
+		t.Fatal("tunnel may discover an account config instead of its session config")
 	}
 	if _, err := TunnelCommand(t.Context(), "binary", "http://provider.example.com:80", dir); !errors.Is(err, ErrTunnel) {
 		t.Fatal("nonlocal tunnel origin accepted")
