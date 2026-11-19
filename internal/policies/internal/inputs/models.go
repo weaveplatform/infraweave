@@ -1030,7 +1030,7 @@ type TriggerModule struct {
 // TriggerDecision is a typed policy contract object.
 type TriggerDecision struct {
 	Flag      Field[[]string] `json:"flag,omitzero"       contract:""`
-	Priority  Field[string]   `json:"priority,omitzero"   contract:"enum=high,normal,low"`
+	Priority  Field[string]   `json:"priority,omitzero"   contract:"enum=,high,normal,low"`
 	ResetFlag Field[[]string] `json:"reset_flag,omitzero" contract:""`
 	Sample    Field[bool]     `json:"sample,omitzero"     contract:""`
 	Trigger   Field[[]string] `json:"trigger,omitzero"    contract:""`

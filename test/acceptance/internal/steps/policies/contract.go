@@ -54,8 +54,8 @@ func validate(r harness.Response) error {
 	if err != nil {
 		return fmt.Errorf("list policy fixtures: %w", err)
 	}
-	if len(files) != 21 {
-		return fmt.Errorf("%w: %d policy fixtures, want 21", harness.ErrStep, len(files))
+	if len(files) != 23 {
+		return fmt.Errorf("%w: %d policy fixtures, want 23", harness.ErrStep, len(files))
 	}
 	for _, file := range files {
 		name := filepath.Base(file)

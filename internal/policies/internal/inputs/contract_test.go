@@ -99,6 +99,9 @@ func fixtureType(name string) reflect.Type {
 		}
 		return reflect.TypeFor[PlanInput]()
 	case strings.HasPrefix(name, "trigger-"):
+		if decision {
+			return reflect.TypeFor[TriggerDecision]()
+		}
 		return reflect.TypeFor[TriggerInput]()
 	case strings.HasPrefix(name, "notification-"):
 		return reflect.TypeFor[NotificationInput]()
@@ -112,8 +115,8 @@ func TestUnitPolicyContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 21 {
-		t.Fatalf("found %d documents, want all 21 recorded inputs and decisions", len(files))
+	if len(files) != 23 {
+		t.Fatalf("found %d documents, want all 23 recorded inputs and decisions", len(files))
 	}
 	for _, file := range files {
 		name := filepath.Base(file)

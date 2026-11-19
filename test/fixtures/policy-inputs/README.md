@@ -30,6 +30,7 @@ says what each run did.
 | `plan-dependency-run.json` | `PLAN` | run a stack dependency created | `triggered_by` as `dependencies/<stack>`, `trigger` naming the upstream run and stack, `spacelift.previous_run` with its flags; no output reference in `runtime_config.environment` |
 | `plan-pulumi.json` | `PLAN` | tracked Pulumi run, `allow` | the `pulumi.steps` block; changes keyed by URN; hooks in `runtime_config` |
 | `plan-ansible.json` | `PLAN` | tracked Ansible run in check mode, `allow` | the `ansible` recap block; changes with no address |
+| `trigger-empty.decision.json` | `TRIGGER` | real v1 simulation with an otherwise empty policy | unset `priority` is `""`, alongside `flag`, `reset_flag`, `sample` and `trigger`; [nonsecret request/response](provenance/trigger-defaults.json), captured 2026-11-19T22:42:11.727–22:42:11.812Z |
 | `trigger-finished.json` | `TRIGGER` | tracked run `FINISHED`, `trigger` | `stacks[]` with `queued_runs` and no `worker_pool`, `stack.space` null, `run.states_history`, `workflow` |
 | `trigger-discarded.json` | `TRIGGER` | the run a push policy discarded, `ignore` | the discard note in `states_history` |
 | `notification-finished.json` | `NOTIFICATION` | tracked run `FINISHED`, `inbox` | `run_updated` with `policy_receipts`, `plan_policy_decision`, `timing` and `urls`; `webhook_endpoints` |
@@ -57,6 +58,17 @@ values to the contract checks. The capture's redaction uses `actor-a`,
 `subject-a`, documentation IP addresses and stable opaque identifier replacements.
 Its nanosecond timestamps retain the captured values; the timestamp shift
 below describes the original 2026-11-17 set.
+
+## C53 plan input captured on 2026-11-19
+
+`plan-c53-capture.json` is the decoded, redacted real PLAN input at
+`/exchanges/0/response/data/plan/input` in
+[C53 at `8b964824`](https://github.com/weaveplatform/infraweave/blob/8b964824a8430199dd0a6e33ebeb7be5fb54f50f/test/fixtures/captures/C53/response.json),
+SHA-256 `071ac515fb267de6c22dcd53f987afb6e8b8a896d6b4561975a91ee117343b75`.
+Its full vendor envelope and null placeholders are kept, including
+`third_party_metadata`. The source uses the same owner/IP/identifier redaction
+as C51. This partial capture establishes this document's observed shape; it
+does not resolve C53's capture cadence or privacy behavior.
 
 ## Redaction
 

@@ -1,0 +1,21 @@
+{
+  "startedAt": "2026-11-19T22:42:11.727Z",
+  "finishedAt": "2026-11-19T22:42:11.812Z",
+  "request": {
+    "query": "mutation Capture640TriggerDefaults($input:PolicySimulateInput!){policySimulatev2(input:$input)}",
+    "variables": {
+      "input": {
+        "type": "TRIGGER",
+        "engineType": "REGO_V1",
+        "input": "{}",
+        "body": "package spacelift\nimport rego.v1\nsample := false\n"
+      }
+    }
+  },
+  "status": 200,
+  "response": {
+    "data": {
+      "policySimulatev2": "{\"flag\":[],\"priority\":\"\",\"reset_flag\":[],\"sample\":false,\"trigger\":[]}"
+    }
+  }
+}
