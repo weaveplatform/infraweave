@@ -48,6 +48,9 @@ func (f *Fetcher) git(ctx context.Context, dir, url, commit string, paths []stri
 		opts.Depth = 0
 		err = remote.FetchContext(ctx, opts)
 	}
+	if azureCloneRequired(url, err) {
+		err = cloneAzure(ctx, repo, url, opts)
+	}
 	if err != nil {
 		return err //nolint:wrapcheck // the caller names the step and the host
 	}

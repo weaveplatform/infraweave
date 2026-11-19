@@ -391,10 +391,18 @@ func (p *Provider) Mint(ctx context.Context, repo port.Repository, name string, 
 		}
 		return port.Credential{}, classify(resp, err, "access token of "+pid)
 	}
-	return port.Credential{
+	credential := port.Credential{
 		Username: Username, Token: []byte(tok.Token),
 		ID: strconv.FormatInt(tok.ID, 10), ExpiresAt: day,
-	}, nil
+	}
+	if err := p.awaitRepositoryAccess(ctx, repo, credential); err != nil {
+		// The caller cannot record a token Mint never returns. Revocation
+		// must still run if waiting exhausted the request's deadline.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), Timeout)
+		defer cancel()
+		return port.Credential{}, errors.Join(err, p.Revoke(cleanup, repo, credential.ID))
+	}
+	return credential, nil
 }
 
 // refusedMint reports whether GitLab refused the token a project access
