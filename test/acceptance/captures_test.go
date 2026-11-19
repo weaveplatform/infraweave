@@ -193,7 +193,8 @@ func TestUnitAwaitedCaptures(t *testing.T) {
 				t.Errorf("%s awaits with %s: %v", id, feature, err)
 				continue
 			}
-			if scenario != "" && !strings.Contains(string(data), "Scenario: "+scenario+"\n") && !strings.Contains(string(data), "Scenario Outline: "+scenario+"\n") {
+			content := strings.ReplaceAll(string(data), "\r\n", "\n")
+			if scenario != "" && !strings.Contains(content, "Scenario: "+scenario+"\n") && !strings.Contains(content, "Scenario Outline: "+scenario+"\n") {
 				t.Errorf("%s awaits a missing scenario: %s", id, feature)
 			}
 		}
