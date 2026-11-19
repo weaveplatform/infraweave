@@ -203,6 +203,15 @@ func checkFlagResetEvidence(t *testing.T) {
 
 func checkFreeTierEvidence(t *testing.T) {
 	t.Helper()
+	var console struct {
+		CapturedAt time.Time `json:"capturedAt"`
+		Warning    []string  `json:"warning"`
+	}
+	captureJSON(t, "C48", "console.json", &console)
+	if console.CapturedAt.IsZero() || !slices.Contains(console.Warning,
+		"Access, Push, Trigger and Notification policies will not be evaluated for your account. Upgrade your plan to make use of them.") {
+		t.Fatal("the live console entitlement warning is missing")
+	}
 	var capture workflowCapture
 	captureJSON(t, "C48", harness.ResponseFile, &capture)
 	created, evaluated := map[string]bool{}, map[string]bool{}

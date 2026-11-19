@@ -1,0 +1,9 @@
+{
+  "capturedAt": "2026-11-19T22:40:14.963Z",
+  "url": "https://example.app.spacelift.io/policies?sort=name&sortDirection=ASC",
+  "title": "Policies \u00b7 example | Spacelift",
+  "warning": [
+    "Upgrade plan to use all policy types",
+    "Access, Push, Trigger and Notification policies will not be evaluated for your account. Upgrade your plan to make use of them."
+  ]
+}

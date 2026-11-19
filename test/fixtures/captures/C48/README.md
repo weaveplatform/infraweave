@@ -15,3 +15,5 @@ this fixture does not turn that inference into an observed contract. LOGIN,
 ACCESS, STACK_ACCESS and legacy aliases were not mutated in this bounded lab.
 
 The final exchange verifies cleanup. REST replay remains deferred to #645.
+
+The read-only policies page also displayed the warning in console.json that Access, Push, Trigger and Notification policies will not be evaluated on this account. This narrows the affected types but does not isolate the mapping between each absent billing feature and each type.
