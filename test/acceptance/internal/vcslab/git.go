@@ -65,6 +65,9 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 	}
 	auth := &githttp.BasicAuth{Username: credential.User, Password: credential.Token}
 	repo, err := git.PlainCloneContext(ctx, dir, false, &git.CloneOptions{URL: n.cloneURL(), ReferenceName: plumbing.NewBranchReferenceName("main"), Auth: auth, CABundle: ca})
+	if err != nil && n.Provider == "azure-devops" && strings.HasSuffix(nativeGitFailure("clone", err).Error(), "category=http status=400") {
+		repo, err = cloneAzureWithGit(ctx, dir, n.cloneURL(), credential)
+	}
 	if err != nil {
 		return "", nativeGitFailure("clone", err)
 	}
