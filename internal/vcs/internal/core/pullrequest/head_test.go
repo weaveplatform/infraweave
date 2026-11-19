@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
@@ -20,6 +21,13 @@ type requestHeadBindings struct {
 	id      kernel.ULID
 	calls   int
 	err     error
+}
+
+func (b *requestHeadBindings) Binding(_ context.Context, account kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
+	if id == nil || *id != b.id || account != b.account || provider != "BITBUCKET_CLOUD" {
+		return port.Integration{}, false, nil
+	}
+	return port.Integration{ID: b.id, Provider: provider}, true, nil
 }
 
 func (b *requestHeadBindings) Use(ctx context.Context, account kernel.AccountID, provider string, id *kernel.ULID) (port.Integration, bool, error) {
@@ -260,5 +268,48 @@ func TestUnitRequestHeadRefusesInheritedTransactionBeforeNativeReads(t *testing.
 	}
 	if len(store.rows) != 1 || resolver.calls != 1 {
 		t.Fatal("original snapshot did not recover outside transaction")
+	}
+}
+
+func TestUnitExpandedRequestHeadMatchesExistingLowercaseRun(t *testing.T) {
+	d, e := requestDelivery(), requestHeadEvent()
+	d.Provider = "BITBUCKET_CLOUD"
+	full := e.Head + strings.Repeat("a", 28)
+	store := &memoryStore{heads: map[kernel.ULID][]string{}}
+	binding := &requestHeadBindings{account: d.Account, id: d.Integration}
+	resolver := &requestHeads{t: t, integration: d.Integration, source: *e.PullRequest.HeadRepository, head: strings.ToUpper(full)}
+	creator := &requestNoRuns{}
+	run := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: full, CreatedAt: d.ReceivedAt}
+	existing := &commitRuns{rows: []runsapi.CommitRun{run}}
+	s := New(Deps{Store: store, Integrations: binding, Heads: map[string]Heads{d.Provider: resolver}, Runs: existing, Pushes: push.New(push.Deps{Creator: creator})})
+	plan, err := s.Prepare(t.Context(), d, []vcsapi.Event{e})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Do(t.Context(), planDB{}, tx.Options{}, plan.Commit); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.rows) != 1 {
+		t.Fatal("request was not retained")
+	}
+	stored := store.rows[0]
+	store.heads[stored.ID] = []string{stored.HeadSHA}
+	stack := stacksapi.Settings{
+		Stack:          stacksapi.Stack{ID: kernel.NewULID(), Account: d.Account},
+		Provider:       d.Provider,
+		VCSIntegration: &d.Integration,
+		Namespace:      e.Repository.Namespace,
+		Repository:     e.Repository.Name,
+		Branch:         e.PullRequest.BaseBranch,
+	}
+	views, err := s.PullRequests(t.Context(), d.Account, []stacksapi.Settings{stack})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.HeadSHA != full || len(views[stack.ID]) != 1 || views[stack.ID][0].HeadSHA != full || len(views[stack.ID][0].Runs) != 1 || views[stack.ID][0].Runs[0] != run.ID {
+		t.Fatal("expanded head lost canonical storage or the existing pushed-run association")
+	}
+	if creator.calls != 0 || existing.calls != 1 || existing.account != d.Account || existing.stack != stack.ID || binding.calls != 1 {
+		t.Fatal("request read created a run, reopened credentials or crossed account/stack scope")
 	}
 }

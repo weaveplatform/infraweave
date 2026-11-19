@@ -30,7 +30,7 @@ func (s *Service) resolveHead(ctx context.Context, d intake.Delivery, source *vc
 	if !port.ValidCommit(head) || !strings.HasPrefix(strings.ToLower(head), strings.ToLower(prefix)) {
 		return "", ErrHead
 	}
-	return head, nil
+	return strings.ToLower(head), nil
 }
 
 // A provider capability receives only immutable hexadecimal candidates. The

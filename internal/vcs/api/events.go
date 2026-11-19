@@ -32,7 +32,7 @@ type Repository struct {
 	OwnerID   string `json:"ownerId,omitempty"`
 }
 
-// PullRequest holds the request state consumed by push policies.
+// PullRequest holds native snapshot metadata, source identity and policy state.
 type PullRequest struct {
 	// HeadRepository retains the source's stable identity when a provider
 	// advertises a commit prefix that preparation must resolve before storage.
