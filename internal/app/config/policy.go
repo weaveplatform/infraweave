@@ -1,35 +1,17 @@
 package config
 
-import (
-	"errors"
-	"fmt"
-	"time"
-)
+import "github.com/weaveplatform/infraweave/internal/platform/rego"
 
-// ErrPolicy reports an invalid event processing deadline.
-var ErrPolicy = errors.New("invalid policy configuration")
+// ErrPolicy reports an invalid policy execution or inherited event budget.
+var ErrPolicy = rego.ErrSettings
 
-// PolicySettings holds the event processing deadline shared by intake and later
-// policy jobs. A delivery's children inherit its received-time deadline.
+// PolicySettings holds the policy runtime's strict YAML settings and the
+// push-event deadline shared by intake and durable policy jobs.
 //
-// ref: decision 0012
-type PolicySettings struct {
-	Timeouts PolicyTimeouts `mapstructure:"timeouts"`
-}
+// ref: decisions 0009 and 0012
+type PolicySettings = rego.Settings
 
-// PolicyTimeouts bounds push event processing, independently of queue attempts.
-type PolicyTimeouts struct {
-	PushEvent time.Duration `mapstructure:"push_event"`
-}
+// PolicyTimeouts bounds policy evaluation, combined work and VCS event intake.
+type PolicyTimeouts = rego.Timeouts
 
-func defaultPolicy() PolicySettings {
-	return PolicySettings{Timeouts: PolicyTimeouts{PushEvent: 10 * time.Minute}}
-}
-
-// Validate refuses an event deadline that is already exhausted at intake.
-func (p PolicySettings) Validate() error {
-	if p.Timeouts.PushEvent <= 0 {
-		return fmt.Errorf("%w: policy.timeouts.push_event must be positive", ErrPolicy)
-	}
-	return nil
-}
+func defaultPolicy() PolicySettings { return rego.Defaults() }

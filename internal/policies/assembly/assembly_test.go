@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 )
 
 func TestUnitPublisherRoutes(t *testing.T) {
@@ -19,6 +21,15 @@ func TestUnitPublisherRoutes(t *testing.T) {
 		r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, ContractPattern, nil))
 		if rec.Code != tc.status {
 			t.Fatalf("%d, want %d: %s", rec.Code, tc.status, rec.Body)
+		}
+	}
+}
+
+func TestUnitDomainAPIPartial(t *testing.T) {
+	for _, domain := range []*Domain{nil, New()} {
+		out, err := domain.API().PolicyRuntime(t.Context(), api.PolicyRuntimeRequestObject{})
+		if out == nil && err == nil {
+			t.Fatal("runtime metadata produced no response or error")
 		}
 	}
 }
