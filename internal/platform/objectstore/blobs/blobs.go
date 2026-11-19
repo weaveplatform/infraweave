@@ -244,8 +244,10 @@ func (o *Objects) SignGet(ctx context.Context, store objectstore.Name, key strin
 }
 
 // uploaded records the SHA-256 of a server-side write once its upload
-// ends, on the pool like begin.
-const uploaded = `UPDATE blob_objects SET sha256 = $3 WHERE store = $1 AND key = $2 AND state = 'pending'`
+// ends, on the pool like begin. A deleting row needs that completion signal
+// too, so its reaper can remove the body after the writer has finished.
+const uploaded = `UPDATE blob_objects SET sha256 = $3
+WHERE store = $1 AND key = $2 AND state IN ('pending', 'deleting')`
 
 // Put records a pending object and writes size bytes of r under it,
 // sealed under a content key of its own when the store is sealed, and
@@ -570,6 +572,12 @@ func (r *Reaper) Register(reg *queue.Registry) error {
 
 const removed = `DELETE FROM blob_objects WHERE store = $1 AND key = $2 AND state = 'deleting'`
 
+// A delete can overtake a server-side upload. Keep its row until the writer
+// records completion, or is abandoned, so a late write cannot outlive its row.
+const uploading = `SELECT EXISTS (SELECT 1 FROM blob_objects
+WHERE store = $1 AND key = $2 AND state = 'deleting' AND sha256 IS NULL
+AND created_at > now() - $3::interval)`
+
 // remove deletes a deleting row's object, then the row; a retry after a
 // failure between the two finds the object already gone, which every
 // driver answers with success.
@@ -578,6 +586,16 @@ func (r *Reaper) remove(ctx context.Context, j queue.Job) error {
 	if err := json.Unmarshal(j.Payload, &t); err != nil {
 		//nolint:wrapcheck // Permanent marks the wrapped error
 		return queue.Permanent(fmt.Errorf("blobs: %s payload: %w", DeleteKind.Name, err))
+	}
+	if err := check(t.Store, t.Key); err != nil {
+		return queue.Permanent(err) //nolint:wrapcheck // the store and key are named
+	}
+	var waiting bool
+	if err := r.db.QueryRow(ctx, uploading, t.Store, t.Key, Abandoned).Scan(&waiting); err != nil {
+		return fmt.Errorf("blobs: await upload %s/%s: %w", t.Store, t.Key, sql.Unavailable(err))
+	}
+	if waiting {
+		return queue.Snooze(time.Second) //nolint:wrapcheck // preserve the attempt while the writer finishes
 	}
 	if err := r.s.Delete(ctx, t.Store, t.Key); err != nil {
 		if errors.Is(err, objectstore.ErrStore) || errors.Is(err, objectstore.ErrKey) {
