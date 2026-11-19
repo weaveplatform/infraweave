@@ -54,6 +54,7 @@ func (s *checkActionSteps) setup(ctx context.Context, host, vendor string) error
 	s.checks.body["webhookSecret"] = s.checks.githubApp.WebhookSecret
 	if s.public {
 		s.checks.body["apiHost"] = "https://api.github.com"
+		s.checks.body["userFacingHost"] = "https://github.com"
 	}
 	if err := s.checks.stack(ctx, "GitHub", "actions", vendor, "INDIVIDUAL", "{}"); err != nil {
 		return err
@@ -61,10 +62,22 @@ func (s *checkActionSteps) setup(ctx context.Context, host, vendor string) error
 	if err := s.checks.promotion(ctx, "actions", "true"); err != nil {
 		return err
 	}
+	response, err := s.w.Do(ctx, "B", "h", http.MethodGet, s.checks.path+"/"+s.checks.integration, nil)
+	if err != nil {
+		return err
+	}
+	var hosts struct {
+		APIHost        string `json:"apiHost"`
+		UserFacingHost string `json:"userFacingHost"`
+	}
+	if response.Status != 200 || json.Unmarshal(response.Body, &hosts) != nil || hosts.APIHost != s.checks.body["apiHost"] ||
+		(s.public && hosts.UserFacingHost != "https://github.com") {
+		return fmt.Errorf("%w: stored GitHub API or Git host differs from native fixture", harness.ErrStep)
+	}
 	// This commit is deliberately newer than the recorded tracked commit. There
 	// is no push: a button must neither promote nor overwrite source pointers.
 	s.w.IDs["actionCommit"] = s.checks.repo.Commit("main", "requested action commit", deploymentFiles("action"))
-	response, err := s.w.Do(ctx, "A", "h", http.MethodPost, "/api/v1/stacks/actions/runs", map[string]any{"runType": "PROPOSED", "commitSha": s.w.IDs["actionCommit"]})
+	response, err = s.w.Do(ctx, "A", "h", http.MethodPost, "/api/v1/stacks/actions/runs", map[string]any{"runType": "PROPOSED", "commitSha": s.w.IDs["actionCommit"]})
 	if err != nil {
 		return err
 	}
@@ -304,6 +317,13 @@ func (s *checkActionSteps) forged(ctx context.Context, kind, replica string) err
 	if kind != "stale external ID" {
 		token, space, provider, repository, integration := "h", "acme", "GITHUB_ENTERPRISE", "infra", s.checks.integration
 		if kind == "foreign account" {
+			db, err := s.w.Querier(ctx)
+			if err != nil {
+				return err
+			}
+			if err := harness.Sibling.Seed(ctx, db); err != nil {
+				return err
+			}
 			anon, err := s.w.Client("A", "")
 			if err != nil {
 				return err
