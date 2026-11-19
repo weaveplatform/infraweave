@@ -245,7 +245,10 @@ The generic combined lab corpus is not the manual recipe: the harness runs
 scenarios concurrently and in randomized order. Combining these features can
 race the single hook listener and run source-history assertions after mutations.
 For a local container, `LAB_GITLAB_CONTAINER` and `LAB_GITLAB_PORT` optionally
-name its run-owned container and host port; CI keeps the default name/port. On
+name its run-owned container and host port; CI keeps the default name/port.
+`LAB_CA_BUNDLE` can explicitly select the host trust bundle; on macOS use
+`/etc/ssl/cert.pem`. The script refuses an unreadable bundle before creating
+resources, with the existing Linux bundle remaining the default. On
 Docker Desktop, a direct webhook URL uses `host.docker.internal` to reach the
 host's webhook-only listener; Linux runners use their Docker bridge gateway.
 

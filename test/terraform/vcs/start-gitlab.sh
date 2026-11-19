@@ -21,6 +21,9 @@ port=${LAB_GITLAB_PORT:-8443}
 [[ "$container" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || { echo 'invalid owned GitLab container name' >&2; exit 1; }
 [[ "$port" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$port" -le 65535 ] || { echo 'invalid GitLab host port' >&2; exit 1; }
 host=https://localhost:$port
+roots=${LAB_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+if [ -z "${LAB_CA_BUNDLE:-}" ] && [ ! -r "$roots" ]; then roots=/etc/ssl/cert.pem; fi
+[ -f "$roots" ] && [ -r "$roots" ] || { echo 'readable lab CA bundle is required' >&2; exit 1; }
 
 mkdir -p "$dir/ssl"
 openssl req -x509 -newkey rsa:3072 -nodes -days 1 -subj '/CN=localhost' \
@@ -28,8 +31,6 @@ openssl req -x509 -newkey rsa:3072 -nodes -days 1 -subj '/CN=localhost' \
   -keyout "$dir/ssl/key.pem" -out "$dir/cert.pem" 2>/dev/null
 cp "$dir/cert.pem" "$dir/ssl/cert.pem"
 chmod 0644 "$dir/ssl/key.pem"
-roots=/etc/ssl/certs/ca-certificates.crt
-[ -f "$roots" ] || roots=/etc/ssl/cert.pem
 cat "$roots" "$dir/cert.pem" > "$dir/bundle.pem"
 
 # The services the lab never calls stay off, which shortens the start.
