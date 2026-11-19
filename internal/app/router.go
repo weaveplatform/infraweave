@@ -125,6 +125,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 	d.Access.Routes(r)
 	d.State.Routes(r)
 	d.VCS.Routes(r)
+	d.Policies.Routes(r)
 	strict := api.NewStrictHandlerWithOptions(
 		apiServer{
 			AccessAPI:        d.Access.API(),

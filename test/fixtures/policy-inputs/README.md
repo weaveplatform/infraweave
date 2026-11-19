@@ -1,11 +1,11 @@
 # Policy input fixtures
 
 Each `*.json` file here is one input document that Spacelift's policy engine
-evaluated, as the console's policy sample view showed it on a trial account
-Spacelift authorized for captures
+evaluated, through a real policy sample or simulation on an account authorized for captures
 ([report 30, capture safety](../../../docs/research/reference/30-open-questions.md)),
-then redacted. Each `*.decision.json` is the decision document the console's
-simulation answered for an input. They are the observed counterpart of the
+then redacted. The original 2026-11-17 set came from the console on a trial
+account; later API captures have separate provenance below. Each
+`*.decision.json` is a decision returned by a real simulation. They are the observed counterpart of the
 per-type contract in
 [report 09, section 4](../../../docs/research/reference/09-policies.md#4-input-documents):
 P13's `TestUnitPolicyContract` reads them and fails when a key they hold has
@@ -30,9 +30,45 @@ says what each run did.
 | `plan-dependency-run.json` | `PLAN` | run a stack dependency created | `triggered_by` as `dependencies/<stack>`, `trigger` naming the upstream run and stack, `spacelift.previous_run` with its flags; no output reference in `runtime_config.environment` |
 | `plan-pulumi.json` | `PLAN` | tracked Pulumi run, `allow` | the `pulumi.steps` block; changes keyed by URN; hooks in `runtime_config` |
 | `plan-ansible.json` | `PLAN` | tracked Ansible run in check mode, `allow` | the `ansible` recap block; changes with no address |
+| `trigger-empty.decision.json` | `TRIGGER` | real v1 simulation with an otherwise empty policy | unset `priority` is `""`, alongside `flag`, `reset_flag`, `sample` and `trigger`; [nonsecret request/response](provenance/trigger-defaults.json), captured 2026-11-19T22:42:11.727–22:42:11.812Z |
 | `trigger-finished.json` | `TRIGGER` | tracked run `FINISHED`, `trigger` | `stacks[]` with `queued_runs` and no `worker_pool`, `stack.space` null, `run.states_history`, `workflow` |
 | `trigger-discarded.json` | `TRIGGER` | the run a push policy discarded, `ignore` | the discard note in `states_history` |
 | `notification-finished.json` | `NOTIFICATION` | tracked run `FINISHED`, `inbox` | `run_updated` with `policy_receipts`, `plan_policy_decision`, `timing` and `urls`; `webhook_endpoints` |
+
+## C51 approval inputs captured on 2026-11-19
+
+The three `approval-c51-*.json` inputs come from the expanded C51 real-service
+capture prepared for #643, separately from the original 2026-11-17 trial inputs.
+They are decoded copies of the already redacted sample JSON strings; no field
+or value was synthesized. The source is the
+[C51 response at `54d4812f`](https://github.com/weaveplatform/infraweave/blob/54d4812f907fa7d8cc8a176069c2ecd027e9141b/test/fixtures/captures/C51/response.json),
+SHA-256 `bfdb6f983e02e68dbbfa73f7bf6897084f1dde469c4da13eafa0cb4e6c19b7ac`.
+This immutable revision holds the expanded capture; the main-branch C51 record
+may still describe the earlier observation until #643 merges.
+
+| Input | Source JSON pointer | Observed state |
+|---|---|---|
+| `approval-c51-queued.json` | `/exchanges/3/response/data/stack/run/queued/input` | `QUEUED` |
+| `approval-c51-unconfirmed.json` | `/exchanges/3/response/data/stack/run/gate/input` | `UNCONFIRMED`, with the queued flag in `run.flags` |
+| `approval-c51-reset-after.json` | `/exchanges/6/response/data/stack/run/resetAfter/input` | `UNCONFIRMED` after the new policy resets its own flag |
+
+These samples add human creator identity/federations, nullable teams, populated
+review identity/roles/session objects and concrete run/runtime configuration
+values to the contract checks. The capture's redaction uses `actor-a`,
+`subject-a`, documentation IP addresses and stable opaque identifier replacements.
+Its nanosecond timestamps retain the captured values; the timestamp shift
+below describes the original 2026-11-17 set.
+
+## C53 plan input captured on 2026-11-19
+
+`plan-c53-capture.json` is the decoded, redacted real PLAN input at
+`/exchanges/0/response/data/plan/input` in
+[C53 at `8b964824`](https://github.com/weaveplatform/infraweave/blob/8b964824a8430199dd0a6e33ebeb7be5fb54f50f/test/fixtures/captures/C53/response.json),
+SHA-256 `071ac515fb267de6c22dcd53f987afb6e8b8a896d6b4561975a91ee117343b75`.
+Its full vendor envelope and null placeholders are kept, including
+`third_party_metadata`. The source uses the same owner/IP/identifier redaction
+as C51. This partial capture establishes this document's observed shape; it
+does not resolve C53's capture cadence or privacy behavior.
 
 ## Redaction
 

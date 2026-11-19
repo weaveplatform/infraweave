@@ -1,0 +1,44 @@
+# The root schema route is handwritten because the generated router applies
+# /api/v1 uniformly. Its account/feature controls are registered in app.
+paths:
+  /.well-known/policy-contract.json:
+    get:
+      operationId: policyContract
+      summary: Typed policy input and decision contract
+      description: >-
+        JSON Schema generated from the policy input and raw decision types.
+        Served at the root of the shared API listener, with an account bearer
+        credential, the policies capability, standard rate limits and
+        Cache-Control: no-store. No stored inputs or samples are exposed.
+      servers:
+        - url: /
+      tags:
+        - handwritten
+      x-infraweave-feature: policies
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          description: The generated policy contract, never cached by clients.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "500":
+          $ref: '#/components/responses/Problem'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'

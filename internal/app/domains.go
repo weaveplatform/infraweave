@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
@@ -42,6 +43,7 @@ type Domains struct {
 	Vendors       *vendorsassembly.Domain
 	Stacks        *stacksassembly.Domain
 	Configuration *configurationassembly.Domain
+	Policies      *policiesassembly.Domain
 	Runs          *runsassembly.Domain
 	State         *stateassembly.Domain
 	VCS           *vcsassembly.Domain
@@ -145,6 +147,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	)
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
+	policies := policiesassembly.New()
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:              db.Primary(),
 		Keys:            keys,
@@ -241,6 +244,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Vendors:       vendors,
 		Stacks:        stacks,
 		Configuration: configuration,
+		Policies:      policies,
 		Runs:          runs,
 		State:         state,
 		VCS:           vcs,

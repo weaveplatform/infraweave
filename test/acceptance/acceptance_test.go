@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/expressions"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/organization"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/platform"
+	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/policies"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/runs"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/stacks"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/steps/state"
@@ -42,6 +43,7 @@ var areas = []func(*godog.ScenarioContext, *harness.World){
 	workers.Register,
 	state.Register,
 	platform.Register,
+	policies.Register,
 	cli.Register,
 	suite.Register,
 }

@@ -32,6 +32,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/fs"
+	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 	vcsassembly "github.com/weaveplatform/infraweave/internal/vcs/assembly"
 )
@@ -560,6 +561,14 @@ var apiOperations = sync.OnceValue(func() Operations {
 		panic(err.Error())
 	}
 	maps.Copy(ops, some)
+	// Root discovery is an authenticated account read on the same listener,
+	// with the policies capability and all ordinary shared controls.
+	// ref: decisions 0003 and 0009; api/src/api/paths-policy-contract.yaml
+	ops[http.MethodGet+" "+policiesassembly.ContractPattern] = Operation{
+		Cost:     ratelimit.Standard,
+		Gate:     featuresapi.Gate{Feature: "policies"},
+		Required: &accessapi.Required{Action: accessapi.ActionAuthenticated, Subject: accessapi.Subject{Kind: accessapi.SubjectAccount}},
+	}
 	// Webhook intake uses provider protocols, with these control deviations:
 	// Authentication: no authenticator credential; the handler verifies the
 	// integration secret, with empty 401 and no WWW-Authenticate on refusal.
