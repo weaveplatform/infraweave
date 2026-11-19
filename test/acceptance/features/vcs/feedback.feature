@@ -325,6 +325,9 @@ Feature: Repository runs report native checks and deployments
     When action delivery "previewOne" is duplicated through B
     Then it answers 200
     And all action deliveries settle without changing the stack's tracked pointers
+    When action delivery "previewOne" is replayed through B
+    Then it answers 202
+    And replayed action delivery "previewOne" retains its successful effect
     When the recorded check sends action "preview" as delivery "previewTwo" through B
     Then it answers 202
     And action delivery "previewTwo" creates one fresh "PROPOSED" run kept as "buttonRunTwo"
@@ -333,6 +336,9 @@ Feature: Repository runs report native checks and deployments
     Then it answers 202
     And action delivery "deployOne" creates one fresh "TRACKED" run kept as "buttonRunThree"
     And token "h" eventually reads the run "buttonRunThree" in the state "UNCONFIRMED" through B
+    When action delivery "deployOne" is replayed through A
+    Then it answers 202
+    And replayed action delivery "deployOne" retains its successful effect
     When token "h" sends "POST /api/v1/stacks/actions/runs/confirm" with '{"run":"{buttonRunThree}"}' through A
     Then it answers 200
     And token "h" eventually reads the run "buttonRunThree" in the state "FINISHED" through B

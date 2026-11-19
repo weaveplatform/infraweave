@@ -370,44 +370,141 @@ func (c *rollbackActionCreator) Create(ctx context.Context, in runsapi.CreateReq
 }
 
 func TestAccGitHubCheckActionCreationRollback(t *testing.T) {
-	w := newCheckActionApp(t)
-	base := w.d
-	creator := &rollbackActionCreator{Creator: base.Runs.Creator(), cause: errors.New("completion unavailable")}
-	// Reconstruct only VCS at the app's public composition seam. Every forward
-	// port and the wrapped Creator still uses its genuine domain implementation.
-	domain, err := vcsassembly.New(vcsassembly.Deps{
-		DB: w.q, Keys: w.keys, Spaces: base.Access.Spaces(), Authz: base.Access.Authorizer(), Stacks: base.Stacks.Stacks(),
-		Histories: base.Runs, PlanningLogs: base.Runs.PlanningLogs(), CommitRuns: base.Runs.CommitRuns(), CheckFacts: base.Runs.CheckFacts(),
-		Settings: w.cfg.VCS, Public: w.cfg.Server.PublicURL, Log: discard(), Objects: w.blobs.Objects,
-		PushEventTimeout: w.cfg.Policy.Timeouts.PushEvent, Features: base.Features.Entitlements(), Creator: creator, Supersede: base.Runs.Supersede(),
-	})
+	for _, recovery := range []string{"same claim", "public replay"} {
+		t.Run(recovery, func(t *testing.T) {
+			w := newCheckActionApp(t)
+			base := w.d
+			creator := &rollbackActionCreator{Creator: base.Runs.Creator(), cause: errors.New("completion unavailable")}
+			// Reconstruct only VCS at the app's public composition seam. Every forward
+			// port and the wrapped Creator still uses its genuine domain implementation.
+			domain, err := vcsassembly.New(vcsassembly.Deps{
+				DB: w.q, Keys: w.keys, Spaces: base.Access.Spaces(), Authz: base.Access.Authorizer(), Stacks: base.Stacks.Stacks(),
+				Histories: base.Runs, PlanningLogs: base.Runs.PlanningLogs(), CommitRuns: base.Runs.CommitRuns(), CheckFacts: base.Runs.CheckFacts(),
+				Settings: w.cfg.VCS, Public: w.cfg.Server.PublicURL, Log: discard(), Objects: w.blobs.Objects,
+				PushEventTimeout: w.cfg.Policy.Timeouts.PushEvent, Features: base.Features.Entitlements(), Creator: creator, Supersede: base.Runs.Supersede(),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.d.VCS = domain
+			w.serve(t)
+			if _, err := domain.API().
+				AccountUpdateVCSEventTriggeredRunsLimit(w.admin, api.AccountUpdateVCSEventTriggeredRunsLimitRequestObject{Body: &api.AccountUpdateVCSEventTriggeredRunsLimitRequest{Limit: new(int32(1))}}); err != nil {
+				t.Fatal(err)
+			}
+			before := w.pointers(t)
+			w.press(t, "rollback", "preview", 202)
+			w.process(t)
+			job := w.claim(t, "vcs.evaluate_event")
+			if err := w.registration(t, job.Kind).Handler(t.Context(), job); !errors.Is(err, creator.cause) {
+				t.Fatal("genuine creation failure lost", err)
+			}
+			if len(w.runViews(t)) != 1 || !reflect.DeepEqual(before, w.pointers(t)) {
+				t.Fatal("failed completion leaked a run/source mutation")
+			}
+			if err := tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error { return w.jobs.HoldTx(ctx, job) }); err != nil {
+				t.Fatal("failed creation acknowledged claim", err)
+			}
+			if recovery == "public replay" {
+				if err := w.jobs.Kill(t.Context(), job, creator.cause); err != nil {
+					t.Fatal(err)
+				}
+				w.replay(t, "rollback")
+				w.process(t)
+				job = w.claim(t, "vcs.evaluate_event")
+			}
+			creator.cause = nil
+			if err := w.registration(t, job.Kind).Handler(t.Context(), job); err != nil {
+				t.Fatal("same claim/cap reservation did not recover", err)
+			}
+			if len(w.runViews(t)) != 2 || !bytes.Equal(before, w.pointers(t)) {
+				t.Fatal("recovery lost exactly-one creation/pointer invariance")
+			}
+		})
+	}
+}
+
+func (w *checkActionApp) replay(t *testing.T, delivery string) {
+	t.Helper()
+	response, err := w.d.VCS.API().
+		VcsIntegrationDeliveries(w.admin, api.VcsIntegrationDeliveriesRequestObject{VcsIntegrationId: w.integration, Params: api.VcsIntegrationDeliveriesParams{Input: api.VCSDeliverySearchInput{First: new(int32(50))}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.d.VCS = domain
-	w.serve(t)
-	if _, err := domain.API().
-		AccountUpdateVCSEventTriggeredRunsLimit(w.admin, api.AccountUpdateVCSEventTriggeredRunsLimitRequestObject{Body: &api.AccountUpdateVCSEventTriggeredRunsLimitRequest{Limit: new(int32(1))}}); err != nil {
+	page, ok := response.(api.VcsIntegrationDeliveries200JSONResponse)
+	if !ok {
+		t.Fatalf("delivery listing returned %T", response)
+	}
+	for _, edge := range page.Body.Edges {
+		if edge.Node.DeliveryId != delivery {
+			continue
+		}
+		replay, err := w.d.VCS.API().VcsIntegrationDeliveryReplay(w.admin, api.VcsIntegrationDeliveryReplayRequestObject{VcsIntegrationId: w.integration, DeliveryId: edge.Node.Id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := replay.(api.VcsIntegrationDeliveryReplay202JSONResponse); !ok {
+			t.Fatalf("replay returned %T", replay)
+		}
+		return
+	}
+	t.Fatal("missing genuine retained delivery")
+}
+
+func TestAccGitHubCheckActionSuccessfulDeliveryReplay(t *testing.T) {
+	for _, action := range []string{"preview", "deploy"} {
+		t.Run(action, func(t *testing.T) {
+			w := newCheckActionApp(t)
+			w.fake.SetCollaboratorPermission("acme", "infra", "developer", "write")
+			before := w.pointers(t)
+			w.press(t, "one-intent", action, 202)
+			w.process(t)
+			first := w.claim(t, "vcs.evaluate_event")
+			if err := w.registration(t, first.Kind).Handler(t.Context(), first); err != nil {
+				t.Fatal(err)
+			}
+			if len(w.runViews(t)) != 2 {
+				t.Fatal("original button did not create one run")
+			}
+			w.replay(t, "one-intent")
+			w.process(t)
+			second := w.claim(t, "vcs.evaluate_event")
+			requests := w.fake.Requests()
+			w.fake.Fail(githubfake.ServerError, 0)
+			if err := w.registration(t, second.Kind).Handler(t.Context(), second); err != nil {
+				t.Fatal(err)
+			}
+			if w.fake.Requests() != requests {
+				t.Fatal("completed intent repeated native authorization")
+			}
+			w.fake.Fail(githubfake.None, 0)
+			if got := len(w.runViews(t)); got != 2 || !bytes.Equal(before, w.pointers(t)) {
+				t.Fatal("replay repeated a successful button effect", got)
+			}
+		})
+	}
+}
+
+func TestAccGitHubCheckActionRefusedIntentCanReplay(t *testing.T) {
+	w := newCheckActionApp(t)
+	w.fake.SetCollaboratorPermission("acme", "infra", "developer", "read")
+	w.press(t, "initially-readonly", "deploy", 202)
+	w.process(t)
+	first := w.claim(t, "vcs.evaluate_event")
+	if err := w.registration(t, first.Kind).Handler(t.Context(), first); err != nil {
 		t.Fatal(err)
 	}
-	before := w.pointers(t)
-	w.press(t, "rollback", "preview", 202)
+	if len(w.runViews(t)) != 1 {
+		t.Fatal("readonly press created a run")
+	}
+	w.fake.SetCollaboratorPermission("acme", "infra", "developer", "write")
+	w.replay(t, "initially-readonly")
 	w.process(t)
-	job := w.claim(t, "vcs.evaluate_event")
-	if err := w.registration(t, job.Kind).Handler(t.Context(), job); !errors.Is(err, creator.cause) {
-		t.Fatal("genuine creation failure lost", err)
+	next := w.claim(t, "vcs.evaluate_event")
+	if err := w.registration(t, next.Kind).Handler(t.Context(), next); err != nil {
+		t.Fatal(err)
 	}
-	if len(w.runViews(t)) != 1 || !reflect.DeepEqual(before, w.pointers(t)) {
-		t.Fatal("failed completion leaked a run/source mutation")
-	}
-	if err := tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error { return w.jobs.HoldTx(ctx, job) }); err != nil {
-		t.Fatal("failed creation acknowledged claim", err)
-	}
-	creator.cause = nil
-	if err := w.registration(t, job.Kind).Handler(t.Context(), job); err != nil {
-		t.Fatal("same claim/cap reservation did not recover", err)
-	}
-	if len(w.runViews(t)) != 2 || !bytes.Equal(before, w.pointers(t)) {
-		t.Fatal("recovery lost exactly-one creation/pointer invariance")
+	if len(w.runViews(t)) != 2 {
+		t.Fatal("refused press was incorrectly marked successful")
 	}
 }

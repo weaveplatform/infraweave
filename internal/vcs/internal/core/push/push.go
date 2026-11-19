@@ -76,6 +76,14 @@ type ActionSources interface {
 	RefreshCheckAction(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event, port.ActionFacts) (bool, error)
 }
 
+// ActionEffects retains successful intent across replay generations. Both
+// operations require the evaluator's completing transaction. The original
+// delivery and immutable target identify a press; another delivery is new intent.
+type ActionEffects interface {
+	HasCheckAction(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID) (bool, error)
+	RecordCheckAction(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID) error
+}
+
 // IgnoredRecorder persists a reason under the same live account/stack holds and
 // queue completion transaction as evaluation. Tier gates apply only to reads.
 type IgnoredRecorder interface {
@@ -105,6 +113,7 @@ type Deps struct {
 	Integrations  Integrations
 	Sources       Sources
 	Actions       ActionSources
+	Effects       ActionEffects
 	ActionRefused func(context.Context, string)
 	Creator       runsapi.Creator
 	Supersede     runsapi.Supersede

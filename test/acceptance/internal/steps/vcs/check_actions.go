@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -36,6 +37,8 @@ func (s *checkActionSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the action sender has repository permission "(read|write)"$`, s.permission)
 	sc.Step(`^the recorded check sends action "(preview|deploy)" as delivery "(\w+)" through ([AB])$`, s.press)
 	sc.Step(`^action delivery "(\w+)" is duplicated through ([AB])$`, s.duplicate)
+	sc.Step(`^action delivery "(\w+)" is replayed through ([AB])$`, s.replay)
+	sc.Step(`^replayed action delivery "(\w+)" retains its successful effect$`, s.replayed)
 	sc.Step(`^action delivery "(\w+)" creates one fresh "(PROPOSED|TRACKED)" run kept as "(\w+)"$`, s.created)
 	sc.Step(`^all action deliveries settle without changing the stack's tracked pointers$`, s.settled)
 	sc.Step(`^the action source fetched through the configured native GitHub host$`, s.sourceHost)
@@ -392,4 +395,63 @@ func (s *checkActionSteps) forged(ctx context.Context, kind, replica string) err
 		return err
 	}
 	return s.send(ctx, "forged", replica, encoded)
+}
+
+func (s *checkActionSteps) deliveryView(ctx context.Context, name string) (api.VCSDelivery, error) {
+	path := "/api/v1/vcs-integrations/" + s.checks.integration + "/deliveries?input=" + url.QueryEscape(`{"first":50}`)
+	response, err := s.w.Do(ctx, "B", "h", http.MethodGet, path, nil)
+	if err != nil {
+		return api.VCSDelivery{}, err
+	}
+	var page api.VCSDeliveriesOutput
+	if response.Status != 200 || json.Unmarshal(response.Body, &page) != nil {
+		return api.VCSDelivery{}, fmt.Errorf("%w: action delivery listing answered %d", harness.ErrStep, response.Status)
+	}
+	for _, edge := range page.Edges {
+		if edge.Node.DeliveryId == name {
+			return edge.Node, nil
+		}
+	}
+	return api.VCSDelivery{}, fmt.Errorf("%w: original action delivery missing", harness.ErrStep)
+}
+
+func (s *checkActionSteps) replay(ctx context.Context, name, replica string) error {
+	delivery, err := s.deliveryView(ctx, name)
+	if err != nil {
+		return err
+	}
+	_, err = s.w.Do(ctx, replica, "h", http.MethodPost, "/api/v1/vcs-integrations/"+s.checks.integration+"/deliveries/"+delivery.Id+"/replay", nil)
+	return err
+}
+
+func (s *checkActionSteps) replayed(ctx context.Context, name string) error {
+	if err := s.settled(ctx); err != nil {
+		return err
+	}
+	delivery, err := s.deliveryView(ctx, name)
+	if err != nil {
+		return err
+	}
+	if delivery.RunsCreated != 0 {
+		return fmt.Errorf("%w: replay consumed another cap slot", harness.ErrStep)
+	}
+	var count int
+	if err := s.w.Row(ctx, `SELECT count(*) FROM runs`, nil, &count); err != nil {
+		return err
+	}
+	if count != s.before+len(s.createdRuns) {
+		return fmt.Errorf("%w: replay repeated a successful button effect", harness.ErrStep)
+	}
+	for _, id := range s.createdRuns {
+		response, err := s.w.Do(ctx, "A", "h", http.MethodGet, "/api/v1/runs/"+id, nil)
+		if err != nil {
+			return err
+		}
+		var run api.Run
+		if response.Status != 200 || json.Unmarshal(response.Body, &run) != nil || run.Id != id || run.Commit.Hash != s.check.SHA || run.TriggeredBy == nil ||
+			*run.TriggeredBy != "github/developer" {
+			return fmt.Errorf("%w: replay replaced original successful run identity", harness.ErrStep)
+		}
+	}
+	return nil
 }

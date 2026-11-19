@@ -111,6 +111,19 @@ func actionFor(event vcsapi.Event, stack kernel.ULID) bool {
 
 //nolint:wrapcheck // domain/queue ports retain their named boundary and control errors
 func (s *Service) applyAction(ctx context.Context, input Evaluation, stack stacksapi.Settings, event Prepared, integration kernel.ULID, attempt actionAttempt) (Decision, error) {
+	if s.d.Effects == nil {
+		return Decision{}, kernel.ErrUnavailable
+	}
+	done, err := s.d.Effects.HasCheckAction(ctx, input.Account, input.Delivery, input.Stack)
+	if err != nil {
+		return Decision{}, err
+	}
+	if done {
+		return Decision{Outcome: Duplicate}, nil
+	}
+	if attempt.completed {
+		return Decision{}, errChanged
+	}
 	refuse := func(reason string) (Decision, error) {
 		s.actionRefused(ctx, reason)
 		return Decision{Refused, reason}, nil
@@ -146,7 +159,7 @@ func (s *Service) applyAction(ctx context.Context, input Evaluation, stack stack
 	if s.d.Creator == nil || s.d.Limits == nil {
 		return Decision{}, kernel.ErrUnavailable
 	}
-	_, err = s.d.Creator.Create(ctx, runsapi.CreateRequest{
+	created, err := s.d.Creator.Create(ctx, runsapi.CreateRequest{
 		Account: input.Account, Stack: input.Stack, Type: kind,
 		Commit: runsapi.Commit(event.Commit), TriggeredBy: "github/" + event.Event.Author, Mode: runsapi.None,
 		BeforeCreate: func(ctx context.Context) error { return s.admit(ctx, input) },
@@ -170,6 +183,12 @@ func (s *Service) applyAction(ctx context.Context, input Evaluation, stack stack
 	if err != nil {
 		return Decision{}, err
 	}
+	if !created.Created {
+		return Decision{}, kernel.ErrUnavailable
+	}
+	if err := s.d.Effects.RecordCheckAction(ctx, input.Account, input.Delivery, input.Stack); err != nil {
+		return Decision{}, err
+	}
 	outcome := Propose
 	if kind == kernel.RunTypeTracked {
 		outcome = Track
@@ -191,6 +210,7 @@ var errActionPreparation = errors.New("vcs: check action preparation failed")
 
 type actionAttempt struct {
 	fingerprint [32]byte
+	completed   bool
 	canWrite    bool
 	reason      string
 }
@@ -203,9 +223,10 @@ func actionFingerprint(event Prepared) [32]byte {
 // actionSnapshot binds original durable identity separately from its current
 // path projection. The short read transaction is released before native reads.
 type actionSnapshot struct {
-	original Prepared
-	event    vcsapi.Event
-	reason   string
+	original  Prepared
+	completed bool
+	event     vcsapi.Event
+	reason    string
 }
 
 //nolint:wrapcheck // domain/queue ports retain their named boundary and control errors
@@ -241,46 +262,72 @@ func (s *Service) actionSnapshots(ctx context.Context, job queue.Job, input Eval
 			if !actionFor(event.Event, input.Stack) {
 				continue
 			}
-			item := actionSnapshot{original: event, event: event.Event}
-			if s.d.Lifecycle != nil {
-				repo, allowed, err := s.d.Lifecycle.FanoutRepository(ctx, input.Account, meta.Integration, time.Time{}, event.Event.Repository)
-				if err != nil {
-					return err
-				}
-				if !allowed {
-					item.reason = actionSourceChanged
-				} else {
-					item.event.Repository = repo
-				}
-			}
-			stack, reason, err := s.actionTarget(ctx, intake.Delivery{Account: input.Account, Provider: meta.Provider, Integration: meta.Integration}, item.event, use)
+			item, err := s.snapshotAction(ctx, input, meta, use, event)
 			if err != nil {
 				return err
 			}
-			if reason != "" {
-				item.reason = reason
-			}
-			if reason == "" && !stack.GithubActionDeploy {
-				item.reason = actionDisabled
-			}
-			if item.reason == "" {
-				if event.Action == nil {
-					item.reason = actionSourceChanged
-				} else {
-					current, err := s.d.Actions.CurrentCheckAction(ctx, input.Account, meta.Integration, meta.Provider, item.event.Repository, *event.Action)
-					if err != nil {
-						return err
-					}
-					if !current {
-						item.reason = actionSourceChanged
-					}
-				}
-			}
+
 			snapshots[index] = item
 		}
 		return nil
 	})
 	return meta, use, snapshots, err
+}
+
+// snapshotAction runs under the queue, delivery-generation and integration
+// holds. A successful original intent skips native authorization, but is checked
+// again during completion before suppressing the effect.
+//
+//nolint:wrapcheck // transactional VCS reads retain their owned error boundary
+func (s *Service) snapshotAction(ctx context.Context, input Evaluation, meta EventContext, use stacksapi.Use, event Prepared) (actionSnapshot, error) {
+	item := actionSnapshot{original: event, event: event.Event}
+	if s.d.Effects == nil {
+		return item, kernel.ErrUnavailable
+	}
+	done, err := s.d.Effects.HasCheckAction(ctx, input.Account, input.Delivery, input.Stack)
+	if err != nil {
+		return item, err
+	}
+	if done {
+		item.completed = true
+		return item, nil
+	}
+	if s.d.Lifecycle != nil {
+		repo, allowed, err := s.d.Lifecycle.FanoutRepository(ctx, input.Account, meta.Integration, time.Time{}, event.Event.Repository)
+		if err != nil {
+			return item, err
+		}
+		if !allowed {
+			item.reason = actionSourceChanged
+		} else {
+			item.event.Repository = repo
+		}
+	}
+	stack, reason, err := s.actionTarget(ctx, intake.Delivery{Account: input.Account, Provider: meta.Provider, Integration: meta.Integration}, item.event, use)
+	if err != nil {
+		return item, err
+	}
+	if reason != "" {
+		item.reason = reason
+	}
+	if reason == "" && !stack.GithubActionDeploy {
+		item.reason = actionDisabled
+	}
+	if item.reason != "" {
+		return item, nil
+	}
+	if event.Action == nil {
+		item.reason = actionSourceChanged
+		return item, nil
+	}
+	current, err := s.d.Actions.CurrentCheckAction(ctx, input.Account, meta.Integration, meta.Provider, item.event.Repository, *event.Action)
+	if err != nil {
+		return item, err
+	}
+	if !current {
+		item.reason = actionSourceChanged
+	}
+	return item, nil
 }
 
 //nolint:wrapcheck // domain/queue ports retain their named boundary and control errors
@@ -302,6 +349,11 @@ func (s *Service) prepareActions(ctx context.Context, job queue.Job, input Evalu
 	attempts := map[int]actionAttempt{}
 	for index, item := range snapshots {
 		attempt := actionAttempt{fingerprint: actionFingerprint(item.original), reason: item.reason}
+		if item.completed {
+			attempt.completed = true
+			attempts[index] = attempt
+			continue
+		}
 		stack, reason, err := s.actionTarget(ctx, intake.Delivery{Account: input.Account, Provider: meta.Provider, Integration: meta.Integration}, item.event, use)
 		if err != nil {
 			return nil, err
@@ -364,6 +416,10 @@ func (s *Service) selectEvaluation(
 		out.matched = true
 		if attempt.fingerprint != actionFingerprint(event) {
 			s.actionRefused(ctx, actionSourceChanged)
+			return out, nil
+		}
+		if attempt.completed {
+			out.apply = true
 			return out, nil
 		}
 		if s.d.Lifecycle != nil {

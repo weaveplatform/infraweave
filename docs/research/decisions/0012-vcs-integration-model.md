@@ -542,8 +542,14 @@ ref: [0015, fan-out](0015-events-notifications-webhooks-audit.md#one-event-model
   changing the original delivered identity. Provider cancellation, deadlines
   and rate-limit resets retain their queue scheduling meaning.
 
-  A new deliberate press creates a new run through Creator mode `None`;
-  redelivery and replay retain their delivery/generation fences. Neither
+  A new deliberate press (a new native delivery) creates a new run through
+  Creator mode `None`. Redelivery and replay retain their delivery/generation
+  fences. A VCS-owned successful-action marker, keyed by account, original
+  delivery and immutable target stack, is written only after successful run
+  creation in the same cap/run/acknowledgement transaction. Replay retains it
+  and never repeats that effect; failed or refused creation leaves no marker
+  and can recover. Delivery retention and account purge remove the marker.
+  It is historical identity, without a live Stack/Run hold. Neither
   button writes tracked branch head, tracked commit or its setter, nor
   supersedes runs as a push does. Refusal logging and the
   `infraweave.vcs.check_action.refused` counter occur after commit, with only

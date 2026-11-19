@@ -249,7 +249,7 @@ func New(d Deps) (*Domain, error) {
 	pushes := push.New(push.Deps{
 		Lifecycle: identities,
 		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
-		Integrations: integrations, Sources: sources, Actions: sources, ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
+		Integrations: integrations, Sources: sources, Actions: sources, Effects: pg.New(d.DB, d.Keys), ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
 		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 	})
 	requests := pullrequest.New(pullrequest.Deps{

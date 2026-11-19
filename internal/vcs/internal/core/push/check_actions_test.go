@@ -52,6 +52,23 @@ func (a *actionSources) CurrentCheckAction(ctx context.Context, _ kernel.Account
 	return a.current, nil
 }
 
+type actionEffects struct{ done bool }
+
+func (a *actionEffects) HasCheckAction(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ kernel.ULID) (bool, error) {
+	if !tx.In(ctx) {
+		return false, ErrNoTransaction
+	}
+	return a.done, nil
+}
+
+func (a *actionEffects) RecordCheckAction(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ kernel.ULID) error {
+	if !tx.In(ctx) {
+		return ErrNoTransaction
+	}
+	a.done = true
+	return nil
+}
+
 type actionRuns struct{ w *evaluationWorld }
 
 func (r actionRuns) Create(ctx context.Context, in runsapi.CreateRequest) (runsapi.CreatedRun, error) {
@@ -78,6 +95,7 @@ func newActionEvaluation(t *testing.T) (*evaluationWorld, *actionSources) {
 	w.s.d.Integrations = eventUse{use: stacksapi.Use{Integration: w.meta.Integration, Provider: w.meta.Provider}, found: true}
 	a := &actionSources{t: t, write: true, current: true}
 	w.s.d.Actions = a
+	w.s.d.Effects = &actionEffects{}
 	w.s.d.Creator = actionRuns{w}
 	event := vcsapi.Event{
 		Type:        "check_action",
@@ -279,5 +297,18 @@ func TestUnitCheckActionNativeRetryAndDeadline(t *testing.T) {
 				t.Fatal("native failure changed run/cap/pointers")
 			}
 		})
+	}
+}
+
+func TestUnitCheckActionSuccessfulReplaySkipsNativeAuthorization(t *testing.T) {
+	w, a := newActionEvaluation(t)
+	w.s.d.Effects = &actionEffects{done: true}
+	a.err = errors.New("native unavailable")
+	w.stack.GithubActionDeploy = false
+	if err := w.s.Evaluated(t.Context(), w.job); err != nil {
+		t.Fatal(err)
+	}
+	if a.refresh != 0 || w.complete != 1 || len(w.requests) != 0 || w.used != 0 {
+		t.Fatal("successful original intent repeated effects/authorization", a.refresh, w.complete, w.requests, w.used)
 	}
 }
