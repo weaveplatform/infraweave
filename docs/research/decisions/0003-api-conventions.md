@@ -299,6 +299,18 @@ forbidden`: no binding the caller could gain lifts another caller's lock.
 The scaffolder adds them to each operation and records each addition in
 `x-infraweave-divergence`.
 
+
+### Policy surfaces
+
+Policy management, attachment, review, sampling and simulation operations use the
+same listener, authentication, authorization, feature, body, rate, idempotency and
+problem controls as other operations. Root-space administration is required to
+read raw sample input; policy-space read alone cannot grant it. Expressions
+serves POST /policies/check over the policy surface, under that context's read
+permission. GET /.well-known/policy-contract.json is an authenticated policy
+contract read on the same listener; it exposes schema, never stored inputs.
+These policy routes introduce no additional protocol/control exception.
+
 ## Rationale
 
 - **Webhook address budget.** GitHub sends deliveries from shared addresses

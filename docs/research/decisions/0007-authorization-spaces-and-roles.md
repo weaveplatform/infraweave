@@ -470,6 +470,18 @@ so that member sees an empty list.
 - **Login policy `space_*` rules** still work, mapped to system roles, because
   login policies themselves are live.
 
+
+### Policy configuration and ownership
+
+The active scheme is one of MANAGED_USERS and LOGIN_POLICIES. Switching keeps
+the inactive scheme's bindings and policies unchanged, so switching back restores
+its configuration. LOGIN policies exist only in the account's top space; a
+create/move outside it is `422 validation-failed`. Account-qualified grants and
+session revocations commit with their owning change. Access owns the login
+evaluation interface; policies implements it through an app-injected back edge,
+without an access→policies import. C50's LOGIN behavior and the remaining session
+capture cases must be recorded before the affected handler is implemented.
+
 ## Rationale
 
 - **Spacelift's model, evaluated natively.** The semantics (propagation,

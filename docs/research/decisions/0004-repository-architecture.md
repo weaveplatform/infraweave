@@ -202,7 +202,7 @@ with its dependency rules as written there. In summary:
   | `internal/queue`, `internal/cron` | `internal/platform/queue`, `internal/platform/cron` |
   | `internal/objectstore` | `internal/platform/objectstore` |
   | `internal/secrets` | `internal/platform/crypt`; `internal/secrets/mask` is `internal/platform/mask` |
-  | `internal/policy` | `internal/platform/rego` for the engine; `internal/policies` for types, inputs, combination, receipts and sampling |
+  | `internal/policy` | `internal/platform/rego` for the engine; `internal/policies` for data, inputs, combination and sampling; `internal/runs` for transition-owned receipts/flags |
   | `internal/run`, `internal/workerapi` | `internal/runs`; `internal/workers` (the `/worker/v1` adapter) |
   | `internal/vcs/<provider>`, `internal/vcs/agent` | `internal/vcs` adapters; `internal/agent/vcsagent`, with route tables in `internal/kernel/vcsroutes` |
   | `internal/authn`, `internal/authz` | `internal/access` |
@@ -346,8 +346,8 @@ change.
   `cloudapi.Credentials`, `stateapi.Versions`), the worker protocol in
   `workers` claims and reports through `workersapi.Scheduler` and
   `workersapi.Reports`, which `runs` implements, and `access` evaluates
-  `LOGIN` policies through
-  `policiesapi.Evaluator`. The
+  `LOGIN` policies through its own `accessapi.LoginEvaluator`, which policies
+  implements and app binds after construction. Access imports no policies API. The
   [declared graph](../../implementation/repo-layout.md#declared-graph)
   lists every edge, the back edges and the construction order.
 - **Stack state is a projection.** A stack's `state` and `blocked` are

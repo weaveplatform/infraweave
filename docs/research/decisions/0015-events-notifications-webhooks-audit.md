@@ -444,6 +444,16 @@ A per-stack webhook's endpoint is unique per owner. A duplicate answers 409
 | `infraweave.audit.entries` | `event_type` |
 | `infraweave.audit.ship_lag` (seconds) | none |
 
+
+### Policy producer and sink phases
+
+P13 produces durable policy_evaluated/internal_error records in its caller's
+transaction, with the existing run_updated Commit checks consumer. This does
+not deliver notification policies, inbox messages or other sinks: P18 owns those
+consumers and routing. Runs supplies committed receipts; policies never reads
+runs' private tables or imports its callers to build an event. A no-run policy
+failure remains an event/evaluation fact rather than creating a synthetic run.
+
 ## Rationale
 
 - **One model for Deploy and Flows.** A run state change, a drift result, a

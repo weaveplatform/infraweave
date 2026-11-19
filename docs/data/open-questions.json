@@ -864,7 +864,7 @@
       "area": "Stacks, runs and policies (reports 07 to 09)",
       "question": "What does `queued_runs` count on each trigger policy `stacks[]` entry, and is it present on module-version events? A sampled input carries it as an integer on every `stacks[]` entry, 0 for each stack with no queued run (report 32); module-version events are unread",
       "howToCapture": "Sample a trigger policy",
-      "blocks": "trigger policy input",
+      "blocks": "Run inputs retain the observed queued_runs field in P13; the unread module-version event shape blocks P17 registry-trigger implementation",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"

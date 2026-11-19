@@ -574,6 +574,17 @@ MFA enforcement, session limits and break-glass credentials are
 organization data, not configuration; the operator API writes the
 break-glass credential.
 
+
+### Policy authorization phase
+
+Organization authentication precedes account admission. In P13b, access evaluates
+account LOGIN policies through its own `accessapi.LoginEvaluator`, injected by
+app from policies after construction. Session creation, account entry and API key
+exchange share the admission contract of 0007, including its root-admin API-key
+exception. Scheme/policy mutations and required session revocation commit
+together, preserving the caller/editor session as specified. Missing behavior
+captures block their affected P13b implementation; P13 adds no login bypass.
+
 ## Rationale
 
 - **PD-07: identical formats by default, with a configurable issuer and

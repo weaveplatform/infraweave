@@ -551,6 +551,20 @@ coverage it would contribute is not waived.
   Nightly acceptance includes both partitions, and the weekly or
   requested stress run applies to both, preserving the full run workload.
 
+
+### Policy phase evidence
+
+Capture prerequisites block only the behaviors they settle; research may start
+ahead of a phase's product gate. plan P13's table includes the policy portion of
+C9, C46, C48, C50, C51, C52, C56 and C291. Recorded C49/C54/C57/C192 verify offline
+now and name their REST implementation handoffs. A synthetic response cannot
+resolve an observed behavior gate. P13 requires the existing real-provider
+vcs-lab walkthrough on GitHub, GitLab, Bitbucket Cloud and Azure DevOps; Bitbucket
+Data Center is optional only without a licence. Real tools/PostgreSQL/storage
+and every provider fake also remain required. P13b follows P13 and RBAC #235;
+its shared-runtime changes rerun affected lab scenarios. Each ticket keeps fixes
+in one open PR through acceptance.
+
 ## Rationale
 
 - **Subprocess binaries, not in-process servers.** The deployable artefact

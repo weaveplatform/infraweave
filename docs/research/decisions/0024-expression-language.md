@@ -370,6 +370,16 @@ templates.
   A NUL byte cannot be in a shell word, so a value holding one fails the
   phase.
 
+
+### Policy check ownership
+
+Policies supplies its check compiler/preamble through `Surfaces()`; expressions
+serves the shared endpoint and registry. The reusable compiler is platform/rego,
+not a private domain import from expressions. Diagnostics use OPA Location.Offset
+and Text to name submitted source ranges, excluding generated preamble offsets.
+The check performs no policy write, receipt/sample/capture write or budget charge;
+simulation remains the P13b operation and console components remain P24c.
+
 ## Rationale
 
 - **CEL fits what users write.** In the Flows template corpus, about 88% of
