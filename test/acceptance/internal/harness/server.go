@@ -119,8 +119,8 @@ func StartServer(ctx context.Context, bin, dir, coverDir, mode string, config []
 
 // StartLauncher is StartServer for infraweave launcher, which reaches the
 // Docker daemon at dockerHost.
-func StartLauncher(ctx context.Context, bin, dir, coverDir string, config []byte, dockerHost string) (*Server, error) {
-	return start(ctx, bin, dir, coverDir, "launcher", config, []string{"DOCKER_HOST=" + dockerHost})
+func StartLauncher(ctx context.Context, bin, dir, coverDir string, config []byte, dockerHost string, env ...string) (*Server, error) {
+	return start(ctx, bin, dir, coverDir, "launcher", config, append([]string{"DOCKER_HOST=" + dockerHost}, env...))
 }
 
 func start(ctx context.Context, bin, dir, coverDir, mode string, config []byte, env []string) (*Server, error) {
