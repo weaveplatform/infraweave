@@ -64,14 +64,14 @@ func (*Provider) Consumed(kind string) bool {
 // lifecycle deliveries have no repository and use their installation ID.
 func (*Provider) Repository(body []byte) string {
 	var d struct {
-		Repository   *github.Repository   `json:"repository"`
+		Repository   *webhookRepository   `json:"repository"`
 		Installation *github.Installation `json:"installation"`
 	}
 	if json.Unmarshal(body, &d) != nil {
 		return ""
 	}
-	if id := d.Repository.GetID(); id > 0 {
-		return strconv.FormatInt(id, 10)
+	if d.Repository != nil && d.Repository.ID > 0 {
+		return strconv.FormatInt(d.Repository.ID, 10)
 	}
 	if id := d.Installation.GetID(); id > 0 {
 		return strconv.FormatInt(id, 10)
