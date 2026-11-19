@@ -332,7 +332,14 @@ gives it.
   value of the plan's resources, outputs and variables with `sanitized`'s
   hash, and leaves the structure a reader needs (addresses, types, names,
   provider names, actions, modes and versions); `SMART` hashes only the
-  values the plan marks sensitive. The modes apply to the Terraform family
+  values the plan marks sensitive and their identical copies in value payloads.
+  Recorded Terraform/OpenTofu plans leave some copies of sensitive inputs
+  unmarked in resource outputs; SMART gathers sensitive strings before changing
+  any value, then hashes every identical payload copy once, including across
+  Terragrunt units. Structural names/addresses/versions stay unchanged even if
+  they equal a sensitive string (maintainer decision, 2026-11-19). Configuration
+  constants and sensitive variable defaults follow the same secret-exclusion
+  rules below. The modes apply to the Terraform family
   alone ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
 - **Terraform and OpenTofu** write every sensitive value in plaintext beside
   a marker, at the same paths in both tools
