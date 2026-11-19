@@ -19,6 +19,28 @@ Feature: Repository runs report native checks and deployments
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
+  @terraform @case:checkout-label
+  Scenario Outline: The checkout label preserves the integration source behavior when useGitCheckout is false
+    Given a "GitLab" check stack "infra" using "terraform" with mode "INDIVIDUAL" and options '{}'
+    When token "h" sends "GET /api/v1/gitlab-integrations/{checkIntegration}" through A
+    Then it answers 200
+    And the answer's useGitCheckout is 'false'
+    When token "h" sends "PATCH /api/v1/stacks/infra" with '{"labels":<labels>}' through B
+    Then it answers 200
+    And the check repository holds authenticated uploads
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{checkCommit}"}' through A
+    Then it answers 200
+    And the answer's id names "checkout"
+    And the check repository has a held authenticated upload
+    When the check repository releases authenticated uploads
+    Then token "h" eventually reads the run "checkout" in the state "FINISHED" through B
+    And check events for run "checkout" have settled
+
+    Examples:
+      | labels                          |
+      | []                              |
+      | ["feature:enable_git_checkout"] |
+
   Scenario Outline: A recovered native deployment follows confirmation and apply while excluded runs stay silent
     Given a "<provider>" deployment stack "infra" using "<vendor>" with labels '[]'
     And the "<provider>" deployment API loses its next successful create response
@@ -284,6 +306,9 @@ Feature: Repository runs report native checks and deployments
       | provider | vendor    | previous  |
       | GitHub   | terraform | outdated  |
       | GitLab   | terraform | unchanged |
+      | Bitbucket Cloud | terraform | unchanged |
+      | Bitbucket DC | terraform | unchanged |
+      | Azure DevOps | terraform | unchanged |
 
     @tofu
     Examples:

@@ -59,13 +59,22 @@ func captureEntries(t *testing.T) map[string]bool {
 // missing from the fixtures as a skipped subtest, so a run names what it
 // still waits for.
 var awaited = map[string][]string{
-	"C10":  {"runs/lifecycle.feature"},
-	"C17":  {"runs/terraform.feature"},
-	"C34":  {"runs/lifecycle.feature"},
-	"C36":  {"runs/lifecycle.feature"},
-	"C39":  {"runs/lifecycle.feature"},
-	"C42":  {"runs/lifecycle.feature"},
-	"C44":  {"runs/lifecycle.feature"},
+	"C10": {"runs/lifecycle.feature"},
+	"C17": {"runs/terraform.feature"},
+	"C34": {"runs/lifecycle.feature"},
+	"C36": {"runs/lifecycle.feature"},
+	"C39": {"runs/lifecycle.feature"},
+	"C42": {"runs/lifecycle.feature"},
+	"C44": {"runs/lifecycle.feature"},
+	"C72": {"vcs/feedback.feature#The checkout label preserves the integration source behavior when useGitCheckout is false"},
+	"C75": {"vcs/feedback.feature#Labelled plans recover one masked comment per run and follow current shared heads"},
+	"C76": {"vcs/webhooks.feature#GitHub repository and owner rename events repoint only their integration without changing local tenancy"},
+	"C79": {"vcs/feedback.feature#Signed GitHub check buttons create fresh runs without promoting source pointers"},
+	"C80": {
+		"vcs/webhooks.feature#An admin recovers failed GitLab processing and preserves both active and ended runs",
+		"vcs/feedback.feature#Native individual checks follow real proposed and tracked plans and honor both options",
+	},
+	"C285": {"vcs/feedback.feature#A real GitLab push posts the admitted run and failed checks for every capped stack"},
 	"C98":  {"runs/terraform.feature"},
 	"C101": {"runs/terraform.feature"},
 	"C102": {"runs/terraform.feature"},
@@ -178,8 +187,15 @@ func TestUnitAwaitedCaptures(t *testing.T) {
 			t.Errorf("%s awaits with no feature", id)
 		}
 		for _, feature := range features {
-			if _, err := os.Stat(filepath.Join("features", feature)); err != nil {
+			path, scenario, _ := strings.Cut(feature, "#")
+			data, err := os.ReadFile(filepath.Join("features", path))
+			if err != nil {
 				t.Errorf("%s awaits with %s: %v", id, feature, err)
+				continue
+			}
+			content := strings.ReplaceAll(string(data), "\r\n", "\n")
+			if scenario != "" && !strings.Contains(content, "Scenario: "+scenario+"\n") && !strings.Contains(content, "Scenario Outline: "+scenario+"\n") {
+				t.Errorf("%s awaits a missing scenario: %s", id, feature)
 			}
 		}
 	}

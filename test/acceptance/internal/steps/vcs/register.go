@@ -44,6 +44,6 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	checks := &checkSteps{w: w, github: github, gitlab: gitlab, cloud: bitbucketCloud, dc: bitbucketDC, azure: azureDevOps}
 	checks.register(sc)
 	(&checkActionSteps{w: w, github: github, checks: checks}).register(sc)
-	(&commentSteps{w: w, github: github, gitlab: gitlab}).register(sc)
+	(&commentSteps{w: w, github: github, gitlab: gitlab, peers: &checkSteps{w: w, cloud: bitbucketCloud, dc: bitbucketDC, azure: azureDevOps}}).register(sc)
 	(&repositoryLifecycleSteps{w: w, github: github, gitlab: gitlab, hooks: gitlabHooks}).register(sc)
 }

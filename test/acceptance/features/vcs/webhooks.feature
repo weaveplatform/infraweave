@@ -231,6 +231,17 @@ Feature: VCS webhook protocol, event run budgets and request history
     Then stack "infra" lists the newest 50 of 60 eligible requests through B
     And stack "infra" has the same requests through direct, list and search with token "m"
 
+  @vcs @op:vcsEventTriggeredRunsLimit @op:accountUpdateVCSEventTriggeredRunsLimit @case:denial
+  Scenario: Operator-disabled account settings refuse authenticated event-cap reads and writes on both replicas
+    Given two infraweave servers, A and B, with account settings disabled
+    And the home key is exchanged through A for token "h"
+    When token "h" sends "GET /api/v1/vcs-event-triggered-runs-limit" through A
+    Then it answers a 403 problem "feature-disabled"
+    When token "h" sends "GET /api/v1/vcs-event-triggered-runs-limit" through B
+    Then it answers a 403 problem "feature-disabled"
+    When token "h" sends "POST /api/v1/account/update-vcs-event-triggered-runs-limit" with '{"limit":1}' through B
+    Then it answers a 403 problem "feature-disabled"
+
   @op:vcsEventTriggeredRunsLimit @case:denial
   Scenario: Reading an event run cap requires authentication
     Given two infraweave servers, A and B, on one database

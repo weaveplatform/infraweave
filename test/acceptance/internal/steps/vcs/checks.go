@@ -23,6 +23,7 @@ import (
 )
 
 type checkRepository interface {
+	Branch(string, string)
 	Commit(string, string, map[string]string) string
 	HoldUploadPacks()
 	HeldUploadPacks() int
