@@ -1,0 +1,6 @@
+# Observed upstream facts, independent of pending infraweave REST behavior.
+replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+observed:
+  "/exchanges/0/response/data/policyCreatev2/engineType": "REGO_V0"
+  "/exchanges/1/response/data/policyDelete/id": "policy-a"
+  "/exchanges/2/response/data/policies": []

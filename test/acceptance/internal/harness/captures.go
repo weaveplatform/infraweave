@@ -86,6 +86,10 @@ type Capture struct {
 	ID    string
 	Meta  CaptureMeta
 	Calls []CaptureCall
+	// ReplayAfter names the implementation issue that enables REST replay.
+	// Observed still verifies the recorded response before that issue lands.
+	ReplayAfter string
+	Observed    map[string]any
 }
 
 var (
@@ -136,12 +140,16 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 		return fail("%v", err)
 	}
 	var expect struct {
-		Calls []CaptureCall `yaml:"calls"`
+		Calls       []CaptureCall  `yaml:"calls"`
+		ReplayAfter string         `yaml:"replayAfter"`
+		Observed    map[string]any `yaml:"observed"`
 	}
 	if err := decodeStrict(filepath.Join(dir, ExpectFile), &expect); err != nil {
 		return fail("%v", err)
 	}
 	c.Calls = expect.Calls
+	c.ReplayAfter = expect.ReplayAfter
+	c.Observed = expect.Observed
 	if reason := c.invalid(entries); reason != "" {
 		return fail("%s", reason)
 	}
@@ -154,6 +162,14 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 	}
 	if !json.Valid(resp) {
 		return fail("%s is not JSON", ResponseFile)
+	}
+	var doc any
+	_ = json.Unmarshal(resp, &doc)
+	for _, ptr := range slices.Sorted(mapKeys(c.Observed)) {
+		value, ok := pointer(doc, ptr)
+		if !strings.HasPrefix(ptr, "/") || !ok || !sameJSON(value, c.Observed[ptr]) {
+			return fail("observed %s = %v, want %v", ptr, value, c.Observed[ptr])
+		}
 	}
 	return c, nil
 }
@@ -186,8 +202,10 @@ func (c *Capture) invalid(entries map[string]bool) string {
 		return "meta.yaml needs tier, capturedBy and redacted"
 	case !introspection.MatchString(m.Introspection):
 		return "meta.yaml introspection is not sha256:<64 hex digits>"
-	case len(c.Calls) == 0:
+	case len(c.Calls) == 0 && (strings.TrimSpace(c.ReplayAfter) == "" || len(c.Observed) == 0):
 		return "expect.yaml has no calls"
+	case c.ReplayAfter != "" && len(c.Calls) != 0:
+		return "expect.yaml cannot defer REST replay and supply calls"
 	}
 	if _, err := time.Parse(time.DateOnly, m.Captured); err != nil {
 		return "meta.yaml captured: " + err.Error()

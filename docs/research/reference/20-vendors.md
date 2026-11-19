@@ -765,7 +765,7 @@ the two; the actual path is *(unverified)* (C191).
 
 | Mode | Behaviour | Source |
 |---|---|---|
-| Default | Every string value in plan policy input and the resources view is replaced by a hash. The policy page describes it as the last 8 bytes of a SHA-256 hash; the examples show 8 hexadecimal characters, which is 4 bytes, so the exact truncation is *(unverified)* (C192) | [D] sanitization; [D] plan-policy |
+| Default | Every string value in plan policy input and the resources view is replaced by a hash. The policy page describes it as the last 8 bytes of a SHA-256 hash; the examples show 8 hexadecimal characters, which is 4 bytes, so the real helper capture resolves it: **[C] 2026-11-19**, the last eight hexadecimal characters (four bytes), C192; `hello` becomes `938b9824` ([fixture](../../../test/fixtures/captures/C192/response.json)). This captures the helper, not every vendor's plan transform | [D] sanitization; [D] plan-policy |
 | Smart (`useSmartSanitization`) | Only values Terraform or OpenTofu marks sensitive are hashed; needs Terraform 1.0.1 or later and fails on older versions. On by default for new OpenTofu stacks. | [D] sanitization; [D] opentofu |
 | Disabled | Label `feature:disable_resource_sanitization`; future runs are not sanitized | [D] sanitization |
 | Policy helper | `sanitized(string)` hashes a constant for comparison; needed under default mode, and under smart mode only for sensitive values | [D] sanitization |

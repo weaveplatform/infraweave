@@ -114,10 +114,11 @@ one is a compile error at save:
 
 - **`sanitized`** applies the same hash the worker applies to string values in plan input
   under default sanitization
-  ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)): the first eight
+  ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)): the last eight
   hexadecimal characters of the SHA-256 of the UTF-8 string. Policies compare through the
-  helper, so the algorithm is infraweave's own and needs no byte-for-byte match with
-  Spacelift's. Non-string values pass through unchanged.
+  helper; C192's real simulation records this same truncation. The worker and
+  helper use one implementation, matching the captured `hello` → `938b9824`
+  vector. Non-string values pass through unchanged.
 - **`print`** is enabled through `rego.EnablePrintStatements` and a `rego.PrintHook` that
   collects output into the evaluation record, at most 64 KiB per evaluation. Print output
   never reaches the server log.
@@ -396,14 +397,15 @@ gives it.
   - `REGO_V1` is the default engine when a create omits it, as Spacelift's console opens
     every new policy on Rego V1
     ([32 section 16.1](../reference/32-spacelift-console-survey.md#161-the-policy-page-samples-simulation-and-templates));
-    Spacelift's provider defaults to `REGO_V0`, and the API's own default for an omitted
-    field is open (C49).
+    Spacelift's API also defaults to `REGO_V0`, as C49 records on 2026-11-19.
+    The maintainer retains infraweave's V1 default intentionally (DV-028).
   - `net.lookup_ip_addr` is also removed, because DNS lookups from the server reach the
     network that Spacelift's five removals keep policies away from.
   - Evaluation errors have a stated, fail-closed outcome per type; Spacelift documents none.
   - `ACCESS` policies are never evaluated (decision 0021 holds their scope).
-  - `sanitized` uses infraweave's own truncation of SHA-256, since Spacelift's is
-    unverified ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
+  - DV-031 is withdrawn: C192 records the last-eight-hex SHA-256 algorithm;
+    infraweave adopts it by maintainer decision on 2026-11-19
+    ([20 section 13](../reference/20-vendors.md#13-resource-sanitization)).
   - A Kubernetes Secret's values and a CloudFormation parameter's value are hashed
     whatever the stack's mode or label; Spacelift has no sanitization setting for either
     vendor, and what its policy input holds for them is open (C296, C297).
@@ -438,7 +440,8 @@ gives it.
   through a policy that loops; every combination rule of
   [09 section 3](../reference/09-policies.md#3-rules-outcomes-and-combination-per-type);
   the error table above; flag reset ordering and multiple owners; sample budgets.
-- A corpus test runs the 67 templates and 61 tests of the MIT example library
+- A corpus test runs the 68 templates and 62 test files at
+  `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8` (C54) of the MIT example library
   ([09 section 10](../reference/09-policies.md#10-the-example-library-at-6ff5edb08bc8)) through
   `internal/policy` and expects every library test to pass, after the importer's rewrite of
   the package, `input.spacelift` and `data.spacelift` in templates and tests alike, so the

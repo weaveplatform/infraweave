@@ -1,0 +1,12 @@
+# Exchange 1: POST https://example.app.spacelift.io/graphql
+mutation CaptureDefault($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType}}
+# variables: {"input": {"name": "policy-a", "type": "PLAN", "body": "package spacelift\nimport rego.v1\nwarn contains \"capture\" if { true }\nsample := false", "labels": ["infraweave:capture-only"]}}
+
+# Exchange 2: POST https://example.app.spacelift.io/graphql
+mutation CaptureCleanup($id:ID!){policyDelete(id:$id){id}}
+# variables: {"id": "policy-a"}
+
+# Exchange 3: POST https://example.app.spacelift.io/graphql
+query CaptureCleanupVerify { policies { id name type engineType } }
+# variables: {}
+

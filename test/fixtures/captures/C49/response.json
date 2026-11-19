@@ -1,0 +1,35 @@
+{
+  "exchanges": [
+    {
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-a",
+            "name": "policy-a",
+            "type": "PLAN",
+            "engineType": "REGO_V0"
+          }
+        }
+      }
+    },
+    {
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDelete": {
+            "id": "policy-a"
+          }
+        }
+      }
+    },
+    {
+      "status": 200,
+      "response": {
+        "data": {
+          "policies": []
+        }
+      }
+    }
+  ]
+}

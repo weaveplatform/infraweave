@@ -2246,7 +2246,7 @@ in as `test/fixtures/policy-inputs`
    of `test/fixtures/vendor-documents/{terraform,opentofu,terragrunt}`
    ([33 section 6.5](../research/reference/33-vendor-tool-documents.md#65-secrets-sensitive-ephemeral-and-write-only-values)).
    A Terragrunt stack accepts `useSmartSanitization: true`.
-   Feature: `vendors/sanitization.feature`, where C192 is awaited: the
+   Feature: `vendors/sanitization.feature`, using the recorded C192 hash: the
    default and smart modes on each of the three vendors, and the opt-out
    label.
 
@@ -2262,8 +2262,9 @@ in as `test/fixtures/policy-inputs`
 - `TestUnitPolicyContract` passes over every document in
   `test/fixtures/policy-inputs`.
 - The behaviours C37, C40 and C41 settled hold in acceptance;
-  captures C49, C50, C51, C55's module-version part, C57 and C291 replay
-  once recorded.
+  C49, C57 and C192 are recorded with offline checks; their REST replay
+  follows the implementation issues in each fixture. Captures C50, C51,
+  C55's module-version part and C291 replay once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P13b: Login, task and initialization policies, sampling and simulation
@@ -2278,7 +2279,8 @@ In Spacelift's console exactly one management strategy is in effect,
 identity access management or login policy, the inactive one's settings
 are kept, and login policies are listed on their own settings page; the
 policies page creates only approval, push, plan, trigger, notification and
-Intent policies, and its template catalogue holds 59 templates
+Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
+62 matching non-login templates on 2026-11-19
 ([32](../research/reference/32-spacelift-console-survey.md) section 3).
 
 **Tasks**
@@ -2322,8 +2324,10 @@ Intent policies, and its template catalogue holds 59 templates
    `searchPolicyTemplatesSuggestions` from the MIT example library at a
    pinned commit, imported with decision 0009's rewrite of the package and
    the `spacelift` input paths. Test: `TestUnitPolicyLibrary` runs the
-   library's 67 templates and 61 tests. The console's catalogue of 59
-   holds library templates and none of the six login templates (C54), so
+   library's 68 templates and 62 test files at
+   `8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8`. C54 records 62 matching
+   non-login templates in the complete live catalogue (the earlier console
+   survey listed 59), so
    `searchPolicyTemplates` serves the library less its login templates,
    which the corpus test still runs. Simulation takes an edited input and
    answers the whole decision document. Feature:
@@ -2341,7 +2345,9 @@ Intent policies, and its template catalogue holds 59 templates
 - A member whom one account's login policy admits and another's refuses
   enters only the first; a member no account admits gets a session that
   lists no account; switching the scheme back restores the bindings.
-- Captures C47, C48, C52, C53, C54 and C273 replay once recorded.
+- C54 is recorded, with offline body/hash comparison and REST replay after
+  the template implementation. Captures C47, C48, C52, C53 and C273 replay
+  once recorded.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P14: Public worker pool, Kubernetes workers and signed runs
@@ -3213,7 +3219,7 @@ image and tool.
    (`@docker`, `@kubernetes`, k3s), with a `CUSTOM` workflow and a Helm hook
    on a Helm pinned in `test/deps`, where C32 and C297 are awaited.
 8. `vendors/sanitization.feature`, which P13 adds, gains each new vendor's
-   rule, and C192 is awaited against it.
+   rule, using C192's captured hash vectors.
 
 **Exit criteria**
 - Pulumi, CloudFormation and Kubernetes each run a tracked run to
@@ -3226,7 +3232,7 @@ image and tool.
   `vendors/terragrunt.feature` covers every setting of task 4.
 - No vendor's plan document reaches the object store unsanitized: a
   scenario per vendor finds no sensitive value in the uploaded plan.
-- Captures C32, C185, C188, C189, C192, C295, C296, C297 and C300 replay
+- Captures C32, C185, C188, C189, C295, C296, C297 and C300 replay
   once recorded; C299 and C304 hold on the pinned releases; C190 and C193
   are settled.
 - `make gate` passes at 95% in total and 90% per package.

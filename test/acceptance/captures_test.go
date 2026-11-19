@@ -100,6 +100,11 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, c := range captures {
+		if slices.Contains([]string{"C49", "C54", "C57", "C192"}, c.ID) {
+			t.Run(c.ID+"/recorded", func(t *testing.T) { checkPolicyCapture(t, c.ID) })
+		}
+	}
 	bin, err := harness.Binary(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -148,6 +153,9 @@ func TestAccCaptures(t *testing.T) {
 			real++
 		}
 		t.Run(c.ID, func(t *testing.T) {
+			if c.ReplayAfter != "" {
+				t.Skipf("recorded evidence verified; REST replay awaits %s", c.ReplayAfter)
+			}
 			for i, call := range c.Calls {
 				if err := harness.Replay(t.Context(), api, call); err != nil {
 					t.Errorf("%s call %d: %v", c.ID, i+1, err)
@@ -162,7 +170,13 @@ func TestAccCaptures(t *testing.T) {
 			})
 		}
 	}
-	t.Logf("replayed %d captures and the example", real)
+	deferred := 0
+	for _, c := range captures {
+		if c.ReplayAfter != "" {
+			deferred++
+		}
+	}
+	t.Logf("verified %d real captures; replayed %d and the example; %d await REST implementation", real, real-deferred, deferred)
 }
 
 // asserting names the features that assert an awaited capture's choices,
@@ -304,6 +318,12 @@ func TestUnitLoadCaptures(t *testing.T) {
 		{"bad date", "C0", map[string]string{harness.MetaFile: strings.Replace(meta, "2026-11-05", "05/11/2026", 1)}, "captured"},
 		{"bad hash", "C0", map[string]string{harness.MetaFile: strings.Replace(meta, "sha256:1fc7", "sha1:1fc7", 1)}, "introspection"},
 		{"no calls", "C0", map[string]string{harness.ExpectFile: "calls: []\n"}, "no calls"},
+		{"deferral without observations", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\n"}, "no calls"},
+		{"observations without deferral", "C0", map[string]string{harness.ExpectFile: "observed:\n  /data/stack: null\n"}, "no calls"},
+		{"calls with deferral", "C0", map[string]string{harness.ExpectFile: expect + "replayAfter: issue\n"}, "cannot defer"},
+		{"observation mismatch", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  /data/stack: wrong\n"}, "observed"},
+		{"observation pointer missing", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  /data/missing: null\n"}, "observed"},
+		{"observation pointer invalid", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  data: null\n"}, "observed"},
 		{"bad method", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "method: GET", "method: FETCH", 1)}, "method"},
 		{"relative path", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "path: /api", "path: api", 1)}, "does not start with /"},
 		{"bad status", "C0", map[string]string{harness.ExpectFile: strings.Replace(expect, "status: 404", "status: 999", 1)}, "status 999"},

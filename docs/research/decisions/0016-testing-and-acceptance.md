@@ -366,8 +366,16 @@ The fixture layout is:
 - `TestUnitCaptureRedaction` fails on anything in a fixture that looks like
   a credential (JWT, API key secret, AWS key, private key block) or an
   e-mail address outside `example.com`.
-- `TestAccCaptures` replays every `expect.yaml` against a live server. A
-  capture whose expectation fails is a parity bug, not a flaky test.
+- `expect.yaml` may also assert recorded `response.json` fields through an
+  `observed` JSON-Pointer map. These checks run offline and cannot claim an
+  infraweave endpoint is implemented. While that endpoint is pending,
+  `replayAfter` links its implementation issue; deferred captures require
+  nonempty observations and cannot supply REST calls. Remove the deferral and
+  add the real REST calls when the linked implementation lands.
+- `TestAccCaptures` verifies the recorded policy facts before starting Docker,
+  then replays enabled REST expectations against a live server. Deferred REST
+  cases are explicit skips naming the implementation issue, counted separately
+  from successful replays. A failed enabled expectation is a parity bug.
 - A behaviour no capture has settled is tested against what infraweave
   decided, and the scenario names the decision record, so nothing presents
   a guess as Spacelift's behaviour.
@@ -692,9 +700,10 @@ coverage it would contribute is not waived.
   `ansible.feature`, each a tracked run with its changes, plan policy input
   and outputs, a proposed run, a task and, but for Ansible, a destroy run;
   and `sanitization.feature`, each vendor's plan policy input compared
-  through `sanitized`. `TestAccCaptures` skips C32, C185, C188, C189, C192,
+  through `sanitized`. `TestAccCaptures` skips C32, C185, C188, C189,
   C295, C296, C297, C299 and C300 as awaited against them and
-  `vendors/terragrunt.feature`.
+  `vendors/terragrunt.feature`. C192 is recorded; its offline hash check runs
+  now, and REST simulation replay awaits #663.
 - `TestUnitStoreRelay`, `TestUnitStoreRelayLatency`,
   `TestUnitWriteRefusals` and `TestUnitParseStress`
   (`test/acceptance/internal/harness`) prove the stress: a refusal share

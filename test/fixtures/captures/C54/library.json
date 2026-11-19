@@ -1,0 +1,410 @@
+{
+  "repository": "https://github.com/spacelift-io/spacelift-policies-example-library",
+  "revision": "8e8894fbd4cefffa3c261746bcdd70ef9fbb53a8",
+  "templates": [
+    {
+      "path": "examples/approval/allowlist-task-commands.rego",
+      "type": "approval",
+      "sha256": "2311802293ce686ad0fa9aede1f087a1a9d68bd3196fa63c25a86c268721ae54"
+    },
+    {
+      "path": "examples/approval/approval-outside-working-hours.rego",
+      "type": "approval",
+      "sha256": "155339e89b0abefa0ee65bd4ec9d5ff0ca6d16e8bda3144b68f9de0eed1a40b0"
+    },
+    {
+      "path": "examples/approval/require-approval-from-security-team.rego",
+      "type": "approval",
+      "sha256": "b9cda4f0eff1ea73678eb4fc685970b5d1e7a11bf8d5f5cde3fcd4bc86a59135"
+    },
+    {
+      "path": "examples/approval/require-private-worker.rego",
+      "type": "approval",
+      "sha256": "3fe370c931758baa8c6b74a69e9120b662c313da757742d9e9ac7e18c892e196"
+    },
+    {
+      "path": "examples/approval/role-based-approval.rego",
+      "type": "approval",
+      "sha256": "bda403d86653d81106b1581f75cdb9ff4b8caf3d66f98cf2708d4d570f96a16d"
+    },
+    {
+      "path": "examples/approval/task-and-run-approvals.rego",
+      "type": "approval",
+      "sha256": "e80c867df6c5adca2972bd9d2a46cfec972ca7fc34d3deaabc109bcb868bdc6b"
+    },
+    {
+      "path": "examples/approval/two-approvals-no-rejections.rego",
+      "type": "approval",
+      "sha256": "75c18ad766265a4794f5175ac699861daf3db7d7e384b1154d8f3549739d52ce"
+    },
+    {
+      "path": "examples/approval/two-approvals-two-rejections.rego",
+      "type": "approval",
+      "sha256": "a1b781d0ac585ef8ae28e77dc0a212fdfa354ac77d0106676ce3286d84418d67"
+    },
+    {
+      "path": "examples/login/access-levels-within-an-organization.rego",
+      "type": "login",
+      "sha256": "a0fad47681d36579d02495a8eb8bf78b696c09e22d31bcfa385831306511e407"
+    },
+    {
+      "path": "examples/login/external-contributor-access-github.rego",
+      "type": "login",
+      "sha256": "f88062e441159c29400a94df41dc53832500793f9e93cd7b210d28d8f1fc8807"
+    },
+    {
+      "path": "examples/login/external-contributor-access-google.rego",
+      "type": "login",
+      "sha256": "8fdadb7a44c2514bb7e26f62f3b01ae93dc8f393e744cbeab1ffe1575b141f61"
+    },
+    {
+      "path": "examples/login/readers-writers-admins-teams.rego",
+      "type": "login",
+      "sha256": "4e843cfa71e30a34f64fef75b5c2cea305c45d8ab866187951f619de021daaba"
+    },
+    {
+      "path": "examples/login/rewriting-user-teams.rego",
+      "type": "login",
+      "sha256": "6cf1ebea7b493c7f1e57eef3186259fe2e7939d3cb468f7debd66e44818c75e2"
+    },
+    {
+      "path": "examples/login/who-when-where-login-restrictions.rego",
+      "type": "login",
+      "sha256": "7502bfb179d5ed62c12b4e43d974ec92414fc5d6571fd85b27f01ef250c4d33c"
+    },
+    {
+      "path": "examples/notification/discord-drift-detection-with-changes.rego",
+      "type": "notification",
+      "sha256": "3f24560a5e457ae2a46484e11ae6dc6a342ca1621defd34878899a281579c818"
+    },
+    {
+      "path": "examples/notification/drift-detection-with-changes.rego",
+      "type": "notification",
+      "sha256": "45c1e4164bd094f8b11aec469308eeebf1c6130eea6c5303f0674c86ce7f34b6"
+    },
+    {
+      "path": "examples/notification/ms-teams-drift-detection-with-changes.rego",
+      "type": "notification",
+      "sha256": "b4bdcc6aefac4f49ac95c8528671fdd6e4a08a261a761a636b17cb678ed9ba83"
+    },
+    {
+      "path": "examples/notification/notification-failure.rego",
+      "type": "notification",
+      "sha256": "47d41069d3cd41ad30ccad7c00b48f63d921be4535eae4fb97598ff713ce03b7"
+    },
+    {
+      "path": "examples/notification/notification-stack-failure-origins.rego",
+      "type": "notification",
+      "sha256": "bd50586310c3681762257c2af36f01002c32b33eb8b7d5162d3fcdb5f8764cb0"
+    },
+    {
+      "path": "examples/notification/pull-request-comment-summary.rego",
+      "type": "notification",
+      "sha256": "971de7e3f63fe6f372ec9644cf0fb58cda760e6000a429c959d46c9857e3f21e"
+    },
+    {
+      "path": "examples/notification/slack-channels-with-labels.rego",
+      "type": "notification",
+      "sha256": "72b73db80c0f9f3019ddf7d98910894da3c36d67a67f63e777a9635a226aa5ee"
+    },
+    {
+      "path": "examples/plan/check-blast-radius.rego",
+      "type": "plan",
+      "sha256": "bec83537c4f6679290f27aa9ed4f04c058a2256a03159d352f7200e0dc4c0d7a"
+    },
+    {
+      "path": "examples/plan/check-sanitized-value.rego",
+      "type": "plan",
+      "sha256": "29e8fbd19e02f793705b0b1d0f42cb9ed35d752c63d1c78e9a33f4c5e852a334"
+    },
+    {
+      "path": "examples/plan/checkov-failed-checks.rego",
+      "type": "plan",
+      "sha256": "68eb29c5a5a65e0581e237ccae445deb47182467de6d6c946120a3f2f8745ef1"
+    },
+    {
+      "path": "examples/plan/deny-proposed-runs-warn-track-runs.rego",
+      "type": "plan",
+      "sha256": "ff56231018dba9fe6fb3dd8be7eafb63d49874efc365858884b1806bfcdd1c23"
+    },
+    {
+      "path": "examples/plan/do-not-delete-stateful-resources.rego",
+      "type": "plan",
+      "sha256": "5b95046fdb4e48b2c79f9967387a3b2d513fb427df4a25c450bbd5b7e5900481"
+    },
+    {
+      "path": "examples/plan/dont-allow-resource-type.rego",
+      "type": "plan",
+      "sha256": "56bf1c12a25276a0c638ed8ba293d3ccb9d15e9ab6a69409254b16bed0ac59ad"
+    },
+    {
+      "path": "examples/plan/enforce-cloud-provider.rego",
+      "type": "plan",
+      "sha256": "44f8b790dfa9dd67f31cfb30b58acf6c7a8fff92f0c7b8d8892408b60e44867d"
+    },
+    {
+      "path": "examples/plan/enforce-instance-type-list.rego",
+      "type": "plan",
+      "sha256": "257fac2a9c6c573fc0e85715d76131909a829a8ab530e1f64fe5f01376b5c3f8"
+    },
+    {
+      "path": "examples/plan/enforce-module-use-policy.rego",
+      "type": "plan",
+      "sha256": "4ce82efbf9292bc9b1a2762241f89b1f2e12c40fdfe630c897a0f158ed0a1c3c"
+    },
+    {
+      "path": "examples/plan/enforce-password-length.rego",
+      "type": "plan",
+      "sha256": "7d3c2c6433540dea93b98ce8e98e242569bc000360df1b77a8046e524ebf9eaf"
+    },
+    {
+      "path": "examples/plan/enforce-sqlinstance-network.rego",
+      "type": "plan",
+      "sha256": "5201a4ca43aef1e4a0219b2b14a33be6c82b6f4451ade105d01a031488db4fe9"
+    },
+    {
+      "path": "examples/plan/enforce-tags-on-resources.rego",
+      "type": "plan",
+      "sha256": "f7ee254379276039b5230f91ba0c0f0c8aeb7e8079b0f848ede7bc8bb160b79c"
+    },
+    {
+      "path": "examples/plan/enforce-terraform-version-list.rego",
+      "type": "plan",
+      "sha256": "0ab5ce0cd7667923a075350c184cbc6fe83c2f32ac9042a34e64a8050460beda"
+    },
+    {
+      "path": "examples/plan/ensure-resource-creation-before-deletion.rego",
+      "type": "plan",
+      "sha256": "c8691fba32ca34285e6190052db9b1c31a15fa3d723e5f6d1f527841c8717729"
+    },
+    {
+      "path": "examples/plan/infracost-monthly-cost-restriction.rego",
+      "type": "plan",
+      "sha256": "1425670f1a552c7bbbdea5541191fc478d5dd679b7b17072f83841c35ca66f94"
+    },
+    {
+      "path": "examples/plan/kics-severity-counter.rego",
+      "type": "plan",
+      "sha256": "7571d010fe1e8575ee85a4ae76dd24b56780e0f8ea3dd5716d23814c0a5ae07e"
+    },
+    {
+      "path": "examples/plan/mandatory-and-acceptable-labels-gcp.rego",
+      "type": "plan",
+      "sha256": "16be1a940af17fdbd48f6e3e015873a9ac935cb9cdc0c993bb0bf2f88a07c59e"
+    },
+    {
+      "path": "examples/plan/mandatory-and-acceptable-labels-stack.rego",
+      "type": "plan",
+      "sha256": "5273460946f688f0acabb8bac5867f306b8a9aff8fa5ceb60d9fa5cbd03e0c47"
+    },
+    {
+      "path": "examples/plan/require-human-review-for-drift-detection-reconciliation.rego",
+      "type": "plan",
+      "sha256": "af8cbe533f01f4cebe940b3546d736f02e4301699bcee5bf01a2030ddeafa394"
+    },
+    {
+      "path": "examples/plan/require-human-review-for-unreachable-ansible-hosts.rego",
+      "type": "plan",
+      "sha256": "952b46b6d3fb452bfd821cfaa0ac3aa882d9d8d960dc943d5fd0a822bb95e051"
+    },
+    {
+      "path": "examples/plan/require-human-review-for-update-deletion.rego",
+      "type": "plan",
+      "sha256": "1325841f1da26bcb923314fab9d94f0ddf56f84e737b618398c629e42bc8fcec"
+    },
+    {
+      "path": "examples/plan/require-reasonable-commit-size.rego",
+      "type": "plan",
+      "sha256": "ad49c28444adbff0d1e80165272cede680b7e95d52dce2b2ab78b9b18c470f40"
+    },
+    {
+      "path": "examples/plan/terrascan-violated-policies.rego",
+      "type": "plan",
+      "sha256": "c1e4169ccd2710801830fd6ab3199159b7e1fc68ca9565968981de47381f7d5b"
+    },
+    {
+      "path": "examples/plan/tfsec-high-severity-issues.rego",
+      "type": "plan",
+      "sha256": "18a0c7f0addb22ccbdc0e793676ba5e66388e0e05ec30787fd12988faca12912"
+    },
+    {
+      "path": "examples/plan/trivy-high-severity-issues.rego",
+      "type": "plan",
+      "sha256": "a17221ee78e53d8027941d3d7c1fbbb9ba17caf7f0607333ad86be8ab92490fa"
+    },
+    {
+      "path": "examples/plan/trusted-engineers-bypass-review.rego",
+      "type": "plan",
+      "sha256": "00ae512c1c332a46f8e9e122a4f6e2de342e821b3214423a432b5f204e25d388"
+    },
+    {
+      "path": "examples/plan/warn-on-change-sensitive-resources.rego",
+      "type": "plan",
+      "sha256": "457f677dad2534c9b29eead4c5db9c15208dd376e774e5c4db88ed09885c3f5f"
+    },
+    {
+      "path": "examples/plan/warn-on-destroy.rego",
+      "type": "plan",
+      "sha256": "6f0374f89e7d7d8590f7b85a0c6e9239ba7106d33b509e127a3b224cfeed7a09"
+    },
+    {
+      "path": "examples/push/allow-forks.rego",
+      "type": "push",
+      "sha256": "86cd1ccf8ae05d9bca1847f2036c600abfe054736cb399f04ee315eaac392fd1"
+    },
+    {
+      "path": "examples/push/cancel-in-progress-runs.rego",
+      "type": "push",
+      "sha256": "df1b612e971f44600f3da7820f7741b79b5e1a4e7216556ebecd61fd2ac83304"
+    },
+    {
+      "path": "examples/push/create-proposed-run-from-env-pr-labels.rego",
+      "type": "push",
+      "sha256": "0829ab8d86353b6419b96e7250e6dfc92e0d7d99b6821304da0eca2fcf47b075"
+    },
+    {
+      "path": "examples/push/deploy-with-git-tag.rego",
+      "type": "push",
+      "sha256": "9118b287701464a0acf56e222def99bfdb96800f9107e6224e3a5e5958842f18"
+    },
+    {
+      "path": "examples/push/deploy-with-pr-label.rego",
+      "type": "push",
+      "sha256": "a54d3ce3904b77a3d18c4d84cb818c8ce28f13d1bbc76b085200f472d573fd81"
+    },
+    {
+      "path": "examples/push/ignore-changes-outside-root.rego",
+      "type": "push",
+      "sha256": "79794451aa26b3d3c95d56a4b1fc82434051bdc1a2f51e1e4d5bb30ddb5aa70a"
+    },
+    {
+      "path": "examples/push/lock-button-pauses-runs-by-pushes.rego",
+      "type": "push",
+      "sha256": "ee185558a0aa1ba8448b39fd198d0a866acb99816cbbad5a3a171145ff47e890"
+    },
+    {
+      "path": "examples/push/pr-comment-driven-actions.rego",
+      "type": "push",
+      "sha256": "7cee8cb522d2f3c6064feb747782e9ade4a0e01db15947bcc2e9ab041b4691d9"
+    },
+    {
+      "path": "examples/push/pr-comment-driven-user.rego",
+      "type": "push",
+      "sha256": "1f4524ad0daca2a7b7bc60ed4112898679b660998d122ea7f59d711421752a22"
+    },
+    {
+      "path": "examples/push/prs-only.rego",
+      "type": "push",
+      "sha256": "13682f5cee8bc218436e61d541e3134ee09b75b6f705fc0551712b1c22f1cea8"
+    },
+    {
+      "path": "examples/push/set-head-commit-no-trigger.rego",
+      "type": "push",
+      "sha256": "a11697de3178907c62df09b710f66aaf7e35bfe4aef04164fc1249840df67378"
+    },
+    {
+      "path": "examples/push/tag-driven-tf-module-release-flow.rego",
+      "type": "push",
+      "sha256": "e8c887c985d95ef123a0fc52b9cff9b79968193aceeaf0e1a07d3d6d37ed6962"
+    },
+    {
+      "path": "examples/push/terragrunt-monorepo-ignore-changes-outside-root.rego",
+      "type": "push",
+      "sha256": "9158fc4e3e0776d54ae0020460fb6cb9998653cd38fca370afccb8ee82ce8e7b"
+    },
+    {
+      "path": "examples/push/track-using-labels.rego",
+      "type": "push",
+      "sha256": "a785fd18a47cfd887c78bc4f996268566016cb532f3d812c6ced5fd0798bafcd"
+    },
+    {
+      "path": "examples/trigger/advanced-automated-retries.rego",
+      "type": "trigger",
+      "sha256": "e38b1fff018861d84c4fcf90d39a37f1d9a71b1ad43a8112589da5baf8e665fc"
+    },
+    {
+      "path": "examples/trigger/automated-retries.rego",
+      "type": "trigger",
+      "sha256": "df05f5148e7be1775c506f12e99fe3a5dcc108855683f71a84d4c7672057f85b"
+    },
+    {
+      "path": "examples/trigger/trigger-dependencies-via-labels-with-state.rego",
+      "type": "trigger",
+      "sha256": "c59e757cd46e2efc43e2d4d3a9bdbb2e12cac43c00256833ca62741e34ba1dfd"
+    },
+    {
+      "path": "examples/trigger/trigger-dependencies-via-labels.rego",
+      "type": "trigger",
+      "sha256": "40cefe87b2363bda008235238f8b4354032663916727bbfa49cdcac60f7a1039"
+    },
+    {
+      "path": "examples/trigger/trigger-hardcoded-dependencies.rego",
+      "type": "trigger",
+      "sha256": "e2a9c43cb9a161eedd40d4e6e1b424531ed35c370d7ccb136b42f5019e442290"
+    }
+  ],
+  "tests": [
+    "examples/access/label-based-team-access_test.rego",
+    "examples/approval/allowlist-task-commands_test.rego",
+    "examples/approval/approval-outside-working-hours_test.rego",
+    "examples/approval/require-approval-from-security-team_test.rego",
+    "examples/approval/require-private-worker_test.rego",
+    "examples/approval/role-based-approval_test.rego",
+    "examples/approval/task-and-run-approvals_test.rego",
+    "examples/approval/two-approvals-no-rejections_test.rego",
+    "examples/approval/two-approvals-two-rejections_test.rego",
+    "examples/login/readers-writers-admins-teams_test.rego",
+    "examples/notification/discord-drift-detection-with-changes_test.rego",
+    "examples/notification/drift-detection-with-changes_test.rego",
+    "examples/notification/ms-teams-drift-detection-with-changes_test.rego",
+    "examples/notification/notification-failure_test.rego",
+    "examples/notification/notification-stack-failure-origins_test.rego",
+    "examples/notification/pull-request-comment-summary_test.rego",
+    "examples/notification/slack-channels-with-labels_test.rego",
+    "examples/plan/check-blast-radius_test.rego",
+    "examples/plan/checkov-failed-checks_test.rego",
+    "examples/plan/deny-proposed-runs-warn-track-runs_test.rego",
+    "examples/plan/do-not-delete-stateful-resources_test.rego",
+    "examples/plan/dont-allow-resource-type_test.rego",
+    "examples/plan/enforce-cloud-provider_test.rego",
+    "examples/plan/enforce-instance-type-list_test.rego",
+    "examples/plan/enforce-module-use-policy_test.rego",
+    "examples/plan/enforce-password-length_test.rego",
+    "examples/plan/enforce-sqlinstance-network_test.rego",
+    "examples/plan/enforce-tags-on-resources_test.rego",
+    "examples/plan/enforce-terraform-version-list_test.rego",
+    "examples/plan/ensure-resource-creation-before-deletion_test.rego",
+    "examples/plan/infracost-monthly-cost-restriction_test.rego",
+    "examples/plan/kics-severity-counter_test.rego",
+    "examples/plan/mandatory-and-acceptable-labels-gcp_test.rego",
+    "examples/plan/mandatory-and-acceptable-labels-stack_test.rego",
+    "examples/plan/require-human-review-for-drift-detection-reconciliation_test.rego",
+    "examples/plan/require-human-review-for-unreachable-ansible-hosts_test.rego",
+    "examples/plan/require-human-review-for-update-deletion_test.rego",
+    "examples/plan/require-reasonable-commit-size_test.rego",
+    "examples/plan/terrascan-violated-policies_test.rego",
+    "examples/plan/tfsec-high-severity-issues_test.rego",
+    "examples/plan/trivy-high-severity-issues_test.rego",
+    "examples/plan/trusted-engineers-bypass-review_test.rego",
+    "examples/plan/warn-on-change-sensitive-resources_test.rego",
+    "examples/plan/warn-on-destroy_test.rego",
+    "examples/push/allow-forks_test.rego",
+    "examples/push/cancel-in-progress-runs_test.rego",
+    "examples/push/create-proposed-run-from-env-pr-labels_test.rego",
+    "examples/push/deploy-with-git-tag_test.rego",
+    "examples/push/deploy-with-pr-label_test.rego",
+    "examples/push/ignore-changes-outside-root_test.rego",
+    "examples/push/lock-button-pauses-runs-by-pushes_test.rego",
+    "examples/push/pr-comment-driven-actions_test.rego",
+    "examples/push/pr-comment-driven-user_test.rego",
+    "examples/push/prs-only_test.rego",
+    "examples/push/set-head-commit-no-trigger_test.rego",
+    "examples/push/terragrunt-monorepo-ignore-changes-outside-root_test.rego",
+    "examples/push/track-using-labels_test.rego",
+    "examples/trigger/advanced-automated-retries_test.rego",
+    "examples/trigger/automated-retries_test.rego",
+    "examples/trigger/trigger-dependencies-via-labels-with-state_test.rego",
+    "examples/trigger/trigger-dependencies-via-labels_test.rego",
+    "examples/trigger/trigger-hardcoded-dependencies_test.rego"
+  ]
+}
