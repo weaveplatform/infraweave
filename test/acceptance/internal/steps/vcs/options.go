@@ -9,6 +9,10 @@ import (
 )
 
 func registerOptionSteps(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^two infraweave servers, A and B, with VCS integrations disabled$`, func(ctx context.Context) error {
+		w.Settings["features"] = map[string]any{"disabled": []string{"vcs-integrations"}}
+		return w.TwoReplicas(ctx)
+	})
 	sc.Step(`^two infraweave servers, A and B, with multiple VCS integrations disabled$`, func(ctx context.Context) error {
 		w.Settings["features"] = map[string]any{"disabled": []string{"multiple-vcs-integrations"}}
 		w.Settings["auth"] = harness.OperatorAuth()

@@ -16,6 +16,16 @@ const (
 // ErrEvent is a fixture family the builder does not describe.
 var ErrEvent = errors.New("bitbucketdcfake: unknown payload event")
 
+// RepositoryPayload gives deliveries the same native identity as the API.
+func (f *Fake) RepositoryPayload(project, slug string) map[string]any {
+	repo := f.repositoryOf(project, slug)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	body := payloadRepository(repo.id, project)
+	body["name"], body["slug"] = slug, slug
+	return body
+}
+
 // Payload builds documented Data Center shapes with example.com addresses.
 // https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html
 func Payload(event string) ([]byte, error) {

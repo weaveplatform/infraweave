@@ -923,3 +923,78 @@ Feature: VCS webhook protocol, event run budgets and request history
     Examples: azure-devops
       | provider |
       | azure-devops |
+
+  @vcs @objectstore @docker @terraform @case:provider-events
+  Scenario Outline: Every provider verifies pushes and creates tracked and proposed runs exactly once
+    Given the release indexes serve the recorded fixtures
+    And two event replicas where only A consumes the VCS inbox
+    And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And it answers 201
+    And the answer's id names "pool"
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And a "<provider>" plan-comment stack "infra" using "terraform" with labels '[]'
+    And token "h" sends "PATCH /api/v1/stacks/infra" with '{"autodeploy":true}' through A
+    And it answers 200
+    When the event repository commits "tracked" on "main"
+    And the event fixture pushes "bad" from "seed" to "tracked" on "main" with "wrong" verification through B and receives 401
+    Then event delivery "bad" has exactly 0 stored rows
+    When the event fixture pushes "trackedPush" from "seed" to "tracked" on "main" with "valid" verification through B and receives 202
+    Then event delivery "trackedPush" settles with 1 new runs
+    And the "TRACKED" event run on stack "infra" for commit "tracked" is kept as "trackedRun"
+    And token "h" eventually reads the run "trackedRun" in the state "FINISHED" through A
+    And the event run "trackedRun" has a real tool plan through A
+    When the event fixture pushes "trackedPush" from "seed" to "tracked" on "main" with "valid" verification through A and receives 200
+    Then event delivery "trackedPush" has exactly 1 stored rows
+    And event delivery "trackedPush" settles with 1 new runs
+    When the event fixture pushes "repush" from "seed" to "tracked" on "main" with "valid" verification through B and receives 202
+    Then event delivery "repush" settles with 0 new runs
+    And stack "infra" has exactly 1 event runs for commit "tracked"
+    When the event repository commits "proposed" on "feature"
+    And the event fixture pushes "proposedPush" from "seed" to "proposed" on "feature" with "valid" verification through B and receives 202
+    Then event delivery "proposedPush" settles with 1 new runs
+    And the "PROPOSED" event run on stack "infra" for commit "proposed" is kept as "proposedRun"
+    And token "h" eventually reads the run "proposedRun" in the state "FINISHED" through A
+    And the event run "proposedRun" has a real tool plan through A
+    When the event fixture opens a request on commit "proposed" through B
+    Then stack "infra" has exactly 1 event runs for commit "proposed"
+    When the event repository commits "recovered" on "feature"
+    And B acknowledges event "recoveryPush" from "proposed" to "recovered" on "feature" and dies before A processes it
+    Then event delivery "recoveryPush" settles with 1 new runs
+    And the "PROPOSED" event run on stack "infra" for commit "recovered" is kept as "recoveredRun"
+    And token "h" eventually reads the run "recoveredRun" in the state "FINISHED" through A
+    And the event run "recoveredRun" has a real tool plan through A
+    And stack "infra" has exactly 1 event runs for commit "recovered"
+
+    @github
+    Examples:
+      | provider |
+      | GitHub   |
+
+    @github @provider:github-public
+    Examples:
+      | provider |
+      | GitHub   |
+
+    @gitlab
+    Examples:
+      | provider |
+      | GitLab   |
+
+    @bitbucket-cloud
+    Examples:
+      | provider        |
+      | Bitbucket Cloud |
+
+    @bitbucket-dc
+    Examples:
+      | provider     |
+      | Bitbucket DC |
+
+    @azure-devops
+    Examples:
+      | provider     |
+      | Azure DevOps |

@@ -16,6 +16,16 @@ const (
 // ErrEvent is a fixture family the builder does not describe.
 var ErrEvent = errors.New("bitbucketcloudfake: unknown payload event")
 
+// RepositoryPayload gives deliveries the same native identity as the API.
+func (f *Fake) RepositoryPayload(workspace, slug string) map[string]any {
+	repo := f.repositoryOf(workspace, slug)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	body := payloadRepository(repo.id, workspace)
+	body["name"], body["slug"], body["full_name"] = slug, slug, workspace+"/"+slug
+	return body
+}
+
 // Payload builds the documented webhook shapes with synthetic identities and
 // example.com e-mail addresses. It does not mutate the fake's repositories.
 // https://support.atlassian.com/bitbucket-cloud/docs/event-payloads/

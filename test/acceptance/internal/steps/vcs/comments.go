@@ -76,6 +76,9 @@ func (c *commentSteps) stack(ctx context.Context, provider, slug, vendor, labels
 				return fmt.Errorf("comment sender: %w", err)
 			}
 			body["apiHost"], body["appID"], body["privateKey"], body["webhookSecret"] = c.github.srv.URL, strconv.FormatInt(app.ID, 10), string(app.PrivateKey), app.WebhookSecret
+			if c.github.proxy != nil {
+				body["apiHost"], body["userFacingHost"] = "https://api.github.com", "https://github.com"
+			}
 			path = "/api/v1/github-enterprise-integrations"
 			repo := c.github.fake.Repo(c.fixture.namespace, "infra")
 			c.w.IDs["commentBase"] = repo.Commit("main", "comment base", deploymentFiles("base"))
