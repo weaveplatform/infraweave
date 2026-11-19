@@ -21,6 +21,8 @@ func TestUnitGitHubRoutes(t *testing.T) {
 		{"POST", "/app/installations/3/access_tokens", true, true, true},
 		{"POST", "/app-manifests/code/conversions", false, false, true},
 		{"GET", "/repos/acme/infra", true, true, true},
+		{"GET", "/repos/acme/infra/collaborators/developer/permission", true, true, true},
+		{"POST", "/repos/acme/infra/collaborators/developer/permission", false, false, false},
 		{"GET", "/repos/acme/infra/commits/feature%2Fone", true, true, true},
 		{"GET", "/repos/acme/infra/git/ref/tags%2Fv1", true, true, true},
 		{"GET", "/repos/acme/infra/git/trees/feature%2Fone", true, true, true},

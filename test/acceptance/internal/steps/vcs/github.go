@@ -18,9 +18,10 @@ import (
 // githubSteps serves a TLS GitHub host. Accounts register their own Apps
 // through the API; starting the host provides only its URL and trusted CA.
 type githubSteps struct {
-	w    *harness.World
-	fake *githubfake.Fake
-	srv  *githubfake.Server
+	w     *harness.World
+	fake  *githubfake.Fake
+	srv   *githubfake.Server
+	proxy *harness.GitHubProxy
 }
 
 func (g *githubSteps) register(sc *godog.ScenarioContext) {
@@ -40,15 +41,32 @@ func (g *githubSteps) VCS(_ context.Context, w *harness.World) (map[string]any, 
 		g.fake = githubfake.New()
 		g.srv = g.fake.Start()
 		g.w.IDs["githubHost"] = g.srv.URL
+		if slices.Contains(w.Tags, "@provider:github-public") {
+			var err error
+			g.proxy, err = harness.NewGitHubProxy(g.fake.PublicHandler())
+			if err != nil {
+				return nil, nil, err
+			}
+			w.Setenv("HTTPS_PROXY", g.proxy.URL)
+			w.Setenv("HTTP_PROXY", g.proxy.URL)
+			w.Setenv("NO_PROXY", "127.0.0.1,localhost,::1")
+		}
 	}
 	if g.srv != nil {
-		return nil, g.srv.CA, nil
+		ca := slices.Clone(g.srv.CA)
+		if g.proxy != nil {
+			ca = append(ca, g.proxy.CA...)
+		}
+		return nil, ca, nil
 	}
 	return nil, nil, nil
 }
 
 // Stop stops the fake, if the scenario started it.
 func (g *githubSteps) Stop() {
+	if g.proxy != nil {
+		g.proxy.Close()
+	}
 	if g.srv != nil {
 		g.srv.Close()
 	}

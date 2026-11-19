@@ -312,3 +312,121 @@ Feature: Repository runs report native checks and deployments
       | provider | vendor   |
       | GitHub   | opentofu |
       | GitLab   | opentofu |
+
+  # ref: decision 0012 D10/D24, HOOK-17
+  @case:check-actions @case:success
+  Scenario Outline: Signed GitHub check buttons create fresh runs without promoting source pointers
+    Given a recorded GitHub action check on "<host>" using "<vendor>"
+    And the action sender has repository permission "write"
+    When the recorded check sends action "preview" as delivery "previewOne" through A
+    Then it answers 202
+    And action delivery "previewOne" creates one fresh "PROPOSED" run kept as "buttonRunOne"
+    And token "h" eventually reads the run "buttonRunOne" in the state "FINISHED" through B
+    When action delivery "previewOne" is duplicated through B
+    Then it answers 200
+    And all action deliveries settle without changing the stack's tracked pointers
+    When action delivery "previewOne" is replayed through B
+    Then it answers 202
+    And replayed action delivery "previewOne" retains its successful effect
+    When the recorded check sends action "preview" as delivery "previewTwo" through B
+    Then it answers 202
+    And action delivery "previewTwo" creates one fresh "PROPOSED" run kept as "buttonRunTwo"
+    And token "h" eventually reads the run "buttonRunTwo" in the state "FINISHED" through A
+    When the recorded check sends action "deploy" as delivery "deployOne" through A
+    Then it answers 202
+    And action delivery "deployOne" creates one fresh "TRACKED" run kept as "buttonRunThree"
+    And token "h" eventually reads the run "buttonRunThree" in the state "UNCONFIRMED" through B
+    When action delivery "deployOne" is replayed through A
+    Then it answers 202
+    And replayed action delivery "deployOne" retains its successful effect
+    When token "h" sends "POST /api/v1/stacks/actions/runs/confirm" with '{"run":"{buttonRunThree}"}' through A
+    Then it answers 200
+    And token "h" eventually reads the run "buttonRunThree" in the state "FINISHED" through B
+    And all action deliveries settle without changing the stack's tracked pointers
+    And the action source fetched through the configured native GitHub host
+
+    @terraform @provider:github-public
+    Examples:
+      | host   | vendor    |
+      | public | terraform |
+
+    @tofu @provider:github-public
+    Examples:
+      | host   | vendor   |
+      | public | opentofu |
+
+    @terraform
+    Examples:
+      | host       | vendor    |
+      | enterprise | terraform |
+
+    @tofu
+    Examples:
+      | host       | vendor   |
+      | enterprise | opentofu |
+
+  @case:check-actions @case:failure
+  Scenario Outline: Disabled promotion refuses both forged buttons after the check was recorded
+    Given a recorded GitHub action check on "<host>" using "terraform"
+    And the action sender has repository permission "write"
+    And the check stack "actions" sets GitHub promotion to "false"
+    When the recorded check sends action "preview" as delivery "disabledPreview" through A
+    Then it answers 202
+    When the recorded check sends action "deploy" as delivery "disabledDeploy" through B
+    Then it answers 202
+    And the action deliveries create no run and log refusal "disabled" exactly 2 times
+    And the action source fetched through the configured native GitHub host
+
+    @terraform @provider:github-public
+    Examples:
+      | host   |
+      | public |
+
+    @terraform
+    Examples:
+      | host       |
+      | enterprise |
+
+  @case:check-actions @case:failure
+  Scenario Outline: Read-only collaborators cannot deploy a recorded check
+    Given a recorded GitHub action check on "<host>" using "opentofu"
+    And the action sender has repository permission "read"
+    When the recorded check sends action "deploy" as delivery "readOnly" through A
+    Then it answers 202
+    And the action deliveries create no run and log refusal "insufficient_permission" exactly 1 times
+    And the action source fetched through the configured native GitHub host
+
+    @tofu @provider:github-public
+    Examples:
+      | host   |
+      | public |
+
+    @tofu
+    Examples:
+      | host       |
+      | enterprise |
+
+  @case:check-actions @case:failure
+  Scenario Outline: A signed external ID cannot reach a foreign or stale stack
+    Given a recorded GitHub action check on "<host>" using "terraform"
+    And the action sender has repository permission "write"
+    When the recorded check sends forged "<target>" action through B
+    Then it answers 202
+    And the action deliveries create no run and log refusal "invalid_target" exactly 1 times
+    And the action source fetched through the configured native GitHub host
+
+    @terraform @provider:github-public
+    Examples:
+      | host   | target            |
+      | public | foreign account   |
+      | public | other repository  |
+      | public | other integration |
+      | public | stale external ID |
+
+    @terraform
+    Examples:
+      | host       | target            |
+      | enterprise | foreign account   |
+      | enterprise | other repository  |
+      | enterprise | other integration |
+      | enterprise | stale external ID |

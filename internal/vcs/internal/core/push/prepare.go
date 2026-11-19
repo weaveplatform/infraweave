@@ -24,6 +24,7 @@ type plan struct {
 	events     []Prepared
 	normalized []vcsapi.Event
 	noSources  bool
+	refused    []string
 }
 
 // Prepare resolves each diff once, then groups every ref into one child per
@@ -35,7 +36,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	ctx, cancel := context.WithTimeout(ctx, max(0, delivery.Deadline.Sub(s.d.Now())))
 	defer cancel()
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
-		return event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head)
+		return event.Type != "check_action" && (event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head))
 	})
 
 	if len(selected) == 0 && s.d.Lifecycle == nil {
@@ -49,7 +50,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 		return nil, fmt.Errorf("%w: delivery provider changed", kernel.ErrUnavailable)
 	}
 	out := &plan{s: s, delivery: delivery, normalized: slices.Clone(events)}
-	if len(selected) != 0 {
+	if slices.ContainsFunc(selected, func(event vcsapi.Event) bool { return event.Type != "check_action" }) {
 		repositories, err := s.d.Stacks.VCSRepositories(ctx, delivery.Account, use)
 		if err != nil {
 			return nil, err //nolint:wrapcheck // the stack boundary names the metadata read
@@ -67,6 +68,19 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			}
 		}
 		prepared := Prepared{Event: event}
+		if event.Type == "check_action" {
+			var reason string
+			prepared, reason, err = s.prepareAction(ctx, delivery, event, use)
+			if err != nil {
+				return nil, err
+			}
+			if reason != "" {
+				out.refused = append(out.refused, reason)
+				continue
+			}
+			out.events = append(out.events, prepared)
+			continue
+		}
 		if out.noSources {
 			out.events = append(out.events, prepared)
 			continue
@@ -118,30 +132,24 @@ func (p *plan) Commit(ctx context.Context) error {
 				return err //nolint:wrapcheck // the called boundary names the failed operation
 			} //nolint:wrapcheck // lifecycle names the read
 			if !allowed {
+				if prepared.Event.Type == "check_action" {
+					p.s.actionRefused(ctx, actionSourceChanged)
+				}
 				continue
 			}
 			prepared.Event.Repository = repo
 		}
 		events = append(events, prepared)
 	}
+	for _, reason := range p.refused {
+		p.s.actionRefused(ctx, reason)
+	}
 	if len(events) == 0 {
 		return nil
 	}
-	targets := map[kernel.ULID]bool{}
-	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
-	for _, prepared := range events {
-		stacks, seen := repositories[prepared.Event.Repository]
-		if !seen {
-			var err error
-			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
-			if err != nil {
-				return err //nolint:wrapcheck // the called boundary names the failed operation
-			}
-			repositories[prepared.Event.Repository] = stacks
-		}
-		for _, stack := range stacks {
-			targets[stack.ID] = true
-		}
+	admitted, targets, err := p.selectTargets(ctx, use, events)
+	if err != nil {
+		return err
 	}
 	if p.noSources {
 		// A stack/default binding can appear after the repository-only preflight.
@@ -151,7 +159,7 @@ func (p *plan) Commit(ctx context.Context) error {
 		}
 		return nil
 	}
-	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, events); err != nil {
+	if err := p.s.d.Store.PutPrepared(ctx, p.delivery.Account, p.delivery.ID, admitted); err != nil {
 		return err //nolint:wrapcheck // the store names the prepared write
 	}
 	ids := make([]kernel.ULID, 0, len(targets))
@@ -175,4 +183,54 @@ func (p *plan) Commit(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// selectTargets keeps explicit action targets separate from repository fanout.
+//
+//nolint:wrapcheck // the VCS/store ports already name the failed boundary
+func (p *plan) selectTargets(ctx context.Context, use stacksapi.Use, events []Prepared) ([]Prepared, map[kernel.ULID]bool, error) {
+	targets := map[kernel.ULID]bool{}
+	repositories := map[vcsapi.Repository][]stacksapi.Stack{}
+	admitted := make([]Prepared, 0, len(events))
+	for _, prepared := range events {
+		if prepared.Event.Type == "check_action" {
+			stack, reason, err := p.s.actionTarget(ctx, p.delivery, prepared.Event, use)
+			if err != nil {
+				return nil, nil, err
+			}
+			if prepared.Action == nil || p.s.d.Actions == nil {
+				reason = actionSourceChanged
+			}
+			if reason == "" {
+				current, err := p.s.d.Actions.CurrentCheckAction(ctx, p.delivery.Account, p.delivery.Integration, p.delivery.Provider, prepared.Event.Repository, *prepared.Action)
+				if err != nil {
+					return nil, nil, err
+				}
+				if !current {
+					reason = actionSourceChanged
+				}
+			}
+			if reason != "" {
+				p.s.actionRefused(ctx, reason)
+				continue
+			}
+			targets[stack.ID] = true
+			admitted = append(admitted, prepared)
+			continue
+		}
+		admitted = append(admitted, prepared)
+		stacks, seen := repositories[prepared.Event.Repository]
+		if !seen {
+			var err error
+			stacks, err = p.s.d.Stacks.ByVCSRepository(ctx, p.delivery.Account, use, prepared.Event.Repository.Namespace, prepared.Event.Repository.Name)
+			if err != nil {
+				return nil, nil, err //nolint:wrapcheck // the called boundary names the failed operation
+			}
+			repositories[prepared.Event.Repository] = stacks
+		}
+		for _, stack := range stacks {
+			targets[stack.ID] = true
+		}
+	}
+	return admitted, targets, nil
 }

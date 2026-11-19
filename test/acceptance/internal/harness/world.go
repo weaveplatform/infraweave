@@ -320,6 +320,9 @@ func (w *World) Setenv(key, value string) {
 	}), key+"="+value)
 }
 
+// Environment returns a copy of this scenario's process overrides.
+func (w *World) Environment() []string { return slices.Clone(w.env) }
+
 // Launch runs one more infraweave process mode with config and gives the
 // scenario SDK clients for its listeners.
 func (w *World) Launch(ctx context.Context, mode string, config []byte) (*Server, error) {

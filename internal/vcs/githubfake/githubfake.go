@@ -104,6 +104,7 @@ type token struct {
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
 type Fake struct {
+	collabs     map[string]string
 	checks      checkStore
 	comments    commentStore
 	deployments deploymentStore
@@ -298,36 +299,51 @@ func (f *Fake) TokenRequests() []TokenRequest {
 func (f *Fake) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(f.faults)
-	r.Route("/api/v3", func(r chi.Router) {
-		r.Post("/app-manifests/{code}/conversions", f.convert)
-		r.Group(func(r chi.Router) {
-			r.Use(f.asApp)
-			r.Get("/app", f.app)
-			r.Get("/app/installations", f.installations)
-			r.Post("/app/installations/{id}/access_tokens", f.accessToken)
-			r.Get("/repos/{owner}/{repo}/installation", f.repoInstallation)
-		})
-		r.Group(func(r chi.Router) {
-			r.Use(f.asInstallation)
-			r.Get("/installation/repositories", f.installationRepos)
-			r.Route("/repos/{owner}/{repo}", func(r chi.Router) {
-				r.Use(f.reachable)
-				f.deploymentRoutes(r)
-				f.checkRoutes(r)
-				f.commentRoutes(r)
-				r.Get("/", f.repositoryMetadata)
-				r.Get("/git/trees/{tree}", f.gitTree)
-				r.Get("/commits/*", f.commit)
-				r.Get("/git/ref/tags/*", f.tagRef)
-				r.Get("/contents/*", f.contents)
-				r.Get("/compare/*", f.compare)
-				r.Get("/branches", f.branches)
-			})
-		})
-	})
+	r.Route("/api/v3", f.apiRoutes)
 	r.With(f.asInstallation).Post("/api/graphql", f.minimizeComment)
 	f.gitRoutes(r)
 	return r
+}
+
+// PublicHandler serves the same native API at GitHub.com's root paths.
+// Verification tunnels retain the original Host, request URI and TLS identity;
+// only their network destination is the owned fake rather than live GitHub.
+func (f *Fake) PublicHandler() http.Handler {
+	r := chi.NewRouter()
+	r.Use(f.faults)
+	f.apiRoutes(r)
+	r.With(f.asInstallation).Post("/graphql", f.minimizeComment)
+	f.gitRoutes(r)
+	return r
+}
+
+func (f *Fake) apiRoutes(r chi.Router) {
+	r.Post("/app-manifests/{code}/conversions", f.convert)
+	r.Group(func(r chi.Router) {
+		r.Use(f.asApp)
+		r.Get("/app", f.app)
+		r.Get("/app/installations", f.installations)
+		r.Post("/app/installations/{id}/access_tokens", f.accessToken)
+		r.Get("/repos/{owner}/{repo}/installation", f.repoInstallation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(f.asInstallation)
+		r.Get("/installation/repositories", f.installationRepos)
+		r.Route("/repos/{owner}/{repo}", func(r chi.Router) {
+			r.Use(f.reachable)
+			f.deploymentRoutes(r)
+			f.checkRoutes(r)
+			r.Get("/collaborators/{username}/permission", f.collaboratorPermission)
+			f.commentRoutes(r)
+			r.Get("/", f.repositoryMetadata)
+			r.Get("/git/trees/{tree}", f.gitTree)
+			r.Get("/commits/*", f.commit)
+			r.Get("/git/ref/tags/*", f.tagRef)
+			r.Get("/contents/*", f.contents)
+			r.Get("/compare/*", f.compare)
+			r.Get("/branches", f.branches)
+		})
+	})
 }
 
 // errNoApp is a JWT whose issuer names no App the fake knows.
@@ -450,7 +466,7 @@ func (f *Fake) reachable(next http.Handler) http.Handler {
 			answer(w, http.StatusNotFound, message("Not Found"))
 			return
 		}
-		deployment := strings.HasPrefix(r.URL.Path, "/api/v3/repos/"+owner+"/"+name+"/deployments")
+		deployment := strings.HasPrefix(strings.TrimPrefix(r.URL.Path, "/api/v3"), "/repos/"+owner+"/"+name+"/deployments")
 		comment := strings.Contains(r.URL.Path, "/issues/")
 		if !deployment && !comment && t.perms != nil && t.perms["contents"] == "" {
 			answer(w, http.StatusForbidden, message("Resource not accessible by integration"))

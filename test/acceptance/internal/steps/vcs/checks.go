@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/azuredevopsfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketcloudfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/bitbucketdcfake"
+	"github.com/weaveplatform/infraweave/internal/vcs/githubfake"
 	"github.com/weaveplatform/infraweave/internal/vcs/gitlabfake"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
@@ -29,6 +30,7 @@ type checkRepository interface {
 }
 type checkSteps struct {
 	pushRun                                      string
+	githubApp                                    githubfake.App
 	originalETag                                 string
 	w                                            *harness.World
 	github                                       *githubSteps
@@ -117,6 +119,7 @@ func (s *checkSteps) seed(provider string) error {
 			return fmt.Errorf("%w: missing GitHub fake", harness.ErrStep)
 		}
 		app := s.github.fake.AddApp("checks", "acme")
+		s.githubApp = app
 		s.github.fake.Install(app.ID, "acme", "Organization", "infra")
 		s.namespace = "acme"
 		s.kind = "GITHUB_ENTERPRISE"

@@ -171,6 +171,17 @@ CREATE TABLE vcs_prepared_events (
     FOREIGN KEY(account_id,delivery_id) REFERENCES vcs_deliveries(account_id,id) ON DELETE CASCADE
 );
 
+-- A successful button intent survives replay, which clears prepared facts and
+-- the cap counter. stack_id is historical identity, not a live held Stack or
+-- Run reference. Delivery/account retention owns these markers' lifetime.
+CREATE TABLE vcs_check_action_effects (
+ account_id uuid NOT NULL,
+ delivery_id uuid NOT NULL,
+ stack_id uuid NOT NULL,
+ PRIMARY KEY(account_id,delivery_id,stack_id),
+ FOREIGN KEY(account_id,delivery_id) REFERENCES vcs_deliveries(account_id,id) ON DELETE CASCADE
+);
+
 -- A stack owns these rows through its deletion guard, not a cross-domain FK.
 -- Tags and path ignores for one commit remain independent observations.
 CREATE TABLE vcs_ignored_triggers (

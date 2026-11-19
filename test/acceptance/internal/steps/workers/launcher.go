@@ -338,7 +338,7 @@ func (l *launcherSteps) run(ctx context.Context, name string) error {
 		return err
 	}
 	if ln.srv, err = harness.StartLauncher(ctx, bin, ln.dir, w.Suite.CoverDir, ln.config,
-		host.Host); err != nil {
+		host.Host, w.Environment()...); err != nil {
 		return err
 	}
 	//nolint:wrapcheck // names what it waited for
