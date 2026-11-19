@@ -434,9 +434,9 @@
       "id": "DV-047",
       "group": "VCS: decision 0012",
       "spacelift": "A new check run for each state change of a run, as observed 2026-11-17",
-      "infraweave": "One check per run, updated in place",
-      "why": "A run has one check identity throughout its states",
-      "impact": "Commit history avoids one check object per transition; branch protection uses stable names",
+      "infraweave": "GitHub keeps one individual check run per run, updated in place. Other providers reuse the native named status on a commit, owned by the newest run; aggregates are shared named checks everywhere",
+      "why": "GitHub supports distinct check-run IDs, while native status APIs such as Bitbucket overwrite the same commit/key. Recovery preserves GitHub run identity and shared-status ownership instead of inventing visible key suffixes or provider CI pipelines",
+      "impact": "Commit history avoids one GitHub object per transition; branch protection keeps stable names. Older runs cannot replace a newer run's shared native status",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
     },
     {

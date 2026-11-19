@@ -115,6 +115,7 @@ type repository struct {
 // users, and projects with the roles users hold in them and their Git
 // repositories, served under /acme.
 type Fake struct {
+	checks   checkStore
 	comments commentStore
 	webhooks map[string][]Hook
 	mu       sync.Mutex
@@ -247,6 +248,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/", f.repositories)
 			r.Route("/{repository}", func(r chi.Router) {
 				r.Use(f.repository)
+				f.checkRoutes(r)
 				f.commentRoutes(r)
 				r.Get("/refs", f.refs)
 				r.Get("/commits/{commit}", f.commit)
@@ -257,6 +259,7 @@ func (f *Fake) Handler() http.Handler {
 			})
 		})
 	})
+	f.gitRoutes(r)
 	return r
 }
 

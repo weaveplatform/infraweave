@@ -72,6 +72,12 @@ type IgnoredRecorder interface {
 	Record(context.Context, kernel.AccountID, kernel.ULID, stacksapi.Commit, string) error
 }
 
+// CapReporter schedules the failed commit check in the completing child
+// transaction; the cap has no run_updated event of its own.
+type CapReporter interface {
+	Capped(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string, kernel.RunType, int) error
+}
+
 // Lifecycle commits provider identity changes before selecting fan-out targets.
 type Lifecycle interface {
 	FanoutRepository(context.Context, kernel.AccountID, kernel.ULID, time.Time, vcsapi.Repository) (vcsapi.Repository, bool, error)
@@ -92,6 +98,7 @@ type Deps struct {
 	Supersede    runsapi.Supersede
 	Jobs         intake.Jobs
 	Limits       *Limits
+	Checks       CapReporter
 	Ignored      IgnoredRecorder
 	Now          func() time.Time
 	Log          *slog.Logger

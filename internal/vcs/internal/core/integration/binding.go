@@ -33,5 +33,7 @@ func (s *Service) Binding(ctx context.Context, acct kernel.AccountID, provider s
 	if in.Provider != canonical {
 		return port.Integration{}, false, fmt.Errorf("%w: %s %s", ErrNotFound, canonical, in.ID)
 	}
-	return port.Integration{ID: in.ID, Provider: in.Provider, Settings: in.Settings}, true, nil
+	return port.Integration{ID: in.ID, Provider: in.Provider, Settings: in.Settings, Checks: port.CheckPolicy{
+		Mode: in.Checks.Mode, FailuresOnly: in.Checks.IndividualFailuresOnly, SkipUnchanged: in.Checks.IndividualSkipUnchanged,
+	}}, true, nil
 }

@@ -1,6 +1,6 @@
 // Package feedback owns VCS feedback target selection and transaction-bound
-// enqueueing for the events domain, and queued deployment reports and pull
-// request comments to providers.
+// enqueueing for the events domain, and queued commit checks, deployments and
+// pull request comments to providers.
 //
 // # Input and output
 //
@@ -24,6 +24,22 @@
 // and fenced job completion commit together. Native lookup recovers an effect
 // whose response or local acknowledgement was lost on a later queue attempt.
 //
+// # Commit check ordering
+//
+// Individual GitHub resources retain run identity. Native status providers
+// share a commit/name resource whose newest run reserves ownership while its
+// target is enqueued; later retries of older runs cannot overwrite it. Shared
+// aggregate jobs refresh all eligible current run facts after locking their
+// resource, so another run's progress cannot be hidden by a per-run sequence.
+// Run histories validate event eligibility; current plan deltas are never
+// presented as historical transition snapshots. Captured source metadata has
+// no credentials, and each worker opens the selected integration only for its
+// bounded effect. Known native repository identities retain a shared resource
+// fence across renames; reporting holds their current map row and settles a
+// removed identity without falling back to a reused path. Stack deletion removes bindings and queued requests while
+// historical native cursors remain to fence old work. Account purge removes
+// all three tables. Cap failures enqueue in the evaluator's completing
+// transaction and never create a synthetic run.
 // # Plan comments
 //
 // A tracked or proposed run leaving PLANNING selects every open current head

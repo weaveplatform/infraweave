@@ -113,6 +113,7 @@ func (p *project) fullPath() string { return p.namespace + "/" + p.path }
 // Fake is a GitLab API: users, their access tokens, and projects in groups
 // and subgroups with their members, served under /api/v4.
 type Fake struct {
+	checks      checkStore
 	comments    commentStore
 	deployments deploymentStore
 	webhooks    map[string][]Hook
@@ -287,6 +288,7 @@ func (f *Fake) Handler() http.Handler {
 		r.Route("/projects/{id}", func(r chi.Router) {
 			r.Use(f.member)
 			f.deploymentRoutes(r)
+			f.checkRoutes(r)
 			f.commentRoutes(r)
 			r.Get("/", f.project)
 			r.Get("/hooks", f.listWebhooks)

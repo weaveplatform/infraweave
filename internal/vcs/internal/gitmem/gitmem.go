@@ -35,6 +35,7 @@ var epoch = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 // Repo is a Git repository in memory. Its methods are safe for concurrent
 // use.
 type Repo struct {
+	uploads       *uploadBarrier
 	mu            sync.Mutex
 	git           *git.Repository
 	commits       int

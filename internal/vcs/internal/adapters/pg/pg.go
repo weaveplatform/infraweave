@@ -43,6 +43,10 @@ func Stream() migrate.Stream {
 // token's account and stack.
 func Held() []integrity.Held {
 	return []integrity.Held{
+		{Entity: "account", Table: "vcs_check_bindings", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_check_requests", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "vcs_check_resources", Columns: []string{"account_id"}},
+		{Entity: "stack", Table: "vcs_check_bindings", Columns: []string{"account_id", "stack_id"}},
 		{Entity: "account", Table: "vcs_integrations", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_manifests", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "vcs_run_tokens", Columns: []string{"account_id"}},

@@ -67,7 +67,9 @@ func (d *cleanupDaemon) ContainerInspect(_ context.Context, id string, _ client.
 		return client.ContainerInspectResult{}, d.record("inspect-after-create")
 	}
 	return client.ContainerInspectResult{
-		Container: container.InspectResponse{Image: "sha256:runner", HostConfig: &container.HostConfig{Runtime: "runtime"}},
+		Container: container.InspectResponse{Image: "sha256:runner", HostConfig: &container.HostConfig{
+			Runtime: "runtime", Binds: []string{"/owned/binary:" + docker.BinaryPath + ":ro", "/owned/workspace:" + docker.Workspace},
+		}},
 	}, d.record(
 		"inspect:" + id,
 	)
@@ -75,7 +77,11 @@ func (d *cleanupDaemon) ContainerInspect(_ context.Context, id string, _ client.
 
 func (d *cleanupDaemon) ContainerCreate(_ context.Context, o client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
 	d.create = o
-	return client.ContainerCreateResult{ID: "hand-back"}, d.record("create")
+	op := "create"
+	if slices.Contains(d.calls, op) {
+		op = "create-retained"
+	}
+	return client.ContainerCreateResult{ID: "hand-back"}, d.record(op)
 }
 
 func (d *cleanupDaemon) ContainerStart(_ context.Context, id string, _ client.ContainerStartOptions) (client.ContainerStartResult, error) {
@@ -147,8 +153,9 @@ func TestUnitScenarioContainerCleanupAlreadyGone(t *testing.T) {
 		t.Fatal("already stopped run skipped hand-back", err, d.calls)
 	}
 	d = &cleanupDaemon{faults: map[string]error{"create": cerrdefs.ErrNotFound, "inspect-after-create": cerrdefs.ErrNotFound}}
-	if err := removeContainers(t.Context(), d, docker.LabelWorker, "worker"); err != nil {
-		t.Fatal("run removed during hand-back creation broke cleanup", err, d.calls)
+	if err := removeContainers(t.Context(), d, docker.LabelWorker, "worker"); err != nil ||
+		!slices.Contains(d.calls, "create-retained") || !slices.Contains(d.calls, "wait:hand-back") {
+		t.Fatal("run removed during creation skipped its retained-bind hand-back", err, d.calls)
 	}
 	d = &cleanupDaemon{faults: map[string]error{"create": cerrdefs.ErrNotFound}}
 	if err := removeContainers(t.Context(), d, docker.LabelWorker, "worker"); !errors.Is(err, cerrdefs.ErrNotFound) || slices.Contains(d.calls, "remove:run") {

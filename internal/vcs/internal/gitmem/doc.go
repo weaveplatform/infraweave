@@ -14,6 +14,10 @@
 // repository lacks is ErrNotFound; seeding panics on a go-git failure,
 // which no test recovers from.
 //
+// HoldUploadPacks and ReleaseUploadPacks provide a deterministic barrier for
+// authenticated fake fetches. HeldUploadPacks exposes only blocked request
+// count; request cancellation always releases its hold without a helper goroutine.
+//
 // # Dependencies
 //
 // It imports go-git with its in-memory storage and filesystem. The

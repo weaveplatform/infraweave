@@ -22,6 +22,10 @@ func (r *Repo) ServeUploadPack(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 		return
 	}
+	if upload && !r.waitUpload(req.Context()) {
+		http.Error(w, "upload cancelled", http.StatusRequestTimeout)
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	endpoint, err := transport.NewEndpoint("https://git.test/repo.git")

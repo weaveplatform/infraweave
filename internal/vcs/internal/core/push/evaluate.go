@@ -70,15 +70,20 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 	if len(events) == 0 {
 		return errExpired
 	}
+	// Lifecycle changes hold the integration before repointing stacks. Keep
+	// that order through cap feedback's identity lookup in this transaction.
+	use, found, err := s.d.Integrations.HeldEventUse(ctx, input.Account, meta.Integration)
+	if err != nil {
+		return err //nolint:wrapcheck // integrations names the binding hold
+	}
+	if !found || use.Provider != meta.Provider {
+		return errExpired
+	}
 	stack, err := s.lockedStack(ctx, input)
 	if err != nil {
 		return err
 	}
-	use, found, err := s.d.Integrations.EventUse(ctx, input.Account, meta.Integration)
-	if err != nil {
-		return err //nolint:wrapcheck // integrations names the binding read
-	}
-	if !found || use.Provider != meta.Provider || !uses(stack, use) {
+	if !uses(stack, use) {
 		return errExpired
 	}
 	matched := false
@@ -90,7 +95,7 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation)
 			continue
 		}
 		matched = true
-		decision, err := s.apply(ctx, input, stack, event)
+		decision, err := s.apply(ctx, input, stack, event, meta.Integration)
 		if err != nil {
 			return err
 		}
@@ -153,7 +158,7 @@ func uses(stack stacksapi.Settings, use stacksapi.Use) bool {
 	return use.Default && (stack.Provider == use.Provider || slices.Contains(use.Aliases, stack.Provider))
 }
 
-func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.Settings, event Prepared) (Decision, error) {
+func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.Settings, event Prepared, integration kernel.ULID) (Decision, error) {
 	decision := Default(event.Event, stack, event.Files)
 	if event.Event.Type == "push" {
 		if s.d.Supersede == nil {
@@ -187,6 +192,15 @@ func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.S
 	})
 	switch {
 	case errors.Is(err, ErrCapped):
+		if s.d.Checks != nil {
+			cap, ok := errors.AsType[*capRefusal](err)
+			if !ok {
+				return decision, fmt.Errorf("%w: cap has no budget", kernel.ErrUnavailable)
+			}
+			if err := s.d.Checks.Capped(ctx, input.Account, integration, input.Stack, event.Commit.Hash, kind, cap.limit); err != nil {
+				return decision, fmt.Errorf("VCS capped check: %w", err)
+			}
+		}
 		return Decision{Capped, RunLimitReached}, nil
 	case errors.Is(err, runsapi.ErrCreationRefused):
 		return Decision{Outcome: Refused}, nil
@@ -219,7 +233,7 @@ func (s *Service) admit(ctx context.Context, input Evaluation) error {
 		return err //nolint:wrapcheck // the store names the conditional admission
 	}
 	if !allowed {
-		return ErrCapped
+		return &capRefusal{limit: limit}
 	}
 	return nil
 }
@@ -257,3 +271,10 @@ func (s *Service) failed(ctx context.Context, job queue.Job, input Evaluation) e
 		return s.d.Store.EvaluationFailed(ctx, input.Account, input.Delivery, input.Replays)
 	})
 }
+
+// capRefusal retains the exact budget checked by the conditional reservation;
+// reading the mutable account setting again could report a different limit.
+type capRefusal struct{ limit int }
+
+func (*capRefusal) Error() string { return ErrCapped.Error() }
+func (*capRefusal) Unwrap() error { return ErrCapped }

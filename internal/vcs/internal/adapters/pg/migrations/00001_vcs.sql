@@ -186,6 +186,60 @@ CREATE TABLE vcs_ignored_triggers (
 );
 CREATE INDEX vcs_ignored_triggers_stack ON vcs_ignored_triggers(account_id,stack_id,created_at DESC,id);
 CREATE INDEX vcs_ignored_triggers_retention ON vcs_ignored_triggers(created_at,id);
+-- Check bindings retain credential-free source identity. Integration deletion
+-- removes their requests; stack deletion calls the VCS guard.
+-- A run ID is historical identity, not a cross-domain foreign key. Cap bindings
+-- have no run, and keep the failed stack/commit/type diagnosis instead.
+CREATE TABLE vcs_check_bindings (
+    account_id uuid NOT NULL,
+    binding_key text NOT NULL,
+    run_id uuid,
+    stack_id uuid NOT NULL,
+    integration_id uuid NOT NULL,
+    namespace text NOT NULL,
+    repository text NOT NULL,
+    commit_hash text NOT NULL,
+    run_type text NOT NULL,
+    is_cap boolean NOT NULL DEFAULT false,
+    binding jsonb NOT NULL,
+    PRIMARY KEY (account_id,binding_key),
+    FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
+);
+CREATE INDEX vcs_check_bindings_integration ON vcs_check_bindings(account_id,integration_id);
+CREATE INDEX vcs_check_bindings_stack ON vcs_check_bindings(account_id,stack_id);
+CREATE INDEX vcs_check_bindings_caps ON vcs_check_bindings(account_id,integration_id,namespace,repository,commit_hash,run_type) WHERE is_cap;
+CREATE INDEX vcs_check_bindings_caps_native ON vcs_check_bindings(account_id,integration_id,(binding->>'repositoryId'),commit_hash,run_type) WHERE is_cap;
+
+-- The newest requested sequence prevents a late outbox event from replacing a
+-- newer Coalesce payload before the worker reads it.
+CREATE TABLE vcs_check_requests (
+    account_id uuid NOT NULL,
+    binding_key text NOT NULL,
+    check_name text NOT NULL,
+    is_aggregate boolean NOT NULL,
+    sequence bigint NOT NULL,
+    PRIMARY KEY (account_id,binding_key,check_name,is_aggregate),
+    FOREIGN KEY (account_id,binding_key) REFERENCES vcs_check_bindings(account_id,binding_key) ON DELETE CASCADE
+);
+
+-- A resource is one GitHub run's individual check, or a shared native named
+-- status/aggregate. The owner row is locked across bounded external effects.
+-- binding_key and owner_id are historical cursor identities, retained after
+-- a binding/stack disappears so an older run cannot reclaim its native status.
+-- Account purge removes these credential-free cursors.
+CREATE TABLE vcs_check_resources (
+    account_id uuid NOT NULL,
+    resource_key text NOT NULL,
+    binding_key text NOT NULL,
+    native_id text NOT NULL DEFAULT '',
+    digest text NOT NULL DEFAULT '',
+    owner_id uuid,
+    owner_epoch timestamptz,
+    sequence bigint NOT NULL DEFAULT 0,
+    is_aggregate boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (account_id,resource_key)
+);
+CREATE INDEX vcs_check_resources_binding ON vcs_check_resources(account_id,binding_key);
 
 -- Native comment identities survive lost HTTP responses and queue completion.
 -- Historical stack/run IDs are routing facts, not cross-domain foreign keys;
