@@ -64,10 +64,17 @@ func (s *checkActionSteps) setup(ctx context.Context, host, vendor string) error
 	// This commit is deliberately newer than the recorded tracked commit. There
 	// is no push: a button must neither promote nor overwrite source pointers.
 	s.w.IDs["actionCommit"] = s.checks.repo.Commit("main", "requested action commit", deploymentFiles("action"))
-	run, err := s.checks.create(ctx, "/api/v1/stacks/actions/runs", map[string]any{"runType": "PROPOSED", "commitSha": s.w.IDs["actionCommit"]})
+	response, err := s.w.Do(ctx, "A", "h", http.MethodPost, "/api/v1/stacks/actions/runs", map[string]any{"runType": "PROPOSED", "commitSha": s.w.IDs["actionCommit"]})
 	if err != nil {
 		return err
 	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if response.Status != 200 || json.Unmarshal(response.Body, &created) != nil || created.ID == "" {
+		return fmt.Errorf("%w: seed run trigger answered %d", harness.ErrStep, response.Status)
+	}
+	run := created.ID
 	s.w.IDs["actionSeed"] = run
 	if err := deps.Eventually(ctx, "real seed plan and recorded action check", func(ctx context.Context) (bool, error) {
 		response, err := s.w.Do(ctx, "B", "h", http.MethodGet, "/api/v1/runs/"+run, nil)
