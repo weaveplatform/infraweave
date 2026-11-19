@@ -10,6 +10,10 @@ variable "capture_secret" {
   sensitive = true
 }
 
+resource "terraform_data" "sensitive" {
+  input = var.capture_secret
+}
+
 output "visible" {
   value = "capture-644-public"
 }
