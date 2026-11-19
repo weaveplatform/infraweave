@@ -3,8 +3,8 @@
 The repositories that decision 0016's scheduled `vcs-lab` job
 (`.github/workflows/vcs-lab.yml`) runs against, as one Terraform root per
 VCS provider. Each run applies its provider's root, runs that provider's
-`TestAcc<Provider>Lab` and its `@vcs-lab` scenario in
-`vcs_sources.feature`, and destroys the root, pass or fail. Nothing here
+`TestAcc<Provider>Lab`, then its `@vcs-lab` source, webhook and feedback
+scenarios in that order, and destroys the root, pass or fail. Nothing here
 is part of infraweave or its reference deployments.
 
 | Root | Creates |
@@ -53,7 +53,10 @@ repositories.
   (`start-gitlab.sh`), which offers them on every tier, and makes its
   administrator's token and HTTPS certificate for each run.
 - **Bitbucket Cloud:** a workspace with a project, and an Atlassian
-  account's API token with repository admin and delete scopes on it.
+  account's API token with repository admin/delete/read/write and pull request
+  read/write scopes on it. Repository hooks also require
+  `read:webhook:bitbucket`, `write:webhook:bitbucket` and
+  `delete:webhook:bitbucket` on that existing token.
 - **Azure DevOps:** an organization with a project, and a personal access
   token with Code (full).
 - **Bitbucket Data Center:** a licence; a developer licence will do. The
@@ -140,6 +143,67 @@ names the secrets it lacks.
 | Bitbucket Data Center | `VCS_BITBUCKET_DC_LICENSE` | the licence |
 
 ## Running a lab by hand
+
+### Verification phases and cleanup
+
+The workflow opens one checksum-pinned, account-free cloudflared quick tunnel
+before a hosted provider's servers start. Its temporary URL is their public
+origin; only the canonical POST webhook path is forwarded to the current
+scenario. GitLab CE and licensed Bitbucket Data Center instead reach that
+webhook-only listener directly on the runner's Docker bridge. The dedicated
+GitLab container permits local hook destinations; this does not change a hosted
+GitLab installation. The latest tool/image pins live in `test/deps`; the
+dependency refresh workflow updates cloudflared from its official release
+checksums alongside the other tools.
+
+The immutable source/credential contract and `vcs/sources.feature` finish before
+any webhook scenario mutates `main`. A scenario creates its own integration
+through the served API, immediately captures the admin-only hook URL and signing
+material, and supplies them through a private Terraform variable file. The
+four repository-hook roots keep their optional hooks absent until `hook_url`
+is supplied; GitHub uses its separate owned App-hook lease. Source scopes and
+credentials are verified independently of those native webhook/feedback effects.
+
+Each provider's webhook case performs genuine Git pushes, proves one tracked
+and one proposed run, checks tracked-commit movement, opens a native pull request
+without another run, and posts an ordinary pull request comment whose verified
+delivery is stored without starting a run. Real launchers use the pinned
+Terraform release to plan/apply a built-in `terraform_data` resource. The relay
+briefly holds their first reports so native checks can be observed before and
+after completion. The feedback case enables `feature:add_plan_pr_comment`,
+plans twice on the open request, reads exactly one native comment per run and
+checks GitHub's actual minimization state for the previous plan. No comment
+commands, action buttons, deployment or environment proofs are part of this lab.
+
+GitHub's individual check retains its per-run resource ID; Bitbucket retains its
+native named key. GitLab and Azure may retain native POST history for the same
+logical named context, so the lab asserts the latest context's owner and result,
+never an older successful history row or a fabricated one-row-per-run guarantee.
+GitHub reads filter the current App and reject duplicate owned check resources.
+
+Only missing configured secrets, the absent optional Data Center licence, and a
+fully joined tunnel startup failure are skips, with an explicit summary reason.
+Configured authentication, permissions, native assertions and cleanup failures
+fail and use the existing provider-issue reporting. An established tunnel's
+unexpected exit also fails. A fresh private session has a random identity and
+complete readiness/stop/result receipts: cleanup asks the owning helper to stop
+its actual child, then checks the terminal result written after both process
+and stream-reader joins. It never signals a persisted PID or adopts stale files.
+
+After each scenario the hook is removed, or the permanent App hook is restored
+to its attested parking baseline. Independent cleanup deadlines bound Terraform
+and App restoration. Workflow `always()` steps retry owned App cleanup, detach
+repository hooks, destroy the disposable repositories and close the run's
+tunnel/local containers even after failure. Variable files, local Terraform
+state, captured tool diagnostics and cleanup journals are private; no secret or
+masked secret is copied into an App PATCH or public failure message.
+
+The environment's main-only deployment rule can prevent a pre-merge dispatch.
+In that case the code PR references the ticket rather than closing it: a new
+successful main lab run on every configured provider is still required evidence,
+and the earlier source-only run does not satisfy these webhook/feedback proofs.
+
+### Manual source contract
 
 State is local and ignored, and the provider lock files are committed.
 Each root reads its provider's credentials as the comment in its

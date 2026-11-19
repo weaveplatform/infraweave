@@ -1,10 +1,12 @@
 package vcslab
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"time"
@@ -143,13 +145,29 @@ func (l *HookLease) Restore(ctx context.Context) error {
 
 // RestoreHook resumes cleanup from a private journal left by a failed scenario.
 func RestoreHook(ctx context.Context, client AppHooks, journal string) error {
-	data, err := os.ReadFile(journal)
+	info, err := os.Lstat(journal)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
-	var config hookJournal
-	if err != nil || json.Unmarshal(data, &config) != nil || config.Identity == "" || config.Identity != client.Identity() || !config.Original.valid() || !config.Target.valid() {
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 4096 {
+		return fmt.Errorf("%w: invalid cleanup journal", ErrHook)
+	}
+	if err := private.Check(journal); err != nil {
+		return fmt.Errorf("%w: shared cleanup journal", ErrHook)
+	}
+	data, err := os.ReadFile(journal)
+	if err != nil {
 		return fmt.Errorf("%w: read cleanup journal", ErrHook)
+	}
+	var config hookJournal
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&config) != nil || config.Identity == "" || config.Identity != client.Identity() || !config.Original.valid() || !config.Target.valid() {
+		return fmt.Errorf("%w: read cleanup journal", ErrHook)
+	}
+	var tail any
+	if decoder.Decode(&tail) != io.EOF {
+		return fmt.Errorf("%w: invalid cleanup journal tail", ErrHook)
 	}
 	return (&HookLease{client: client, original: config.Original, target: config.Target, journal: journal, identity: config.Identity}).Restore(ctx)
 }

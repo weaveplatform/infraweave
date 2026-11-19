@@ -23,6 +23,7 @@ type labSteps struct {
 
 func (l *labSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the vcs-lab lab's repository$`, l.repository)
+	(&liveLabSteps{w: l.w}).register(sc)
 }
 
 // repository keeps the lab as {labHost}, {labUser}, {labToken},

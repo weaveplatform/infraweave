@@ -4,8 +4,8 @@ name: go | VCS provider labs
 # Terraform root in test/terraform/vcs/<root> makes two private repositories
 # for the run and pushes seed.sh's history to each, then the provider's
 # TestAcc<Provider>Cloud runs the source contract and checks a run
-# credential's reach, and vcs/sources.feature's @vcs-lab scenario
-# drives a stack on the lab through infraweave. Destroy always runs, and a
+# credential's reach, then @vcs-lab source, signed-webhook and native-feedback
+# scenarios drive real runs through infraweave. Destroy always runs, and a
 # sweep first deletes any lab repository a day old that an earlier run
 # left. Bitbucket Data Center is the one provider with no hosted service:
 # the job starts its image with the lab's licence.
@@ -69,6 +69,8 @@ jobs:
       LAB_GITHUB_ADMIN_TOKEN: ${{ secrets.VCS_GITHUB_ADMIN_TOKEN }}
       LAB_GITHUB_APP_ID: ${{ secrets.VCS_GITHUB_APP_ID }}
       LAB_GITHUB_APP_PRIVATE_KEY: ${{ secrets.VCS_GITHUB_APP_PRIVATE_KEY }}
+      INFRAWEAVE_LAB_GITHUB_READY: ${{ vars.VCS_GITHUB_HOOK_READY }}
+      INFRAWEAVE_LAB_GITHUB_PARKED_URL: ${{ vars.VCS_GITHUB_HOOK_PARKED_URL }}
       LAB_BITBUCKET_CLOUD_WORKSPACE: ${{ secrets.VCS_BITBUCKET_CLOUD_WORKSPACE }}
       LAB_BITBUCKET_CLOUD_PROJECT_KEY: ${{ secrets.VCS_BITBUCKET_CLOUD_PROJECT_KEY }}
       LAB_BITBUCKET_CLOUD_EMAIL: ${{ secrets.VCS_BITBUCKET_CLOUD_EMAIL }}
@@ -93,12 +95,20 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Read the pinned Terraform release
+        id: pins
+        run: |
+          version=$(sed -n '/^var Terraform = /,/^}/ s/.*Version: *"\([^"]*\)".*/\1/p' test/deps/tools.go)
+          [ -n "$version" ] || exit 1
+          echo "terraform=$version" >> "$GITHUB_OUTPUT"
+
       # The wrapper would print each command's output again, outputs
       # included, after the masks the job sets.
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
+          terraform_version: ${{ steps.pins.outputs.terraform }}
 
       # Lists the provider's missing secrets rather than failing at its
       # first call with an error that names none of them.
@@ -238,15 +248,72 @@ jobs:
             echo "INFRAWEAVE_TEST_VCS_CA_FILE=$lab/cert.pem"
           } >> "$GITHUB_ENV"
 
+      - name: Build the verification-only lab helper
+        id: helper
+        if: ${{ steps.config.outputs.configured == 'true' }}
+        run: go build -o "$RUNNER_TEMP/vcs-lab" ./test/acceptance/cmd/vcs-lab
+
+      - name: Validate the dedicated App setup attestation
+        if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'github' }}
+        run: '"$RUNNER_TEMP/vcs-lab" app-readiness'
+
+      - name: Open the run's webhook delivery path
+        id: delivery
+        if: ${{ steps.config.outputs.configured == 'true' }}
+        run: |
+          set -euo pipefail
+          umask 077
+          lab=$(mktemp -d "$RUNNER_TEMP/vcs-lab-delivery.XXXXXXXX")
+          mkdir -p "$RUNNER_TEMP/vcs-lab-hooks"
+          echo "INFRAWEAVE_LAB_TUNNEL_SESSION=$lab" >> "$GITHUB_ENV"
+          echo "INFRAWEAVE_LAB_HOOK_JOURNALS=$RUNNER_TEMP/vcs-lab-hooks" >> "$GITHUB_ENV"
+          echo "INFRAWEAVE_LAB_TERRAFORM_ROOT=$GITHUB_WORKSPACE/$ROOT" >> "$GITHUB_ENV"
+          case "$PROVIDER" in
+            gitlab|bitbucket-dc)
+              container=gitlab
+              [ "$PROVIDER" != bitbucket-dc ] || container=bitbucket
+              gateway=$(docker inspect "$container" --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')
+              [ -n "$gateway" ] || exit 1
+              echo "INFRAWEAVE_LAB_PUBLIC_URL=http://$gateway:8765" >> "$GITHUB_ENV"
+              echo 'INFRAWEAVE_LAB_WEBHOOK_LISTEN=0.0.0.0:8765' >> "$GITHUB_ENV"
+              echo 'available=true' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              "$RUNNER_TEMP/vcs-lab" install-tunnel --destination "$lab/cloudflared"
+              "$RUNNER_TEMP/vcs-lab" tunnel --binary "$lab/cloudflared" \
+                --origin http://127.0.0.1:8765 --session-directory "$lab" > "$lab/process.log" 2>&1 &
+              tunnel_job=$!
+              ready=false
+              for _ in $(seq 120); do
+                if public=$("$RUNNER_TEMP/vcs-lab" tunnel-url --session-directory "$lab" 2>/dev/null); then ready=true; break; fi
+                [ ! -f "$lab/result.json" ] || break
+                sleep 0.5
+              done
+              if [ "$ready" != true ]; then
+                "$RUNNER_TEMP/vcs-lab" stop-tunnel --session-directory "$lab"
+                wait "$tunnel_job" 2>/dev/null || true
+                echo 'available=false' >> "$GITHUB_OUTPUT"
+                line="vcs-lab $PROVIDER is skipped: its account-free quick tunnel did not open."
+                echo "::notice::$line"
+                echo "$line" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+              echo "::add-mask::$public"
+              echo "INFRAWEAVE_LAB_PUBLIC_URL=$public" >> "$GITHUB_ENV"
+              echo 'INFRAWEAVE_LAB_WEBHOOK_LISTEN=127.0.0.1:8765' >> "$GITHUB_ENV"
+              echo 'available=true' >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Sweep lab repositories a day old
         if: >-
-          ${{ steps.config.outputs.configured == 'true' &&
+          ${{ steps.config.outputs.configured == 'true' && steps.delivery.outputs.available == 'true' &&
           matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
         run: test/terraform/vcs/sweep.sh "$PROVIDER"
 
       - name: Apply the lab
         id: apply
-        if: ${{ steps.config.outputs.configured == 'true' }}
+        if: ${{ steps.config.outputs.configured == 'true' && steps.delivery.outputs.available == 'true' }}
         run: |
           set -euo pipefail
           terraform -chdir="$ROOT" init -input=false -no-color > /dev/null
@@ -256,7 +323,7 @@ jobs:
       # is masked before it reaches the environment; the GitHub App's key
       # spans lines, so it goes in under a delimiter.
       - name: Name the lab to the tests
-        if: ${{ steps.config.outputs.configured == 'true' }}
+        if: ${{ steps.config.outputs.configured == 'true' && steps.delivery.outputs.available == 'true' }}
         run: |
           set -euo pipefail
           out() { terraform -chdir="$ROOT" output -raw "$1"; }
@@ -296,7 +363,7 @@ jobs:
       # Each test appends to cloud.log, whose failing cases the report
       # quotes.
       - name: The source contract and a run's credential
-        if: ${{ steps.config.outputs.configured == 'true' }}
+        if: ${{ steps.config.outputs.configured == 'true' && steps.delivery.outputs.available == 'true' }}
         env:
           TEST: ${{ matrix.test }}
           PACKAGE: ./internal/vcs/internal/adapters/${{ matrix.root }}
@@ -311,13 +378,38 @@ jobs:
           INFRAWEAVE_ACCEPT_TAGS: '@lab:${{ matrix.provider }}'
         run: |
           set -o pipefail
-          make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+          # Keep immutable source history checks ahead of the real pushes.
+          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/sources.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/webhooks.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/feedback.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+
+      - name: Restore the dedicated App's parked webhook
+        if: ${{ always() && matrix.provider == 'github' && steps.helper.outcome == 'success' }}
+        run: '"$RUNNER_TEMP/vcs-lab" restore-app --journal-directory "$RUNNER_TEMP/vcs-lab-hooks"'
+
+      - name: Detach run-owned repository hooks
+        if: ${{ always() && matrix.provider != 'github' && steps.apply.outcome == 'success' }}
+        run: terraform -chdir="$ROOT" apply -input=false -auto-approve -no-color -var='hook_url=' -var='hook_secret='
 
       # Only a run that reached apply has anything to destroy, or the root
       # initialized.
       - name: Destroy the lab
         if: ${{ always() && steps.apply.outcome != 'skipped' }}
         run: terraform -chdir="$ROOT" destroy -input=false -auto-approve -no-color
+
+      - name: Close the run's tunnel and verify its terminal outcome
+        if: ${{ always() && steps.helper.outcome == 'success' && matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
+        run: |
+          if [ -n "${INFRAWEAVE_LAB_TUNNEL_SESSION:-}" ]; then
+            "$RUNNER_TEMP/vcs-lab" stop-tunnel --session-directory "$INFRAWEAVE_LAB_TUNNEL_SESSION"
+          fi
+
+      - name: Stop the run's local VCS container
+        if: ${{ always() && steps.config.outputs.configured == 'true' && (matrix.provider == 'gitlab' || matrix.provider == 'bitbucket-dc') }}
+        run: |
+          container=gitlab
+          [ "$PROVIDER" != bitbucket-dc ] || container=bitbucket
+          docker rm -f "$container"
 
       # One open issue per provider tracks its failing runs: the first
       # failure opens it, and each later one comments on it until a person

@@ -1,6 +1,9 @@
 package vcslab
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -61,12 +64,15 @@ func TestUnitLabIngressExposesOnlyCurrentWebhookReceiver(t *testing.T) {
 func TestUnitLabIngressRejectsCanonicalizationAndPreservesSignedBytes(t *testing.T) {
 	var calls atomic.Int32
 	body := "{\"text\":\"line\\n\"}\r\n"
+	h := hmac.New(sha256.New, []byte("lab-only-signature-key-at-least-32-bytes"))
+	_, _ = h.Write([]byte(body))
+	signature := "sha256=" + hex.EncodeToString(h.Sum(nil))
 	up := chi.NewRouter()
 	up.Use(middleware.CleanPath)
 	up.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		got, err := io.ReadAll(r.Body)
-		if err != nil || string(got) != body || r.Header.Get("X-Hub-Signature-256") != "sha256:unchanged-test-signature" {
+		if err != nil || string(got) != body || r.Header.Get("X-Hub-Signature-256") != signature {
 			t.Error("signed bytes or signature header changed")
 		}
 		w.WriteHeader(202)
@@ -117,7 +123,7 @@ func TestUnitLabIngressRejectsCanonicalizationAndPreservesSignedBytes(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("X-Hub-Signature-256", "sha256:unchanged-test-signature")
+	req.Header.Set("X-Hub-Signature-256", signature)
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

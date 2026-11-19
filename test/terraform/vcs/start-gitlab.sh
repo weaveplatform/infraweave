@@ -58,6 +58,7 @@ fi
 LAB_TOKEN=$(openssl rand -hex 10)
 export LAB_TOKEN
 docker exec -e LAB_TOKEN gitlab gitlab-rails runner '
+  ApplicationSetting.current.update!(allow_local_requests_from_web_hooks_and_services: true)
   t = User.find_by_username("root").personal_access_tokens.create!(
     name: "infraweave-lab", scopes: ["api"], expires_at: 2.days.from_now)
   t.set_token(ENV.fetch("LAB_TOKEN"))

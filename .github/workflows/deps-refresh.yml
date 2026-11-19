@@ -187,6 +187,15 @@ jobs:
           tg=$(gh api repos/gruntwork-io/terragrunt/releases/latest -q .tag_name)
           tg=${tg#v}
           tool Terragrunt 'terragrunt_linux_{arch}' "$tg" "https://github.com/gruntwork-io/terragrunt/releases/download/v$tg/SHA256SUMS"
+          # cloudflared publishes bare-build checksums in the release body.
+          cf=$(gh api repos/cloudflare/cloudflared/releases/latest)
+          version=$(jq -r .tag_name <<<"$cf")
+          sed -i -E "/^var Cloudflared = /,/^}/ s#(Version: +\")[^\"]+\"#\1$version\"#" test/deps/tools.go
+          for arch in amd64 arm64; do
+            sum=$(jq -r .body <<<"$cf" | awk -v name="cloudflared-linux-${arch}:" '$1 == name {gsub(/\r/, "", $2); print $2}')
+            [[ "$sum" =~ ^[0-9a-f]{64}$ ]] || { echo 'missing cloudflared checksum' >&2; exit 1; }
+            sed -i -E "/^var Cloudflared = /,/^}/ s#(\"cloudflared-linux-$arch\": +\")[0-9a-f]{64}\"#\1$sum\"#" test/deps/tools.go
+          done
           git diff --stat test/deps/tools.go
           # A run whose stack sets no version takes the recorded index's
           # newest release, which TestUnitToolPins holds to the pin. The
