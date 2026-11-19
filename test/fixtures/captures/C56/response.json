@@ -1,0 +1,122 @@
+{
+  "exchanges": [
+    {
+      "startedAt": "2026-11-19T22:08:02.274Z",
+      "finishedAt": "2026-11-19T22:08:02.531Z",
+      "request": {
+        "query": "mutation Capture643Create($input: PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }",
+        "variables": {
+          "input": {
+            "name": "policy-a",
+            "type": "PLAN",
+            "engineType": "REGO_V1",
+            "body": "package spacelift\nimport rego.v1\n\n# Unattached capture policy.\ndefault allow := true\n",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-a",
+            "name": "policy-a",
+            "type": "PLAN",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126082,
+            "updatedAt": 1795126082,
+            "hasAttachedStacks": false,
+            "plugin": null
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:14:30.904Z",
+      "finishedAt": "2026-11-19T22:14:31.058Z",
+      "request": {
+        "query": "mutation Capture643Update($id:ID!,$input:PolicyUpdateInput!) { policyUpdatev2(id:$id,input:$input) { id type engineType createdAt updatedAt } }",
+        "variables": {
+          "id": "policy-a",
+          "input": {
+            "name": "policy-a",
+            "body": "package spacelift\nimport rego.v1\n\ndefault allow := true\n# Timestamp update capture.\n"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-a",
+            "type": "PLAN",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126082,
+            "updatedAt": 1795126471
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:15:22.256Z",
+      "finishedAt": "2026-11-19T22:15:22.424Z",
+      "request": {
+        "query": "mutation Capture643DeleteForce($id:ID!) { policyDelete(id:$id,force:true) { id } }",
+        "variables": {
+          "id": "policy-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDelete": {
+            "id": "policy-a"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:15:22.424Z",
+      "finishedAt": "2026-11-19T22:15:22.589Z",
+      "request": {
+        "query": "query Capture643AttachmentCleanup($id:ID!,$stack:ID!) { policy(id:$id) { id } policies { id } stack(id:$stack) { id attachedPolicies { id } } }",
+        "variables": {
+          "id": "policy-a",
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policy": null,
+          "policies": [],
+          "stack": {
+            "id": "stack-a",
+            "attachedPolicies": []
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:25:19.032Z",
+      "finishedAt": "2026-11-19T22:25:19.157Z",
+      "request": {
+        "query": "query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "BACKSTAGE_INTEGRATION",
+            "CLOUD_CREDENTIAL_GENERATION",
+            "SPACELIFT_INTELLIGENCE"
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

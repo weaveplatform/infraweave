@@ -1,0 +1,95 @@
+# exchange 0
+# variables: {}
+query Capture643Inventory { tier tierFeatures stacks { id name } policies { id name type engineType createdAt updatedAt hasAttachedStacks } }
+
+# exchange 1
+# variables: {"input":{"name":"policy-a","type":"PLAN","engineType":"REGO_V1","body":"package spacelift\nimport rego.v1\n\n# Unattached capture policy.\ndefault allow := true\n","space":"root"}}
+mutation Capture643Create($input: PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 2
+# variables: {"input":{"name":"policy-approval","type":"APPROVAL","body":"package spacelift\nimport rego.v1\n\napprove if { input.run.state == \"QUEUED\" }\napprove if { count(input.reviews.current.approvals) > 0 }\nreject if { count(input.reviews.current.rejections) > 0 }\nflag contains \"capture-643-reset\" if { input.run.state == \"QUEUED\" }\nreset_flag contains \"capture-643-reset\" if { input.run.state != \"QUEUED\" }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 3
+# variables: {"input":{"name":"policy-git_push","type":"GIT_PUSH","body":"package spacelift\nimport rego.v1\nignore := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 4
+# variables: {"input":{"name":"policy-initialization","type":"INITIALIZATION","body":"package spacelift\nimport rego.v1\nallow := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 5
+# variables: {"input":{"name":"policy-task","type":"TASK","body":"package spacelift\nimport rego.v1\napprove := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 6
+# variables: {"input":{"name":"policy-notification","type":"NOTIFICATION","body":"package spacelift\nimport rego.v1\nnotify := []\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 7
+# variables: {"input":{"name":"policy-trigger","type":"TRIGGER","body":"package spacelift\nimport rego.v1\ntrigger contains \"never\" if { false }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 8
+# variables: {"input":{"name":"policy-intent","type":"INTENT","body":"package spacelift\nimport rego.v1\ndeny contains \"never\" if { false }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 9
+# variables: {"input":{"name":"policy-plan-warn","type":"PLAN","body":"package spacelift\nimport rego.v1\nwarn contains \"capture-643-warning\" if { true }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 10
+# variables: {"input":{"name":"policy-always","type":"APPROVAL","body":"package spacelift\nimport rego.v1\napprove := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 11
+# variables: {"id":"policy-approval","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 12
+# variables: {"id":"policy-always","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 13
+# variables: {"id":"policy-plan-warn","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 14
+# variables: {"id":"policy-git_push","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 15
+# variables: {"id":"policy-trigger","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 16
+# variables: {"id":"policy-initialization","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 17
+# variables: {"id":"policy-task","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 18
+# variables: {"id":"policy-notification","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 19
+# variables: {"id":"policy-intent","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 20
+# variables: {"stack":"stack-a","run":"01J00000000000000000000014"}
+query Capture643ProposedResult($stack:ID!,$run:ID!) { stack(id:$stack) { id provider run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } } tier tierFeatures }
+
+# exchange 21
+# variables: {"id":"stack-a","input":{"name":"stack-a","branch":"capture/643-policy-triggers","namespace":"actor-a","repository":"capture-repository","repositoryURL":null,"provider":"GITHUB","space":"root","autodeploy":false,"projectRoot":"test/fixtures/policy-capture-project","terraformVersion":"1.5.7","description":"Temporary provider-free policy contract capture for infraweave #643; delete after capture.","labels":["infraweave-capture:643"]}}
+mutation Capture643StackSource($id:ID!,$input:StackInput!) { stackUpdate(id:$id,input:$input) { id provider repository namespace repositoryURL branch projectRoot autodeploy labels } }
+
+# exchange 22
+# variables: {"stack":"stack-a","run":"01J00000000000000000000028"}
+query Capture643PushResult($stack:ID!,$run:ID!) { tier tierFeatures stack(id:$stack) { id attachedPolicies { id policyId policyType policyBody } run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyType flags outcome sampled engineType } history { state note timestamp } } } policy(id:"policy-git_push") { id type evaluationRecords { key outcome timestamp } } }
+
+# exchange 23
+# variables: {}
+query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }

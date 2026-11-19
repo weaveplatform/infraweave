@@ -256,7 +256,10 @@ Who calls the engine, when, and what the result does to the run of decision
   evaluation applies its `reset_flag` entries first, deleting only its own ownership rows,
   then inserts its `flag` entries ([09 section 5](../reference/09-policies.md#5-flags-flag-reset-and-sampling)).
   A flag is visible in `run.flags` while any owner row remains. Every infraweave policy has
-  a ULID, so every policy can reset.
+  a ULID, so every policy can reset. C51's 2026-11-19 real samples also show a
+  newly created Spacelift policy with a slug-shaped public ID resetting its flag;
+  public ID syntax does not determine eligibility. The legacy-policy comparison
+  remains blocked and is not inferred from this new-policy observation.
 - **Sampling.** When `sample` is true (login by default), the engine stores a record of
   input, body, engine type, result, outcome, error and print output.
   - Hourly sample budgets per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all
@@ -486,7 +489,9 @@ handoffs. Do not close a capture by converting an interim choice into a fixture.
   approval policy rejects while another approves
   ([09 section 3.3](../reference/09-policies.md#33-approval)); infraweave fails the run on
   a reject in every state that evaluates approval policies, `PENDING_REVIEW` and
-  `UNCONFIRMED` included, which C291 checks against Spacelift.
+  `UNCONFIRMED` included. The [C291 fixture](../../../test/fixtures/captures/C291/README.md)
+  directly verifies both states on 2026-11-19, including mixed approve/reject
+  outcomes and the exact `Run rejected by approval policies` history note.
 - **Flags from types with no run.** What such a flag does is unverified (C50); infraweave
   ignores such flags.
 - Whether infraweave pins Spacelift's policy contract as a committed snapshot is PD-14,

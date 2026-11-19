@@ -1,0 +1,31 @@
+# exchange 0
+# variables: {"input":{"name":"policy-approval","type":"APPROVAL","body":"package spacelift\nimport rego.v1\n\napprove if { input.run.state == \"QUEUED\" }\napprove if { count(input.reviews.current.approvals) > 0 }\nreject if { count(input.reviews.current.rejections) > 0 }\nflag contains \"capture-643-reset\" if { input.run.state == \"QUEUED\" }\nreset_flag contains \"capture-643-reset\" if { input.run.state != \"QUEUED\" }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 1
+# variables: {"stack":"stack-a","runType":"TRACKED"}
+mutation Capture643Run($stack:ID!,$runType:RunType!) { runTrigger(stack:$stack,runType:$runType) { id stackId state type createdAt policyReceipts { id policySlug policyName policyType flags outcome engineType } history { state note timestamp } } }
+
+# exchange 2
+# variables: {"stack":"stack-a","run":"01J00000000000000000000005"}
+query Capture643RunState($stack:ID!,$run:ID!) { stack(id:$stack) { id run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } attachedPolicies { id policyId policyName policyType evaluationRecords { key outcome timestamp } } } }
+
+# exchange 3
+# variables: {"stack":"stack-a","run":"01J00000000000000000000005"}
+query Capture643Samples($stack:ID!,$run:ID!) { stack(id:$stack) { run(id:$run) { id state gate:policyReceiptSample(id:"01J00000000000000000000008") { input body results outcome error } queued:policyReceiptSample(id:"01J00000000000000000000006") { input body results outcome error } } } }
+
+# exchange 4
+# variables: {"stack":"stack-a","run":"01J00000000000000000000005"}
+mutation Capture643Reject($stack:ID!,$run:ID!) { runReview(stack:$stack,run:$run,decision:REJECT,note:"capture-643-unconfirmed-reject") { id decision state stateVersion timestamp note } }
+
+# exchange 5
+# variables: {"stack":"stack-a","run":"01J00000000000000000000005"}
+query Capture643RunState($stack:ID!,$run:ID!) { stack(id:$stack) { id run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } } }
+
+# exchange 6
+# variables: {"stack":"stack-a","run":"01J00000000000000000000005"}
+query Capture643ResetAfter($stack:ID!,$run:ID!) { stack(id:$stack) { run(id:$run) { id state resetAfter:policyReceiptSample(id:"01J00000000000000000000012") { input body results outcome error } } } }
+
+# exchange 7
+# variables: {}
+query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }

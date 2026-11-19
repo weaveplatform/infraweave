@@ -1,0 +1,8 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/649
+observed:
+  "/exchanges/0/response/data/policyCreatev2/id": "policy-approval"
+  "/exchanges/1/response/data/runTrigger/policyReceipts/0/flags": ["capture-643-reset"]
+  "/exchanges/3/response/data/stack/run/state": "UNCONFIRMED"
+  "/exchanges/6/response/data/stack/run/state": "FAILED"
+  "/exchanges/7/response/data/stacks": []
+  "/exchanges/7/response/data/policies": []

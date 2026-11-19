@@ -1,0 +1,39 @@
+# exchange 0
+# variables: {"input":{"name":"policy-git_push","type":"GIT_PUSH","body":"package spacelift\nimport rego.v1\nignore := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 1
+# variables: {"id":"policy-git_push","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 2
+# variables: {"id":"stack-a","input":{"name":"stack-a","branch":"capture/643-policy-triggers","namespace":"actor-a","repository":"capture-repository","repositoryURL":null,"provider":"GITHUB","space":"root","autodeploy":false,"projectRoot":"test/fixtures/policy-capture-project","terraformVersion":"1.5.7","description":"Temporary provider-free policy contract capture for infraweave #643; delete after capture.","labels":["infraweave-capture:643"]}}
+mutation Capture643StackSource($id:ID!,$input:StackInput!) { stackUpdate(id:$id,input:$input) { id provider repository namespace repositoryURL branch projectRoot autodeploy labels } }
+
+# exchange 3
+# variables: {"stack":"stack-a"}
+query Capture643Ignored($stack:ID!) { stack(id:$stack) { id searchRunIgnoredTriggers(input:{first:20}) { edges { node { id createdAt reasonType commit { hash } policyAttachments { policyName } } } pageInfo { hasNextPage } } runs { id state type commit { hash } } } }
+
+# exchange 4
+# variables: {"stack":"stack-a","run":"01J00000000000000000000028"}
+query Capture643PushResult($stack:ID!,$run:ID!) { tier tierFeatures stack(id:$stack) { id attachedPolicies { id policyId policyType policyBody } run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyType flags outcome sampled engineType } history { state note timestamp } } } policy(id:"policy-git_push") { id type evaluationRecords { key outcome timestamp } } }
+
+# exchange 5
+# variables: {"stack":"stack-a","run":"01J00000000000000000000028"}
+mutation Capture643Discard($stack:ID!,$run:ID!) { runDiscard(stack:$stack,run:$run,note:"capture-643-cleanup") { id state } }
+
+# exchange 6
+# variables: {"id":"01J00000000000000000000023"}
+mutation Capture643Detach($id:ID!) { policyDetach(id:$id) { id stackId } }
+
+# exchange 7
+# variables: {"stack":"stack-a"}
+query Capture643DefaultResult($stack:ID!) { tier tierFeatures stack(id:$stack) { id attachedPolicies { policyId policyType } searchRunIgnoredTriggers(input:{first:20}) { edges { node { id reasonType commit { hash } } } } runs { id state type commit { hash } } } }
+
+# exchange 8
+# variables: {"stack":"stack-a","run":"01J00000000000000000000035"}
+mutation Capture643Discard($stack:ID!,$run:ID!) { runDiscard(stack:$stack,run:$run,note:"capture-643-cleanup") { id state } }
+
+# exchange 9
+# variables: {}
+query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }

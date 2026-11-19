@@ -133,8 +133,13 @@ Disagreements between the sources:
 
 The docs mark policies as a paid-account feature [D] policy. `BillingTierFeature`
 has three policy-related values, `ACCESS_POLICIES`, `NOTIFICATION_POLICIES` and
-`WORKFLOW_POLICIES` [G]. Which policy types `WORKFLOW_POLICIES` covers is
-*(unverified)* (C48); report 26 owns tiers.
+`WORKFLOW_POLICIES` [G]. The 2026-11-19 V5_FREE capture advertises none of
+these three features, but permits creation of eight non-login/access policy types
+and records real PLAN, APPROVAL and INITIALIZATION evaluations
+([C48 fixture](../../../test/fixtures/captures/C48/README.md)) **[C]** 2026-11-19.
+Creation/attachment is not proof of execution entitlement. Which types
+`WORKFLOW_POLICIES` gates remains *(unverified)* (C48); an entitled-account
+comparison is missing, and report 26 owns the unresolved tier mapping.
 
 ## 2. Policy engine and language
 
@@ -309,6 +314,10 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   policy fails the run regardless of the others, as the "denial wins" rule in section 2.4
   implies: with one policy approving and another rejecting, the aggregate is a reject and
   the run fails ([32](32-spacelift-console-survey.md) section 16.2), which resolves C41.
+  The [C291 real API capture](../../../test/fixtures/captures/C291/README.md)
+  **[C]** 2026-11-19 observes the mixed approve/reject result in both UNCONFIRMED
+  and PENDING_REVIEW: both transition to FAILED with the exact history note
+  `Run rejected by approval policies`. This resolves C291 without reopening C40/C41.
 - Reviews come from `runReview(stack, run, decision, note)`, with `RunReviewDecision`
   `APPROVE` or `REJECT`, stored as `RunReview` with the run state and `stateVersion`
   at review time [G]. Reviewers need write or admin on the stack. Only a reviewer's
@@ -634,10 +643,16 @@ the edges [D] contract:
   every owner asks to reset it, so one policy cannot clear another's flag [D] flag-reset,
   [D] contract.
 - Within one evaluation, resets apply first and new flags second [D] flag-reset.
-- Policies without a `PolicyULID` (older policies) can set flags but not reset any
-  [D] flag-reset. Every policy created in the console has a ULID, and its decision carries
-  `reset_flag` ([32](32-spacelift-console-survey.md) section 16.1); how an older
-  policy gets one is *(unverified)* (C51).
+- Policies without an internal `PolicyULID` (older policies) can set flags but not
+  reset any [D] flag-reset. The console decision includes `reset_flag`
+  ([32](32-spacelift-console-survey.md) section 16.1); that observation does not
+  establish the shape or eligibility of every policy ID. A newly API-created policy
+  with a slug-shaped public ID successfully resets its own flag between QUEUED
+  and UNCONFIRMED in the [C51 samples](../../../test/fixtures/captures/C51/README.md)
+  **[C]** 2026-11-19. Its subsequent evaluation input no longer has the flag,
+  while the earlier receipt retains its historical flag. No legacy policy without
+  the internal ID was available; acquisition/migration and legacy reset eligibility
+  remain *(unverified)* (C51). Public ID shape is not an eligibility test.
 - Supported on push, approval, plan and trigger [D] flag-reset. During targeted
   replans, plan and approval policies run several times in one run, and reset lets the
   flags follow the current plan [D] flag-reset; report 08 owns targeted replan.
@@ -788,7 +803,7 @@ A run left in `PENDING_REVIEW` is canceled 30 days after creation [D]
 | `labels` | `[String!]!` | `labels` (set) | Carries `autoattach:` labels |
 | `space` / `spaceDetails` | `ID!` / `Space!` | `space_id` (optional, computed) | Login policies only in root |
 | `description` | `String` | `description` (non-empty if set) | Markdown in the UI [D] policy |
-| `createdAt`, `updatedAt` | `Int!` | | Unix timestamps; the schema does not state the unit [G], so the unit is *(unverified)* (C56) |
+| `createdAt`, `updatedAt` | `Int!` | | Unix seconds, with createdAt preserved on update; real create/update values lie within recorded UTC request bounds ([C56](../../../test/fixtures/captures/C56/README.md)) **[C]** 2026-11-19 |
 | `plugin` | `Plugin` | | Set when a plugin manages the policy; edits then go through the plugin [G], [RN 2025-11-13] |
 | `attachedStacks`, `attachedStack(id)`, `hasAttachedStacks`, `attachedIntentProjects`, `hasAttachedIntentProjects` | | | Attachments, including automatic ones |
 | `evaluationRecords`, `evaluationSample(key)`, `searchEvaluationRecords`, `sampleCount`, `notificationCount` | | | Section 6 |
@@ -803,7 +818,12 @@ optional), `policyUpdatev2(id, input: PolicyUpdateInput)` (`name`, `body` requir
 Queries: `policy(id)`, `policies`, `searchPolicies`, `searchSpacePolicies`,
 `policyRuntime`, `policyTemplate`, `searchPolicyTemplates`, `policyInputCaptures`,
 `policyInputCapture`, `intentPolicyInputSchema`, `autoattachmentForLabels` [G].
-What `force` on `policyDelete` overrides is *(unverified)* (C9).
+An attached ordinary policy cannot be deleted with `force` omitted: the API returns
+`policy still has attachments` and preserves the attachment. With `force: true`,
+it deletes the policy and removes the stack attachment
+([C9](../../../test/fixtures/captures/C9/README.md)) **[C]** 2026-11-19.
+The contextDelete and plugin-managed portions remain *(unverified)* (C9); all
+policies in this lab had `plugin: null`.
 
 Managing policies in the UI needs admin rights [D] policy. Policies are written
 through the UI or the Terraform provider; the docs prefer Terraform so that policies
@@ -1024,10 +1044,10 @@ comment quoted in 2.1].
 - How a policy acquires the `PolicyULID` needed to reset flags *(unverified)* (C51).
 - The run state after a server-side initialization `deny` *(unverified)* (C52).
 - When and how often Spacelift records `PolicyInputCapture` documents *(unverified)* (C53).
-- What `force` on `policyDelete` overrides *(unverified)* (C9).
+- Plugin-managed policy deletion and contextDelete remain *(unverified)* (C9); ordinary attached-policy deletion is observed above.
 - Which policy types `WORKFLOW_POLICIES` gates *(unverified)* (C48).
 - Whether module-version trigger events carry `queued_runs` *(unverified)* (C55).
-- The unit of `Policy.createdAt` and `updatedAt` *(unverified)* (C56).
+- C56 is resolved by real create/update request bounds: policy timestamps use Unix seconds.
 - The INITIALIZATION evaluation sits between `QUEUED`/`READY` and `INITIALIZING`
   [I, from "before they start"].
 

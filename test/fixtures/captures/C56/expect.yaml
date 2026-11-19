@@ -1,0 +1,8 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+observed:
+  "/exchanges/0/response/data/policyCreatev2/createdAt": 1795126082
+  "/exchanges/0/response/data/policyCreatev2/updatedAt": 1795126082
+  "/exchanges/1/response/data/policyUpdatev2/createdAt": 1795126082
+  "/exchanges/1/response/data/policyUpdatev2/updatedAt": 1795126471
+  "/exchanges/4/response/data/stacks": []
+  "/exchanges/4/response/data/policies": []

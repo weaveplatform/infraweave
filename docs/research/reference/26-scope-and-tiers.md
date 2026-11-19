@@ -540,3 +540,15 @@ rerun must fold those corrections in.
 - <https://docs.spacelift.io/concepts/policy/deprecated>, <https://docs.spacelift.io/concepts/policy/deprecated/migrate-to-spaces>, <https://docs.spacelift.io/concepts/policy/stack-access-policy>, <https://docs.spacelift.io/concepts/policy/login-policy> **[D]**
 - <https://docs.spacelift.io/concepts/stack/stack-settings> **[D]**
 - The tier notices cited per feature in reports [03](03-deploy-core-api-inventory.md) section 10, [04](04-platform-api-inventory.md), [14](14-spaces-rbac-and-identity.md) section 11 and [19](19-events-notifications-audit.md) section 12 **[D]**.
+
+## Policy entitlement capture, 2026-11-19
+
+The [C48 capture](../../../test/fixtures/captures/C48/README.md) records V5_FREE
+with no WORKFLOW_POLICIES feature. Creation and stack attachment are permitted
+for several workflow types, and real receipts show PLAN, APPROVAL and
+INITIALIZATION evaluation. A real push with an attached ignore=true policy still
+created a tracked run. These are operation-specific observations, not a complete
+mapping from WORKFLOW_POLICIES to types. An entitled-account comparison remains
+missing, so C48 and the affected P13 management/type gate remain blocked.
+C46 separately records the live refusal to list ignored triggers on this account;
+RUN_IGNORED_TRIGGERS was absent. No tier was purchased or support message sent.

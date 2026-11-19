@@ -1,0 +1,11 @@
+entry: C291
+captured: 2026-11-19
+tier: V5_FREE
+introspection: sha256:d8445fffab3b41acd2e90f36041da9945e747c27dba9edae819ffd0783d5f4f0
+capturedBy: Codex via Chrome DevTools MCP
+redacted:
+  - browser credentials are omitted
+  - account, people, identity subjects and source IP are replaced consistently
+  - run-owned stack, policy, attachment, receipt and review IDs are replaced consistently
+  - private capture repository is replaced by capture-repository
+  - timestamps, decision bodies, states, notes, flags, keys, types and nulls are preserved

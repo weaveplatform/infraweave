@@ -194,8 +194,10 @@ each with its basis in its record. T5, T24 and T29 give an approval policy
 `reject` as `FAILED`, while the approval page's walkthrough describes
 **Reject** as canceling the run; the console shows a reject in `QUEUED`
 failing the run ([32](32-spacelift-console-survey.md) section 16.2), which
-resolves C40; T24 and T29 rest on the same rule until C291 rejects in
-`PENDING_REVIEW` and `UNCONFIRMED`. A
+resolves C40. The [C291 capture](../../../test/fixtures/captures/C291/README.md)
+**[C]** 2026-11-19 now directly records T24 and T29: a reject in PENDING_REVIEW
+or UNCONFIRMED fails the run with `Run rejected by approval policies`, even
+while another attached approval policy approves. A
 task with `skipInitialization` still passes through `INITIALIZING` (T13),
 which only logs that initialization is skipped
 ([32](32-spacelift-console-survey.md) section 17.4), which resolves C42. T14
@@ -460,6 +462,15 @@ is admin-only and marked experimental [G].
 | Comment-driven actions | PR comments that start with `/spacelift` reach push policies as `pull_request.action == "commented"`; only new comments count | [D] [PR comments](https://docs.spacelift.io/concepts/run/pull-request-comments) |
 
 Report 11 covers each VCS provider's check behaviour.
+
+
+The [C46 real-webhook attempt](../../../test/fixtures/captures/C46/README.md)
+**[C]** 2026-11-19 records a custom-ignore push and a no-custom-policy comparison
+on V5_FREE. Both create tracked runs, and both ignored-trigger queries return
+`Your billing tier does not support listing ignored runs.` No CUSTOM_POLICY,
+CUSTOM_POLICY_NO_TRIGGER or DISABLED_BY_LABEL reason was observed. C46 stays
+blocked on an entitled account; the label and reason split remain unverified.
+
 
 ## 8. Run summaries and user-provided metadata
 

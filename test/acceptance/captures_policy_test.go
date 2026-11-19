@@ -18,7 +18,7 @@ func TestUnitPolicyCaptureEvidence(t *testing.T) {
 	if _, err := harness.LoadCaptures(capturesRoot, captureEntries(t)); err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []string{"C49", "C54", "C57", "C192"} {
+	for _, id := range policyCaptureIDs {
 		t.Run(id, func(t *testing.T) { checkPolicyCapture(t, id) })
 	}
 }
@@ -37,6 +37,17 @@ func captureJSON(t *testing.T, id, name string, out any) {
 func checkPolicyCapture(t *testing.T, id string) {
 	t.Helper()
 	switch id {
+	case "C9":
+		checkPolicyDeleteForce(t)
+	case "C46":
+		// The loader checks the entitlement refusal and both real commit SHAs.
+		// No ignored-trigger reason was observed on this tier.
+	case "C48":
+		checkFreeTierEvidence(t)
+	case "C51":
+		checkFlagResetEvidence(t)
+	case "C291":
+		checkApprovalRejections(t)
 	case "C49":
 		data, err := os.ReadFile(filepath.Join(capturesRoot, id, harness.RequestFile))
 		if err != nil {
@@ -60,6 +71,8 @@ func checkPolicyCapture(t *testing.T, id string) {
 		// final policy list against expect.yaml.
 	case "C54":
 		checkPolicyCatalogue(t)
+	case "C56":
+		checkPolicyTimestamps(t)
 	case "C57":
 		var response struct {
 			Data struct {

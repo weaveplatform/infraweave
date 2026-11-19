@@ -1,0 +1,835 @@
+{
+  "exchanges": [
+    {
+      "startedAt": "2026-11-19T22:15:55.273Z",
+      "finishedAt": "2026-11-19T22:15:55.424Z",
+      "request": {
+        "query": "mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }",
+        "variables": {
+          "input": {
+            "name": "policy-approval",
+            "type": "APPROVAL",
+            "body": "package spacelift\nimport rego.v1\n\napprove if { input.run.state == \"QUEUED\" }\napprove if { count(input.reviews.current.approvals) > 0 }\nreject if { count(input.reviews.current.rejections) > 0 }\nflag contains \"capture-643-reset\" if { input.run.state == \"QUEUED\" }\nreset_flag contains \"capture-643-reset\" if { input.run.state != \"QUEUED\" }\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-approval",
+            "name": "policy-approval",
+            "type": "APPROVAL",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126555,
+            "updatedAt": 1795126555,
+            "hasAttachedStacks": false,
+            "plugin": null
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:16.582Z",
+      "finishedAt": "2026-11-19T22:16:16.706Z",
+      "request": {
+        "query": "mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }",
+        "variables": {
+          "input": {
+            "name": "policy-plan-warn",
+            "type": "PLAN",
+            "body": "package spacelift\nimport rego.v1\nwarn contains \"capture-643-warning\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-plan-warn",
+            "name": "policy-plan-warn",
+            "type": "PLAN",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126576,
+            "updatedAt": 1795126576,
+            "hasAttachedStacks": false,
+            "plugin": null
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:16.707Z",
+      "finishedAt": "2026-11-19T22:16:16.824Z",
+      "request": {
+        "query": "mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }",
+        "variables": {
+          "input": {
+            "name": "policy-always",
+            "type": "APPROVAL",
+            "body": "package spacelift\nimport rego.v1\napprove := true\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-always",
+            "name": "policy-always",
+            "type": "APPROVAL",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126576,
+            "updatedAt": 1795126576,
+            "hasAttachedStacks": false,
+            "plugin": null
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:32.923Z",
+      "finishedAt": "2026-11-19T22:16:33.164Z",
+      "request": {
+        "query": "mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }",
+        "variables": {
+          "id": "policy-approval",
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01J00000000000000000000002",
+            "stackId": "stack-a",
+            "isAutoattached": false
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:33.164Z",
+      "finishedAt": "2026-11-19T22:16:33.288Z",
+      "request": {
+        "query": "mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }",
+        "variables": {
+          "id": "policy-always",
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01J00000000000000000000003",
+            "stackId": "stack-a",
+            "isAutoattached": false
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:33.288Z",
+      "finishedAt": "2026-11-19T22:16:33.433Z",
+      "request": {
+        "query": "mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }",
+        "variables": {
+          "id": "policy-plan-warn",
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01J00000000000000000000004",
+            "stackId": "stack-a",
+            "isAutoattached": false
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:16:47.472Z",
+      "finishedAt": "2026-11-19T22:16:50.081Z",
+      "request": {
+        "query": "mutation Capture643Run($stack:ID!,$runType:RunType!) { runTrigger(stack:$stack,runType:$runType) { id stackId state type createdAt policyReceipts { id policySlug policyName policyType flags outcome engineType } history { state note timestamp } } }",
+        "variables": {
+          "stack": "stack-a",
+          "runType": "TRACKED"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runTrigger": {
+            "id": "01J00000000000000000000005",
+            "stackId": "stack-a",
+            "state": "QUEUED",
+            "type": "TRACKED",
+            "createdAt": 1795126609,
+            "policyReceipts": [
+              {
+                "id": "01J00000000000000000000006",
+                "policySlug": "policy-approval",
+                "policyName": "policy-approval",
+                "policyType": "APPROVAL",
+                "flags": [
+                  "capture-643-reset"
+                ],
+                "outcome": "approve",
+                "engineType": "REGO_V1"
+              },
+              {
+                "id": "01J00000000000000000000007",
+                "policySlug": "policy-always",
+                "policyName": "policy-always",
+                "policyType": "APPROVAL",
+                "flags": [],
+                "outcome": "approve",
+                "engineType": "REGO_V1"
+              }
+            ],
+            "history": [
+              {
+                "state": "QUEUED",
+                "note": null,
+                "timestamp": 1795126609
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:17:13.961Z",
+      "finishedAt": "2026-11-19T22:17:14.139Z",
+      "request": {
+        "query": "query Capture643RunState($stack:ID!,$run:ID!) { stack(id:$stack) { id run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } attachedPolicies { id policyId policyName policyType evaluationRecords { key outcome timestamp } } } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000005"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-a",
+            "run": {
+              "id": "01J00000000000000000000005",
+              "state": "UNCONFIRMED",
+              "type": "TRACKED",
+              "needsApproval": true,
+              "policyReceipts": [
+                {
+                  "id": "01J00000000000000000000008",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "undecided",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000009",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000010",
+                  "policySlug": "policy-plan-warn",
+                  "policyName": "policy-plan-warn",
+                  "policyType": "PLAN",
+                  "flags": [],
+                  "outcome": "warn",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000006",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [
+                    "capture-643-reset"
+                  ],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000007",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ],
+              "history": [
+                {
+                  "state": "UNCONFIRMED",
+                  "note": "Autodeploy is off",
+                  "timestamp": 1795126626
+                },
+                {
+                  "state": "PLANNING",
+                  "note": null,
+                  "timestamp": 1795126621
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795126620
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795126613
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795126610
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795126609
+                }
+              ]
+            },
+            "attachedPolicies": [
+              {
+                "id": "01J00000000000000000000003",
+                "policyId": "policy-always",
+                "policyName": "policy-always",
+                "policyType": "APPROVAL",
+                "evaluationRecords": []
+              },
+              {
+                "id": "01J00000000000000000000002",
+                "policyId": "policy-approval",
+                "policyName": "policy-approval",
+                "policyType": "APPROVAL",
+                "evaluationRecords": []
+              },
+              {
+                "id": "01J00000000000000000000004",
+                "policyId": "policy-plan-warn",
+                "policyName": "policy-plan-warn",
+                "policyType": "PLAN",
+                "evaluationRecords": []
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:17:55.816Z",
+      "finishedAt": "2026-11-19T22:17:56.305Z",
+      "request": {
+        "query": "mutation Capture643Reject($stack:ID!,$run:ID!) { runReview(stack:$stack,run:$run,decision:REJECT,note:\"capture-643-unconfirmed-reject\") { id decision state stateVersion timestamp note } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000005"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runReview": {
+            "id": "review-1",
+            "decision": "REJECT",
+            "state": "UNCONFIRMED",
+            "stateVersion": 5,
+            "timestamp": 1795126676,
+            "note": "capture-643-unconfirmed-reject"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:18:10.823Z",
+      "finishedAt": "2026-11-19T22:18:10.973Z",
+      "request": {
+        "query": "query Capture643RunState($stack:ID!,$run:ID!) { stack(id:$stack) { id run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000005"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-a",
+            "run": {
+              "id": "01J00000000000000000000005",
+              "state": "FAILED",
+              "type": "TRACKED",
+              "needsApproval": true,
+              "policyReceipts": [
+                {
+                  "id": "01J00000000000000000000012",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "reject",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000013",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000008",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "undecided",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000009",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000010",
+                  "policySlug": "policy-plan-warn",
+                  "policyName": "policy-plan-warn",
+                  "policyType": "PLAN",
+                  "flags": [],
+                  "outcome": "warn",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000006",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [
+                    "capture-643-reset"
+                  ],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000007",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ],
+              "history": [
+                {
+                  "state": "FAILED",
+                  "note": "Run rejected by approval policies",
+                  "timestamp": 1795126676
+                },
+                {
+                  "state": "UNCONFIRMED",
+                  "note": "Autodeploy is off",
+                  "timestamp": 1795126626
+                },
+                {
+                  "state": "PLANNING",
+                  "note": null,
+                  "timestamp": 1795126621
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795126620
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795126613
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795126610
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795126609
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:18:10.973Z",
+      "finishedAt": "2026-11-19T22:18:13.359Z",
+      "request": {
+        "query": "mutation Capture643Run($stack:ID!,$runType:RunType!) { runTrigger(stack:$stack,runType:$runType) { id stackId state type createdAt history { state note timestamp } } }",
+        "variables": {
+          "stack": "stack-a",
+          "runType": "PROPOSED"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runTrigger": {
+            "id": "01J00000000000000000000014",
+            "stackId": "stack-a",
+            "state": "QUEUED",
+            "type": "PROPOSED",
+            "createdAt": 1795126693,
+            "history": [
+              {
+                "state": "QUEUED",
+                "note": null,
+                "timestamp": 1795126693
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:18:58.902Z",
+      "finishedAt": "2026-11-19T22:18:59.076Z",
+      "request": {
+        "query": "query Capture643RunState($stack:ID!,$run:ID!) { stack(id:$stack) { id run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000014"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-a",
+            "run": {
+              "id": "01J00000000000000000000014",
+              "state": "PENDING_REVIEW",
+              "type": "PROPOSED",
+              "needsApproval": true,
+              "policyReceipts": [
+                {
+                  "id": "01J00000000000000000000016",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "undecided",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000017",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000018",
+                  "policySlug": "policy-plan-warn",
+                  "policyName": "policy-plan-warn",
+                  "policyType": "PLAN",
+                  "flags": [],
+                  "outcome": "warn",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000019",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [
+                    "capture-643-reset"
+                  ],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000020",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ],
+              "history": [
+                {
+                  "state": "PENDING_REVIEW",
+                  "note": "Blocked by policy warnings",
+                  "timestamp": 1795126709
+                },
+                {
+                  "state": "PLANNING",
+                  "note": null,
+                  "timestamp": 1795126706
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795126705
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795126698
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795126693
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795126693
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:19:11.599Z",
+      "finishedAt": "2026-11-19T22:19:12.029Z",
+      "request": {
+        "query": "mutation Capture643Reject($stack:ID!,$run:ID!) { runReview(stack:$stack,run:$run,decision:REJECT,note:\"capture-643-pending-review-reject\") { id decision state stateVersion timestamp note } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000014"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runReview": {
+            "id": "review-2",
+            "decision": "REJECT",
+            "state": "PENDING_REVIEW",
+            "stateVersion": 5,
+            "timestamp": 1795126751,
+            "note": "capture-643-pending-review-reject"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:19:27.919Z",
+      "finishedAt": "2026-11-19T22:19:28.033Z",
+      "request": {
+        "query": "query Capture643ProposedResult($stack:ID!,$run:ID!) { stack(id:$stack) { id provider run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyName policyType flags outcome sampled engineType } history { state note timestamp } } } tier tierFeatures }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000014"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-a",
+            "provider": "GIT",
+            "run": {
+              "id": "01J00000000000000000000014",
+              "state": "FAILED",
+              "type": "PROPOSED",
+              "needsApproval": true,
+              "policyReceipts": [
+                {
+                  "id": "01J00000000000000000000021",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "reject",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000022",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000016",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "undecided",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000017",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000018",
+                  "policySlug": "policy-plan-warn",
+                  "policyName": "policy-plan-warn",
+                  "policyType": "PLAN",
+                  "flags": [],
+                  "outcome": "warn",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000019",
+                  "policySlug": "policy-approval",
+                  "policyName": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [
+                    "capture-643-reset"
+                  ],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000020",
+                  "policySlug": "policy-always",
+                  "policyName": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ],
+              "history": [
+                {
+                  "state": "FAILED",
+                  "note": "Run rejected by approval policies",
+                  "timestamp": 1795126751
+                },
+                {
+                  "state": "PENDING_REVIEW",
+                  "note": "Blocked by policy warnings",
+                  "timestamp": 1795126709
+                },
+                {
+                  "state": "PLANNING",
+                  "note": null,
+                  "timestamp": 1795126706
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795126705
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795126698
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795126693
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795126693
+                }
+              ]
+            }
+          },
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "CLOUD_CREDENTIAL_GENERATION",
+            "SPACELIFT_INTELLIGENCE",
+            "BACKSTAGE_INTEGRATION"
+          ]
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:25:19.032Z",
+      "finishedAt": "2026-11-19T22:25:19.157Z",
+      "request": {
+        "query": "query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "BACKSTAGE_INTEGRATION",
+            "CLOUD_CREDENTIAL_GENERATION",
+            "SPACELIFT_INTELLIGENCE"
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

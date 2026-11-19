@@ -1,0 +1,31 @@
+# exchange 0
+# variables: {"input":{"name":"policy-a","type":"PLAN","engineType":"REGO_V1","body":"package spacelift\nimport rego.v1\n\n# Unattached capture policy.\ndefault allow := true\n","space":"root"}}
+mutation Capture643Create($input: PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 1
+# variables: {"input":{"name":"stack-a","branch":"test/643-policy-captures","namespace":"weaveplatform","repository":"infraweave","repositoryURL":"https://github.com/weaveplatform/infraweave.git","provider":"GIT","space":"root","autodeploy":false,"projectRoot":"test/fixtures/policy-capture-project","terraformVersion":"1.5.7","description":"Temporary provider-free policy contract capture for infraweave #643; delete after capture.","labels":["infraweave-capture:643"]}}
+mutation Capture643Stack($input:StackInput!) { stackCreate(input:$input,manageState:true) { id name provider repository repositoryURL branch projectRoot state attachedPolicies { id } } }
+
+# exchange 2
+# variables: {"id":"policy-a","stack":"stack-a"}
+mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }
+
+# exchange 3
+# variables: {"id":"policy-a"}
+mutation Capture643Delete($id:ID!) { policyDelete(id:$id) { id hasAttachedStacks } }
+
+# exchange 4
+# variables: {"id":"policy-a","stack":"stack-a"}
+query Capture643AttachmentInventory($id:ID!,$stack:ID!) { policy(id:$id) { id hasAttachedStacks attachedStacks { id stackId } } stack(id:$stack) { id attachedPolicies { id } } }
+
+# exchange 5
+# variables: {"id":"policy-a"}
+mutation Capture643DeleteForce($id:ID!) { policyDelete(id:$id,force:true) { id } }
+
+# exchange 6
+# variables: {"id":"policy-a","stack":"stack-a"}
+query Capture643AttachmentCleanup($id:ID!,$stack:ID!) { policy(id:$id) { id } policies { id } stack(id:$stack) { id attachedPolicies { id } } }
+
+# exchange 7
+# variables: {}
+query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }
