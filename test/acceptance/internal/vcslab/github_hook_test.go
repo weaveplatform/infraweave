@@ -148,6 +148,9 @@ func TestUnitAppHookJournalCannotMoveBetweenAppIdentities(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.identity = "v1:different-App-or-key-or-version"
+	// The wrong App can coincidentally use the same parking baseline. It must
+	// not discard the original App's still-needed cleanup journal in that case.
+	f.current = parkedHook
 	if err := RestoreHook(t.Context(), f, path); !errors.Is(err, ErrHook) || len(f.patches) != 1 {
 		t.Fatal("journal was adopted by a different App identity")
 	}
@@ -155,6 +158,7 @@ func TestUnitAppHookJournalCannotMoveBetweenAppIdentities(t *testing.T) {
 		t.Fatal("identity refusal discarded the original recovery journal")
 	}
 	f.identity = readyKey().Readiness
+	f.current = HookConfig{URL: temporaryHook, ContentType: "json", InsecureSSL: "0"}
 	if err := RestoreHook(t.Context(), f, path); err != nil || f.current != parkedHook {
 		t.Fatal("original App could not resume its cleanup")
 	}
@@ -234,16 +238,21 @@ func TestUnitAppHookClientOmitsSecretOnRedirectAndRestore(t *testing.T) {
 
 func TestUnitAppHookCannotAcquireAnotherTemporaryOwner(t *testing.T) {
 	f := &hookFixture{current: HookConfig{URL: "https://previous.trycloudflare.com/webhooks/vcs/github_enterprise/previous", ContentType: "json", InsecureSSL: "0"}}
-	path := filepath.Join(t.TempDir(), "journal")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "new-session-journal")
+	prior := filepath.Join(dir, "prior-session-journal")
 	original := []byte("retained-previous-owner-journal")
-	if err := os.WriteFile(path, original, 0o600); err != nil {
+	if err := os.WriteFile(prior, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	_, err := LeaseHook(t.Context(), f, readyKey(), readyKey().Readiness, parkedHook, temporaryHook, path)
 	if !errors.Is(err, ErrHook) || len(f.patches) != 0 {
 		t.Fatal("acquisition overwrote a previous temporary owner")
 	}
-	got, err := os.ReadFile(path)
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("refused acquisition created a new-session journal")
+	}
+	got, err := os.ReadFile(prior)
 	if err != nil || string(got) != string(original) {
 		t.Fatal("acquisition changed the prior owner's journal")
 	}
