@@ -352,7 +352,9 @@ func (s *checkActionSteps) forged(ctx context.Context, kind, replica string) err
 			if response.Status != 201 || json.Unmarshal(response.Body, &created) != nil || created.ID == "" {
 				return fmt.Errorf("%w: sibling App fixture answered %d", harness.ErrStep, response.Status)
 			}
-			integration = created.ID
+			// The foreign stack is otherwise eligible through its account default.
+			// A named foreign integration would also refuse and mask the account fence.
+			provider, integration = "GITHUB", ""
 		}
 		if kind == "other repository" {
 			repository = "web"
@@ -378,6 +380,12 @@ func (s *checkActionSteps) forged(ctx context.Context, kind, replica string) err
 		}
 		if response.Status != 201 {
 			return fmt.Errorf("%w: forged target fixture answered %d", harness.ErrStep, response.Status)
+		}
+		if kind == "foreign account" {
+			var stored api.Stack
+			if json.Unmarshal(response.Body, &stored) != nil || string(stored.Provider) != "GITHUB" || stored.VcsIntegration != nil {
+				return fmt.Errorf("%w: foreign account target lost implicit GitHub default eligibility", harness.ErrStep)
+			}
 		}
 		account := harness.Home.Account
 		if kind == "foreign account" {
