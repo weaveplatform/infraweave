@@ -83,25 +83,12 @@ func TestUnitBlobsUnreachable(t *testing.T) {
 }
 
 // TestUnitBlobsRemoveErrors checks blob.delete's errors before it
-// reaches the database: a malformed payload, a refused key and a failing
-// bucket.
+// reaches the database: a malformed payload and duplicate registration.
 func TestUnitBlobsRemoveErrors(t *testing.T) {
 	ctx := t.Context()
 	if err := blobs.NewReaper(nil, nil, broken{}).
 		Remove(ctx, queue.Job{Payload: []byte("{")}); err == nil {
 		t.Error("a malformed payload succeeded")
-	}
-	for _, want := range []error{objectstore.ErrKey, objectstore.ErrStore, errBucket} {
-		r := blobs.NewReaper(nil, nil, broken{del: want})
-		if err := r.Remove(
-			ctx,
-			job(t, map[string]string{"store": "uploads", "key": "acct/k"}),
-		); !errors.Is(
-			err,
-			want,
-		) {
-			t.Errorf("a bucket failing with %v: %v", want, err)
-		}
 	}
 	reg := queue.NewRegistry()
 	r := blobs.NewReaper(nil, nil, broken{})
@@ -202,4 +189,21 @@ type noGet struct{ objectstore.Writer }
 
 func (noGet) Get(context.Context, objectstore.Name, string) (io.ReadCloser, error) {
 	return nil, errBucket
+}
+
+func TestAccBlobsRemoveBucketErrors(t *testing.T) {
+	h := open(t, objectstore.DriverFS)
+	ctx := t.Context()
+	for _, want := range []error{objectstore.ErrKey, objectstore.ErrStore, errBucket} {
+		r := blobs.NewReaper(h.pool, h.q, broken{del: want})
+		if err := r.Remove(
+			ctx,
+			job(t, map[string]string{"store": "uploads", "key": "acct/k"}),
+		); !errors.Is(
+			err,
+			want,
+		) {
+			t.Errorf("a bucket failing with %v: %v", want, err)
+		}
+	}
 }

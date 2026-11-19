@@ -1043,7 +1043,7 @@
         "lowestTier": "Free; Business for `aggregated-vcs-checks`; Enterprise for `multiple-vcs-integrations`",
         "phase": "P12",
         "also": "P12b (webhooks, checks, comments and deployments)",
-        "state": "missing",
+        "state": "partial",
         "notes": "Every provider is a peer, built together: GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps; beyond Spacelift, the others gain GitHub's capabilities where their APIs allow: per-run repository tokens and renames followed by repository ID; GitHub alone has Preview and Deploy check buttons, while every provider stores comment events for push policies"
       }
     },
@@ -1329,7 +1329,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -1384,7 +1384,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -1532,7 +1532,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2394,7 +2394,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2467,7 +2467,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2485,7 +2485,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2653,7 +2653,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2671,7 +2671,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {
@@ -2689,7 +2689,7 @@
         "lowestTier": "Free",
         "apiPhase": "P12b",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial"
       }
     },
     {

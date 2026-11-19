@@ -641,6 +641,13 @@ coverage it would contribute is not waived.
 
 ## Verification
 
+- `test/acceptance/features/vcs/webhooks.feature` and
+  `test/acceptance/features/vcs/feedback.feature` verify durable intake,
+  push-created runs, checks and plan comments with each provider's fake.
+  Their `@vcs-lab` examples verify signed deliveries and native feedback
+  against the configured real providers in the `vcs-lab` workflow. Those
+  examples belong only to the lab partition; Bitbucket Data Center is
+  skipped, with a named reason, when no licence is configured.
 - `TestUnitTestNames`, `TestUnitFeaturePartitions` and
   `TestUnitCaptureRedaction` guard the rules above.
 - `test/acceptance/features/suite/harness.feature` proves the harness

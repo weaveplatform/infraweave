@@ -94,6 +94,10 @@ type oneRepo struct{ s storer.Storer }
 func (l oneRepo) Load(*transport.Endpoint) (storer.Storer, error) { return l.s, nil }
 
 func newGitServer(t *testing.T, s storer.Storer, private bool) *gitServer {
+	return newGitServerWithAzure(t, s, private, false)
+}
+
+func newGitServerWithAzure(t *testing.T, s storer.Storer, private, azure bool) *gitServer {
 	t.Helper()
 	g := &gitServer{private: private, byHash: true}
 	up := server.NewServer(oneRepo{s})
@@ -130,6 +134,9 @@ func newGitServer(t *testing.T, s storer.Storer, private bool) *gitServer {
 		if g.byHash {
 			_ = ar.Capabilities.Set(capability.AllowReachableSHA1InWant)
 		}
+		if azure {
+			_ = ar.Capabilities.Set(capability.MultiACK)
+		}
 		w.Header().Set("Content-Type", "application/x-git-upload-pack-advertisement")
 		_ = ar.Encode(w)
 	})
@@ -138,6 +145,19 @@ func newGitServer(t *testing.T, s storer.Storer, private bool) *gitServer {
 		if err := upr.Decode(req.Body); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+		if azure {
+			if !upr.Capabilities.Supports(capability.MultiACK) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if len(upr.Haves) != 0 || upr.Depth != packp.DepthCommits(0) {
+				t.Error("Azure clone attempted incremental or shallow negotiation")
+			}
+			// The in-process Git server serves a complete pack but does not
+			// implement incremental ACKs; the boundary above enforces Azure's
+			// mandatory capability on the actual wire request.
+			upr.Capabilities.Delete(capability.MultiACK)
 		}
 		g.mu.Lock()
 		g.depths = append(g.depths, upr.Depth)

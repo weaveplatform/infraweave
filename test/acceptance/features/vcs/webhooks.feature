@@ -961,6 +961,7 @@ Feature: VCS webhook protocol, event run budgets and request history
     And the event run "proposedRun" has a real tool plan through A
     When the event fixture opens a request on commit "proposed" through B
     Then stack "infra" has exactly 1 event runs for commit "proposed"
+    And an ordinary event pull request comment is stored and starts no run
     When the event repository commits "recovered" on "feature"
     And B acknowledges event "recoveryPush" from "proposed" to "recovered" on "feature" and dies before A processes it
     Then event delivery "recoveryPush" settles with 1 new runs
