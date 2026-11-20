@@ -1,0 +1,7 @@
+{
+  "version": "1.17.0-alpha20260827",
+  "stability": "public experimental alpha, not stable",
+  "planSHA256": "c6eae7d232a3068cbda892c425f565e4772f40214e5acda64052599ba9cc9532",
+  "applyExecution": false,
+  "actionExecution": false
+}

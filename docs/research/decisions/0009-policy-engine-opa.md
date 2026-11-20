@@ -408,6 +408,39 @@ gives it.
   parameter the way it compares a Terraform attribute.
 
 
+
+### Modern full-plan value families
+
+The full artifact, unlike the published three-member policy projection, also
+carries provider action and deferred-resource values. DEFAULT/SMART sanitize
+`action_invocations[*].config_values`, with `config_sensitive` supplying SMART
+markers, and preserve
+`config_unknown` and invocation identity/provenance. Deferred resource changes
+use the ordinary change value and marker paths inside
+`deferred_changes[*].resource_change.change`; their reason, wildcard address
+and unknown index stay structural. Resource identity/import attribute values
+and opaque generated HCL follow the existing value rules. SMART collects marked
+strings across these families and selected units before hashing identical value
+copies. Strict known fields and marker/metadata shapes fail closed without
+writing a fallback or echoing unknown keys or values.
+
+These sections stay artifact-only. Terraform/OpenTofu policy input remains
+`resource_changes`, `checks` and the version, with the established alias/unit
+rules. No new evaluator input member, action execution or experimental release
+admission follows from artifact compatibility. NONE preserves valid supported
+document bytes and all artifacts remain sealed; existing worker capability and
+receipt fences remain in force.
+
+[Report 35](../reference/35-modern-plan-payloads.md) distinguishes real stable
+action production from an actual public-alpha resource fixture transported
+through the stable worker for compatibility. The public alpha's deferred-action
+plan cannot be read as JSON in the recorded probes. Nonempty
+`deferred_action_invocations` therefore remain refused under DEFAULT/SMART;
+NONE is the explicit sealed opt-out. #675's required real deferred-action
+fixture and value/mask acceptance stay open. Source declarations or the
+maintainer's separate workflow-capture inference approval do not settle them.
+
+
 ### Policy phase ownership and capture gates
 
 P13 constructs `policies` after configuration and before runs. Runs and VCS use

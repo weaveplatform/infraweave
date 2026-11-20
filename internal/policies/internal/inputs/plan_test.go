@@ -182,3 +182,43 @@ func TestUnitProjectTerragruntPlans(t *testing.T) {
 		}
 	}
 }
+
+// Modern full-artifact families deliberately have no policy-visible member.
+// Every recorded plan still retains all three published sections and JSON types.
+func TestUnitProjectPayloadFixtures(t *testing.T) {
+	files, err := filepath.Glob("../../../../test/fixtures/plan-payloads/*/plan.json")
+	if err != nil || len(files) != 4 {
+		t.Fatalf("modern plan fixture inventory: %d, %v", len(files), err)
+	}
+	for _, file := range files {
+		t.Run(filepath.Base(filepath.Dir(file)), func(t *testing.T) {
+			raw, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			vendor := "terraform"
+			if filepath.Base(filepath.Dir(file)) == "opentofu" {
+				vendor = "opentofu"
+			}
+			var in PlanInput
+			if err := ApplyPlan(&in, vendor, bytes.NewReader(raw)); err != nil {
+				t.Fatal(err)
+			}
+			block, _ := in.Terraform.Get()
+			encoded, err := json.Marshal(block)
+			if err != nil {
+				t.Fatal(err)
+			}
+			compareProjected(t, raw, encoded)
+			if err := compile(t, contractCompiler(t), "TerraformPlan").Validate(jsonValue(t, encoded)); err != nil {
+				t.Fatal(err)
+			}
+			if vendor == "opentofu" {
+				tofu, ok := in.Opentofu.Get()
+				if !ok || !reflect.DeepEqual(tofu.ResourceChanges, block.ResourceChanges) || !reflect.DeepEqual(tofu.OpentofuVersion, block.TerraformVersion) {
+					t.Fatal("OpenTofu alias changed fixture fields")
+				}
+			}
+		})
+	}
+}

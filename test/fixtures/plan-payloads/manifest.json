@@ -1,0 +1,72 @@
+{
+  "captured": "2026-11-20",
+  "tools": [
+    {
+      "version": "1.17.2",
+      "platform": "darwin_arm64",
+      "url": "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_darwin_arm64.zip",
+      "sha256": "da0c7ef278a911347862758e7573a5907365e66485c2637cf5c217c5e227992e",
+      "checksumSource": "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_SHA256SUMS",
+      "name": "terraform",
+      "stability": "stable",
+      "archive": "terraform_1.17.2_darwin_arm64.zip"
+    },
+    {
+      "version": "1.13.9",
+      "platform": "darwin_arm64",
+      "url": "https://github.com/opentofu/opentofu/releases/download/v1.13.9/tofu_1.13.9_darwin_arm64.zip",
+      "sha256": "29ba2f4c78556a8d25476e5070fe4745495ef649c4a3b827170eb7436d23feb3",
+      "checksumSource": "https://github.com/opentofu/opentofu/releases/download/v1.13.9/tofu_1.13.9_SHA256SUMS",
+      "name": "tofu",
+      "stability": "stable",
+      "archive": "tofu_1.13.9_darwin_arm64.zip"
+    },
+    {
+      "version": "1.17.0-alpha20260827",
+      "stability": "published experimental alpha, not latest stable",
+      "platform": "darwin_arm64",
+      "sha256": "b6c684678e862da85ade584887787137268175b3f202aec19e1bd5cc93130b0f",
+      "releaseBaseURL": "https://releases.hashicorp.com/terraform/1.17.0-alpha20260827/",
+      "name": "terraform",
+      "archive": "terraform_1.17.0-alpha20260827_darwin_arm64.zip",
+      "url": "https://releases.hashicorp.com/terraform/1.17.0-alpha20260827/terraform_1.17.0-alpha20260827_darwin_arm64.zip",
+      "checksumSource": "https://releases.hashicorp.com/terraform/1.17.0-alpha20260827/terraform_1.17.0-alpha20260827_SHA256SUMS"
+    },
+    {
+      "version": "1.17.0-rc2",
+      "stability": "published release candidate, not stable",
+      "platform": "darwin_arm64",
+      "sha256": "e5976d5de6a57790fd86c92713aaa3845ccf8cffa928d8475c27f23ceda29124",
+      "name": "terraform",
+      "archive": "terraform_1.17.0-rc2_darwin_arm64.zip",
+      "url": "https://releases.hashicorp.com/terraform/1.17.0-rc2/terraform_1.17.0-rc2_darwin_arm64.zip",
+      "checksumSource": "https://releases.hashicorp.com/terraform/1.17.0-rc2/terraform_1.17.0-rc2_SHA256SUMS"
+    }
+  ],
+  "plans": {
+    "opentofu": {
+      "sha256": "66d35c4f7e4d93aebd02704647153f5d313b1859335b23c03d1a7f74cddd2d71",
+      "source": "real CLI show -json output; unchanged bytes",
+      "project": "main.tf",
+      "provenance": "provenance.json"
+    },
+    "terraform-actions": {
+      "sha256": "4f508b11b726c1754f10b6b30905299e31c3ccbe0e175202faeff01aa63e0d2b",
+      "source": "real CLI show -json output; unchanged bytes",
+      "project": "main.tf",
+      "provenance": "provenance.json"
+    },
+    "terraform-actions-marked-only": {
+      "sha256": "b9a712f5bd1dc12b53831f39838833119d71e5561a6264a5601d1378343e79f8",
+      "source": "real CLI show -json output; unchanged bytes",
+      "project": "main.tf",
+      "provenance": "provenance.json"
+    },
+    "terraform-deferred": {
+      "sha256": "c6eae7d232a3068cbda892c425f565e4772f40214e5acda64052599ba9cc9532",
+      "source": "real CLI show -json output; unchanged bytes",
+      "project": "main.tf",
+      "provenance": "provenance.json"
+    }
+  }
+}

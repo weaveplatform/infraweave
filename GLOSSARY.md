@@ -204,6 +204,14 @@ _Avoid_: log archive, full log
 The counts of resources a plan adds, changes, deletes, imports, moves and forgets, and whether any output changes.
 _Avoid_: diff, plan summary
 
+**Action invocation**:
+A provider-defined operation a plan proposes to invoke, distinct from creating, updating or deleting a resource.
+_Avoid_: resource change, hook
+
+**Deferred resource change**:
+A proposed resource change that remains incomplete while a planning prerequisite is unknown or unavailable.
+_Avoid_: postponed apply, ignored change
+
 **Task**:
 A run that performs one command a user gives on a stack, after initializing it, and holds the stack's lock while it does.
 _Avoid_: job, ad hoc run

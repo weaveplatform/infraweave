@@ -88,6 +88,7 @@ exclusion is recorded with its evidence.
 | [32-spacelift-console-survey.md](reference/32-spacelift-console-survey.md) | Spacelift's web console read page by page on 2026-11-17, then driven: fields, defaults, bounds and tier gates; runs, policy inputs and audit entries; compared with plan phases P13 to P28 and with main | Written |
 | [33-vendor-tool-documents.md](reference/33-vendor-tool-documents.md) | What Pulumi, kubectl and ansible-core write when driven, recorded in Docker on 2026-11-17, and CloudFormation's change sets from AWS's reference: commands, plan documents, outputs, state and secrets per vendor | Written |
 | [34-rego-v2-compatibility.md](reference/34-rego-v2-compatibility.md) | Released v2 versus the supported v0/v1 policy boundary, wildcard negation, and real embedded-library/MIT corpus/cache/FIPS probes | Written |
+| [35-modern-plan-payloads.md](reference/35-modern-plan-payloads.md) | Real action/deferred resource documents, strict full-artifact sanitization, stable/experimental boundaries and the remaining deferred-action proof | Written |
 | [glossary.md](reference/glossary.md) | Terms used across the set | Written |
 | [architecture-options/](architecture-options/README.md) | Five repository architecture options, their comparison and a recommendation | Written |
 | [decisions/](decisions/README.md) | Decision records, with their index | 0001 to 0003 Accepted; 0004 to 0022 Proposed |

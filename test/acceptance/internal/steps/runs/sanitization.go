@@ -19,6 +19,7 @@ import (
 )
 
 func registerSanitization(sc *godog.ScenarioContext, w *harness.World) {
+	registerActionSanitization(sc, w)
 	sc.Step(`^the relay refuses plan uploads$`, func() error {
 		if w.Relay == nil {
 			return fmt.Errorf("%w: no launcher relay", harness.ErrStep)
@@ -152,6 +153,7 @@ func registerSanitization(sc *godog.ScenarioContext, w *harness.World) {
 			return nil
 		},
 	)
+
 	sc.Step(`^the run "(\w+)" recorded (\d+) worker plan artifacts$`, func(ctx context.Context, run string, want int) error {
 		var count int
 		if err := w.Row(
