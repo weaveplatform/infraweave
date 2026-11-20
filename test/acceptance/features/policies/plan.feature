@@ -20,7 +20,7 @@ Feature: Plan policies select the next state of real Terraform family workers
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
-  @terraform
+  @terraform @case:failure
   Scenario: A real sanitized Terraform plan is denied before any apply
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}}},"manageState":true}' through B
     And it answers 201
@@ -37,6 +37,7 @@ Feature: Plan policies select the next state of real Terraform family workers
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, FAILED"
     And the answer's last state transition's note is "denied by plan policy"
     And the answer's flags is '["plan-denied"]'
+    And the answer's plan policy outcomes are '[{"deny":["terraform_data requires review"],"warn":[]}]'
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through A
 
   @terraform @op:runReview @case:success
