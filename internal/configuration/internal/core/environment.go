@@ -131,6 +131,7 @@ func (s *Service) surfaceContext(ctx context.Context, p kernel.Principal, ref st
 // source is one place a stack's environment comes from: the stack, or a
 // context attached to it, by hand at a priority or automatically.
 type source struct {
+	id       kernel.ULID
 	kind     string
 	context  string
 	name     string
@@ -258,25 +259,17 @@ func (s *Service) ResolveWithHooks(ctx context.Context, acct kernel.AccountID, i
 // element's value opened, write-only or not, and otherwise only a readable
 // one, as Value.
 func (s *Service) sources(ctx context.Context, acct kernel.AccountID, id kernel.ULID, open bool) ([]source, stacksapi.Settings, error) {
-	settings, err := s.stacks.Settings(ctx, acct, id)
-	if errors.Is(err, stacksapi.ErrNotFound) {
-		return nil, settings, fmt.Errorf("%w: %s", configapi.ErrNoStack, id)
-	} else if err != nil {
-		return nil, settings, err //nolint:wrapcheck // the stacks domain names the read
-	}
-	attached, err := s.store.Attachments(ctx, acct, []kernel.ULID{id}, true)
+	out, settings, err := s.sourceSelection(ctx, acct, id)
 	if err != nil {
-		return nil, settings, err //nolint:wrapcheck // the store names the read
+		return nil, settings, err
 	}
-	owners := []Owner{{Stack: id}}
-	ids := make([]kernel.ULID, 0, len(attached[id]))
-	for _, a := range attached[id] {
-		owners = append(owners, Owner{Context: a.Context})
-		ids = append(ids, a.Context)
-	}
-	contexts, err := s.store.ByIDs(ctx, acct, ids)
-	if err != nil {
-		return nil, settings, err //nolint:wrapcheck // the store names the read
+	owners := make([]Owner, len(out))
+	for i, src := range out {
+		if src.kind == configapi.SourceStack {
+			owners[i].Stack = src.id
+		} else {
+			owners[i].Context = src.id
+		}
 	}
 	var elements map[kernel.ULID][]Opened
 	if open {
@@ -287,18 +280,46 @@ func (s *Service) sources(ctx context.Context, acct kernel.AccountID, id kernel.
 	if err != nil {
 		return nil, settings, err
 	}
-	out := []source{{
-		kind: configapi.SourceStack, elements: elements[id], hooks: settings.Hooks,
-	}}
+	for i := range out {
+		out[i].elements = elements[out[i].id]
+	}
+	return out, settings, nil
+}
+
+// sourceSelection reads current attachment metadata in the same order used by
+// environment resolution, without opening variables or mounted files.
+func (s *Service) sourceSelection(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]source, stacksapi.Settings, error) {
+	settings, err := s.stacks.Settings(ctx, acct, id)
+	if errors.Is(err, stacksapi.ErrNotFound) {
+		return nil, settings, fmt.Errorf("%w: %s", configapi.ErrNoStack, id)
+	} else if err != nil {
+		return nil, settings, err //nolint:wrapcheck // the stacks domain names the read
+	}
+	attached, err := s.store.Attachments(ctx, acct, []kernel.ULID{id}, true)
+	if err != nil {
+		return nil, settings, err //nolint:wrapcheck // the store names the read
+	}
+	ids := make([]kernel.ULID, 0, len(attached[id]))
 	for _, a := range attached[id] {
-		c := contexts[a.Context]
+		ids = append(ids, a.Context)
+	}
+	contexts, err := s.store.ByIDs(ctx, acct, ids)
+	if err != nil {
+		return nil, settings, err //nolint:wrapcheck // the store names the read
+	}
+	out := []source{{id: id, kind: configapi.SourceStack, hooks: settings.Hooks}}
+	for _, a := range attached[id] {
+		c, ok := contexts[a.Context]
+		if !ok {
+			return nil, settings, fmt.Errorf("%w: configuration attached context %s is missing", kernel.ErrUnavailable, a.Context)
+		}
 		kind := configapi.SourceContext
 		if a.Autoattached {
 			kind = configapi.SourceAutoattached
 		}
 		out = append(out, source{
-			kind: kind, context: c.Slug, name: c.Name, priority: a.Priority,
-			elements: elements[c.ID], hooks: c.Hooks,
+			id: c.ID, kind: kind, context: c.Slug, name: c.Name, priority: a.Priority,
+			hooks: c.Hooks,
 		})
 	}
 	return append(out[:1], ranked(out[1:])...), settings, nil
