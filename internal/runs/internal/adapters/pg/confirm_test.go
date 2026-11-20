@@ -103,7 +103,8 @@ func TestAccConfirm(t *testing.T) {
 		t.Errorf("the lock after the discard: held %v, %v", held, err)
 	}
 
-	w.stacks.settings[kernel.NewULID()] = stacksapi.Settings{Stack: stacksapi.Stack{Slug: "other"}}
+	other := kernel.NewULID()
+	w.stacks.settings[other] = stacksapi.Settings{Stack: stacksapi.Stack{ID: other, Account: w.acct, Slug: "other"}}
 	for _, c2 := range []struct{ slug, raw string }{
 		{"other", second.ID.String()}, {"network", kernel.NewULID().String()}, {"network", "nope"},
 	} {

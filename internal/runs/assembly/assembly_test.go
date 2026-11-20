@@ -89,10 +89,15 @@ func TestUnitEvents(t *testing.T) {
 	}
 	d := New(Deps{})
 	d.BindSources(sources{}, sources{})
-	if jobs := d.Jobs(); len(jobs) != 2 || jobs[0].Kind.Name != "run.schedule" ||
-		jobs[1].Kind.Name != "run.logs.compact" || jobs[0].Handler == nil ||
-		jobs[1].Handler == nil {
-		t.Errorf("Jobs = %+v", jobs)
+	jobs := d.Jobs()
+	want := []string{"run.approval.scan", "run.approval.reevaluate", "run.schedule", "run.logs.compact"}
+	if len(jobs) != len(want) {
+		t.Fatalf("Jobs = %+v", jobs)
+	}
+	for i, job := range jobs {
+		if job.Kind.Name != want[i] || job.Handler == nil {
+			t.Errorf("job %d = %+v", i, job)
+		}
 	}
 	events := outbox.New(nil, nil, kinds)
 	if err := d.Subscribe(events); err != nil {

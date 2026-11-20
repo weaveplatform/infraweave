@@ -19,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/review"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/trigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -263,6 +264,9 @@ func runError(err error, slug, run string) error {
 		return &problem.Error{Problem: p}
 	}
 	if b, ok := errors.AsType[*control.Blocked](err); ok {
+		if b.Action == accessapi.ActionRunReview {
+			return forbidden(b.Action, "Reviewing a run needs RUN_REVIEW in its stack's space.")
+		}
 		return forbidden(b.Action, fmt.Sprintf(
 			"The run holds the stack's lock; acting on it needs %s.", b.Action))
 	}
@@ -271,6 +275,8 @@ func runError(err error, slug, run string) error {
 		return problem.InvalidState.Error(fmt.Sprintf("The run is %s; %s.", r.State, r.Needs))
 	}
 	switch {
+	case errors.Is(err, lifecycle.ErrConflict):
+		return problem.InvalidState.Error("The run moved since it was read; read its current state before reviewing again.") //nolint:wrapcheck // shared state conflict response
 	case errors.Is(err, control.ErrBlocking):
 		return forbidden(accessapi.ActionRunCancelBlocking,
 			"The run holds the stack's lock; canceling it needs RUN_CANCEL_BLOCKING.")
@@ -378,6 +384,8 @@ func runOf(v read.View) api.Run {
 		Branch:         r.Commit.Branch,
 		CanPromote:     v.Guards.Promote == "",
 		CanRetry:       v.Guards.Retry == "",
+		CanConfirm:     r.State == kernel.RunStateUnconfirmed && !v.NeedsApproval && slices.Contains(v.Actions, accessapi.ActionRunConfirm),
+		NeedsApproval:  v.NeedsApproval,
 		Command:        command,
 		Comments:       comments,
 		Commit: api.Commit{
@@ -403,7 +411,7 @@ func runOf(v read.View) api.Run {
 		PriorityPreset:       api.RunPriorityPreset(r.Priority),
 		PromoteBlocker:       sentence(v.Guards.Promote),
 		RetryBlocker:         sentence(v.Guards.Retry),
-		Reviews:              []api.RunReview{},
+		Reviews:              reviewsOf(v.Reviews),
 		RuntimeConfig:        resolvedOf(r.ResolvedConfig),
 		CustomRuntimeConfig:  customOf(r.RuntimeConfig),
 		StackId:              v.Stack.Slug,
@@ -414,6 +422,21 @@ func runOf(v read.View) api.Run {
 		Type:                 api.RunType(r.Type),
 		UpdatedAt:            unix(r.UpdatedAt.Unix()),
 		WorkflowId:           r.ID.String(),
+	}
+}
+
+func reviewsOf(records []review.Record) []api.RunReview {
+	out := make([]api.RunReview, 0, len(records))
+	for _, r := range records {
+		out = append(out, reviewOf(r))
+	}
+	return out
+}
+
+func reviewOf(r review.Record) api.RunReview {
+	return api.RunReview{
+		Id: r.ID.String(), Author: r.Facts.Author, Decision: api.RunReviewDecision(r.Decision), Note: r.Note,
+		State: api.RunState(r.State), StateVersion: r.StateVersion, Timestamp: unix(r.CreatedAt.Unix()),
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 
 func reviewRecord(w *world, r lifecycle.Run) review.Record {
 	p := w.alice()
-	roles := []policyapi.RoleFacts{{ID: "space-writer", Slug: "space-writer", Name: "Original writer", ULID: kernel.NewULID().String()}}
+	roles := []policyapi.RoleFacts{{ID: kernel.NewULID(), Slug: "space-writer", Name: "Original writer"}}
 	return review.Record{
 		Account: w.acct, Run: r.ID, ID: kernel.NewULID(), AuthorKey: p.Caller(), Caller: p.Caller(), Session: kernel.NewULID(),
 		Decision: review.Approve, State: r.State, StateVersion: r.Version, CreatedAt: w.now, RequestID: "request-review",

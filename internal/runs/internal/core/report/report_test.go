@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
@@ -85,6 +86,10 @@ func (s *store) Handed(_ context.Context, id kernel.ULID) (lifecycle.Run, error)
 
 func (s *store) StateAt(_ context.Context, _ kernel.AccountID, _ kernel.ULID, v int64) (kernel.RunState, error) {
 	return s.states[v], s.err("StateAt")
+}
+
+func (s *store) ApprovalAt(context.Context, kernel.AccountID, kernel.ULID, int64) (evidence.Approval, bool, error) {
+	return evidence.Approval{}, false, s.err("ApprovalAt")
 }
 
 func (s *store) ArtifactKey(context.Context, lifecycle.Run) (crypt.Value, error) {

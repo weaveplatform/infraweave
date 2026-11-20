@@ -35,9 +35,16 @@ func TestAccReviewMetadataFromRealAccessOwners(t *testing.T) {
 	}
 	service := reviewmeta.New(reviewmeta.Deps{DB: x.db, Store: x.s})
 	got, err := service.ReviewMetadata(ctx, ss.Principal(), x.acct.ULID)
-	if err != nil || got.AuthorKey != ss.Principal().Caller() || got.Session.ActorID != x.key || got.Session.SessionID != ss.ID || got.Identity != nil ||
+	if err != nil || !got.CanReview || got.AuthorKey != ss.Principal().Caller() || got.Session.ActorID != x.key || got.Session.SessionID != ss.ID || got.Identity != nil ||
 		got.CreatorIP == nil || *got.CreatorIP != ss.IPAddress || got.IDPSubject != nil || len(got.Roles) != 1 || got.Roles[0].ID != writer || got.Roles[0].Slug != "space-writer" || got.Roles[0].Name != "Space writer" {
 		t.Fatalf("real access owner metadata missing or manufactured: %+v, %v", got, err)
+	}
+	if _, err := x.db.Exec(ctx, `DELETE FROM role_bindings WHERE account_id=$1 AND actor_kind='api_key' AND actor_id=$2`, x.acct, x.key); err != nil {
+		t.Fatal(err)
+	}
+	revoked, err := service.ReviewMetadata(ctx, ss.Principal(), x.acct.ULID)
+	if err != nil || revoked.CanReview || len(revoked.Roles) != 0 || !got.CanReview {
+		t.Fatalf("review grant revocation was not fresh and immutable: current%+v prior%+v err%v", revoked, got, err)
 	}
 }
 

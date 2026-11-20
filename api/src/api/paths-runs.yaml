@@ -485,6 +485,27 @@ components:
         - body
       type: object
       x-graphql-args-of: runComment
+    RunReviewRequest:
+      description: The arguments of runReview not carried in the path. stateVersion optionally fences a review to the state the caller read.
+      type: object
+      additionalProperties: false
+      properties:
+        decision:
+          $ref: '#/components/schemas/RunReviewDecision'
+        note:
+          type: string
+          nullable: true
+          maxLength: 10000
+        run:
+          type: string
+          nullable: true
+        stateVersion:
+          type: integer
+          format: int64
+          minimum: 1
+      required:
+        - decision
+      x-graphql-args-of: runReview
     RunConfirmRequest:
       additionalProperties: false
       description: The arguments of runConfirm not carried in the path.
@@ -1385,6 +1406,66 @@ paths:
         - rate-limit
       x-infraweave-subject: path:stackId:stack
       x-rest-style: override
+  /stacks/{stackId}/runs/review:
+    post:
+      description: Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+      operationId: runReview
+      x-infraweave-feature: runs
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunReviewRequest'
+      responses:
+        "200":
+          description: The runReview result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunReview'
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Review Run
+      tags:
+        - Runs
+      x-bruno: Runs/Review Run.bru
+      x-graphql:
+        field: runReview
+        operation: mutation
+        type: Mutation
+      x-rest-style: action
+      x-infraweave-action: RUN_REVIEW
+      x-infraweave-cost: standard
+      x-infraweave-subject: path:stackId:stack
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
   /stacks/{stackId}/runs/confirm:
     post:
       description: >-

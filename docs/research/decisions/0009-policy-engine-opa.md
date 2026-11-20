@@ -231,6 +231,25 @@ Who calls the engine, when, and what the result does to the run of decision
 | `INTENT` | Intent operations | Each resource operation | Allow, deny or pending review |
 | `ACCESS` | never | n/a | Not served: absent from the served `PolicyType` (decision 0021) |
 
+- **Review identity and fencing.** `runReview` records the current session,
+  effective author roles, request address/time and admitted identity once. A
+  person's browser, CLI and personal-key sessions share one reviewer identity;
+  an account key is its own reviewer. Only the latest vote per reviewer and
+  state version counts. A changed vote remains in the immutable history.
+  Optional request `stateVersion` rejects stale intent with `invalid-state`;
+  omitted versions retain the reference operation's current-state behavior.
+  `RunReview.stateVersion` uses `int64`, matching the stored run counter rather
+  than truncating it to the reference's `int32`. This and the optional request
+  fence are intentional REST deviations. An exact `Idempotency-Key` replay
+  returns the first response without another review, receipt or transition.
+- **Approval evidence and changes.** Each waiting state/version keeps its latest
+  aggregate separately from immutable per-policy receipts. Removing the last
+  policy replaces the aggregate with `NO_POLICIES`. Policy edits and relation,
+  stack and space-inheritance changes commit durable, coalesced reevaluation
+  work. Account scans page into stack jobs; each job reacquires the current
+  space, stack and run fences. An advanced run is never moved by an old job.
+  A refused confirmation commits its evidence and any rejection before
+  returning `invalid-state`; approving `UNCONFIRMED` still does not confirm it.
 - **Plan decision.** The worker's report of a finished plan (decision
   [0008](0008-run-execution-and-worker-protocol.md)) carries the plan artifacts; the server
   builds the plan input from them, evaluates within the combined budget and answers the

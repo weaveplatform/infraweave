@@ -31,7 +31,10 @@ func (b *inputBuilder) review(review policyapi.ReviewFacts) inputs.Review {
 		AuthorRoles: convertFact(b, review.AuthorRoles, func(roles []policyapi.RoleFacts) []inputs.Role {
 			out := make([]inputs.Role, 0, len(roles))
 			for _, role := range roles {
-				out = append(out, inputs.Role{ID: inputs.Value(role.ID), Name: inputs.Value(role.Name), Slug: inputs.Value(role.Slug), ULID: inputs.Value(role.ULID)})
+				if role.ID.IsZero() || role.Slug == "" || role.Name == "" {
+					b.invalid = true
+				}
+				out = append(out, inputs.Role{ID: inputs.Value(role.Slug), Name: inputs.Value(role.Name), Slug: inputs.Value(role.Slug), ULID: inputs.Value(role.ID.String())})
 			}
 			return out
 		}),

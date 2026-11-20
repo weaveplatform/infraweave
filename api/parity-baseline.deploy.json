@@ -306,7 +306,6 @@
       "runPluginLogsDownloadURL",
       "runPolicyReceiptSample",
       "runResourceCreate",
-      "runReview",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",
       "runTraceSpans",

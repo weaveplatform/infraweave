@@ -61,14 +61,6 @@ type ReviewFacts struct {
 	Session      Fact[SessionFacts]  `json:"session"`
 }
 
-// RoleFacts keeps the public role identity and immutable ULID distinct.
-type RoleFacts struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
-	ULID string `json:"ulid"`
-}
-
 // IdentityFacts contains only identity data supplied by its owning domain.
 type IdentityFacts struct {
 	ULID        Fact[string]                     `json:"ulid"`

@@ -336,3 +336,23 @@ CREATE TABLE run_reviews (
 );
 
 CREATE INDEX run_reviews_history ON run_reviews (account_id,run_id,state_version,created_at,id);
+
+-- A new evaluation replaces this state's aggregate, including NO_POLICIES
+-- after removal. Per-policy receipts remain immutable evidence of each attempt.
+CREATE TABLE run_approval_gates (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    state_version bigint NOT NULL CHECK (state_version > 0),
+    state text NOT NULL CHECK (state IN ('QUEUED','UNCONFIRMED','PENDING_REVIEW')),
+    has_policies boolean NOT NULL,
+    outcome text NOT NULL,
+    evaluated_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id,run_id,state_version),
+    FOREIGN KEY (account_id,run_id,state_version)
+        REFERENCES run_state_transitions (account_id,run_id,sequence) ON DELETE CASCADE,
+    CHECK ((has_policies AND outcome IN ('APPROVE','REJECT','UNDECIDED'))
+        OR (NOT has_policies AND outcome='NO_POLICIES'))
+);
+
+CREATE INDEX runs_waiting_approval ON runs (account_id,stack_id)
+    WHERE state IN ('QUEUED','UNCONFIRMED','PENDING_REVIEW');

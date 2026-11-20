@@ -22,6 +22,9 @@ type ReviewMetadata struct {
 	Identity   *ReviewIdentity
 	CreatorIP  *string
 	IDPSubject *string
+	// CanReview is the fresh decision in the same snapshot as Roles. It
+	// prevents cached route authorization from admitting a revoked reviewer.
+	CanReview bool
 }
 
 // ReviewRole retains the immutable role ID and its current public description.

@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/approval"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
@@ -118,6 +119,14 @@ type Objects interface {
 // objectstore.retention.run-logs.
 type Deps struct {
 	PolicyIdentities policiesapi.PolicyIdentities
+	PolicyEvaluator  policiesapi.Evaluator
+	PolicyInputs     policiesapi.RunInputBuilder
+	ReviewMetadata   accessapi.ReviewMetadataReader
+	PolicyStacks     stacksapi.PolicySnapshots
+	PolicyPools      workersapi.PoolMetadataReader
+	PolicyRoles      accessapi.StackRoleReader
+	PolicySpaces     accessapi.PolicySpaceReader
+	PolicyContexts   configapi.PolicyContextReader
 	DB               queue.DB
 	Keys             pg.Sealer
 	Objects          Objects
@@ -138,21 +147,22 @@ type Deps struct {
 
 // Domain is the runs domain, constructed once per process.
 type Domain struct {
-	store     *pg.Store
-	runs      *core.Service
-	lifecycle *lifecycle.Lifecycle
-	scheduler *schedule.Scheduler
-	claims    *schedule.Claims
-	liveness  *schedule.Liveness
-	signals   *schedule.Signals
-	handover  *handover.Service
-	reports   *report.Service
-	logs      *logs.Service
-	changes   *changes.Service
-	trigger   *trigger.Service
-	read      *read.Service
-	control   *control.Service
-	timers    *timers.Service
+	store              *pg.Store
+	runs               *core.Service
+	lifecycle          *lifecycle.Lifecycle
+	scheduler          *schedule.Scheduler
+	claims             *schedule.Claims
+	liveness           *schedule.Liveness
+	signals            *schedule.Signals
+	handover           *handover.Service
+	reports            *report.Service
+	logs               *logs.Service
+	changes            *changes.Service
+	trigger            *trigger.Service
+	read               *read.Service
+	control            *control.Service
+	approvalReconciler *approval.Reconciler
+	timers             *timers.Service
 
 	planningLogs *logs.PlanningReader
 }
@@ -160,20 +170,27 @@ type Domain struct {
 // New constructs the domain on d.
 func New(d Deps) *Domain {
 	store := pg.New(d.DB, d.Keys)
+	var approvals lifecycle.Approvals
+	if d.PolicyEvaluator != nil {
+		approvals = approval.New(approval.Deps{
+			Store: store, Evaluator: d.PolicyEvaluator, Inputs: d.PolicyInputs,
+			Stacks: d.PolicyStacks, Pools: d.PolicyPools, Objects: d.Objects, Now: d.Now, Roles: d.PolicyRoles, SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts,
+		})
+	}
 	lc := lifecycle.New(lifecycle.Deps{
 		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store,
+		Approvals: approvals,
 	})
-	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities})
+	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store})
+	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs})
 	return &Domain{
 		store:     store,
 		runs:      core.New(store),
 		lifecycle: lc,
-		scheduler: schedule.New(schedule.Deps{
-			DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs,
-		}),
-		claims:   schedule.NewClaims(store, lc),
-		liveness: schedule.NewLiveness(store, lc),
-		signals:  schedule.NewSignals(store, d.Now),
+		scheduler: scheduler,
+		claims:    schedule.NewClaims(store, lc),
+		liveness:  schedule.NewLiveness(store, lc),
+		signals:   schedule.NewSignals(store, d.Now),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
 			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
@@ -195,6 +212,11 @@ func New(d Deps) *Domain {
 		control: control.New(control.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc,
 			Views: views, Now: d.Now,
+			Reviews: store, ReviewMetadata: d.ReviewMetadata, Scheduler: scheduler,
+		}),
+		approvalReconciler: approval.NewReconciler(approval.ReconcileDeps{
+			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces,
+			Jobs: d.Jobs, Lifecycle: lc, Scheduler: scheduler,
 		}),
 		timers: timers.New(timers.Deps{
 			DB: d.DB, Store: store, Lifecycle: lc, Settings: d.Settings.Timers, Now: d.Now,
@@ -274,6 +296,8 @@ func (d *Domain) Surfaces() []expr.Surface {
 // and may stream as long as the longest handler may run.
 func (d *Domain) Jobs() []queue.Registration {
 	return []queue.Registration{
+		{Kind: approval.ScanKind, Handler: d.approvalReconciler.Scan},
+		{Kind: approval.ReevaluateKind, Handler: d.approvalReconciler.Reevaluate},
 		{Kind: lifecycle.ScheduleKind, Handler: d.scheduler.Handle},
 		{
 			Kind: lifecycle.CompactKind, Handler: d.logs.Compact,
@@ -285,9 +309,18 @@ func (d *Domain) Jobs() []queue.Registration {
 // Subscribe subscribes the domain's consumers on events: the scheduling
 // of a stack that is unlocked or enabled.
 func (d *Domain) Subscribe(events *outbox.Outbox) error {
+	if err := events.Subscribe(policiesapi.ChangedKind, "runs.approval.policy", d.approvalReconciler.Changed); err != nil {
+		return err //nolint:wrapcheck // the owner names the failing operation
+	} //nolint:wrapcheck // outbox names subscription
+	if err := events.Subscribe(stacksapi.ChangedKind, "runs.approval.stack", d.approvalReconciler.Changed); err != nil {
+		return err //nolint:wrapcheck // the owner names the failing operation
+	} //nolint:wrapcheck // outbox names subscription
 	//nolint:wrapcheck // names the consumer
 	return events.Subscribe(stacksapi.ChangedKind, schedule.Consumer, d.scheduler.StackChanged)
 }
+
+// SpaceGuard adds durable approval reevaluation to accepted tree changes.
+func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.approvalReconciler }
 
 // RegisterEvents adds the domain's event kinds to kinds, before the
 // scheduler starts.

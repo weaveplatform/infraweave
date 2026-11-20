@@ -10,6 +10,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -53,9 +54,8 @@ func New(d Deps) *Scheduler { return &Scheduler{d: d} }
 // unlocked or enabled.
 const Consumer = "runs.schedule"
 
-// gates are the guards of T2 the scheduler checks. Approval passes until
-// approval policies exist, and the upstream and external dependency gates
-// until stack dependencies do.
+// gates are the guards of T2 the scheduler checks. The dependency gates pass
+// until stack dependencies exist; approval is evaluated in the same transaction.
 var gates = []machine.Guard{
 	machine.GuardStackLockFree, machine.GuardApproved, machine.GuardUpstreamFinished,
 	machine.GuardExternalSettled, machine.GuardStackEnabled,
@@ -86,6 +86,20 @@ func (s *Scheduler) Handle(ctx context.Context, j queue.Job) error {
 // takes T2 to READY, a blocking run only once it takes the stack's run
 // lock; a run that cannot stays QUEUED, its blocker the lock's holder.
 func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error {
+	return s.schedule(ctx, acct, stack, nil, nil)
+}
+
+// ScheduleEvaluated consumes a review's freshly computed result in the SAME
+// transaction. Re-evaluating it here would let its newly written flags change
+// the decision a second time for one review action.
+func (s *Scheduler) ScheduleEvaluated(ctx context.Context, run lifecycle.Run, result policyapi.Evaluation) error {
+	return s.schedule(ctx, run.Account, run.Stack, &run, &result)
+}
+
+func (s *Scheduler) schedule(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, evaluated *lifecycle.Run, result *policyapi.Evaluation) error {
+	if !tx.In(ctx) {
+		return lifecycle.ErrNoTransaction
+	}
 	st, err := s.d.Stacks.LockForRun(ctx, acct, stack)
 	switch {
 	case errors.Is(err, stacksapi.ErrNotFound):
@@ -93,6 +107,9 @@ func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack k
 	case err != nil:
 		return err //nolint:wrapcheck // the stacks domain names the read
 	case st.Disabled:
+		if evaluated != nil {
+			return s.d.Lifecycle.Refresh(ctx, *evaluated) //nolint:wrapcheck // the owner names the failing operation
+		}
 		return nil
 	}
 	runs, err := s.d.Store.Queued(ctx, acct, stack)
@@ -101,6 +118,28 @@ func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack k
 	}
 	locked, held := false, false
 	for _, run := range runs {
+		var decision policyapi.Evaluation
+		if evaluated != nil && evaluated.ID == run.ID && evaluated.Version == run.Version && evaluated.State == run.State {
+			decision = *result
+		} else {
+			decision, err = s.d.Lifecycle.EvaluateApproval(ctx, run)
+			if err != nil {
+				return err //nolint:wrapcheck // the owner names the failing operation
+			}
+		}
+		moved, err := s.d.Lifecycle.ApplyApproval(ctx, run, decision)
+		if err != nil {
+			return err //nolint:wrapcheck // the owner names the failing operation
+		}
+		if moved.Version != run.Version {
+			continue
+		}
+		if !lifecycle.Approved(decision) {
+			if err := s.d.Lifecycle.Refresh(ctx, run); err != nil {
+				return err //nolint:wrapcheck // the owner names the failing operation
+			}
+			continue
+		}
 		if run.Type.Blocking() {
 			if held {
 				continue

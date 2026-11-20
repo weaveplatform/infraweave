@@ -17,7 +17,7 @@ func TestUnitApprovalReviewFactsDriveBothRegoDialects(t *testing.T) {
 	facts := inputFacts()
 	facts.Type = policyapi.Approval
 	facts.Run.State = kernel.RunStateUnconfirmed
-	role := policyapi.RoleFacts{ID: "space-writer", Name: "Space writer", Slug: "space-writer", ULID: kernel.NewULID().String()}
+	role := policyapi.RoleFacts{ID: kernel.NewULID(), Name: "Space writer", Slug: "space-writer"}
 	identity := policyapi.IdentityFacts{ULID: known(kernel.NewULID().String()), Federations: known(map[string]policyapi.FederationFacts{
 		"oidc": {ID: known("subject-a"), Username: known("alice")},
 	})}
@@ -83,7 +83,7 @@ func TestUnitApprovalReviewFactsDriveBothRegoDialects(t *testing.T) {
   count(input.reviews.older.rejections) == 1
   input.reviews.older.rejections[0].state == "QUEUED"
   input.reviews.older.rejections[0].state_version == 1
- }`, role.ULID, *identity.ULID.Value, facts.At.UnixNano())
+ }`, role.ID.String(), *identity.ULID.Value, facts.At.UnixNano())
 	for _, dialect := range []rego.EngineType{rego.V0, rego.V1} {
 		t.Run(string(dialect), func(t *testing.T) {
 			keyword := "approve "
