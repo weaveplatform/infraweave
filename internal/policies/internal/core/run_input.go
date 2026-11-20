@@ -107,6 +107,16 @@ func (b *inputBuilder) stack(s policyapi.StackFacts) inputs.Stack {
 		WorkerPool: convertFact(b, s.WorkerPool, func(p policyapi.WorkerPoolFacts) inputs.WorkerPool {
 			return inputs.WorkerPool{ID: fact(b, p.ID), Name: fact(b, p.Name), Labels: fact(b, p.Labels), Public: inputs.Value(p.Public)}
 		}),
+		Roles: convertFact(b, s.Roles, func(roles []policyapi.RoleFacts) []inputs.Role {
+			out := make([]inputs.Role, 0, len(roles))
+			for _, r := range roles {
+				if r.ID.IsZero() || r.Slug == "" || r.Name == "" {
+					b.invalid = true
+				}
+				out = append(out, inputs.Role{ID: inputs.Value(r.Slug), Slug: inputs.Value(r.Slug), Name: inputs.Value(r.Name), ULID: inputs.Value(r.ID.String())})
+			}
+			return out
+		}),
 	}
 }
 

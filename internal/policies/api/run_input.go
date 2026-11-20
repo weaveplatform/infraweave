@@ -155,6 +155,7 @@ type StackFacts struct {
 	TrackedCommit                            Fact[CommitFacts]
 	Space                                    Fact[SpaceFacts]
 	WorkerPool                               Fact[WorkerPoolFacts]
+	Roles                                    Fact[[]RoleFacts] `json:"roles"`
 }
 
 // SpaceFacts is an owner-supplied space snapshot, not a fabricated ID-only object.
