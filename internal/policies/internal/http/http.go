@@ -17,7 +17,10 @@ const ContractPattern = "/.well-known/policy-contract.json"
 
 // Server publishes the schema alone. Authentication, authorization, feature
 // gates, rate limits and cache headers belong to the shared listener controls.
-type Server struct{ contract func() ([]byte, error) }
+type Server struct {
+	contract func() ([]byte, error)
+	version  func() (string, error)
+}
 
 // New reflects the contract at most once per domain, reusing the immutable
 // schema bytes without caching an authenticated HTTP response.

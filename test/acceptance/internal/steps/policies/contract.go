@@ -16,6 +16,7 @@ import (
 
 // Register installs assertions over the response from the served contract.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
+	registerRuntime(sc, w)
 	sc.Step(`^the policy contract validates every recorded input and decision$`, func() error { return validate(w.Last()) })
 	sc.Step(`^the policy contract answer has the shared cache and rate headers$`, func() error {
 		r := w.Last()

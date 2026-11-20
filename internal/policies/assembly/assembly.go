@@ -23,3 +23,15 @@ func (d *Domain) Routes(r chi.Router) {
 		d.server.Routes(r)
 	}
 }
+
+// PoliciesAPI is the domain's partial of the shared strict server.
+type PoliciesAPI = http.Server
+
+// API is the domain's shared API partial. The zero partial still reads linked
+// build metadata for tests constructing only the API surface under inspection.
+func (d *Domain) API() PoliciesAPI {
+	if d == nil {
+		return PoliciesAPI{}
+	}
+	return d.server
+}

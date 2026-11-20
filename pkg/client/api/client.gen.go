@@ -6186,6 +6186,12 @@ type PolicyRef struct {
 	Id string `json:"id"`
 }
 
+// PolicyRuntimeDetails Versions linked into the policy runtime in this server binary.
+type PolicyRuntimeDetails struct {
+	// OpenPolicyAgentVersion The linked github.com/open-policy-agent/opa module version.
+	OpenPolicyAgentVersion string `json:"openPolicyAgentVersion"`
+}
+
 // PolicyStackAttachment PolicyStackAttachment is the policy-stack attachment viewed from the Policy.
 type PolicyStackAttachment struct {
 	// Id Globally unique policy attachment identifier.
@@ -16631,6 +16637,13 @@ type ClientInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PolicyRuntime Policy Runtime
+	//
+	// Read the OPA library version linked into this server binary.
+	//
+	// Corresponds with GET /policy-runtime (the `PolicyRuntime` operationId).
+	PolicyRuntime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PublicWorkerPool Get Public Worker Pool
 	//
 	// Shows public worker pool details.
@@ -23377,6 +23390,23 @@ func (c *Client) PersonalApiKeysEnabled(ctx context.Context, reqEditors ...Reque
 // Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPersonalApiKeyDisableRequest(c.Server, personalApiKeyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyRuntime Policy Runtime
+//
+// Read the OPA library version linked into this server binary.
+//
+// Corresponds with GET /policy-runtime (the `PolicyRuntime` operationId).
+func (c *Client) PolicyRuntime(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyRuntimeRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -37495,6 +37525,33 @@ func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, par
 	return req, nil
 }
 
+// NewPolicyRuntimeRequest constructs an http.Request for the PolicyRuntime method
+func NewPolicyRuntimeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policy-runtime")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPublicWorkerPoolRequest constructs an http.Request for the PublicWorkerPool method
 func NewPublicWorkerPoolRequest(server string) (*http.Request, error) {
 	var err error
@@ -50802,6 +50859,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
+
+	// PolicyRuntimeWithResponse Policy Runtime
+	//
+	// Read the OPA library version linked into this server binary.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policy-runtime (the `PolicyRuntime` operationId).
+	PolicyRuntimeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PolicyRuntimeResponse, error)
 
 	// PublicWorkerPoolWithResponse Get Public Worker Pool
 	//
@@ -71123,6 +71189,108 @@ func (r PersonalApiKeyDisableResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PersonalApiKeyDisableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyRuntimeResponse200Headers the declared response headers of an HTTP 200 response for PolicyRuntime
+type PolicyRuntimeResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyRuntimeResponse429Headers the declared response headers of an HTTP 429 response for PolicyRuntime
+type PolicyRuntimeResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyRuntimeResponse503Headers the declared response headers of an HTTP 503 response for PolicyRuntime
+type PolicyRuntimeResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyRuntimeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyRuntimeDetails
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON500 the response for an HTTP 500 `application/problem+json` response
+	ApplicationproblemJSON500 *Problem
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyRuntimeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyRuntimeResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyRuntimeResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyRuntimeResponse) GetJSON200() *PolicyRuntimeDetails {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PolicyRuntimeResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PolicyRuntimeResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyRuntimeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON500 returns the response for an HTTP 500 `application/problem+json` response
+func (r PolicyRuntimeResponse) GetApplicationproblemJSON500() *Problem {
+	return r.ApplicationproblemJSON500
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyRuntimeResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyRuntimeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyRuntimeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyRuntimeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyRuntimeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -94444,6 +94612,21 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParsePersonalApiKeyDisableResponse(rsp)
+}
+
+// PolicyRuntimeWithResponse Policy Runtime
+//
+// Read the OPA library version linked into this server binary.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policy-runtime (the `PolicyRuntime` operationId).
+func (c *ClientWithResponses) PolicyRuntimeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PolicyRuntimeResponse, error) {
+	rsp, err := c.PolicyRuntime(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyRuntimeResponse(rsp)
 }
 
 // PublicWorkerPoolWithResponse Get Public Worker Pool
@@ -121436,6 +121619,135 @@ func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisa
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PersonalApiKeyDisableResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyRuntimeResponse parses an HTTP response from a PolicyRuntimeWithResponse call
+func ParsePolicyRuntimeResponse(rsp *http.Response) (*PolicyRuntimeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyRuntimeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyRuntimeDetails
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyRuntimeResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyRuntimeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyRuntimeResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -718,6 +718,10 @@ func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKey
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
 }
 
+func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestObject) (PolicyRuntimeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyRuntime", Route: "GET /policy-runtime"}
+}
+
 func (UnimplementedStrict) PublicWorkerPool(context.Context, PublicWorkerPoolRequestObject) (PublicWorkerPoolResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPool", Route: "GET /public-worker-pool"}
 }

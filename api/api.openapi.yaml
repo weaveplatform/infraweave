@@ -9136,6 +9136,41 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: action
+  /policy-runtime:
+    get:
+      operationId: policyRuntime
+      summary: Policy Runtime
+      description: Read the OPA library version linked into this server binary.
+      tags:
+        - Infrastructure
+      x-infraweave-feature: policies
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      x-rest-style: read
+      responses:
+        "200":
+          description: The linked policy runtime version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyRuntimeDetails'
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "500":
+          $ref: '#/components/responses/Problem'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
   /public-worker-pool:
     get:
       description: Shows public worker pool details
@@ -26545,6 +26580,15 @@ components:
         - id
       type: object
       x-graphql-type: Policy
+    PolicyRuntimeDetails:
+      description: Versions linked into the policy runtime in this server binary.
+      type: object
+      properties:
+        openPolicyAgentVersion:
+          description: The linked github.com/open-policy-agent/opa module version.
+          type: string
+      required:
+        - openPolicyAgentVersion
     PolicyStackAttachment:
       description: PolicyStackAttachment is the policy-stack attachment viewed from the Policy.
       properties:

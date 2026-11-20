@@ -148,8 +148,7 @@
       "gpgKeys"
     ],
     "Infrastructure": [
-      "installationId",
-      "policyRuntime"
+      "installationId"
     ],
     "Intent": [
       "intentChatConversation",

@@ -20,6 +20,7 @@ import (
 	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
+	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
@@ -60,6 +61,7 @@ type apiServer struct {
 	stateassembly.StateAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
+	policiesassembly.PoliciesAPI
 	unimplemented
 	queues QueueStats
 	blobs  *blobs.Objects
@@ -138,6 +140,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			StateAPI:         d.State.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
+			PoliciesAPI:      d.Policies.API(),
 			queues:           p.Queues,
 			blobs:            b.Objects,
 		},
