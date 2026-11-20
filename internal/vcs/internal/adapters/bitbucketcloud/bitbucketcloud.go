@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -207,6 +206,7 @@ func (p *Provider) decode(ctx context.Context, in port.Integration, rawURL, what
 type page[T any] struct {
 	Values []T    `json:"values"`
 	Next   string `json:"next"`
+	Size   *int   `json:"size"`
 }
 
 // all collects every page of the list at rel, an escaped path under the
@@ -216,7 +216,13 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 	q.Set("pagelen", pagelen)
 	next := p.api + rel + "?" + q.Encode()
 	var out []T
+	seen := map[string]bool{}
+	total := -1
 	for next != "" {
+		if seen[next] {
+			return nil, fmt.Errorf("%w: bitbucketcloud: cyclic %s pagination", kernel.ErrUnavailable, what)
+		}
+		seen[next] = true
 		if !strings.HasPrefix(next, p.api+"/") {
 			return nil, fmt.Errorf("%w: bitbucketcloud: %s: a next page off the API: %s",
 				kernel.ErrUnavailable, what, next)
@@ -225,7 +231,19 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 		if err := p.decode(ctx, in, next, what, &pg); err != nil {
 			return nil, err
 		}
+		if pg.Values == nil {
+			return nil, fmt.Errorf("%w: bitbucketcloud: missing %s page values", kernel.ErrUnavailable, what)
+		}
+		if pg.Size != nil {
+			if *pg.Size < 0 || total >= 0 && total != *pg.Size {
+				return nil, fmt.Errorf("%w: bitbucketcloud: inconsistent %s size", kernel.ErrUnavailable, what)
+			}
+			total = *pg.Size
+		}
 		out = append(out, pg.Values...)
+		if total >= 0 && (len(out) > total || pg.Next == "" && len(out) != total) {
+			return nil, fmt.Errorf("%w: bitbucketcloud: incomplete %s size", kernel.ErrUnavailable, what)
+		}
 		next = pg.Next
 	}
 	return out, nil
@@ -368,21 +386,10 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	}
 	query := url.Values{}
 	if comparison == port.PushDiff {
-		newBranch := port.ZeroCommit(base)
-		query.Set("topic", strconv.FormatBool(newBranch))
-		if newBranch {
-			var metadata struct {
-				MainBranch struct {
-					Name string `json:"name"`
-				} `json:"mainbranch"`
-			}
-			if err := p.decode(ctx, *repo.Integration, p.api+rp, "default branch", &metadata); err != nil {
-				return nil, err
-			}
-			if metadata.MainBranch.Name == "" {
-				return nil, fmt.Errorf("%w: bitbucketcloud: default branch", port.ErrNotFound)
-			}
-			base = metadata.MainBranch.Name
+		query.Set("topic", "false")
+		base, err = p.pushBase(ctx, repo, rp, base, head)
+		if err != nil {
+			return nil, err
 		}
 	}
 	type side struct {

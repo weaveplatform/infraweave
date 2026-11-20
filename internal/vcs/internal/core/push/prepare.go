@@ -97,10 +97,12 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			continue
 		}
 		if event.Type == "push" {
-			prepared.Commit, prepared.Files, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
+			var revision port.PreparedPush
+			revision, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
 				return nil, err //nolint:wrapcheck // intake reduces provider diagnostics to safe errors
 			}
+			prepared.Commit, prepared.Files, prepared.RecoveredCommits = revision.Commit, revision.Files, revision.RecoveredCommits
 			if !strings.EqualFold(prepared.Commit.Hash, event.Head) {
 				return nil, fmt.Errorf("%w: provider resolved another push commit", kernel.ErrUnavailable)
 			}

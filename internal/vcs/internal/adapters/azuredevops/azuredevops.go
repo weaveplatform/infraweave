@@ -380,6 +380,7 @@ type change struct {
 		IsFolder bool   `json:"isFolder"`
 	} `json:"item"`
 	SourceServerItem string `json:"sourceServerItem"`
+	OriginalPath     string `json:"originalPath"`
 }
 
 // AffectedFiles lists, sorted, the paths that differ between head and its
@@ -401,16 +402,11 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	}
 	newBranch := comparison == port.PushDiff && port.ZeroCommit(base)
 	if newBranch {
-		var metadata struct {
-			DefaultBranch string `json:"defaultBranch"`
-		}
-		if _, err := p.decode(ctx, *repo.Integration, rp, nil, "default branch", &metadata); err != nil {
+		base, err = p.pushBase(ctx, repo, rp, base, head)
+		if err != nil {
 			return nil, err
 		}
-		if metadata.DefaultBranch == "" {
-			return nil, fmt.Errorf("%w: azuredevops: default branch", port.ErrNotFound)
-		}
-		base = strings.TrimPrefix(metadata.DefaultBranch, "refs/heads/")
+		newBranch = false
 	}
 	from, err := p.commitOf(ctx, repo, base)
 	if err != nil {
@@ -423,7 +419,7 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	var paths []string
 	for skip := 0; ; {
 		var pg struct {
-			Changes []change `json:"changes"`
+			Changes *[]change `json:"changes"`
 		}
 		query := url.Values{
 			"baseVersion": {from}, "baseVersionType": {"commit"},
@@ -436,20 +432,23 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 		if _, err := p.decode(ctx, *repo.Integration, rp+"/diffs/commits", query, base+"..."+head, &pg); err != nil {
 			return nil, err
 		}
-		for _, c := range pg.Changes {
+		if pg.Changes == nil {
+			return nil, fmt.Errorf("%w: azuredevops: missing push comparison changes", kernel.ErrUnavailable)
+		}
+		for _, c := range *pg.Changes {
 			if c.Item.IsFolder {
 				continue
 			}
-			for _, path := range []string{c.Item.Path, c.SourceServerItem} {
+			for _, path := range []string{c.Item.Path, c.SourceServerItem, c.OriginalPath} {
 				if path != "" {
 					paths = append(paths, strings.TrimPrefix(path, "/"))
 				}
 			}
 		}
-		if len(pg.Changes) < top {
+		if len(*pg.Changes) < top {
 			break
 		}
-		skip += len(pg.Changes)
+		skip += len(*pg.Changes)
 	}
 	slices.Sort(paths)
 	return slices.Compact(paths), nil

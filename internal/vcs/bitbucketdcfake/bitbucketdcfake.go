@@ -116,6 +116,7 @@ type Minted struct {
 // served under API, and the repository access tokens a repository's
 // admin mints, served under Tokens.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]json.RawMessage
 	checks         checkStore
 	comments       commentStore
@@ -270,6 +271,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/branches", f.branches)
 			r.Get("/tags/*", f.tag)
 			r.Get("/commits/{commit}", f.commit)
+			r.Get("/commits", f.commits)
 			r.Get("/raw/*", f.raw)
 			r.Get("/compare/changes", f.changes)
 			r.Get("/files", f.files)
@@ -514,6 +516,7 @@ func (f *Fake) tag(w http.ResponseWriter, r *http.Request) {
 
 // commit resolves a full SHA, or the prefix of one, as Bitbucket does.
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	want := chi.URLParam(r, "commit")
 	c, err := repo.repo.Resolve(want)
@@ -549,6 +552,7 @@ func (f *Fake) raw(w http.ResponseWriter, r *http.Request) {
 // changes lists the files that differ between the commits from and to,
 // from being the one compared, as Bitbucket names them.
 func (f *Fake) changes(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	q := r.URL.Query()
 	base, head := q.Get("since"), q.Get("until")

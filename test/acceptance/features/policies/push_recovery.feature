@@ -28,6 +28,7 @@ Feature: Push policy creation and cancellation recover atomically
     And the policy version for "policy" is kept from its ETag
     And the event fixture holds future child evaluations
     And the event fixture blocks child transaction completion
+    And the event push uses "missing" native commit metadata
     When native request and branch deliveries race across A and B
     And the event fixture releases child evaluations
     Then both event replicas die during child completion without partial run or cancellation

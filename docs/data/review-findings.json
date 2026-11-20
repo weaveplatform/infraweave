@@ -8085,7 +8085,7 @@
         {
           "file": "docs/research/decisions/0016-testing-and-acceptance.md",
           "present": [
-            "A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform`, `accept-runs`, `accept-integrations` and `accept-core` that lists one of its tags"
+            "A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform-vcs`, `accept-terraform`, `accept-runs`, `accept-integrations` and `accept-core` that lists one of its tags"
           ]
         }
       ]

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -11,37 +12,88 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
-// PreparePush reads the immutable head and its full before/after diff once for
-// all affected stacks, before the dispatcher acquires any creation lock.
-func (s *Service) PreparePush(ctx context.Context, acct kernel.AccountID, id kernel.ULID, provider string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
+// PreparePush reads the immutable head and every touched path once for all
+// affected stacks, before the dispatcher acquires any creation lock.
+func (s *Service) PreparePush(ctx context.Context, acct kernel.AccountID, id kernel.ULID, provider string, event vcsapi.Event) (port.PreparedPush, error) {
 	source := s.providers[provider]
 	if source == nil {
-		return stacksapi.Commit{}, nil, fmt.Errorf("%w: event source provider", kernel.ErrUnavailable)
+		return port.PreparedPush{}, fmt.Errorf("%w: event source provider", kernel.ErrUnavailable)
 	}
 	in, found, err := s.integrations.Use(ctx, acct, provider, &id)
 	if err != nil {
-		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push integration: %w", err)
+		return port.PreparedPush{}, fmt.Errorf("vcs: prepare push integration: %w", err)
 	}
 	if !found {
-		return stacksapi.Commit{}, nil, port.ErrNoIntegration
+		return port.PreparedPush{}, port.ErrNoIntegration
 	}
 	if s.identities != nil {
 		if err := s.identities.Check(ctx, acct, in.ID, event.Repository.Namespace, event.Repository.Name); err != nil {
-			return stacksapi.Commit{}, nil, err //nolint:wrapcheck // the called boundary names the failed operation
+			return port.PreparedPush{}, err //nolint:wrapcheck // the called boundary names the failed operation
 		}
 	}
 	repository := port.Repository{Namespace: event.Repository.Namespace, Name: event.Repository.Name, Integration: &in}
-	commit, err := source.ResolveRef(ctx, repository, event.Head)
-	if err != nil {
-		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push head: %w", err)
+	_, nativeComplete := port.NativeCommitFiles(event.Commits)
+	var commit vcsapi.Commit
+	if nativeComplete {
+		commit, err = source.ResolveRef(ctx, repository, event.Head)
+	} else {
+		commit, repository, err = recoveryHead(ctx, source, repository, event)
 	}
-	files, err := source.AffectedFiles(ctx, repository, event.Before, event.Head, port.PushDiff)
 	if err != nil {
-		return stacksapi.Commit{}, nil, fmt.Errorf("vcs: prepare push diff: %w", err)
+		return port.PreparedPush{}, fmt.Errorf("vcs: prepare push head: %w", err)
+	}
+	base := event.Before
+	var recovered *vcsapi.CommitCollection
+	if !nativeComplete {
+		history, ok := source.(port.PushHistory)
+		if !ok {
+			return port.PreparedPush{}, fmt.Errorf("%w: event source has no push history", kernel.ErrUnavailable)
+		}
+		rangeFacts, err := history.RecoverPush(ctx, repository, base, event.Head)
+		if err != nil {
+			return port.PreparedPush{}, fmt.Errorf("vcs: prepare push history: %w", err)
+		}
+		if _, complete := port.NativeCommitFiles(rangeFacts.Commits); !port.ValidCommit(rangeFacts.Base) || !complete {
+			return port.PreparedPush{}, fmt.Errorf("%w: incomplete push history", kernel.ErrUnavailable)
+		}
+		base, recovered = rangeFacts.Base, rangeFacts.Commits
+	}
+	files, err := source.AffectedFiles(ctx, repository, base, event.Head, port.PushDiff)
+	if err != nil {
+		return port.PreparedPush{}, fmt.Errorf("vcs: prepare push diff: %w", err)
 	}
 	out := stackCommit(commit)
 	out.Branch = event.Branch
-	return out, files, nil
+	collection := event.Commits
+	if recovered != nil {
+		collection = recovered
+	}
+	if touched, complete := port.NativeCommitFiles(collection); complete {
+		files = append(files, touched...)
+		slices.Sort(files)
+		files = slices.Compact(files)
+	}
+	return port.PreparedPush{Commit: out, Files: files, RecoveredCommits: recovered}, nil
+}
+
+func recoveryHead(ctx context.Context, source port.Source, repo port.Repository, event vcsapi.Event) (vcsapi.Commit, port.Repository, error) {
+	if event.Repository.ID == "" {
+		return vcsapi.Commit{}, repo, fmt.Errorf("%w: missing signed push repository identity", kernel.ErrUnavailable)
+	}
+	native, ok := source.(port.RepositorySource)
+	if !ok {
+		return vcsapi.Commit{}, repo, fmt.Errorf("%w: source has no native repository identity", kernel.ErrUnavailable)
+	}
+	repo.ExpectedID = event.Repository.ID
+	resolved, err := native.ResolveRepositoryRef(ctx, repo, event.Head)
+	if err != nil {
+		return vcsapi.Commit{}, repo, err //nolint:wrapcheck // the native boundary identifies metadata or identity failure
+	}
+	if err := port.MatchRepository(repo, resolved.Repository); err != nil {
+		return vcsapi.Commit{}, repo, err //nolint:wrapcheck // a fixed private identity refusal
+	}
+	repo.Namespace, repo.Name = resolved.Repository.Namespace, resolved.Repository.Name
+	return resolved.Commit, repo, nil
 }
 
 // PrepareTag resolves only the delivered immutable head, never the tag's

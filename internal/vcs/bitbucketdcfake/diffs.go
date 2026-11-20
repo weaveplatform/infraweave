@@ -20,6 +20,7 @@ func (f *Fake) defaultBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) mergeBase(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds the repository
 	sha, err := repo.repo.MergeBase(chi.URLParam(r, "commit"), r.URL.Query().Get("otherCommitId"))
 	if err != nil {
@@ -30,6 +31,7 @@ func (f *Fake) mergeBase(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) files(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds the repository
 	type directory struct{ ref, prefix string }
 	work := []directory{{ref: r.URL.Query().Get("at")}}
@@ -60,6 +62,7 @@ func (f *Fake) files(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) fileDiff(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds the repository
 	q, name := r.URL.Query(), rest(r)
 	changes, err := repo.repo.Changes(r.Context(), q.Get("since"), q.Get("until"))

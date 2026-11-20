@@ -88,6 +88,7 @@ type repository struct {
 // repositories in workspaces with the roles accounts hold on them, served
 // under /2.0.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]json.RawMessage
 	checks         checkStore
 	comments       commentStore
@@ -232,6 +233,8 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/commit/{commit}", f.commit)
 			r.Get("/src/{commit}/*", f.src)
 			r.Get("/diffstat/{spec}", f.diffstat)
+			r.Get("/commits", f.commits)
+			r.Get("/merge-base/{spec}", f.mergeBase)
 			r.Get("/", f.repositoryMetadata)
 		})
 	})
@@ -426,6 +429,7 @@ func (f *Fake) tag(w http.ResponseWriter, r *http.Request) {
 
 // commit resolves a full SHA, or the prefix of one, as Bitbucket does.
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	want := chi.URLParam(r, "commit")
 	bs, _ := repo.repo.Branches() //nolint:errcheck // a failure lists none
@@ -460,9 +464,21 @@ func (f *Fake) src(w http.ResponseWriter, r *http.Request) {
 // diffstat lists the files that differ between the spec's two commits,
 // head..base, as Bitbucket names a range.
 func (f *Fake) diffstat(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	spec, _ := url.PathUnescape(chi.URLParam(r, "spec"))
 	head, base, ok := strings.Cut(spec, "..")
+	if !ok {
+		commit, err := repo.repo.Resolve(head)
+		if err != nil {
+			answer(w, http.StatusNotFound, problem("Commit not found"))
+			return
+		}
+		if len(commit.ParentHashes) > 0 {
+			base = commit.ParentHashes[0].String()
+		}
+		ok = true
+	}
 	if ok && r.URL.Query().Get("topic") == "true" {
 		mergeBase, err := repo.repo.MergeBase(base, head)
 		if err != nil {
@@ -541,8 +557,12 @@ func paged(w http.ResponseWriter, r *http.Request, items []map[string]any) {
 	}
 	start := min((n-1)*per, len(items))
 	end := min(start+per, len(items))
+	values := items[start:end]
+	if values == nil {
+		values = []map[string]any{}
+	}
 	body := map[string]any{
-		"pagelen": per, "page": n, "size": len(items), "values": items[start:end],
+		"pagelen": per, "page": n, "size": len(items), "values": values,
 	}
 	if end < len(items) {
 		q.Set("page", strconv.Itoa(n+1))

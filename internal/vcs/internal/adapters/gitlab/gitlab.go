@@ -243,24 +243,14 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
+	if comparison == port.PushDiff {
+		return p.pushAffectedFiles(ctx, repo, base, head)
+	}
 	c, _, pid, err := p.repo(repo)
 	if err != nil {
 		return nil, err
 	}
 	options := &gitlab.CompareOptions{From: &base, To: &head}
-	if comparison == port.PushDiff {
-		options.Straight = new(!port.ZeroCommit(base))
-		if port.ZeroCommit(base) {
-			project, response, err := c.Projects.GetProject(pid, nil, gitlab.WithContext(ctx))
-			if err != nil {
-				return nil, classify(response, err, "default branch")
-			}
-			if project.DefaultBranch == "" {
-				return nil, fmt.Errorf("%w: gitlab: default branch", port.ErrNotFound)
-			}
-			base = project.DefaultBranch
-		}
-	}
 	cmp, resp, err := c.Repositories.Compare(pid, options,
 		gitlab.WithContext(ctx))
 	if err != nil {

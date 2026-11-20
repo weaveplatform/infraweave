@@ -300,14 +300,26 @@ user: infraweave never creates or deletes provider hooks.
   events record the request and its head commits and create no run. Fork
   pull requests get runs only through P13's `allow_fork`.
 
-  Push comparisons use complete before/after trees rather than the head
-  commit's changed-file list. GitHub walks single-level trees if its recursive
+  Push selection includes every path touched by all newly reachable commits,
+  plus the complete before/after delta for force-push removals. A later revert
+  cannot hide an earlier relevant edit. Complete signed native commit facts
+  supply this union directly; otherwise the source owner recovers the immutable
+  range through bounded native REST reads using the original account-bound
+  integration. Original signed provenance and omission reasons remain separate
+  from recovered facts. Preparation freezes a new branch's default merge base
+  once, before stack counts and policy/default selection. Missing or partial
+  history is a preparation failure, never a complete empty range.
+
+  Complete tree or paged per-commit path reads avoid comparison limits. GitHub
+  walks single-level trees if its recursive
   response is truncated. Bitbucket Data Center enumerates both paged file sets
   and compares common paths individually, avoiding the global changes hard cap;
   binary or mode-only diff identities still count when no text hunks exist.
   New-branch comparisons there require the merge-base endpoint from Data Center
   8.16 or later. An unsupported or incomplete provider response fails preparation
   safely rather than silently substituting another comparison.
+  [Range completeness verification](../../implementation/push-range-completeness.md)
+  records each provider's native pagination, limits and actual-service evidence.
 - **Ignored triggers (D9, D17).** Record tracked pushes with no affected
   root files, tag pushes on every stack of the repository
   (`TAGS_IGNORED_BY_DEFAULT`), and stacks beyond the cap

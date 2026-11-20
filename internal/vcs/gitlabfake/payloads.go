@@ -25,6 +25,8 @@ type WebhookMergeRequest struct {
 
 // PushWebhook follows GitLab's documented push payload, including a stable
 // target project ID and a canonical namespace path. Addresses use example.com.
+// Commit metadata is omitted unless a fixture supplies actual Git facts; an
+// unknown collection must not be fabricated as a known empty range.
 func (f *Fake) PushWebhook(namespace, repository, branch, before, head string) (WebhookDelivery, error) {
 	return f.refWebhook(namespace, repository, "push", "Push Hook", "refs/heads/"+branch, before, head)
 }
@@ -40,7 +42,6 @@ func (f *Fake) refWebhook(namespace, repository, kind, event, ref, before, head 
 		"object_kind": kind, "event_name": kind, "before": before, "after": head,
 		"ref": ref, "checkout_sha": head, "user_name": "Example Author", "user_username": "author",
 		"user_email": "author@example.com", "project": f.webhookProject(namespace, repository),
-		"commits": []any{}, "total_commits_count": 0,
 	}
 	return encodeWebhook(event, payload)
 }

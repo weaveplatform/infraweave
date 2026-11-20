@@ -84,6 +84,7 @@ func TestUnitPlace(t *testing.T) {
 	}{
 		{nil, "core"},
 		{[]string{"@terraform-plans", "@plan-sanitization", "@terraform", "@docker"}, "terraform-plans"},
+		{[]string{"@terraform-vcs", "@terraform", "@github", "@docker"}, "terraform-vcs"},
 		{[]string{"@plan-sanitization", "@postgres"}, "core"},
 		{[]string{"@policy-check", "@postgres"}, "core"},
 		{[]string{"@plan-sanitization", "@terraform", "@docker"}, "terraform"},
@@ -123,13 +124,14 @@ func TestUnitPlace(t *testing.T) {
 }
 
 func TestUnitTagExpression(t *testing.T) {
-	runPrefix := "~@vcs-lab && ~@terraform-plans && ~@terraform && "
+	runPrefix := "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	for name, want := range map[string]string{
 		"":                "~@vcs-lab",
 		"vcs-lab":         "@vcs-lab",
 		"terraform-plans": "~@vcs-lab && @terraform-plans",
-		"terraform":       "~@vcs-lab && ~@terraform-plans && @terraform",
+		"terraform-vcs":   "~@vcs-lab && ~@terraform-plans && @terraform-vcs",
+		"terraform":       "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && @terraform",
 		"runs":            strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
 		"integrations":    strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
 		"core":            integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
@@ -236,11 +238,11 @@ func TestUnitPartitionSelections(t *testing.T) {
 }
 
 // The split must preserve the actual parser's complete previous Terraform
-// selection, with no duplicated or misplaced scenario in either required job.
+// selection, with no duplicated or misplaced scenario in any required job.
 func TestUnitTerraformSplitCoverage(t *testing.T) {
 	legacy := godogScenarios(t, "~@vcs-lab && @terraform")
 	union := map[string]string{}
-	for _, name := range []string{"terraform", "terraform-plans"} {
+	for _, name := range []string{"terraform", "terraform-plans", "terraform-vcs"} {
 		expr, err := harness.TagExpression(name)
 		if err != nil {
 			t.Fatal(err)
@@ -258,6 +260,10 @@ func TestUnitTerraformSplitCoverage(t *testing.T) {
 			}
 			union[id] = name
 			tags := pickleTags(scenario)
+			if name == "terraform-vcs" && !strings.Contains(scenario.Uri, "/vcs/") && !slices.Contains(tags, "@policy-push-range") &&
+				!slices.Contains(tags, "@policy-push-workers") {
+				t.Errorf("%s: %s is outside the native VCS workflow workload", scenario.Uri, scenario.Name)
+			}
 			if name == "terraform-plans" && !slices.Contains(tags, "@plan-sanitization") && !slices.Contains(tags, "@policy-plan-worker") {
 				t.Errorf("%s: %s is outside the plan artifact workload", scenario.Uri, scenario.Name)
 			}

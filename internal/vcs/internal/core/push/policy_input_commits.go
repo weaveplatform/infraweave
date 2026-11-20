@@ -1,8 +1,10 @@
 package push
 
 import (
+	"fmt"
 	"slices"
 
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
@@ -30,4 +32,17 @@ func pushAffectedFiles(files []string, native *vcsapi.CommitCollection) []string
 	}
 	slices.Sort(out)
 	return slices.Compact(out)
+}
+
+// preparedPushCommits preserves the signed collection while preferring complete
+// recovered facts. Corrupt persisted recovery must fail, not become absence.
+func preparedPushCommits(event Prepared) (policyapi.Fact[[]policyapi.PushCommitFacts], error) {
+	collection := event.Event.Commits
+	if event.RecoveredCommits != nil {
+		collection = event.RecoveredCommits
+		if _, complete := port.NativeCommitFiles(collection); !complete || collection.Source == "" {
+			return policyapi.Fact[[]policyapi.PushCommitFacts]{}, fmt.Errorf("%w: invalid stored recovered push facts", kernel.ErrUnavailable)
+		}
+	}
+	return pushCommitFacts(collection, event.Event.Branch), nil
 }

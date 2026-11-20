@@ -43,7 +43,7 @@ Feature: Push replacement policies use actual worker plans
     And the answer's priorityPreset is '"high"'
     And the event run "run" has a real tool plan through B
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider        | vendor    |
       | GitHub          | terraform |

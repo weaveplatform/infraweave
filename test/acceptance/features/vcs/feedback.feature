@@ -19,7 +19,7 @@ Feature: Repository runs report native checks and deployments
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 
-  @terraform @case:checkout-label
+  @terraform @case:checkout-label @terraform-vcs
   Scenario Outline: The checkout label preserves the integration source behavior when useGitCheckout is false
     Given a "GitLab" check stack "infra" using "terraform" with mode "INDIVIDUAL" and options '{}'
     When token "h" sends "GET /api/v1/gitlab-integrations/{checkIntegration}" through A
@@ -91,7 +91,7 @@ Feature: Repository runs report native checks and deployments
     And the "<provider>" deployment for run "discarded" on commit "changed" in environment "infraweave/infra" has statuses "<discarded>"
     And the "<provider>" repository has exactly 2 native deployments and 1 environments
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider | vendor    | pending | queued          | applying                     | success                              | discarded         |
       | GitHub   | terraform | pending | pending, queued | pending, queued, in_progress  | pending, queued, in_progress, success | pending, failure  |
@@ -123,7 +123,7 @@ Feature: Repository runs report native checks and deployments
     And deployment events for run "disabled" have settled
     And the "GitHub" repository has exactly 1 native deployments and 1 environments
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | vendor    |
       | terraform |
@@ -181,7 +181,7 @@ Feature: Repository runs report native checks and deployments
     And check events for run "failedCheck" have settled
     And the "<provider>" check "infraweave/infra" for run "failedCheck" on commit "checkFailure" has states "<failure>"
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider        | vendor    | queued     | progress              | success                           | failure |
       | GitHub          | terraform | queued     | queued, in_progress   | queued, in_progress, success      | failure |
@@ -217,7 +217,7 @@ Feature: Repository runs report native checks and deployments
     And the check repository contains no check named "infraweave/healthy"
     And the check repository contains no check named "infraweave/broken"
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider        | failure | skipped       |
       | GitHub          | failure | skipped       |
@@ -227,7 +227,7 @@ Feature: Repository runs report native checks and deployments
       | Azure DevOps    | failed  | notApplicable |
 
   # ref: decision 0012 D10/D11/DV047 and decision 0016
-  @terraform
+  @terraform @terraform-vcs
   Scenario: GitHub ALL exposes per-run checks and promotion actions beside shared aggregates
     Given a "GitHub" check stack "infra" using "terraform" with mode "ALL" and options '{}'
     And the check stack "infra" sets GitHub promotion to "false"
@@ -255,7 +255,7 @@ Feature: Repository runs report native checks and deployments
     And the GitHub check "infraweave/infra" for run "noActions" has actions ""
 
   # ref: decisions 0012 D9/D11/D18 and 0016
-  @terraform
+  @terraform @terraform-vcs
   Scenario: A real GitLab push posts the admitted run and failed checks for every capped stack
     Given a "GitLab" check stack "first" using "terraform" with mode "INDIVIDUAL" and options '{}'
     And a "GitLab" check stack "second" using "terraform" with mode "INDIVIDUAL" and options '{}'
@@ -301,7 +301,7 @@ Feature: Repository runs report native checks and deployments
     And unlabelled run "silent" has real stored planning output and no native comment
     And comment request 13 has 2 comments and its previous plan is "<previous>"
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider | vendor    | previous  |
       | GitHub   | terraform | outdated  |
@@ -326,7 +326,7 @@ Feature: Repository runs report native checks and deployments
     And run "large" has a native plan comment result "FINISHED" on request 12
     And run "large" has an oversized native comment tail on request 12
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider | vendor    |
       | GitHub   | terraform |
@@ -370,7 +370,7 @@ Feature: Repository runs report native checks and deployments
     And all action deliveries settle without changing the stack's tracked pointers
     And the action source fetched through the configured native GitHub host
 
-    @terraform @provider:github-public
+    @terraform @provider:github-public @terraform-vcs
     Examples:
       | host   | vendor    |
       | public | terraform |
@@ -380,7 +380,7 @@ Feature: Repository runs report native checks and deployments
       | host   | vendor   |
       | public | opentofu |
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | host       | vendor    |
       | enterprise | terraform |
@@ -402,12 +402,12 @@ Feature: Repository runs report native checks and deployments
     And the action deliveries create no run and log refusal "disabled" exactly 2 times
     And the action source fetched through the configured native GitHub host
 
-    @terraform @provider:github-public
+    @terraform @provider:github-public @terraform-vcs
     Examples:
       | host   |
       | public |
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | host       |
       | enterprise |
@@ -440,7 +440,7 @@ Feature: Repository runs report native checks and deployments
     And the action deliveries create no run and log refusal "invalid_target" exactly 1 times
     And the action source fetched through the configured native GitHub host
 
-    @terraform @provider:github-public
+    @terraform @provider:github-public @terraform-vcs
     Examples:
       | host   | target            |
       | public | foreign account   |
@@ -448,7 +448,7 @@ Feature: Repository runs report native checks and deployments
       | public | other integration |
       | public | stale external ID |
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | host       | target            |
       | enterprise | foreign account   |

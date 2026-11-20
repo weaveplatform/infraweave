@@ -44,6 +44,7 @@ var Routes = []Route{
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}/merge-base"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/tags/{name...}"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/commits/{commitId}"},
+	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/commits"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/raw/{path...}"},
 	{http.MethodGet, API + "/projects/{projectKey}/repos/{repositorySlug}/compare/changes"},
 	{http.MethodPut, Tokens + "/projects/{projectKey}/repos/{repositorySlug}"},

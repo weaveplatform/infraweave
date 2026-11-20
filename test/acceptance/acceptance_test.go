@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -48,6 +49,18 @@ var areas = []func(*godog.ScenarioContext, *harness.World){
 	suite.Register,
 }
 
-func TestMain(m *testing.M) { os.Exit(harness.MainWithBuild(m)) }
+func TestMain(m *testing.M) {
+	finish, err := progressTrace()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	code := harness.MainWithBuild(m)
+	if err := finish(code); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		code = 1
+	}
+	os.Exit(code)
+}
 
 func TestAccFeatures(t *testing.T) { harness.Features(t, areas) }

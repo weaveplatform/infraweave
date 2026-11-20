@@ -16,9 +16,13 @@ var _ port.RepositorySource = (*Provider)(nil)
 func (p *Provider) ResolveRepositoryRef(ctx context.Context, repo port.Repository, ref string) (port.Resolution, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	commit, err := p.resolve(ctx, repo, ref)
-	if err != nil {
-		return port.Resolution{}, err
+	var commit vcsapi.Commit
+	var err error
+	if repo.ExpectedID == "" {
+		commit, err = p.resolve(ctx, repo, ref)
+		if err != nil {
+			return port.Resolution{}, err
+		}
 	}
 	rp, err := repoPath(repo)
 	if err != nil {
@@ -36,5 +40,16 @@ func (p *Provider) ResolveRepositoryRef(ctx context.Context, repo port.Repositor
 	if native.ID == "" || !ok || namespace == "" || name == "" {
 		return port.Resolution{}, fmt.Errorf("%w: bitbucketcloud: missing repository identity", kernel.ErrUnavailable)
 	}
-	return port.Resolution{Commit: commit, Repository: vcsapi.Repository{ID: native.ID, Namespace: namespace, Name: name}}, nil
+	identity := vcsapi.Repository{ID: native.ID, Namespace: namespace, Name: name}
+	if err := port.MatchRepository(repo, identity); err != nil {
+		return port.Resolution{}, err //nolint:wrapcheck // a fixed private identity refusal
+	}
+	if repo.ExpectedID != "" {
+		repo.Namespace, repo.Name = identity.Namespace, identity.Name
+		commit, err = p.resolve(ctx, repo, ref)
+		if err != nil {
+			return port.Resolution{}, err
+		}
+	}
+	return port.Resolution{Commit: commit, Repository: identity}, nil
 }

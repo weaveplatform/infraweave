@@ -80,6 +80,9 @@ func treeFiles(ctx context.Context, client *github.Client, repo port.Repository,
 	if err != nil {
 		return nil, classify(err, "tree "+sha)
 	}
+	if err := validatePushTree(tree); err != nil {
+		return nil, err
+	}
 	files := map[string]treeFile{}
 	if !tree.GetTruncated() {
 		for _, entry := range tree.Entries {
@@ -111,6 +114,9 @@ func treeFiles(ctx context.Context, client *github.Client, repo port.Repository,
 		if err != nil {
 			return nil, classify(err, "tree "+item.sha)
 		}
+		if err := validatePushTree(tree); err != nil {
+			return nil, err
+		}
 		if tree.GetTruncated() {
 			return nil, fmt.Errorf("%w: github: single-level tree truncated", kernel.ErrUnavailable)
 		}
@@ -124,4 +130,17 @@ func treeFiles(ctx context.Context, client *github.Client, repo port.Repository,
 		}
 	}
 	return files, nil
+}
+
+func validatePushTree(tree *github.Tree) error {
+	if tree == nil || tree.Entries == nil || tree.Truncated == nil {
+		return fmt.Errorf("%w: github: incomplete push tree", kernel.ErrUnavailable)
+	}
+	for _, entry := range tree.Entries {
+		if entry == nil || entry.GetPath() == "" || !port.ValidCommit(entry.GetSHA()) || entry.GetMode() == "" ||
+			(entry.GetType() != "blob" && entry.GetType() != "tree" && entry.GetType() != "commit") {
+			return fmt.Errorf("%w: github: incomplete push tree entry", kernel.ErrUnavailable)
+		}
+	}
+	return nil
 }

@@ -31,14 +31,18 @@ var Labs = []Partition{
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
 // placed: the first partition that lists one of its tags takes it, so a
-// tagged plan-artifact scenarios precede other @terraform work even when they
-// need a VCS. Other run scenarios go to runs; core takes every untagged scenario.
+// tagged plan-artifact and native VCS scenarios precede other @terraform work.
+// Other run scenarios go to runs; core takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
 	{
 		Name: "terraform-plans",
 		Tags: []string{"@terraform-plans"},
+	},
+	{
+		Name: "terraform-vcs",
+		Tags: []string{"@terraform-vcs"},
 	},
 	{
 		Name: "terraform",
@@ -80,6 +84,7 @@ var exemptTags = []string{
 	"@policy-management", "@policy-attachments", "@policy-check", "@policy-approval",
 	"@policy-push", "@policy-push-workers", "@policy-push-preparation", "@policy-push-forks",
 	"@policy-push-recovery", "@policy-push-failures", "@policy-push-commits", "@policy-push-locks",
+	"@policy-push-range",
 }
 
 // placing is every partition in the order Place tries them: the labs,

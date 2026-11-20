@@ -159,9 +159,10 @@ func TestUnitHistoricalAndSharedHeads(t *testing.T) {
 		heads: map[kernel.ULID][]string{first.ID: {requestHash("older"), requestHash("current")}, second.ID: {requestHash("current"), requestHash("older")}},
 	}
 	older := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: requestHash("older"), CreatedAt: now.Add(time.Hour)}
-	current := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: requestHash("current"), CreatedAt: now}
+	// Equal timestamps use the ID tie-break; the fixture supplies that order.
+	current := runsapi.CommitRun{ID: kernel.ULID{15: 1}, CommitSHA: requestHash("current"), CreatedAt: now}
 	later := current
-	later.ID = kernel.NewULID()
+	later.ID = kernel.ULID{15: 2}
 	runs := &commitRuns{rows: []runsapi.CommitRun{older, current, later}}
 	stack := kernel.NewULID()
 	s := New(Deps{Store: store, Integrations: &bindings{found: true}, Runs: runs})

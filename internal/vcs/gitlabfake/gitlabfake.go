@@ -113,6 +113,7 @@ func (p *project) fullPath() string { return p.namespace + "/" + p.path }
 // Fake is a GitLab API: users, their access tokens, and projects in groups
 // and subgroups with their members, served under /api/v4.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]WebhookMergeRequest
 	checks         checkStore
 	comments       commentStore
@@ -296,6 +297,9 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/", f.project)
 			r.Get("/hooks", f.listWebhooks)
 			r.Get("/repository/commits/{sha}", f.commit)
+			r.Get("/repository/commits", f.commits)
+			r.Get("/repository/tree", f.tree)
+			r.Get("/repository/merge_base", f.mergeBase)
 			r.Get("/repository/tags/{tag}", f.tag)
 			r.Get("/repository/files/{file}/raw", f.raw)
 			r.Get("/repository/compare", f.compare)
@@ -457,6 +461,7 @@ func (f *Fake) project(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
 	c, err := p.repo.Resolve(param(r, "sha"))
 	if err != nil {
@@ -481,6 +486,7 @@ func (f *Fake) tag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) raw(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
 	b, err := p.repo.File(r.URL.Query().Get("ref"), param(r, "file"))
 	if err != nil {
@@ -496,6 +502,7 @@ func (f *Fake) raw(w http.ResponseWriter, r *http.Request) {
 // compare lists the diffs between from and to, with no pagination, as
 // GitLab's comparison answers.
 func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member sets it
 	q := r.URL.Query()
 	base := q.Get("from")

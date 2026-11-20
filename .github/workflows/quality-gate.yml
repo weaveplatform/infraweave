@@ -72,7 +72,7 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # A scenario runs in the first of terraform-plans, terraform, runs,
+  # A scenario runs in the first of terraform-plans, terraform-vcs, terraform, runs,
   # integrations and core that lists one of its tags; TestUnitFeaturePartitions
   # fails a tag no partition lists. A partition near its timeout splits by
   # tag into two jobs; scenarios are never dropped to fit.
@@ -86,6 +86,8 @@ jobs:
           - partition: core
             timeout: 20
           - partition: terraform
+            timeout: 30
+          - partition: terraform-vcs
             timeout: 30
           - partition: terraform-plans
             timeout: 30
@@ -116,6 +118,7 @@ jobs:
       - name: Acceptance partition ${{ matrix.partition }}
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          INFRAWEAVE_ACCEPT_PROGRESS: '1'
         run: make accept PARTITION=${{ matrix.partition }}
 
       # go test shows a passing test's output only with -v, so the count
@@ -187,6 +190,7 @@ jobs:
       - name: Every acceptance partition in fips140=only mode
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          INFRAWEAVE_ACCEPT_PROGRESS: '1'
         run: make accept FIPS=1
 
       - name: Upload failed-scenario evidence

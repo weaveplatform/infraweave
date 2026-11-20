@@ -103,7 +103,7 @@ Feature: VCS webhook protocol, event run budgets and request history
     And "GET /api/v1/vcs-event-triggered-runs-limit" through B with token "h" answers 'null'
     And the home account has 3 caller-attributed VCS event run limit audit entries
 
-  @gitlab @docker @terraform @objectstore @op:stack @case:success
+  @gitlab @docker @terraform @objectstore @op:stack @case:success @terraform-vcs
   Scenario Outline: A stack lists request history and shared runs through its current integration
     Given the release indexes serve the recorded fixtures
     And two infraweave servers, A and B, on one database
@@ -184,7 +184,7 @@ Feature: VCS webhook protocol, event run budgets and request history
       | true    | null            |
       | false   | "{integration}" |
 
-  @gitlab @terraform @op:stack @op:stacks @op:searchStacks @case:success @case:denial
+  @gitlab @terraform @op:stack @op:stacks @op:searchStacks @case:success @case:denial @terraform-vcs
   Scenario: Request scope and membership are applied before the fifty-request cap
     Given the release indexes serve the recorded fixtures
     And two infraweave servers, A and B, on one database whose expensive budget is 200 at 100 a second
@@ -707,7 +707,7 @@ Feature: VCS webhook protocol, event run budgets and request history
       | token | stack | namespace        | repository | advances |
       | h     | infra | renamed/platform | project    | 1        |
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | vendor    |
       | terraform |
@@ -817,7 +817,7 @@ Feature: VCS webhook protocol, event run budgets and request history
     And GitHub App "app" minted source tokens only for its restored installation
     And provider lifecycle events leave every local account organization and space unchanged
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | state     | action  | restore   | recovery              | vendor    |
       | suspended | suspend | unsuspend | the same installation | terraform |
@@ -924,7 +924,7 @@ Feature: VCS webhook protocol, event run budgets and request history
       | provider |
       | azure-devops |
 
-  @vcs @objectstore @docker @terraform @case:provider-events
+  @vcs @objectstore @docker @terraform @case:provider-events @terraform-vcs
   Scenario Outline: Every provider verifies pushes and creates tracked and proposed runs exactly once
     Given the release indexes serve the recorded fixtures
     And two event replicas where only A consumes the VCS inbox

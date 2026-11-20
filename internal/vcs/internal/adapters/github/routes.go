@@ -56,6 +56,7 @@ var Routes = []Route{
 	{http.MethodGet, "/repos/{owner}/{repo}/installation", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/collaborators/{username}/permission", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/commits/{ref...}", ReadOnly},
+	{http.MethodGet, "/repos/{owner}/{repo}/commits", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/git/ref/{ref...}", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/git/trees/{tree...}", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/contents/{file...}", ReadOnly},

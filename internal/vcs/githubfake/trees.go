@@ -28,6 +28,7 @@ func (f *Fake) repositoryMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) gitTree(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable binds the repository
 	sha, entries, err := repo.Tree(chi.URLParam(r, "tree"))
 	if err != nil {
