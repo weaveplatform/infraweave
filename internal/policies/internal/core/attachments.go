@@ -84,11 +84,17 @@ func (s *Service) stack(ctx context.Context, acct kernel.AccountID, slug string,
 	}
 	if hold {
 		if err := s.deps.Stacks.Hold(ctx, acct, st.ID); err != nil {
+			if errors.Is(err, stacksapi.ErrNotFound) {
+				return st, &Missing{Kind: "stack", ID: slug}
+			}
 			return st, fmt.Errorf("policies: hold stack: %w", err)
 		}
 		// A move between the slug lookup and hold must not leave a stale space.
 		st, err = s.deps.Stacks.Get(ctx, acct, st.ID)
 		if err != nil {
+			if errors.Is(err, stacksapi.ErrNotFound) {
+				return st, &Missing{Kind: "stack", ID: slug}
+			}
 			return st, fmt.Errorf("policies: read held stack: %w", err)
 		}
 	}
@@ -100,7 +106,7 @@ func reachable(nodes []accessapi.SpaceNode, space, ancestor kernel.ULID) bool {
 	for _, n := range nodes {
 		byID[n.ID] = n
 	}
-	for {
+	for visited := 0; visited <= len(nodes); visited++ {
 		if space == ancestor {
 			return true
 		}
@@ -110,6 +116,7 @@ func reachable(nodes []accessapi.SpaceNode, space, ancestor kernel.ULID) bool {
 		}
 		space = n.Parent
 	}
+	return false
 }
 
 // Attach makes one readable policy explicit on a stack in its inherited reach.
@@ -117,6 +124,9 @@ func (s *Service) Attach(ctx context.Context, p kernel.Principal, policy, stack 
 	var a Attachment
 	var st stacksapi.Stack
 	err := tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
 		row, err := s.locked(ctx, p.AccountID, policy)
 		if err != nil {
 			return err
@@ -196,6 +206,9 @@ func (s *Service) PolicyAttachment(ctx context.Context, p kernel.Principal, poli
 	if err := s.readable(ctx, p, st.Space, "policy attachment", id); err != nil {
 		return a, st, err
 	}
+	if err := s.checkEffective(ctx, row, a, st); err != nil {
+		return a, st, err
+	}
 	return a, st, nil
 }
 
@@ -224,6 +237,9 @@ func (s *Service) Detach(ctx context.Context, p kernel.Principal, id string) (At
 	}
 	var st stacksapi.Stack
 	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
 		row, err := s.locked(ctx, p.AccountID, a.Policy.String())
 		if err != nil {
 			return err
@@ -237,13 +253,22 @@ func (s *Service) Detach(ctx context.Context, p kernel.Principal, id string) (At
 		}
 		st, err = s.deps.Stacks.Get(ctx, p.AccountID, a.Stack)
 		if err != nil {
+			if errors.Is(err, stacksapi.ErrNotFound) {
+				return &Missing{Kind: "policy attachment", ID: id}
+			}
 			return fmt.Errorf("policies: read detach target: %w", err)
 		}
 		if err := s.deps.Stacks.Hold(ctx, p.AccountID, st.ID); err != nil {
+			if errors.Is(err, stacksapi.ErrNotFound) {
+				return &Missing{Kind: "policy attachment", ID: id}
+			}
 			return fmt.Errorf("policies: hold detach target: %w", err)
 		}
 		st, err = s.deps.Stacks.Get(ctx, p.AccountID, a.Stack)
 		if err != nil {
+			if errors.Is(err, stacksapi.ErrNotFound) {
+				return &Missing{Kind: "policy attachment", ID: id}
+			}
 			return fmt.Errorf("policies: read held detach target: %w", err)
 		}
 		if err := s.action(ctx, p, accessapi.ActionStackPolicyDetach, st.Space); err != nil {
@@ -298,10 +323,18 @@ func (s *Service) Details(ctx context.Context, p kernel.Principal, rows ...Polic
 	if err != nil {
 		return out, fmt.Errorf("policies: readable attachment targets: %w", err)
 	}
+	tree, targetLabels, err := s.selectionData(ctx, p.AccountID, stackIDs)
+	if err != nil {
+		return out, err
+	}
+	policies := make(map[kernel.ULID]Policy, len(rows))
+	for _, row := range rows {
+		policies[row.ID] = row
+	}
 	for id, as := range all {
 		for _, a := range as {
 			st, ok := out.Stacks[a.Stack]
-			if ok && slices.Contains(read, st.Space) {
+			if ok && slices.Contains(read, st.Space) && effective(tree, policies[id], a, st, targetLabels[st.ID]) {
 				out.Attachments[id] = append(out.Attachments[id], a)
 			}
 		}
@@ -332,6 +365,9 @@ func (s *Service) StackAttachment(ctx context.Context, p kernel.Principal, stack
 	if err := s.readable(ctx, p, row.Space, "policy attachment", id); err != nil {
 		return a, row, err
 	}
+	if err := s.checkEffective(ctx, row, a, st); err != nil {
+		return a, row, err
+	}
 	return a, row, nil
 }
 
@@ -360,10 +396,19 @@ func (s *Service) AttachedPolicies(ctx context.Context, p kernel.Principal, stac
 	if err != nil {
 		return nil, fmt.Errorf("policies: readable stack projections: %w", err)
 	}
+	targets, err := s.deps.Stacks.ByIDs(ctx, p.AccountID, stacks)
+	if err != nil {
+		return nil, fmt.Errorf("policies: read projection targets: %w", err)
+	}
+	tree, targetLabels, err := s.selectionData(ctx, p.AccountID, stacks)
+	if err != nil {
+		return nil, err
+	}
 	for stack, as := range all {
 		for _, a := range as {
 			row, ok := rows[a.Policy]
-			if ok && slices.Contains(read, row.Space) {
+			st, hasTarget := targets[stack]
+			if ok && hasTarget && slices.Contains(read, row.Space) && slices.Contains(read, st.Space) && effective(tree, row, a, st, targetLabels[stack]) {
 				out[stack] = append(
 					out[stack],
 					stacksapi.AttachedPolicy{ID: a.ID, Policy: row.ID, Name: row.Name, Body: row.Body, Type: string(row.Type), Labels: row.Labels, Autoattached: a.Autoattached},
@@ -381,4 +426,33 @@ func (s *Service) AttachedPolicies(ctx context.Context, p kernel.Principal, stac
 		})
 	}
 	return out, nil
+}
+
+func effective(tree []accessapi.SpaceNode, p Policy, a Attachment, st stacksapi.Stack, labels []string) bool {
+	return attachable(p.Type) && reachable(tree, st.Space, p.Space) && (!a.Autoattached || automaticMatch(p.Labels, labels))
+}
+
+// Selection reads current reach and labels as well as persisted relations: a
+// delayed cleanup job must never expose a relation outside its current scope.
+func (s *Service) selectionData(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) ([]accessapi.SpaceNode, map[kernel.ULID][]string, error) {
+	tree, err := s.deps.Spaces.Tree(ctx, acct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("policies: read effective reach: %w", err)
+	}
+	labels, err := s.deps.Stacks.Labels(ctx, acct, stacks)
+	if err != nil {
+		return nil, nil, fmt.Errorf("policies: read effective labels: %w", err)
+	}
+	return tree, labels, nil
+}
+
+func (s *Service) checkEffective(ctx context.Context, p Policy, a Attachment, st stacksapi.Stack) error {
+	tree, labels, err := s.selectionData(ctx, p.Account, []kernel.ULID{st.ID})
+	if err != nil {
+		return err
+	}
+	if !effective(tree, p, a, st, labels[st.ID]) {
+		return &Missing{Kind: "policy attachment", ID: a.ID.String()}
+	}
+	return nil
 }

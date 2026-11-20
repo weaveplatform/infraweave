@@ -2,6 +2,8 @@ package assembly
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -9,6 +11,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
@@ -38,6 +41,7 @@ type Deps struct {
 	Runtime *rego.Engine
 	Events  *outbox.Outbox
 	Stacks  stacksapi.Stacks
+	Targets stacksapi.AttachmentTargets
 	Now     func() time.Time
 }
 
@@ -56,7 +60,20 @@ func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc }
 // New constructs policy management over its owned store and domain ports.
 func New(d Deps) *Domain {
 	store := pg.New(d.DB)
-	svc := core.New(core.Deps{Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Runtime: d.Runtime, Events: d.Events, Stacks: d.Stacks, Now: d.Now})
+	svc := core.New(
+		core.Deps{
+			Store:   store,
+			DB:      d.DB,
+			Spaces:  d.Spaces,
+			Authz:   d.Authz,
+			Runtime: d.Runtime,
+			Events:  d.Events,
+			Stacks:  d.Stacks,
+			Targets: d.Targets,
+			Queue:   queue.New(d.DB),
+			Now:     d.Now,
+		},
+	)
 	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store}
 }
 
@@ -76,6 +93,34 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 // RegisterEvents installs the policy change contract before outbox consumers start.
 func RegisterEvents(kinds *outbox.Kinds) error {
 	return kinds.Register(policyapi.ChangedKind, policyapi.ChangedVersion, policyapi.ChangedSchema) //nolint:wrapcheck // names the event kind
+}
+
+// Autoattach names the durable stack-change consumer on every replica.
+const Autoattach = "policies.autoattach"
+
+// Subscribe installs policy reconciliation before the shared outbox starts.
+func (d *Domain) Subscribe(events *outbox.Outbox) error {
+	return events.Subscribe(stacksapi.ChangedKind, Autoattach, stackChanged(d.svc.StackChanged)) //nolint:wrapcheck // the outbox names the consumer
+}
+
+// Jobs binds accepted space versions to reconciliation of their current tree.
+func (d *Domain) Jobs() []queue.Registration {
+	return []queue.Registration{{Kind: core.Reconcile, Handler: func(ctx context.Context, j queue.Job) error {
+		return d.svc.ReconcileAccount(ctx, kernel.AccountID{ULID: j.Account})
+	}, Options: queue.HandlerOptions{Feature: "policies"}}}
+}
+
+// StackGuard fences explicit attachment reach and removes deleted stack rows.
+func (d *Domain) StackGuard() stacksapi.StackGuard { return d.svc.StackGuard() }
+
+func stackChanged(run func(context.Context, kernel.AccountID, kernel.ULID) error) outbox.Handler {
+	return func(ctx context.Context, ev outbox.Event, _ queue.Job) error {
+		var changed stacksapi.Changed
+		if err := json.Unmarshal(ev.Document, &changed); err != nil {
+			return queue.Permanent(fmt.Errorf("policies: decode %s %s: %w", ev.Kind, ev.ID, err)) //nolint:wrapcheck // marks an invalid event
+		}
+		return run(ctx, kernel.AccountID{ULID: ev.Account}, changed.Stack)
+	}
 }
 
 // SpaceOf resolves a policy subject using both its account and immutable ID.

@@ -680,7 +680,7 @@
         "phase": "P13",
         "also": "P13b, P25b (Intent project attachments)",
         "state": "partial",
-        "notes": "POL-05 serves persisted policy CRUD and merge patch, account and inherited-space searches, and bounded save-time compilation. POL-06 owns attachment selection; evaluation, sampling, notification routing and Intent integration remain with their implementation phases."
+        "notes": "POL-05 serves persisted policy CRUD and merge patch, account and inherited-space searches, and bounded save-time compilation. POL-06 adds explicit/automatic stack attachments, inherited candidates, updated-order target previews and readable stack projections. Evaluation, sampling, notification routing and Intent integration remain with their implementation phases."
       }
     },
     {

@@ -2176,8 +2176,16 @@ in as `test/fixtures/policy-inputs`
    acceptance lives in `features/policies/{management,search}.feature`; separate
    PostgreSQL tests cover C9's force-delete boundary, rollback on event/storage
    failure, timestamps, transaction retries and resumable account purge.
-   POL-06 still owns attachment IDs, attachment APIs and automatic selection;
-   those workflows are not implied by management DTO fields.
+   POL-06 adds distinct attachment IDs, the seven attachment operations and
+   stack-owned projections. One account-qualified relation per policy/stack
+   preserves an explicit promotion across label changes. Policy writes reconcile
+   in their transaction; durable stack events and accepted space-version jobs
+   reconcile the current tree. Space and stack moves refuse manual reach loss;
+   inheritance-only changes fence descendant holds too. Preview filters account,
+   inherited reach and readable targets before counting all matches and sampling
+   the 100 most recently updated. The real-service matrix includes concurrent
+   label writes, one selected-policy evaluation, queue rollback/recovery and C9's
+   full REST deletion replay. Run-policy evaluation remains in the later tasks.
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
    matching report 09 section 4 and every key of the recorded inputs in
    `test/fixtures/policy-inputs`, with the reference's `spacelift.*` input

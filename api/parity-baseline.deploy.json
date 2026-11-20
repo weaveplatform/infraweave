@@ -269,11 +269,6 @@
       "plugins"
     ],
     "Policies": [
-      "attachablePoliciesInSpace",
-      "autoattachmentForLabels",
-      "policyAttach",
-      "policyAttachedStack",
-      "policyDetach",
       "policyEvaluationSample",
       "policyInputCapture",
       "policyInputCaptures",

@@ -50,6 +50,7 @@ type Store interface {
 		ctx context.Context,
 		acct kernel.AccountID,
 		slug, parentSlug string,
+		inherit bool,
 		edit func(ctx context.Context, current, parent Space, m *accessapi.SpaceMove) (Space, error),
 	) (Space, error)
 	// HoldSpace locks the account's space id FOR KEY SHARE in the
@@ -311,7 +312,7 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, slug, parent s
 		return Space{}, err
 	}
 	guards := s.registered()
-	out, err := s.store.UpdateSpace(ctx, p.AccountID, slug, parent,
+	out, err := s.store.UpdateSpace(ctx, p.AccountID, slug, parent, in.InheritEntities,
 		func(ctx context.Context, cur, pa Space, m *accessapi.SpaceMove) (Space, error) {
 			if err := s.administers(ctx, p, r, cur); err != nil {
 				return Space{}, err
@@ -324,6 +325,18 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, slug, parent s
 			}
 			if err := topKept(cur, pa, in); err != nil {
 				return Space{}, err
+			}
+			if m != nil || cur.InheritEntities != in.InheritEntities {
+				for _, guard := range guards {
+					if changing, ok := guard.(accessapi.SpaceChangeGuard); ok {
+						if err := changing.SpaceChanging(
+							ctx,
+							accessapi.SpaceChange{Account: p.AccountID, Space: cur.ID, Parent: pa.ID, Inherit: in.InheritEntities, Version: cur.Version + 1},
+						); err != nil {
+							return Space{}, fmt.Errorf("check changing space %s: %w", cur.Slug, err)
+						}
+					}
+				}
 			}
 			if m != nil {
 				if err := lostOnMove(ctx, guards, cur, *m); err != nil {

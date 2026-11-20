@@ -396,7 +396,7 @@ func TestAccSpaceStoreUnavailable(t *testing.T) {
 	}
 	for name, err := range map[string]error{
 		"move": func() error {
-			_, err := x.s.UpdateSpace(ctx, x.acct, child.Slug, space.LegacySlug,
+			_, err := x.s.UpdateSpace(ctx, x.acct, child.Slug, space.LegacySlug, child.InheritEntities,
 				func(ctx context.Context, cur, _ space.Space, _ *accessapi.SpaceMove) (space.Space, error) {
 					abort(ctx)
 					return cur, nil
@@ -428,7 +428,7 @@ func TestAccSpaceStoreUnavailable(t *testing.T) {
 		"read":         func() error { _, err := s.Space(bg, x.acct, "x"); return err }(),
 		"create":       s.CreateSpace(bg, child),
 		"update": func() error {
-			_, err := s.UpdateSpace(bg, x.acct, child.Slug, "x", keep)
+			_, err := s.UpdateSpace(bg, x.acct, child.Slug, "x", child.InheritEntities, keep)
 			return err
 		}(),
 		"setting": func() error { _, err := s.NonAdminCreation(bg, x.acct); return err }(),
@@ -496,7 +496,7 @@ func TestAccSpaceUpdate(t *testing.T) {
 		read.ParentID != got.ParentID || read.Slug != dev.Slug {
 		t.Errorf("after the update: %+v, %v", read, err)
 	}
-	if _, err := x.s.UpdateSpace(ctx, x.acct, dev.Slug, "",
+	if _, err := x.s.UpdateSpace(ctx, x.acct, dev.Slug, "", dev.InheritEntities,
 		func(context.Context, space.Space, space.Space, *accessapi.SpaceMove) (space.Space, error) {
 			return space.Space{}, errors.New("refused")
 		}); err == nil {
@@ -526,6 +526,7 @@ func TestAccSpaceUpdate(t *testing.T) {
 		x.acct,
 		dev.Slug,
 		"nope",
+		dev.InheritEntities,
 		nil,
 	); !errors.Is(
 		err,

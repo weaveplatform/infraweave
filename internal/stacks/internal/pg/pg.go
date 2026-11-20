@@ -255,7 +255,7 @@ func (s *Store) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULID)
 // changes no key, so its FOR NO KEY UPDATE lock never waits on a Hold's
 // FOR KEY SHARE.
 func (s *Store) SetRunState(ctx context.Context, acct kernel.AccountID, id kernel.ULID, state kernel.StackState, blocked bool) error {
-	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET state = $3, blocked = $4
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET state = $3, blocked = $4, updated_at = clock_timestamp()
 		WHERE account_id = $1 AND id = $2`, acct, id, state, blocked)
 	switch {
 	case err != nil:
@@ -269,7 +269,7 @@ func (s *Store) SetRunState(ctx context.Context, acct kernel.AccountID, id kerne
 // SetDeleting marks acct's stack id deleting, or clears the mark. The
 // update changes no version, as SetRunState's does not.
 func (s *Store) SetDeleting(ctx context.Context, acct kernel.AccountID, id kernel.ULID, on bool) error {
-	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET deleting = $3
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET deleting = $3, updated_at = clock_timestamp()
 		WHERE account_id = $1 AND id = $2`, acct, id, on)
 	switch {
 	case err != nil:
@@ -350,6 +350,7 @@ func (s *Store) SetTracked(ctx context.Context, acct kernel.AccountID, id kernel
 		}
 	}
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET
+			updated_at = clock_timestamp(),
 			tracked_branch_head = coalesce($3, tracked_branch_head),
 			tracked_commit = coalesce($4, tracked_commit),
 			tracked_commit_set_by = CASE WHEN $4::jsonb IS NULL THEN tracked_commit_set_by ELSE $5 END
@@ -366,7 +367,7 @@ func (s *Store) SetTracked(ctx context.Context, acct kernel.AccountID, id kernel
 // DetachVCS detaches acct's stacks bound to integration, leaving their
 // versions as they are.
 func (s *Store) DetachVCS(ctx context.Context, acct kernel.AccountID, integration kernel.ULID) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET vcs_detached = true,
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE stacks SET vcs_detached = true, updated_at = clock_timestamp(),
 			vcs_integration_id = NULL
 		WHERE account_id = $1 AND vcs_integration_id = $2`, acct, integration)
 	if err != nil {
@@ -423,7 +424,7 @@ func (s *Store) write(ctx context.Context, st core.Stack) error {
 			local_preview_enabled = $25, github_action_deploy = $26,
 			enable_sensitive_output_upload = $27, enable_well_known_secret_masking = $28,
 			skip_vendor_binary_download = $29, locked_at = $30, lock_holder = $31, locked_by = $32,
-			lock_note = $33, version = $34, vcs_detached = $35
+			lock_note = $33, version = $34, vcs_detached = $35, updated_at = clock_timestamp()
 		WHERE account_id = $1 AND id = $2`,
 		st.Account, st.ID, st.Slug, st.Space, st.Name, st.Description, st.Repository,
 		st.RepositoryURL, st.Branch, st.Provider, st.Namespace, st.ProjectRoot,

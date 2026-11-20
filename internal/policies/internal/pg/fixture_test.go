@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	policyhttp "github.com/weaveplatform/infraweave/internal/policies/internal/http"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/pg"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // Only platform and policies migrations apply here. Space/authz ports are
@@ -31,6 +32,8 @@ type spaces struct {
 	nodes    []accessapi.SpaceNode
 	err      error
 	slugsErr error
+	treeErr  error
+	holdErr  error
 }
 
 func (s *spaces) Find(_ context.Context, _ kernel.AccountID, slug string) (kernel.ULID, error) {
@@ -46,6 +49,9 @@ func (s *spaces) Find(_ context.Context, _ kernel.AccountID, slug string) (kerne
 }
 
 func (s *spaces) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) error {
+	if s.holdErr != nil {
+		return s.holdErr
+	}
 	if s.err != nil {
 		return s.err
 	}
@@ -58,6 +64,9 @@ func (s *spaces) Hold(_ context.Context, _ kernel.AccountID, id kernel.ULID) err
 }
 
 func (s *spaces) Tree(context.Context, kernel.AccountID) ([]accessapi.SpaceNode, error) {
+	if s.treeErr != nil {
+		return nil, s.treeErr
+	}
 	return slices.Clone(s.nodes), s.err
 }
 
@@ -80,6 +89,7 @@ type authz struct {
 	readable []kernel.ULID
 	denied   bool
 	err      error
+	reachErr error
 }
 
 func (a *authz) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
@@ -87,6 +97,9 @@ func (a *authz) Authorize(context.Context, kernel.Principal, accessapi.Action, k
 }
 
 func (a *authz) Reachable(context.Context, kernel.Principal, accessapi.Action) ([]kernel.ULID, error) {
+	if a.reachErr != nil {
+		return nil, a.reachErr
+	}
 	return slices.Clone(a.readable), a.err
 }
 
@@ -101,6 +114,7 @@ type fixture struct {
 	now       time.Time
 	svc       *core.Service
 	http      policyhttp.Server
+	stacks    *stackPort
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -132,13 +146,27 @@ func newFixture(t *testing.T) *fixture {
 		principal: kernel.Principal{Kind: kernel.PrincipalAPIKey, ActorID: kernel.NewULID(), AccountID: acct},
 		now:       time.Unix(1795130000, 0).UTC(),
 	}
+	f.stacks = &stackPort{stack: stacksapi.Stack{Account: acct, ID: kernel.NewULID(), Slug: "infra", Name: "Infra", Space: acct.ULID}, labels: []string{"prod"}}
 	f.svc = f.service(f.events)
 	f.http = policyhttp.New(f.svc, f.spaces)
 	return f
 }
 
 func (f *fixture) service(events core.Events) *core.Service {
-	return core.New(core.Deps{Store: f.store, DB: f.db, Spaces: f.spaces, Authz: f.authz, Runtime: f.runtime, Events: events, Now: func() time.Time { return f.now }})
+	return core.New(
+		core.Deps{
+			Store:   f.store,
+			DB:      f.db,
+			Spaces:  f.spaces,
+			Authz:   f.authz,
+			Runtime: f.runtime,
+			Events:  events,
+			Stacks:  f.stacks,
+			Targets: f.stacks,
+			Queue:   queue.New(f.db),
+			Now:     func() time.Time { return f.now },
+		},
+	)
 }
 
 func (f *fixture) create(t *testing.T, name string) core.Policy {

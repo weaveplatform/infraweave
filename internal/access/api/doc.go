@@ -25,7 +25,9 @@
 // find a space by its slug, read the slugs of an account's spaces and
 // hold a space in its transaction, ErrNoSpace for one the account lacks,
 // and SpaceGuard is what such a domain registers, so the space tree
-// refuses a delete or a move that would strand its rows. Bindings is
+// refuses a delete or a move that would strand its rows. A registered guard may
+// also implement SpaceChangeGuard for prospective parent/inheritance checks and
+// transactional job enqueueing under the subtree locks. Bindings is
 // what a domain that keeps actors, such as stacks, calls to bind them to
 // roles in spaces, read, move and delete their bindings, ErrNoBinding for
 // a binding the account lacks and ErrBindingHeld for one it holds, and

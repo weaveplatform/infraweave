@@ -42,6 +42,24 @@ type StackPolicies interface {
 	AttachedPolicies(context.Context, kernel.Principal, []kernel.ULID) (map[kernel.ULID][]AttachedPolicy, error)
 }
 
+// AttachmentTarget includes only the fields needed by an autoattachment preview.
+type AttachmentTarget struct {
+	Stack
+	Labels []string
+}
+
+// AttachmentPreview counts every match while bounding its updated-order sample.
+type AttachmentPreview struct {
+	Count  int64
+	Sample []AttachmentTarget
+}
+
+// AttachmentTargets owns the stack query, including account/space predicates
+// before counting and a limit of 100 ordered by the latest persisted update.
+type AttachmentTargets interface {
+	Preview(context.Context, kernel.AccountID, []kernel.ULID, []string, bool) (AttachmentPreview, error)
+}
+
 // The hook phases, in the order a run reaches them. Each holds the
 // commands a stack runs there, in order.
 const (

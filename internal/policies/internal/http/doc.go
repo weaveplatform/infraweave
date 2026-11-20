@@ -7,8 +7,10 @@
 // shared listener requires an account credential and the policies capability.
 // Strict handlers expose persisted policy CRUD, the shared merge patch, full
 // list views, reference search edges and scoped search suggestions. Policy
-// views retain immutable ULIDs and Unix-second timestamps. These handlers do
-// not provide attachment mutation, evaluation or saved policy samples.
+// views retain immutable ULIDs and Unix-second timestamps. These handlers also
+// expose explicit attachment mutation, inherited candidates, a bounded automatic
+// target preview and both attachment projections. Evaluation and saved policy
+// samples belong to their later workflow and tooling operations.
 //
 // # Effects
 //

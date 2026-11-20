@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
@@ -47,12 +48,18 @@ type Input struct {
 
 // Store keeps policies under their owning account even when IDs are known.
 type Store interface {
+	LockAutoattach(context.Context, kernel.AccountID) error
 	Create(context.Context, Policy) error
 	Get(context.Context, kernel.AccountID, kernel.ULID, bool) (Policy, error)
 	Update(context.Context, Policy) error
 	Delete(context.Context, kernel.AccountID, kernel.ULID) error
 	AttachmentCount(context.Context, kernel.AccountID, kernel.ULID) (int, error)
 	Attach(context.Context, Attachment) (Attachment, error)
+	AutoAttach(context.Context, Attachment) (bool, error)
+	Labelled(context.Context, kernel.AccountID, []kernel.ULID, []string) ([]Policy, error)
+	AutomaticPolicies(context.Context, kernel.AccountID) ([]Policy, error)
+	AccountAttachments(context.Context, kernel.AccountID) ([]Attachment, error)
+	DeleteStack(context.Context, kernel.AccountID, kernel.ULID) error
 	Attachment(context.Context, kernel.AccountID, kernel.ULID) (Attachment, error)
 	Detach(context.Context, kernel.AccountID, kernel.ULID) error
 	Attachments(context.Context, kernel.AccountID, []kernel.ULID, bool) (map[kernel.ULID][]Attachment, error)
@@ -74,6 +81,8 @@ type Deps struct {
 	Runtime *rego.Engine
 	Events  Events
 	Stacks  stacksapi.Stacks
+	Targets stacksapi.AttachmentTargets
+	Queue   *queue.Queue
 	Now     func() time.Time
 }
 
@@ -111,6 +120,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 	}
 	var out Policy
 	err := tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
 		space, err := s.writeSpace(ctx, p, in.Space)
 		if err != nil {
 			return err
@@ -136,6 +148,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 		}
 		if err := s.deps.Store.Create(ctx, out); err != nil {
 			return err //nolint:wrapcheck // the transaction adds the create operation
+		}
+		if _, err := s.autoattach(ctx, out); err != nil {
+			return err
 		}
 		return s.changed(ctx, out, policyapi.ChangeCreated)
 	})
@@ -218,6 +233,9 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 	}
 	var out Policy
 	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
 		out, err = s.deps.Store.Get(ctx, p.AccountID, parsed, true)
 		if errors.Is(err, ErrNotFound) {
 			return &Missing{Kind: "policy", ID: id}
@@ -245,6 +263,11 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		if err := checkPlacement(out.Type, space, p.AccountID); err != nil {
 			return err
 		}
+		if out.Space != space {
+			if err := s.policyMoving(ctx, out, space); err != nil {
+				return err
+			}
+		}
 		out.Space = space
 		out.Name = strings.TrimSpace(in.Name)
 		out.Body = in.Body
@@ -255,6 +278,9 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		out.Version++
 		if err := s.deps.Store.Update(ctx, out); err != nil {
 			return err //nolint:wrapcheck // the transaction adds the update operation
+		}
+		if _, err := s.autoattach(ctx, out); err != nil {
+			return err
 		}
 		return s.changed(ctx, out, policyapi.ChangeUpdated)
 	})
@@ -300,6 +326,9 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 	}
 	var out Policy
 	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
+			return err //nolint:wrapcheck // the store names the lock
+		}
 		out, err = s.deps.Store.Get(ctx, p.AccountID, parsed, true)
 		if errors.Is(err, ErrNotFound) {
 			return &Missing{Kind: "policy", ID: id}
@@ -384,7 +413,8 @@ func (s *Service) SpaceInUse(ctx context.Context, acct kernel.AccountID, space k
 	return s.deps.Store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
 }
 
-// LostOnMove has no attachment reach to validate for management-only policies.
+// LostOnMove is covered by SpaceChanging, which also checks inheritance and
+// changes of both ends of a relation in the prospective tree.
 func (s *Service) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	return nil, nil
 }

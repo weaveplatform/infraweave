@@ -99,6 +99,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // Stacks is what other domains call of this one.
 func (d *Domain) Stacks() stacksapi.Stacks { return d.stacks }
 
+// AttachmentTargets provides the bounded stack-owned preview query.
+func (d *Domain) AttachmentTargets() stacksapi.AttachmentTargets { return d.store }
+
 // GuardStacks registers another domain's stacksapi.StackGuard, which
 // every later stack move and delete asks.
 func (d *Domain) GuardStacks(g stacksapi.StackGuard) { d.stacks.Guard(g) }

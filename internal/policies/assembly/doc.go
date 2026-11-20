@@ -1,10 +1,12 @@
 // Package assembly constructs policy management, persistence and contract
 // publication, and exports its migration stream, integrity declarations, subject
-// resolver, space guard, account purge and event-kind registration to app.
+// resolvers, space/stack guards, account purge, event-kind registration, durable
+// consumers and job registrations to app. Stack projections use its owned port.
 //
 // # Input and output
 //
-// New takes the PostgreSQL pool, spaces, authorization, bounded compiler and
+// New takes the PostgreSQL pool, spaces, stacks and their preview port,
+// authorization, bounded compiler and
 // transactional outbox. API supplies the strict management partial and Routes
 // publishes the typed policy JSON contract on the guarded API listener.
 //
@@ -16,6 +18,7 @@
 //
 // # Dependencies
 //
-// access/api, internal/kernel, platform/outbox, platform/rego, platform/sql's
+// access/api, stacks/api, internal/kernel, platform/outbox, platform/queue,
+// platform/rego, platform/sql's
 // integrity and migrate packages, chi, and the policies domain's core/http/pg.
 package assembly

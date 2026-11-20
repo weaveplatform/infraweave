@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
@@ -10,6 +11,31 @@ import (
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
+
+// AutoattachmentForLabels previews a full count and at most 100 updated targets.
+func (s Server) AutoattachmentForLabels(ctx context.Context, req api.AutoattachmentForLabelsRequestObject) (api.AutoattachmentForLabelsResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.svc.Preview(ctx, p, req.Params.Space, req.Params.Labels)
+	if err != nil {
+		return nil, policyError(err)
+	}
+	if res.Count < 0 || res.Count > math.MaxInt32 {
+		return nil, fmt.Errorf("policies: preview count exceeds the API range: %w", kernel.ErrUnavailable)
+	}
+	slugs, err := s.spaces.Slugs(ctx, p.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("policies: preview space slugs: %w", err)
+	}
+	out := api.AutoattachmentTargets{Count: int32(res.Count), Sample: []api.AutoattachmentTarget{}}
+	for _, target := range res.Sample {
+		space := slugs[target.Space]
+		out.Sample = append(out.Sample, api.AutoattachmentTarget{Id: target.Slug, Name: target.Name, Labels: target.Labels, Space: space, SpaceDetails: api.SpaceRef{Id: space}})
+	}
+	return api.AutoattachmentForLabels200JSONResponse{Body: out}, nil
+}
 
 // AttachablePoliciesInSpace lists readable, inheritable stack policy candidates.
 func (s Server) AttachablePoliciesInSpace(ctx context.Context, req api.AttachablePoliciesInSpaceRequestObject) (api.AttachablePoliciesInSpaceResponseObject, error) {

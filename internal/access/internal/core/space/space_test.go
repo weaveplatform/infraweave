@@ -94,6 +94,7 @@ func (f *tree) UpdateSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
 	slug, parentSlug string,
+	_ bool,
 	edit func(context.Context, space.Space, space.Space, *accessapi.SpaceMove) (space.Space, error),
 ) (space.Space, error) {
 	cur, err := f.Space(ctx, acct, slug)

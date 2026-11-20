@@ -66,7 +66,7 @@ func (s *Store) RepointVCSRepository(ctx context.Context, acct kernel.AccountID,
 	providers := append([]string{u.Provider}, u.Aliases...)
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `WITH targets AS (
 		SELECT id FROM stacks WHERE `+vcsUsers+` AND namespace=$5 AND repository=$6 ORDER BY id FOR UPDATE
-	) UPDATE stacks s SET namespace=$7,repository=$8,version=s.version+1 FROM targets t
+	) UPDATE stacks s SET namespace=$7,repository=$8,version=s.version+1,updated_at=clock_timestamp() FROM targets t
 		WHERE s.account_id=$1 AND s.id=t.id RETURNING s.account_id,s.id,s.slug,s.space_id,s.version`,
 		acct, u.Integration, u.Default, providers, from.Namespace, from.Name, to.Namespace, to.Name)
 	if err != nil {

@@ -17,15 +17,35 @@ func TestAccPolicyStoreUnavailable(t *testing.T) {
 	ctx := t.Context()
 	scope := core.Scope{Reachable: []kernel.ULID{p.Space}}
 	for name, err := range map[string]error{
-		"create":   f.store.Create(ctx, p),
-		"get":      func() error { _, err := f.store.Get(ctx, p.Account, p.ID, false); return err }(),
-		"update":   f.store.Update(ctx, p),
-		"delete":   f.store.Delete(ctx, p.Account, p.ID),
-		"in-space": func() error { _, err := f.store.InSpace(ctx, p.Account, p.Space); return err }(),
-		"count":    func() error { _, err := f.store.AttachmentCount(ctx, p.Account, p.ID); return err }(),
-		"purge":    func() error { _, err := f.store.Purge(ctx, p.Account, 10); return err }(),
-		"search":   func() error { _, err := f.store.Search(ctx, p.Account, search.Input{}, scope); return err }(),
-		"suggest":  func() error { _, err := f.store.Suggest(ctx, p.Account, search.SuggestionsInput{}, scope); return err }(),
+		"create":    f.store.Create(ctx, p),
+		"get":       func() error { _, err := f.store.Get(ctx, p.Account, p.ID, false); return err }(),
+		"update":    f.store.Update(ctx, p),
+		"delete":    f.store.Delete(ctx, p.Account, p.ID),
+		"in-space":  func() error { _, err := f.store.InSpace(ctx, p.Account, p.Space); return err }(),
+		"count":     func() error { _, err := f.store.AttachmentCount(ctx, p.Account, p.ID); return err }(),
+		"lock-auto": f.store.LockAutoattach(ctx, p.Account),
+		"attach": func() error {
+			_, err := f.store.Attach(ctx, core.Attachment{Account: p.Account, Policy: p.ID})
+			return err
+		}(),
+		"auto-attach": func() error {
+			_, err := f.store.AutoAttach(ctx, core.Attachment{Account: p.Account, Policy: p.ID})
+			return err
+		}(),
+		"attachment":          func() error { _, err := f.store.Attachment(ctx, p.Account, kernel.NewULID()); return err }(),
+		"attachments":         func() error { _, err := f.store.Attachments(ctx, p.Account, []kernel.ULID{p.ID}, false); return err }(),
+		"account-attachments": func() error { _, err := f.store.AccountAttachments(ctx, p.Account); return err }(),
+		"automatic-policies":  func() error { _, err := f.store.AutomaticPolicies(ctx, p.Account); return err }(),
+		"labelled": func() error {
+			_, err := f.store.Labelled(ctx, p.Account, []kernel.ULID{p.Space}, []string{"autoattach:*"})
+			return err
+		}(),
+		"by-ids":       func() error { _, err := f.store.ByIDs(ctx, p.Account, []kernel.ULID{p.ID}); return err }(),
+		"detach":       f.store.Detach(ctx, p.Account, kernel.NewULID()),
+		"delete-stack": f.store.DeleteStack(ctx, p.Account, kernel.NewULID()),
+		"purge":        func() error { _, err := f.store.Purge(ctx, p.Account, 10); return err }(),
+		"search":       func() error { _, err := f.store.Search(ctx, p.Account, search.Input{}, scope); return err }(),
+		"suggest":      func() error { _, err := f.store.Suggest(ctx, p.Account, search.SuggestionsInput{}, scope); return err }(),
 	} {
 		if err == nil || errors.Is(err, core.ErrNotFound) {
 			t.Errorf("%s hid database failure: %v", name, err)
