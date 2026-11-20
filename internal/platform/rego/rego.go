@@ -79,6 +79,10 @@ func New(settings Settings) (*Engine, error) {
 	return &Engine{settings: settings, cache: processQueries, slots: processSlots, capabilities: capabilities}, nil
 }
 
+// InputLimit lets typed input adapters enforce the configured byte budget
+// before allocating their own decoded document.
+func (e *Engine) InputLimit() int64 { return e.settings.MaxInputBytes }
+
 func (e *Engine) validate(p Policy) error {
 	if rules(p.Type) == nil {
 		return fmt.Errorf("%w: unknown type %q", ErrPolicy, p.Type)
@@ -265,6 +269,29 @@ func (e *Engine) EvaluateAll(ctx context.Context, requests []Request) []Outcome 
 type printBuffer struct {
 	text      strings.Builder
 	truncated bool
+}
+
+// EvaluateSequence applies the combined budget to adapters whose output changes
+// the next policy's input. Each program independently decodes its own document.
+func (e *Engine) EvaluateSequence(ctx context.Context, requests []Request, advance func(int, Outcome) (json.RawMessage, error)) []Outcome {
+	outcomes := make([]Outcome, len(requests))
+	if len(requests) == 0 {
+		return outcomes
+	}
+	ctx, cancel := context.WithTimeout(ctx, e.settings.Timeouts.Combined)
+	defer cancel()
+	input := requests[0].Input
+	for i, request := range requests {
+		request.Input = input
+		outcomes[i].Result, outcomes[i].Err = e.Evaluate(ctx, request)
+		next, err := advance(i, outcomes[i])
+		if err != nil {
+			outcomes[i].Err = err
+			continue
+		}
+		input = next
+	}
+	return outcomes
 }
 
 func (p *printBuffer) Print(_ opaprint.Context, message string) error {

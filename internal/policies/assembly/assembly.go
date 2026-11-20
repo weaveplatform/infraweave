@@ -96,8 +96,24 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 
 // RegisterEvents installs the policy change contract before outbox consumers start.
 func RegisterEvents(kinds *outbox.Kinds) error {
-	return kinds.Register(policyapi.ChangedKind, policyapi.ChangedVersion, policyapi.ChangedSchema) //nolint:wrapcheck // names the event kind
+	for _, kind := range []struct {
+		name    string
+		version int
+		schema  []byte
+	}{
+		{policyapi.ChangedKind, policyapi.ChangedVersion, policyapi.ChangedSchema},
+		{policyapi.EvaluatedKind, policyapi.EvaluationEventVersion, policyapi.EvaluatedSchema},
+		{policyapi.InternalErrorKind, policyapi.EvaluationEventVersion, policyapi.InternalErrorSchema},
+	} {
+		if err := kinds.Register(kind.name, kind.version, kind.schema); err != nil {
+			return fmt.Errorf("policies: register %s: %w", kind.name, err)
+		}
+	}
+	return nil
 }
+
+// Evaluator supplies transactional decision evidence without owning run state.
+func (d *Domain) Evaluator() policyapi.Evaluator { return d.svc }
 
 // Autoattach names the durable stack-change consumer on every replica.
 const Autoattach = "policies.autoattach"
@@ -138,6 +154,9 @@ func (d *Domain) AttachmentSpaceOf() accessapi.SpaceOf { return d.svc.Attachment
 
 // StackPolicies is the readable projection port bound by app after construction.
 func (d *Domain) StackPolicies() stacksapi.StackPolicies { return d.svc }
+
+// Identities supplies account-qualified policy existence for historical views.
+func (d *Domain) Identities() policyapi.PolicyIdentities { return d.svc }
 
 // Routes registers the domain's routes. A nil domain serves none, for tests
 // which construct only the domains their request reaches.

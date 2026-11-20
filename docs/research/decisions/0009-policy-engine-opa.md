@@ -166,6 +166,10 @@ one is a compile error at save:
   so helper rules never leak between policies
   ([09 section 2.4](../reference/09-policies.md#24-combining-several-policies)). Policies
   of one type for one target evaluate concurrently, at most eight at a time.
+  LOGIN is ordered by immutable policy ID because its documented nonempty
+  `team` output rewrites the next policy's `session.teams`. Each stage still
+  decodes its own document; only that typed team field passes between stages,
+  under the same combined deadline.
 
 ### Timeouts and resource limits
 
@@ -578,6 +582,39 @@ test-key deny still issued a token, with no LOGIN samples. Keep the existing
 no-run flag choice labelled as such. C47's unavailable legacy-space comparison
 and the other unobserved cases remain capture questions; no synthetic success
 or inferred response is added to these fixtures.
+
+On 2026-11-20 the maintainer approved **documented inferences and continued
+implementation** for #644's remaining LOGIN flags, TASK denial and capture
+retention/privacy cases. Follow the accepted contracts above: no-run flags do
+not create run-owned flag rows; a TASK deny refuses creation; samples/captures
+use the declared sealing, access controls, budgets, expiry and replacement
+rules. These are infraweave implementation expectations, not newly observed
+Spacelift behavior. C47's legacy comparison and C50/C52/C53's missing
+observations remain open evidence questions; they no longer block these
+accepted implementations. Keep their authentic response bodies unchanged.
+
+### Transactional evaluation boundary
+
+POL-08 selects effective, account-qualified policy versions in one owned query
+after holding the real target and its space. Current matching labels apply
+before asynchronous relation cleanup, and stale automatic relations cannot
+restore a lost match. Explicit relations still apply without a label match.
+No policy row lock is taken after a caller's stack/run locks; the selected body,
+engine and version are the evaluation snapshot.
+
+The input builder runs once per attempt inside the joined transaction, only when
+policies apply. Validate against the published typed contract before OPA decodes each
+program's own input; invalid facts fail closed, while operational builder/store
+failures roll back. An empty set returns NO_POLICIES and writes no evidence.
+Module and Intent execution targets remain explicitly unavailable to P17/P25.
+
+`policy.evaluated` and `policy.internal_error` carry safe metadata through the
+existing outbox, with an immutable evaluation subject and target/run correlation
+in the payload. Their event/fan-out jobs commit or roll back with the caller.
+They contain no source, input, raw decision or print text. Requested sampling
+evidence is a separate in-memory handoff excluded from JSON; P13b owns its sealed
+persistence. A requested sample is not a retained sample, and an absent sampling
+consumer does not block evaluation. Runs owns durable receipts and flags.
 
 ## Rationale
 

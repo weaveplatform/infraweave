@@ -12,7 +12,10 @@
 // Transactions, compilation, store access, space and authorization lookups and
 // event appends go through ports supplied by assembly. No clients or background
 // tasks are started here. A space guard enqueues reconciliation in the access
-// update's transaction. Run evaluation and policy samples belong to later tickets.
+// update's transaction. Evaluation selects immutable effective versions, lazily
+// builds typed inputs, combines native OPA decisions and appends safe outbox
+// metadata in the caller's transaction. Runs owns receipt/flag persistence;
+// sealed sample storage and delivery belong to their owning later phases.
 //
 // # Dependencies
 //
