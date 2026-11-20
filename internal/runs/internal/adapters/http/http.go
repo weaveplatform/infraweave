@@ -404,7 +404,7 @@ func runOf(v read.View) api.Run {
 		History:              history,
 		Id:                   r.ID.String(),
 		IsDependedOnBy:       []api.RunDependency{},
-		PlanPoliciesOutcomes: []api.PlanPoliciesOutcome{},
+		PlanPoliciesOutcomes: planOutcomesOf(v.PlanOutcomes),
 		PluginLogs:           []api.PluginLogsResponse{},
 		PolicyReceipts:       receiptsOf(v.PolicyReceipts),
 		Flags:                &flags,

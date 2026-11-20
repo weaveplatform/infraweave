@@ -172,6 +172,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	runs := runsassembly.New(runsassembly.Deps{
 		PolicyIdentities: policies.Identities(),
 		PolicyEvaluator:  policies.Evaluator(),
+		PolicySelection:  policies.Selection(),
 		PolicyInputs:     policies.RunInputBuilder(),
 		ReviewMetadata:   access.ReviewMetadata(),
 		PolicyStacks:     stacks.PolicySnapshots(),

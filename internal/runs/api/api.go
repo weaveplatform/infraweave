@@ -166,13 +166,21 @@ const (
 //
 //nolint:tagliatelle // notification policy input names policy_receipts
 type Updated struct {
-	State          kernel.RunState        `json:"state"`
-	Username       *string                `json:"username"`
-	Note           *string                `json:"note"`
-	Timer          Timer                  `json:"timer,omitempty"`
-	Run            UpdatedRun             `json:"run"`
-	Stack          UpdatedStack           `json:"stack"`
-	PolicyReceipts []PolicyReceiptSummary `json:"policy_receipts"`
+	State              kernel.RunState        `json:"state"`
+	Username           *string                `json:"username"`
+	Note               *string                `json:"note"`
+	Timer              Timer                  `json:"timer,omitempty"`
+	Run                UpdatedRun             `json:"run"`
+	Stack              UpdatedStack           `json:"stack"`
+	PolicyReceipts     []PolicyReceiptSummary `json:"policy_receipts"`
+	PlanPolicyDecision *PlanPolicyDecision    `json:"plan_policy_decision"`
+}
+
+// PlanPolicyDecision contains committed public plan messages for the current
+// planning version. A newer planning entry clears the earlier decision.
+type PlanPolicyDecision struct {
+	Deny []string `json:"deny"`
+	Warn []string `json:"warn"`
 }
 
 // PolicyReceiptSummary is the notification contract's committed evidence. It
@@ -248,6 +256,14 @@ var UpdatedSchema = []byte(`{
 		"note": {"type": ["string", "null"]},
 		"timer": {"enum": ["pickup_proposed", "pickup_blocking", "unconfirmed", "confirmed",
 			"max_age"]},
+        "plan_policy_decision": {
+            "type": ["object", "null"],
+            "required": ["deny", "warn"],
+            "properties": {
+                "deny": {"type":"array", "items":{"type":"string"}},
+                "warn": {"type":"array", "items":{"type":"string"}}
+            }, "additionalProperties": false
+        },
 		"policy_receipts": {
 			"type": "array",
 			"items": {

@@ -257,7 +257,8 @@ func TestUnitTerraformSplitCoverage(t *testing.T) {
 				t.Errorf("%s: %s runs in both %s and %s", scenario.Uri, scenario.Name, previous, name)
 			}
 			union[id] = name
-			if name == "terraform-plans" && !slices.Contains(pickleTags(scenario), "@plan-sanitization") {
+			tags := pickleTags(scenario)
+			if name == "terraform-plans" && !slices.Contains(tags, "@plan-sanitization") && !slices.Contains(tags, "@policy-plan-worker") {
 				t.Errorf("%s: %s is outside the plan artifact workload", scenario.Uri, scenario.Name)
 			}
 		}

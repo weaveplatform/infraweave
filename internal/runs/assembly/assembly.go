@@ -28,6 +28,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
@@ -120,6 +121,7 @@ type Objects interface {
 type Deps struct {
 	PolicyIdentities policiesapi.PolicyIdentities
 	PolicyEvaluator  policiesapi.Evaluator
+	PolicySelection  policiesapi.Selection
 	PolicyInputs     policiesapi.RunInputBuilder
 	ReviewMetadata   accessapi.ReviewMetadataReader
 	PolicyStacks     stacksapi.PolicySnapshots
@@ -178,10 +180,12 @@ func New(d Deps) *Domain {
 		})
 	}
 	lc := lifecycle.New(lifecycle.Deps{
-		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store,
+		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store, Plans: store,
 		Approvals: approvals,
 	})
-	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store})
+	views := read.New(
+		read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store, Plans: store},
+	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
 	return &Domain{
 		store:     store,
@@ -197,7 +201,26 @@ func New(d Deps) *Domain {
 			UnknownKeys: d.RuntimeSettings.RuntimeConfig.UnknownKeys,
 		}),
 		reports: report.New(report.Deps{
-			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks, Spaces: d.Spaces,
+			Policies:     d.PolicyEvaluator,
+			Selection:    d.PolicySelection,
+			Inputs:       d.PolicyInputs,
+			PolicyStore:  store,
+			PolicyStacks: d.PolicyStacks,
+			Now:          d.Now,
+			PolicyMetadata: policyinput.Metadata{
+				Store:      store,
+				Objects:    d.Objects,
+				Pools:      d.PolicyPools,
+				Roles:      d.PolicyRoles,
+				SpaceFacts: d.PolicySpaces,
+				Contexts:   d.PolicyContexts,
+			},
+			DB:        d.DB,
+			Store:     store,
+			Objects:   d.Objects,
+			Lifecycle: lc,
+			Stacks:    d.Stacks,
+			Spaces:    d.Spaces,
 		}),
 		logs: logs.New(logs.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Stacks: d.Stacks,

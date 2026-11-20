@@ -13,11 +13,14 @@
 //
 // # Effects
 //
-// Read joins the caller's transaction and locks the current run. Conversion is
-// pure. No function evaluates a gate, changes state or copies flag ownership.
+// Read joins the caller's transaction and locks the current run. Metadata reads
+// account-owned stack, role, context, space and pool facts, and opens recorded
+// sealed structural artifacts. Conversion is pure. No function evaluates a gate,
+// changes state or copies flag ownership.
 //
 // # Dependencies
 //
 // The kernel, transaction platform, IaC structural types, runs lifecycle and
-// evidence contracts, and public policies/stacks APIs.
+// evidence contracts, and public access, configuration, policy, stack and worker
+// APIs. The objects port supplies decrypted recorded artifacts.
 package policyinput

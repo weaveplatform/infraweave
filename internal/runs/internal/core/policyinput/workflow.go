@@ -1,4 +1,4 @@
-package approval
+package policyinput
 
 import (
 	"encoding/json"
