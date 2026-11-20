@@ -34,7 +34,11 @@ var (
 // NewULID returns a ULID for the current millisecond, greater than every
 // ULID this process generated before it in the same millisecond.
 func NewULID() ULID {
-	return newULIDAt(time.Now())
+	return newULID(time.Now)
+}
+
+func newULID(now func() time.Time) ULID {
+	return newULIDAt(now())
 }
 
 func newULIDAt(t time.Time) ULID {
