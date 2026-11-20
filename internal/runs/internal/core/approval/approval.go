@@ -109,11 +109,11 @@ func (s *Service) input(ctx context.Context, run lifecycle.Run) (json.RawMessage
 	metadata := policyinput.Metadata{Store: s.d.Store, Objects: s.d.Objects, Pools: s.d.Pools, Roles: s.d.Roles, SpaceFacts: s.d.SpaceFacts, Contexts: s.d.Contexts}
 	st, err := metadata.Stack(ctx, run, stack)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("runs: build approval stack facts: %w", err)
 	}
 	changeFacts, err := metadata.Changes(ctx, run, stack.Settings.Vendor)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("runs: build approval change facts: %w", err)
 	}
 	return s.d.Inputs.BuildRunInput(ctx, policyapi.RunInputFacts{ //nolint:wrapcheck // typed builder owns fact validation
 		Account: run.Account, Type: policyapi.Approval, At: s.d.Now().UTC(),

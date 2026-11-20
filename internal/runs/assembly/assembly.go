@@ -121,6 +121,7 @@ type Objects interface {
 type Deps struct {
 	PolicyIdentities policiesapi.PolicyIdentities
 	PolicyEvaluator  policiesapi.Evaluator
+	PolicySelection  policiesapi.Selection
 	PolicyInputs     policiesapi.RunInputBuilder
 	ReviewMetadata   accessapi.ReviewMetadataReader
 	PolicyStacks     stacksapi.PolicySnapshots
@@ -199,6 +200,7 @@ func New(d Deps) *Domain {
 		}),
 		reports: report.New(report.Deps{
 			Policies:     d.PolicyEvaluator,
+			Selection:    d.PolicySelection,
 			Inputs:       d.PolicyInputs,
 			PolicyStore:  store,
 			PolicyStacks: d.PolicyStacks,

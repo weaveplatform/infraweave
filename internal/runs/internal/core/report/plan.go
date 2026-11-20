@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -87,4 +90,45 @@ func (s *Service) planInput(ctx context.Context, run lifecycle.Run) (json.RawMes
 		facts.PreviousRun = knownPlan(policyinput.Facts(*previous, previous.Environment, policyapi.Fact[[]policyapi.ChangeFacts]{}))
 	}
 	return s.d.Inputs.BuildRunInput(ctx, facts) //nolint:wrapcheck // typed builder owns document validation
+}
+
+// planTarget preserves the policy-free state table except for an actual deny
+// or warning. Approval presence is selected without evaluating it in PLANNING;
+// the lifecycle evaluates its rules after entering the review's own version.
+func (s *Service) planTarget(
+	ctx context.Context,
+	run lifecycle.Run,
+	delta kernel.PlanDelta,
+	stack stacksapi.Settings,
+	note string,
+	result policyapi.Evaluation,
+) (kernel.RunState, string, error) {
+	if result.Outcome == policyapi.Deny {
+		return kernel.RunStateFailed, "denied by plan policy", nil
+	}
+	next := Decision(run.Type, delta, stack)
+	if result.Plan == nil || len(result.Plan.Warn) == 0 {
+		return next, note, nil
+	}
+	if note == "" {
+		note = strings.Join(result.Plan.Warn, "\n")
+	}
+	switch {
+	case run.Type == kernel.RunTypeTracked && delta.Changes():
+		next = kernel.RunStateUnconfirmed
+	case run.Type == kernel.RunTypeProposed:
+		if s.d.Selection == nil {
+			return "", "", kernel.ErrUnavailable
+		}
+		found, err := s.d.Selection.HasPolicies(ctx, policyapi.SelectionRequest{
+			Account: run.Account, Type: policyapi.Approval, Target: policyapi.Target{Kind: policyapi.StackTarget, ID: run.Stack},
+		})
+		if err != nil {
+			return "", "", fmt.Errorf("runs: select approval policies for proposed warning: %w", err)
+		}
+		if found {
+			next = kernel.RunStatePendingReview
+		}
+	}
+	return next, note, nil
 }

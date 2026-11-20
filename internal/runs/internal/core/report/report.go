@@ -143,6 +143,7 @@ type Owner struct {
 // lifecycle, and the stacks the plan decision reads.
 type Deps struct {
 	Policies       policyapi.Evaluator
+	Selection      policyapi.Selection
 	Inputs         policyapi.RunInputBuilder
 	PolicyStore    policyinput.Store
 	PolicyStacks   stacksapi.PolicySnapshots
@@ -371,16 +372,16 @@ func (s *Service) decide(ctx context.Context, run lifecycle.Run, r workersapi.Re
 	if err != nil {
 		return workersapi.Step{}, err
 	}
-	to, note := Decision(run.Type, *r.Delta, st), r.Details
-	if result.Outcome == policyapi.Deny {
-		to, note = kernel.RunStateFailed, "denied by plan policy"
+	to, note, err := s.planTarget(ctx, run, *r.Delta, st, r.Details, result)
+	if err != nil {
+		return workersapi.Step{}, err
 	}
 	moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
 		Account: run.Account, Run: run.ID, Version: run.Version, To: to, Driver: machine.DriverDecision,
 		Note: note, Receipts: result.Receipts,
 	})
 	if err != nil {
-		return workersapi.Step{}, err
+		return workersapi.Step{}, fmt.Errorf("runs: commit plan decision: %w", err)
 	}
 	return step(moved), nil
 }
