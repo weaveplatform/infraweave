@@ -33,7 +33,8 @@ func Approval(receipts []policyapi.Receipt) policyapi.Evaluation {
 		reject = reject || len(rejectNotes) > 0
 		r.Outcome = policyapi.Undecided
 		// A conflicting individual program is undecided. Resolved rejections
-		// then defeat approvals from every other program (report 09 §3.3).
+		// then defeat approvals from every other program.
+		// ref: report 09 §3.3
 		if approve && !reject {
 			r.Outcome = policyapi.Approve
 		}
