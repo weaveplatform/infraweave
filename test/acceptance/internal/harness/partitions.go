@@ -31,11 +31,15 @@ var Labs = []Partition{
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
 // placed: the first partition that lists one of its tags takes it, so a
-// scenario with @terraform goes to terraform even when it needs a VCS;
-// other run scenarios go to runs. accept-core also takes every untagged scenario.
+// tagged plan-artifact scenarios precede other @terraform work even when they
+// need a VCS. Other run scenarios go to runs; core takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
+	{
+		Name: "terraform-plans",
+		Tags: []string{"@terraform-plans"},
+	},
 	{
 		Name: "terraform",
 		Tags: []string{"@terraform"},

@@ -1,4 +1,4 @@
-@plan-sanitization @postgres @objectstore @vcs @docker
+@terraform-plans @plan-sanitization @postgres @objectstore @vcs @docker
 Feature: Worker plan sanitization
   The actual runner transforms only the server-readable JSON copy before
   sealing it. The tests open recorded objects with the server's artifact key,

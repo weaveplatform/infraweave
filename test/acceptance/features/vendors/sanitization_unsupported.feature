@@ -1,4 +1,4 @@
-@plan-sanitization @postgres @objectstore @vcs @docker @terraform
+@terraform-plans @plan-sanitization @postgres @objectstore @vcs @docker @terraform
 Feature: Unsupported full-plan value families fail closed before upload
   These authored documents follow released tool field shapes and are injected
   through a custom show command into the actual worker upload path. They are

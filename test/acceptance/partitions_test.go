@@ -83,6 +83,7 @@ func TestUnitPlace(t *testing.T) {
 		want string
 	}{
 		{nil, "core"},
+		{[]string{"@terraform-plans", "@plan-sanitization", "@terraform", "@docker"}, "terraform-plans"},
 		{[]string{"@plan-sanitization", "@postgres"}, "core"},
 		{[]string{"@policy-check", "@postgres"}, "core"},
 		{[]string{"@plan-sanitization", "@terraform", "@docker"}, "terraform"},
@@ -122,15 +123,16 @@ func TestUnitPlace(t *testing.T) {
 }
 
 func TestUnitTagExpression(t *testing.T) {
-	runPrefix := "~@vcs-lab && ~@terraform && "
+	runPrefix := "~@vcs-lab && ~@terraform-plans && ~@terraform && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	for name, want := range map[string]string{
-		"":             "~@vcs-lab",
-		"vcs-lab":      "@vcs-lab",
-		"terraform":    "~@vcs-lab && @terraform",
-		"runs":         strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
-		"integrations": strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
-		"core":         integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"":                "~@vcs-lab",
+		"vcs-lab":         "@vcs-lab",
+		"terraform-plans": "~@vcs-lab && @terraform-plans",
+		"terraform":       "~@vcs-lab && ~@terraform-plans && @terraform",
+		"runs":            strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
+		"integrations":    strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
+		"core":            integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	} {
 		got, err := harness.TagExpression(name)
 		if err != nil || got != want {

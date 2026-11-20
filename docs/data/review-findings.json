@@ -8056,7 +8056,7 @@
           "file": "docs/research/decisions/0016-testing-and-acceptance.md",
           "present": [
             "an `infraweave flows-agent` subprocess that runs it in Docker",
-            "`accept-terraform` | `ubuntu-latest` | `@terraform`",
+            "`accept-terraform` | `ubuntu-latest` | remaining `@terraform`",
             "`@docker`, `@tofu`, `@terragrunt`, `@flows-agent`"
           ],
           "absent": [
@@ -8085,7 +8085,7 @@
         {
           "file": "docs/research/decisions/0016-testing-and-acceptance.md",
           "present": [
-            "A scenario's partition is the first of `accept-terraform`, `accept-runs`, `accept-integrations` and `accept-core` that lists one of its tags"
+            "A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform`, `accept-runs`, `accept-integrations` and `accept-core` that lists one of its tags"
           ]
         }
       ]
