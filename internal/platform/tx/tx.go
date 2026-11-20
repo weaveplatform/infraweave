@@ -67,6 +67,8 @@ type ctxKey struct{}
 // NoRetry instead attempts fn once; callers that perform a bounded external
 // effect under a database fence must recover that effect independently if the
 // transaction fails.
+// A panic or runtime.Goexit rolls back without changing its runtime behavior;
+// neither runs the transaction's after-commit callbacks.
 //
 // Called with a context that already carries a transaction, Do runs fn in
 // that transaction, whatever opts say: the outermost Do owns the commit and
@@ -111,13 +113,11 @@ func once(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(context.
 	}
 	u = &unit{tx: t}
 	defer func() {
-		if p := recover(); p != nil {
-			_ = t.Rollback(context.WithoutCancel(ctx))
-			panic(p)
-		}
+		// Goexit runs defers without a panic or return. Unconditional cleanup
+		// also covers that exit; rollback after commit safely returns ErrTxClosed.
+		_ = t.Rollback(context.WithoutCancel(ctx))
 	}()
 	if err := fn(context.WithValue(ctx, ctxKey{}, u)); err != nil {
-		_ = t.Rollback(context.WithoutCancel(ctx))
 		return nil, err
 	}
 	if err := t.Commit(ctx); err != nil {
