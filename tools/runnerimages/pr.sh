@@ -14,7 +14,13 @@ git add -- "$@"
 if [ -n "$expected" ]; then
   git fetch --no-tags origin "refs/heads/$branch"
   if git diff --cached --quiet FETCH_HEAD -- "$@"; then
-    echo 'The pending PR already has these exact updates; no new commit or CI restart.'
+    open_pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
+    if [ -z "$open_pr" ]; then
+      gh pr create --head "$branch" --base main --title "$title" --body-file "$body"
+      echo 'Restored the missing PR from its existing branch without another commit or push.'
+    else
+      echo 'The pending PR already has these exact updates; no new commit or CI restart.'
+    fi
     exit 0
   fi
 fi
@@ -22,6 +28,7 @@ git switch -C "$branch"
 git -c user.name='weaveplatform-release-please[bot]' \
   -c user.email='weaveplatform-release-please[bot]@users.noreply.github.com' commit -m "$title"
 git push origin "HEAD:refs/heads/$branch" "--force-with-lease=refs/heads/$branch:$expected"
-if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')" ]; then
+open_pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
+if [ -z "$open_pr" ]; then
   gh pr create --head "$branch" --base main --title "$title" --body-file "$body"
 fi

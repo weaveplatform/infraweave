@@ -45,10 +45,10 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	prefix := filepath.Base(filepath.Dir(t.TempDir()))
 	var a, b Launchers
 	for _, owner := range []*Launchers{&a, &b} {
+		t.Cleanup(func() { _ = owner.Close(context.WithoutCancel(ctx)) })
 		if err := owner.prepare(ctx, root, t.TempDir()); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = owner.Close(context.WithoutCancel(ctx)) })
 		if err := owner.EnsureRunnerImage(ctx, RunnerTerraform); err != nil {
 			t.Fatal(err)
 		}
@@ -59,6 +59,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	}
 	startForward := func(owner *Launchers, scenario string) {
 		t.Helper()
+		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
 		_, err := owner.RunTool(ctx, ToolRun{
 			Scenario: scenario, Bin: owner.Forward, Dir: t.TempDir(),
 			Args: []string{"127.0.0.1:0", "127.0.0.1:1"},
@@ -66,7 +67,6 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
 	}
 	startForward(&a, prefix+"-a")
 	startForward(&b, prefix+"-b")
@@ -79,7 +79,12 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	if err := a.Close(ctx); err != nil {
 		t.Fatal(err)
 	}
+	if err := a.Close(ctx); err != nil {
+		t.Fatalf("repeated owner cleanup: %v", err)
+	}
 	startForward(&b, prefix+"-b-next")
+	sharedOwnerPlan(t, &b, prefix+"-plan")
+	t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, prefix+"-version") })
 	for _, image := range []string{RunnerImage, previous.Reference, RunnerTerraform, previous.Reference, RunnerOpenTofu} {
 		var err error
 		if image == previous.Reference {
@@ -97,7 +102,6 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, prefix+"-version") })
 		code, stdout, stderr, err := tool.Wait(ctx)
 		if err != nil || code != 0 || !strings.Contains(stdout, "infraweave") {
 			t.Fatalf("%s: code=%d stdout=%q stderr=%q err=%v", image, code, stdout, stderr, err)
@@ -113,5 +117,63 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	last, err := b.cli.ImageInspect(ctx, RunnerImage)
 	if err != nil || last.ID != first.ID {
 		t.Fatalf("shared cached image changed across owners: %v, %v", last.ID, err)
+	}
+	for _, suffix := range []string{"-a", "-b", "-b-next", "-plan", "-version"} {
+		scenario := prefix + suffix
+		if err := b.Remove(ctx, LabelScenario, scenario); err != nil {
+			t.Fatal(err)
+		}
+		list, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+			All: true, Filters: client.Filters{}.Add("label", LabelScenario+"="+scenario),
+		})
+		if err != nil || len(list.Items) != 0 {
+			t.Fatalf("owned container cleanup readback: %v, %v", list.Items, err)
+		}
+	}
+}
+
+func sharedOwnerPlan(t *testing.T, owner *Launchers, scenario string) {
+	t.Helper()
+	ctx := t.Context()
+	d := &deps.Dependencies{}
+	t.Cleanup(func() { _ = d.Close(context.WithoutCancel(ctx)) })
+	bin, err := d.Tool(ctx, deps.Terraform, owner.Arch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "main.tf"),
+		[]byte("resource \"terraform_data\" \"survives\" { input = \"shared-image-survives\" }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
+	for _, args := range [][]string{
+		{"init", "-input=false", "-no-color"},
+		{"plan", "-input=false", "-no-color", "-out=proof.plan"},
+	} {
+		tool, err := owner.RunTool(ctx, ToolRun{
+			Scenario: scenario, Bin: bin, Dir: workspace, Image: RunnerTerraform, Args: args,
+			Env: []string{"HOME=/tmp", "TF_IN_AUTOMATION=1", "CHECKPOINT_DISABLE=1"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		code, stdout, stderr, err := tool.Wait(ctx)
+		if err != nil || code != 0 || args[0] == "plan" && !strings.Contains(stdout, "Plan: 1 to add") {
+			t.Fatalf("post-cleanup Terraform %v: code=%d stdout=%q stderr=%q err=%v", args, code, stdout, stderr, err)
+		}
+		inspect, err := owner.cli.ContainerInspect(ctx, tool.id, client.ContainerInspectOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		readOnly := false
+		for _, mount := range inspect.Container.Mounts {
+			if mount.Destination == toolPath && !mount.RW {
+				readOnly = true
+			}
+		}
+		if !readOnly || inspect.Container.Config.Image != RunnerTerraform {
+			t.Fatal("the post-cleanup plan must use the committed image and read-only tool mount")
+		}
 	}
 }

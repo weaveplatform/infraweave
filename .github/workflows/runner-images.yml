@@ -2,8 +2,7 @@ name: images | Publish runners
 
 on:
   push:
-    # Temporary approved bootstrap; removed after the recipe verification.
-    branches: [main, feat/runner-images]
+    branches: [main]
     paths:
       - 'deploy/images/**'
       - '!deploy/images/images.lock.json'
@@ -23,8 +22,7 @@ jobs:
   catalog:
     if: >-
       github.repository == 'weaveplatform/infraweave' &&
-      (github.ref == 'refs/heads/main' ||
-       (github.ref == 'refs/heads/feat/runner-images' && github.actor == 'ShocOne'))
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.catalog.outputs.matrix }}
@@ -172,11 +170,6 @@ jobs:
           done
       - name: Verify real GHCR promotion, duplicate and failure contracts
         run: python3 tools/runnerimages/accept_promotion.py candidate-lock.json
-      - name: Verify upstream discovery with the repository-scoped credential
-        if: github.ref == 'refs/heads/feat/runner-images'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/runnerimages/refresh.py --verify-upstreams
       - name: Promote main's verified recipes without rebuilding
         if: github.ref == 'refs/heads/main'
         run: python3 deploy/images/imagectl.py promote candidate-lock.json

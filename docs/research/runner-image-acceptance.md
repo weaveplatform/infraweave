@@ -10,10 +10,10 @@ not established through local GHCR-looking tags.
 
 ## Published indexes
 
-[Publication run 44832177530](https://github.com/weaveplatform/infraweave/actions/runs/44832177530)
+[Publication run 44835002762](https://github.com/weaveplatform/infraweave/actions/runs/44835002762)
 passed all five image builds and the final verification job. It built
-source `192a2cd587724331f2437db1c2d9c7ba1131e4e2`, recipe
-`566b202514322a7480d56d5d097b335194e0e5336aceaac3478a48c6a0f4e97d`.
+source `ef54999966467d9c94e1f272cf8df34d48e2c9d3`, recipe
+`a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba`.
 Its exact `runner-images-lock` artifact is committed as
 `deploy/images/images.lock.json`; generated constants are shared with
 the product and harness. The temporary feature-branch publishing trigger
@@ -40,6 +40,17 @@ The real tool contracts included:
 - Shell-free test support: UID/GID 1983 and workspace metadata, and actual
   refusal to execute `/bin/sh`.
 
+[Cached publication and promotion acceptance 44836916159](https://github.com/weaveplatform/infraweave/actions/runs/44836916159)
+skipped every image build and reused these indexes. On actual GHCR preview
+tags, promotion copied the exact indexes, duplicate promotion preserved
+all digests, incomplete platform evidence was refused, and a distinct,
+validly signed index could not replace an existing immutable tag. Failures
+left all five preview tags and consumer pins unchanged. The same workflow's
+repository-scoped credential read all official upstream release histories
+and verified the selected artifact checksum lists. The temporary credential
+preflight and branch publisher were then removed. Main keeps the bounded
+preview-tag promotion acceptance before writing its readable release tags.
+
 ## Native application paths
 
 Local ARM64 Docker acceptance built current-source application and Linux
@@ -53,7 +64,7 @@ Gitea. Local evidence remains under `/private/tmp/infraweave-images-*`.
 | Overlapping independent suites | Those suites ran concurrently. Image-selection suite finished cleanup at 22:49:04 UTC; protocol suite continued and passed at 22:50:01 UTC |
 | `runs/runtime_config.feature:58` | 2 scenarios / 48 steps passed; real launchers downloaded/verified/mounted the requested older Terraform/OpenTofu releases |
 | `workers/pools.feature:272` | 1 scenario / 19 steps passed; public default-image read, custom override, reset to the shared digest pin |
-| `TestAccSharedImageLifecycle` with final lock | Passed in 16.98s; both owners' containers active, A closes, B's next forwarder/tool succeeds, cached fixture survives, retained Terraform digest → current digest → retained digest uses the actual requested container images |
+| `TestAccSharedImageLifecycle` with final lock | Passed in 12.27s; both owners' containers active, A closes twice, B's next forwarder and real Terraform plan succeed with a read-only tool mount; retained Terraform digest → current digest → retained digest uses actual container images; cleanup readback finds no owned containers |
 
 The retained previous Terraform digest in
 `test/fixtures/runner-images/previous.json` comes from successful signed
@@ -79,9 +90,12 @@ PR helper also exited without writing a branch or PR. Transaction tests
 separately cover new stable backports without default downgrade, duplicate
 no-ops, and an upstream failure after an earlier successful lookup leaving
 all inputs/pins unchanged. Required CI runs those tests.
-The real PR helper was also run twice against an existing update branch on
-a real bare Git remote: identical pending inputs caused no commit, branch
-switch, push, PR write or CI restart.
+The real PR helper was also exercised against a real bare Git remote, with
+GitHub PR metadata isolated separately: identical pending inputs caused no
+commit, branch switch, push or CI restart; a pushed commit whose PR creation
+failed was reused when restoring the missing PR. A location-independence
+regression proves that checkout directory names and output-pin/documentation
+changes cannot change recipe identity, while Dockerfile edits do.
 
 Targeted consumer, worker and acceptance unit tests, import-boundary tests,
 configured Go lint and pinned-action workflow validation passed locally.

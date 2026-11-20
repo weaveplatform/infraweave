@@ -22,10 +22,8 @@ def main():
     parser.add_argument("lock")
     args = parser.parse_args()
     ref = os.environ.get("GITHUB_REF")
-    if os.environ.get("GITHUB_REPOSITORY") != "weaveplatform/infraweave" or not (
-        ref == "refs/heads/main" or ref == "refs/heads/feat/runner-images" and os.environ.get("GITHUB_ACTOR") == "ShocOne"
-    ):
-        raise SystemExit("promotion acceptance is restricted to the trusted publisher")
+    if os.environ.get("GITHUB_REPOSITORY") != "weaveplatform/infraweave" or ref != "refs/heads/main":
+        raise SystemExit("promotion acceptance is restricted to the trusted main publisher")
     run_id, attempt = os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]
     if not re.fullmatch(r"[0-9]+", run_id) or not re.fullmatch(r"[0-9]+", attempt):
         raise SystemExit("invalid workflow run identity")

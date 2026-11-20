@@ -50,7 +50,11 @@ Closing one suite retains the shared image cache for the next suite.
 requires real tool execution on both platforms, public visibility and
 repository association, anonymous pulls using an empty Docker auth
 configuration, SPDX SBOMs, SLSA provenance tied to the recipe/source, and
-Sigstore signatures. Main promotes those exact indexes to readable tags
+Sigstore signatures. A bounded real-GHCR promotion canary uses preview tags
+to prove exact copies, duplicate idempotence and immutable-tag/evidence
+refusal before main writes readable release tags. Its preview tags are
+retained as verification evidence alongside the shared indexes. Main promotes
+those exact indexes to readable tags
 without rebuilding them. A successful release opens `deps/runner-image-pins`
 using the org App, so required CI runs before consumers change. A failed
 gate leaves consumer pins unchanged. Full release tags cannot be replaced.

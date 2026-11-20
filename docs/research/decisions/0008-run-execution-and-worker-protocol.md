@@ -1340,8 +1340,9 @@ has failed":
   do. For the shipped vendors, OpenTofu uses
   `ghcr.io/weaveplatform/infraweave-runner-opentofu`; every other vendor,
   Terragrunt included and whatever tool it drives, uses
-  `ghcr.io/weaveplatform/infraweave-runner-terraform`. P20 adds Pulumi's image,
-  and P20b adds Ansible's image and its separate default setting.
+  `ghcr.io/weaveplatform/infraweave-runner-terraform`. Pulumi and Ansible's
+  environments are published alongside them; P20/P20b retain those vendors'
+  backend work and Ansible's separate default setting.
 - **Defaults.** infraweave publishes its own multi-arch images
   (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`,
   `-pulumi`, `-ansible`) that meet the contract, defined under
