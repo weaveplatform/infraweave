@@ -6,27 +6,45 @@ import "encoding/json"
 // PushDecision retains directives for the VCS caller. FailedCheck requests the
 // fail-closed status even though an evaluation error creates no run.
 type PushDecision struct {
-	Track, Propose, Ignore, IgnoreTrack, NoTrigger bool
-	Notify, Fail, AllowFork, FailedCheck           bool
-	Cancel, Messages, ExternalDependencies         []string
-	Lock, Unlock, ModuleVersion, Priority          string
+	Track                bool     `json:"track"`
+	Propose              bool     `json:"propose"`
+	Ignore               bool     `json:"ignore"`
+	IgnoreTrack          bool     `json:"ignoreTrack"`
+	NoTrigger            bool     `json:"noTrigger"`
+	Notify               bool     `json:"notify"`
+	Fail                 bool     `json:"fail"`
+	AllowFork            bool     `json:"allowFork"`
+	FailedCheck          bool     `json:"failedCheck"`
+	Cancel               []string `json:"cancel"`
+	Messages             []string `json:"messages"`
+	ExternalDependencies []string `json:"externalDependencies"`
+	Lock                 string   `json:"lock"`
+	Unlock               string   `json:"unlock"`
+	ModuleVersion        string   `json:"moduleVersion"`
+	Priority             string   `json:"priority"`
 }
 
 // TriggerDecision contains only requested targets; their account, reach and
 // deduplication checks belong to the trigger consumer.
 type TriggerDecision struct {
-	Targets  []string
-	Priority string
+	Targets  []string `json:"targets"`
+	Priority string   `json:"priority"`
 }
 
 // LoginDecision contains grants before the access domain's owner/admin escape
 // hatches. Teams is the last nonempty rewrite in immutable policy-ID order.
 type LoginDecision struct {
-	Allow, Admin, Deny, DenyAdmin     bool
-	Message                           string
-	Messages, Teams                   []string
-	Roles                             map[string][]string
-	SpaceAdmin, SpaceWrite, SpaceRead []string
+	Allow      bool                `json:"allow"`
+	Admin      bool                `json:"admin"`
+	Deny       bool                `json:"deny"`
+	DenyAdmin  bool                `json:"denyAdmin"`
+	Message    string              `json:"message"`
+	Messages   []string            `json:"messages"`
+	Teams      []string            `json:"teams"`
+	Roles      map[string][]string `json:"roles"`
+	SpaceAdmin []string            `json:"spaceAdmin"`
+	SpaceWrite []string            `json:"spaceWrite"`
+	SpaceRead  []string            `json:"spaceRead"`
 }
 
 // NegativeDecision carries deny reasons for TASK, INITIALIZATION and INTENT.

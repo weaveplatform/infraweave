@@ -49,7 +49,7 @@ type EvaluationRequest struct {
 	Type    Type
 	Target  Target
 	Input   json.RawMessage
-	// BuildInput runs once, in the joined transaction, only when policies
+	// BuildInput runs once per transaction attempt, only when policies
 	// apply. It is mutually exclusive with Input; policy-free workflows do
 	// not need to materialize facts required only by policy evaluation.
 	BuildInput func(context.Context) (json.RawMessage, error)

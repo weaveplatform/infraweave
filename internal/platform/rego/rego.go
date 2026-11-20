@@ -79,6 +79,10 @@ func New(settings Settings) (*Engine, error) {
 	return &Engine{settings: settings, cache: processQueries, slots: processSlots, capabilities: capabilities}, nil
 }
 
+// InputLimit lets typed input adapters enforce the configured byte budget
+// before allocating their own decoded document.
+func (e *Engine) InputLimit() int64 { return e.settings.MaxInputBytes }
+
 func (e *Engine) validate(p Policy) error {
 	if rules(p.Type) == nil {
 		return fmt.Errorf("%w: unknown type %q", ErrPolicy, p.Type)

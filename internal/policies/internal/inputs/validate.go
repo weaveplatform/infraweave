@@ -21,7 +21,12 @@ var validators = sync.OnceValues(compileInputs)
 // Validate checks the same required fields, unions and open vendor objects the
 // server publishes. JSON numbers retain their precision, including timestamps.
 func Validate(kind string, raw json.RawMessage) error {
-	if len(raw) > MaxDocumentBytes {
+	return ValidateBounded(kind, raw, MaxDocumentBytes)
+}
+
+// ValidateBounded applies an evaluator's configured budget before parsing.
+func ValidateBounded(kind string, raw json.RawMessage, limit int64) error {
+	if limit <= 0 || int64(len(raw)) > limit {
 		return fmt.Errorf("%w: document exceeds byte limit", ErrInput)
 	}
 	schemas, err := validators()

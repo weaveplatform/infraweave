@@ -602,8 +602,8 @@ restore a lost match. Explicit relations still apply without a label match.
 No policy row lock is taken after a caller's stack/run locks; the selected body,
 engine and version are the evaluation snapshot.
 
-The input builder runs once inside the joined transaction and only when policies
-apply. Validate against the published typed contract before OPA decodes each
+The input builder runs once per attempt inside the joined transaction, only when
+policies apply. Validate against the published typed contract before OPA decodes each
 program's own input; invalid facts fail closed, while operational builder/store
 failures roll back. An empty set returns NO_POLICIES and writes no evidence.
 Module and Intent execution targets remain explicitly unavailable to P17/P25.

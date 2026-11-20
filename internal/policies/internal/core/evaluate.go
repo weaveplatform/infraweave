@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -43,8 +44,16 @@ func (s *Service) Evaluate(ctx context.Context, req policyapi.EvaluationRequest)
 				inputFailure = &policyapi.Failure{Code: "INPUT", Message: "Policy input facts are unavailable or invalid."}
 			}
 		}
-		if inputFailure == nil && inputs.Validate(string(req.Type), input) != nil {
-			inputFailure = &policyapi.Failure{Code: "INPUT", Message: "Policy input does not match its typed contract."}
+		limit := int64(inputs.MaxDocumentBytes)
+		if s.deps.Runtime != nil {
+			limit = s.deps.Runtime.InputLimit()
+		}
+		if inputFailure == nil {
+			if int64(len(input)) > limit {
+				inputFailure = &policyapi.Failure{Code: "LIMIT", Message: "Policy input exceeds its configured byte limit."}
+			} else if inputs.ValidateBounded(string(req.Type), input, limit) != nil {
+				inputFailure = &policyapi.Failure{Code: "INPUT", Message: "Policy input does not match its typed contract."}
+			}
 		}
 		if inputFailure == nil {
 			input = bytes.Clone(input)
@@ -81,7 +90,7 @@ func (s *Service) Evaluate(ctx context.Context, req policyapi.EvaluationRequest)
 				out.Samples = append(
 					out.Samples,
 					policyapi.SampleRequest{
-						Receipt:        receipt,
+						Receipt:        copyReceipt(receipt),
 						Body:           rows[i].Body,
 						Input:          bytes.Clone(documents[i]),
 						Print:          results[i].Result.Print,
@@ -108,6 +117,17 @@ func (s *Service) Evaluate(ctx context.Context, req policyapi.EvaluationRequest)
 		return policyapi.Evaluation{}, fmt.Errorf("policies: evaluate: %w", err)
 	}
 	return out, nil
+}
+
+func copyReceipt(r policyapi.Receipt) policyapi.Receipt {
+	r.Decision = bytes.Clone(r.Decision)
+	r.Flags = slices.Clone(r.Flags)
+	r.ResetFlags = slices.Clone(r.ResetFlags)
+	if r.Failure != nil {
+		failure := *r.Failure
+		r.Failure = &failure
+	}
+	return r
 }
 
 func checkEvaluation(req policyapi.EvaluationRequest) error {
