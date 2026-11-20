@@ -55,6 +55,12 @@ without rebuilding them. A successful release opens `deps/runner-image-pins`
 using the org App, so required CI runs before consumers change. A failed
 gate leaves consumer pins unchanged. Full release tags cannot be replaced.
 
+For a transient verification, promotion or pin-PR failure, rerun the failed
+jobs of the original publication run. Successful build jobs' metadata is
+retained, so the retry uses the same tested digests and cannot replace a
+partially promoted immutable tag with a rebuilt image. A changed recipe
+needs a new revision; wait for the preceding publication/pin PR to finish.
+
 Verify a released index with the main workflow identity:
 
 ```sh
@@ -88,6 +94,8 @@ Published output records and digest pins are distinct from build inputs.
 The pin PR cannot trigger a recipe rebuild loop. The App's input and pin
 PRs use the same required quality gate and trusted-author auto-merge rules
 as dependency updates. No mutable alias is used by the project.
+An identical update already present in an open App PR makes no new commit,
+push or CI restart.
 
 To roll back, restore a retained `images.lock.json` and run
 `python3 deploy/images/imagectl.py generate` in a reviewed PR. Warm hosts

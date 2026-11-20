@@ -10,8 +10,15 @@ if git diff --quiet -- "$@" && [ -z "$(git ls-files --others --exclude-standard 
   exit 0
 fi
 expected=$(git ls-remote origin "refs/heads/$branch" | awk '{print $1}')
-git switch -C "$branch"
 git add -- "$@"
+if [ -n "$expected" ]; then
+  git fetch --no-tags origin "refs/heads/$branch"
+  if git diff --cached --quiet FETCH_HEAD -- "$@"; then
+    echo 'The pending PR already has these exact updates; no new commit or CI restart.'
+    exit 0
+  fi
+fi
+git switch -C "$branch"
 git -c user.name='weaveplatform-release-please[bot]' \
   -c user.email='weaveplatform-release-please[bot]@users.noreply.github.com' commit -m "$title"
 git push origin "HEAD:refs/heads/$branch" "--force-with-lease=refs/heads/$branch:$expected"

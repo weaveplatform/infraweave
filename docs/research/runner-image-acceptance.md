@@ -79,6 +79,9 @@ PR helper also exited without writing a branch or PR. Transaction tests
 separately cover new stable backports without default downgrade, duplicate
 no-ops, and an upstream failure after an earlier successful lookup leaving
 all inputs/pins unchanged. Required CI runs those tests.
+The real PR helper was also run twice against an existing update branch on
+a real bare Git remote: identical pending inputs caused no commit, branch
+switch, push, PR write or CI restart.
 
 Targeted consumer, worker and acceptance unit tests, import-boundary tests,
 configured Go lint and pinned-action workflow validation passed locally.
