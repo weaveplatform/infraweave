@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/650
+replayWith: policy-approval-rejections
 observed:
   "/exchanges/7/response/data/stack/run/state": "UNCONFIRMED"
   "/exchanges/8/response/data/runReview/state": "UNCONFIRMED"

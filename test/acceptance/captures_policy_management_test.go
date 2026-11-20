@@ -22,7 +22,8 @@ func TestUnitStatefulCaptureReplayers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCaptureReplayers(all, statefulCaptureReplayers); err != nil {
+	replayers, _ := captureReplayRegistry(t)
+	if err := validateCaptureReplayers(all, replayers); err != nil {
 		t.Fatal(err)
 	}
 }

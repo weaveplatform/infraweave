@@ -492,7 +492,8 @@
         "lowestTier": "Free",
         "phase": "P27",
         "also": "P2c (`messageQueueStats`), P13 (`policyRuntime`)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "P13 serves policyRuntime on the shared API listener with account authentication and the policies feature; it reports the linked OPA version. The P13 delivery audit records actual success/403/failure evidence and computed partial state. Other Infrastructure operations retain P2c/P27 ownership."
       }
     },
     {
@@ -680,7 +681,7 @@
         "phase": "P13",
         "also": "P13b, P25b (Intent project attachments)",
         "state": "partial",
-        "notes": "POL-05 serves persisted policy CRUD and merge patch, account and inherited-space searches, and bounded save-time compilation. POL-06 adds explicit/automatic stack attachments, inherited candidates, updated-order target previews and readable stack projections. Evaluation, sampling, notification routing and Intent integration remain with their implementation phases."
+        "notes": "POL-05/06 serve persisted policy CRUD and merge patch, account and inherited-space searches, explicit/automatic stack attachments and readable projections. P13 also serves the Rego compiler/runtime/typed contract, run review and workflow policy evaluation with committed receipts/flags. The P13 delivery audit retains the real-provider and capture gates. Sampling, simulation, catalogue and page APIs remain P13b; notification routing and Intent integration retain their later phases. The complete tag remains partial."
       }
     },
     {

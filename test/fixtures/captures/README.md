@@ -57,7 +57,7 @@ applied. Each group retains its actual request/response sequence and cleanup.
 | C48 | Free-tier creation/attachment differences and actual PLAN/APPROVAL/INITIALIZATION evaluation | Complete type mapping with an entitled-account comparison | #683 executes management/attachment subset; #650/#651/#654 own remaining workflow; #656 audits evidence |
 | C51 | New slug-ID policy successfully resets its own flag; historical receipt remains | Legacy internal-ID eligibility/migration and ULID-ID comparison | #649 |
 | C56 | Unix seconds for create/update; createdAt remains fixed | None | #645 |
-| C291 | Mixed-policy rejection fails UNCONFIRMED and PENDING_REVIEW with the exact note | None | #650 |
+| C291 | Mixed-policy rejection fails UNCONFIRMED and PENDING_REVIEW with the exact note | None | `policy-approval-rejections`: captured sources, actual workers, state-fenced REST rejection, latest mixed receipts and public cleanup |
 
 C56 and C291 resolve their register questions. The partial cases remain open;
 their fixtures verify the evidence or refusal. The maintainer separately accepted
