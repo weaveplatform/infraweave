@@ -24,9 +24,9 @@ type Attachment struct {
 	CreatedAt         time.Time
 }
 
-func attachable(kind rego.Type) bool {
-	return kind != rego.Login && kind != rego.Notification && kind != rego.Intent && kind != rego.Access
-}
+var stackTypes = []rego.Type{rego.Approval, rego.Push, rego.Initialization, rego.Plan, rego.Task, rego.Trigger}
+
+func attachable(kind rego.Type) bool { return slices.Contains(stackTypes, kind) }
 
 func (s *Service) action(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) error {
 	ok, err := s.deps.Authz.Authorize(ctx, p, action, space)
@@ -161,13 +161,13 @@ func (s *Service) Attach(ctx context.Context, p kernel.Principal, policy, stack 
 		}
 		a, err = s.deps.Store.Attach(ctx, Attachment{Account: p.AccountID, ID: kernel.NewULID(), Policy: row.ID, Stack: st.ID, CreatedAt: s.deps.Now()})
 		if err != nil {
-			return err
-		} //nolint:wrapcheck // the store names the write
+			return err //nolint:wrapcheck // the store names the write
+		}
 		row.Version++
 		row.UpdatedAt = s.deps.Now()
 		if err := s.deps.Store.Update(ctx, row); err != nil {
-			return err
-		} //nolint:wrapcheck // the store names the write
+			return err //nolint:wrapcheck // the store names the write
+		}
 		return s.changed(ctx, row, policyapi.ChangeAttached)
 	})
 	return a, st, err //nolint:wrapcheck // each transaction step names its failure
@@ -253,13 +253,13 @@ func (s *Service) Detach(ctx context.Context, p kernel.Principal, id string) (At
 			return err
 		}
 		if err := s.deps.Store.Detach(ctx, p.AccountID, a.ID); err != nil {
-			return err
-		} //nolint:wrapcheck // the store names the write
+			return err //nolint:wrapcheck // the store names the write
+		}
 		row.Version++
 		row.UpdatedAt = s.deps.Now()
 		if err := s.deps.Store.Update(ctx, row); err != nil {
-			return err
-		} //nolint:wrapcheck // the store names the write
+			return err //nolint:wrapcheck // the store names the write
+		}
 		return s.changed(ctx, row, policyapi.ChangeDetached)
 	})
 	return a, st, err //nolint:wrapcheck // each transaction step names its failure
@@ -279,8 +279,8 @@ func (s *Service) Details(ctx context.Context, p kernel.Principal, rows ...Polic
 	}
 	all, err := s.deps.Store.Attachments(ctx, p.AccountID, ids, false)
 	if err != nil {
-		return out, err
-	} //nolint:wrapcheck // the store names the read
+		return out, err //nolint:wrapcheck // the store names the read
+	}
 	var stackIDs []kernel.ULID
 	for _, as := range all {
 		for _, a := range as {
@@ -341,8 +341,8 @@ func (s *Service) AttachedPolicies(ctx context.Context, p kernel.Principal, stac
 	out := map[kernel.ULID][]stacksapi.AttachedPolicy{}
 	all, err := s.deps.Store.Attachments(ctx, p.AccountID, stacks, true)
 	if err != nil {
-		return nil, err
-	} //nolint:wrapcheck // the store names the read
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
 	var ids []kernel.ULID
 	for _, as := range all {
 		for _, a := range as {
@@ -354,8 +354,8 @@ func (s *Service) AttachedPolicies(ctx context.Context, p kernel.Principal, stac
 	}
 	rows, err := s.deps.Store.ByIDs(ctx, p.AccountID, ids)
 	if err != nil {
-		return nil, err
-	} //nolint:wrapcheck // the store names the read
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
 	read, err := s.deps.Authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
 		return nil, fmt.Errorf("policies: readable stack projections: %w", err)

@@ -98,3 +98,49 @@ Feature: Effective policy attachments
     When token "h" sends "GET /api/v1/policies/{policy}/attached-stack?id={attachment}" through A
     Then it answers 200
     And the answer's id is '"{attachment}"'
+
+  @op:attachablePoliciesInSpace @op:stackAttachablePolicies @case:success
+  Scenario: Candidate lists exclude policy types that do not attach to stacks
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Account login","type":"LOGIN","body":"package infraweave\n"}' through A
+    And it answers 201
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Notifications","type":"NOTIFICATION","body":"package infraweave\n"}' through B
+    And it answers 201
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Intent guard","type":"INTENT","body":"package infraweave\n"}' through A
+    And it answers 201
+    When token "h" sends "GET /api/v1/attachable-policies-in-space?id=acme" through B
+    Then the policy page IDs are "{policy}"
+    When token "h" sends "GET /api/v1/stacks/infra/attachable-policies" through A
+    Then the policy page IDs are "{policy}"
+
+  @op:attachablePoliciesInSpace @op:stackAttachablePolicies @op:policyAttach @case:success @case:failure
+  Scenario: Candidates and explicit attachment follow the same inheritance boundary
+    Given token "h" sends "POST /api/v1/spaces" with '{"name":"Child","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
+    And it answers 201
+    And the answer's id is the space "child"
+    And token "h" sends "POST /api/v1/spaces" with '{"name":"Boundary","description":"","inheritEntities":false,"parentSpace":"acme"}' through B
+    And it answers 201
+    And the answer's id is the space "boundary"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Child stack","repository":"infra","branch":"main","space":"{child}"},"manageState":false}' through A
+    And it answers 201
+    And the answer's id names "childstack"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Boundary stack","repository":"infra","branch":"main","space":"{boundary}"},"manageState":false}' through B
+    And it answers 201
+    And the answer's id names "boundarystack"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Child guard","type":"PLAN","space":"{child}","body":"package infraweave\n"}' through A
+    And it answers 201
+    And the answer's id names "childpolicy"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Boundary guard","type":"PLAN","space":"{boundary}","body":"package infraweave\n"}' through B
+    And it answers 201
+    And the answer's id names "boundarypolicy"
+    When token "h" sends "GET /api/v1/attachable-policies-in-space?id={child}" through B
+    Then the policy page IDs are "{childpolicy}, {policy}"
+    When token "h" sends "GET /api/v1/stacks/{childstack}/attachable-policies" through A
+    Then the policy page IDs are "{childpolicy}, {policy}"
+    When token "h" sends "GET /api/v1/attachable-policies-in-space?id={boundary}" through A
+    Then the policy page IDs are "{boundarypolicy}"
+    When token "h" sends "GET /api/v1/stacks/{boundarystack}/attachable-policies" through B
+    Then the policy page IDs are "{boundarypolicy}"
+    When token "h" sends "PUT /api/v1/stacks/{boundarystack}/policies/{policy}" through A
+    Then it answers a 422 problem "validation-failed"
+    When token "h" sends "PUT /api/v1/stacks/infra/policies/{childpolicy}" through B
+    Then it answers a 422 problem "validation-failed"

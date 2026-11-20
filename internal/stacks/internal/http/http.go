@@ -404,8 +404,8 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	}
 	policies, err := s.edges.policies.AttachedPolicies(ctx, p, ids)
 	if err != nil {
-		return nil, err
-	} //nolint:wrapcheck // the policies reader names the read
+		return nil, err //nolint:wrapcheck // the policies reader names the read
+	}
 	config, err := s.edges.config.Config(ctx, p.AccountID, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above

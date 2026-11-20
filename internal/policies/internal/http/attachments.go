@@ -5,10 +5,69 @@ import (
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
+
+// AttachablePoliciesInSpace lists readable, inheritable stack policy candidates.
+func (s Server) AttachablePoliciesInSpace(ctx context.Context, req api.AttachablePoliciesInSpaceRequestObject) (api.AttachablePoliciesInSpaceResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.svc.Candidates(ctx, p, req.Params.Id, attachmentPage(req.Params.Cursor, req.Params.Limit))
+	if err != nil {
+		return nil, policyError(err)
+	}
+	out, err := s.candidatePage(ctx, p, res)
+	if err != nil {
+		return nil, err
+	}
+	return api.AttachablePoliciesInSpace200JSONResponse{Body: out}, nil
+}
+
+// StackAttachablePolicies uses the actual stack's current inheritance scope.
+func (s Server) StackAttachablePolicies(ctx context.Context, req api.StackAttachablePoliciesRequestObject) (api.StackAttachablePoliciesResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.svc.StackCandidates(ctx, p, req.StackId, attachmentPage(req.Params.Cursor, req.Params.Limit))
+	if err != nil {
+		return nil, policyError(err)
+	}
+	out, err := s.candidatePage(ctx, p, res)
+	if err != nil {
+		return nil, err
+	}
+	return api.StackAttachablePolicies200JSONResponse{Body: out}, nil
+}
+
+func attachmentPage(cursor *api.Cursor, limit *api.Limit) search.Input {
+	in := search.Input{First: limit}
+	if cursor != nil {
+		in.After = *cursor
+	}
+	return in
+}
+
+func (s Server) candidatePage(ctx context.Context, p kernel.Principal, res search.Result[core.Policy]) (api.PolicyPage, error) {
+	rows := make([]core.Policy, len(res.Edges))
+	for i, edge := range res.Edges {
+		rows[i] = edge.Node
+	}
+	views, err := s.views(ctx, p, rows...)
+	if err != nil {
+		return api.PolicyPage{}, err
+	}
+	out := api.PolicyPage{Items: views}
+	if res.HasNext {
+		out.NextCursor = &res.End
+	}
+	return out, nil
+}
 
 // PolicyAttach makes an effective relation explicit under the stack action.
 func (s Server) PolicyAttach(ctx context.Context, req api.PolicyAttachRequestObject) (api.PolicyAttachResponseObject, error) {
