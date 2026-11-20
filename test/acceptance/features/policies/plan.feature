@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @docker @policy-plan-worker
+@terraform-plans @postgres @objectstore @vcs @docker @policy-plan-worker
 Feature: Plan policies select the next state of real Terraform family workers
   The worker reports its recorded sanitized plan while the run remains PLANNING.
   Denial commits evidence and prevents apply; warnings route to human review.

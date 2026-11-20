@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
@@ -42,6 +43,28 @@ func knownPlan[T any](value T) policyapi.Fact[T] {
 	return policyapi.Fact[T]{Known: true, Value: &value}
 }
 
+// committedPlan recognizes only evidence committed with this exact report
+// transition. A later review or replan cannot authorize an old worker answer.
+func (s *Service) committedPlan(ctx context.Context, run lifecycle.Run) (bool, error) {
+	if s.d.PolicyStore == nil {
+		return false, nil
+	}
+	snapshots, err := s.d.PolicyStore.PolicyEvidence(ctx, run.Account, []kernel.ULID{run.ID})
+	if err != nil {
+		return false, fmt.Errorf("runs: read committed plan report: %w", err)
+	}
+	snapshot, found := snapshots[run.ID]
+	if !found {
+		return false, kernel.ErrUnavailable
+	}
+	for _, receipt := range snapshot.Receipts {
+		if receipt.Type == policyapi.Plan && receipt.StateVersion == run.Version {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *Service) planInput(ctx context.Context, run lifecycle.Run) (json.RawMessage, error) {
 	snapshot, err := policyinput.Read(ctx, s.d.PolicyStore, run.Account, run.ID)
 	if err != nil {
@@ -55,9 +78,15 @@ func (s *Service) planInput(ctx context.Context, run lifecycle.Run) (json.RawMes
 	if err != nil {
 		return nil, fmt.Errorf("runs: build plan policy stack: %w", err)
 	}
-	// Both artifacts must belong to this exact PLANNING version. Selecting the
+	// Required artifacts must belong to this exact PLANNING version. Selecting the
 	// latest plan would let a targeted replan reuse its earlier approved input.
-	for _, name := range []string{PlanDocument, changes.Document} {
+	required := []string{PlanDocument}
+	// Terragrunt uploads its unit plan without a flattened changes.json. Its
+	// structural changes stay unknown until that vendor projection is available.
+	if stack.Settings.Vendor != string(iac.Terragrunt) {
+		required = append(required, changes.Document)
+	}
+	for _, name := range required {
 		found, err := s.d.Store.Recorded(ctx, run, run.Version, workersapi.UploadArtifact, name)
 		if err != nil {
 			return nil, fmt.Errorf("runs: locate current policy artifact: %w", err)

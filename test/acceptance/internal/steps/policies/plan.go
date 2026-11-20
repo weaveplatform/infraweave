@@ -18,6 +18,7 @@ type planMessages struct {
 }
 
 func registerPlan(sc *godog.ScenarioContext, w *harness.World) {
+	registerPlanReports(sc, w)
 	sc.Step(`^the answer's plan policy outcomes are '([^']*)'$`, func(expected string) error {
 		var run api.Run
 		if err := json.Unmarshal(w.Last().Body, &run); err != nil {

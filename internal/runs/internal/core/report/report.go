@@ -255,15 +255,27 @@ func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Repor
 		}
 		return s.reportCurrent(ctx, run, r)
 	case run.Version - 1:
-		if err != nil {
+		if err != nil && !planned(r) {
 			return workersapi.Step{}, err
 		}
-		from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
-		if err != nil {
-			return workersapi.Step{}, err //nolint:wrapcheck // the store names the read
+		from, readErr := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
+		if readErr != nil {
+			return workersapi.Step{}, readErr //nolint:wrapcheck // the store names the read
 		}
 		if planned(r) && from == kernel.RunStatePlanning && decided(run.Type, run.State) {
-			return step(run), nil
+			committed, readErr := s.committedPlan(ctx, run)
+			if readErr != nil {
+				return workersapi.Step{}, readErr
+			}
+			if committed && (run.Delta == nil || *run.Delta != *r.Delta) {
+				return workersapi.Step{}, fmt.Errorf("%w: planning replay delta differs", workersapi.ErrMovedOn)
+			}
+			if committed || err == nil {
+				return step(run), nil
+			}
+		}
+		if err != nil {
+			return workersapi.Step{}, err
 		}
 		if to, err := target(run.Type, from, r); err == nil && to == run.State && to != from {
 			return step(run), nil
