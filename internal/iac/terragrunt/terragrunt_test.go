@@ -42,7 +42,6 @@ func TestUnitContract(t *testing.T) {
 		{
 			Name:     "smart sanitization",
 			Settings: `{"useSmartSanitization": true}`,
-			Refused:  []string{"/useSmartSanitization"},
 		},
 		{
 			Name:     "reusing the saved plan",

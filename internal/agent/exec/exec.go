@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"math"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -567,57 +565,10 @@ func (r *run) terragruntPlan(ctx context.Context) (plan.Plan, *planFailure) {
 	if err != nil {
 		return plan.Plan{}, &planFailure{note: "The units' plans could not be read: " + err.Error()}
 	}
+	if err := r.rootUnitPlan(); err != nil {
+		return plan.Plan{}, &planFailure{note: "The root unit's plan could not be collected: " + err.Error()}
+	}
 	return p, nil
-}
-
-// unitPlanFile is the name of each unit's plan's JSON under the
-// directory a Terragrunt run's plan command names: the unit's path from
-// the project root, then this name.
-//
-// ref: https://docs.terragrunt.com/reference/cli/commands/run/#json-out-dir
-const unitPlanFile = "tfplan.json"
-
-// unitPlans reads each unit's plan's JSON, which a Terragrunt run's plan
-// command wrote under the options' UnitPlans, opened as a root, and
-// answers their delta summed: each count added, and the outputs changing
-// when any unit's do. A plan that does not parse is an error naming its
-// unit, and planning that wrote none is an error too, since every unit
-// Terragrunt planned writes one.
-func (r *run) unitPlans() (plan.Plan, error) {
-	root, err := os.OpenRoot(r.options.UnitPlans)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return plan.Plan{}, errNoUnitPlans
-	case err != nil:
-		return plan.Plan{}, fmt.Errorf("open their directory: %w", err)
-	}
-	defer root.Close()
-	var out plan.Plan
-	units := 0
-	err = fs.WalkDir(root.FS(), ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || d.Name() != unitPlanFile {
-			return err
-		}
-		f, err := root.Open(filepath.FromSlash(p))
-		if err != nil {
-			return err //nolint:wrapcheck // names the path
-		}
-		defer f.Close()
-		u, err := plan.Parse(f)
-		if err != nil {
-			return fmt.Errorf("the unit %s: %w", unitName(path.Dir(p)), err)
-		}
-		units++
-		out.Delta = sum(out.Delta, u.Delta)
-		return nil
-	})
-	switch {
-	case err != nil:
-		return plan.Plan{}, err //nolint:wrapcheck // names the unit or the path
-	case units == 0:
-		return plan.Plan{}, errNoUnitPlans
-	}
-	return out, nil
 }
 
 // errNoUnitPlans is planning that wrote no unit's plan.

@@ -97,6 +97,8 @@ func schemaOf(t reflect.Type, defs map[string]*Schema) (*Schema, error) {
 			{Types: []string{"object"}, AdditionalProperties: ref},
 		}}
 		return ref, nil
+	case reflect.TypeFor[PathStep]():
+		return &Schema{AnyOf: []*Schema{{Types: []string{"string"}}, {Types: []string{"integer"}}}}, nil
 	case reflect.TypeFor[Admin]():
 		return &Schema{AnyOf: []*Schema{{Types: []string{"boolean"}}, {Types: []string{"string"}, Enum: []string{""}}}}, nil
 	case reflect.TypeFor[RoleSet]():

@@ -116,7 +116,8 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	}
 	delete(body, "sealed")
 	want := map[string]any{
-		"notices": []any{"unknown key stacks.infra.befor_plan"}, "refusal": refusal,
+		"planSanitization": "DEFAULT",
+		"notices":          []any{"unknown key stacks.infra.befor_plan"}, "refusal": refusal,
 		"run": map[string]any{
 			"account":        f.store.pool.Account.String(),
 			"id":             run.String(),

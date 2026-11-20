@@ -393,3 +393,19 @@ Feature: Private worker pools
     Then it answers a 404 problem "not-found"
     When token "h" sends "POST /worker/v1/register" with '{"registration":"garbage"}' through A
     Then it answers a 401 problem "unauthenticated"
+
+  @case:denial @plan-sanitization
+  Scenario: A legacy launcher is refused before it can register an unsanitizing worker
+    When token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"{team}","certificateSigningRequest":"{csr}"}' through A
+    Then it answers 201
+    And the answer's id names "pool"
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
+    When the legacy launcher "old" registers without plan sanitization with the key of "csr" and the certificate "cert" through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/registration" as "rule"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}" through A
+    Then the answer's workersCount is '0'
+    When the launcher "new" registers with the key of "csr" and the certificate "cert" through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/worker-pools/{pool}" through B
+    Then the answer's workersCount is '1'

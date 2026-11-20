@@ -20,17 +20,18 @@ type Record struct {
 // Execution holds only execution settings absent from Configuration.
 // Tool versions and Terragrunt's mode live in Configuration alone.
 type Execution struct {
-	Notices                      []string        `json:"notices,omitempty"`
-	Refusal                      *string         `json:"refusal,omitempty"`
-	Vendor                       string          `json:"vendor"`
-	VendorConfig                 json.RawMessage `json:"vendorConfig"`
-	Tool                         *Tool           `json:"tool,omitempty"`
-	TerragruntDownload           bool            `json:"terragruntDownload"`
-	EnableWellKnownSecretMasking bool            `json:"enableWellKnownSecretMasking"`
-	EnableSensitiveOutputUpload  bool            `json:"enableSensitiveOutputUpload"`
-	ManagesState                 bool            `json:"managesState"`
-	ProjectRootSpecified         bool            `json:"projectRootSpecified"`
-	RunnerImageSpecified         bool            `json:"runnerImageSpecified"`
+	Notices                      []string                    `json:"notices,omitempty"`
+	Refusal                      *string                     `json:"refusal,omitempty"`
+	PlanSanitization             workersapi.SanitizationMode `json:"planSanitization,omitempty"`
+	Vendor                       string                      `json:"vendor"`
+	VendorConfig                 json.RawMessage             `json:"vendorConfig"`
+	Tool                         *Tool                       `json:"tool,omitempty"`
+	TerragruntDownload           bool                        `json:"terragruntDownload"`
+	EnableWellKnownSecretMasking bool                        `json:"enableWellKnownSecretMasking"`
+	EnableSensitiveOutputUpload  bool                        `json:"enableSensitiveOutputUpload"`
+	ManagesState                 bool                        `json:"managesState"`
+	ProjectRootSpecified         bool                        `json:"projectRootSpecified"`
+	RunnerImageSpecified         bool                        `json:"runnerImageSpecified"`
 }
 
 // Tool retains the tool's execution flags, without duplicating its release.
@@ -126,8 +127,9 @@ func New(spec workersapi.Spec, managesState bool) (*Record, error) {
 		c.RunnerImage = *spec.RunnerImage
 	}
 	e := Execution{
-		Notices: slices.Clone(spec.Notices),
-		Vendor:  spec.Stack.Vendor, VendorConfig: bytes.Clone(spec.Stack.VendorConfig),
+		Notices:          slices.Clone(spec.Notices),
+		PlanSanitization: spec.PlanSanitization,
+		Vendor:           spec.Stack.Vendor, VendorConfig: bytes.Clone(spec.Stack.VendorConfig),
 		EnableWellKnownSecretMasking: spec.Stack.EnableWellKnownSecretMasking,
 		EnableSensitiveOutputUpload:  spec.Stack.EnableSensitiveOutputUpload,
 		ManagesState:                 managesState,
@@ -197,6 +199,7 @@ func New(spec workersapi.Spec, managesState bool) (*Record, error) {
 func (r *Record) Apply(spec *workersapi.Spec) {
 	c, e := r.Configuration, r.Execution
 	spec.Notices = slices.Clone(e.Notices)
+	spec.PlanSanitization = e.PlanSanitization
 	spec.Refusal = nil
 	if e.Refusal != nil {
 		refusal := *e.Refusal

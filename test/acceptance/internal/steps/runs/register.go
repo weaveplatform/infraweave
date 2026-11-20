@@ -9,6 +9,7 @@ import (
 // Register registers the runs area's steps on sc, sharing the scenario's
 // World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
+	registerSanitization(sc, w)
 	(&runSteps{w: w}).register(sc)
 	(&logSteps{w: w}).register(sc)
 	(&previewSteps{w: w, archives: map[string][]byte{}}).register(sc)

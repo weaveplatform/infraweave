@@ -109,6 +109,27 @@ func (e NextStepAction) Valid() bool {
 	}
 }
 
+// Defines values for PlanSanitization.
+const (
+	DEFAULT PlanSanitization = "DEFAULT"
+	NONE    PlanSanitization = "NONE"
+	SMART   PlanSanitization = "SMART"
+)
+
+// Valid indicates whether the value is a known member of the PlanSanitization enum.
+func (e PlanSanitization) Valid() bool {
+	switch e {
+	case DEFAULT:
+		return true
+	case NONE:
+		return true
+	case SMART:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProblemScope.
 const (
 	Account      ProblemScope = "account"
@@ -377,6 +398,9 @@ type ArtifactRecord struct {
 
 	// Name The upload's name.
 	Name string `json:"name"`
+
+	// PlanSanitization The resolved plan JSON transformation: the explicit opt-out label selects NONE before useSmartSanitization selects SMART, otherwise DEFAULT. RunSpec omission from an older server means DEFAULT. A new server requires this mode as a receipt on each plan.json declaration and recording, and refuses missing, unknown or mismatched receipts. A new runner omits receipts only when the old server omitted RunSpec.planSanitization.
+	PlanSanitization *PlanSanitization `json:"planSanitization,omitempty"`
 }
 
 // ArtifactRecordKind The upload's kind.
@@ -488,6 +512,9 @@ type PlanDelta struct {
 	Resources *int32 `json:"resources,omitempty"`
 }
 
+// PlanSanitization The resolved plan JSON transformation: the explicit opt-out label selects NONE before useSmartSanitization selects SMART, otherwise DEFAULT. RunSpec omission from an older server means DEFAULT. A new server requires this mode as a receipt on each plan.json declaration and recording, and refuses missing, unknown or mismatched receipts. A new runner omits receipts only when the old server omitted RunSpec.planSanitization.
+type PlanSanitization string
+
 // PollRequest The worker's state, which each poll reports.
 type PollRequest struct {
 	// Busy Whether the launcher is executing a run.
@@ -577,7 +604,7 @@ type ProblemFieldErrorReason string
 
 // RegisterRequest A registration, signed with the pool's private key.
 type RegisterRequest struct {
-	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
+	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
 	Registration string `json:"registration"`
 }
 
@@ -633,6 +660,9 @@ type RunSpec struct {
 
 	// Notices Repository runtime configuration warnings, written at the start of INITIALIZING before any hook or command. Absent when empty.
 	Notices *[]string `json:"notices,omitempty"`
+
+	// PlanSanitization The resolved plan JSON transformation: the explicit opt-out label selects NONE before useSmartSanitization selects SMART, otherwise DEFAULT. RunSpec omission from an older server means DEFAULT. A new server requires this mode as a receipt on each plan.json declaration and recording, and refuses missing, unknown or mismatched receipts. A new runner omits receipts only when the old server omitted RunSpec.planSanitization.
+	PlanSanitization *PlanSanitization `json:"planSanitization,omitempty"`
 
 	// Refusal A repository runtime configuration refusal naming its key's path. The runner logs it and fails INITIALIZING before any hook or command, including a task that skips initialization.
 	Refusal *string `json:"refusal,omitempty"`
@@ -919,6 +949,9 @@ type Upload struct {
 	// Name The object's name within the run's state version, never reused there. A log chunk's is its sequence number in decimal, from 0.
 	Name string `json:"name"`
 
+	// PlanSanitization The resolved plan JSON transformation: the explicit opt-out label selects NONE before useSmartSanitization selects SMART, otherwise DEFAULT. RunSpec omission from an older server means DEFAULT. A new server requires this mode as a receipt on each plan.json declaration and recording, and refuses missing, unknown or mismatched receipts. A new runner omits receipts only when the old server omitted RunSpec.planSanitization.
+	PlanSanitization *PlanSanitization `json:"planSanitization,omitempty"`
+
 	// Sha256 The SHA-256 of the object's bytes as uploaded, in hex.
 	Sha256 string `json:"sha256"`
 
@@ -1086,7 +1119,7 @@ type ClientInterface interface {
 
 	// WorkerRegisterWithBody Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1095,7 +1128,7 @@ type ClientInterface interface {
 
 	// WorkerRegister Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1246,7 +1279,7 @@ func (c *Client) WorkerPoll(ctx context.Context, body WorkerPollJSONRequestBody,
 
 // WorkerRegisterWithBody Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1265,7 +1298,7 @@ func (c *Client) WorkerRegisterWithBody(ctx context.Context, contentType string,
 
 // WorkerRegister Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1904,7 +1937,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRegisterWithBodyWithResponse Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -1913,7 +1946,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRegisterWithResponse Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2942,7 +2975,7 @@ func (c *ClientWithResponses) WorkerPollWithResponse(ctx context.Context, body W
 
 // WorkerRegisterWithBodyWithResponse Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -2957,7 +2990,7 @@ func (c *ClientWithResponses) WorkerRegisterWithBodyWithResponse(ctx context.Con
 
 // WorkerRegisterWithResponse Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. A launcher older than the server's previous minor version answers 422 validation-failed, whose detail names the oldest version accepted.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

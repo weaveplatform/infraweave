@@ -37,7 +37,8 @@ import (
 // ref: decision 0008 § "The worker API", § "The run specification and its
 // secrets"
 type workerSteps struct {
-	w *harness.World
+	legacy bool
+	w      *harness.World
 	// certs are the pool certificates by the name their serial is kept
 	// as, each with its pool's ID.
 	certs map[string]poolCert
@@ -65,6 +66,14 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
 		`^the launcher "(\w+)" registers with the key of "(\w+)" and the certificate "(\w+)"(?: as the worker "(\w+)")? through ([AB])$`,
 		w.registerLauncher,
+	)
+	sc.Step(
+		`^the legacy launcher "(\w+)" registers without plan sanitization with the key of "(\w+)" and the certificate "(\w+)" through ([AB])$`,
+		func(ctx context.Context, launcher, key, cert, replica string) error {
+			w.legacy = true
+			defer func() { w.legacy = false }()
+			return w.registerLauncher(ctx, launcher, key, cert, "", replica)
+		},
 	)
 	sc.Step(`^the launcher "(\w+)" sends its registration again through ([AB])$`, w.replay)
 	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
@@ -253,8 +262,11 @@ func (w *workerSteps) registerLauncher(ctx context.Context, launcher, key, cert,
 	}
 	payload := map[string]any{
 		"pool": pc.pool, "iat": time.Now().Unix(), "jti": kernel.NewULID().String(),
-		"version": "1.0.0", "os": "linux", "arch": "amd64",
+		"capabilities": []string{"plan-sanitization-v1"}, "version": "1.0.0", "os": "linux", "arch": "amd64",
 		"metadata": map[string]string{"host": launcher},
+	}
+	if w.legacy {
+		delete(payload, "capabilities")
 	}
 	if named != "" {
 		payload["worker"] = w.w.IDs[named]

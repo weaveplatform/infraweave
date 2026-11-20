@@ -16,7 +16,9 @@ components:
             object: pool, the pool's ID; iat, when it was signed, in Unix
             seconds, within five minutes of the server's clock; jti, a value
             the pool has not used in the last ten minutes; version, the
-            launcher's version; os and arch, the host's, each at most 64
+            launcher's version; capabilities, at most 16 strings of at most 64
+            characters, including plan-sanitization-v1 (otherwise 422 requires a
+            launcher upgrade); os and arch, the host's, each at most 64
             characters; metadata, an object of at most 32 strings describing
             the worker, keys at most 64 characters and values at most 255;
             and worker, the ID of a worker of the pool to resume, which keeps
@@ -171,9 +173,9 @@ paths:
         worker it names. The certificate must chain to the installation's pool
         CA and carry the pool's current serial. A new worker beyond the
         organization's private-workers limit answers 403 limit-reached; a
-        resumed one is not counted again. A launcher older than the server's
-        previous minor version answers 422 validation-failed, whose detail
-        names the oldest version accepted.
+        resumed one is not counted again. Missing the signed plan-sanitization-v1
+        capability or using a version older than the server's previous minor
+        answers 422 validation-failed, naming the required capability or version.
       operationId: workerRegister
       security: []
       tags:

@@ -896,7 +896,7 @@ func TestUnitUploads(t *testing.T) {
 	got, err := w.uploads(t, 2,
 		workersapi.Upload{Kind: workersapi.UploadLogChunk, Name: "0", Size: 10, SHA256: sum(1)},
 		workersapi.Upload{
-			Kind: workersapi.UploadArtifact, Name: "plan.json", Size: 512 << 20,
+			Kind: workersapi.UploadArtifact, Name: "plan.json", PlanSanitization: workersapi.SanitizationDefault, Size: 512 << 20,
 			SHA256: sum(2),
 		},
 		workersapi.Upload{
@@ -1057,7 +1057,7 @@ func TestUnitArtifacts(t *testing.T) {
 	if _, err := workspace(); !errors.Is(err, workersapi.ErrNoWorkspace) {
 		t.Errorf("no workspace: %v", err)
 	}
-	plan := workersapi.Recorded{Kind: workersapi.UploadArtifact, Name: "plan.json"}
+	plan := workersapi.Recorded{Kind: workersapi.UploadArtifact, Name: "plan.json", PlanSanitization: workersapi.SanitizationDefault}
 	ws := workersapi.Recorded{Kind: workersapi.UploadWorkspace, Name: "ws"}
 	if err := record(plan, ws, plan); err != nil {
 		t.Fatal(err)

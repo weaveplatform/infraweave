@@ -4,6 +4,7 @@ package exec_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -132,8 +133,21 @@ func TestUnitExecTerragrunt(t *testing.T) {
 		}
 	}
 	if got := strings.Join(w.w.taken, "\n"); !strings.Contains(got,
-		"artifacts 5: workspace workspace\n") || strings.Contains(got, exec.PlanArtifact) {
+		"artifacts 5: artifact plan.json, workspace workspace\n") || strings.Contains(got, exec.ChangesArtifact) {
 		t.Errorf("taken: %q", w.w.taken)
+	}
+	var envelope struct {
+		Units []struct {
+			Path string          `json:"path"`
+			Plan json.RawMessage `json:"plan"`
+		} `json:"units"`
+	}
+	if err := json.Unmarshal(
+		w.opened(5, exec.PlanArtifact),
+		&envelope,
+	); err != nil || len(envelope.Units) != 2 || envelope.Units[0].Path != "." ||
+		envelope.Units[1].Path != "a/b" {
+		t.Fatalf("selected unit envelope: %+v, %v", envelope, err)
 	}
 	dir := filepath.Join(t.TempDir(), "restored")
 	if err := workspace.Read(bytes.NewReader(w.w.recorded[exec.WorkspaceName]), dir, w.pool,
@@ -147,7 +161,7 @@ func TestUnitExecTerragrunt(t *testing.T) {
 
 // TestUnitExecTerragruntApplies checks that a Terragrunt run's applying
 // runs apply across the units, which plans again, records no outputs and
-// reads none, and that a run with no changes saves nothing while
+// reads none, and that a proposed run saves only its units plan while
 // planning; and that a destroy run destroys across the units, with the
 // mounted tool when the specification downloads it.
 func TestUnitExecTerragruntApplies(t *testing.T) {
@@ -190,7 +204,7 @@ func TestUnitExecTerragruntApplies(t *testing.T) {
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.w.reports) != 3 || strings.Contains(strings.Join(w.w.taken, "\n"), "artifacts") {
+	if len(w.w.reports) != 3 || strings.Contains(strings.Join(w.w.taken, "\n"), "workspace workspace") || len(w.w.recorded[exec.PlanArtifact]) == 0 {
 		t.Errorf("a proposed run: %q, taken %q", w.events(), w.w.taken)
 	}
 }
@@ -327,7 +341,7 @@ func TestUnitExecTerragruntFails(t *testing.T) {
 			},
 			want: []string{
 				"INITIALIZING started 3", "INITIALIZING succeeded 4",
-				"PLANNING failed 5: The units' plans could not be read: openat tfplan.json: ",
+				"PLANNING failed 5: The units' plans could not be read: open unit at the project root: openat tfplan.json: ",
 			},
 		},
 		"no directory of plans": {

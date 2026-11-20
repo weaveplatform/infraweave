@@ -277,6 +277,25 @@ func change(c map[string]any, op *operation) error {
 			return err
 		}
 	}
+	for _, key := range []string{"before_identity", "after_identity"} {
+		if err := field(c, key, nil, op); err != nil {
+			return err
+		}
+	}
+	importing, err := mapping(c["importing"])
+	if err != nil {
+		return err
+	}
+	for _, key := range []string{"id", "identity"} {
+		if err := field(importing, key, nil, op); err != nil {
+			return err
+		}
+	}
+	// Generated HCL is an opaque value blob with no usable sensitivity paths.
+	if generated, exists := c["generated_config"]; exists && op.mode != None && !op.collect {
+		c["generated_config"] = hashTree(generated)
+	}
+
 	return nil
 }
 
@@ -306,6 +325,9 @@ func values(v map[string]any, op *operation) error {
 
 func module(m map[string]any, op *operation) error {
 	if err := objects(m["resources"], func(resource map[string]any) error {
+		if err := field(resource, "identity", nil, op); err != nil {
+			return err
+		}
 		return field(resource, "values", resource["sensitive_values"], op)
 	}); err != nil {
 		return err

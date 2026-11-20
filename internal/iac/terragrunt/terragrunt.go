@@ -87,13 +87,9 @@ func ManagesState(s json.RawMessage, manageState bool) bool {
 }
 
 // later are the switches whose true asks for what infraweave does not run
-// yet, each with the message that refuses it: Terragrunt runs keep no
-// plan for apply, no changes or outputs to sanitize or prefix.
+// yet, each with the message that refuses it: Terragrunt apply replans
+// and keeps no changes or outputs to prefix.
 var later = []struct{ name, message string }{
-	{
-		"useSmartSanitization",
-		"Smart sanitization of Terragrunt runs is not supported yet; useSmartSanitization is false.",
-	},
 	{
 		"skipReplan",
 		"A Terragrunt stack's apply plans again, and reusing the saved plan is not supported yet; " +
@@ -125,6 +121,7 @@ func ValidateSettings(s json.RawMessage) []kernel.FieldError {
 	c.Enum("tool", Tools...)
 	c.Unsupported("tool", ToolManual, "A Terragrunt stack's tool is OPEN_TOFU or TERRAFORM_FOSS; "+
 		"a manually provisioned tool is not supported yet.")
+	c.Bool("useSmartSanitization")
 	c.Bool("useRunAll")
 	c.Bool("useStateManagement")
 	for _, l := range later {

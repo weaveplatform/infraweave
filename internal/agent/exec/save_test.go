@@ -3,6 +3,8 @@ package exec
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -17,14 +19,18 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/iac/sanitize"
+	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
 
 // stalling refuses its first calls of each kind with errs, and every
 // call with always when it is set; it keeps the calls in order.
 type stalling struct {
-	errs   map[string][]error
-	always error
-	calls  []string
+	errs         map[string][]error
+	always       error
+	calls        []string
+	declarations []wire.UploadURLsRequest
+	recordings   []wire.ArtifactsRequest
 }
 
 func (s *stalling) next(call string) error {
@@ -40,6 +46,7 @@ func (s *stalling) next(call string) error {
 }
 
 func (s *stalling) UploadURLs(_ context.Context, _, _ string, in wire.UploadURLsRequest) ([]wire.SignedUpload, error) {
+	s.declarations = append(s.declarations, in)
 	if err := s.next("urls"); err != nil {
 		return nil, err
 	}
@@ -54,7 +61,8 @@ func (s *stalling) PutFile(context.Context, wire.SignedUpload, string) error {
 	return s.next("put")
 }
 
-func (s *stalling) Artifacts(context.Context, string, string, wire.ArtifactsRequest) error {
+func (s *stalling) Artifacts(_ context.Context, _ string, _ string, in wire.ArtifactsRequest) error {
+	s.recordings = append(s.recordings, in)
 	return s.next("artifacts")
 }
 
@@ -64,7 +72,7 @@ func saving(t *testing.T, u Uploads) *run {
 	t.Helper()
 	dir := t.TempDir()
 	planJSON := filepath.Join(dir, "plan.json")
-	if err := os.WriteFile(planJSON, []byte("{}"), 0o600); err != nil {
+	if err := os.WriteFile(planJSON, []byte(`{"format_version":"1.2"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return &run{
@@ -195,5 +203,92 @@ func TestUnitSaveNotes(t *testing.T) {
 				t.Errorf("note %q, want %q", note, c.want)
 			}
 		})
+	}
+}
+
+// Saving transforms only the server-readable copy. Every mode is sealed and
+// leaves the raw plan untouched; malformed input and unknown modes upload none.
+func TestUnitSaveSanitization(t *testing.T) {
+	const raw = `{"format_version":"1.2","variables":{"secret":{"value":"private-642"},"visible":{"value":"plain-642"}},"configuration":{"root_module":{"variables":{"secret":{"sensitive":true}}}}}`
+	for _, mode := range []string{"", "DEFAULT", "SMART", "NONE", "UNKNOWN"} {
+		t.Run(mode, func(t *testing.T) {
+			up := &stalling{}
+			r := saving(t, up)
+			if mode != "" {
+				m := wire.PlanSanitization(mode)
+				r.h.Spec.PlanSanitization = &m
+			}
+			if err := os.WriteFile(r.options.PlanJSON, []byte(raw), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			note := r.save(t.Context(), 5, plan.Plan{})
+			if mode == "UNKNOWN" {
+				if !strings.Contains(note, sanitize.ErrMode.Error()) || len(up.calls) != 0 {
+					t.Fatalf("unknown mode did not fail before upload: %q, %v", note, up.calls)
+				}
+				return
+			}
+			if note != "" {
+				t.Fatal(note)
+			}
+			declared, recorded := slices.Clone(up.declarations[0].Uploads), slices.Clone(up.recordings[0].Artifacts)
+			if len(declared) != 2 || len(recorded) != 2 {
+				t.Fatal("missing uploads")
+			}
+			receipt, recordReceipt := declared[0].PlanSanitization, recorded[0].PlanSanitization
+			if mode == "" {
+				rawDecl, _ := json.Marshal(up.declarations[0])
+				rawRecord, _ := json.Marshal(up.recordings[0])
+				if receipt != nil || recordReceipt != nil || bytes.Contains(rawDecl, []byte("planSanitization")) || bytes.Contains(rawRecord, []byte("planSanitization")) {
+					t.Fatal("old server received a new receipt field")
+				}
+			} else if receipt == nil || recordReceipt == nil || string(*receipt) != mode || string(*recordReceipt) != mode {
+				t.Fatal("mode receipt missing or changed")
+			}
+			if declared[1].PlanSanitization != nil || recorded[1].PlanSanitization != nil {
+				t.Fatal("receipt added to changes document")
+			}
+			stored, err := os.ReadFile(filepath.Join(r.temp, PlanArtifact+".sealed"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Contains(stored, []byte("private-642")) {
+				t.Fatal("unsealed secret")
+			}
+			keys, note := r.objectKeys("PLANNING", 5)
+			if note != "" {
+				t.Fatal(note)
+			}
+			key, err := seal.ArtifactKey(r.h.Secrets.ArtifactKey, keys(PlanArtifact))
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader, err := seal.NewReader(bytes.NewReader(stored), key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plain, err := io.ReadAll(reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !json.Valid(plain) || bytes.Contains(plain, []byte("private-642")) != (mode == "NONE") ||
+				bytes.Contains(plain, []byte("plain-642")) != (mode == "NONE" || mode == "SMART") {
+				t.Fatalf("mode %s has incorrect value preservation", mode)
+			}
+			source, err := os.ReadFile(r.options.PlanJSON)
+			if err != nil || string(source) != raw {
+				t.Fatal("raw plan changed")
+			}
+		})
+	}
+	for _, raw := range []string{`{"format_version":"1.2","variables":{"x":1}}`, `{}`} {
+		up := &stalling{}
+		r := saving(t, up)
+		if err := os.WriteFile(r.options.PlanJSON, []byte(raw), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if note := r.save(t.Context(), 5, plan.Plan{}); !strings.Contains(note, "sanitize plan JSON") || len(up.calls) != 0 {
+			t.Fatalf("malformed document uploaded: %q", note)
+		}
 	}
 }

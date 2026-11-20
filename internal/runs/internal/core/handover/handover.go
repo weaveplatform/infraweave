@@ -237,12 +237,13 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 			AuthorName: r.Commit.AuthorName, AuthorLogin: r.Commit.AuthorLogin,
 			Timestamp: r.Commit.Timestamp,
 		},
-		RunnerImage: st.RunnerImage,
-		Source:      workersapi.SpecSource{SparsePaths: slices.Clone(st.GitSparseCheckoutPaths)},
-		Tool:        tool,
-		Terragrunt:  tg,
-		Task:        r.Task,
-		Hooks:       resolved.Hooks,
+		RunnerImage:      st.RunnerImage,
+		Source:           workersapi.SpecSource{SparsePaths: slices.Clone(st.GitSparseCheckoutPaths)},
+		Tool:             tool,
+		PlanSanitization: planSanitization(stack),
+		Terragrunt:       tg,
+		Task:             r.Task,
+		Hooks:            resolved.Hooks,
 	}
 	if len(r.RuntimeConfig) > 0 {
 		spec.RuntimeConfig, _ = json.Marshal(custom.Public())
@@ -269,6 +270,11 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		}
 	}
 	record.Apply(&spec)
+	if spec.PlanSanitization == "" {
+		// Records written before sanitization have no frozen choice. Match the
+		// artifact receipt's safe compatibility default rather than new labels.
+		spec.PlanSanitization = workersapi.SanitizationDefault
+	}
 	stack = spec.Stack
 	if record.Execution.ManagesState {
 		spec.StateBackend = &workersapi.StateBackend{Path: StatePath + r.Stack.String()}
@@ -746,4 +752,20 @@ func nonNil(s []string) []string {
 		return []string{}
 	}
 	return s
+}
+
+// planSanitization resolves the explicit label opt-out before the vendor switch.
+func planSanitization(stack workersapi.SpecStack) workersapi.SanitizationMode {
+	if slices.Contains(stack.Labels, "feature:disable_resource_sanitization") {
+		return workersapi.SanitizationNone
+	}
+	var settings struct {
+		Smart bool `json:"useSmartSanitization"`
+	}
+	// The stack and runtime configuration validate this document before handover.
+	_ = json.Unmarshal(stack.VendorConfig, &settings)
+	if settings.Smart {
+		return workersapi.SanitizationSmart
+	}
+	return workersapi.SanitizationDefault
 }

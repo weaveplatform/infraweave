@@ -476,23 +476,40 @@ type Federation struct {
 
 // ResourceChange is a typed policy contract object.
 type ResourceChange struct {
-	Address       Field[string]        `json:"address,omitzero"        contract:""`
-	Change        Field[ResourceDelta] `json:"change,omitzero"         contract:""`
-	Mode          Field[string]        `json:"mode,omitzero"           contract:""`
-	ModuleAddress Field[string]        `json:"module_address,omitzero" contract:""`
-	Name          Field[string]        `json:"name,omitzero"           contract:""`
-	ProviderName  Field[string]        `json:"provider_name,omitzero"  contract:""`
-	Type          Field[string]        `json:"type,omitzero"           contract:""`
+	IndexUnknown    Field[bool]          `json:"index_unknown,omitzero"    contract:""`
+	ActionReason    Field[string]        `json:"action_reason,omitzero"    contract:""`
+	PreviousAddress Field[string]        `json:"previous_address,omitzero" contract:""`
+	Index           Field[PathStep]      `json:"index,omitzero"            contract:""`
+	Deposed         Field[string]        `json:"deposed,omitzero"          contract:""`
+	Address         Field[string]        `json:"address,omitzero"          contract:""`
+	Change          Field[ResourceDelta] `json:"change,omitzero"           contract:""`
+	Mode            Field[string]        `json:"mode,omitzero"             contract:""`
+	ModuleAddress   Field[string]        `json:"module_address,omitzero"   contract:""`
+	Name            Field[string]        `json:"name,omitzero"             contract:""`
+	ProviderName    Field[string]        `json:"provider_name,omitzero"    contract:""`
+	Type            Field[string]        `json:"type,omitzero"             contract:""`
 }
 
 // ResourceDelta is a typed policy contract object.
 type ResourceDelta struct {
+	ReplacePaths    Field[[][]PathStep]             `json:"replace_paths,omitzero"    contract:""`
+	Importing       Field[Importing]                `json:"importing,omitzero"        contract:"nullable"`
+	GeneratedConfig Field[string]                   `json:"generated_config,omitzero" contract:""`
+	BeforeIdentity  Field[Object]                   `json:"before_identity,omitzero"  contract:"nullable"`
+	AfterIdentity   Field[Object]                   `json:"after_identity,omitzero"   contract:"nullable"`
 	Actions         Field[[]string]                 `json:"actions,omitzero"          contract:""`
 	After           Field[Object]                   `json:"after,omitzero"            contract:"nullable"`
 	AfterUnknown    Field[map[string]SensitiveMask] `json:"after_unknown,omitzero"    contract:""`
 	Before          Field[Object]                   `json:"before,omitzero"           contract:"nullable"`
 	BeforeSensitive Field[SensitiveMask]            `json:"before_sensitive,omitzero" contract:""`
 	AfterSensitive  Field[SensitiveMask]            `json:"after_sensitive,omitzero"  contract:""`
+}
+
+// Importing retains tool-written import metadata. Identity keys belong to the provider.
+type Importing struct {
+	ID       Field[string] `json:"id,omitzero"       contract:""`
+	Unknown  Field[bool]   `json:"unknown,omitzero"  contract:""`
+	Identity Field[Object] `json:"identity,omitzero" contract:"nullable"`
 }
 
 // StateTransition is a typed policy contract object.

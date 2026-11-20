@@ -195,8 +195,13 @@ func (s Server) WorkerRunSpec(ctx context.Context, req gen.WorkerRunSpecRequestO
 // runSpec is spec as the worker API answers it.
 func runSpec(spec worker.RunSpec) gen.RunSpec {
 	r, st, c := spec.Run, spec.Stack, spec.Commit
+	mode := gen.PlanSanitization(spec.PlanSanitization)
+	if mode == "" {
+		mode = gen.DEFAULT
+	}
 	out := gen.RunSpec{
-		Refusal: spec.Refusal,
+		Refusal:          spec.Refusal,
+		PlanSanitization: &mode,
 		Run: gen.RunSpecRun{
 			Account:        r.Account.String(),
 			Id:             r.ID.String(),
