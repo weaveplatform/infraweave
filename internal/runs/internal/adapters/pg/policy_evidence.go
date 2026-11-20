@@ -25,7 +25,8 @@ func (s *Store) RecordPolicyEvidence(ctx context.Context, account kernel.Account
 		return lifecycle.ErrNoTransaction
 	}
 	var current int64
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT state_version FROM runs WHERE account_id=$1 AND id=$2 FOR UPDATE`, account, run).Scan(&current)
+	var state string
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT state,state_version FROM runs WHERE account_id=$1 AND id=$2 FOR UPDATE`, account, run).Scan(&state, &current)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return lifecycle.ErrNotFound
 	}
@@ -33,7 +34,7 @@ func (s *Store) RecordPolicyEvidence(ctx context.Context, account kernel.Account
 		return fmt.Errorf("runs: fence policy evidence: %w", sql.Unavailable(err))
 	}
 	if current != version {
-		return &lifecycle.Conflict{Run: run, Version: current}
+		return &lifecycle.Conflict{Run: run, State: kernel.RunState(state), Version: current}
 	}
 	var ordinal int64
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT coalesce(max(ordinal),0) FROM run_policy_receipts WHERE account_id=$1 AND run_id=$2`, account, run).Scan(&ordinal); err != nil {

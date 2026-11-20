@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,6 +36,7 @@ func TestAccTransitionCommitsItsPolicyEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	receipt := policyReceipt(w, kernel.NewULID())
+	receipt.Decision = json.RawMessage(`{"approve":true,"private_input_marker":"keep-out-of-run-projections","exact":9007199254740993}`)
 	err = w.in(t, func(ctx context.Context) error {
 		_, err := w.lc.Transition(ctx, lifecycle.Request{
 			Account: w.acct, Run: run.ID, Version: run.Version,
@@ -69,6 +71,14 @@ func TestAccTransitionCommitsItsPolicyEvidence(t *testing.T) {
 	updates := w.updates(t, run.ID)
 	if len(updates) != 2 || len(updates[1].Doc.PolicyReceipts) != 1 || !reflect.DeepEqual(updates[1].Doc.Run.Flags, []string{"reviewed"}) {
 		t.Fatalf("event omitted committed evidence: %+v", updates)
+	}
+	var decision string
+	if err := w.db.QueryRow(t.Context(), `SELECT decision::text FROM run_policy_receipts WHERE account_id=$1 AND run_id=$2 AND id=$3`, w.acct, run.ID, receipt.ID).Scan(&decision); err != nil || !strings.Contains(decision, "9007199254740993") {
+		t.Fatalf("stored decision lost number precision: %s %v", decision, err)
+	}
+	public, err := json.Marshal(updates[1].Doc)
+	if err != nil || strings.Contains(string(public), "keep-out-of-run-projections") || strings.Contains(string(public), `"decision":`) {
+		t.Fatalf("raw evaluation material entered the event: %s %v", public, err)
 	}
 }
 
@@ -108,9 +118,9 @@ func TestAccPolicyFlagOwnershipAndResetOrder(t *testing.T) {
 	write(a, []string{"shared", "a"}, nil)
 	write(b, []string{"shared", "b"}, nil)
 	flags([]string{"a", "b", "shared"})
-	write(a, []string{"shared"}, []string{"shared", "a", "b"})
-	flags([]string{"b", "shared"})
-	write(a, nil, []string{"shared"})
+	write(a, []string{"shared", "a"}, []string{"shared", "a", "b"})
+	flags([]string{"a", "b", "shared"})
+	write(a, nil, []string{"shared", "a"})
 	flags([]string{"b", "shared"})
 	write(b, nil, []string{"shared"})
 	flags([]string{"b"})

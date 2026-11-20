@@ -10,6 +10,8 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -111,10 +113,12 @@ type Store interface {
 
 // Deps are what the reads read through.
 type Deps struct {
-	Store  Store
-	Stacks stacksapi.Stacks
-	Spaces accessapi.Spaces
-	Authz  accessapi.Authorizer
+	Store    Store
+	Stacks   stacksapi.Stacks
+	Spaces   accessapi.Spaces
+	Authz    accessapi.Authorizer
+	Evidence evidence.Store
+	Policies policiesapi.PolicyIdentities
 }
 
 // Service reads runs as the API answers them.
@@ -127,12 +131,21 @@ func New(d Deps) *Service { return &Service{d: d} }
 // transitions and its comments, each oldest first, why it cannot be
 // retried or promoted, and the actions the caller may take on it.
 type View struct {
-	Run      lifecycle.Run
-	Stack    stacksapi.Stack
-	History  []lifecycle.Step
-	Comments []Comment
-	Guards   Guards
-	Actions  []accessapi.Action
+	Run            lifecycle.Run
+	Stack          stacksapi.Stack
+	History        []lifecycle.Step
+	Comments       []Comment
+	Guards         Guards
+	Actions        []accessapi.Action
+	PolicyReceipts []PolicyReceipt
+	Flags          []string
+}
+
+// PolicyReceipt retains the evaluation's metadata snapshot after deletion while
+// its public reference identifies only a currently existing account-owned policy.
+type PolicyReceipt struct {
+	evidence.Receipt
+	Deleted bool
 }
 
 // Page is a page of views and whether a later page has runs.
@@ -353,6 +366,10 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
+	evaluations, err := s.policyEvidence(ctx, acct, ids)
+	if err != nil {
+		return nil, err
+	}
 	blockers, err := s.d.Store.Blockers(ctx, acct, stackIDs)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -379,6 +396,7 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 		out[i] = View{
 			Run: r, Stack: st.Stack, History: histories[r.ID], Comments: comments[r.ID],
 			Guards: g, Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space], g),
+			PolicyReceipts: evaluations[r.ID].receipts, Flags: evaluations[r.ID].flags,
 		}
 	}
 	return out, nil

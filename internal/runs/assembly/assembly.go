@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
+	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/http"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/adapters/pg"
@@ -116,22 +117,23 @@ type Objects interface {
 // when nil, the run settings, and LogRetention,
 // objectstore.retention.run-logs.
 type Deps struct {
-	DB              queue.DB
-	Keys            pg.Sealer
-	Objects         Objects
-	Spaces          accessapi.Spaces
-	Accounts        accessapi.Accounts
-	Authz           accessapi.Authorizer
-	Tokens          handover.Tokens
-	Stacks          stacksapi.Stacks
-	Environment     configapi.Environment
-	Catalog         vendorsapi.Catalog
-	Events          lifecycle.Events
-	Jobs            schedule.Queue
-	Now             func() time.Time
-	Settings        Settings
-	RuntimeSettings RuntimeSettings
-	LogRetention    time.Duration
+	PolicyIdentities policiesapi.PolicyIdentities
+	DB               queue.DB
+	Keys             pg.Sealer
+	Objects          Objects
+	Spaces           accessapi.Spaces
+	Accounts         accessapi.Accounts
+	Authz            accessapi.Authorizer
+	Tokens           handover.Tokens
+	Stacks           stacksapi.Stacks
+	Environment      configapi.Environment
+	Catalog          vendorsapi.Catalog
+	Events           lifecycle.Events
+	Jobs             schedule.Queue
+	Now              func() time.Time
+	Settings         Settings
+	RuntimeSettings  RuntimeSettings
+	LogRetention     time.Duration
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -161,7 +163,7 @@ func New(d Deps) *Domain {
 	lc := lifecycle.New(lifecycle.Deps{
 		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store,
 	})
-	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz})
+	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities})
 	return &Domain{
 		store:     store,
 		runs:      core.New(store),

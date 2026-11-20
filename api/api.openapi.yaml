@@ -28091,6 +28091,11 @@ components:
     Run:
       description: Run represents one execution of a stack.
       properties:
+        flags:
+          description: Current flags, visible while at least one policy owns them.
+          type: array
+          items:
+            type: string
         allowedActions:
           description: >-
             The actions the caller may perform on the run, from the rules that enforce them: the moves its state allows next, a retry and a promotion when canRetry and canPromote allow them, and a comment, each that the caller holds on the stack's space.
@@ -28594,9 +28599,27 @@ components:
       required:
         - items
       type: object
+    RunPolicyError:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
     RunPolicyReceipt:
       description: RunPolicyReceipt represents a single policy evaluation event that affected a Run.
       properties:
+        error:
+          description: A safe evaluation failure, without input or print output.
+          $ref: '#/components/schemas/RunPolicyError'
+        policyVersion:
+          description: The policy version whose compiled body produced this receipt.
+          type: integer
+          format: int64
         createdAt:
           description: Timestamp representing the moment of policy evaluation.
           format: int32
