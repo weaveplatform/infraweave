@@ -14,6 +14,8 @@ import (
 // would cascade to come first, so no one statement deletes more than its
 // batch.
 var purged = []struct{ table, key string }{
+	{"run_policy_receipts", "run_id, id"},
+	{"run_flags", "run_id, flag, policy_id"},
 	{"run_state_transitions", "run_id, sequence"},
 	{"run_comments", "run_id, id"},
 	{"stack_outputs", "stack_id, name"},

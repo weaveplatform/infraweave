@@ -156,6 +156,48 @@ CREATE TABLE run_state_transitions (
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
 );
 
+-- Historical policy IDs are account-qualified snapshots, not live cross-domain
+-- foreign keys: deleting a policy keeps the evidence for an existing run.
+CREATE TABLE run_policy_receipts (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    id uuid NOT NULL,
+    state_version bigint NOT NULL,
+    ordinal bigint NOT NULL,
+    policy_id uuid NOT NULL,
+    policy_name text NOT NULL,
+    policy_version bigint NOT NULL CHECK (policy_version > 0),
+    policy_type text NOT NULL,
+    engine_type text NOT NULL,
+    outcome text NOT NULL,
+    decision jsonb NOT NULL,
+    flags text[] NOT NULL DEFAULT '{}',
+    reset_flags text[] NOT NULL DEFAULT '{}',
+    sample_requested boolean NOT NULL DEFAULT false,
+    sample_evaluation_id uuid,
+    error_code text,
+    error_message text,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id, run_id, id),
+    UNIQUE (account_id, id),
+    UNIQUE (account_id, run_id, ordinal),
+    FOREIGN KEY (account_id, run_id, state_version)
+        REFERENCES run_state_transitions (account_id, run_id, sequence) ON DELETE CASCADE,
+    CHECK ((error_code IS NULL) = (error_message IS NULL))
+);
+
+-- A flag remains visible while any policy owns it. Reset deletes one policy's
+-- rows before adding that same evaluation's new flags.
+CREATE TABLE run_flags (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    policy_id uuid NOT NULL,
+    flag text NOT NULL,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id, run_id, flag, policy_id),
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
+);
+
 -- Each comment on a run: id is a ULID, so the comments read oldest first
 -- by it; username is the login that wrote it, and body its Markdown, at
 -- most as many characters as control.MaxComment.

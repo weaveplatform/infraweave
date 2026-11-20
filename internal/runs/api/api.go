@@ -163,13 +163,25 @@ const (
 //
 // ref: report 19 § "Input documents"
 // ref: decision 0008 § "Timeouts and timers"
+//
+//nolint:tagliatelle // notification policy input names policy_receipts
 type Updated struct {
-	State    kernel.RunState `json:"state"`
-	Username *string         `json:"username"`
-	Note     *string         `json:"note"`
-	Timer    Timer           `json:"timer,omitempty"`
-	Run      UpdatedRun      `json:"run"`
-	Stack    UpdatedStack    `json:"stack"`
+	State          kernel.RunState        `json:"state"`
+	Username       *string                `json:"username"`
+	Note           *string                `json:"note"`
+	Timer          Timer                  `json:"timer,omitempty"`
+	Run            UpdatedRun             `json:"run"`
+	Stack          UpdatedStack           `json:"stack"`
+	PolicyReceipts []PolicyReceiptSummary `json:"policy_receipts"`
+}
+
+// PolicyReceiptSummary is the notification contract's committed evidence. It
+// contains no raw decision, policy source, evaluation input or print output.
+type PolicyReceiptSummary struct {
+	Type    string   `json:"type"`
+	Name    string   `json:"name"`
+	Outcome string   `json:"outcome"`
+	Flags   []string `json:"flags"`
 }
 
 // Timer is a run.timers rule, by its key under run.timers. The shorter
@@ -201,6 +213,7 @@ type UpdatedRun struct {
 	UpdatedAt      int64           `json:"updated_at"`
 	DriftDetection bool            `json:"drift_detection"`
 	TriggeredBy    *string         `json:"triggered_by"`
+	Flags          []string        `json:"flags"`
 }
 
 // UpdatedCommit is the commit the run works on.
@@ -235,6 +248,17 @@ var UpdatedSchema = []byte(`{
 		"note": {"type": ["string", "null"]},
 		"timer": {"enum": ["pickup_proposed", "pickup_blocking", "unconfirmed", "confirmed",
 			"max_age"]},
+		"policy_receipts": {
+			"type": "array",
+			"items": {
+				"type": "object", "required": ["type", "name", "outcome", "flags"],
+				"properties": {
+					"type": {"type":"string"}, "name": {"type":"string"},
+					"outcome": {"type":"string"},
+					"flags": {"type":"array", "items":{"type":"string"}}
+				}, "additionalProperties": false
+			}
+		},
 		"run": {
 			"type": "object",
 			"required": ["id", "type", "state", "commit", "created_at", "updated_at",
@@ -258,6 +282,7 @@ var UpdatedSchema = []byte(`{
 				"created_at": {"type": "integer"},
 				"updated_at": {"type": "integer"},
 				"drift_detection": {"type": "boolean"},
+				"flags": {"type":"array", "items":{"type":"string"}},
 				"triggered_by": {"type": ["string", "null"]}
 			}
 		},

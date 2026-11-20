@@ -159,7 +159,7 @@ type Domain struct {
 func New(d Deps) *Domain {
 	store := pg.New(d.DB, d.Keys)
 	lc := lifecycle.New(lifecycle.Deps{
-		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now,
+		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store,
 	})
 	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz})
 	return &Domain{
