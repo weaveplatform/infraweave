@@ -122,6 +122,7 @@ type Deps struct {
 	Policies  policiesapi.PolicyIdentities
 	Reviews   review.Store
 	Approvals evidence.ApprovalStore
+	Plans     evidence.PlanStore
 }
 
 // Service reads runs as the API answers them.
@@ -141,6 +142,7 @@ type View struct {
 	Guards         Guards
 	Actions        []accessapi.Action
 	PolicyReceipts []PolicyReceipt
+	PlanOutcomes   []evidence.PlanOutcome
 	Flags          []string
 	Reviews        []review.Record
 	NeedsApproval  bool
@@ -389,6 +391,13 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 			return nil, err //nolint:wrapcheck // the owner names the failing operation
 		}
 	}
+	plans := map[kernel.ULID][]evidence.PlanOutcome{}
+	if s.d.Plans != nil {
+		plans, err = s.d.Plans.PlanOutcomes(ctx, acct, ids)
+		if err != nil {
+			return nil, fmt.Errorf("runs: read public plan outcomes: %w", err)
+		}
+	}
 	blockers, err := s.d.Store.Blockers(ctx, acct, stackIDs)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -416,7 +425,7 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 			Run: r, Stack: st.Stack, History: histories[r.ID], Comments: comments[r.ID],
 			Guards: g, Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space], g),
 			PolicyReceipts: evaluations[r.ID].receipts, Flags: evaluations[r.ID].flags,
-			Reviews: reviews[r.ID], NeedsApproval: approvals[r.ID].Waiting(),
+			Reviews: reviews[r.ID], NeedsApproval: approvals[r.ID].Waiting(), PlanOutcomes: plans[r.ID],
 		}
 		if out[i].NeedsApproval {
 			out[i].Actions = slices.DeleteFunc(out[i].Actions, func(a accessapi.Action) bool { return a == accessapi.ActionRunConfirm })

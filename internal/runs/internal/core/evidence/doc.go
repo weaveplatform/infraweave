@@ -6,7 +6,10 @@
 //
 // Store accepts independent policy receipts under an account/run state fence
 // and returns committed metadata and the visible union of flag ownership.
-// Read projections exclude raw decisions, policy source, inputs and print.
+// PlanStore groups the PLAN receipts of each report into public deny/warn/info
+// message arrays. It marks earlier groups historical once another PLANNING
+// version starts. Read projections exclude raw decisions, policy source, inputs
+// and print.
 //
 // # Effects
 //

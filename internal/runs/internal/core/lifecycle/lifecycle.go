@@ -280,6 +280,7 @@ type Deps struct {
 	Sources   runsapi.RunSources
 	Now       func() time.Time
 	Evidence  evidence.Store
+	Plans     evidence.PlanStore
 	Approvals Approvals
 }
 
@@ -632,9 +633,21 @@ func (l *Lifecycle) updated(ctx context.Context, run Run, step Step, timer runsa
 	if err != nil {
 		return err //nolint:wrapcheck // the stacks domain names the read
 	}
+	var planDecision *runsapi.PlanPolicyDecision
+	if l.d.Plans != nil {
+		outcomes, err := l.d.Plans.PlanOutcomes(ctx, run.Account, []kernel.ULID{run.ID})
+		if err != nil {
+			return fmt.Errorf("runs: read notification plan outcome: %w", err)
+		}
+		for _, outcome := range outcomes[run.ID] {
+			if outcome.Current {
+				planDecision = &runsapi.PlanPolicyDecision{Deny: outcome.Deny, Warn: outcome.Warn}
+			}
+		}
+	}
 	doc, err := json.Marshal(runsapi.Updated{
 		State: run.State, Username: step.Username, Note: step.Note, Timer: timer,
-		PolicyReceipts: receipts,
+		PolicyReceipts: receipts, PlanPolicyDecision: planDecision,
 		Run: runsapi.UpdatedRun{
 			ID: run.ID, Type: run.Type, State: run.State,
 			Commit: runsapi.UpdatedCommit{
