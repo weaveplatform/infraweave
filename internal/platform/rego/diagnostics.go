@@ -3,7 +3,7 @@ package rego
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"slices"
 
 	"github.com/open-policy-agent/opa/v1/ast"
 )
@@ -57,9 +57,8 @@ func validateModule(module *ast.Module) error {
 	}
 	for _, imp := range module.Imports {
 		path := imp.Path.String()
-		allowed := path == "rego.v1" || path == "future.keywords" || strings.HasPrefix(path, "future.keywords.") || path == "input" || strings.HasPrefix(path, "input.") ||
-			path == "data" ||
-			strings.HasPrefix(path, "data.")
+		ref, ok := imp.Path.Value.(ast.Ref)
+		allowed := ok && allowedImport(ref)
 		if !allowed {
 			return refusal(imp.Location, "policy import is not allowed: "+path)
 		}
@@ -70,6 +69,36 @@ func validateModule(module *ast.Module) error {
 		}
 	}
 	return nil
+}
+
+// Import paths are AST refs: OPA quotes keyword segments when rendering them,
+// so a textual dot-prefix check would reject supported imports like `in`.
+func allowedImport(ref ast.Ref) bool {
+	if len(ref) == 0 {
+		return false
+	}
+	root, ok := ref[0].Value.(ast.Var)
+	if !ok {
+		return false
+	}
+	switch root {
+	case "input", "data":
+		return true
+	case "rego":
+		return len(ref) == 2 && ref[1].Value == ast.String("v1")
+	case "future":
+		if len(ref) < 2 || ref[1].Value != ast.String("keywords") {
+			return false
+		}
+		if len(ref) == 2 {
+			return true
+		}
+		if len(ref) == 3 {
+			keyword, ok := ref[2].Value.(ast.String)
+			return ok && slices.Contains(languageKeywords(), string(keyword))
+		}
+	}
+	return false
 }
 
 func headName(head *ast.Head) string {

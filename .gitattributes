@@ -22,3 +22,6 @@ test/fixtures/vendor-documents/** text eol=lf
 # Release files are checked against their vendors' signatures byte for byte;
 # a CRLF checkout on Windows fails the signature.
 internal/agent/tools/testdata/** -text
+
+# Pinned MIT policy/notice bytes are hash-verified on every OS.
+test/fixtures/rego-compatibility/** text eol=lf

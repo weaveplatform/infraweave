@@ -1,0 +1,42 @@
+{
+  "repository": "spacelift-io/spacelift-policies-example-library",
+  "revision": "6ff5edb08bc806f323eff5c48426a7762ef1fee7",
+  "files": [
+    {
+      "file": "LICENSE",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/LICENSE",
+      "sha256": "6197d457d51544c73079bdc058aa9314d4ecf00079ac3f531bd2052e069a7e9f",
+      "policyType": ""
+    },
+    {
+      "file": "plan-sanitized.rego",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/examples/plan/check-sanitized-value.rego",
+      "sha256": "29e8fbd19e02f793705b0b1d0f42cb9ed35d752c63d1c78e9a33f4c5e852a334",
+      "policyType": "PLAN"
+    },
+    {
+      "file": "approval-count.rego",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/examples/approval/two-approvals-two-rejections.rego",
+      "sha256": "a1b781d0ac585ef8ae28e77dc0a212fdfa354ac77d0106676ce3286d84418d67",
+      "policyType": "APPROVAL"
+    },
+    {
+      "file": "push-root.rego",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/examples/push/ignore-changes-outside-root.rego",
+      "sha256": "79794451aa26b3d3c95d56a4b1fc82434051bdc1a2f51e1e4d5bb30ddb5aa70a",
+      "policyType": "GIT_PUSH"
+    },
+    {
+      "file": "trigger-dependencies.rego",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/examples/trigger/trigger-hardcoded-dependencies.rego",
+      "sha256": "e2a9c43cb9a161eedd40d4e6e1b424531ed35c370d7ccb136b42f5019e442290",
+      "policyType": "TRIGGER"
+    },
+    {
+      "file": "access-team.rego",
+      "source": "https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc806f323eff5c48426a7762ef1fee7/examples/access/engineering-team-access.rego",
+      "sha256": "9a621f71c7d91a0d48ed7c25638a2faf216b41aafce9fe58c13917fdda768f13",
+      "policyType": "ACCESS"
+    }
+  ]
+}

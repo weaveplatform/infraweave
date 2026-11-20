@@ -66,9 +66,19 @@ Report 27 compares the ways other tools run Rego
   without `if` and `contains` under `REGO_V1`, and a v1 rule under `REGO_V0` without the
   `future.keywords` import the message names
   ([33 section 8.3](../reference/33-vendor-tool-documents.md#83-rego-v0-and-v1)).
-- Rego v2 is not offered until OPA releases it; any other engine value fails the schema's
-  `enum` and answers `400`, problem `invalid-request` (decision
-  [0022](0022-api-errors-and-update-semantics.md)).
+- **Rego v2 is released but deliberately unsupported.** OPA v1.22.0 introduced it;
+  the linked v1.22.4 implements it. The supported policy language stays v0/v1,
+  independently of the runtime's reported library version. Other engine values
+  fail the schema's `enum` and answer `400`, problem `invalid-request` (decision
+  [0022](0022-api-errors-and-update-semantics.md)). A v2 API proposal needs its own
+  scoped compatibility decision; updating OPA does not enable it.
+- `future.keywords` means the original `contains`, `every`, `if` and `in` set.
+  Those named imports and `rego.v1` remain supported. Production capabilities
+  exclude v2 and its import: `rego.v2`, new `not`/`and`/`or` keyword imports and
+  unknowns fail with located compile diagnostics. This preserves existing
+  wildcard policies' undefined-negation semantics. The actual embedded-library,
+  MIT corpus, preamble/cache and FIPS probes are recorded in
+  [34](../reference/34-rego-v2-compatibility.md).
 - A policy may switch engine on update. The new body is compiled under the new engine
   before the update commits.
 
