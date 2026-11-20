@@ -1,4 +1,3 @@
-// Package review owns immutable human and key reviews and their policy facts.
 package review
 
 import (

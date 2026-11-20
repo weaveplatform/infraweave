@@ -1,4 +1,3 @@
-// Package approval evaluates state-scoped approval policies using owner facts.
 package approval
 
 import (

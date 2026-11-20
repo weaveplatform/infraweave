@@ -1,4 +1,3 @@
-// Package reviewmeta supplies immutable review metadata from access-owned rows.
 package reviewmeta
 
 import (
