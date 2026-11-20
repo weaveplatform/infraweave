@@ -29,3 +29,20 @@ func TestUnitPushHistoryRefusesMissingNativeValues(t *testing.T) {
 		t.Fatal("missing native values became a complete empty range", got, err)
 	}
 }
+
+func TestUnitPushHistoryRefusesInconsistentNativeSize(t *testing.T) {
+	for name, body := range map[string]historyBody{
+		"negative":  `{"values":[],"size":-1}`,
+		"truncated": `{"values":[],"size":1}`,
+		"extra":     `{"values":[{}],"size":0}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := newProvider(body, "https://api.example/2.0")
+			in := port.Integration{Settings: port.Settings{Email: "test@example.com"}, Credential: []byte("test-token")}
+			got, err := all[commit](t.Context(), p, in, "/repositories/workspace/repo/commits", make(map[string][]string), "push commits")
+			if !errors.Is(err, kernel.ErrUnavailable) || got != nil {
+				t.Fatal("incomplete native size became complete", got, err)
+			}
+		})
+	}
+}

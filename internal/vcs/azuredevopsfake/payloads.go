@@ -22,6 +22,7 @@ type WebhookPullRequest struct {
 
 // PushWebhook builds the documented git.push envelope, with one delivery event
 // ID and as many ref updates as the sender received in the push.
+// Unknown commit metadata stays absent rather than claiming an empty range.
 func (f *Fake) PushWebhook(id, project, repository string, updates []WebhookRefUpdate) (WebhookDelivery, error) {
 	refs := make([]map[string]string, 0, len(updates))
 	for _, update := range updates {
@@ -29,7 +30,7 @@ func (f *Fake) PushWebhook(id, project, repository string, updates []WebhookRefU
 	}
 	return encodeWebhookEnvelope(id, "git.push", map[string]any{
 		"repository": f.webhookRepository(project, repository),
-		"refUpdates": refs, "pushedBy": webhookIdentity("author"), "pushId": 14, "commits": []any{},
+		"refUpdates": refs, "pushedBy": webhookIdentity("author"), "pushId": 14,
 	})
 }
 

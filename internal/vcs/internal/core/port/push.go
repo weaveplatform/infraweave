@@ -29,13 +29,6 @@ func RecoveredRange(base, source string, items []vcsapi.PushCommit) (PushRange, 
 	if _, complete := NativeCommitFiles(native); !ValidCommit(base) || !complete || source == "" {
 		return PushRange{}, fmt.Errorf("%w: incomplete recovered push range", kernel.ErrUnavailable)
 	}
-	seen := make(map[string]bool, len(items))
-	for _, item := range items {
-		if seen[item.Hash] {
-			return PushRange{}, fmt.Errorf("%w: repeated recovered push commit", kernel.ErrUnavailable)
-		}
-		seen[item.Hash] = true
-	}
 	return PushRange{Base: base, Commits: native}, nil
 }
 

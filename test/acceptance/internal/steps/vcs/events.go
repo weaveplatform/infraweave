@@ -20,18 +20,21 @@ import (
 )
 
 type eventSteps struct {
-	comments      *commentSteps
-	deliveries    map[string]string
-	nativeCommits []nativeEventCommit
-	nativeRevert  bool
-	nativeMode    string
-	nativeOther   string
-	rangeFault    string
+	comments        *commentSteps
+	deliveries      map[string]string
+	nativeCommits   []nativeEventCommit
+	nativeRevert    bool
+	nativeMode      string
+	nativeOther     string
+	rangeFault      string
+	nativeIdentity  string
+	sourceReadCount int
 }
 
 func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	s.deliveries = map[string]string{}
 	s.registerRecovery(sc)
+	s.registerRangeIdentity(sc)
 	sc.Step(`^an ordinary event pull request comment is stored and starts no run$`, s.ordinaryComment)
 	sc.Step(`^the event repository commits "(\w+)" on "([^"]+)"$`, s.commit)
 	sc.Step(`^the event fixture pushes "(\w+)" from "(\w+)" to "(\w+)" on "([^"]+)" with "(valid|wrong)" verification through ([AB]) and receives (\d+)$`, s.push)
@@ -126,7 +129,11 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 		if err != nil {
 			return 0, fmt.Errorf("event repository: %w", err)
 		}
-		body["repository"], body["installation"] = repository, map[string]any{"id": c.installation, "app_id": c.appID}
+		var nativeRepository map[string]any
+		if err := json.Unmarshal(repository, &nativeRepository); err != nil {
+			return 0, fmt.Errorf("event native repository: %w", err)
+		}
+		body["repository"], body["installation"] = nativeRepository, map[string]any{"id": c.installation, "app_id": c.appID}
 		body["ref"], body["before"], body["after"] = "refs/heads/"+branch, before, head
 		if s.nativeCommits != nil || s.nativeMode != "" {
 			s.decorateNativeCommits(body)

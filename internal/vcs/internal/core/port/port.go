@@ -54,6 +54,9 @@ type Repository struct {
 	Name        string
 	URL         string
 	Integration *Integration
+	// ExpectedID fences a recovery read to the signed native identity. It is
+	// omitted by legacy source callers that supply only a configured path.
+	ExpectedID string
 }
 
 // Source reads a provider's repositories. Every provider implements it;

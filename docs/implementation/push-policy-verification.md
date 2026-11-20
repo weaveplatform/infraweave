@@ -34,21 +34,27 @@ input's `push.commits` array. Only a proven complete collection with all require
 per-commit metadata and file lists is projected. Missing arrays stay absent;
 known empty complete arrays stay empty. No missing file list becomes `[]`.
 
-| Provider | Native source and completeness boundary | Policy projection |
+| Provider | Native source and completeness boundary | Signed collection facts |
 |---|---|---|
 | GitHub | `commits`, below the documented 2,048-commit cap; boundary-sized arrays conservatively use `provider-commit-limit` | Native author, message, timestamp, hash, URL and complete added/modified/removed paths, in native order |
 | GitLab | `commits`, with `total_commits_count` equal to the array length and at most 20 entries | Same required native facts; missing totals use `unknown-commit-count`, truncated arrays use `provider-commit-limit` |
 | Bitbucket Cloud | `push.changes[].commits`, with explicit `truncated: false` and at most five entries | Metadata is retained; native commit objects lack required per-commit paths, so nonempty collections use `missing-commit-files` unless an earlier completeness refusal applies |
 | Azure DevOps | `resource.commits` | Native metadata is retained; unavailable per-commit paths use `missing-commit-files`. A shared array on multiple ref updates uses `multiple-ref-updates` because it cannot be attributed to one ref |
-| Bitbucket Data Center | The consumed `repo:refs_changed` event supplies ref changes, without a native commit collection | `push.commits` stays absent |
+| Bitbucket Data Center | The consumed `repo:refs_changed` event supplies ref changes, without a native commit collection | No signed commit collection is fabricated |
 
 Missing timestamps or invalid hashes use `incomplete-commit-metadata`. A damaged
 or legacy stored collection is checked again at typed projection. When a complete native collection exists, its touched-path union augments the
 immutable before/head diff before affected-stack counts and selection. Thus an
 intermediate edit and revert remains consistent with the retained commits. For
-unavailable or truncated collections the existing before/head diff remains;
-full provider range recovery remains with [#696](https://github.com/weaveplatform/infraweave/issues/696). No extra commit-list HTTP
-crawl or new provider credential is introduced.
+unavailable or truncated collections,
+[#696](https://github.com/weaveplatform/infraweave/issues/696) adds bounded native
+REST range recovery through the original account-bound integration. The signed
+collection's provenance and omission reason remain unchanged; separately stored
+complete recovered facts supply the path union and typed policy commit array,
+including Data Center's ref-only events. Unknown or incomplete native reads
+cannot become a successful empty range. See
+[range completeness verification](push-range-completeness.md) for each provider's
+history/path API, pagination, failure bounds and real-service evidence.
 
 Primary provider documentation, checked 2026-11-20:
 

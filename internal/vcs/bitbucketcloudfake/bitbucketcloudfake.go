@@ -88,6 +88,7 @@ type repository struct {
 // repositories in workspaces with the roles accounts hold on them, served
 // under /2.0.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]json.RawMessage
 	checks         checkStore
 	comments       commentStore
@@ -428,6 +429,7 @@ func (f *Fake) tag(w http.ResponseWriter, r *http.Request) {
 
 // commit resolves a full SHA, or the prefix of one, as Bitbucket does.
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	want := chi.URLParam(r, "commit")
 	bs, _ := repo.repo.Branches() //nolint:errcheck // a failure lists none
@@ -462,6 +464,7 @@ func (f *Fake) src(w http.ResponseWriter, r *http.Request) {
 // diffstat lists the files that differ between the spec's two commits,
 // head..base, as Bitbucket names a range.
 func (f *Fake) diffstat(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member sets it
 	spec, _ := url.PathUnescape(chi.URLParam(r, "spec"))
 	head, base, ok := strings.Cut(spec, "..")

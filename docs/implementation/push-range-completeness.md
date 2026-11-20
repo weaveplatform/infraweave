@@ -21,7 +21,7 @@ preserving force-push removals when no new commit becomes reachable. Stack
 counts, default selection and typed policy input use that final union.
 
 The normalized event retains its signed `commits` source, items and omission
-reason. REST-recovered facts have a separate `recoveredCommits` field in the
+reason. Repeated commit identities cannot establish completeness. REST-recovered facts have a separate `recoveredCommits` field in the
 owned prepared document. Recovery never relabels a truncated signed subset as
 complete. Typed policy input uses the recovered collection when present; known
 empty commits and empty ranges are arrays. Unknown paths are not fabricated as
@@ -74,7 +74,13 @@ Primary references:
 
 All external reads occur during source preparation before the dispatcher holds
 its creation transaction. Recovery uses the original delivery's integration,
-repository identity guards and deadline. Provider recovery operations also
+repository identity guards and deadline. The recovery path requires its signed
+immutable repository ID and reads native metadata before any source object or
+history. It refuses an ID mismatch or unreconciled coordinate change; a rename
+already reconciled by the owner uses the current coordinates and the same ID.
+Missing identity, metadata access failure and identity mismatch remain distinct
+private causes, while intake publishes only its fixed safe failure. Complete
+native collections retain their existing path. Provider recovery operations also
 retain the adapters' existing 30-second bound. No body or credential leaves
 the source owner through the prepared facts.
 
@@ -114,6 +120,17 @@ affected-stack count, typed OPA facts, public receipts/flags and deduplication.
 The first expanded run also passed both actual Terraform and OpenTofu default
 selection worker cases; its policy receipt fixture used a different flag from
 the shared assertion and was corrected before the green 12-case rerun.
+
+The source-fault recovery and expiry matrix passes 15 scenarios / 410 steps
+under certified FIPS in 31.164 seconds, seed `696005`, on integrated revision
+`d817bd19b8d5087d7d5eb090a6bea23ac403187d`. It proves non-consuming rate-limit
+snoozes, provider-error retries, no provisional preparation/children/locks or
+cancellation, successful single retry admission, duplicate refusal and expiry.
+
+The signed identity reproducer on that pre-fix binary passes the five missing-ID
+refusals and fails all five different-ID cases because native source reads
+occurred. Native identity checks also cover bound rename success and actual
+rename-plus-path-reuse refusal before reading the old ref.
 
 These checks are a checkpoint. The final implementation head still requires
 the complete recovery/regression matrix, generation/lint/docs checks, merged

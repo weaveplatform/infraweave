@@ -34,6 +34,7 @@ func TestUnitPushChangesRefuseIncompleteValues(t *testing.T) {
 	for name, body := range map[string]historyBody{
 		"missing changes": `{ "changeCounts":{} }`,
 		"missing counts":  `{"changes":[]}`,
+		"overflow count":  `{"changeCounts":{"Add":9223372036854775807,"Edit":1},"changes":[]}`,
 		"negative count":  `{"changeCounts":{"Add":-1},"changes":[]}`,
 		"truncated":       `{"changeCounts":{"Add":1},"changes":[]}`,
 		"count mismatch":  `{"changeCounts":{},"changes":[{"item":{"path":"/main.tf"}}]}`,

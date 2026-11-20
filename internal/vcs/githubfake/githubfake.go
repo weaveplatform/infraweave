@@ -105,6 +105,7 @@ type token struct {
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]json.RawMessage
 	collabs        map[string]string
 	checks         checkStore
@@ -599,6 +600,7 @@ func (f *Fake) installationRepos(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	ref := chi.URLParam(r, "*")
 	c, err := repo.Resolve(ref)
@@ -637,6 +639,7 @@ func (f *Fake) commitJSON(r *http.Request, c *object.Commit) map[string]any {
 }
 
 func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	ref := r.URL.Query().Get("sha")
 	if ref == "" {
@@ -681,6 +684,7 @@ func (f *Fake) contents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
 	base, head, ok := strings.Cut(chi.URLParam(r, "*"), "...")
 	mergeBase, mergeErr := repo.MergeBase(base, head)

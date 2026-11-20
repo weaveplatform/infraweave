@@ -2,6 +2,7 @@ package port
 
 import (
 	"slices"
+	"strings"
 
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 )
@@ -10,7 +11,13 @@ import (
 // facts. Adapter-supplied truncation or attribution reasons take precedence.
 func NativeCommits(source string, items []vcsapi.PushCommit, omission string) *vcsapi.CommitCollection {
 	out := &vcsapi.CommitCollection{Source: source, Omission: omission, Items: slices.Clone(items)}
+	seen := make(map[string]bool, len(items))
 	for i, commit := range out.Items {
+		hash := strings.ToLower(commit.Hash)
+		if seen[hash] && out.Omission == "" {
+			out.Omission = "repeated-commit"
+		}
+		seen[hash] = true
 		if (!ValidCommit(commit.Hash) || commit.At.IsZero()) && out.Omission == "" {
 			out.Omission = "incomplete-commit-metadata"
 		}
@@ -35,10 +42,13 @@ func NativeCommitFiles(native *vcsapi.CommitCollection) ([]string, bool) {
 		return nil, false
 	}
 	out := []string{}
+	seen := make(map[string]bool, len(native.Items))
 	for _, item := range native.Items {
-		if !ValidCommit(item.Hash) || item.At.IsZero() || item.Files == nil {
+		hash := strings.ToLower(item.Hash)
+		if !ValidCommit(item.Hash) || item.At.IsZero() || item.Files == nil || seen[hash] {
 			return nil, false
 		}
+		seen[hash] = true
 		out = append(out, (*item.Files)...)
 	}
 	slices.Sort(out)

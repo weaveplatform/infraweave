@@ -36,6 +36,7 @@ func (s *eventSteps) policyNativeCommits(count int, branch, key string) error {
 }
 
 func (s *eventSteps) decorateNativeCommits(body map[string]any) {
+	s.decorateNativeIdentity(body)
 	commits := s.nativeCommits
 	provider := s.comments.fixture.provider
 	if provider == "Azure DevOps" {

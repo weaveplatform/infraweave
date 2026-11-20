@@ -7,6 +7,7 @@ import (
 )
 
 func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member binds it
 	base, head, rangeQuery := strings.Cut(r.URL.Query().Get("ref_name"), "..")
 	if !rangeQuery {
@@ -28,6 +29,7 @@ func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) mergeBase(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member binds it
 	refs := r.URL.Query()["refs[]"]
 	if len(refs) != 2 {
@@ -48,6 +50,7 @@ func (f *Fake) mergeBase(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) tree(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	p := r.Context().Value(projectKey).(*project) //nolint:forcetypeassert // member binds it
 	ref := r.URL.Query().Get("ref")
 	if ref == "" {

@@ -40,3 +40,17 @@ func TestUnitNativeCommitsKeepOrderAndRefuseIncompleteFacts(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitNativeCommitsRefuseRepeatedObjectIdentities(t *testing.T) {
+	item := vcsapi.PushCommit{Hash: strings.Repeat("a", 40), At: time.Now(), Files: new([]string{"main.tf"})}
+	other := item
+	other.Hash = strings.ToUpper(item.Hash)
+	items := []vcsapi.PushCommit{item, other}
+	got := NativeCommits("signed commits", items, "")
+	if got.Omission != "repeated-commit" || len(got.Items) != 2 {
+		t.Fatal("duplicate native objects became a complete collection", got)
+	}
+	if _, complete := NativeCommitFiles(&vcsapi.CommitCollection{Source: "legacy", Items: items}); complete {
+		t.Fatal("legacy duplicate collection bypassed completeness validation")
+	}
+}

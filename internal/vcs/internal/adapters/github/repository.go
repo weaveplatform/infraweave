@@ -16,9 +16,13 @@ var _ port.RepositorySource = (*Provider)(nil)
 func (p *Provider) ResolveRepositoryRef(ctx context.Context, repo port.Repository, ref string) (port.Resolution, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	commit, err := p.ResolveRef(ctx, repo, ref)
-	if err != nil {
-		return port.Resolution{}, err
+	var commit vcsapi.Commit
+	var err error
+	if repo.ExpectedID == "" {
+		commit, err = p.ResolveRef(ctx, repo, ref)
+		if err != nil {
+			return port.Resolution{}, err
+		}
 	}
 	c, _, err := p.repo(ctx, repo)
 	if err != nil {
@@ -34,6 +38,16 @@ func (p *Provider) ResolveRepositoryRef(ctx context.Context, repo port.Repositor
 	identity := vcsapi.Repository{ID: strconv.FormatInt(r.GetID(), 10), Namespace: r.GetOwner().GetLogin(), Name: r.GetName()}
 	if r.GetOwner().GetID() > 0 {
 		identity.OwnerID = strconv.FormatInt(r.GetOwner().GetID(), 10)
+	}
+	if err := port.MatchRepository(repo, identity); err != nil {
+		return port.Resolution{}, err //nolint:wrapcheck // a fixed private identity refusal
+	}
+	if repo.ExpectedID != "" {
+		repo.Namespace, repo.Name = identity.Namespace, identity.Name
+		commit, err = p.ResolveRef(ctx, repo, ref)
+		if err != nil {
+			return port.Resolution{}, err
+		}
 	}
 	return port.Resolution{Commit: commit, Repository: identity}, nil
 }

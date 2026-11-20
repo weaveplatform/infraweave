@@ -154,10 +154,11 @@ func (p *Provider) pushCommitFiles(ctx context.Context, in port.Integration, rp,
 		}
 		count := 0
 		for _, value := range page.ChangeCounts {
-			if value < 0 {
+			next := count + value
+			if value < 0 || next < count {
 				return nil, fmt.Errorf("%w: azuredevops: invalid push change count", kernel.ErrUnavailable)
 			}
-			count += value
+			count = next
 		}
 		if total >= 0 && total != count || skip+len(*page.Changes) > count {
 			return nil, fmt.Errorf("%w: azuredevops: inconsistent push change count", kernel.ErrUnavailable)

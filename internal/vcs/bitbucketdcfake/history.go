@@ -3,6 +3,7 @@ package bitbucketdcfake
 import "net/http"
 
 func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds it
 	head := r.URL.Query().Get("until")
 	if head == "" {

@@ -8,6 +8,7 @@ import (
 )
 
 func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds it
 	head := r.URL.Query().Get("include")
 	if head == "" {
@@ -26,6 +27,7 @@ func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) mergeBase(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := r.Context().Value(repoKey).(*repository) //nolint:forcetypeassert // member binds it
 	head, base, ok := strings.Cut(chi.URLParam(r, "spec"), "..")
 	sha, err := repo.repo.MergeBase(base, head)

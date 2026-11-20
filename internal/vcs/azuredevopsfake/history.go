@@ -7,6 +7,7 @@ import (
 )
 
 func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := repoOf(r)
 	q := r.URL.Query()
 	ref := q.Get("searchCriteria.itemVersion.version")
@@ -29,6 +30,7 @@ func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) commitChanges(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := repoOf(r)
 	commit, err := repo.repo.Resolve(chi.URLParam(r, "commit"))
 	if err != nil {

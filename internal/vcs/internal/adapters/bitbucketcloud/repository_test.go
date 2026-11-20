@@ -1,6 +1,10 @@
 package bitbucketcloud_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/sourcetest"
+)
 
 func TestUnitRepositoryIdentity(t *testing.T) {
 	l := newLab(t)
@@ -16,4 +20,9 @@ func TestUnitRepositoryIdentity(t *testing.T) {
 		second.Repository != first.Repository {
 		t.Fatalf("stable identity: first=%+v second=%+v", first, second)
 	}
+}
+
+func TestUnitBoundRepositoryIdentity(t *testing.T) {
+	l := newLab(t)
+	sourcetest.BoundRepository(t, l.bb, l.repo)
 }

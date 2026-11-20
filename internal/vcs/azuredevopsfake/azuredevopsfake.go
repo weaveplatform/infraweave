@@ -115,6 +115,7 @@ type repository struct {
 // users, and projects with the roles users hold in them and their Git
 // repositories, served under /acme.
 type Fake struct {
+	sourceReads    int
 	nativeRequests map[string]map[int]json.RawMessage
 	checks         checkStore
 	comments       commentStore
@@ -452,6 +453,7 @@ func (f *Fake) refs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	repo := repoOf(r)
 	id := chi.URLParam(r, "commit")
 	c, err := repo.repo.Resolve(id)
@@ -486,6 +488,7 @@ func (f *Fake) items(w http.ResponseWriter, r *http.Request) {
 // two commits, a page at a time by $top and $skip, a rename naming its
 // source.
 func (f *Fake) diffs(w http.ResponseWriter, r *http.Request) {
+	f.recordSourceRead()
 	q := r.URL.Query()
 	base, target := q.Get("baseVersion"), q.Get("targetVersion")
 	common := ""
