@@ -53,7 +53,7 @@ func (b *backendSteps) runner(ctx context.Context, run, name string, code int) e
 	if err != nil {
 		return err //nolint:wrapcheck // names the tool
 	}
-	if err := b.host.Build(ctx, pinned.image); err != nil {
+	if err := b.host.EnsureRunnerImage(ctx, pinned.image); err != nil {
 		return err //nolint:wrapcheck // names the image
 	}
 	var in bytes.Buffer

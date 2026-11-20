@@ -12,7 +12,7 @@ Feature: Stopping and killing a run through its worker's poll
   needs the blocking variant as well. A run whose state takes neither, and
   a state the run has left, answer 409 with the run's state. A real
   launcher of a private pool runs each run in a container of
-  infraweave-runner-terraform:acceptance with the newest Terraform the
+  {runner.terraform} with the newest Terraform the
   version catalogue lists. The release indexes serve the recorded
   fixtures; the home key is space-admin on the account's top space, and
   the member key holds only the bindings a scenario gives it. Stacks live

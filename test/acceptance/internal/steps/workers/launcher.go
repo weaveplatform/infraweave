@@ -75,6 +75,9 @@ type launcher struct {
 func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	l.launchers = map[string]*launcher{}
 	l.w.IDs["runner.spacelift"] = deps.ImageSpaceliftRunnerTerraform
+	l.w.IDs["runner.terraform"] = harness.RunnerTerraform
+	l.w.IDs["runner.opentofu"] = harness.RunnerOpenTofu
+	l.w.IDs["runner.test-support"] = harness.RunnerImage
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
@@ -158,6 +161,7 @@ func (l *launcherSteps) start(ctx context.Context, token, name, pool, csr, keeps
 // startWithImage overrides the scenario's usual image default, omitting the
 // setting entirely for an empty image so the vendor fallback is exercised.
 func (l *launcherSteps) startWithImage(ctx context.Context, token, name, pool, csr, image, replica string) error {
+	image = l.w.Resolve(image)
 	return l.startConfigured(ctx, token, name, pool, csr, "", "", replica, &image)
 }
 

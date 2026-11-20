@@ -54,7 +54,7 @@ Feature: Runner images follow the vendor and configured overrides
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
     Then the relay holds a report of the run "run"
-    And the run "run"'s container started from the image "ghcr.io/weaveplatform/infraweave-runner-<vendor>"
+    And the run "run"'s container started from the image "{runner.<vendor>}"
     When the relay releases the runners' reports
     Then token "h" eventually reads the run "run" in the state "FINISHED" through A
     And the run "run" wrote 1 state version
@@ -71,14 +71,14 @@ Feature: Runner images follow the vendor and configured overrides
 
   @tofu @op:runTrigger @case:success
   Scenario: A launcher's configured default overrides an OpenTofu run's vendor image
-    Given token "h" starts the launcher "l" of the pool "pool" with the key of "csr", whose default runner image is "infraweave-runner-terraform:acceptance" through A
+    Given token "h" starts the launcher "l" of the pool "pool" with the key of "csr", whose default runner image is "{runner.terraform}" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"opentofu":{}}},"manageState":true}' through B
     And the relay holds the runners' reports
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "run"
     Then the relay holds a report of the run "run"
-    And the run "run"'s container started from the image "infraweave-runner-terraform:acceptance"
+    And the run "run"'s container started from the image "{runner.terraform}"
     When the relay releases the runners' reports
     Then token "h" eventually reads the run "run" in the state "FINISHED" through A
 

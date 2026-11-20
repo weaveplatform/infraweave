@@ -67,9 +67,12 @@ func TestUnitLoadDefaults(t *testing.T) {
 
 func TestUnitVendorRunnerImage(t *testing.T) {
 	for _, tt := range []struct{ vendor, want string }{
-		{"terraform", runnerimages.Terraform}, {"terragrunt", runnerimages.Terraform},
-		{"opentofu", runnerimages.OpenTofu}, {"pulumi", runnerimages.Pulumi},
-		{"ansible", runnerimages.Ansible}, {"", runnerimages.Terraform},
+		{"terraform", runnerimages.Terraform},
+		{"terragrunt", runnerimages.Terraform},
+		{"opentofu", runnerimages.OpenTofu},
+		{"pulumi", runnerimages.Pulumi},
+		{"ansible", runnerimages.Ansible},
+		{"", runnerimages.Terraform},
 	} {
 		t.Run(tt.vendor, func(t *testing.T) {
 			if got := config.VendorRunnerImage(tt.vendor); got != tt.want {

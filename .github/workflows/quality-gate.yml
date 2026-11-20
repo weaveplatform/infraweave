@@ -499,7 +499,11 @@ jobs:
         run: |
           images=true
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null &&
-            git diff --quiet "$BASE" HEAD -- deploy/images .github/workflows/quality-gate.yml; then
+            git diff --quiet "$BASE" HEAD -- deploy/images .github/workflows/quality-gate.yml \
+              ':(exclude)deploy/images/images.lock.json' \
+              ':(exclude)deploy/images/upstream.json' \
+              ':(exclude)deploy/images/README.md' \
+              ':(exclude)deploy/images/IMPLEMENTATION.md'; then
             images=false
           fi
           echo "images=$images" | tee -a "$GITHUB_OUTPUT"

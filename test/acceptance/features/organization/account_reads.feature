@@ -13,9 +13,9 @@ Feature: Account reads
     When the home key is exchanged through A for token "h"
     And the sibling key is exchanged through B for token "s"
     And the stranger key is exchanged through A for token "x"
-    Then the account reads through A with token "h" answer the home account, type "ORG" and runner image "ghcr.io/weaveplatform/infraweave-runner-terraform"
-    And the account reads through A with token "s" answer the sibling account, type "ORG" and runner image "ghcr.io/weaveplatform/infraweave-runner-terraform"
-    And the account reads through B with token "x" answer the stranger account, type "ORG" and runner image "ghcr.io/weaveplatform/infraweave-runner-terraform"
+    Then the account reads through A with token "h" answer the home account, type "ORG" and runner image "{runner.terraform}"
+    And the account reads through A with token "s" answer the sibling account, type "ORG" and runner image "{runner.terraform}"
+    And the account reads through B with token "x" answer the stranger account, type "ORG" and runner image "{runner.terraform}"
 
   @op:id @op:name @op:type @op:defaultPrivateWorkerPoolRunnerImage @case:denial
   Scenario: Each read needs a credential

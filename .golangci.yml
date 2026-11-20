@@ -217,6 +217,7 @@ linters:
             - github.com/weaveplatform/infraweave/internal/platform/buildinfo$
             - github.com/weaveplatform/infraweave/internal/platform/observe$
             - github.com/weaveplatform/infraweave/internal/platform/rego$
+            - github.com/weaveplatform/infraweave/internal/platform/runnerimages$
             - github.com/weaveplatform/infraweave/internal/platform/httpkit/client$
             - github.com/weaveplatform/infraweave/internal/platform/httpkit/serve$
             - github.com/weaveplatform/infraweave/internal/platform/seal$

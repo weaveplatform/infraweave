@@ -54,9 +54,9 @@ def recipe(base=None):
     digest = hashlib.sha256()
     def included(p):
         return (
-        p.name in ("versions.json", "imagectl.py", "contract.sh", "Dockerfile") or p.suffix == ".lock"
-        or p.suffix in (".py", ".sh", ".yml", ".js") and "tests" in p.parts
-        or "rootfs" in p.parts or "callback_plugins" in p.parts
+        p.name in ("versions.json", "imagectl.py", "contract.sh")
+        or any(part.startswith("runner-") for part in p.parts)
+        or "tests" in p.parts
         ) and "__pycache__" not in p.parts
     if base:
         names = run("git", "ls-tree", "-r", "--name-only", base, "deploy/images", capture=True).splitlines()

@@ -33,7 +33,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		if err := owner.prepare(ctx, root, t.TempDir()); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = owner.Close(context.Background()) })
+		t.Cleanup(func() { _ = owner.Close(context.WithoutCancel(ctx)) })
 		if err := owner.EnsureRunnerImage(ctx, RunnerTerraform); err != nil {
 			t.Fatal(err)
 		}
@@ -51,7 +51,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = b.Remove(context.Background(), LabelScenario, scenario) })
+		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
 	}
 	startForward(&a, prefix+"-a")
 	startForward(&b, prefix+"-b")
@@ -73,7 +73,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = b.Remove(context.Background(), LabelScenario, prefix+"-version") })
+		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, prefix+"-version") })
 		code, stdout, stderr, err := tool.Wait(ctx)
 		if err != nil || code != 0 || !strings.Contains(stdout, "infraweave") {
 			t.Fatalf("%s: code=%d stdout=%q stderr=%q err=%v", image, code, stdout, stderr, err)

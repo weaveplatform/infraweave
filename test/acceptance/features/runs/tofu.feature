@@ -1,7 +1,7 @@
 @postgres @objectstore @vcs @docker @tofu
 Feature: Runs of an OpenTofu stack end to end
   A real launcher of a private pool runs each run in a container of
-  infraweave-runner-opentofu:acceptance, with the newest OpenTofu the
+  {runner.opentofu}, with the newest OpenTofu the
   version catalogue lists, which it downloads from the suite's tool mirror
   and verifies against OpenTofu's signing key. A tracked run on a stack
   without autodeploy is triggered on a Gitea commit, initializes and
