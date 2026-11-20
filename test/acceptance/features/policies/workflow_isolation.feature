@@ -1,7 +1,7 @@
 @policy-phase @postgres @vcs @policy-approval
 Feature: Concurrent public reviews keep independent Rego execution state
   Eight separate stack owners allow pairs of concurrent reviews on each replica. Both
-  stored dialects reuse helper names, partial objects and comprehensions while
+  stored dialects reuse helper names and partial objects while
   producing flags derived only from their own run. Private print output must
   remain separate from retained decisions, public responses and process logs.
   ref: decision 0009

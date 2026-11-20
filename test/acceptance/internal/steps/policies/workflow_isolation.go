@@ -12,6 +12,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func registerWorkflowIsolation(sc *godog.ScenarioContext, w *harness.World) {
@@ -70,9 +71,12 @@ func workflowIsolation(ctx context.Context, w *harness.World) error {
 			body:   map[string]any{"run": run.Id, "decision": "APPROVE"},
 		}
 	}
+	if err := workflowIsolationReady(ctx, w); err != nil {
+		return err
+	}
 	// Each pair hits the same process and prepared-query cache concurrently.
-	// Separate stack owners allow simultaneous evaluations. Bound the writer
-	// contention independently of this input/helper/print isolation assertion.
+	// Setup's policy and stack changes also schedule approval reevaluations.
+	// Observe those jobs finishing before testing independent review inputs.
 	for i := 0; i < count; i += 2 {
 		if _, err := raceRequests(ctx, calls[i:i+2]); err != nil {
 			return err
@@ -84,11 +88,23 @@ func workflowIsolation(ctx context.Context, w *harness.World) error {
 		}
 	}
 	for _, server := range w.Servers {
-		if bytes.Contains(server.Stdout(), []byte("private-policy-print-654")) {
+		if bytes.Contains(server.Stdout(), []byte("private-policy-print-654")) || bytes.Contains(server.Stderr(), []byte("private-policy-print-654")) {
 			return fmt.Errorf("%w: private workflow print escaped to process logs", harness.ErrStep)
 		}
 	}
 	return nil
+}
+
+func workflowIsolationReady(ctx context.Context, w *harness.World) error {
+	return deps.Eventually(ctx, "approval setup events and jobs to finish", func(ctx context.Context) (bool, error) {
+		var ready bool
+		err := w.Row(ctx, `SELECT
+ NOT EXISTS(SELECT 1 FROM events WHERE account_id=$1 AND fanned_out_at IS NULL)
+ AND NOT EXISTS(SELECT 1 FROM jobs WHERE account_id=$1 AND state<>'succeeded'
+  AND kind IN ('events.fanout','events.consume','run.schedule','run.approval.scan','run.approval.reevaluate'))`,
+			[]any{harness.UUIDOf(harness.Home.Account)}, &ready)
+		return ready, err
+	})
 }
 
 func workflowIsolatedRun(ctx context.Context, w *harness.World, name, id string) error {

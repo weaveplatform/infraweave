@@ -41,7 +41,7 @@ func registerWorkflowRuntime(sc *godog.ScenarioContext, w *harness.World) {
 				return fmt.Errorf("%w: private print escaped into retained workflow evidence", harness.ErrStep)
 			}
 			for _, server := range w.Servers {
-				if bytes.Contains(server.Stdout(), marker) {
+				if bytes.Contains(server.Stdout(), marker) || bytes.Contains(server.Stderr(), marker) {
 					return fmt.Errorf("%w: private print escaped into process logs", harness.ErrStep)
 				}
 			}
