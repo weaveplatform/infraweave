@@ -37,6 +37,8 @@ type commentSteps struct {
 	created             map[int]time.Time
 	appID, installation int64
 	lastDelivery        string
+	sourceNamespace     string
+	sourceRepository    string
 }
 
 func (c *commentSteps) register(sc *godog.ScenarioContext) {
@@ -224,7 +226,14 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 		}
 		request["number"], body["number"] = id, id
 		request["created_at"], request["updated_at"] = created.Format(time.RFC3339), c.clock.Format(time.RFC3339)
-		request["head"] = map[string]any{"ref": branch, "sha": c.w.IDs[commit], "repo": body["repository"]}
+		source := repository
+		if c.sourceNamespace != "" {
+			source, repoErr = c.github.fake.RepositoryPayload(c.sourceNamespace, c.sourceRepository)
+			if repoErr != nil {
+				return fmt.Errorf("comment native source repository: %w", repoErr)
+			}
+		}
+		request["head"] = map[string]any{"ref": branch, "sha": c.w.IDs[commit], "repo": source}
 		request["base"] = map[string]any{"ref": "target-" + strconv.Itoa(id), "sha": c.w.IDs["commentBase"], "repo": body["repository"]}
 		request["html_url"] = fmt.Sprintf("https://github.example.com/acme/infra/pull/%d", id)
 		native, nativeErr := json.Marshal(request)
@@ -250,16 +259,18 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 			nativeAction = "close"
 		}
 		delivery, buildErr := c.gitlab.fake.MergeRequestWebhook(c.fixture.namespace, "infra", gitlabfake.WebhookMergeRequest{
-			IID:          id,
-			Action:       nativeAction,
-			SourceBranch: branch,
-			TargetBranch: "target-" + strconv.Itoa(id),
-			Head:         c.w.IDs[commit],
-			Author:       "creator",
-			Actor:        "reviewer",
-			Title:        fmt.Sprintf("Comment request %d", id),
-			CreatedAt:    created,
-			UpdatedAt:    c.clock,
+			IID:              id,
+			Action:           nativeAction,
+			SourceBranch:     branch,
+			TargetBranch:     "target-" + strconv.Itoa(id),
+			Head:             c.w.IDs[commit],
+			Author:           "creator",
+			Actor:            "reviewer",
+			Title:            fmt.Sprintf("Comment request %d", id),
+			CreatedAt:        created,
+			UpdatedAt:        c.clock,
+			SourceNamespace:  c.sourceNamespace,
+			SourceRepository: c.sourceRepository,
 		})
 		if buildErr != nil {
 			return fmt.Errorf("comment merge request fixture: %w", buildErr)

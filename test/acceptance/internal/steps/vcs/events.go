@@ -33,6 +33,8 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^event delivery "(\w+)" settles with (\d+) new runs$`, s.settled)
 	sc.Step(`^event delivery "(\w+)" has exactly (\d+) stored rows$`, s.rows)
 	sc.Step(`^the event fixture sends request "(\w+)" through ([AB])$`, s.policyRequest)
+	sc.Step(`^the event request source becomes a readable fork sharing the seed commit$`, s.policyFork)
+	sc.Step(`^the stored event request "(\w+)" retains distinct native fork identities$`, s.nativeFork)
 	sc.Step(`^the event fixture sends comment "(\w+)" through ([AB])$`, s.policyComment)
 	sc.Step(`^the event fixture holds future child evaluations$`, s.holdPolicyChildren)
 	sc.Step(`^event delivery "(\w+)" has a held child without native request facts$`, s.heldPolicyChild)
