@@ -19,6 +19,10 @@ import (
 
 func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
+// Middleware-only fixtures have no policy service or database. Probe a route
+// still owned by the generated scaffold, independently of implemented policies.
+const scaffoldedStackPath = "/api/v1/stacks/infra/attachable-aws-integrations"
+
 func request(t *testing.T, h http.Handler, method, target string) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := httptest.NewRecorder()
@@ -72,9 +76,9 @@ func TestUnitAPIRoutes(t *testing.T) {
 		{
 			"scaffolded operation",
 			http.MethodGet,
-			"/api/v1/stacks/infra/attachable-policies",
+			scaffoldedStackPath,
 			http.StatusNotImplemented,
-			"stackAttachablePolicies (GET /stacks/{stackId}/attachable-policies)",
+			"stackAttachableAwsIntegrations (GET /stacks/{stackId}/attachable-aws-integrations)",
 		},
 		{"unknown path", http.MethodGet, "/api/v1/nope", http.StatusNotFound, "/api/v1/nope"},
 		{"wrong method", http.MethodPatch, "/api/v1/stacks", http.StatusMethodNotAllowed, "PATCH"},
@@ -123,9 +127,9 @@ func TestUnitOperatorRoutes(t *testing.T) {
 	}
 	wantProblem(
 		t,
-		request(t, refused, http.MethodGet, "/api/v1/stacks/infra/attachable-policies"),
+		request(t, refused, http.MethodGet, scaffoldedStackPath),
 		http.StatusNotImplemented,
-		"stackAttachablePolicies",
+		"stackAttachableAwsIntegrations",
 	)
 
 	admitted := API(

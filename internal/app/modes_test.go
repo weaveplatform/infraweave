@@ -176,9 +176,9 @@ func TestUnitServerListeners(t *testing.T) {
 			}
 			if code := get(
 				t,
-				"http://"+r.APIAddr()+"/api/v1/stacks/infra/attachable-policies",
+				"http://"+r.APIAddr()+scaffoldedStackPath,
 			); code != http.StatusNotImplemented {
-				t.Errorf("API /api/v1/stacks/infra/attachable-policies: %d, want 501", code)
+				t.Errorf("API %s: %d, want 501", scaffoldedStackPath, code)
 			}
 		})
 	}

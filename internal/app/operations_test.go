@@ -540,7 +540,7 @@ func TestUnitAPIRateLimits(t *testing.T) {
 	if rec := send(
 		api,
 		http.MethodGet,
-		"/api/v1/stacks/infra/attachable-policies",
+		scaffoldedStackPath,
 		me,
 		"",
 	); rec.Code != http.StatusNotImplemented ||
@@ -569,7 +569,7 @@ func TestUnitAPIDisabledCaller(t *testing.T) {
 	rec := send(
 		api,
 		http.MethodGet,
-		"/api/v1/stacks/infra/attachable-policies",
+		scaffoldedStackPath,
 		"192.0.2.1:1",
 		"",
 	)
@@ -580,7 +580,7 @@ func TestUnitAPIDisabledCaller(t *testing.T) {
 	if rec := send(
 		api,
 		http.MethodGet,
-		"/api/v1/stacks/infra/attachable-policies",
+		scaffoldedStackPath,
 		"198.51.100.7:1",
 		"",
 	); rec.Code != http.StatusNotImplemented {
