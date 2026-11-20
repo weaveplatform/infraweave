@@ -23,7 +23,6 @@ type RunInputBuilder interface {
 
 // RunInputFacts contains facts owned by run and stack workflows. Plan is an
 // opened, already sanitized artifact; this projection does not sanitize again.
-// Review/session facts are added by their owning workflow when persisted.
 type RunInputFacts struct {
 	Account     kernel.AccountID
 	Type        Type
@@ -32,6 +31,77 @@ type RunInputFacts struct {
 	Stack       StackFacts
 	PreviousRun Fact[RunFacts]
 	Plan        *SanitizedPlan
+	Reviews     Fact[ReviewsFacts]
+}
+
+// ReviewsFacts is the run owner's state/version-scoped selection of the latest
+// review per author. Known empty groups are explicit arrays, never a fabricated
+// approval or a review carried from a previous state.
+type ReviewsFacts struct {
+	Current ReviewGroupFacts
+	Older   ReviewGroupFacts
+}
+
+// ReviewGroupFacts separates approval and rejection without rewriting history.
+type ReviewGroupFacts struct {
+	Approvals  []ReviewFacts
+	Rejections []ReviewFacts
+}
+
+// ReviewFacts retains the metadata recorded at the authorized review, not the
+// reviewer's current roles or session at a later policy evaluation.
+type ReviewFacts struct {
+	Author       string
+	State        kernel.RunState
+	StateVersion int64
+	AuthorRoles  Fact[[]RoleFacts]
+	Identity     Fact[IdentityFacts]
+	Note         Fact[string]
+	Request      Fact[RequestFacts]
+	Session      Fact[SessionFacts]
+}
+
+// RoleFacts keeps the public role identity and immutable ULID distinct.
+type RoleFacts struct {
+	ID, Name, Slug, ULID string
+}
+
+// IdentityFacts contains only identity data supplied by its owning domain.
+type IdentityFacts struct {
+	ULID        Fact[string]
+	Federations Fact[map[string]FederationFacts]
+}
+
+// FederationFacts is the recorded external identity, when available.
+type FederationFacts struct {
+	ID, Username Fact[string]
+}
+
+// RequestFacts fixes the request clock when the review is recorded. A later
+// evaluation must not replace it with its own timestamp or remote address.
+type RequestFacts struct {
+	At       time.Time
+	RemoteIP Fact[string]
+}
+
+// SessionAdmin preserves the published human boolean and machine empty-string
+// alternatives without accepting an arbitrary JSON value from another owner.
+type SessionAdmin uint8
+
+const (
+	SessionNotAdmin SessionAdmin = iota
+	SessionIsAdmin
+	SessionMachineAdmin
+)
+
+// SessionFacts projects the recorded session without credentials or token data.
+type SessionFacts struct {
+	Machine                bool
+	Admin                  Fact[SessionAdmin]
+	Login, Name, CreatorIP Fact[string]
+	IDPSubject, StackID    Fact[string]
+	Teams                  Fact[[]string]
+	Identity               Fact[IdentityFacts]
 }
 
 // RunFacts carries persisted facts without using a transport Run projection,

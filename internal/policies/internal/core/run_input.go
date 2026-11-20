@@ -28,8 +28,14 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 		if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil {
 			return nil, policyapi.ErrInput
 		}
-		document = inputs.ApprovalInput{Run: inputs.Value(run), Stack: inputs.Value(stack)}
+		document = inputs.ApprovalInput{
+			Run: inputs.Value(run), Stack: inputs.Value(stack),
+			Reviews: convertFact(b, facts.Reviews, b.reviews),
+		}
 	case policyapi.Plan:
+		if facts.Reviews.Known || facts.Reviews.Value != nil {
+			return nil, policyapi.ErrInput
+		}
 		planRun := toPlanRun(run)
 		context := inputs.PlanContext{
 			Run: inputs.Value(planRun), Stack: inputs.Value(stack),
