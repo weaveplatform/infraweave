@@ -58,7 +58,7 @@ func (s snapshotStore) PolicyEvidence(context.Context, kernel.AccountID, []kerne
 	return map[kernel.ULID]evidence.Snapshot{s.run.ID: {Flags: []string{"now"}}, s.previous.ID: {Flags: []string{"before"}}}, nil
 }
 
-func TestSnapshotPreservesReadFailuresAndTransactionRequirement(t *testing.T) {
+func TestUnitSnapshotPreservesReadFailuresAndTransactionRequirement(t *testing.T) {
 	store := snapshotStore{run: lifecycle.Run{ID: kernel.NewULID()}, previous: lifecycle.Run{ID: kernel.NewULID()}}
 	if _, err := Read(t.Context(), store, kernel.NewAccountID(), store.run.ID); !errors.Is(err, lifecycle.ErrNoTransaction) {
 		t.Fatalf("snapshot escaped transaction: %v", err)
@@ -81,7 +81,7 @@ func TestSnapshotPreservesReadFailuresAndTransactionRequirement(t *testing.T) {
 	}
 }
 
-func TestFactsRetainsPersistedRuntimeAndStructuralMetadata(t *testing.T) {
+func TestUnitFactsRetainsPersistedRuntimeAndStructuralMetadata(t *testing.T) {
 	at := time.Unix(1000, 42).UTC()
 	config := runtimeconfig.Configuration{
 		AfterApply: []string{"aa"}, AfterDestroy: []string{"ad"}, AfterInit: []string{"ai"}, AfterPerform: []string{"ap"},
@@ -112,8 +112,22 @@ func TestFactsRetainsPersistedRuntimeAndStructuralMetadata(t *testing.T) {
 		*c.TerraformVersion.Value != config.TerraformVersion {
 		t.Fatalf("runtime metadata/actual values lost: %+v", c)
 	}
+	wantHooks := [][]string{
+		config.AfterApply,
+		config.AfterDestroy,
+		config.AfterInit,
+		config.AfterPerform,
+		config.AfterPlan,
+		config.AfterRun,
+		config.BeforeApply,
+		config.BeforeDestroy,
+		config.BeforeInit,
+		config.BeforePerform,
+		config.BeforePlan,
+		config.GitSparseCheckoutPaths,
+	}
 	for i, value := range []policyapi.Fact[[]string]{c.AfterApply, c.AfterDestroy, c.AfterInit, c.AfterPerform, c.AfterPlan, c.AfterRun, c.BeforeApply, c.BeforeDestroy, c.BeforeInit, c.BeforePerform, c.BeforePlan, c.GitSparseCheckoutPaths} {
-		if value.Value == nil || len(*value.Value) != 1 {
+		if value.Value == nil || !reflect.DeepEqual(*value.Value, wantHooks[i]) {
 			t.Fatalf("runtime field %d lost: %+v", i, value)
 		}
 	}

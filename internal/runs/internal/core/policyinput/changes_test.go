@@ -8,7 +8,7 @@ import (
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 )
 
-func TestStructuralChangesPreservesAvailableMetadata(t *testing.T) {
+func TestUnitStructuralChangesPreservesAvailableMetadata(t *testing.T) {
 	for kind, action := range policyActions {
 		out, err := StructuralChanges(
 			"terraform",

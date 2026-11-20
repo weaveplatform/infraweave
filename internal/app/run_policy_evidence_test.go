@@ -46,8 +46,10 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 	var run runsapi.CreatedRun
 	if err := tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error {
 		var err error
-		run, err = w.d.Runs.Creator().Create(ctx, runsapi.CreateRequest{Account: w.acct, Stack: stack.ID, Type: kernel.RunTypeTracked, Mode: runsapi.None,
-			Commit: runsapi.Commit{Hash: "receipt-test", Branch: "main", Timestamp: at, AuthorName: "Alice", Message: "policy evidence"}, TriggeredBy: "alice"})
+		run, err = w.d.Runs.Creator().Create(ctx, runsapi.CreateRequest{
+			Account: w.acct, Stack: stack.ID, Type: kernel.RunTypeTracked, Mode: runsapi.None,
+			Commit: runsapi.Commit{Hash: "receipt-test", Branch: "main", Timestamp: at, AuthorName: "Alice", Message: "policy evidence"}, TriggeredBy: "alice",
+		})
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -101,8 +103,10 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 				BuildInput: func(ctx context.Context) (json.RawMessage, error) {
 					return runstest.Input(ctx, d, server.Policies.RunInputBuilder(), policyapi.RunInputFacts{
 						Account: w.acct, Type: policyapi.Approval, At: at,
-						Stack: policyapi.StackFacts{ID: stack.ID, Slug: stack.Slug, Name: stack.Name, State: kernel.StackStateNone,
-							Branch: settings.Branch, Namespace: settings.Namespace, Repository: settings.Repository, Autodeploy: settings.Autodeploy},
+						Stack: policyapi.StackFacts{
+							ID: stack.ID, Slug: stack.Slug, Name: stack.Name, State: kernel.StackStateNone,
+							Branch: settings.Branch, Namespace: settings.Namespace, Repository: settings.Repository, Autodeploy: settings.Autodeploy,
+						},
 					}, run.ID)
 				},
 			})
@@ -132,7 +136,9 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 		}
 		var state string
 		var version int64
-		if err := w.q.QueryRow(t.Context(), `SELECT state,state_version FROM runs WHERE account_id=$1 AND id=$2`, w.acct, run.ID).Scan(&state, &version); err != nil || state != "QUEUED" || version != 1 || count("run_policy_receipts") != 0 || count("run_flags") != 0 || count("events") != beforeEvents || count("jobs") != beforeJobs {
+		if err := w.q.QueryRow(t.Context(), `SELECT state,state_version FROM runs WHERE account_id=$1 AND id=$2`, w.acct, run.ID).
+			Scan(&state, &version); err != nil || state != "QUEUED" || version != 1 || count("run_policy_receipts") != 0 || count("run_flags") != 0 || count("events") != beforeEvents ||
+			count("jobs") != beforeJobs {
 			t.Fatalf("rollback escaped: state=%s/%d error=%v", state, version, err)
 		}
 	}
@@ -145,13 +151,23 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 	if count("run_policy_receipts") != 1 || count("run_flags") != 1 || count("events") != beforeEvents+2 || count("jobs") != beforeJobs+2 {
 		t.Fatal("actual evaluator evidence did not commit exactly once")
 	}
+	principal, ok := kernel.PrincipalFrom(w.admin)
+	if !ok {
+		t.Fatal("fixture has no admin principal")
+	}
+	d := runstest.EvidenceDeps{DB: w.q, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
+	if _, err := runstest.Input(t.Context(), d, w.d.Policies.RunInputBuilder(), policyapi.RunInputFacts{Account: w.acct}, run.ID); !errors.Is(err, runsapi.ErrNoTransaction) {
+		t.Fatalf("input helper lost the caller transaction boundary: %v", err)
+	}
 	if err := tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error {
-		next, err := w.d.Runs.Creator().Create(ctx, runsapi.CreateRequest{Account: w.acct, Stack: stack.ID, Type: kernel.RunTypeTracked, Mode: runsapi.None,
-			Commit: runsapi.Commit{Hash: "next-receipt-test", Branch: "main", Timestamp: at, AuthorName: "Alice", Message: "next"}, TriggeredBy: "policy/trigger"})
+		next, err := w.d.Runs.Creator().Create(ctx, runsapi.CreateRequest{
+			Account: w.acct, Stack: stack.ID, Type: kernel.RunTypeTracked, Mode: runsapi.None,
+			Commit: runsapi.Commit{Hash: "next-receipt-test", Branch: "main", Timestamp: at, AuthorName: "Alice", Message: "next"}, TriggeredBy: "policy/trigger",
+		})
 		if err != nil {
 			return err
 		}
-		view, err := w.d.Stacks.API().Stack(w.admin, api.StackRequestObject{StackId: stack.Slug})
+		view, err := w.d.Stacks.API().Stack(kernel.WithPrincipal(ctx, principal), api.StackRequestObject{StackId: stack.Slug})
 		if err != nil {
 			return err
 		}
@@ -160,9 +176,13 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 			return fmt.Errorf("stack view: %T", view)
 		}
 		d := runstest.EvidenceDeps{DB: w.q, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
-		raw, err := runstest.Input(ctx, d, w.d.Policies.RunInputBuilder(), policyapi.RunInputFacts{Account: w.acct, Type: policyapi.Plan, At: at,
-			Stack: policyapi.StackFacts{ID: stack.ID, Slug: stack.Slug, Name: stack.Name, State: kernel.StackState(current.Body.State),
-				Branch: settings.Branch, Namespace: settings.Namespace, Repository: settings.Repository, Autodeploy: settings.Autodeploy}}, next.ID)
+		raw, err := runstest.Input(ctx, d, w.d.Policies.RunInputBuilder(), policyapi.RunInputFacts{
+			Account: w.acct, Type: policyapi.Plan, At: at,
+			Stack: policyapi.StackFacts{
+				ID: stack.ID, Slug: stack.Slug, Name: stack.Name, State: kernel.StackState(current.Body.State),
+				Branch: settings.Branch, Namespace: settings.Namespace, Repository: settings.Repository, Autodeploy: settings.Autodeploy,
+			},
+		}, next.ID)
 		if err != nil {
 			return err
 		}
@@ -181,7 +201,8 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 		if err := json.Unmarshal(raw, &input); err != nil {
 			return err
 		}
-		if len(input.Infraweave.Run.Flags) != 0 || input.Infraweave.Previous.ID != run.ID.String() || len(input.Infraweave.Previous.Flags) != 1 || input.Infraweave.Previous.Flags[0] != "evaluated" {
+		if len(input.Infraweave.Run.Flags) != 0 || input.Infraweave.Previous.ID != run.ID.String() || len(input.Infraweave.Previous.Flags) != 1 ||
+			input.Infraweave.Previous.Flags[0] != "evaluated" {
 			return errors.New("next run lost previous flags or inherited owners")
 		}
 		return nil

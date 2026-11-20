@@ -43,7 +43,7 @@ func inputFacts() policyapi.RunInputFacts {
 	}
 }
 
-func TestRunInputBuilderPreservesTypedFactsAndPlanProjection(t *testing.T) {
+func TestUnitRunInputBuilderPreservesTypedFactsAndPlanProjection(t *testing.T) {
 	facts := inputFacts()
 	previous := facts.Run
 	previous.ID = kernel.NewULID()
@@ -112,7 +112,7 @@ func TestRunInputBuilderPreservesTypedFactsAndPlanProjection(t *testing.T) {
 	}
 }
 
-func TestRunInputBuilderRejectsInvalidOrUnavailableFacts(t *testing.T) {
+func TestUnitRunInputBuilderRejectsInvalidOrUnavailableFacts(t *testing.T) {
 	for name, change := range map[string]func(*policyapi.RunInputFacts){
 		"account":              func(f *policyapi.RunInputFacts) { f.Account = kernel.AccountID{} },
 		"timestamp":            func(f *policyapi.RunInputFacts) { f.At = time.Time{} },
@@ -147,7 +147,7 @@ func TestRunInputBuilderRejectsInvalidOrUnavailableFacts(t *testing.T) {
 	}
 }
 
-func TestRunInputBuilderApprovalAndVendorVariants(t *testing.T) {
+func TestUnitRunInputBuilderApprovalAndVendorVariants(t *testing.T) {
 	for _, vendor := range []string{"terraform", "opentofu", "terragrunt"} {
 		t.Run(vendor, func(t *testing.T) {
 			facts := inputFacts()
