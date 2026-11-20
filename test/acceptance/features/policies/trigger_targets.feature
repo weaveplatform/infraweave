@@ -149,3 +149,32 @@ Feature: Terminal trigger targets obey account, space and lifecycle boundaries
     Then it answers 200
     And the answer's flags is '["account-private","policy.internal_error"]'
     And token "s" reads no policy-triggered run of stack "foreign" from stack "infra" run "source" through B
+
+  @case:failure @bitbucket-cloud
+  Scenario: Deleting a modeled provider integration refuses its target despite a retained tracked commit
+    Given a Bitbucket Cloud account "dev@acme.example" with an API token kept as "tok"
+    And a Bitbucket Cloud repository "acme/infra" that "dev@acme.example" administers, its head of "main" kept as "cloudSeed"
+    And token "h" sends "POST /api/v1/bitbucket-cloud-integrations" with '{"email":"dev@acme.example","apiToken":"{tok}","customInput":{"name":"Cloud","spaceID":"legacy"}}' through A
+    And it answers 201
+    And the answer's id names "integration"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Detached","namespace":"acme","repository":"infra","branch":"main","provider":"BITBUCKET_CLOUD","vcsIntegrationId":"{integration}","space":"legacy"},"manageState":false}' through B
+    And it answers 201
+    And token "h" eventually reads the stack "detached" tracking the commit kept as "cloudSeed" through A
+    When token "h" sends "DELETE /api/v1/bitbucket-cloud-integrations/{integration}" through B
+    Then it answers 200
+    And token "h" eventually reads the stack "detached" tracking the commit kept as "cloudSeed" through A
+    And the answer's vcsDetached is 'true'
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Detached source guard","type":"TRIGGER","space":"legacy","body":"package infraweave\ntrigger contains name if { some name in {\"target\", \"detached\"} }\n"}' through A
+    And it answers 201
+    And the answer's id names "policy"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{policy}" through B
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{sourceSeed}","runType":"TRACKED"}' through A
+    Then it answers 200
+    And the answer's id names "source"
+    When token "h" sends "POST /api/v1/stacks/infra/runs/{source}/cancel" with '{}' through B
+    Then it answers 200
+    And token "h" eventually reads TRIGGER outcomes "IGNORE" for run "source" through A
+    And the answer contains a TRIGGER error receipt "TARGET"
+    And token "h" reads no policy-triggered run of stack "target" from stack "infra" run "source" through B
+    And token "h" reads no policy-triggered run of stack "detached" from stack "infra" run "source" through A
