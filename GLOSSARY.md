@@ -316,6 +316,14 @@ _Avoid_: Go template, interpolation string
 A Rego program that decides whether, or how, an action proceeds.
 _Avoid_: rule, guard
 
+**Policy language version**:
+The Rego dialect a policy declares, determining the syntax and meaning of its rules.
+_Avoid_: OPA version
+
+**Policy runtime version**:
+The reported version of the policy evaluator, separate from each policy's declared language version.
+_Avoid_: policy dialect
+
 **Infrastructure code**:
 Code that runs on workers or agents: hooks, tasks, the IaC itself and Flows app code.
 _Avoid_: script, expression

@@ -3,7 +3,9 @@
 //
 // # Input and output
 //
-// Policies select their user-module dialect and per-type v1 preamble. Evaluate
+// Policies select supported v0/v1 user-module dialects and a per-type v1
+// preamble. Wildcard future keywords retain the original v0/v1 set; a linked
+// library's newer dialects do not expand the policy contract. Evaluate
 // consumes an independent JSON input and returns only the preamble's raw result
 // and bounded captured print text. Typed domain decisions belong to policies.
 //

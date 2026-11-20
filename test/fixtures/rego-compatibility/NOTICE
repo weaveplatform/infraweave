@@ -1,0 +1,9 @@
+The five .rego files in this directory are from
+spacelift-io/spacelift-policies-example-library at
+6ff5edb08bc806f323eff5c48426a7762ef1fee7.
+
+Copyright (c) 2023 Spacelift
+
+They are redistributed under the MIT License, reproduced in full in LICENSE.
+Original source paths and SHA-256 digests are recorded in manifest.json.
+No proprietary Spacelift service source code is included.
