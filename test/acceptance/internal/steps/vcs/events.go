@@ -55,6 +55,7 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 		func(branch, key string) error { s.nativeRevert = true; return s.policyNativeCommits(2, branch, key) },
 	)
 	sc.Step(`^the event stack is unlocked in its public read and owner storage$`, s.policyUnlocked)
+	sc.Step(`^the GitHub event push omits its native commit collection$`, func() { s.nativeCommits = nil })
 }
 
 func (s *eventSteps) repository() checkRepository {
