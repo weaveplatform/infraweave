@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 )
 
@@ -56,6 +57,19 @@ func (s *Store) Handed(ctx context.Context, id kernel.ULID) (lifecycle.Run, erro
 		return lifecycle.Run{}, fmt.Errorf("runs: hand over run %s: %w", id, sql.Unavailable(err))
 	}
 	return r, nil
+}
+
+// ReportOwner leaves the run unlocked until its owner fences have been held.
+func (s *Store) ReportOwner(ctx context.Context, id kernel.ULID) (report.Owner, error) {
+	var owner report.Owner
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT account_id,stack_id FROM runs WHERE id=$1`, id).Scan(&owner.Account, &owner.Stack)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return report.Owner{}, lifecycle.ErrNotFound
+	}
+	if err != nil {
+		return report.Owner{}, fmt.Errorf("runs: locate report owner: %w", sql.Unavailable(err))
+	}
+	return owner, nil
 }
 
 // RecordResolved writes the first successful handover's record in the

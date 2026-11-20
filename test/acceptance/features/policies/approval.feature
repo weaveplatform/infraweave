@@ -123,3 +123,37 @@ Feature: State-scoped approval policies and run reviews
     When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"body":"package infraweave\napprove if true\n"}' through A
     Then it answers 200
     And token "h" eventually reads the run "run" in the state "READY" through B
+
+  @op:runReview @case:success
+  Scenario: A reviewer can change back to an earlier decision without counting as several people
+    Given token "h" sends "PATCH /api/v1/policies/{policy}" with '{"body":"package infraweave\napprove if { count(input.reviews.current.approvals) >= 2; count(input.reviews.current.rejections) == 0 }\n"}' through A
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE","note":"Same choice"}' through A
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"REJECT","note":"Changed my mind"}' through B
+    Then it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE","note":"Same choice"}' through A
+    Then it answers 200
+    When token "h" sends "GET /api/v1/runs/{run}" through B
+    Then it answers 200
+    And the answer's state is '"QUEUED"'
+    And the answer's review decisions are "APPROVE, REJECT, APPROVE"
+    Given the member key is space-writer on the space "legacy"
+    And the member key is exchanged through A for token "m"
+    When token "m" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE"}' through B
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "READY" through A
+    And the answer's review decisions are "APPROVE, REJECT, APPROVE, APPROVE"
+
+  @op:runReview @case:failure
+  Scenario: One rejecting policy wins over another policy's approval
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Reject reviewed run","type":"APPROVAL","space":"legacy","body":"package infraweave\nreject if { count(input.reviews.current.approvals) > 0 }\nflag contains \"second-reject\" if reject\n"}' through B
+    And it answers 201
+    And the answer's id names "rejectPolicy"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{rejectPolicy}" through A
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE"}' through B
+    Then it answers 200
+    And token "h" eventually reads the run "run" in the state "FAILED" through A
+    And the answer's last state transition's note is "Run rejected by approval policies"
+    And the answer's flags is '["queued-reviewed","second-reject"]'

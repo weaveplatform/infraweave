@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -63,6 +64,8 @@ type Object struct {
 // Store is what reports need of the runs' storage. Each method joins the
 // transaction its context carries.
 type Store interface {
+	// ReportOwner locates immutable ownership without taking the run lock.
+	ReportOwner(context.Context, kernel.ULID) (Owner, error)
 	// Handed reads the run id of whichever account has it and locks its
 	// row; lifecycle.ErrNotFound when none has it.
 	Handed(ctx context.Context, id kernel.ULID) (lifecycle.Run, error)
@@ -123,7 +126,15 @@ type Mover interface {
 // Stacks reads a run's stack for the plan decision; stacksapi.Stacks is
 // one.
 type Stacks interface {
+	Get(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Stack, error)
+	LockForRun(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error)
 	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
+}
+
+// Owner is the immutable account and stack needed before taking a run lock.
+type Owner struct {
+	Account kernel.AccountID
+	Stack   kernel.ULID
 }
 
 // Deps are what reports read and write through: the database a purge
@@ -135,6 +146,7 @@ type Deps struct {
 	Objects   Objects
 	Lifecycle Mover
 	Stacks    Stacks
+	Spaces    accessapi.Spaces
 }
 
 // Service is the runs domain's workersapi.Reports.
@@ -215,6 +227,9 @@ func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Repor
 	if planned(r) != (r.Delta != nil) {
 		return workersapi.Step{}, fmt.Errorf("%w: %s %s", workersapi.ErrDeltaRefused, r.State,
 			r.Event)
+	}
+	if err := s.fence(ctx, id); err != nil {
+		return workersapi.Step{}, err
 	}
 	run, err := s.held(ctx, id)
 	if err != nil && (!errors.Is(err, workersapi.ErrNotOnWorker) || run.WorkerPool == nil) {

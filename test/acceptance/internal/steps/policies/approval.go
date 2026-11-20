@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/cucumber/godog"
 	"golang.org/x/sync/errgroup"
@@ -17,6 +18,20 @@ import (
 )
 
 func registerApproval(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^the answer's review decisions are "([^"]*)"$`, func(want string) error {
+		var run api.Run
+		if err := json.Unmarshal(w.Last().Body, &run); err != nil {
+			return fmt.Errorf("decode run reviews: %w", err)
+		}
+		decisions := make([]string, 0, len(run.Reviews))
+		for _, r := range run.Reviews {
+			decisions = append(decisions, string(r.Decision))
+		}
+		if strings.Join(decisions, ", ") != want {
+			return fmt.Errorf("%w: review history %v want %s", harness.ErrStep, decisions, want)
+		}
+		return nil
+	})
 	sc.Step(`^the answer contains an APPROVAL error receipt$`, func() error {
 		var run api.Run
 		if err := json.Unmarshal(w.Last().Body, &run); err != nil {

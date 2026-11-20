@@ -182,7 +182,7 @@ func New(d Deps) *Domain {
 		Approvals: approvals,
 	})
 	views := read.New(read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store})
-	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs})
+	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
 	return &Domain{
 		store:     store,
 		runs:      core.New(store),
@@ -197,7 +197,7 @@ func New(d Deps) *Domain {
 			UnknownKeys: d.RuntimeSettings.RuntimeConfig.UnknownKeys,
 		}),
 		reports: report.New(report.Deps{
-			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks,
+			DB: d.DB, Store: store, Objects: d.Objects, Lifecycle: lc, Stacks: d.Stacks, Spaces: d.Spaces,
 		}),
 		logs: logs.New(logs.Deps{
 			DB: d.DB, Store: store, Objects: d.Objects, Jobs: d.Jobs, Stacks: d.Stacks,

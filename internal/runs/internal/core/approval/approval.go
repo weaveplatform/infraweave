@@ -138,11 +138,16 @@ func (s *Service) stackFacts(ctx context.Context, run lifecycle.Run, snapshot st
 	if err != nil {
 		return policyapi.StackFacts{}, fmt.Errorf("runs: read approval contexts: %w", err)
 	}
+	tool, err := workflowTool(st)
+	if err != nil {
+		return policyapi.StackFacts{}, err
+	}
 	out := policyapi.StackFacts{
 		ID: st.ID, Slug: st.Slug, Name: st.Name, Branch: st.Branch, Namespace: st.Namespace,
 		Repository: st.Repository, State: snapshot.State, Autodeploy: st.Autodeploy, Labels: known(snapshot.Labels),
 		AdditionalProjectGlobs: known(st.AdditionalProjectGlobs), TerraformVersion: policyapi.Fact[string]{Known: true, Value: st.TerraformVersion},
 		Roles: known(roleFacts), Contexts: known(contexts),
+		WorkflowTool: tool, LockedBy: policyapi.Fact[string]{Known: true}, TrackedCommit: policyapi.Fact[policyapi.CommitFacts]{Known: true},
 	}
 	if st.ProjectRoot != nil {
 		out.ProjectRoot = *st.ProjectRoot
@@ -153,7 +158,7 @@ func (s *Service) stackFacts(ctx context.Context, run lifecycle.Run, snapshot st
 	if st.TrackedCommit != nil {
 		c := st.TrackedCommit
 		out.TrackedCommit = known(
-			policyapi.CommitFacts{Author: c.AuthorName, Branch: c.Branch, Message: c.Message, At: c.Timestamp, Hash: known(c.Hash), Tag: known(c.Tag), URL: known(c.URL)},
+			policyapi.CommitFacts{Author: commitAuthor(*c), Branch: st.Branch, Message: c.Message, At: c.Timestamp, Hash: known(c.Hash), Tag: known(c.Tag), URL: known(c.URL)},
 		)
 	}
 	space, err := s.d.SpaceFacts.PolicySpace(ctx, run.Account, st.Space)
@@ -171,6 +176,13 @@ func (s *Service) stackFacts(ctx context.Context, run lifecycle.Run, snapshot st
 		}
 	}
 	return out, nil
+}
+
+func commitAuthor(c stacksapi.Commit) string {
+	if c.AuthorLogin != nil && *c.AuthorLogin != "" {
+		return *c.AuthorLogin
+	}
+	return c.AuthorName
 }
 
 func (s *Service) changeFacts(ctx context.Context, run lifecycle.Run, vendor string) (policyapi.Fact[[]policyapi.ChangeFacts], error) {

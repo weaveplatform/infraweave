@@ -421,6 +421,9 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 		if out[i].NeedsApproval {
 			out[i].Actions = slices.DeleteFunc(out[i].Actions, func(a accessapi.Action) bool { return a == accessapi.ActionRunConfirm })
 		}
+		if !approvals[r.ID].HasPolicies {
+			out[i].Actions = slices.DeleteFunc(out[i].Actions, func(a accessapi.Action) bool { return a == accessapi.ActionRunReview })
+		}
 	}
 	return out, nil
 }

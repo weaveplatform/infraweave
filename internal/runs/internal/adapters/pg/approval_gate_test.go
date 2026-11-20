@@ -153,3 +153,59 @@ func TestAccApprovalEntryReturnsFinalStateWithoutConfirming(t *testing.T) {
 		})
 	}
 }
+
+// PLAN warning selection belongs to #651. This exercises the real lifecycle
+// entry and persistence it will call, with controlled aggregate outcomes.
+func TestAccApprovalPendingReviewEntryPersistsItsOwnGate(t *testing.T) {
+	for _, outcome := range []policyapi.Outcome{policyapi.Undecided, policyapi.Approve, policyapi.Reject, policyapi.NoPolicies} {
+		t.Run(string(outcome), func(t *testing.T) {
+			w := newWorld(t)
+			r := mustCreate(t, w, kernel.RunTypeProposed, "pending-entry")
+			r = w.mustMove(
+				t,
+				r,
+				kernel.RunStateReady,
+				machine.DriverScheduler,
+				machine.GuardStackLockFree,
+				machine.GuardApproved,
+				machine.GuardUpstreamFinished,
+				machine.GuardExternalSettled,
+				machine.GuardStackEnabled,
+			)
+			r = w.mustMove(t, r, kernel.RunStatePreparing, machine.DriverWorkerClaim)
+			r = w.mustMove(t, r, kernel.RunStateInitializing, machine.DriverWorkerReport)
+			r = w.mustMove(t, r, kernel.RunStatePlanning, machine.DriverWorkerReport)
+			w.lc = w.boundApprovals(func(lifecycle.Run) policyapi.Evaluation {
+				if outcome == policyapi.NoPolicies {
+					return policyapi.Evaluation{Type: policyapi.Approval, Outcome: policyapi.NoPolicies}
+				}
+				return approvalOutcome(w, outcome)
+			})
+			moved := w.mustMove(t, r, kernel.RunStatePendingReview, machine.DriverDecision)
+			want := kernel.RunStatePendingReview
+			switch outcome {
+			case policyapi.Approve, policyapi.NoPolicies:
+				want = kernel.RunStateFinished
+			case policyapi.Reject:
+				want = kernel.RunStateFailed
+			}
+			if moved.State != want {
+				t.Fatalf("pending entry=%s want %s", moved.State, want)
+			}
+			gate, found, err := w.store.ApprovalAt(t.Context(), w.acct, r.ID, r.Version+1)
+			if err != nil || !found || gate.State != kernel.RunStatePendingReview || gate.Outcome != outcome {
+				t.Fatalf("pending entry lost its own gate: %+v %v %v", gate, found, err)
+			}
+			if outcome == policyapi.Reject {
+				history, err := w.store.Histories(t.Context(), w.acct, []kernel.ULID{r.ID})
+				if err != nil {
+					t.Fatal(err)
+				}
+				last := history[r.ID][len(history[r.ID])-1]
+				if last.Note == nil || *last.Note != "Run rejected by approval policies" {
+					t.Fatal("pending rejection lost captured C291 note")
+				}
+			}
+		})
+	}
+}

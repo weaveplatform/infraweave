@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -40,6 +41,7 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Lifecycle *lifecycle.Lifecycle
 	Queue     Queue
+	Spaces    accessapi.Spaces
 }
 
 // Scheduler moves a stack's queued runs to READY.
@@ -71,7 +73,7 @@ func (s *Scheduler) Handle(ctx context.Context, j queue.Job) error {
 		return queue.Permanent(fmt.Errorf("runs: %s %d: %w", j.Kind, j.ID, err))
 	}
 	//nolint:wrapcheck // each step names itself
-	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+	return tx.Do(ctx, s.d.DB, tx.Options{Serializable: true}, func(ctx context.Context) error {
 		if err := s.Schedule(ctx, kernel.AccountID{ULID: j.Account}, p.Stack); err != nil {
 			return err
 		}
@@ -100,6 +102,20 @@ func (s *Scheduler) schedule(ctx context.Context, acct kernel.AccountID, stack k
 	if !tx.In(ctx) {
 		return lifecycle.ErrNoTransaction
 	}
+	var space kernel.ULID
+	if s.d.Spaces != nil {
+		st, err := s.d.Stacks.Get(ctx, acct, stack)
+		if errors.Is(err, stacksapi.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("runs: read scheduling owner: %w", err)
+		}
+		space = st.Space
+		if err := s.d.Spaces.Hold(ctx, acct, space); err != nil {
+			return fmt.Errorf("runs: hold scheduling space: %w", err)
+		}
+	}
 	st, err := s.d.Stacks.LockForRun(ctx, acct, stack)
 	switch {
 	case errors.Is(err, stacksapi.ErrNotFound):
@@ -111,6 +127,9 @@ func (s *Scheduler) schedule(ctx context.Context, acct kernel.AccountID, stack k
 			return s.d.Lifecycle.Refresh(ctx, *evaluated) //nolint:wrapcheck // the owner names the failing operation
 		}
 		return nil
+	}
+	if s.d.Spaces != nil && st.Space != space {
+		return fmt.Errorf("runs: scheduling stack changed space: %w", kernel.ErrUnavailable)
 	}
 	runs, err := s.d.Store.Queued(ctx, acct, stack)
 	if err != nil {

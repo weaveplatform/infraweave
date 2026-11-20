@@ -67,6 +67,18 @@ func (s *stacks) Settings(context.Context, kernel.AccountID, kernel.ULID) (stack
 	return s.settings, s.err
 }
 
+func (s *stacks) Get(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Stack, error) {
+	return s.settings.Stack, s.err
+}
+
+func (s *stacks) LockForRun(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
+	return s.settings, s.err
+}
+
+func (s *store) ReportOwner(context.Context, kernel.ULID) (report.Owner, error) {
+	return report.Owner{Account: s.run.Account, Stack: s.run.Stack}, s.err("ReportOwner")
+}
+
 func (s *store) err(m string) error {
 	if s.fail == m {
 		return errDown

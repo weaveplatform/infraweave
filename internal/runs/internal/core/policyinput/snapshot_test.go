@@ -25,6 +25,20 @@ func (transaction) Rollback(context.Context) error { return nil }
 
 type beginner struct{}
 
+func TestUnitCommitAuthorUsesStoredLoginWhenPresent(t *testing.T) {
+	for _, login := range []*string{nil, new(""), new("provider-login")} {
+		c := stacksapi.Commit{AuthorName: "Display name", AuthorLogin: login, Timestamp: time.Now()}
+		got := commit(c)
+		want := "Display name"
+		if login != nil && *login != "" {
+			want = *login
+		}
+		if got.Author != want {
+			t.Fatalf("policy commit author=%q want %q", got.Author, want)
+		}
+	}
+}
+
 func (beginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return transaction{}, nil }
 
 type snapshotStore struct {
