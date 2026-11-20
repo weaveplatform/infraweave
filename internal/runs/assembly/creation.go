@@ -9,3 +9,6 @@ func (d *Domain) Creator() runsapi.Creator { return d.trigger }
 // Supersede requests worker stops for a branch's older planning proposals,
 // inside the caller's transaction.
 func (d *Domain) Supersede() runsapi.Supersede { return d.control }
+
+// PushCancellations joins policy-selected run cancellation to new creation.
+func (d *Domain) PushCancellations() runsapi.PushCancellations { return d.control }

@@ -216,7 +216,7 @@ var edges = []Edge{
 	{ID: "T6", From: queued, To: skipped, Types: types(tracked), Drivers: by(DriverScheduler)},
 	{ID: "T7", From: ready, To: preparing, Types: all, Drivers: by(DriverWorkerClaim)},
 	{ID: "T8", From: ready, To: discarded, Types: all, Drivers: by(DriverAPI)},
-	{ID: "T9", From: ready, To: canceled, Types: all, Drivers: by(DriverAPI, DriverTimers)},
+	{ID: "T9", From: ready, To: canceled, Types: all, Drivers: by(DriverAPI, DriverScheduler, DriverTimers)},
 	{ID: "T10", From: preparing, To: initializing, Types: all, Drivers: by(DriverWorkerReport)},
 	{
 		ID: "T11", From: preparing, To: failed, Types: all,
@@ -287,7 +287,7 @@ var edges = []Edge{
 	},
 	{
 		ID: "T27", From: unconfirmed, To: discarded, Types: types(tracked),
-		Drivers: by(DriverAPI, DriverTimers),
+		Drivers: by(DriverAPI, DriverScheduler, DriverTimers),
 	},
 	{
 		ID: "T28", From: unconfirmed, To: replanRequested, Types: types(tracked),

@@ -102,7 +102,7 @@ func TestUnitTransitionRegister(t *testing.T) {
 var drivenBy = map[machine.Driver][]string{
 	machine.DriverAPI:         {"T3", "T4", "T8", "T9", "T16", "T19", "T26", "T27", "T28"},
 	machine.DriverCreation:    {"T1"},
-	machine.DriverScheduler:   {"T2", "T4", "T5", "T6"},
+	machine.DriverScheduler:   {"T2", "T4", "T5", "T6", "T9", "T27"},
 	machine.DriverApproval:    {"T5", "T23", "T24", "T29"},
 	machine.DriverWorkerClaim: {"T7", "T30", "T33"},
 	machine.DriverWorkerReport: {
