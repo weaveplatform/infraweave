@@ -173,3 +173,30 @@ func TestAccRequestBackfillPropagatesActualBackendFailure(t *testing.T) {
 		t.Fatal("actual connection termination was hidden")
 	}
 }
+
+func TestAccRequestBackfillRefusesCorruptCommittedWinner(t *testing.T) {
+	w := newWebhookWorld(t)
+	w.receive(t, "corrupt-winner", webhookBody(128))
+	delivery := w.delivery(t, "corrupt-winner")
+	original := missingRequestEvent()
+	if err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		if err := w.f.store.PutPrepared(ctx, w.f.acct, delivery.ID, []push.Prepared{original}); err != nil {
+			return err
+		}
+		_, err := tx.Q(ctx, w.f.db).
+			Exec(ctx, `UPDATE vcs_prepared_events SET event=jsonb_set(event,'{request}','"private-native-marker"'::jsonb) WHERE account_id=$1 AND delivery_id=$2`, w.f.acct, delivery.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
+		got, err := w.f.store.BackfillRequest(ctx, w.f.acct, delivery.ID, 0, original.Event, filledRequestEvent(original, "replacement"))
+		if err == nil || errors.Is(err, push.ErrRequestChanged) || !reflect.DeepEqual(got, push.Prepared{}) || strings.Contains(err.Error(), "private-native-marker") {
+			t.Fatal("corrupt committed native winner became a stale/no-op or leaked its value", got, err)
+		}
+		return err
+	})
+	if err == nil {
+		t.Fatal("corrupt native winner was silently replaced")
+	}
+}
