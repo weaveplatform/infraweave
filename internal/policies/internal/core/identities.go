@@ -17,7 +17,7 @@ func (s *Service) Identities(ctx context.Context, acct kernel.AccountID, ids []k
 	}
 	out := make(map[kernel.ULID]policyapi.PolicyIdentity, len(rows))
 	for id, p := range rows {
-		out[id] = policyapi.PolicyIdentity{ID: id, Name: p.Name, Type: policyapi.Type(p.Type), Engine: string(p.Engine), Version: p.Version}
+		out[id] = policyapi.PolicyIdentity{ID: id, Space: p.Space, Name: p.Name, Type: policyapi.Type(p.Type), Engine: string(p.Engine), Version: p.Version}
 	}
 	return out, nil
 }
