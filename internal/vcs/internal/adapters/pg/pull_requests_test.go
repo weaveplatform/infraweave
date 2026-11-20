@@ -258,7 +258,7 @@ func TestAccPullRequestParentCompletionFence(t *testing.T) {
 			}
 			deps := w.deps
 			deps.Providers["GITHUB_ENTERPRISE"] = dispatchProvider{events: []vcsapi.Event{event}}
-			deps.Dispatcher = pullrequest.New(pullrequest.Deps{Store: w.f.store, Integrations: w.f.svc, Pushes: push.New(push.Deps{})})
+			deps.Dispatcher = pullrequest.New(pullrequest.Deps{Store: w.f.store, Integrations: w.f.svc})
 			cause := errors.New("completion storage refused")
 			if fault == "completion rollback" {
 				deps.Jobs = refusedDispatchCompletion{Queue: w.queue, err: cause}

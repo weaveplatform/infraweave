@@ -15,16 +15,18 @@ import (
 //
 //nolint:tagliatelle // GitLab's documented wire names.
 type webhookPayload struct {
-	ObjectKind   string             `json:"object_kind"`
-	Project      webhookProject     `json:"project"`
-	Attributes   *webhookAttributes `json:"object_attributes"`
-	MergeRequest *webhookRequest    `json:"merge_request"`
-	Before       string             `json:"before"`
-	After        string             `json:"after"`
-	Ref          string             `json:"ref"`
-	UserUsername string             `json:"user_username"`
-	UserName     string             `json:"user_name"`
-	Labels       []webhookLabel     `json:"labels"`
+	ObjectKind   string               `json:"object_kind"`
+	Project      webhookProject       `json:"project"`
+	Attributes   *webhookAttributes   `json:"object_attributes"`
+	MergeRequest *webhookRequest      `json:"merge_request"`
+	Before       string               `json:"before"`
+	After        string               `json:"after"`
+	Ref          string               `json:"ref"`
+	UserUsername string               `json:"user_username"`
+	UserName     string               `json:"user_name"`
+	Commits      *[]webhookPushCommit `json:"commits"`
+	TotalCommits *int64               `json:"total_commits_count"`
+	Labels       []webhookLabel       `json:"labels"`
 	User         struct {
 		ID       int64  `json:"id"`
 		Username string `json:"username"`

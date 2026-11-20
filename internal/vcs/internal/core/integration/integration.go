@@ -153,6 +153,7 @@ type Deps struct {
 	Store         Store
 	DB            tx.Beginner
 	Spaces        accessapi.Spaces
+	PolicySpaces  accessapi.PolicySpaceReader
 	Authz         accessapi.Authorizer
 	Stacks        stacksapi.Stacks
 	Providers     []string
@@ -172,6 +173,7 @@ type Service struct {
 	store         Store
 	db            tx.Beginner
 	spaces        accessapi.Spaces
+	policySpaces  accessapi.PolicySpaceReader
 	authz         accessapi.Authorizer
 	stacks        stacksapi.Stacks
 	providers     []string
@@ -196,7 +198,8 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		installations: d.Installations, store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, stacks: d.Stacks,
-		providers: d.Providers, testers: d.Testers, browse: d.Browse,
+		policySpaces: d.PolicySpaces,
+		providers:    d.Providers, testers: d.Testers, browse: d.Browse,
 		apps: d.Apps, features: d.Features,
 		public: strings.TrimSuffix(d.Public, "/"), now: now, secretOverlap: overlap,
 	}

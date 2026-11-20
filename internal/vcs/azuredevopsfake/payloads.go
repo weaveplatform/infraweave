@@ -36,14 +36,22 @@ func (f *Fake) PushWebhook(id, project, repository string, updates []WebhookRefU
 // PullRequestWebhook builds created/updated/merge-attempted event shapes. Its
 // merge status is a preview result, not proof that all branch policies passed.
 func (f *Fake) PullRequestWebhook(id, event, project, repository string, in WebhookPullRequest) (WebhookDelivery, error) {
-	return encodeWebhookEnvelope(id, event, f.webhookRequest(project, repository, in))
+	request := f.webhookRequest(project, repository, in)
+	if err := f.rememberRequest(project, repository, in.ID, request); err != nil {
+		return WebhookDelivery{}, err
+	}
+	return encodeWebhookEnvelope(id, event, request)
 }
 
 // CommentWebhook places the target repository inside resource.pullRequest,
 // as Azure's documented comment envelope does, preserving the text verbatim.
 func (f *Fake) CommentWebhook(id, project, repository string, in WebhookPullRequest, comment string) (WebhookDelivery, error) {
+	request := f.webhookRequest(project, repository, in)
+	if err := f.rememberRequest(project, repository, in.ID, request); err != nil {
+		return WebhookDelivery{}, err
+	}
 	return encodeWebhookEnvelope(id, "ms.vss-code.git-pullrequest-comment-event", map[string]any{
-		"pullRequest": f.webhookRequest(project, repository, in),
+		"pullRequest": request,
 		"comment":     map[string]any{"id": 2, "parentCommentId": 1, "content": comment, "author": webhookIdentity("reviewer"), "commentType": "text"},
 	})
 }
@@ -88,6 +96,9 @@ func (f *Fake) webhookRequest(project, repository string, in WebhookPullRequest)
 		"title": "Infrastructure change", "creationDate": "2026-01-01T00:00:00Z",
 		"isDraft": in.Draft, "createdBy": webhookIdentity("author"), "reviewers": reviewers, "labels": labels,
 	}
+	if base, err := f.Repo(project, repository).Resolve(in.TargetBranch); err == nil {
+		request["lastMergeTargetCommit"] = map[string]string{"commitId": base.Hash.String()}
+	}
 	if in.Fork {
 		sourceProject, sourceRepository := in.SourceProject, in.SourceRepository
 		if sourceProject == "" {
@@ -102,6 +113,14 @@ func (f *Fake) webhookRequest(project, repository string, in WebhookPullRequest)
 		}
 	}
 	return request
+}
+
+func (f *Fake) rememberRequest(project, repository string, number int, request map[string]any) error {
+	body, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("azuredevopsfake: native request: %w", err)
+	}
+	return f.SetPullRequest(project, repository, number, body)
 }
 
 func webhookIdentity(username string) map[string]any {

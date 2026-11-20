@@ -75,7 +75,7 @@ Feature: Default VCS push runs
     And stack "infra" has exactly 2 event runs for commit "proposed"
     When GitLab sends a "merge-request" delivery "request" for integration "integration" with "current" token through B
     Then it answers 202
-    And GitLab push "request" for integration "integration" settles with 0 runs and 0 stack jobs
+    And GitLab push "request" for integration "integration" settles with 0 runs and 1 stack jobs
     And stack "infra" has exactly 2 event runs for commit "proposed"
     When GitLab sends a "tag" delivery "tagPush" for integration "integration" with "current" token through A
     Then it answers 202

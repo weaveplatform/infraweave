@@ -33,6 +33,9 @@ type Decision struct{ Outcome, Reason string }
 // recordIgnored is deliberately narrower than every capped decision: other-
 // branch proposals and non-push/non-tag inputs leave no ignored-trigger row.
 func recordIgnored(event vcsapi.Event, stack stacksapi.Settings, decision Decision) bool {
+	if decision.Outcome == Ignored && (decision.Reason == CustomPolicy || decision.Reason == CustomPolicyNoTrigger || decision.Reason == DisabledByLabel) {
+		return true
+	}
 	if decision.Outcome == Ignored && event.Type == "tag" && decision.Reason == TagsIgnored {
 		return true
 	}

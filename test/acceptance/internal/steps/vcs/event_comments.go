@@ -25,7 +25,7 @@ func (s *eventSteps) ordinaryComment(ctx context.Context) error {
 	id := kernel.NewULID().UUID()
 	s.deliveries["ordinaryComment"] = id
 	marker := "ordinary review note " + id
-	status, err := s.sendComment(ctx, id, marker)
+	status, err := s.sendComment(ctx, id, marker, "A")
 	if err != nil {
 		return err
 	}
@@ -53,10 +53,10 @@ func (s *eventSteps) ordinaryComment(ctx context.Context) error {
 	return nil
 }
 
-func (s *eventSteps) sendComment(ctx context.Context, id, marker string) (int, error) {
+func (s *eventSteps) sendComment(ctx context.Context, id, marker, replica string) (int, error) {
 	c := s.comments
 	client := &http.Client{Timeout: 15 * time.Second}
-	endpoint := c.w.Base("A") + "/webhooks/vcs/"
+	endpoint := c.w.Base(replica) + "/webhooks/vcs/"
 	switch c.fixture.provider {
 	case "GitLab":
 		delivery, err := c.gitlab.fake.NoteWebhook(
@@ -144,6 +144,12 @@ func (s *eventSteps) sendSignedComment(ctx context.Context, client *http.Client,
 		request, ok := body["pullRequest"].(map[string]any)
 		if !ok {
 			return 0, fmt.Errorf("%w: missing native comment request", harness.ErrStep)
+		}
+		request["fromRef"] = map[string]any{
+			"id":           "refs/heads/feature",
+			"displayId":    "feature",
+			"latestCommit": c.w.IDs["proposed"],
+			"repository":   c.peers.dc.fake.RepositoryPayload(c.fixture.namespace, "infra"),
 		}
 		request["toRef"] = map[string]any{
 			"id":           "refs/heads/target-12",

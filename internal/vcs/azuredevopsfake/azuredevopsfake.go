@@ -115,17 +115,18 @@ type repository struct {
 // users, and projects with the roles users hold in them and their Git
 // repositories, served under /acme.
 type Fake struct {
-	checks   checkStore
-	comments commentStore
-	webhooks map[string][]Hook
-	mu       sync.Mutex
-	tokens   map[string]*token
-	projects map[string]*project
-	nextID   int
-	fault    Fault
-	scope    string
-	until    time.Time
-	requests int
+	nativeRequests map[string]map[int]json.RawMessage
+	checks         checkStore
+	comments       commentStore
+	webhooks       map[string][]Hook
+	mu             sync.Mutex
+	tokens         map[string]*token
+	projects       map[string]*project
+	nextID         int
+	fault          Fault
+	scope          string
+	until          time.Time
+	requests       int
 }
 
 // New returns a fake with no token, project or repository.
@@ -250,6 +251,7 @@ func (f *Fake) Handler() http.Handler {
 				r.Use(f.repository)
 				f.checkRoutes(r)
 				f.commentRoutes(r)
+				r.Get("/pullRequests/{request}", f.nativeRequest)
 				r.Get("/refs", f.refs)
 				r.Get("/commits/{commit}", f.commit)
 				r.Get("/annotatedtags/{object}", f.annotatedTag)

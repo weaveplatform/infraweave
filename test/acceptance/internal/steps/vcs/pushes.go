@@ -33,6 +33,12 @@ func (s *pushSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^all event runs for commit "(\w+)" finish through ([AB])$`, s.finished)
 	sc.Step(`^the event run "(\w+)" has a real tool plan through ([AB])$`, s.planningEvidence)
 	sc.Step(`^stack "([\w-]+)" has exactly (\d+) event runs for commit "(\w+)"$`, s.runCount)
+	sc.Step(`^the answer carries initial push evidence for policy "(\w+)"$`, s.pushReceipt)
+	sc.Step(`^the policy version for "(\w+)" is kept from its ETag$`, s.policyVersion)
+	sc.Step(`^the ignored commit "(\w+)" has a durable policy check$`, s.policyCheckJob)
+	sc.Step(`^the stored request delivery has (\d+) policy evaluation jobs$`, s.requestPolicyJobs)
+	sc.Step(`^run "(\w+)" records push cancellation in favor of "(\w+)" with state "(CANCELED|DISCARDED)" through ([AB])$`, s.policyCancellation)
+	sc.Step(`^the GitLab commit "(\w+)" has check "([^"]+)" in state "([^"]+)" with message "([^"]+)"$`, s.policyNativeCheck)
 }
 
 func (s *pushSteps) planningEvidence(ctx context.Context, run, replica string) error {

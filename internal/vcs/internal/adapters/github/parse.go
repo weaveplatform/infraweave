@@ -29,6 +29,7 @@ type webhook struct {
 	Before              string                      `json:"before"`
 	After               string                      `json:"after"`
 	Forced              bool                        `json:"forced"`
+	Commits             *[]*github.HeadCommit       `json:"commits"`
 	Repository          *webhookRepository          `json:"repository"`
 	Sender              *github.User                `json:"sender"`
 	PullRequest         *github.PullRequest         `json:"pull_request"`
@@ -99,6 +100,7 @@ func (d *webhook) normalize(kind string) (vcsapi.Event, error) {
 			return vcsapi.Event{}, ErrWebhookPayload
 		}
 		e.Before, e.Head, e.Forced = d.Before, d.After, d.Forced
+		e.Commits = d.pushCommits()
 		if branch, ok := strings.CutPrefix(d.Ref, "refs/heads/"); ok {
 			e.Branch = branch
 		} else {

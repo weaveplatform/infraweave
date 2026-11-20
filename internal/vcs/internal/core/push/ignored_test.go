@@ -48,7 +48,7 @@ func TestUnitIgnoredRecordingScope(t *testing.T) {
 		{"comment", "comment", "main", Ignored, NoAffectedFiles, false},
 		{"duplicate", "push", "main", Duplicate, NoAffectedFiles, false},
 		{"refused", "push", "main", Refused, NoAffectedFiles, false},
-		{"policy", "push", "main", Ignored, "CUSTOM_POLICY", false},
+		{"policy", "push", "main", Ignored, CustomPolicy, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := recordIgnored(vcsapi.Event{Type: tc.kind, Branch: tc.branch}, stacksapi.Settings{Branch: "main"}, Decision{tc.outcome, tc.reason})

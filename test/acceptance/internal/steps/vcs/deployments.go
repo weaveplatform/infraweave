@@ -98,12 +98,16 @@ func (s *deploymentSteps) stack(ctx context.Context, provider, slug, vendor, raw
 	case "Azure DevOps":
 		providerKind = "AZURE_DEVOPS"
 	}
+	input := map[string]any{
+		"name": slug, "namespace": s.namespace, "repository": "infra", "branch": "main", "provider": providerKind,
+		"space": "acme", "labels": labels, "vcsIntegrationId": s.integration,
+		"vendorConfig": map[string]any{vendor: map[string]any{}},
+	}
+	if pool := s.w.IDs["pool"]; pool != "" {
+		input["workerPool"] = pool
+	}
 	_, err := s.create(ctx, "/api/v1/stacks", map[string]any{
-		"input": map[string]any{
-			"name": slug, "namespace": s.namespace, "repository": "infra", "branch": "main", "provider": providerKind,
-			"space": "acme", "workerPool": s.w.IDs["pool"], "labels": labels, "vcsIntegrationId": s.integration,
-			"vendorConfig": map[string]any{vendor: map[string]any{}},
-		},
+		"input":       input,
 		"manageState": true,
 	})
 	if err != nil {

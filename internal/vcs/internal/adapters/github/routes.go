@@ -37,6 +37,7 @@ type Route struct {
 //
 // ref: decision 0012 § "VCS agent pools"
 var Routes = []Route{
+	{http.MethodGet, "/repos/{owner}/{repo}/pulls/{request}", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/commits/{ref}/check-runs", ReadOnly},
 	{http.MethodPost, "/repos/{owner}/{repo}/check-runs", CheckWrite},
 	{http.MethodPatch, "/repos/{owner}/{repo}/check-runs/{check}", CheckWrite},

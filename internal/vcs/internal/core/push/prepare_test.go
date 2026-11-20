@@ -33,6 +33,15 @@ type repositoryStacks struct {
 	err   error
 }
 
+func (s *repositoryStacks) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	for _, row := range s.rows {
+		if row.ID == id {
+			return stacksapi.Settings{Stack: row}, s.err
+		}
+	}
+	return stacksapi.Settings{}, stacksapi.ErrNotFound
+}
+
 func (s *repositoryStacks) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
 	if s.err != nil || len(s.rows) == 0 {
 		return nil, s.err

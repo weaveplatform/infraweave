@@ -16,9 +16,10 @@ type webhookEnvelope struct {
 
 type webhookResource struct {
 	webhookRequest
-	RefUpdates  []webhookRefUpdate `json:"refUpdates"`
-	PushedBy    webhookIdentity    `json:"pushedBy"`
-	PullRequest *webhookRequest    `json:"pullRequest"`
+	RefUpdates  []webhookRefUpdate   `json:"refUpdates"`
+	PushedBy    webhookIdentity      `json:"pushedBy"`
+	Commits     *[]webhookPushCommit `json:"commits"`
+	PullRequest *webhookRequest      `json:"pullRequest"`
 	Comment     *struct {
 		Content *string         `json:"content"`
 		Author  webhookIdentity `json:"author"`
@@ -86,6 +87,9 @@ type webhookRequest struct {
 	LastMergeSourceCommit struct {
 		CommitID string `json:"commitId"`
 	} `json:"lastMergeSourceCommit"`
+	LastMergeTargetCommit struct {
+		CommitID string `json:"commitId"`
+	} `json:"lastMergeTargetCommit"`
 	ForkSource *struct {
 		Repository *webhookRepository `json:"repository"`
 	} `json:"forkSource"`

@@ -34,6 +34,10 @@ type lifecycleTargets struct {
 	err         error
 }
 
+func (s *lifecycleTargets) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
+	return stacksapi.Settings{ID: s.stack}, nil
+}
+
 func (s *lifecycleTargets) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
 	return []stacksapi.VCSRepository{{Namespace: "acme", Name: "infra"}}, nil
 }
@@ -226,6 +230,10 @@ type routedTargets struct {
 	stacksapi.Stacks
 	rows  []stacksapi.Stack
 	reads int
+}
+
+func (s *routedTargets) Settings(ctx context.Context, account kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	return (dispatchTargets{rows: s.rows}).Settings(ctx, account, id)
 }
 
 func (s *routedTargets) VCSRepositories(ctx context.Context, acct kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
@@ -657,6 +665,18 @@ func (s *liveBindingStacks) ByVCSRepository(ctx context.Context, acct kernel.Acc
 		}
 	}
 	return out, nil
+}
+
+func (s *liveBindingStacks) Settings(ctx context.Context, account kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	if !tx.In(ctx) || account != s.account {
+		return stacksapi.Settings{}, errDown
+	}
+	for _, row := range s.rows {
+		if row.id == id {
+			return stacksapi.Settings{ID: id, Namespace: row.namespace, Repository: row.name, Branch: "main"}, nil
+		}
+	}
+	return stacksapi.Settings{}, stacksapi.ErrNotFound
 }
 
 func TestAccCompletingDeliveryReadsHeldCurrentDefault(t *testing.T) {

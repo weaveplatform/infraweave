@@ -19,12 +19,16 @@ func (s *Service) checkReport(ctx context.Context, b CheckBinding, r CheckReques
 	owner := checkOwner{ID: b.Run, CreatedAt: b.CreatedAt}
 	report := port.CheckReport{Name: r.Name, ExternalID: b.Stack.String(), Actions: []port.CheckAction{}, RecoveryID: "infraweave/" + b.Key, URL: s.runURL(b)}
 	sequence := r.Sequence
-	if b.Cap {
+	switch {
+	case b.Push != nil:
+		owner.ID = b.Stack
+		report.State, report.Title, report.Summary = pushCheckContent(b.Push)
+	case b.Cap:
 		owner.ID = b.Stack
 		report.State = port.CheckFailure
 		report.Title = "Event run limit reached"
 		report.Summary = fmt.Sprintf("The event reached the limit of %d runs before this stack could create a run.", b.Limit)
-	} else {
+	default:
 		fact, err := s.checks.Facts.Run(ctx, b.Account, b.Run)
 		if errors.Is(err, runsapi.ErrCheckRunNotFound) {
 			return report, owner, sequence, false, nil
@@ -58,7 +62,7 @@ func (s *Service) checkReport(ctx context.Context, b CheckBinding, r CheckReques
 	if err != nil {
 		return report, owner, sequence, false, fmt.Errorf("VCS check actions: %w", err)
 	}
-	if b.Provider == "GITHUB_ENTERPRISE" && stack.GithubActionDeploy {
+	if !b.noRun() && b.Provider == "GITHUB_ENTERPRISE" && stack.GithubActionDeploy {
 		report.Actions = []port.CheckAction{
 			{Label: "Preview", Description: "Propose a run on this commit", Identifier: "preview"},
 			{Label: "Deploy", Description: "Track a run on this commit", Identifier: "deploy"},
@@ -69,7 +73,7 @@ func (s *Service) checkReport(ctx context.Context, b CheckBinding, r CheckReques
 
 func (s *Service) runURL(b CheckBinding) string {
 	base := strings.TrimSuffix(s.checks.Public, "/") + "/api/v1/"
-	if b.Cap {
+	if b.noRun() {
 		return base + "stacks/" + url.PathEscape(b.Slug)
 	}
 	return base + "runs/" + b.Run.String()

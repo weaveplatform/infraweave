@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
@@ -23,6 +24,18 @@ import (
 )
 
 type evaluationDB struct{}
+
+// Existing admission cases deliberately use the evaluator's no-policy result;
+// attached program behavior is exercised by the policy workflow matrix.
+type noPushPolicies struct{}
+
+func (noPushPolicies) Evaluate(context.Context, policyapi.EvaluationRequest) (policyapi.Evaluation, error) {
+	return policyapi.Evaluation{Type: policyapi.Push, Outcome: policyapi.NoPolicies}, nil
+}
+
+func (s evaluationStacks) PolicySnapshot(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.PolicySnapshot, error) {
+	return stacksapi.PolicySnapshot{Settings: s.w.stack}, nil
+}
 
 // Recording contracts bind their own capturing recorder. These existing
 // evaluation fixtures explicitly omit persistence to isolate run admission.
@@ -230,6 +243,8 @@ func newEvaluation(t *testing.T) *evaluationWorld {
 			Jobs:         evaluationJobs{w: w},
 			Limits:       &Limits{Store: evaluationLimit{w: w}, Ceiling: 500},
 			Ignored:      discardIgnored{},
+			Policies:     noPushPolicies{}, PolicyStacks: evaluationStacks{w: w},
+			PolicyAllowed: func(context.Context, kernel.AccountID) (bool, error) { return true, nil },
 		},
 	)
 	return w

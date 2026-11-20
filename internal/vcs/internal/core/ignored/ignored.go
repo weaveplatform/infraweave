@@ -17,11 +17,14 @@ import (
 )
 
 const (
-	NoAffectedFiles = "NO_AFFECTED_FILES_IN_PROJECT_ROOT"
-	TagsIgnored     = "TAGS_IGNORED_BY_DEFAULT"
-	RunLimitReached = "RUN_LIMIT_REACHED"
-	Retention       = 7 * 24 * time.Hour
-	Batch           = 500
+	NoAffectedFiles       = "NO_AFFECTED_FILES_IN_PROJECT_ROOT"
+	TagsIgnored           = "TAGS_IGNORED_BY_DEFAULT"
+	RunLimitReached       = "RUN_LIMIT_REACHED"
+	CustomPolicy          = "CUSTOM_POLICY"
+	CustomPolicyNoTrigger = "CUSTOM_POLICY_NO_TRIGGER"
+	DisabledByLabel       = "DISABLED_BY_LABEL"
+	Retention             = 7 * 24 * time.Hour
+	Batch                 = 500
 )
 
 var (
@@ -32,8 +35,10 @@ var (
 
 var Fields = []search.Field{
 	{Name: "createdAt", Type: search.Time, Orderable: true},
-	{Name: "reasonType", Type: search.Enum, Values: []string{"DISABLED_BY_LABEL", TagsIgnored, NoAffectedFiles, "CUSTOM_POLICY", "CUSTOM_POLICY_NO_TRIGGER", RunLimitReached}},
+	{Name: "reasonType", Type: search.Enum, Values: reasons},
 }
+
+var reasons = []string{DisabledByLabel, TagsIgnored, NoAffectedFiles, CustomPolicy, CustomPolicyNoTrigger, RunLimitReached}
 
 type Record struct {
 	Account   kernel.AccountID
@@ -79,7 +84,7 @@ func (s *Service) Record(ctx context.Context, account kernel.AccountID, stack ke
 	if !tx.In(ctx) {
 		return ErrNoTransaction
 	}
-	if account.IsZero() || stack.IsZero() || !validCommit(commit.Hash) || !slices.Contains([]string{NoAffectedFiles, TagsIgnored, RunLimitReached}, reason) {
+	if account.IsZero() || stack.IsZero() || !validCommit(commit.Hash) || !slices.Contains(reasons, reason) {
 		return ErrRecord
 	}
 	commit.Message, _, _ = strings.Cut(commit.Message, "\n")

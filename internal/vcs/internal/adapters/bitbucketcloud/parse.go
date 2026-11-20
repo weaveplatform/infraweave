@@ -155,9 +155,11 @@ type webhookSide struct {
 }
 
 type webhookChange struct {
-	Old    json.RawMessage `json:"old"`
-	New    json.RawMessage `json:"new"`
-	Forced bool            `json:"forced"`
+	Old       json.RawMessage      `json:"old"`
+	New       json.RawMessage      `json:"new"`
+	Forced    bool                 `json:"forced"`
+	Commits   *[]webhookPushCommit `json:"commits"`
+	Truncated *bool                `json:"truncated"`
 }
 
 type webhookRef struct {
@@ -230,6 +232,7 @@ func cloudChange(c webhookChange, repo vcsapi.Repository, author string) (vcsapi
 		}
 	}
 	e := vcsapi.Event{Type: kind, Repository: repo, Before: zeroHash, Head: zeroHash, Forced: c.Forced, Author: author}
+	e.Commits = c.pushCommits()
 	if oldRef != nil {
 		e.Before = oldRef.Target.Hash
 	}

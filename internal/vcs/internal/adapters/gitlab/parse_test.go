@@ -63,6 +63,9 @@ func TestUnitGitLabWebhookParse(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.fixture, func(t *testing.T) {
+			if tc.fixture == "push" {
+				tc.want.Commits = &vcsapi.CommitCollection{Source: "commits", Items: []vcsapi.PushCommit{}}
+			}
 			body, headers := webhookFixture(t, tc.fixture, nil), gitlabHeaders(tc.event)
 			got, err := provider.Parse(headers, body)
 			if err != nil || !reflect.DeepEqual(got, []vcsapi.Event{tc.want}) {

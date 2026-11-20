@@ -36,6 +36,9 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	ctx, cancel := context.WithTimeout(ctx, max(0, delivery.Deadline.Sub(s.d.Now())))
 	defer cancel()
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
+		if requestEvent(event) {
+			return false
+		}
 		return event.Type != "check_action" && (event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head))
 	})
 
@@ -85,6 +88,14 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			out.events = append(out.events, prepared)
 			continue
 		}
+		if requestEvent(event) {
+			prepared, err = s.prepareRequest(ctx, delivery, event, use)
+			if err != nil {
+				return nil, err
+			}
+			out.events = append(out.events, prepared)
+			continue
+		}
 		if event.Type == "push" {
 			prepared.Commit, prepared.Files, err = s.d.Sources.PreparePush(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
@@ -94,7 +105,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 				return nil, fmt.Errorf("%w: provider resolved another push commit", kernel.ErrUnavailable)
 			}
 			prepared.Commit.Branch = event.Branch
-			prepared.Files = slices.Clone(prepared.Files)
+			prepared.Files = pushAffectedFiles(prepared.Files, event.Commits)
 		} else {
 			prepared.Commit, err = s.d.Sources.PrepareTag(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {
@@ -218,7 +229,6 @@ func (p *plan) selectTargets(ctx context.Context, use stacksapi.Use, events []Pr
 			admitted = append(admitted, prepared)
 			continue
 		}
-		admitted = append(admitted, prepared)
 		stacks, seen := repositories[prepared.Event.Repository]
 		if !seen {
 			var err error
@@ -228,9 +238,19 @@ func (p *plan) selectTargets(ctx context.Context, use stacksapi.Use, events []Pr
 			}
 			repositories[prepared.Event.Repository] = stacks
 		}
+		var affectedCount int64
 		for _, stack := range stacks {
 			targets[stack.ID] = true
+			settings, err := p.s.d.Stacks.Settings(ctx, p.delivery.Account, stack.ID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if affected(settings, prepared.Files) {
+				affectedCount++
+			}
 		}
+		prepared.AffectedStacksCount = &affectedCount
+		admitted = append(admitted, prepared)
 	}
 	return admitted, targets, nil
 }

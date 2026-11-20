@@ -190,7 +190,8 @@ CREATE TABLE vcs_ignored_triggers (
     stack_id uuid NOT NULL,
     commit_hash text NOT NULL,
     commit jsonb NOT NULL,
-    reason text NOT NULL CHECK(reason IN ('NO_AFFECTED_FILES_IN_PROJECT_ROOT','TAGS_IGNORED_BY_DEFAULT','RUN_LIMIT_REACHED')),
+    reason text NOT NULL CHECK(reason IN ('NO_AFFECTED_FILES_IN_PROJECT_ROOT','TAGS_IGNORED_BY_DEFAULT','RUN_LIMIT_REACHED',
+                                  'DISABLED_BY_LABEL','CUSTOM_POLICY','CUSTOM_POLICY_NO_TRIGGER')),
     created_at timestamptz NOT NULL,
     PRIMARY KEY(account_id,id),
     UNIQUE(account_id,stack_id,commit_hash,reason)
@@ -212,14 +213,15 @@ CREATE TABLE vcs_check_bindings (
     commit_hash text NOT NULL,
     run_type text NOT NULL,
     is_cap boolean NOT NULL DEFAULT false,
+    is_policy boolean NOT NULL DEFAULT false,
     binding jsonb NOT NULL,
     PRIMARY KEY (account_id,binding_key),
     FOREIGN KEY (account_id,integration_id) REFERENCES vcs_integrations(account_id,id) ON DELETE CASCADE
 );
 CREATE INDEX vcs_check_bindings_integration ON vcs_check_bindings(account_id,integration_id);
 CREATE INDEX vcs_check_bindings_stack ON vcs_check_bindings(account_id,stack_id);
-CREATE INDEX vcs_check_bindings_caps ON vcs_check_bindings(account_id,integration_id,namespace,repository,commit_hash,run_type) WHERE is_cap;
-CREATE INDEX vcs_check_bindings_caps_native ON vcs_check_bindings(account_id,integration_id,(binding->>'repositoryId'),commit_hash,run_type) WHERE is_cap;
+CREATE INDEX vcs_check_bindings_no_run ON vcs_check_bindings(account_id,integration_id,namespace,repository,commit_hash,run_type) WHERE is_cap OR is_policy;
+CREATE INDEX vcs_check_bindings_no_run_native ON vcs_check_bindings(account_id,integration_id,(binding->>'repositoryId'),commit_hash,run_type) WHERE is_cap OR is_policy;
 
 -- The newest requested sequence prevents a late outbox event from replacing a
 -- newer Coalesce payload before the worker reads it.

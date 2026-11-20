@@ -157,7 +157,7 @@ func TestUnitIgnoredCommitFactsAndWriteBoundary(t *testing.T) {
 		st           kernel.ULID
 		hash, reason string
 	}{
-		{"account", kernel.AccountID{}, stack, commit.Hash, TagsIgnored}, {"stack", account, kernel.ULID{}, commit.Hash, TagsIgnored}, {"empty", account, stack, "", TagsIgnored}, {"zero", account, stack, strings.Repeat("0", 40), TagsIgnored}, {"nonhex", account, stack, strings.Repeat("z", 40), TagsIgnored}, {"policy", account, stack, commit.Hash, "CUSTOM_POLICY"},
+		{"account", kernel.AccountID{}, stack, commit.Hash, TagsIgnored}, {"stack", account, kernel.ULID{}, commit.Hash, TagsIgnored}, {"empty", account, stack, "", TagsIgnored}, {"zero", account, stack, strings.Repeat("0", 40), TagsIgnored}, {"nonhex", account, stack, strings.Repeat("z", 40), TagsIgnored}, {"unknown reason", account, stack, commit.Hash, "UNSUPPORTED_REASON"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := commit
