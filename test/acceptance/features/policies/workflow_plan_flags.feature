@@ -48,9 +48,18 @@ Feature: Native worker reports preserve policy flag owners across repeated targe
     And the answer's id names "Terminal"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{Terminal}" through B
     And it answers 200
+    And the workflow fixture pauses the native PLAN projection
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"TRACKED","commitSha":"{seed}"}' through A
     Then it answers 200
     And the answer's id names "run"
+    And the actual PLAN report for run "run" waits without committed policy effects
+    When token "h" sends "GET /api/v1/runs/{run}" through B
+    Then it answers 200
+    And the answer's state is '"PLANNING"'
+    And the answer's flags is '[]'
+    And the answer's PLAN receipt outcomes are ""
+    And the committed workflow update of run "run" matches the public policy snapshot
+    And the workflow fixture aborts that report transaction and releases the real worker retry
     And token "h" eventually reads the run "run" in the state "UNCONFIRMED" through B
     And the answer's flags is '["a-old","b-old","shared"]'
     And the answer's PLAN receipt outcomes are "ALLOW, ALLOW"

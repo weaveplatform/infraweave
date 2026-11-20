@@ -17,6 +17,8 @@ import (
 )
 
 func registerWorkflowFlags(sc *godog.ScenarioContext, w *harness.World) {
+	registerWorkflowRecovery(sc, w)
+	registerWorkflowRuntime(sc, w)
 	sc.Step(`^the committed workflow update of run "(\w+)" matches the public policy snapshot$`,
 		func(ctx context.Context, run string) error { return workflowUpdate(ctx, w, run) })
 	sc.Step(`^token "(\w+)" eventually reads run "(\w+)" flags '([^']*)' through ([AB])$`,
