@@ -16,6 +16,7 @@ import (
 )
 
 func registerTrigger(sc *godog.ScenarioContext, w *harness.World) {
+	registerTriggerRecovery(sc, w)
 	sc.Step(`^the answer's commit hash is "([^"]+)"$`, func(want string) error {
 		var run api.Run
 		if err := json.Unmarshal(w.Last().Body, &run); err != nil {
