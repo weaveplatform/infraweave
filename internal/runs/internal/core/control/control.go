@@ -13,6 +13,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/review"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -107,14 +109,17 @@ type Store interface {
 // time.Now when nil. Spaces holds the owner while an internal superseding
 // request records worker signals.
 type Deps struct {
-	DB        tx.Beginner
-	Store     Store
-	Stacks    stacksapi.Stacks
-	Spaces    accessapi.Spaces
-	Authz     accessapi.Authorizer
-	Lifecycle *lifecycle.Lifecycle
-	Views     *read.Service
-	Now       func() time.Time
+	DB             tx.Beginner
+	Store          Store
+	Stacks         stacksapi.Stacks
+	Spaces         accessapi.Spaces
+	Authz          accessapi.Authorizer
+	Lifecycle      *lifecycle.Lifecycle
+	Views          *read.Service
+	Now            func() time.Time
+	Reviews        review.Store
+	ReviewMetadata accessapi.ReviewMetadataReader
+	Scheduler      *schedule.Scheduler
 }
 
 // Service acts on runs at a caller's request.
@@ -184,11 +189,43 @@ func (s *Service) Cancel(ctx context.Context, p kernel.Principal, slug, raw, not
 //
 // ref: decision 0008 § "Who drives each transition"
 func (s *Service) Confirm(ctx context.Context, p kernel.Principal, slug, raw, note string) (read.View, error) {
-	return s.decide(ctx, p, slug, raw, note, kernel.RunStateConfirmed, confirmGates...)
+	var refusal *Refused
+	v, err := s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
+		if r.State != kernel.RunStateUnconfirmed {
+			return r, &Refused{Run: r.ID, State: r.State, Needs: needsDecision}
+		}
+		result, err := s.d.Lifecycle.EvaluateApproval(ctx, r)
+		if err != nil {
+			return r, err //nolint:wrapcheck // the owner names the failing operation
+		}
+		moved, err := s.d.Lifecycle.ApplyApproval(ctx, r, result)
+		if err != nil {
+			return r, err //nolint:wrapcheck // the owner names the failing operation
+		}
+		if !lifecycle.Approved(result) {
+			refusal = &Refused{Run: r.ID, State: moved.State, Needs: "confirmation needs approval from every applicable policy"}
+			if moved.Version == r.Version {
+				err = s.d.Lifecycle.Refresh(ctx, moved)
+			}
+			return moved, err //nolint:wrapcheck // the owner names the failing operation
+		}
+		return s.d.Lifecycle.Transition(ctx, lifecycle.Request{
+			Account: p.AccountID, Run: r.ID, Version: r.Version,
+			To: kernel.RunStateConfirmed, Driver: machine.DriverAPI, Checked: confirmGates, Actor: lifecycle.ActorOf(p), Note: note,
+		})
+	})
+	if err != nil {
+		return read.View{}, err
+	}
+	// Refusal is emitted after commit: returning it inside act would erase
+	// the receipts and any captured rejection transition.
+	if refusal != nil {
+		return v, refusal
+	}
+	return v, nil
 }
 
-// confirmGates are the guards of T26 a confirm checks. Approval passes
-// until approval policies exist, as it does for the scheduler's T2.
+// confirmGates names the guard checked by the fresh approval evaluation.
 var confirmGates = []machine.Guard{machine.GuardApproved}
 
 // Discard discards p's run raw of stack slug, or the run that holds the
@@ -378,6 +415,18 @@ func (s *Service) in(ctx context.Context, p kernel.Principal, slug, raw string, 
 		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
 		if err != nil {
 			return err //nolint:wrapcheck // the stacks domain names the read
+		}
+		if s.d.Spaces != nil {
+			if err := s.d.Spaces.Hold(ctx, p.AccountID, st.Space); err != nil {
+				return err //nolint:wrapcheck // the owner names the failing operation
+			}
+		}
+		locked, err := s.d.Stacks.LockForRun(ctx, p.AccountID, st.ID)
+		if err != nil {
+			return err //nolint:wrapcheck // the owner names the failing operation
+		}
+		if locked.Space != st.Space {
+			return kernel.ErrUnavailable
 		}
 		if raw == "" {
 			holder, held, err := s.d.Store.Holder(ctx, p.AccountID, st.ID)

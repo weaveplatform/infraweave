@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -39,6 +41,7 @@ type Deps struct {
 	Stacks    stacksapi.Stacks
 	Lifecycle *lifecycle.Lifecycle
 	Queue     Queue
+	Spaces    accessapi.Spaces
 }
 
 // Scheduler moves a stack's queued runs to READY.
@@ -53,9 +56,8 @@ func New(d Deps) *Scheduler { return &Scheduler{d: d} }
 // unlocked or enabled.
 const Consumer = "runs.schedule"
 
-// gates are the guards of T2 the scheduler checks. Approval passes until
-// approval policies exist, and the upstream and external dependency gates
-// until stack dependencies do.
+// gates are the guards of T2 the scheduler checks. The dependency gates pass
+// until stack dependencies exist; approval is evaluated in the same transaction.
 var gates = []machine.Guard{
 	machine.GuardStackLockFree, machine.GuardApproved, machine.GuardUpstreamFinished,
 	machine.GuardExternalSettled, machine.GuardStackEnabled,
@@ -71,7 +73,7 @@ func (s *Scheduler) Handle(ctx context.Context, j queue.Job) error {
 		return queue.Permanent(fmt.Errorf("runs: %s %d: %w", j.Kind, j.ID, err))
 	}
 	//nolint:wrapcheck // each step names itself
-	return tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+	return tx.Do(ctx, s.d.DB, tx.Options{Serializable: true}, func(ctx context.Context) error {
 		if err := s.Schedule(ctx, kernel.AccountID{ULID: j.Account}, p.Stack); err != nil {
 			return err
 		}
@@ -86,6 +88,34 @@ func (s *Scheduler) Handle(ctx context.Context, j queue.Job) error {
 // takes T2 to READY, a blocking run only once it takes the stack's run
 // lock; a run that cannot stays QUEUED, its blocker the lock's holder.
 func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error {
+	return s.schedule(ctx, acct, stack, nil, nil)
+}
+
+// ScheduleEvaluated consumes a review's freshly computed result in the SAME
+// transaction. Re-evaluating it here would let its newly written flags change
+// the decision a second time for one review action.
+func (s *Scheduler) ScheduleEvaluated(ctx context.Context, run lifecycle.Run, result policyapi.Evaluation) error {
+	return s.schedule(ctx, run.Account, run.Stack, &run, &result)
+}
+
+func (s *Scheduler) schedule(ctx context.Context, acct kernel.AccountID, stack kernel.ULID, evaluated *lifecycle.Run, result *policyapi.Evaluation) error {
+	if !tx.In(ctx) {
+		return lifecycle.ErrNoTransaction
+	}
+	var space kernel.ULID
+	if s.d.Spaces != nil {
+		st, err := s.d.Stacks.Get(ctx, acct, stack)
+		if errors.Is(err, stacksapi.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("runs: read scheduling owner: %w", err)
+		}
+		space = st.Space
+		if err := s.d.Spaces.Hold(ctx, acct, space); err != nil {
+			return fmt.Errorf("runs: hold scheduling space: %w", err)
+		}
+	}
 	st, err := s.d.Stacks.LockForRun(ctx, acct, stack)
 	switch {
 	case errors.Is(err, stacksapi.ErrNotFound):
@@ -93,7 +123,13 @@ func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack k
 	case err != nil:
 		return err //nolint:wrapcheck // the stacks domain names the read
 	case st.Disabled:
+		if evaluated != nil {
+			return s.d.Lifecycle.Refresh(ctx, *evaluated) //nolint:wrapcheck // the owner names the failing operation
+		}
 		return nil
+	}
+	if s.d.Spaces != nil && st.Space != space {
+		return fmt.Errorf("runs: scheduling stack changed space: %w", kernel.ErrUnavailable)
 	}
 	runs, err := s.d.Store.Queued(ctx, acct, stack)
 	if err != nil {
@@ -101,6 +137,28 @@ func (s *Scheduler) Schedule(ctx context.Context, acct kernel.AccountID, stack k
 	}
 	locked, held := false, false
 	for _, run := range runs {
+		var decision policyapi.Evaluation
+		if evaluated != nil && evaluated.ID == run.ID && evaluated.Version == run.Version && evaluated.State == run.State {
+			decision = *result
+		} else {
+			decision, err = s.d.Lifecycle.EvaluateApproval(ctx, run)
+			if err != nil {
+				return err //nolint:wrapcheck // the owner names the failing operation
+			}
+		}
+		moved, err := s.d.Lifecycle.ApplyApproval(ctx, run, decision)
+		if err != nil {
+			return err //nolint:wrapcheck // the owner names the failing operation
+		}
+		if moved.Version != run.Version {
+			continue
+		}
+		if !lifecycle.Approved(decision) {
+			if err := s.d.Lifecycle.Refresh(ctx, run); err != nil {
+				return err //nolint:wrapcheck // the owner names the failing operation
+			}
+			continue
+		}
 		if run.Type.Blocking() {
 			if held {
 				continue

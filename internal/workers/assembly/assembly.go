@@ -340,6 +340,9 @@ func (d *Domain) Samples() workersapi.Samples { return d.samples }
 // internal/app hands the stacks domain.
 func (d *Domain) Pools() workersapi.Pools { return d.svc }
 
+// PoolMetadata supplies credential-free account-owned private-pool metadata.
+func (d *Domain) PoolMetadata() workersapi.PoolMetadataReader { return d.svc }
+
 // GuardPools registers g, which every later delete and move of a pool
 // asks.
 func (d *Domain) GuardPools(g workersapi.PoolGuard) { d.svc.Guard(g) }

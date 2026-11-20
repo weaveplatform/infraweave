@@ -132,7 +132,8 @@ func TestAccRead(t *testing.T) {
 			t.Errorf("Run %s = %v", raw, err)
 		}
 	}
-	w.stacks.settings[kernel.NewULID()] = stacksapi.Settings{Stack: stacksapi.Stack{Slug: "other"}}
+	otherFixtureStack := kernel.NewULID()
+	w.stacks.settings[otherFixtureStack] = stacksapi.Settings{Stack: stacksapi.Stack{ID: otherFixtureStack, Account: w.acct, Slug: "other"}}
 	if _, err := r.StackRun(ctx, p, "other", task.ID.String()); !errors.Is(err, read.ErrNotFound) {
 		t.Errorf("StackRun of another stack's run = %v", err)
 	}
@@ -429,7 +430,8 @@ func TestAccCancel(t *testing.T) {
 		t.Errorf("the lock after the cancel: held %v, %v", held, err)
 	}
 
-	w.stacks.settings[kernel.NewULID()] = stacksapi.Settings{Stack: stacksapi.Stack{Slug: "other"}}
+	otherFixtureStack := kernel.NewULID()
+	w.stacks.settings[otherFixtureStack] = stacksapi.Settings{Stack: stacksapi.Stack{ID: otherFixtureStack, Account: w.acct, Slug: "other"}}
 	for _, c2 := range []struct{ slug, raw string }{
 		{"other", blocking.ID.String()}, {"network", kernel.NewULID().String()}, {"network", "nope"},
 	} {

@@ -81,3 +81,35 @@ func TestAccPolicyInputOpensRecordedPreviousRuntimeValues(t *testing.T) {
 		t.Fatalf("sealed-storage failure did not remain operational: %v", err)
 	}
 }
+
+func TestAccApprovalSnapshotDoesNotRequireUnrelatedPreviousRuntime(t *testing.T) {
+	w := newWorld(t)
+	previous := mustCreate(t, w, kernel.RunTypeTracked, "unrelated-historical-runtime")
+	record := &runtimeconfig.Record{Configuration: runtimeconfig.Configuration{Environment: []runtimeconfig.Variable{{Key: "OLD_ONLY"}}}}
+	if err := w.in(t, func(ctx context.Context) error { return w.store.RecordResolved(ctx, previous, record) }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.db.Exec(t.Context(), `UPDATE runs SET env_overrides_sealed=$3 WHERE account_id=$1 AND id=$2`, w.acct, previous.ID, []byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	w.now = w.now.Add(time.Second)
+	current := mustCreate(t, w, kernel.RunTypeProposed, "approval-current-only")
+	if err := w.in(t, func(ctx context.Context) error {
+		snapshot, err := policyinput.Current(ctx, w.store, w.acct, current.ID)
+		if err != nil {
+			return err
+		}
+		if snapshot.Run.ID != current.ID || snapshot.Previous != nil || snapshot.Environment.Known || snapshot.Flags == nil {
+			return errors.New("approval snapshot opened previous_run or lost known current flags")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.in(t, func(ctx context.Context) error {
+		_, err := policyinput.Read(ctx, w.store, w.acct, current.ID)
+		return err
+	}); err == nil || errors.Is(err, policyapi.ErrInput) {
+		t.Fatalf("PLAN lost its required historical-runtime failure: %v", err)
+	}
+}

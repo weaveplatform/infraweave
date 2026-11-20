@@ -50,8 +50,12 @@ func Facts(snapshot Snapshot, environment policyapi.Fact[map[string]string], cha
 }
 
 func commit(c stacksapi.Commit) policyapi.CommitFacts {
+	author := c.AuthorName
+	if c.AuthorLogin != nil && *c.AuthorLogin != "" {
+		author = *c.AuthorLogin
+	}
 	return policyapi.CommitFacts{
-		Author: c.AuthorName, Branch: c.Branch, Message: c.Message, At: c.Timestamp,
+		Author: author, Branch: c.Branch, Message: c.Message, At: c.Timestamp,
 		Hash: known(c.Hash), Tag: known(c.Tag), URL: known(c.URL),
 	}
 }

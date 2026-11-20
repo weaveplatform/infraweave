@@ -99,6 +99,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // Stacks is what other domains call of this one.
 func (d *Domain) Stacks() stacksapi.Stacks { return d.stacks }
 
+// PolicySnapshots supplies account-owned settings, labels and actual state.
+func (d *Domain) PolicySnapshots() stacksapi.PolicySnapshots { return d.stacks }
+
 // AttachmentTargets provides the bounded stack-owned preview query.
 func (d *Domain) AttachmentTargets() stacksapi.AttachmentTargets { return d.store }
 

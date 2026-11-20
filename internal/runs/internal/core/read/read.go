@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/review"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -113,12 +114,14 @@ type Store interface {
 
 // Deps are what the reads read through.
 type Deps struct {
-	Store    Store
-	Stacks   stacksapi.Stacks
-	Spaces   accessapi.Spaces
-	Authz    accessapi.Authorizer
-	Evidence evidence.Store
-	Policies policiesapi.PolicyIdentities
+	Store     Store
+	Stacks    stacksapi.Stacks
+	Spaces    accessapi.Spaces
+	Authz     accessapi.Authorizer
+	Evidence  evidence.Store
+	Policies  policiesapi.PolicyIdentities
+	Reviews   review.Store
+	Approvals evidence.ApprovalStore
 }
 
 // Service reads runs as the API answers them.
@@ -139,6 +142,8 @@ type View struct {
 	Actions        []accessapi.Action
 	PolicyReceipts []PolicyReceipt
 	Flags          []string
+	Reviews        []review.Record
+	NeedsApproval  bool
 }
 
 // PolicyReceipt retains the evaluation's metadata snapshot after deletion while
@@ -370,6 +375,20 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 	if err != nil {
 		return nil, err
 	}
+	reviews := map[kernel.ULID][]review.Record{}
+	if s.d.Reviews != nil {
+		reviews, err = s.d.Reviews.Reviews(ctx, acct, ids)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the owner names the failing operation
+		}
+	}
+	approvals := map[kernel.ULID]evidence.Approval{}
+	if s.d.Approvals != nil {
+		approvals, err = s.d.Approvals.Approvals(ctx, acct, ids)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the owner names the failing operation
+		}
+	}
 	blockers, err := s.d.Store.Blockers(ctx, acct, stackIDs)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -397,6 +416,13 @@ func (s *Service) Views(ctx context.Context, p kernel.Principal, runs ...lifecyc
 			Run: r, Stack: st.Stack, History: histories[r.ID], Comments: comments[r.ID],
 			Guards: g, Actions: Allowed(r, ok && blocker.Run == r.ID, held[st.Space], g),
 			PolicyReceipts: evaluations[r.ID].receipts, Flags: evaluations[r.ID].flags,
+			Reviews: reviews[r.ID], NeedsApproval: approvals[r.ID].Waiting(),
+		}
+		if out[i].NeedsApproval {
+			out[i].Actions = slices.DeleteFunc(out[i].Actions, func(a accessapi.Action) bool { return a == accessapi.ActionRunConfirm })
+		}
+		if !approvals[r.ID].HasPolicies {
+			out[i].Actions = slices.DeleteFunc(out[i].Actions, func(a accessapi.Action) bool { return a == accessapi.ActionRunReview })
 		}
 	}
 	return out, nil
@@ -447,6 +473,9 @@ func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action, g Guards) 
 	}
 	if !r.State.Terminal() {
 		add(accessapi.ActionRunPrioritizeSet)
+	}
+	if r.State == kernel.RunStateQueued || r.State == kernel.RunStateUnconfirmed || r.State == kernel.RunStatePendingReview {
+		add(accessapi.ActionRunReview)
 	}
 	if g.Retry == "" {
 		blocking = r.Type == kernel.RunTypeTracked

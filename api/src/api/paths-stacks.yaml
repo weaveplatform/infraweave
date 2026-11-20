@@ -2878,7 +2878,7 @@ components:
           $ref: '#/components/schemas/RunState'
         stateVersion:
           description: StateVersion of the Run at the time of the review.
-          format: int32
+          format: int64
           type: integer
         timestamp:
           description: Unix timestamp of the review.

@@ -1166,6 +1166,10 @@ func (UnimplementedStrict) RunProposeLocalWorkspace(context.Context, RunProposeL
 	return nil, &problem.NotImplementedError{OperationID: "runProposeLocalWorkspace", Route: "POST /stacks/{stackId}/runs/propose-local-workspace"}
 }
 
+func (UnimplementedStrict) RunReview(context.Context, RunReviewRequestObject) (RunReviewResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runReview", Route: "POST /stacks/{stackId}/runs/review"}
+}
+
 func (UnimplementedStrict) RunCancel(context.Context, RunCancelRequestObject) (RunCancelResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runCancel", Route: "POST /stacks/{stackId}/runs/{runId}/cancel"}
 }

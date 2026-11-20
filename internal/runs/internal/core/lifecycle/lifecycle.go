@@ -273,13 +273,19 @@ type Jobs interface {
 // Deps are what the lifecycle writes through. Sources is nil until
 // internal/app binds the vcs domain's; Now defaults to time.Now.
 type Deps struct {
-	Store    Store
-	Stacks   stacksapi.Stacks
-	Events   Events
-	Jobs     Jobs
-	Sources  runsapi.RunSources
-	Now      func() time.Time
-	Evidence evidence.Store
+	Store     Store
+	Stacks    stacksapi.Stacks
+	Events    Events
+	Jobs      Jobs
+	Sources   runsapi.RunSources
+	Now       func() time.Time
+	Evidence  evidence.Store
+	Approvals Approvals
+}
+
+// Approvals evaluates and records a decision under the run's current fence.
+type Approvals interface {
+	Evaluate(context.Context, Run) (policiesapi.Evaluation, error)
 }
 
 // Lifecycle is the one place a run is created or changes state.
@@ -369,6 +375,14 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 			return Run{}, err //nolint:wrapcheck // the recorder names the transactional write
 		}
 	}
+	var approval policiesapi.Evaluation
+	approvalEntry := l.d.Approvals != nil && (run.State == kernel.RunStateUnconfirmed || run.State == kernel.RunStatePendingReview)
+	if approvalEntry {
+		approval, err = l.EvaluateApproval(ctx, run)
+		if err != nil {
+			return Run{}, err
+		}
+	}
 	if err := l.consequences(ctx, run, step, req.Timer); err != nil {
 		return Run{}, err
 	}
@@ -390,6 +404,9 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 		if err != nil {
 			return Run{}, err //nolint:wrapcheck // the stacks domain names the write
 		}
+	}
+	if approvalEntry {
+		return l.ApplyApproval(ctx, run, approval)
 	}
 	return run, nil
 }
@@ -417,6 +434,8 @@ type NewRun struct {
 	Overrides      []Override
 	Task           *kernel.Task
 	Note           string
+	// Receipts seed this run's policy-owned flags before QUEUED consequences.
+	Receipts []policiesapi.Receipt
 	// AlwaysCreate is an operation's explicit request for a fresh run.
 	// RuntimeConfig alone does not imply it: retries can reuse an active run.
 	AlwaysCreate bool
@@ -514,6 +533,14 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	}
 	if err := l.d.Store.Insert(ctx, run, step); err != nil {
 		return Run{}, false, err //nolint:wrapcheck // the store names the write
+	}
+	if len(n.Receipts) != 0 {
+		if l.d.Evidence == nil {
+			return Run{}, false, fmt.Errorf("%w: initial policy evidence recorder", kernel.ErrUnavailable)
+		}
+		if err := l.d.Evidence.RecordPolicyEvidence(ctx, run.Account, run.ID, run.Version, n.Receipts); err != nil {
+			return Run{}, false, err //nolint:wrapcheck // the evidence recorder names the fenced write
+		}
 	}
 	if len(n.Overrides) > 0 {
 		if err := l.d.Store.SetOverrides(ctx, run, n.Overrides); err != nil {

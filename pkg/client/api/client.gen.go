@@ -7016,7 +7016,7 @@ type RunReview struct {
 	State RunState `json:"state"`
 
 	// StateVersion StateVersion of the Run at the time of the review.
-	StateVersion int32 `json:"stateVersion"`
+	StateVersion int64 `json:"stateVersion"`
 
 	// Timestamp Unix timestamp of the review.
 	Timestamp int32 `json:"timestamp"`
@@ -7024,6 +7024,15 @@ type RunReview struct {
 
 // RunReviewDecision RunReviewDecision values represent available run review decision.
 type RunReviewDecision string
+
+// RunReviewRequest The arguments of runReview not carried in the path. stateVersion optionally fences a review to the state the caller read.
+type RunReviewRequest struct {
+	// Decision RunReviewDecision values represent available run review decision.
+	Decision     RunReviewDecision `json:"decision"`
+	Note         *string           `json:"note,omitempty"`
+	Run          *string           `json:"run,omitempty"`
+	StateVersion *int64            `json:"stateVersion,omitempty"`
+}
 
 // RunScheduledForTerminationTile defines model for RunScheduledForTerminationTile.
 type RunScheduledForTerminationTile struct {
@@ -12027,6 +12036,12 @@ type RunProposeLocalWorkspaceParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// RunReviewParams defines parameters for RunReview.
+type RunReviewParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // RunCancelParams defines parameters for RunCancel.
 type RunCancelParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -12894,6 +12909,9 @@ type RunDiscardAllJSONRequestBody = RunDiscardAllRequest
 
 // RunProposeLocalWorkspaceJSONRequestBody defines body for RunProposeLocalWorkspace for application/json ContentType.
 type RunProposeLocalWorkspaceJSONRequestBody = RunProposeLocalWorkspaceRequest
+
+// RunReviewJSONRequestBody defines body for RunReview for application/json ContentType.
+type RunReviewJSONRequestBody = RunReviewRequest
 
 // RunCancelJSONRequestBody defines body for RunCancel for application/json ContentType.
 type RunCancelJSONRequestBody = RunCancelRequest
@@ -18286,6 +18304,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
 	RunProposeLocalWorkspace(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunReviewWithBody Review Run
+	//
+	// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+	RunReviewWithBody(ctx context.Context, stackId string, params *RunReviewParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunReview Review Run
+	//
+	// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+	RunReview(ctx context.Context, stackId string, params *RunReviewParams, body RunReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunCancelWithBody Cancel Run
 	//
@@ -26870,6 +26906,44 @@ func (c *Client) RunProposeLocalWorkspaceWithBody(ctx context.Context, stackId s
 // Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
 func (c *Client) RunProposeLocalWorkspace(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunProposeLocalWorkspaceRequest(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunReviewWithBody Review Run
+//
+// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+func (c *Client) RunReviewWithBody(ctx context.Context, stackId string, params *RunReviewParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunReviewRequestWithBody(c.Server, stackId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunReview Review Run
+//
+// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+func (c *Client) RunReview(ctx context.Context, stackId string, params *RunReviewParams, body RunReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunReviewRequest(c.Server, stackId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -44573,6 +44647,68 @@ func NewRunProposeLocalWorkspaceRequestWithBody(server string, stackId string, p
 	return req, nil
 }
 
+// NewRunReviewRequest calls the generic RunReview builder with application/json body
+func NewRunReviewRequest(server string, stackId string, params *RunReviewParams, body RunReviewJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRunReviewRequestWithBody(server, stackId, params, "application/json", bodyReader)
+}
+
+// NewRunReviewRequestWithBody constructs an http.Request for the RunReview method, with any body, and a specified content type
+func NewRunReviewRequestWithBody(server string, stackId string, params *RunReviewParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/runs/review", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewRunCancelRequest calls the generic RunCancel builder with application/json body
 func NewRunCancelRequest(server string, stackId string, runId string, params *RunCancelParams, body RunCancelJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -54016,6 +54152,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/runs/propose-local-workspace (the `RunProposeLocalWorkspace` operationId).
 	RunProposeLocalWorkspaceWithResponse(ctx context.Context, stackId string, params *RunProposeLocalWorkspaceParams, body RunProposeLocalWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*RunProposeLocalWorkspaceResponse, error)
+
+	// RunReviewWithBodyWithResponse Review Run
+	//
+	// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+	RunReviewWithBodyWithResponse(ctx context.Context, stackId string, params *RunReviewParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunReviewResponse, error)
+
+	// RunReviewWithResponse Review Run
+	//
+	// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+	RunReviewWithResponse(ctx context.Context, stackId string, params *RunReviewParams, body RunReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*RunReviewResponse, error)
 
 	// RunCancelWithBodyWithResponse Cancel Run
 	//
@@ -84160,6 +84314,115 @@ func (r RunProposeLocalWorkspaceResponse) ContentType() string {
 	return ""
 }
 
+// RunReviewResponse200Headers the declared response headers of an HTTP 200 response for RunReview
+type RunReviewResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunReviewResponse429Headers the declared response headers of an HTTP 429 response for RunReview
+type RunReviewResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunReviewResponse503Headers the declared response headers of an HTTP 503 response for RunReview
+type RunReviewResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunReviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunReview
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunReviewResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunReviewResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunReviewResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunReviewResponse) GetJSON200() *RunReview {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunReviewResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunReviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunReviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunReviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunReviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RunCancelResponse200Headers the declared response headers of an HTTP 200 response for RunCancel
 type RunCancelResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -100418,6 +100681,36 @@ func (c *ClientWithResponses) RunProposeLocalWorkspaceWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseRunProposeLocalWorkspaceResponse(rsp)
+}
+
+// RunReviewWithBodyWithResponse Review Run
+//
+// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+func (c *ClientWithResponses) RunReviewWithBodyWithResponse(ctx context.Context, stackId string, params *RunReviewParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunReviewResponse, error) {
+	rsp, err := c.RunReviewWithBody(ctx, stackId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunReviewResponse(rsp)
+}
+
+// RunReviewWithResponse Review Run
+//
+// Add an authorized review to the current QUEUED, UNCONFIRMED or PENDING_REVIEW state and evaluate applicable approval policies. Approving UNCONFIRMED still requires a separate confirmation.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/runs/review (the `RunReview` operationId).
+func (c *ClientWithResponses) RunReviewWithResponse(ctx context.Context, stackId string, params *RunReviewParams, body RunReviewJSONRequestBody, reqEditors ...RequestEditorFn) (*RunReviewResponse, error) {
+	rsp, err := c.RunReview(ctx, stackId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunReviewResponse(rsp)
 }
 
 // RunCancelWithBodyWithResponse Cancel Run
@@ -139531,6 +139824,142 @@ func ParseRunProposeLocalWorkspaceResponse(rsp *http.Response) (*RunProposeLocal
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunProposeLocalWorkspaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunReviewResponse parses an HTTP response from a RunReviewWithResponse call
+func ParseRunReviewResponse(rsp *http.Response) (*RunReviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunReviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunReview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunReviewResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunReviewResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunReviewResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

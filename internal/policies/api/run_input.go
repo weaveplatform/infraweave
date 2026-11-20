@@ -11,8 +11,8 @@ import (
 // Fact distinguishes unavailable facts, explicit null, and known values. A
 // value with Known=false is invalid rather than silently discarded.
 type Fact[T any] struct {
-	Known bool
-	Value *T
+	Known bool `json:"known"`
+	Value *T   `json:"value"`
 }
 
 // RunInputBuilder projects workflow facts into the published typed contract.
@@ -23,7 +23,6 @@ type RunInputBuilder interface {
 
 // RunInputFacts contains facts owned by run and stack workflows. Plan is an
 // opened, already sanitized artifact; this projection does not sanitize again.
-// Review/session facts are added by their owning workflow when persisted.
 type RunInputFacts struct {
 	Account     kernel.AccountID
 	Type        Type
@@ -32,6 +31,76 @@ type RunInputFacts struct {
 	Stack       StackFacts
 	PreviousRun Fact[RunFacts]
 	Plan        *SanitizedPlan
+	Reviews     Fact[ReviewsFacts]
+}
+
+// ReviewsFacts is the run owner's state/version-scoped selection of the latest
+// review per author. Known empty groups are explicit arrays, never a fabricated
+// approval or a review carried from a previous state.
+type ReviewsFacts struct {
+	Current ReviewGroupFacts `json:"current"`
+	Older   ReviewGroupFacts `json:"older"`
+}
+
+// ReviewGroupFacts separates approval and rejection without rewriting history.
+type ReviewGroupFacts struct {
+	Approvals  []ReviewFacts `json:"approvals"`
+	Rejections []ReviewFacts `json:"rejections"`
+}
+
+// ReviewFacts retains the metadata recorded at the authorized review, not the
+// reviewer's current roles or session at a later policy evaluation.
+type ReviewFacts struct {
+	Author       string              `json:"author"`
+	State        kernel.RunState     `json:"state"`
+	StateVersion int64               `json:"stateVersion"`
+	AuthorRoles  Fact[[]RoleFacts]   `json:"authorRoles"`
+	Identity     Fact[IdentityFacts] `json:"identity"`
+	Note         Fact[string]        `json:"note"`
+	Request      Fact[RequestFacts]  `json:"request"`
+	Session      Fact[SessionFacts]  `json:"session"`
+}
+
+// IdentityFacts contains only identity data supplied by its owning domain.
+type IdentityFacts struct {
+	ULID        Fact[string]                     `json:"ulid"`
+	Federations Fact[map[string]FederationFacts] `json:"federations"`
+}
+
+// FederationFacts is the recorded external identity, when available.
+type FederationFacts struct {
+	ID       Fact[string] `json:"id"`
+	Username Fact[string] `json:"username"`
+}
+
+// RequestFacts fixes the request clock when the review is recorded. A later
+// evaluation must not replace it with its own timestamp or remote address.
+type RequestFacts struct {
+	At       time.Time    `json:"at"`
+	RemoteIP Fact[string] `json:"remoteIp"`
+}
+
+// SessionAdmin preserves the published human boolean and machine empty-string
+// alternatives without accepting an arbitrary JSON value from another owner.
+type SessionAdmin uint8
+
+const (
+	SessionNotAdmin SessionAdmin = iota
+	SessionIsAdmin
+	SessionMachineAdmin
+)
+
+// SessionFacts projects the recorded session without credentials or token data.
+type SessionFacts struct {
+	Machine    bool                `json:"machine"`
+	Admin      Fact[SessionAdmin]  `json:"admin"`
+	Login      Fact[string]        `json:"login"`
+	Name       Fact[string]        `json:"name"`
+	CreatorIP  Fact[string]        `json:"creatorIp"`
+	IDPSubject Fact[string]        `json:"idpSubject"`
+	StackID    Fact[string]        `json:"stackId"`
+	Teams      Fact[[]string]      `json:"teams"`
+	Identity   Fact[IdentityFacts] `json:"identity"`
 }
 
 // RunFacts carries persisted facts without using a transport Run projection,
@@ -78,6 +147,7 @@ type StackFacts struct {
 	TrackedCommit                            Fact[CommitFacts]
 	Space                                    Fact[SpaceFacts]
 	WorkerPool                               Fact[WorkerPoolFacts]
+	Roles                                    Fact[[]RoleFacts] `json:"roles"`
 }
 
 // SpaceFacts is an owner-supplied space snapshot, not a fabricated ID-only object.

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/iac"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -19,6 +20,8 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -61,12 +64,16 @@ type Object struct {
 // Store is what reports need of the runs' storage. Each method joins the
 // transaction its context carries.
 type Store interface {
+	// ReportOwner locates immutable ownership without taking the run lock.
+	ReportOwner(context.Context, kernel.ULID) (Owner, error)
 	// Handed reads the run id of whichever account has it and locks its
 	// row; lifecycle.ErrNotFound when none has it.
 	Handed(ctx context.Context, id kernel.ULID) (lifecycle.Run, error)
 	// StateAt reads the state acct's run entered at state version
 	// version.
 	StateAt(ctx context.Context, acct kernel.AccountID, run kernel.ULID, version int64) (kernel.RunState, error)
+	// ApprovalAt reads the committed gate evaluated after a planning report.
+	ApprovalAt(context.Context, kernel.AccountID, kernel.ULID, int64) (evidence.Approval, bool, error)
 	// ArtifactKey is run's artifact key, made the first time it is asked
 	// for.
 	ArtifactKey(ctx context.Context, run lifecycle.Run) (crypt.Value, error)
@@ -119,7 +126,15 @@ type Mover interface {
 // Stacks reads a run's stack for the plan decision; stacksapi.Stacks is
 // one.
 type Stacks interface {
+	Get(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Stack, error)
+	LockForRun(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error)
 	Settings(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error)
+}
+
+// Owner is the immutable account and stack needed before taking a run lock.
+type Owner struct {
+	Account kernel.AccountID
+	Stack   kernel.ULID
 }
 
 // Deps are what reports read and write through: the database a purge
@@ -131,6 +146,7 @@ type Deps struct {
 	Objects   Objects
 	Lifecycle Mover
 	Stacks    Stacks
+	Spaces    accessapi.Spaces
 }
 
 // Service is the runs domain's workersapi.Reports.
@@ -212,38 +228,23 @@ func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Repor
 		return workersapi.Step{}, fmt.Errorf("%w: %s %s", workersapi.ErrDeltaRefused, r.State,
 			r.Event)
 	}
+	if err := s.fence(ctx, id); err != nil {
+		return workersapi.Step{}, err
+	}
 	run, err := s.held(ctx, id)
-	if err != nil {
+	if err != nil && (!errors.Is(err, workersapi.ErrNotOnWorker) || run.WorkerPool == nil) {
 		return workersapi.Step{}, err
 	}
 	switch r.StateVersion {
 	case run.Version:
-		if r.LogChunks != nil && r.Event != workersapi.ReportStarted && r.State == run.State {
-			if err := s.d.Store.CountChunks(ctx, run, run.Version, *r.LogChunks); err != nil {
-				return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
-			}
-		}
-		if planned(r) && run.State == kernel.RunStatePlanning {
-			return s.decide(ctx, run, r)
-		}
-		to, err := target(run.Type, run.State, r)
 		if err != nil {
 			return workersapi.Step{}, err
 		}
-		if to == run.State {
-			return step(run), nil
-		}
-		if applied(run, r) {
-			if err := s.keepOutputs(ctx, run); err != nil {
-				return workersapi.Step{}, err
-			}
-		}
-		actor, note := lifecycle.Actor{}, r.Details
-		if to == kernel.RunStateStopped {
-			actor, note = run.Stop.Ends(note)
-		}
-		return s.move(ctx, run, to, machine.DriverWorkerReport, actor, note)
+		return s.reportCurrent(ctx, run, r)
 	case run.Version - 1:
+		if err != nil {
+			return workersapi.Step{}, err
+		}
 		from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
 		if err != nil {
 			return workersapi.Step{}, err //nolint:wrapcheck // the store names the read
@@ -254,9 +255,78 @@ func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Repor
 		if to, err := target(run.Type, from, r); err == nil && to == run.State && to != from {
 			return step(run), nil
 		}
+	case run.Version - 2:
+		replay, err := s.approvalReplay(ctx, run, r)
+		if err != nil {
+			return workersapi.Step{}, err
+		}
+		if replay {
+			return step(run), nil
+		}
 	}
 	return workersapi.Step{}, fmt.Errorf("%w: run %s is at %d, not %d", workersapi.ErrMovedOn,
 		id, run.Version, r.StateVersion)
+}
+
+// reportCurrent applies a report only to the phase version the worker holds.
+func (s *Service) reportCurrent(ctx context.Context, run lifecycle.Run, r workersapi.Report) (workersapi.Step, error) {
+	if r.LogChunks != nil && r.Event != workersapi.ReportStarted && r.State == run.State {
+		if err := s.d.Store.CountChunks(ctx, run, run.Version, *r.LogChunks); err != nil {
+			return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
+		}
+	}
+	if planned(r) && run.State == kernel.RunStatePlanning {
+		return s.decide(ctx, run, r)
+	}
+	to, err := target(run.Type, run.State, r)
+	if err != nil {
+		return workersapi.Step{}, err
+	}
+	if to == run.State {
+		return step(run), nil
+	}
+	if applied(run, r) {
+		if err := s.keepOutputs(ctx, run); err != nil {
+			return workersapi.Step{}, err
+		}
+	}
+	actor, note := lifecycle.Actor{}, r.Details
+	if to == kernel.RunStateStopped {
+		actor, note = run.Stop.Ends(note)
+	}
+	return s.move(ctx, run, to, machine.DriverWorkerReport, actor, note)
+}
+
+// approvalReplay recognizes only the two committed transitions produced by a
+// planning report followed immediately by its approval gate. It never evaluates
+// again and does not accept a changed delta or a later human transition.
+func (s *Service) approvalReplay(ctx context.Context, run lifecycle.Run, r workersapi.Report) (bool, error) {
+	if !planned(r) || r.State != kernel.RunStatePlanning || run.Delta == nil || *run.Delta != *r.Delta {
+		return false, nil
+	}
+	from, err := s.d.Store.StateAt(ctx, run.Account, run.ID, r.StateVersion)
+	if err != nil {
+		return false, fmt.Errorf("runs: read report replay state: %w", err)
+	}
+	if from != kernel.RunStatePlanning {
+		return false, nil
+	}
+	gate, found, err := s.d.Store.ApprovalAt(ctx, run.Account, run.ID, r.StateVersion+1)
+	if err != nil {
+		return false, fmt.Errorf("runs: read report replay approval: %w", err)
+	}
+	if !found || !decided(run.Type, gate.State) {
+		return false, nil
+	}
+	to := kernel.RunState("")
+	if gate.HasPolicies && gate.Outcome == policyapi.Reject {
+		to = kernel.RunStateFailed
+	}
+	if gate.State == kernel.RunStatePendingReview && (!gate.HasPolicies && gate.Outcome == policyapi.NoPolicies || gate.Outcome == policyapi.Approve) {
+		to = kernel.RunStateFinished
+	}
+	edge, ok := machine.Allowed(run.Type, gate.State, to, machine.DriverApproval)
+	return ok && edge.To == run.State, nil
 }
 
 // move moves run to to, driven by driver, with actor and note as the
