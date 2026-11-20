@@ -32,6 +32,7 @@ type RunInputFacts struct {
 	PreviousRun Fact[RunFacts]
 	Plan        *SanitizedPlan
 	Reviews     Fact[ReviewsFacts]
+	Trigger     *TriggerContext
 }
 
 // ReviewsFacts is the run owner's state/version-scoped selection of the latest

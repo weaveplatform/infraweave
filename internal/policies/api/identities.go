@@ -10,6 +10,7 @@ import (
 // Historical receipts retain their own name/version snapshot after deletion.
 type PolicyIdentity struct {
 	ID      kernel.ULID
+	Space   kernel.ULID
 	Name    string
 	Type    Type
 	Engine  string

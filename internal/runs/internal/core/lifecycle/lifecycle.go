@@ -95,6 +95,18 @@ func (l *Locked) Is(target error) bool { return target == ErrLocked }
 // ref: decision 0008 § "From QUEUED to READY"
 var ScheduleKind = queue.Kind{Name: "run.schedule", Queue: queue.Default, Policy: queue.Coalesce}
 
+// PolicyTriggerKind evaluates one committed terminal run once per state version.
+// It is declared beside the transition so enqueue and consumption share a kind
+// without introducing a dependency from lifecycle back to its consumer.
+var PolicyTriggerKind = queue.Kind{Name: "policy.trigger", Queue: queue.Default, Policy: queue.Ignore}
+
+// PolicyTrigger identifies the immutable source of a terminal policy job.
+type PolicyTrigger struct {
+	Run          kernel.ULID `json:"run"`
+	Stack        kernel.ULID `json:"stack"`
+	StateVersion int64       `json:"stateVersion"`
+}
+
 // Schedule is a ScheduleKind job's payload.
 type Schedule struct {
 	Stack kernel.ULID `json:"stack"`
@@ -586,6 +598,14 @@ func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step, timer 
 	}
 	if err := l.updated(ctx, run, step, timer); err != nil {
 		return err
+	}
+	if run.State.Terminal() && (run.Type == kernel.RunTypeTracked || run.Type == kernel.RunTypeTask) {
+		_, err := l.d.Jobs.EnqueueTx(ctx, PolicyTriggerKind,
+			PolicyTrigger{Run: run.ID, Stack: run.Stack, StateVersion: run.Version},
+			queue.Account(run.Account.ULID), queue.UniqueKey(fmt.Sprintf("run:%s:%d", run.ID, run.Version)))
+		if err != nil {
+			return err //nolint:wrapcheck // the queue names the terminal work
+		}
 	}
 	if run.WorkerPool != nil && slices.Contains(machine.Claimable(), run.State) {
 		if err := l.d.Store.Announce(ctx, run); err != nil {

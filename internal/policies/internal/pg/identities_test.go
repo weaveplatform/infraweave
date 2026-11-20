@@ -20,7 +20,7 @@ func TestAccPolicyIdentitiesRespectAccountAndDeletion(t *testing.T) {
 	}
 	for _, owner := range []core.Policy{p, foreign} {
 		got, err := f.svc.Identities(t.Context(), owner.Account, []kernel.ULID{p.ID, kernel.NewULID()})
-		if err != nil || len(got) != 1 || got[p.ID].Name != owner.Name || got[p.ID].Version != owner.Version || got[p.ID].Type != policyapi.Plan {
+		if err != nil || len(got) != 1 || got[p.ID].Name != owner.Name || got[p.ID].Version != owner.Version || got[p.ID].Type != policyapi.Plan || got[p.ID].Space != owner.Space {
 			t.Fatalf("identity crossed account or lost metadata: %+v %v", got, err)
 		}
 	}

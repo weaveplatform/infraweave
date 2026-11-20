@@ -47,7 +47,7 @@ Feature: Terminal runs durably trigger target runs on their own tracked commits
     And token "h" eventually reads the run "source" in the state "FINISHED" through B
     And token "h" eventually reads the single policy-triggered run of stack "target" from stack "infra" run "source" as "child" through A
     And token "h" eventually reads the run "child" in the state "FINISHED" through B
-    And the answer's commit's hash is '"{targetSeed}"'
+    And the answer's commit hash is "{targetSeed}"
     And the answer's type is '"TRACKED"'
     And the answer's triggeredBy is '"policy/infra/{source}"'
     And the answer's flags is '[]'

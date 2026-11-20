@@ -90,7 +90,7 @@ func TestUnitEvents(t *testing.T) {
 	d := New(Deps{})
 	d.BindSources(sources{}, sources{})
 	jobs := d.Jobs()
-	want := []string{"run.approval.scan", "run.approval.reevaluate", "run.schedule", "run.logs.compact"}
+	want := []string{"policy.trigger", "run.approval.scan", "run.approval.reevaluate", "run.schedule", "run.logs.compact"}
 	if len(jobs) != len(want) {
 		t.Fatalf("Jobs = %+v", jobs)
 	}

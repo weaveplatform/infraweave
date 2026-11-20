@@ -16,6 +16,16 @@ import (
 )
 
 func registerTrigger(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^the answer's commit hash is "([^"]+)"$`, func(want string) error {
+		var run api.Run
+		if err := json.Unmarshal(w.Last().Body, &run); err != nil {
+			return fmt.Errorf("decode triggered run commit: %w", err)
+		}
+		if run.Commit.Hash != w.Resolve(want) {
+			return fmt.Errorf("%w: triggered run used a different commit", harness.ErrStep)
+		}
+		return nil
+	})
 	sc.Step(`^token "(\w+)" eventually reads the single policy-triggered run of stack "([^"]+)" from stack "([^"]+)" run "(\w+)" as "(\w+)" through ([AB])$`,
 		func(ctx context.Context, token, target, sourceStack, source, child, replica string) error {
 			parent := "policy/" + sourceStack + "/" + w.IDs[source]

@@ -29,6 +29,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policytrigger"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/report"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/schedule"
@@ -149,6 +150,7 @@ type Deps struct {
 
 // Domain is the runs domain, constructed once per process.
 type Domain struct {
+	policyTrigger      *policytrigger.Service
 	store              *pg.Store
 	runs               *core.Service
 	lifecycle          *lifecycle.Lifecycle
@@ -187,7 +189,20 @@ func New(d Deps) *Domain {
 		read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store, Plans: store},
 	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
+	creator := trigger.New(trigger.Deps{
+		DB: d.DB, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc, Views: views,
+		Objects: d.Objects,
+	})
 	return &Domain{
+		policyTrigger: policytrigger.New(policytrigger.Deps{
+			DB: d.DB, Store: store, Jobs: queue.New(d.DB), Spaces: d.Spaces, Stacks: d.Stacks,
+			Snapshots: d.PolicyStacks, Identities: d.PolicyIdentities, Evaluator: d.PolicyEvaluator,
+			Inputs: d.PolicyInputs, Creator: creator, Lifecycle: lc, Now: d.Now,
+			Metadata: policyinput.Metadata{
+				Store: store, Objects: d.Objects, Pools: d.PolicyPools, Roles: d.PolicyRoles,
+				SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts,
+			},
+		}),
 		store:     store,
 		runs:      core.New(store),
 		lifecycle: lc,
@@ -227,11 +242,8 @@ func New(d Deps) *Domain {
 			Retention: d.LogRetention, Now: d.Now,
 		}),
 		changes: changes.New(changes.Deps{Store: store, Objects: d.Objects, Stacks: d.Stacks}),
-		trigger: trigger.New(trigger.Deps{
-			DB: d.DB, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc, Views: views,
-			Objects: d.Objects,
-		}),
-		read: views,
+		trigger: creator,
+		read:    views,
 		control: control.New(control.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc,
 			Views: views, Now: d.Now,
@@ -318,6 +330,7 @@ func (d *Domain) Surfaces() []expr.Surface {
 // longest handler may run. Registration order carries no scheduling priority.
 func (d *Domain) Jobs() []queue.Registration {
 	return []queue.Registration{
+		{Kind: lifecycle.PolicyTriggerKind, Handler: d.policyTrigger.Handle, Options: queue.HandlerOptions{Timeout: 2 * time.Minute}},
 		{Kind: approval.ScanKind, Handler: d.approvalReconciler.Scan},
 		{Kind: approval.ReevaluateKind, Handler: d.approvalReconciler.Reevaluate},
 		{Kind: lifecycle.ScheduleKind, Handler: d.scheduler.Handle},

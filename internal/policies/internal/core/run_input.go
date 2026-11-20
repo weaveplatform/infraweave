@@ -25,7 +25,7 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 	var document any
 	switch facts.Type {
 	case policyapi.Approval:
-		if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil {
+		if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil || facts.Trigger != nil {
 			return nil, policyapi.ErrInput
 		}
 		document = inputs.ApprovalInput{
@@ -33,7 +33,7 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 			Reviews: convertFact(b, facts.Reviews, b.reviews),
 		}
 	case policyapi.Plan:
-		if facts.Reviews.Known || facts.Reviews.Value != nil {
+		if facts.Reviews.Known || facts.Reviews.Value != nil || facts.Trigger != nil {
 			return nil, policyapi.ErrInput
 		}
 		planRun := toPlanRun(run)
@@ -49,6 +49,15 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 			}
 		}
 		document = plan
+	case policyapi.Trigger:
+		if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil || facts.Reviews.Known || facts.Reviews.Value != nil {
+			return nil, policyapi.ErrInput
+		}
+		trigger, err := b.trigger(facts, run, stack)
+		if err != nil {
+			return nil, err
+		}
+		document = trigger
 	default:
 		return nil, policyapi.ErrInput
 	}
