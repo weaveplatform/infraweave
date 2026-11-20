@@ -766,9 +766,9 @@
       "id": "C47",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Are `ACCESS` policies still evaluated after their disable date of 2026-05-30?",
+      "question": "Partial 2026-11-19 capture in test/fixtures/captures/C47: root ACCESS creation fails outside legacy space and this account has no legacy space. Existing legacy-policy evaluation after 2026-05-30 remains unobserved; infraweave intentionally retains ACCESS supersession.",
       "howToCapture": "Attach an access policy on a trial account and test it",
-      "blocks": "PD-02",
+      "blocks": "Legacy upstream comparison only; no ACCESS implementation is reintroduced",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/26-scope-and-tiers.md"
@@ -804,9 +804,9 @@
       "id": "C50",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "What effect does a flag set by a login, access, notification or Intent policy have, given those types touch no run? A plan policy's flag reaches the same run's later approval, trigger and notification inputs and the next run's `previous_run`, and not the runs a trigger policy creates (report 32)",
+      "question": "Still open after the bounded 2026-11-19 LOGIN experiment in test/fixtures/captures/C50: flag=true/false and an explicit key deny produced non-admin tokens, denied stack reads and no LOGIN samples. Actual LOGIN evaluation and flag effects were not established; simulation only establishes raw flag output. NOTIFICATION/INTENT effects remain with P18/P25.",
       "howToCapture": "Sample such a policy and inspect the receipts",
-      "blocks": "whether flags live outside runs",
+      "blocks": "Actual LOGIN no-run flag effects before affected #658 behavior; accepted infraweave ignores-no-run-flags choice is not observed parity",
       "reports": [
         "docs/research/reference/09-policies.md",
         "docs/research/reference/32-spacelift-console-survey.md"
@@ -828,20 +828,21 @@
       "id": "C52",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "Which run state follows a server-side initialization policy `deny`?",
+      "question": "Resolved by test/fixtures/captures/C52 on 2026-11-19: a server-side INITIALIZATION deny leaves the tracked run FAILED after QUEUED and READY, with job assignment failed: denied by 1 initialization policy and a sampled INITIALIZATION deny receipt. TASK deny-before-creation is a distinct unobserved case: owner/writer V0/V1 tasks finished without TASK receipts.",
       "howToCapture": "Attach a deny-all initialization policy and trigger a run",
-      "blocks": "the run state machine ([08](../research/reference/08-run-lifecycle.md))",
+      "blocks": "No remaining initialization-state capture blocker; #660 implements READY-to-FAILED assignment failure, while #659 retains its TASK-denial evidence gate",
       "reports": [
         "docs/research/reference/09-policies.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C53",
       "kind": "capture",
       "area": "Stacks, runs and policies (reports 07 to 09)",
-      "question": "When does Spacelift record `PolicyInputCapture` documents, and do they depend on `sample`?",
+      "question": "Partial 2026-11-19/20 capture in test/fixtures/captures/C53: account input capture exists with sample=false; sample=true creates policy samples without replacing that latest capture. A writer key is denied account capture reads. A real resource PLAN sample masks a sensitive dummy value using the last-eight SHA-256 hash with no plaintext copy. Historical inputs remain readable about 2.8 days later. Fixed cadence, expiration, direct non-admin sample reads and cross-space behavior remain unobserved.",
       "howToCapture": "Query `policyInputCaptures` before and after turning sampling on",
-      "blocks": "capture storage and privacy",
+      "blocks": "Remaining cadence/retention and sample/cross-space privacy cases before affected #661/#662 behavior",
       "reports": [
         "docs/research/reference/09-policies.md"
       ]
@@ -3632,12 +3633,13 @@
       "id": "C273",
       "kind": "capture",
       "area": "Console survey (report 32)",
-      "question": "What does a policy's page in the console show of its evaluations, samples and simulation, and which operations does it call? The console's policy page has body, \"Used by\" and samples tabs and a simulation panel, with sample filters per type (report 32); the operation names are unread",
+      "question": "Resolved by test/fixtures/captures/C273 on 2026-11-19/20: actual PLAN body, Used by, Samples, sample details and simulation browser requests plus NOTIFICATION body with no Used by tab. Captures GetPolicyForDetails, evaluation/sample/search operations and SimulatePolicyV2. The approved temporary scheme switch and active LOGIN edit invalidated the test session while preserving the owner caller; the inactive edit did not. MANAGED_USERS, sole active owner/session and empty resource/key inventory restored.",
       "howToCapture": "Create a plan policy on a trial account, attach it to a stack, trigger a run, and open the policy's page with the browser's request bodies recorded",
-      "blocks": "P13b's sampling and simulation surfaces and the console's policy page",
+      "blocks": "No remaining policy-page operation capture blocker; REST projection replay awaits #665",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"
-      ]
+      ],
+      "status": "resolved"
     },
     {
       "id": "C274",

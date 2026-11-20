@@ -1,0 +1,12 @@
+uid=4_0 RootWebArea "Spacelift" url="https://example.app.spacelift.io/policy/policy-b-plan/samples?sort=createdAt&sortDirection=DESC"
+  uid=4_1 main
+  uid=9_0 button "Dismiss"
+  uid=9_1 dialog "Sample details" focusable focused modal
+    uid=9_2 heading "Sample details" level="2"
+    uid=9_3 button "Close"
+    uid=9_4 "Timestamp"
+    uid=9_5 "Nov 19th, 23:38:21"
+    uid=9_6 "Outcome"
+    uid=9_7 "ALLOW"
+    uid=9_8 "Input"
+    uid=10_0 textbox "Editor content;Press Option+Tab to move focus out of the editor.;Press fn+F1 for Accessibility Options." autocomplete="both" multiline roledescription="editor"

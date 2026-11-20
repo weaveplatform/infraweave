@@ -1,2 +1,123 @@
+# exchange 0
 # variables: {"approval":"root/APPROVAL/01J00000000000000000000090","plan":"root/PLAN/01J00000000000000000000091"}
 query Capture644ExistingInputs($approval:ID!,$plan:ID!) { approval:policyInputCapture(id:$approval) { id kind capturedAt input } plan:policyInputCapture(id:$plan) { id kind capturedAt input } }
+
+# exchange 1
+# variables: {}
+query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }
+
+# exchange 2
+# variables: {"input":{"name":"policy-b-plan","type":"PLAN","body":"package spacelift\nimport rego.v1\nsample := false\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 3
+# variables: {"input":{"name":"policy-b-approval","type":"APPROVAL","body":"package spacelift\nimport rego.v1\napprove := true\nsample := false\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 4
+# variables: {"input":{"name":"capture-key-a","admin":false,"teams":[],"machine":false,"description":"Approved #644 non-admin test key; expires in one hour and is deleted after capture.","expiresAt":1795134023,"roleBindings":[{"roleID":"01K00000000000000000000005","spaceID":"root"}]}}
+mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}
+
+# exchange 5
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 6
+# variables: {"stack":"stack-b"}
+query Capture644NonAdminAccess($stack:ID!){viewer{admin} stack(id:$stack){id canRead canWrite}}
+
+# exchange 7
+# variables: {}
+query Capture644NonAdminInputAccess { policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} }
+
+# exchange 8
+# variables: {"id":"01K00000000000000000000007"}
+mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}
+
+# exchange 9
+# variables: {"id":"policy-b-approval","stack":"stack-b"}
+mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 10
+# variables: {"id":"policy-b-plan","stack":"stack-b"}
+mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 11
+# variables: {}
+query Capture644BeforeFalseSampling { approval:policyInputCaptures(space:"root",type:APPROVAL){id kind capturedAt} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} }
+
+# exchange 12
+# variables: {"stack":"stack-b"}
+mutation Capture644FalseSamplingRun($stack:ID!){runTrigger(stack:$stack,runType:TRACKED){id state type history{state note timestamp}}}
+
+# exchange 13
+# variables: {"stack":"stack-b","run":"01K00000000000000000000032"}
+query Capture644FalseSamplingResult($stack:ID!,$run:ID!){stack(id:$stack){id run(id:$run){id state history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled}}} approval:policyInputCaptures(space:"root",type:APPROVAL){id kind capturedAt} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} approvalPolicy:policy(id:"policy-b-approval"){id sampleCount evaluationRecords{key outcome timestamp}} planPolicy:policy(id:"policy-b-plan"){id sampleCount evaluationRecords{key outcome timestamp}}}
+
+# exchange 14
+# variables: {"stack":"stack-b","run":"01K00000000000000000000032"}
+mutation Capture644Discard($stack:ID!,$run:ID!){runDiscard(stack:$stack,run:$run,note:"capture-644-sampling-comparison"){id state}}
+
+# exchange 15
+# variables: {"id":"policy-b-plan","input":{"name":"policy-b-plan","body":"package spacelift\nimport rego.v1\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644EnableSampling($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type updatedAt}}
+
+# exchange 16
+# variables: {"id":"policy-b-approval","input":{"name":"policy-b-approval","body":"package spacelift\nimport rego.v1\napprove := true\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644EnableSampling($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type updatedAt}}
+
+# exchange 17
+# variables: {"stack":"stack-b"}
+mutation Capture644TrueSamplingRun($stack:ID!){runTrigger(stack:$stack,runType:TRACKED){id state type}}
+
+# exchange 18
+# variables: {"stack":"stack-b","run":"01K00000000000000000000037"}
+query Capture644TrueSamplingResult($stack:ID!,$run:ID!){stack(id:$stack){id run(id:$run){id state history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled}}} approval:policyInputCaptures(space:"root",type:APPROVAL){id kind capturedAt} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} approvalPolicy:policy(id:"policy-b-approval"){id sampleCount evaluationRecords{key outcome timestamp}} planPolicy:policy(id:"policy-b-plan"){id sampleCount evaluationRecords{key outcome timestamp}}}
+
+# exchange 19
+# variables: {"stack":"stack-b","run":"01K00000000000000000000037"}
+mutation Capture644Discard($stack:ID!,$run:ID!){runDiscard(stack:$stack,run:$run,note:"capture-644-sampling-comparison"){id state}}
+
+# exchange 20
+# variables: {"stack":"stack-b","commit":"6699d52b96b83cb8785243d406f085e0515ca423"}
+mutation Capture644SensitivePlan($stack:ID!,$commit: String!){runTrigger(stack:$stack,commitSha:$commit,runType:TRACKED){id state type commit{hash}}}
+
+# exchange 21
+# variables: {"stack":"stack-b"}
+query Capture644RunInventoryAfterTriggerError($stack:ID!){stack(id:$stack){id runs{id state createdAt} proposedRuns{id state createdAt} tasks{id state createdAt}}}
+
+# exchange 22
+# variables: {"id":"stack-b","input":{"name":"stack-b","branch":"capture/sensitive-field","namespace":"weaveplatform","repository":"infraweave","repositoryURL":"https://github.com/weaveplatform/infraweave.git","provider":"GIT","space":"root","autodeploy":false,"projectRoot":"test/fixtures/policy-tooling-capture-project","terraformVersion":"1.5.7","description":"Temporary approved provider-free #644 policy tooling capture lab; delete after capture.","labels":["infraweave-capture:644"]}}
+mutation Capture644MoveSourceBranch($id:ID!,$input:StackInput!){stackUpdate(id:$id,input:$input){id branch projectRoot provider}}
+
+# exchange 23
+# variables: {"stack":"stack-b"}
+mutation Capture644SensitivePlan($stack:ID!){runTrigger(stack:$stack,runType:TRACKED){id state type}}
+
+# exchange 24
+# variables: {"stack":"stack-b","run":"01K00000000000000000000044"}
+query Capture644SensitivePlanResult($stack:ID!,$run:ID!){stack(id:$stack){run(id:$run){id state type history{state note timestamp} policyReceipts{id policyType sampled outcome}}} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt}}
+
+# exchange 25
+# variables: {"stack":"stack-b","run":"01K00000000000000000000044","receipt":"01K00000000000000000000046","capture":"root/PLAN/01K00000000000000000000036"}
+query Capture644SensitiveDocuments($stack:ID!,$run:ID!,$receipt:ID!,$capture:ID!){stack(id:$stack){run(id:$run){id policyReceiptSample(id:$receipt){input body results outcome error}}} policyInputCapture(id:$capture){id kind capturedAt input}}
+
+# exchange 26
+# variables: {"stack":"stack-b","run":"01K00000000000000000000044"}
+mutation Capture644Discard($stack:ID!,$run:ID!){runDiscard(stack:$stack,run:$run,note:"capture-644-sensitive-check-complete"){id state}}
+
+# exchange 27
+# variables: {}
+query Capture644CaptureSchema { __type(name:"PolicyInputCapture"){name fields{name type{kind name ofType{kind name}}}} }
+
+# exchange 28
+# variables: {}
+query Capture644BeforeCleanup { authorizationScheme apiKeys {id} policies{id type} stack(id:"stack-b"){id run(id:"01K00000000000000000000049"){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}} taskPolicy:policy(id:"policy-b-task"){id engineType body sampleCount evaluationRecords{key outcome timestamp}} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} login:policyInputCaptures(space:"root",type:LOGIN){id kind capturedAt} task:policyInputCaptures(space:"root",type:TASK){id kind capturedAt} }
+
+# exchange 29
+# variables: {"old":"root/PLAN/01K00000000000000000000030","task":"root/TASK/01K00000000000000000000051"}
+query Capture644DocumentRetention($old:ID!,$task:ID!){old:policyInputCapture(id:$old){id kind capturedAt input} task:policyInputCapture(id:$task){id kind capturedAt input}}
+
+# exchange 30
+# variables: {}
+query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }

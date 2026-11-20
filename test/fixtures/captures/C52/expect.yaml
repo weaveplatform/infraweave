@@ -1,0 +1,9 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/660
+observed:
+  "/exchanges/5/response/data/stack/run/state": "FAILED"
+  "/exchanges/5/response/data/stack/run/history/0/note": "job assignment failed: denied by 1 initialization policy"
+  "/exchanges/10/response/data/stack/run/state": "FINISHED"
+  "/exchanges/23/response/data/stack/run/state": "FINISHED"
+  "/exchanges/24/response/data/stack/run/policyReceipts": []
+  "/exchanges/24/response/data/taskPolicy/sampleCount": 0
+  "/exchanges/26/response/data/stacks": []

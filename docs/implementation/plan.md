@@ -2289,8 +2289,8 @@ P13b prepares public APIs for the P24c console, while P14 owns worker exec.
 | C46 | Real refusal recorded; maintainer-approved reason/label inferences in ADR 0009 unblock #652, without resolving the evidence question |
 | C48 | Free-tier facts recorded; approved inference maps WORKFLOW_POLICIES to GIT_PUSH/TRIGGER evaluation, without a blanket CRUD gate; entitled-account evidence remains open |
 | C51, C291 | New slug-ID reset and both rejection states recorded; approved owner-ID inference unblocks #649 while legacy evidence remains open. C291 replay awaits #650 |
-| C47, C50 (LOGIN), C52 | Supersession observation, no-run login flags and server initialization outcome: #644 before affected P13b handlers |
-| C53, C273 | Capture/sample privacy/cadence and page API reads: #644 before #661/#662/#665 |
+| C47, C50 (LOGIN), C52 | #644 records root ACCESS refusal and server initialization READY → FAILED; LOGIN flag effects and TASK deny-before-creation remain unobserved. Preserve those gates before affected P13b handlers |
+| C53, C273 | #644 records sample independence, resource-value masking, non-admin capture refusal and actual page requests. C273 resolved; C53 cadence/TTL/cross-space/direct sample reads remain open before affected #661/#662 behavior |
 | C55 module-version part | P17 registry triggers, not P13; no module event is fabricated to close the capture |
 | C50 NOTIFICATION / INTENT | P18 / P25 execution, not a P13b LOGIN claim |
 
@@ -2343,7 +2343,9 @@ Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
    each answer carrying a `Deprecation` header; `ACCESS` stays absent
    (C47). Features: `policy/task.feature`,
    `policy/initialization.feature`, `tiers/deprecation.feature`, where
-   C52 is awaited.
+   C52 now records server initialization READY → FAILED before worker
+   preparation, with its exact denial note; #660 adds that missing machine edge.
+   TASK deny-before-creation remains unobserved on the available account.
 4. Sampling and captures: `policy_evaluations`, hourly sample budgets in
    `policy_sample_budgets`, sealed samples in `policy-inputs`. Operations:
    `policyEvaluationSample`, `policySearchEvaluationRecords`,
@@ -2371,8 +2373,9 @@ Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
 6. A policy's page in the console reads evaluations, samples and
    simulation through these operations alone: body, used-by and samples
    tabs, and a simulation panel; a notification policy has no used-by tab,
-   as it is never attached. C273 records which operations Spacelift's page
-   calls.
+   as it is never attached. C273's 2026-11-19/20 browser traffic records
+   GetPolicyForDetails for body/attachments, the evaluation/sample/search reads,
+   and SimulatePolicyV2; no separate used-by query is invented.
 
 **Exit criteria**
 - The Policies tag (less its Intent attachments) meets decision 0016's

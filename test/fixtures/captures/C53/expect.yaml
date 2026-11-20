@@ -1,6 +1,9 @@
 replayAfter: https://github.com/weaveplatform/infraweave/issues/662
 observed:
   "/exchanges/0/response/data/approval/kind": "APPROVAL"
-  "/exchanges/0/response/data/approval/capturedAt": 1795126610
-  "/exchanges/0/response/data/plan/kind": "PLAN"
   "/exchanges/0/response/data/plan/capturedAt": 1795126624
+  "/exchanges/7/response/errors/0/message": "unauthorized"
+  "/exchanges/13/response/data/planPolicy/sampleCount": 0
+  "/exchanges/18/response/data/planPolicy/sampleCount": 1
+  "/exchanges/18/response/data/approvalPolicy/sampleCount": 2
+  "/exchanges/30/response/data/policies": []

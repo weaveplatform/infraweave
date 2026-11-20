@@ -1,0 +1,107 @@
+# exchange 0
+# variables: {}
+query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }
+
+# exchange 1
+# variables: {"input":{"name":"policy-b-initialization","type":"INITIALIZATION","body":"package spacelift\nimport rego.v1\ndeny contains \"capture-644-initialization-denied\" if { true }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 2
+# variables: {"input":{"name":"policy-b-task","type":"TASK","body":"package spacelift\nimport rego.v1\ndeny contains \"capture-644-task-denied\" if { true }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 3
+# variables: {"id":"policy-b-initialization","stack":"stack-b"}
+mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 4
+# variables: {"stack":"stack-b"}
+mutation Capture644InitializationRun($stack:ID!){runTrigger(stack:$stack,runType:TRACKED){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled}}}
+
+# exchange 5
+# variables: {"stack":"stack-b","run":"01K00000000000000000000002"}
+query Capture644InitializationResult($stack:ID!,$run:ID!){stack(id:$stack){id run(id:$run){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}} roles {id slug}}
+
+# exchange 6
+# variables: {"id":"01K00000000000000000000001"}
+mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}
+
+# exchange 7
+# variables: {"id":"policy-b-task","stack":"stack-b"}
+mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 8
+# variables: {"stack":"stack-b"}
+query Capture644TaskInventory($stack:ID!){stack(id:$stack){id runs{id} proposedRuns{id} tasks{id}}}
+
+# exchange 9
+# variables: {"stack":"stack-b"}
+mutation Capture644DeniedTask($stack:ID!){taskCreate(stack:$stack,command:"true",skipInitialization:true){id state type history{state note timestamp}}}
+
+# exchange 10
+# variables: {"stack":"stack-b","run":"01K00000000000000000000008"}
+query Capture644TaskResult($stack:ID!,$run:ID!){stack(id:$stack){id attachedPolicies{id policyId policyType policyBody} run(id:$run){id state type command history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}}}
+
+# exchange 11
+# variables: {"stack":"stack-b"}
+mutation Capture644DeniedTaskWithInit($stack:ID!){taskCreate(stack:$stack,command:"true",skipInitialization:false){id state type history{state note timestamp}}}
+
+# exchange 12
+# variables: {"input":{"name":"capture-key-a","admin":false,"teams":[],"machine":false,"description":"Approved #644 non-admin test key; expires in one hour and is deleted after capture.","expiresAt":1795134023,"roleBindings":[{"roleID":"01K00000000000000000000005","spaceID":"root"}]}}
+mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}
+
+# exchange 13
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 14
+# variables: {"stack":"stack-b"}
+query Capture644NonAdminAccess($stack:ID!){viewer{admin} stack(id:$stack){id canRead canWrite}}
+
+# exchange 15
+# variables: {"stack":"stack-b"}
+mutation Capture644NonAdminDeniedTask($stack:ID!){taskCreate(stack:$stack,command:"true",skipInitialization:true){id state type}}
+
+# exchange 16
+# variables: {"stack":"stack-b","ownerNoInit":"01K00000000000000000000008","ownerInit":"01K00000000000000000000009","nonAdmin":"01K00000000000000000000011"}
+query Capture644TaskHistories($stack:ID!,$ownerNoInit:ID!,$ownerInit:ID!,$nonAdmin:ID!){stack(id:$stack){ownerNoInit:run(id:$ownerNoInit){id state history{state note timestamp} policyReceipts{id policyType outcome}} ownerInit:run(id:$ownerInit){id state history{state note timestamp} policyReceipts{id policyType outcome}} nonAdmin:run(id:$nonAdmin){id state history{state note timestamp} policyReceipts{id policyType outcome}}}}
+
+# exchange 17
+# variables: {"stack":"stack-b","run":"01K00000000000000000000044"}
+mutation Capture644Discard($stack:ID!,$run:ID!){runDiscard(stack:$stack,run:$run,note:"capture-644-sensitive-check-complete"){id state}}
+
+# exchange 18
+# variables: {"id":"01K00000000000000000000012"}
+mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}
+
+# exchange 19
+# variables: {"id":"01K00000000000000000000013"}
+mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}
+
+# exchange 20
+# variables: {"id":"policy-b-task","input":{"name":"policy-b-task","body":"package spacelift\n\ndeny[\"capture-644-task-denied\"] { true }\nsample := true\n","engineType":"REGO_V0"}}
+mutation Capture644TaskV0($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType}}
+
+# exchange 21
+# variables: {"id":"policy-b-task","stack":"stack-b"}
+mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 22
+# variables: {"stack":"stack-b"}
+mutation Capture644TaskV0NonAdmin($stack:ID!){taskCreate(stack:$stack,command:"true",skipInitialization:true){id state type}}
+
+# exchange 23
+# variables: {}
+query Capture644V0TaskResult { stack(id:"stack-b") { run(id:"01K00000000000000000000049") { id state type } } }
+
+# exchange 24
+# variables: {}
+query Capture644BeforeCleanup { authorizationScheme apiKeys {id} policies{id type} stack(id:"stack-b"){id run(id:"01K00000000000000000000049"){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}} taskPolicy:policy(id:"policy-b-task"){id engineType body sampleCount evaluationRecords{key outcome timestamp}} plan:policyInputCaptures(space:"root",type:PLAN){id kind capturedAt} login:policyInputCaptures(space:"root",type:LOGIN){id kind capturedAt} task:policyInputCaptures(space:"root",type:TASK){id kind capturedAt} }
+
+# exchange 25
+# variables: {"old":"root/PLAN/01K00000000000000000000030","task":"root/TASK/01K00000000000000000000051"}
+query Capture644DocumentRetention($old:ID!,$task:ID!){old:policyInputCapture(id:$old){id kind capturedAt input} task:policyInputCapture(id:$task){id kind capturedAt input}}
+
+# exchange 26
+# variables: {}
+query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }

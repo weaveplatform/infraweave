@@ -1,0 +1,11 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/665
+observed:
+  "/exchanges/5/response/data/viewer/admin": false
+  "/exchanges/6/response/data/authorizationScheme": "MANAGED_USERS"
+  "/exchanges/7/response/data/accountUpdateAuthorizationScheme": "LOGIN_POLICIES"
+  "/exchanges/8/response/data/viewer/admin": true
+  "/exchanges/9/response/errors/0/message": "unauthorized"
+  "/exchanges/12/response/data/viewer": null
+  "/exchanges/13/response/data/accountUpdateAuthorizationScheme": "MANAGED_USERS"
+  "/exchanges/34/response/data/stacks": []
+  "/exchanges/34/response/data/policies": []

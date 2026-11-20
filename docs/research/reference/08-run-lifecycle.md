@@ -684,3 +684,18 @@ explicit implementation inferences in
 Their upstream evidence questions remain open; the missing comparisons no longer
 block implementation. In particular, CRUD permission is distinct from evaluation
 entitlement, and public policy ID syntax does not decide reset eligibility.
+
+## Server initialization denial capture, 2026-11-19
+
+[C52](../../../test/fixtures/captures/C52/README.md) directly observes a server-side
+INITIALIZATION denial: QUEUED → READY → FAILED, with the note
+`job assignment failed: denied by 1 initialization policy` and an INITIALIZATION
+deny receipt. This precedes PREPARING and INITIALIZING. #660 must add the explicit
+READY → FAILED worker-assignment policy edge and its real failure/history tests;
+the current transition register does not yet implement that P13b edge. No
+worker-side initialization result is substituted for this observation.
+
+The same lab's four TASK deny controls instead reach FINISHED, under both engine
+versions and owner/non-admin callers, with no TASK receipt. The account's TASK
+input capture is not evidence that its deny rule was evaluated. The intended
+no-run-on-deny contract remains pending for #659.

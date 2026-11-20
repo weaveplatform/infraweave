@@ -1,0 +1,15 @@
+# exchange 0
+# variables: {}
+query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }
+
+# exchange 1
+# variables: {"input":{"name":"policy-b-access","type":"ACCESS","body":"package spacelift\nimport rego.v1\ndeny := true\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 2
+# variables: {}
+query Capture644LegacySpace { space(id:"legacy") { id name } authorizationScheme }
+
+# exchange 3
+# variables: {}
+query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }

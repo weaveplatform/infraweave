@@ -479,6 +479,30 @@ behavior. A future contradictory real capture is a parity finding; update the
 contract and affected implementation through a scoped ticket. Do not create a
 synthetic upstream response to resolve one of these register records.
 
+### P13b capture evidence, 2026-11-19/20
+
+The [#644 fixture report](../../../test/fixtures/captures/C273/README.md) supplies
+actual policy-page requests and active/inactive scheme session controls. C52
+settles server initialization denial as READY → FAILED before worker preparation;
+#660 owns the new transition/driver and exact-history implementation. The intended
+TASK deny-before-run-creation behavior remains unobserved: V0/V1 controls on the
+available account finish without TASK receipts. This does not retire TASK.
+
+C53 establishes that input captures can be written with sample=false while
+evaluation samples remain absent; changing sample=true does not itself replace
+the latest account-level capture. Actual resource sample values use the shared
+last-eight SHA-256 hash with no dummy plaintext copy. Older capture inputs remain
+readable about 2.8 days later, and lists retain multiple records. The once-minute
+newest-input design above is an infraweave choice, not an observed Spacelift
+cadence or proof that older upstream inputs are erased. Exact retention, direct
+non-admin sample reads and cross-space controls remain open in C53.
+
+C50's live LOGIN flag experiment did not establish evaluation: even an explicit
+test-key deny still issued a token, with no LOGIN samples. Keep the existing
+no-run flag choice labelled as such. C47's unavailable legacy-space comparison
+and the other unobserved cases remain capture questions; no synthetic success
+or inferred response is added to these fixtures.
+
 ## Rationale
 
 - **A library, not a sidecar or a binary per evaluation.** Login and approval sit on

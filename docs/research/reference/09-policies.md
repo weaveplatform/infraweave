@@ -261,6 +261,9 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   They live in the `root` space only [D] <https://docs.spacelift.io/concepts/spaces/access-control>.
 - A new, changed or deleted login policy applies to all later logins at once, and it
   ends every active session except the one that made the change [D] login.
+  C273 directly observes this invalidation while LOGIN_POLICIES is active; an
+  update while MANAGED_USERS was active left the test session valid. The inactive
+  case must not be described as an observed unconditional revocation.
 - Outcome: `deny` beats everything; `admin` grants account admin and implies login;
   `allow` grants non-admin login; `deny_admin` removes admin but keeps non-admin
   access. If no rule matches, the login is denied [D] login, [D] contract.
@@ -410,8 +413,10 @@ the three common rules in section 5 (`flag`, `reset_flag`, `sample`).
   returns an error. Blocking admins is advisory only, since an admin can detach the
   policy [D] task.
 - Server-side initialization: any `deny` prevents the run or task from initializing
-  [D] init. The resulting run state is not stated; that it is `FAILED` is
-  *(unverified)* (C52).
+  [D] init. The [C52 real capture](../../../test/fixtures/captures/C52/README.md)
+  **[C]** 2026-11-19 resolves the state: QUEUED → READY → FAILED, with the exact
+  history note `job assignment failed: denied by 1 initialization policy` and
+  a sampled INITIALIZATION deny receipt. No worker INITIALIZING phase occurred.
 - Worker-side initialization: a private worker loads a policy file from
   `SPACELIFT_LAUNCHER_RUN_INITIALIZATION_POLICY`, refuses to start if it does not
   validate, and evaluates it before a run initializes; it may call `exec` and read
@@ -1042,7 +1047,7 @@ comment quoted in 2.1].
 - What a flag set by a login, access, notification or intent policy does
   *(unverified)* (C50).
 - How a policy acquires the `PolicyULID` needed to reset flags *(unverified)* (C51).
-- The run state after a server-side initialization `deny` *(unverified)* (C52).
+- C52 is resolved for server initialization: READY → FAILED with the captured job-assignment denial note; TASK deny-before-creation remains unobserved on the available account.
 - When and how often Spacelift records `PolicyInputCapture` documents *(unverified)* (C53).
 - Plugin-managed policy deletion and contextDelete remain *(unverified)* (C9); ordinary attached-policy deletion is observed above.
 - Which policy types `WORKFLOW_POLICIES` gates *(unverified)* (C48).
@@ -1116,3 +1121,45 @@ explicit implementation inferences in
 Their upstream evidence questions remain open; the missing comparisons no longer
 block implementation. In particular, CRUD permission is distinct from evaluation
 entitlement, and public policy ID syntax does not decide reset eligibility.
+
+## Live tooling capture supplement, 2026-11-19/20
+
+The approved #644 lab used one stack, six policies, eight provider-free runs and
+one ordinary non-admin API key expiring within an hour. It applied no resources.
+The [five fixture groups](../../../test/fixtures/captures/C273/README.md) preserve
+dated, redacted request/response bodies and cleanup; immutable prior C53 input
+provenance used by #641 remains unchanged in the first exchange.
+
+- **C47:** root ACCESS creation is refused because it is outside legacy space;
+  this account has no legacy space. Legacy policy evaluation remains unverified,
+  and infraweave's accepted ACCESS supersession is unchanged.
+- **C50:** stateless LOGIN flag output compiles, but actual token exchanges with
+  flag=true/false and a later explicit key-specific boolean deny produced
+  non-admin tokens, denied stack reads and no LOGIN samples. These controls do
+  not establish live LOGIN policy evaluation or flag effects on this account.
+  The accepted infraweave no-run flag choice remains a choice, not live parity.
+- **C52 TASK controls:** unconditional deny policies under V1 and classic V0 did
+  not stop four owner/writer tasks from reaching FINISHED. No TASK receipts or
+  evaluation samples appeared, although account-level TASK input captures did.
+  This does not replace the documented deny-before-creation contract with success.
+- **C53:** sample=false produced an account PLAN input capture with no policy
+  sample; sample=true populated policy samples while the latest input capture
+  remained unchanged. Capture and policy sampling are separate. A root writer
+  key with stack read/write access was denied account-level capture access.
+  A real resource PLAN sample hashes the sensitive dummy value to `1b761c86`
+  with no plaintext copy. The oldest queried PLAN input remains non-null after
+  about 2.8 days; newer capture records do not necessarily erase older inputs.
+  A fixed cadence, TTL, direct non-admin evaluationSample access and cross-space
+  behavior remain unverified. The schema exposes no expiration field.
+- **C273:** real browser network bodies identify detail/attachment reads,
+  evaluation/sample/search reads and SimulatePolicyV2. PLAN has one Used by
+  stack and two ALLOW samples; NOTIFICATION has no Used by tab. Changing the
+  active scheme and editing an active LOGIN policy invalidate the test session
+  while preserving the owner caller. Restoring MANAGED_USERS restores the
+  original active owner; the test key and all lab resources were deleted.
+
+The capture's actual sensitive-resource sample is distinct from the older latest
+account input capture. The API's JSON-string input/result fields retain their
+wire types. Browser credentials were never exported, and the test secret/JWTs
+were redacted in memory before export. No empty list or simulation is evidence
+of privacy guarantees, successful rule enforcement or a retention interval.

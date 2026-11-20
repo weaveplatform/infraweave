@@ -1,0 +1,1032 @@
+{
+  "exchanges": [
+    {
+      "stage": "initial-inventory",
+      "startedAt": "2026-11-19T23:13:56.315Z",
+      "finishedAt": "2026-11-19T23:13:56.455Z",
+      "request": {
+        "query": "query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "isFirstUser": true,
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    },
+    {
+      "stage": "setup",
+      "startedAt": "2026-11-19T23:14:00.510Z",
+      "finishedAt": "2026-11-19T23:14:00.640Z",
+      "request": {
+        "query": "mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}",
+        "variables": {
+          "input": {
+            "name": "policy-b-initialization",
+            "type": "INITIALIZATION",
+            "body": "package spacelift\nimport rego.v1\ndeny contains \"capture-644-initialization-denied\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-b-initialization",
+            "name": "policy-b-initialization",
+            "type": "INITIALIZATION",
+            "engineType": "REGO_V1",
+            "createdAt": 1795130040,
+            "updatedAt": 1795130040
+          }
+        }
+      }
+    },
+    {
+      "stage": "setup",
+      "startedAt": "2026-11-19T23:14:00.640Z",
+      "finishedAt": "2026-11-19T23:14:00.761Z",
+      "request": {
+        "query": "mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}",
+        "variables": {
+          "input": {
+            "name": "policy-b-task",
+            "type": "TASK",
+            "body": "package spacelift\nimport rego.v1\ndeny contains \"capture-644-task-denied\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-b-task",
+            "name": "policy-b-task",
+            "type": "TASK",
+            "engineType": "REGO_V1",
+            "createdAt": 1795130040,
+            "updatedAt": 1795130040
+          }
+        }
+      }
+    },
+    {
+      "stage": "C47-C52",
+      "startedAt": "2026-11-19T23:14:55.176Z",
+      "finishedAt": "2026-11-19T23:14:55.439Z",
+      "request": {
+        "query": "mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}",
+        "variables": {
+          "id": "policy-b-initialization",
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01K00000000000000000000001",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C47-C52",
+      "startedAt": "2026-11-19T23:14:55.439Z",
+      "finishedAt": "2026-11-19T23:14:57.668Z",
+      "request": {
+        "query": "mutation Capture644InitializationRun($stack:ID!){runTrigger(stack:$stack,runType:TRACKED){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled}}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runTrigger": {
+            "id": "01K00000000000000000000002",
+            "state": "QUEUED",
+            "type": "TRACKED",
+            "history": [
+              {
+                "state": "QUEUED",
+                "note": null,
+                "timestamp": 1795130097
+              }
+            ],
+            "policyReceipts": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-initialization-result",
+      "startedAt": "2026-11-19T23:16:08.884Z",
+      "finishedAt": "2026-11-19T23:16:09.023Z",
+      "request": {
+        "query": "query Capture644InitializationResult($stack:ID!,$run:ID!){stack(id:$stack){id run(id:$run){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}} roles {id slug}}",
+        "variables": {
+          "stack": "stack-b",
+          "run": "01K00000000000000000000002"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-b",
+            "run": {
+              "id": "01K00000000000000000000002",
+              "state": "FAILED",
+              "type": "TRACKED",
+              "history": [
+                {
+                  "state": "FAILED",
+                  "note": "job assignment failed: denied by 1 initialization policy",
+                  "timestamp": 1795130099
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795130097
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795130097
+                }
+              ],
+              "policyReceipts": [
+                {
+                  "id": "01K00000000000000000000003",
+                  "policyType": "INITIALIZATION",
+                  "policySlug": "policy-b-initialization",
+                  "outcome": "deny",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ]
+            }
+          },
+          "roles": [
+            {
+              "id": "01K00000000000000000000004",
+              "slug": "space-reader"
+            },
+            {
+              "id": "01K00000000000000000000005",
+              "slug": "space-writer"
+            },
+            {
+              "id": "01J00000000000000000000015",
+              "slug": "space-admin"
+            },
+            {
+              "id": "01K00000000000000000000006",
+              "slug": "worker-pool-controller"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stage": "C52-task",
+      "startedAt": "2026-11-19T23:16:34.036Z",
+      "finishedAt": "2026-11-19T23:16:34.176Z",
+      "request": {
+        "query": "mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}",
+        "variables": {
+          "id": "01K00000000000000000000001"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDetach": {
+            "id": "01K00000000000000000000001",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task",
+      "startedAt": "2026-11-19T23:16:34.176Z",
+      "finishedAt": "2026-11-19T23:16:34.372Z",
+      "request": {
+        "query": "mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}",
+        "variables": {
+          "id": "policy-b-task",
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01K00000000000000000000007",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task",
+      "startedAt": "2026-11-19T23:16:34.372Z",
+      "finishedAt": "2026-11-19T23:16:34.509Z",
+      "request": {
+        "query": "query Capture644TaskInventory($stack:ID!){stack(id:$stack){id runs{id} proposedRuns{id} tasks{id}}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-b",
+            "runs": [
+              {
+                "id": "01K00000000000000000000002"
+              }
+            ],
+            "proposedRuns": [],
+            "tasks": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task",
+      "startedAt": "2026-11-19T23:16:34.510Z",
+      "finishedAt": "2026-11-19T23:16:37.025Z",
+      "request": {
+        "query": "mutation Capture644DeniedTask($stack:ID!){taskCreate(stack:$stack,command:\"true\",skipInitialization:true){id state type history{state note timestamp}}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "taskCreate": {
+            "id": "01K00000000000000000000008",
+            "state": "QUEUED",
+            "type": "TASK",
+            "history": [
+              {
+                "state": "QUEUED",
+                "note": null,
+                "timestamp": 1795130196
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-result",
+      "startedAt": "2026-11-19T23:18:31.381Z",
+      "finishedAt": "2026-11-19T23:18:31.594Z",
+      "request": {
+        "query": "query Capture644TaskResult($stack:ID!,$run:ID!){stack(id:$stack){id attachedPolicies{id policyId policyType policyBody} run(id:$run){id state type command history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}}}",
+        "variables": {
+          "stack": "stack-b",
+          "run": "01K00000000000000000000008"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "id": "stack-b",
+            "attachedPolicies": [
+              {
+                "id": "01K00000000000000000000007",
+                "policyId": "policy-b-task",
+                "policyType": "TASK",
+                "policyBody": "package spacelift\nimport rego.v1\ndeny contains \"capture-644-task-denied\" if { true }\nsample := true\n"
+              }
+            ],
+            "run": {
+              "id": "01K00000000000000000000008",
+              "state": "FINISHED",
+              "type": "TASK",
+              "command": "true",
+              "history": [
+                {
+                  "state": "FINISHED",
+                  "note": null,
+                  "timestamp": 1795130212
+                },
+                {
+                  "state": "PERFORMING",
+                  "note": null,
+                  "timestamp": 1795130212
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795130211
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795130205
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795130197
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795130196
+                }
+              ],
+              "policyReceipts": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-init-comparison",
+      "startedAt": "2026-11-19T23:19:11.946Z",
+      "finishedAt": "2026-11-19T23:19:13.928Z",
+      "request": {
+        "query": "mutation Capture644DeniedTaskWithInit($stack:ID!){taskCreate(stack:$stack,command:\"true\",skipInitialization:false){id state type history{state note timestamp}}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "taskCreate": {
+            "id": "01K00000000000000000000009",
+            "state": "QUEUED",
+            "type": "TASK",
+            "history": [
+              {
+                "state": "QUEUED",
+                "note": null,
+                "timestamp": 1795130353
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "stage": "test-key-setup",
+      "startedAt": "2026-11-19T23:20:23.034Z",
+      "finishedAt": "2026-11-19T23:20:23.294Z",
+      "request": {
+        "query": "mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}",
+        "variables": {
+          "input": {
+            "name": "capture-key-a",
+            "admin": false,
+            "teams": [],
+            "machine": false,
+            "description": "Approved #644 non-admin test key; expires in one hour and is deleted after capture.",
+            "expiresAt": 1795134023,
+            "roleBindings": [
+              {
+                "roleID": "01K00000000000000000000005",
+                "spaceID": "root"
+              }
+            ]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyCreate": {
+            "id": "01K00000000000000000000010",
+            "name": "capture-key-a",
+            "admin": false,
+            "isPersonal": false,
+            "expiresAt": 1795134023,
+            "secret": "<redacted>"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-managed-users-baseline-admission",
+      "startedAt": "2026-11-19T23:20:58.723Z",
+      "finishedAt": "2026-11-19T23:20:59.084Z",
+      "request": {
+        "query": "mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "non-admin-controls",
+      "startedAt": "2026-11-19T23:21:22.369Z",
+      "finishedAt": "2026-11-19T23:21:22.498Z",
+      "request": {
+        "query": "query Capture644NonAdminAccess($stack:ID!){viewer{admin} stack(id:$stack){id canRead canWrite}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "viewer": {
+            "admin": false
+          },
+          "stack": {
+            "id": "stack-b",
+            "canRead": true,
+            "canWrite": true
+          }
+        }
+      }
+    },
+    {
+      "stage": "non-admin-controls",
+      "startedAt": "2026-11-19T23:21:22.498Z",
+      "finishedAt": "2026-11-19T23:21:24.550Z",
+      "request": {
+        "query": "mutation Capture644NonAdminDeniedTask($stack:ID!){taskCreate(stack:$stack,command:\"true\",skipInitialization:true){id state type}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "taskCreate": {
+            "id": "01K00000000000000000000011",
+            "state": "QUEUED",
+            "type": "TASK"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-comparison-histories",
+      "startedAt": "2026-11-19T23:33:22.401Z",
+      "finishedAt": "2026-11-19T23:33:22.538Z",
+      "request": {
+        "query": "query Capture644TaskHistories($stack:ID!,$ownerNoInit:ID!,$ownerInit:ID!,$nonAdmin:ID!){stack(id:$stack){ownerNoInit:run(id:$ownerNoInit){id state history{state note timestamp} policyReceipts{id policyType outcome}} ownerInit:run(id:$ownerInit){id state history{state note timestamp} policyReceipts{id policyType outcome}} nonAdmin:run(id:$nonAdmin){id state history{state note timestamp} policyReceipts{id policyType outcome}}}}",
+        "variables": {
+          "stack": "stack-b",
+          "ownerNoInit": "01K00000000000000000000008",
+          "ownerInit": "01K00000000000000000000009",
+          "nonAdmin": "01K00000000000000000000011"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stack": {
+            "ownerNoInit": {
+              "id": "01K00000000000000000000008",
+              "state": "FINISHED",
+              "history": [
+                {
+                  "state": "FINISHED",
+                  "note": null,
+                  "timestamp": 1795130212
+                },
+                {
+                  "state": "PERFORMING",
+                  "note": null,
+                  "timestamp": 1795130212
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795130211
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795130205
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795130197
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795130196
+                }
+              ],
+              "policyReceipts": []
+            },
+            "ownerInit": {
+              "id": "01K00000000000000000000009",
+              "state": "FINISHED",
+              "history": [
+                {
+                  "state": "FINISHED",
+                  "note": null,
+                  "timestamp": 1795130376
+                },
+                {
+                  "state": "PERFORMING",
+                  "note": null,
+                  "timestamp": 1795130375
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795130374
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795130356
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795130354
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795130353
+                }
+              ],
+              "policyReceipts": []
+            },
+            "nonAdmin": {
+              "id": "01K00000000000000000000011",
+              "state": "FINISHED",
+              "history": [
+                {
+                  "state": "FINISHED",
+                  "note": null,
+                  "timestamp": 1795130495
+                },
+                {
+                  "state": "PERFORMING",
+                  "note": null,
+                  "timestamp": 1795130494
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795130494
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795130487
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795130484
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795130484
+                }
+              ],
+              "policyReceipts": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control-setup",
+      "startedAt": "2026-11-19T23:42:28.933Z",
+      "finishedAt": "2026-11-19T23:42:29.523Z",
+      "request": {
+        "query": "mutation Capture644Discard($stack:ID!,$run:ID!){runDiscard(stack:$stack,run:$run,note:\"capture-644-sensitive-check-complete\"){id state}}",
+        "variables": {
+          "stack": "stack-b",
+          "run": "01K00000000000000000000044"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runDiscard": {
+            "id": "01K00000000000000000000044",
+            "state": "DISCARDED"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control-setup",
+      "startedAt": "2026-11-19T23:42:29.524Z",
+      "finishedAt": "2026-11-19T23:42:29.698Z",
+      "request": {
+        "query": "mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}",
+        "variables": {
+          "id": "01K00000000000000000000012"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDetach": {
+            "id": "01K00000000000000000000012",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control-setup",
+      "startedAt": "2026-11-19T23:42:29.698Z",
+      "finishedAt": "2026-11-19T23:42:29.873Z",
+      "request": {
+        "query": "mutation Capture644Detach($id:ID!){policyDetach(id:$id){id stackId}}",
+        "variables": {
+          "id": "01K00000000000000000000013"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDetach": {
+            "id": "01K00000000000000000000013",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control-setup",
+      "startedAt": "2026-11-19T23:42:29.873Z",
+      "finishedAt": "2026-11-19T23:42:30.150Z",
+      "request": {
+        "query": "mutation Capture644TaskV0($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType}}",
+        "variables": {
+          "id": "policy-b-task",
+          "input": {
+            "name": "policy-b-task",
+            "body": "package spacelift\n\ndeny[\"capture-644-task-denied\"] { true }\nsample := true\n",
+            "engineType": "REGO_V0"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-task",
+            "type": "TASK",
+            "engineType": "REGO_V0"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control-setup",
+      "startedAt": "2026-11-19T23:42:30.150Z",
+      "finishedAt": "2026-11-19T23:42:30.379Z",
+      "request": {
+        "query": "mutation Capture644Attach($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}",
+        "variables": {
+          "id": "policy-b-task",
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01K00000000000000000000048",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-control",
+      "actor": "test-key",
+      "startedAt": "2026-11-19T23:43:22.403Z",
+      "finishedAt": "2026-11-19T23:43:24.593Z",
+      "request": {
+        "query": "mutation Capture644TaskV0NonAdmin($stack:ID!){taskCreate(stack:$stack,command:\"true\",skipInitialization:true){id state type}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "taskCreate": {
+            "id": "01K00000000000000000000049",
+            "state": "QUEUED",
+            "type": "TASK"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-task-v0-terminal",
+      "at": "2026-11-19T23:49:04.193Z",
+      "request": {
+        "query": "query Capture644V0TaskResult { stack(id:\"stack-b\") { run(id:\"01K00000000000000000000049\") { id state type } } }"
+      },
+      "response": {
+        "data": {
+          "stack": {
+            "run": {
+              "id": "01K00000000000000000000049",
+              "state": "FINISHED",
+              "type": "TASK"
+            }
+          }
+        }
+      }
+    },
+    {
+      "stage": "C52-C53-before-cleanup",
+      "at": "2026-11-20T00:01:58.527Z",
+      "request": {
+        "query": "query Capture644BeforeCleanup { authorizationScheme apiKeys {id} policies{id type} stack(id:\"stack-b\"){id run(id:\"01K00000000000000000000049\"){id state type history{state note timestamp} policyReceipts{id policyType policySlug outcome sampled engineType}}} taskPolicy:policy(id:\"policy-b-task\"){id engineType body sampleCount evaluationRecords{key outcome timestamp}} plan:policyInputCaptures(space:\"root\",type:PLAN){id kind capturedAt} login:policyInputCaptures(space:\"root\",type:LOGIN){id kind capturedAt} task:policyInputCaptures(space:\"root\",type:TASK){id kind capturedAt} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "apiKeys": [],
+          "policies": [
+            {
+              "id": "policy-b-login",
+              "type": "LOGIN"
+            },
+            {
+              "id": "policy-b-approval",
+              "type": "APPROVAL"
+            },
+            {
+              "id": "policy-b-initialization",
+              "type": "INITIALIZATION"
+            },
+            {
+              "id": "policy-b-plan",
+              "type": "PLAN"
+            },
+            {
+              "id": "policy-b-task",
+              "type": "TASK"
+            },
+            {
+              "id": "policy-b-notification",
+              "type": "NOTIFICATION"
+            }
+          ],
+          "stack": {
+            "id": "stack-b",
+            "run": {
+              "id": "01K00000000000000000000049",
+              "state": "FINISHED",
+              "type": "TASK",
+              "history": [
+                {
+                  "state": "FINISHED",
+                  "note": null,
+                  "timestamp": 1795131814
+                },
+                {
+                  "state": "PERFORMING",
+                  "note": null,
+                  "timestamp": 1795131813
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795131813
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795131807
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795131804
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795131804
+                }
+              ],
+              "policyReceipts": []
+            }
+          },
+          "taskPolicy": {
+            "id": "policy-b-task",
+            "engineType": "REGO_V0",
+            "body": "package spacelift\n\ndeny[\"capture-644-task-denied\"] { true }\nsample := true\n",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          },
+          "plan": [
+            {
+              "id": "root/PLAN/01K00000000000000000000036",
+              "kind": "PLAN",
+              "capturedAt": 1795130587
+            },
+            {
+              "id": "root/PLAN/01J00000000000000000000091",
+              "kind": "PLAN",
+              "capturedAt": 1795126624
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000023",
+              "kind": "PLAN",
+              "capturedAt": 1794907470
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000024",
+              "kind": "PLAN",
+              "capturedAt": 1794903832
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000025",
+              "kind": "PLAN",
+              "capturedAt": 1794894151
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000026",
+              "kind": "PLAN",
+              "capturedAt": 1794894083
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000027",
+              "kind": "PLAN",
+              "capturedAt": 1794893895
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000028",
+              "kind": "PLAN",
+              "capturedAt": 1794893726
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000029",
+              "kind": "PLAN",
+              "capturedAt": 1794893698
+            },
+            {
+              "id": "root/PLAN/01K00000000000000000000030",
+              "kind": "PLAN",
+              "capturedAt": 1794893556
+            }
+          ],
+          "login": [],
+          "task": [
+            {
+              "id": "root/TASK/01K00000000000000000000051",
+              "kind": "TASK",
+              "capturedAt": 1795131802
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000052",
+              "kind": "TASK",
+              "capturedAt": 1795130482
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000053",
+              "kind": "TASK",
+              "capturedAt": 1795130352
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000054",
+              "kind": "TASK",
+              "capturedAt": 1795130194
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000055",
+              "kind": "TASK",
+              "capturedAt": 1794907870
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000056",
+              "kind": "TASK",
+              "capturedAt": 1794907788
+            },
+            {
+              "id": "root/TASK/01K00000000000000000000057",
+              "kind": "TASK",
+              "capturedAt": 1794907720
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stage": "C52-C53-task-input-and-retained-plan",
+      "at": "2026-11-20T00:02:16.462Z",
+      "request": {
+        "query": "query Capture644DocumentRetention($old:ID!,$task:ID!){old:policyInputCapture(id:$old){id kind capturedAt input} task:policyInputCapture(id:$task){id kind capturedAt input}}",
+        "variables": {
+          "old": "root/PLAN/01K00000000000000000000030",
+          "task": "root/TASK/01K00000000000000000000051"
+        }
+      },
+      "response": {
+        "data": {
+          "old": {
+            "id": "root/PLAN/01K00000000000000000000030",
+            "kind": "PLAN",
+            "capturedAt": 1794893556,
+            "input": "{\"ansible\":null,\"cloudformation\":null,\"kubernetes\":null,\"opentofu\":{\"checks\":[],\"opentofu_version\":\"1.13.9\",\"resource_changes\":[{\"address\":\"terraform_data.root\",\"change\":{\"actions\":[\"update\"],\"after\":{\"id\":\"3c185733-e74a-cc66-5692-4fbfc0b575f6\",\"input\":\"root-v4-feat-b\",\"triggers_replace\":null},\"after_sensitive\":{},\"after_unknown\":{\"output\":true},\"before\":{\"id\":\"3c185733-e74a-cc66-5692-4fbfc0b575f6\",\"input\":\"root-v1\",\"output\":\"root-v1\",\"triggers_replace\":null},\"before_sensitive\":{}},\"mode\":\"managed\",\"name\":\"root\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}]},\"pulumi\":null,\"spacelift\":{\"commit\":{\"author\":\"dafyddwatkins\",\"branch\":\"feat-b\",\"created_at\":1794893536000000000,\"exist_on_tracked_branch\":false,\"hash\":\"dbe642ade27e4b8bc34c8be509ec41348cb380a3\",\"message\":\"exp6: feat-b change root main.tf\",\"tag\":\"\",\"url\":\"https://github.com/actor-a/spacelift-capture-p12b/commit/dbe642ade27e4b8bc34c8be509ec41348cb380a3\"},\"request\":{\"timestamp_ns\":1794893556118004568},\"run\":{\"based_on_local_workspace\":false,\"branch\":\"feat-b\",\"changes\":[{\"action\":\"changed\",\"entity\":{\"address\":\"output.root\",\"data\":{\"sensitive\":false,\"value\":\"null\",\"value_hash\":-6284781860667377211},\"entity_type\":\"output\",\"entity_vendor\":\"opentofu\",\"name\":\"root\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"changed\",\"entity\":{\"address\":\"terraform_data.root\",\"data\":{\"address\":\"terraform_data.root\",\"mode\":\"managed\",\"module\":\"\",\"provider\":\"terraform.io/builtin/terraform\",\"tainted\":false,\"values\":{\"id\":\"3c185733-e74a-cc66-5692-4fbfc0b575f6\",\"input\":\"root-v4-feat-b\",\"triggers_replace\":null},\"values_hash\":-8399107825054979676},\"entity_type\":\"resource\",\"entity_vendor\":\"opentofu\",\"name\":\"root\",\"type\":\"terraform_data\"},\"moved\":false,\"phase\":\"plan\"}],\"command\":\"\",\"commit\":{\"author\":\"dafyddwatkins\",\"branch\":\"feat-b\",\"created_at\":1794893536000000000,\"exist_on_tracked_branch\":false,\"hash\":\"dbe642ade27e4b8bc34c8be509ec41348cb380a3\",\"message\":\"exp6: feat-b change root main.tf\",\"tag\":\"\",\"url\":\"https://github.com/actor-a/spacelift-capture-p12b/commit/dbe642ade27e4b8bc34c8be509ec41348cb380a3\"},\"created_at\":1794893539495010000,\"creator_session\":{\"admin\":\"\",\"login\":\"\",\"machine\":true,\"name\":\"\",\"teams\":[]},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000058\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"\",\"runner_image\":\"public.ecr.aws/spacelift/runner-opentofu:latest\",\"terraform_version\":null},\"state\":\"PLANNING\",\"trigger\":null,\"triggered_by\":null,\"type\":\"PROPOSED\",\"updated_at\":1794893555894176000,\"user_provided_metadata\":[]},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"main\",\"id\":\"p12b-capture-a\",\"labels\":[],\"locked_by\":null,\"name\":\"p12b-capture-a\",\"namespace\":\"actor-a\",\"project_root\":\"\",\"repository\":\"spacelift-capture-p12b\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"FINISHED\",\"terraform_version\":null,\"terraform_workflow_tool\":null,\"tracked_commit\":{\"author\":\"dafyddwatkins\",\"branch\":\"main\",\"created_at\":1794892191000000000,\"hash\":\"ca6b72b57736f049faa0bf3b4cde679d67b7685f\",\"message\":\"initial: trivial root and sub configs\",\"tag\":\"\",\"url\":\"https://github.com/actor-a/spacelift-capture-p12b/commit/ca6b72b57736f049faa0bf3b4cde679d67b7685f\"},\"worker_pool\":{\"public\":true}}},\"terraform\":{\"checks\":[],\"resource_changes\":[{\"address\":\"terraform_data.root\",\"change\":{\"actions\":[\"update\"],\"after\":{\"id\":\"3c185733-e74a-cc66-5692-4fbfc0b575f6\",\"input\":\"root-v4-feat-b\",\"triggers_replace\":null},\"after_sensitive\":{},\"after_unknown\":{\"output\":true},\"before\":{\"id\":\"3c185733-e74a-cc66-5692-4fbfc0b575f6\",\"input\":\"root-v1\",\"output\":\"root-v1\",\"triggers_replace\":null},\"before_sensitive\":{}},\"mode\":\"managed\",\"name\":\"root\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}],\"terraform_version\":\"1.13.9\"},\"third_party_metadata\":{}}"
+          },
+          "task": {
+            "id": "root/TASK/01K00000000000000000000051",
+            "kind": "TASK",
+            "capturedAt": 1795131802,
+            "input": "{\"request\":{\"command\":\"true\",\"timestamp_ns\":1795131802536841141},\"session\":{\"admin\":false,\"login\":\"api::01K00000000000000000000010\",\"machine\":false,\"name\":\"capture-key-a\",\"teams\":null},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"capture/sensitive-field\",\"id\":\"stack-b\",\"labels\":[\"infraweave-capture:644\"],\"locked_by\":null,\"name\":\"stack-b\",\"namespace\":\"weaveplatform\",\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"repository\":\"infraweave\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"DISCARDED\",\"terraform_version\":\"1.5.7\",\"terraform_workflow_tool\":\"TERRAFORM_FOSS\",\"tracked_commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"worker_pool\":{\"public\":true}}}"
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-final-inventory",
+      "at": "2026-11-20T00:03:14.383Z",
+      "request": {
+        "query": "query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          },
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

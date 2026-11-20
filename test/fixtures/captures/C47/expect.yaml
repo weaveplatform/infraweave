@@ -1,0 +1,6 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/659
+observed:
+  "/exchanges/1/response/errors/0/message": "cannot create stack access policies outside of legacy space"
+  "/exchanges/2/response/data/space": null
+  "/exchanges/3/response/data/stacks": []
+  "/exchanges/3/response/data/policies": []
