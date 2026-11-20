@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,20 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
 		t.Fatal(err)
+	}
+	previousBody, err := os.ReadFile(filepath.Join(root, "test/fixtures/runner-images/previous.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var previous struct {
+		Reference string `json:"reference"`
+	}
+	if err := json.Unmarshal(previousBody, &previous); err != nil {
+		t.Fatal(err)
+	}
+	if previous.Reference == RunnerTerraform || !strings.HasPrefix(previous.Reference,
+		"ghcr.io/weaveplatform/infraweave-runner-terraform@sha256:") {
+		t.Fatal("rollback fixture must name a distinct retained Terraform index")
 	}
 	prefix := filepath.Base(filepath.Dir(t.TempDir()))
 	var a, b Launchers
@@ -55,6 +70,9 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	}
 	startForward(&a, prefix+"-a")
 	startForward(&b, prefix+"-b")
+	if err := pullRunnerImage(ctx, b.cli, previous.Reference); err != nil {
+		t.Fatal(err)
+	}
 	if err := a.Remove(ctx, LabelScenario, prefix+"-a"); err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +80,14 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startForward(&b, prefix+"-b-next")
-	for _, image := range []string{RunnerImage, RunnerTerraform, RunnerOpenTofu, RunnerTerraform} {
-		if err := b.EnsureRunnerImage(ctx, image); err != nil {
+	for _, image := range []string{RunnerImage, previous.Reference, RunnerTerraform, previous.Reference, RunnerOpenTofu} {
+		var err error
+		if image == previous.Reference {
+			err = pullRunnerImage(ctx, b.cli, image)
+		} else {
+			err = b.EnsureRunnerImage(ctx, image)
+		}
+		if err != nil {
 			t.Fatal(err)
 		}
 		tool, err := b.RunTool(ctx, ToolRun{

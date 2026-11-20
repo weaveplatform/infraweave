@@ -5,13 +5,13 @@ package runnerimages
 
 const (
 	// Terraform is the terraform environment, tested-1.17.2-r1.
-	Terraform = "ghcr.io/weaveplatform/infraweave-runner-terraform@sha256:aaad9d638a57c48480039acc5bab819ebd0c9d0c16c2d449a4a8dfd5e8b84a26"
+	Terraform = "ghcr.io/weaveplatform/infraweave-runner-terraform@sha256:020c53ffd8fb39764a6091e794e70ebbba4bea32555446d3a177f868ffbc9936"
 	// OpenTofu is the opentofu environment, tested-1.13.9-r1.
-	OpenTofu = "ghcr.io/weaveplatform/infraweave-runner-opentofu@sha256:581fe0c98ce13e3282da8d7688cf074b4d4fe66a5d97e10b06143fe2b4c65008"
+	OpenTofu = "ghcr.io/weaveplatform/infraweave-runner-opentofu@sha256:073a771355b7cc66af3e51c7d89734c91abc5c9c386f5ae96de600ea399874fc"
 	// Pulumi is the pulumi environment, 3.277.0-r1.
-	Pulumi = "ghcr.io/weaveplatform/infraweave-runner-pulumi@sha256:31ac25c384c01205d80efda1629076668d6e4de957412fde57ecca6d3d7c6ec6"
+	Pulumi = "ghcr.io/weaveplatform/infraweave-runner-pulumi@sha256:b91f05a0ec9d0a47c2cb485aab87fa89b526afb6652dc2c47ac2226b5a7c1c32"
 	// Ansible is the ansible environment, 2.22.0-r1.
-	Ansible = "ghcr.io/weaveplatform/infraweave-runner-ansible@sha256:e4dec267738bd0927437382a20ef158f74c42f7dee0e89d8852b2cf4ddd8ab8a"
+	Ansible = "ghcr.io/weaveplatform/infraweave-runner-ansible@sha256:7650a0c97be9c0446570867e0c15a8b11ec662841f8fd1380605da1671ddc823"
 	// TestSupport is the test-support environment, r1.
-	TestSupport = "ghcr.io/weaveplatform/infraweave-runner-test-support@sha256:8b31525251b4bd1779cd4e02d12b7a3e49a547f028aa2d6862a4967ba2c9044e"
+	TestSupport = "ghcr.io/weaveplatform/infraweave-runner-test-support@sha256:2e352a0591dbe61b20eaa528dca7dbcd2a91c92fb5056a2b70eec48ccdcf574d"
 )

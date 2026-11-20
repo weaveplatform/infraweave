@@ -271,7 +271,7 @@ Feature: Private worker pools
   @op:accountUpdateDefaultWorkerPoolRunnerImages @op:defaultPrivateWorkerPoolRunnerImage @case:success
   Scenario: An account admin sets the default runner images, which the default private runner image then answers
     When token "h" sends "GET /api/v1/default-private-worker-pool-runner-image" through A
-    Then the answer is '"{runner.terraform}"'
+    Then the answer is the pinned Terraform runner image
     When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{"privateWorkerPoolRunnerImage":" ghcr.io/acme/runner:1 ","publicWorkerPoolRunnerImage":""}' through B
     Then it answers 200
     And the answer's privateWorkerPoolRunnerImage is '"ghcr.io/acme/runner:1"'
@@ -281,7 +281,7 @@ Feature: Private worker pools
     When token "h" sends "POST /api/v1/account/update-default-worker-pool-runner-images" with '{}' through B
     Then it answers 200
     When token "h" sends "GET /api/v1/default-private-worker-pool-runner-image" through A
-    Then the answer is '"{runner.terraform}"'
+    Then the answer is the pinned Terraform runner image
 
   @op:accountUpdateDefaultWorkerPoolRunnerImages @case:denial
   Scenario: Only an account admin sets the default runner images

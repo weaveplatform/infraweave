@@ -2,8 +2,7 @@ name: images | Publish runners
 
 on:
   push:
-    # Bootstrap branch is removed before merge; only its maintainer may publish.
-    branches: [main, feat/runner-images]
+    branches: [main]
     paths:
       - 'deploy/images/**'
       - '!deploy/images/images.lock.json'
@@ -23,8 +22,7 @@ jobs:
   catalog:
     if: >-
       github.repository == 'weaveplatform/infraweave' &&
-      (github.ref == 'refs/heads/main' ||
-       (github.ref == 'refs/heads/feat/runner-images' && github.actor == 'ShocOne'))
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.catalog.outputs.matrix }}

@@ -78,6 +78,9 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	l.w.IDs["runner.terraform"] = harness.RunnerTerraform
 	l.w.IDs["runner.opentofu"] = harness.RunnerOpenTofu
 	l.w.IDs["runner.test-support"] = harness.RunnerImage
+	sc.Step(`^the answer is the pinned Terraform runner image$`, func() error {
+		return harness.Answered(l.w.Last(), "default runner image", strconv.Quote(harness.RunnerTerraform))
+	})
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)

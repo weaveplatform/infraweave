@@ -2,12 +2,15 @@
 """Discover stable upstream releases without backfilling historical images."""
 
 import importlib.util
+import http.client
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,12 +22,25 @@ REPOS = {"terraform": "hashicorp/terraform", "opentofu": "opentofu/opentofu",
          "terragrunt": "gruntwork-io/terragrunt", "pulumi": "pulumi/pulumi"}
 
 
-def fetch(url):
+def fetch(url, payload=None):
     headers = {"User-Agent": "infraweave-runner-image-updater"}
     if url.startswith("https://api.github.com/") and os.environ.get("GH_TOKEN"):
         headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
-    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as response:
-        return response.read()
+    body = None
+    if payload:
+        headers["Content-Type"] = "application/json"
+        body = json.dumps(payload).encode()
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers, data=body), timeout=30) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError):
+            if attempt == 2:
+                raise
+        time.sleep(2 ** attempt)
 
 
 def stable(version):
@@ -40,17 +56,32 @@ def releases(tool, since):
         document = json.loads(fetch("https://pypi.org/pypi/ansible-core/json"))
         return [v for v, files in document["releases"].items() if stable(v) and files and
                 any(not f.get("yanked") and f["upload_time_iso_8601"] > since for f in files)]
-    versions = []
-    for page in range(1, 101):
-        records = json.loads(fetch(f"https://api.github.com/repos/{REPOS[tool]}/releases?per_page=100&page={page}"))
-        if not records:
-            break
-        for record in records:
-            version = record["tag_name"].removeprefix("v")
-            if stable(version) and not record["draft"] and not record["prerelease"] and record["published_at"] > since:
+    versions, cursor = [], None
+    owner, name = REPOS[tool].split("/", 1)
+    query = """query($owner:String!,$name:String!,$after:String){
+      repository(owner:$owner,name:$name){ releases(first:100,after:$after){
+        nodes{tagName isDraft isPrerelease publishedAt}
+        pageInfo{hasNextPage endCursor}
+      }}
+    }"""
+    while True:
+        document = json.loads(fetch("https://api.github.com/graphql", {
+            "query": query, "variables": {"owner": owner, "name": name, "after": cursor}}))
+        if document.get("errors"):
+            raise ValueError("GitHub release discovery failed: " + json.dumps(document["errors"]))
+        releases = document["data"]["repository"]["releases"]
+        for record in releases["nodes"]:
+            version = record["tagName"].removeprefix("v")
+            if stable(version) and not record["isDraft"] and not record["isPrerelease"] and record["publishedAt"] > since:
                 versions.append(version)
-        # GitHub orders releases by creation; a recently published backport can
-        # have an older tag. Exhaust pagination instead of a date early exit.
+        # Read only release metadata, not every historical release's assets.
+        # Exhaust pagination so late publications of older backports count.
+        page = releases["pageInfo"]
+        if not page["hasNextPage"]:
+            break
+        if page["endCursor"] == cursor:
+            raise ValueError("GitHub release pagination made no progress")
+        cursor = page["endCursor"]
     return versions
 
 

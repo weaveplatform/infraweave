@@ -508,6 +508,7 @@ jobs:
           fi
           echo "images=$images" | tee -a "$GITHUB_OUTPUT"
           echo "image_matrix=$(python3 deploy/images/imagectl.py matrix)" >> "$GITHUB_OUTPUT"
+          python3 -m unittest discover -s tools/runnerimages -p 'test_*.py'
           if [ "$images" = true ] && [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             python3 deploy/images/imagectl.py validate-revision --base "$BASE"
           fi
