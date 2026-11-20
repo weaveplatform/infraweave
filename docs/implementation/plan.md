@@ -151,7 +151,7 @@ and lint is clean.
 | P11 State management | Done | Epic [#503](https://github.com/weaveplatform/infraweave/issues/503). Done: [#504](https://github.com/weaveplatform/infraweave/issues/504) P11's state URLs, import, rollback, external access, workspaces, retention and Terragrunt units in the plan and decisions; [#505](https://github.com/weaveplatform/infraweave/issues/505) `objectstore.retention.states` and `objectstore.retention.modules` refused at the configuration's load, since a store-wide expiry would delete live objects; [#506](https://github.com/weaveplatform/infraweave/issues/506) `stateUploadUrl` and `stateDownloadUrl`, each URL signed for 15 minutes under a key derived from the data key and sent with no credential, an upload sealed as it streams and kept a day for an import; [#507](https://github.com/weaveplatform/infraweave/issues/507) `searchTofuWorkspaces`, its suggestions, `tofuWorkspaceUnlock` and `tofuWorkspaceUnlockAll`, each release audited and the holding run's next write answered `423`; [#508](https://github.com/weaveplatform/infraweave/issues/508) Terragrunt stacks, `useStateManagement` deciding over `manageState` at creation, and their runs handed Terragrunt and its tool; [#510](https://github.com/weaveplatform/infraweave/issues/510) a stack's state read through the `http` backend with an API key or a bearer token, and by another stack's run with no credential in its code, where `externalStateAccessEnabled` allows it, with no Terraform Cloud service served; [#509](https://github.com/weaveplatform/infraweave/issues/509) a state file imported at a stack's creation through `stackObjectID` and later through `stackManagedStateImport`, under the caller's lock and with no tracked run, task or destroy run under way, a client-encrypted state stored unparsed; [#511](https://github.com/weaveplatform/infraweave/issues/511) `stackManagedStateRollback` making a past version current as a new version, `isStateRollback` until the next write, and `stackSearchManagedStateVersions`; [#513](https://github.com/weaveplatform/infraweave/issues/513) the launcher verifying Terragrunt's signed sums, and Terragrunt's `run --all` with a backend file per unit, each unit in its own state workspace; [#512](https://github.com/weaveplatform/infraweave/issues/512) non-current state versions deleted, row and object, after `state.noncurrent_retention` by the daily `state.retention` task; [#514](https://github.com/weaveplatform/infraweave/issues/514) `state/import.feature`, `state/rollback.feature`, `state/external_access.feature`, `state/urls.feature` and `state/terragrunt_units.feature` proving import, rollback, external access, the URLs' and uploads' expiry and Terragrunt units end to end, and C106 to C110 and C112 to C114 awaited against them. The captures are not yet recorded; until they are, the scenarios assert decision 0010's choices |
 | P12 VCS integrations | Done | Epic [#313](https://github.com/weaveplatform/infraweave/issues/313). Done: [#314](https://github.com/weaveplatform/infraweave/issues/314) the plan and decisions rewritten with P12 before runs and every provider a peer; [#315](https://github.com/weaveplatform/infraweave/issues/315) VCS integrations stored with sealed credentials, one default per provider; [#316](https://github.com/weaveplatform/infraweave/issues/316) GitHub, [#317](https://github.com/weaveplatform/infraweave/issues/317) GitLab, [#321](https://github.com/weaveplatform/infraweave/issues/321) Bitbucket Cloud, [#322](https://github.com/weaveplatform/infraweave/issues/322) Bitbucket Data Center and [#323](https://github.com/weaveplatform/infraweave/issues/323) Azure DevOps, each with its integration operations and provider; [#318](https://github.com/weaveplatform/infraweave/issues/318) repositories, branches and users browsed through every provider's integrations; [#319](https://github.com/weaveplatform/infraweave/issues/319) private stacks tracked on every provider, each run handed its source credential; [#320](https://github.com/weaveplatform/infraweave/issues/320) every provider proved by `vcs-lab` against real repositories that Terraform provisions. The Bitbucket Data Center lab is optional: it runs only where the `vcs-lab` environment holds a licence, and is skipped otherwise |
 | P12b VCS events and feedback | Done | Epic [#529](https://github.com/weaveplatform/infraweave/issues/529): durable webhook intake, push-created runs and native feedback on every provider. [#634](https://github.com/weaveplatform/infraweave/pull/634) records the operation, capture, parity and real-provider evidence for [#550](https://github.com/weaveplatform/infraweave/issues/550) and [#551](https://github.com/weaveplatform/infraweave/issues/551), including final gate and main lab results. Bitbucket Data Center is optional when no licence is configured |
-| P13 Policy engine and workflow policies | Not started | **M4** |
+| P13 Policy engine and workflow policies | In progress | **M4**. Epic [#635](https://github.com/weaveplatform/infraweave/issues/635); runtime, typed contracts and sanitized worker uploads are delivered. POL-05 adds management/search; attachment selection and workflow evaluation remain with their tickets. |
 | P13b Login, task and initialization policies, sampling and simulation | Not started | |
 | P14 Public worker pool, Kubernetes workers and signed runs | Not started | |
 | P15 Cloud integrations and OIDC federation | Not started | |
@@ -2168,6 +2168,16 @@ in as `test/fixtures/policy-inputs`
    `searchSpacePoliciesSuggestions`, `stackAttachablePolicies`,
    `stackPolicyAttachment`. `ACCESS` and the superseded aliases are absent
    from `PolicyType`. Records DV-028 to DV-031.
+   POL-05 supplies the management and five search operations first, plus their
+   REST merge patch: account-qualified ULIDs, bounded compilation before writes,
+   the policies gate, space-admin writes, readable-space filtering before
+   pagination/facet counts, inherited-space search, conditional versions and
+   transactional `policy.changed` events. Its real two-server/PostgreSQL
+   acceptance lives in `features/policies/{management,search}.feature`; separate
+   PostgreSQL tests cover C9's force-delete boundary, rollback on event/storage
+   failure, timestamps, transaction retries and resumable account purge.
+   POL-06 still owns attachment IDs, attachment APIs and automatic selection;
+   those workflows are not implied by management DTO fields.
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
    matching report 09 section 4 and every key of the recorded inputs in
    `test/fixtures/policy-inputs`, with the reference's `spacelift.*` input
@@ -2266,7 +2276,8 @@ in as `test/fixtures/policy-inputs`
 - The behaviours C37, C40 and C41 settled hold in acceptance;
   C49, C57 and C192 are recorded with offline checks; their REST replay
   follows the implementation issues in each fixture. C56 and C291 are now
-  recorded; their REST replays await #645 and #650. C51 records successful
+  recorded; C56's request-bound timestamp invariant replays through real REST
+  in #645, while C291's replay awaits #650. C51 records successful
   new slug-ID reset, but its unavailable legacy comparison stays open. C50
   remains pending. C55's module-version part belongs to P17.
 - `make gate` passes at 95% in total and 90% per package.
@@ -2284,8 +2295,8 @@ P13b prepares public APIs for the P24c console, while P14 owns worker exec.
 
 | Capture | Required behavior / implementation gate |
 |---|---|
-| C49/C54/C57/C192 | Recorded by #637; REST handoffs remain #645/#664/#640/#663 |
-| C9 (policy part), C56 | Ordinary attached-policy force deletion and Unix-second units recorded by #643; replay #645. Context/plugin remainder stays open with its owner |
+| C49/C54/C57/C192 | Recorded by #637; C49's real REST replay checks the approved V1 deviation in #645. Other handoffs remain #664/#640/#663 |
+| C9 (policy part), C56 | Recorded by #643. #645 replays C56's Unix-second request bounds through real REST and verifies C9's deletion boundary with a PostgreSQL relation fixture; full C9 REST replay awaits #646's attachment APIs. Context/plugin remainder stays open with its owner |
 | C46 | Real refusal recorded; maintainer-approved reason/label inferences in ADR 0009 unblock #652, without resolving the evidence question |
 | C48 | Free-tier facts recorded; approved inference maps WORKFLOW_POLICIES to GIT_PUSH/TRIGGER evaluation, without a blanket CRUD gate; entitled-account evidence remains open |
 | C51, C291 | New slug-ID reset and both rejection states recorded; approved owner-ID inference unblocks #649 while legacy evidence remains open. C291 replay awaits #650 |

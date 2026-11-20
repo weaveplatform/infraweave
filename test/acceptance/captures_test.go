@@ -153,6 +153,14 @@ func TestAccCaptures(t *testing.T) {
 			real++
 		}
 		t.Run(c.ID, func(t *testing.T) {
+			if c.ReplayWith != "" {
+				run, ok := statefulCaptureReplayers[c.ReplayWith]
+				if !ok {
+					t.Fatalf("capture %s names unknown REST replayer %q", c.ID, c.ReplayWith)
+				}
+				run(t, api)
+				return
+			}
 			if c.ReplayAfter != "" {
 				t.Skipf("recorded evidence verified; REST replay awaits %s", c.ReplayAfter)
 			}
@@ -321,6 +329,9 @@ func TestUnitLoadCaptures(t *testing.T) {
 		{"deferral without observations", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\n"}, "no calls"},
 		{"observations without deferral", "C0", map[string]string{harness.ExpectFile: "observed:\n  /data/stack: null\n"}, "no calls"},
 		{"calls with deferral", "C0", map[string]string{harness.ExpectFile: expect + "replayAfter: issue\n"}, "cannot defer"},
+		{"stateful without observations", "C0", map[string]string{harness.ExpectFile: "replayWith: policy-timestamps\n"}, "no calls"},
+		{"calls with stateful replayer", "C0", map[string]string{harness.ExpectFile: expect + "replayWith: policy-timestamps\n"}, "cannot mix"},
+		{"stateful and deferral", "C0", map[string]string{harness.ExpectFile: "replayWith: policy-timestamps\nreplayAfter: issue\nobserved:\n  /data/stack: null\n"}, "cannot mix"},
 		{"observation mismatch", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  /data/stack: wrong\n"}, "observed"},
 		{"observation pointer missing", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  /data/missing: null\n"}, "observed"},
 		{"observation pointer invalid", "C0", map[string]string{harness.ExpectFile: "replayAfter: issue\nobserved:\n  data: null\n"}, "observed"},

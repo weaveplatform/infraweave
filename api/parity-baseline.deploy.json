@@ -271,12 +271,8 @@
     "Policies": [
       "attachablePoliciesInSpace",
       "autoattachmentForLabels",
-      "policies",
-      "policy",
       "policyAttach",
       "policyAttachedStack",
-      "policyCreatev2",
-      "policyDelete",
       "policyDetach",
       "policyEvaluationSample",
       "policyInputCapture",
@@ -287,8 +283,6 @@
       "policySearchEvaluationRecords",
       "policySimulatev2",
       "policyTemplate",
-      "policyUpdatev2",
-      "searchPolicies",
       "searchPolicyTemplates"
     ],
     "Repos": [
@@ -380,12 +374,10 @@
       "searchModulesSuggestions",
       "searchNamedWebhooksIntegrationsSuggestions",
       "searchNotificationsSuggestions",
-      "searchPoliciesSuggestions",
       "searchPolicyTemplatesSuggestions",
       "searchRepoCommitsSuggestions",
       "searchRepoFilesSuggestions",
-      "searchReposSuggestions",
-      "searchSpacePoliciesSuggestions"
+      "searchReposSuggestions"
     ],
     "Sessions and Security Keys": [
       "securityKeyDelete",

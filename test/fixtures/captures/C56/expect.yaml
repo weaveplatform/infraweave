@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+replayWith: policy-timestamps
 observed:
   "/exchanges/0/response/data/policyCreatev2/createdAt": 1795126082
   "/exchanges/0/response/data/policyCreatev2/updatedAt": 1795126082

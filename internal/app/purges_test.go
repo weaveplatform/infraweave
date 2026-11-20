@@ -94,11 +94,15 @@ func TestAccPurges(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		shared, stack, pool := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
+		shared, stack, pool, policy := kernel.NewULID(), kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
 		for _, stmt := range []struct {
 			sql  string
 			args []any
 		}{
+			{`INSERT INTO policies (account_id,id,space_id,name,body,type,engine_type,created_at,updated_at)
+				VALUES ($1,$2,$3,'Guard','package infraweave','PLAN','REGO_V1',now(),now())`, []any{policy, x.acct.ULID}},
+			{`INSERT INTO policy_stack_attachments (account_id,policy_id,stack_id,created_at)
+				VALUES ($1,$2,$3,now())`, []any{policy, stack}},
 			{`INSERT INTO contexts (account_id, id, slug, space_id, name)
 				VALUES ($1, $2, 'shared', $3, 'Shared')`, []any{shared, kernel.NewULID()}},
 			{
@@ -159,6 +163,8 @@ func TestAccPurges(t *testing.T) {
 			+ (SELECT count(*) FROM contexts WHERE account_id = $2)
 			+ (SELECT count(*) FROM config_elements WHERE account_id = $2)
 			+ (SELECT count(*) FROM context_attachments WHERE account_id = $2)
+			+ (SELECT count(*) FROM policies WHERE account_id = $2)
+			+ (SELECT count(*) FROM policy_stack_attachments WHERE account_id = $2)
 			+ (SELECT count(*) FROM worker_pools WHERE account_id = $2)
 			+ (SELECT count(*) FROM workers WHERE account_id = $2)
 			+ (SELECT count(*) FROM worker_nonces WHERE account_id = $2)
@@ -177,8 +183,8 @@ func TestAccPurges(t *testing.T) {
 	if n := count(`SELECT count(*) FROM accounts WHERE id = $1`, gone.acct); n != 0 {
 		t.Errorf("the deleted organization's account is still there")
 	}
-	if n := held(gone); n != 17 {
-		t.Fatalf("before the purges: %d rows of the deleted organization, want 17", n)
+	if n := held(gone); n != 19 {
+		t.Fatalf("before the purges: %d rows of the deleted organization, want 19", n)
 	}
 
 	reg := queue.NewRegistry()
@@ -205,15 +211,15 @@ func TestAccPurges(t *testing.T) {
 		case <-tick.C:
 		}
 	}
-	if n := held(kept); n != 17 {
-		t.Errorf("another organization keeps %d rows, want 17", n)
+	if n := held(kept); n != 19 {
+		t.Errorf("another organization keeps %d rows, want 19", n)
 	}
 
 	if err := d.Features.Purge(ctx, kept.org, kept.acct, false); err != nil {
 		t.Fatal(err)
 	}
-	if n := held(kept); n != 16 {
-		t.Errorf("after an account's own features purge, %d rows, want 16", n)
+	if n := held(kept); n != 18 {
+		t.Errorf("after an account's own features purge, %d rows, want 18", n)
 	}
 }
 

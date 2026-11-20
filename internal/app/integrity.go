@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
 	runsassembly "github.com/weaveplatform/infraweave/internal/runs/assembly"
 	stacksassembly "github.com/weaveplatform/infraweave/internal/stacks/assembly"
 	stateassembly "github.com/weaveplatform/infraweave/internal/state/assembly"
@@ -41,6 +42,7 @@ func held() []integrity.Held {
 		featuresassembly.Held(),
 		stacksassembly.Held(),
 		configurationassembly.Held(),
+		policiesassembly.Held(),
 		runsassembly.Held(),
 		stateassembly.Held(),
 		vcsassembly.Held(),

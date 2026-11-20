@@ -8,24 +8,28 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 )
 
 // ContractPattern is the discovery route on the shared API listener.
 const ContractPattern = "/.well-known/policy-contract.json"
 
-// Server publishes the schema alone. Authentication, authorization, feature
+// Server publishes policy management and the schema. Authentication, authorization, feature
 // gates, rate limits and cache headers belong to the shared listener controls.
 type Server struct {
 	contract func() ([]byte, error)
 	version  func() (string, error)
+	svc      *core.Service
+	spaces   accessapi.Spaces
 }
 
-// New reflects the contract at most once per domain, reusing the immutable
-// schema bytes without caching an authenticated HTTP response.
-func New() Server {
-	return Server{contract: sync.OnceValues(func() ([]byte, error) { return encodeContract(inputs.Contract) })}
+// New serves policy management and reflects the contract at most once per
+// domain without caching an authenticated HTTP response.
+func New(svc *core.Service, spaces accessapi.Spaces) Server {
+	return Server{contract: sync.OnceValues(func() ([]byte, error) { return encodeContract(inputs.Contract) }), svc: svc, spaces: spaces}
 }
 
 func encodeContract(build func() (inputs.ContractDocument, error)) ([]byte, error) {
