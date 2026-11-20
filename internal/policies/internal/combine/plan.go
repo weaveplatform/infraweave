@@ -16,22 +16,17 @@ func Plan(receipts []policyapi.Receipt) policyapi.Evaluation {
 	for i := range out.Receipts {
 		r := &out.Receipts[i]
 		var d inputs.PlanDecision
-		if r.Failure == nil && (r.Type != policyapi.Plan || decode(r.Decision, &d) != nil || d.Deny.IsNull() || d.Warn.IsNull() || d.Info.IsNull() || d.Flag.IsNull() || d.ResetFlag.IsNull() || d.Sample.IsNull()) {
-			r.Failure = &policyapi.Failure{Code: "RESULT", Message: "Policy returned an invalid PLAN decision."}
+		if r.Failure == nil && (r.Type != policyapi.Plan || decode(r.Decision, &d) != nil || d.Deny.IsNull() || d.Warn.IsNull() || d.Info.IsNull() || !common(r, d.Flag, d.ResetFlag, d.Sample, false)) {
+			invalid(r, policyapi.Plan)
 		}
 		if r.Failure != nil {
-			r.Outcome = policyapi.Deny
+			failed(&out, r, policyapi.Deny)
 			out.Outcome = policyapi.Deny
-			out.Failures = append(out.Failures, *r.Failure)
 			continue
 		}
 		deny, _ := d.Deny.Get()
 		warn, _ := d.Warn.Get()
 		info, _ := d.Info.Get()
-		flags, _ := d.Flag.Get()
-		reset, _ := d.ResetFlag.Get()
-		r.Flags, r.ResetFlags = unique(flags), unique(reset)
-		r.Sample, _ = d.Sample.Get()
 		r.Outcome = policyapi.Allow
 		if len(deny) > 0 {
 			r.Outcome = policyapi.Deny

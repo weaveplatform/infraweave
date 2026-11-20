@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 )
 
 func evaluation(kind policyapi.Type, receipts []policyapi.Receipt) policyapi.Evaluation {
@@ -23,8 +24,31 @@ func evaluation(kind policyapi.Type, receipts []policyapi.Receipt) policyapi.Eva
 		}
 		out.Receipts = append(out.Receipts, r)
 	}
-	slices.SortFunc(out.Receipts, func(a, b policyapi.Receipt) int { return bytes.Compare(a.Policy[:], b.Policy[:]) })
+	slices.SortStableFunc(out.Receipts, func(a, b policyapi.Receipt) int { return bytes.Compare(a.Policy[:], b.Policy[:]) })
 	return out
+}
+
+func common(r *policyapi.Receipt, flags, reset inputs.Field[[]string], sample inputs.Field[bool], defaultSample bool) bool {
+	if flags.IsNull() || reset.IsNull() || sample.IsNull() {
+		return false
+	}
+	set, _ := flags.Get()
+	clear, _ := reset.Get()
+	r.Flags, r.ResetFlags = unique(set), unique(clear)
+	value, present := sample.Get()
+	r.Sample = value || !present && defaultSample
+	return true
+}
+
+func invalid(r *policyapi.Receipt, kind policyapi.Type) {
+	r.Failure = &policyapi.Failure{Code: "RESULT", Message: "Policy returned an invalid " + string(kind) + " decision."}
+}
+
+func failed(out *policyapi.Evaluation, r *policyapi.Receipt, fallback policyapi.Outcome) {
+	r.Outcome = fallback
+	r.Flags, r.ResetFlags = []string{}, []string{}
+	r.Sample = out.Type == policyapi.Login
+	out.Failures = append(out.Failures, *r.Failure)
 }
 
 func unique(values []string) []string {

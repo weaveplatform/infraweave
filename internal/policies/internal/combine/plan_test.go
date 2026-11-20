@@ -54,8 +54,8 @@ func TestUnitPlanErrorsNeverBecomeAllow(t *testing.T) {
 			t.Fatalf("invalid result became allow: %q %+v", raw, got)
 		}
 	}
-	got := Plan([]policyapi.Receipt{{Policy: kernel.NewULID(), Type: policyapi.Plan, Failure: &policyapi.Failure{Code: "TIMEOUT", Message: "Policy evaluation timed out."}}})
-	if got.Outcome != policyapi.Deny || len(got.Failures) != 1 || got.Failures[0].Code != "TIMEOUT" {
+	got := Plan([]policyapi.Receipt{{Policy: kernel.NewULID(), Type: policyapi.Plan, Flags: []string{"stale"}, ResetFlags: []string{"stale-reset"}, Failure: &policyapi.Failure{Code: "TIMEOUT", Message: "Policy evaluation timed out."}}})
+	if got.Outcome != policyapi.Deny || len(got.Failures) != 1 || got.Failures[0].Code != "TIMEOUT" || len(got.Receipts[0].Flags) != 0 || len(got.Receipts[0].ResetFlags) != 0 {
 		t.Fatalf("timeout was replaced or allowed: %+v", got)
 	}
 }

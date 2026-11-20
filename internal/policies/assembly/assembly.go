@@ -139,6 +139,9 @@ func (d *Domain) AttachmentSpaceOf() accessapi.SpaceOf { return d.svc.Attachment
 // StackPolicies is the readable projection port bound by app after construction.
 func (d *Domain) StackPolicies() stacksapi.StackPolicies { return d.svc }
 
+// Identities supplies account-qualified policy existence for historical views.
+func (d *Domain) Identities() policyapi.PolicyIdentities { return d.svc }
+
 // Routes registers the domain's routes. A nil domain serves none, for tests
 // which construct only the domains their request reaches.
 func (d *Domain) Routes(r chi.Router) {

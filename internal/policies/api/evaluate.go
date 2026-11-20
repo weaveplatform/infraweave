@@ -80,6 +80,7 @@ type Failure struct {
 type Receipt struct {
 	ID            kernel.ULID     `json:"id"`
 	Policy        kernel.ULID     `json:"policy"`
+	PolicyName    string          `json:"policyName"`
 	PolicyVersion int64           `json:"policyVersion"`
 	Type          Type            `json:"type"`
 	Engine        string          `json:"engineType"`
@@ -99,15 +100,24 @@ type PlanDecision struct {
 	Info []string `json:"info"`
 }
 
+// ApprovalDecision is the resolved gate, with all decision notes retained.
+type ApprovalDecision struct {
+	Approve      bool     `json:"approve"`
+	Reject       bool     `json:"reject"`
+	ApproveNotes []string `json:"approveNotes"`
+	RejectNotes  []string `json:"rejectNotes"`
+}
+
 // Evaluation is the typed aggregate and its stable per-policy evidence. No
 // policies is an explicit instruction for the caller to retain its own default.
 type Evaluation struct {
-	Type        Type          `json:"type"`
-	HasPolicies bool          `json:"hasPolicies"`
-	Outcome     Outcome       `json:"outcome"`
-	Plan        *PlanDecision `json:"plan,omitempty"`
-	Receipts    []Receipt     `json:"receipts"`
-	Failures    []Failure     `json:"failures"`
+	Type        Type              `json:"type"`
+	HasPolicies bool              `json:"hasPolicies"`
+	Outcome     Outcome           `json:"outcome"`
+	Plan        *PlanDecision     `json:"plan,omitempty"`
+	Approval    *ApprovalDecision `json:"approval,omitempty"`
+	Receipts    []Receipt         `json:"receipts"`
+	Failures    []Failure         `json:"failures"`
 }
 
 // Evaluator joins its caller's transaction. Policy failures return a fail-closed
