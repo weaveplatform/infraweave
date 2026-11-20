@@ -1,4 +1,4 @@
-@terraform-plans @postgres @objectstore @vcs @docker @terraform @tofu @policy-plan-worker
+@policy-phase @terraform-plans @postgres @objectstore @vcs @docker @terraform @tofu @policy-plan-worker
 Feature: Native worker reports preserve policy flag owners across repeated targeted plans
   Real worker uploads drive two independently stored Rego programs. A targeted
   plan resets one owner; another resets and adds the shared flag before its peer

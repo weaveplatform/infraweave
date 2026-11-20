@@ -1,4 +1,4 @@
-@postgres @vcs @policy-approval
+@policy-phase @postgres @vcs @policy-approval
 Feature: Public policy gates enforce actual OPA execution budgets
   An expensive stored program executes only after an actual review. Its
   deadline must defeat another policy's approval and commit safe failure

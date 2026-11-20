@@ -1,4 +1,4 @@
-@postgres @vcs @policy-approval
+@policy-phase @postgres @vcs @policy-approval
 Feature: Public reviews preserve independent flag owners and reset ordering
   Both stored dialects run through the actual approval gate. One owner's reset
   cannot remove another owner's shared flag; a later evaluation resets and
