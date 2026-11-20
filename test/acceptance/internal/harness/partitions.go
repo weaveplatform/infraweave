@@ -64,10 +64,11 @@ var Partitions = []Partition{
 // whose lab a @vcs-lab scenario reaches, @quarantine marks one that is known
 // to be unreliable, and @runtime-config-reject sets the scenario's server
 // policy without introducing a dependency. @webhook-controls selects the
-// webhook-control cases without changing their provider dependencies.
+// webhook-control cases and @plan-sanitization selects worker plan cases,
+// both without changing their dependency partitions.
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
-var exemptTags = []string{"@quarantine", "@runtime-config-reject", "@webhook-controls"}
+var exemptTags = []string{"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization"}
 
 // placing is every partition in the order Place tries them: the labs,
 // then the pull request's.

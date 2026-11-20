@@ -83,6 +83,10 @@ func TestUnitPlace(t *testing.T) {
 		want string
 	}{
 		{nil, "core"},
+		{[]string{"@plan-sanitization", "@postgres"}, "core"},
+		{[]string{"@plan-sanitization", "@terraform", "@docker"}, "terraform"},
+		{[]string{"@plan-sanitization", "@tofu", "@docker"}, "runs"},
+		{[]string{"@plan-sanitization", "@vcs"}, "integrations"},
 		{[]string{"@op:stacks", "@case:denial", "@quarantine"}, "core"},
 		{[]string{"@postgres"}, "core"},
 		{[]string{"@oidc", "@objectstore"}, "core"},

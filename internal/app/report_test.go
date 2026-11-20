@@ -71,9 +71,12 @@ func (c runCalls) report(t *testing.T, v int64, state, ev string, action workera
 func (c runCalls) upload(t *testing.T, v int64, kind, name string, body []byte) string {
 	t.Helper()
 	sum := sha256.Sum256(body)
-	rec := c.post(t, "upload-urls", map[string]any{"stateVersion": v, "uploads": []map[string]any{{
-		"kind": kind, "name": name, "size": len(body), "sha256": hex.EncodeToString(sum[:]),
-	}}})
+	upload := map[string]any{"kind": kind, "name": name, "size": len(body), "sha256": hex.EncodeToString(sum[:])}
+	if kind == "artifact" && name == "plan.json" {
+		upload["planSanitization"] = "DEFAULT"
+	}
+	rec := c.post(t, "upload-urls", map[string]any{"stateVersion": v, "uploads": []map[string]any{upload}})
+
 	var signed workerapi.UploadURLs
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &signed) != nil ||
 		len(signed.Uploads) != 1 {
@@ -168,7 +171,7 @@ func TestAccRunReports(t *testing.T) {
 		t.Errorf("an undeclared chunk = %d %s", rec.Code, rec.Body)
 	}
 
-	plan := []byte(`{"resource_changes":[]}`)
+	plan := []byte(`{"format_version":"1.2","resource_changes":[]}`)
 	planKey := prefix + "plan.json"
 	if got := calls.upload(t, v, "artifact", "plan.json",
 		sealedAs(t, artifactKey, planKey, plan)); got != planKey {
@@ -179,7 +182,7 @@ func TestAccRunReports(t *testing.T) {
 	if rec := calls.post(t, "artifacts", map[string]any{
 		"stateVersion": v,
 		"artifacts": []map[string]any{
-			{"kind": "artifact", "name": "plan.json"},
+			{"kind": "artifact", "name": "plan.json", "planSanitization": "DEFAULT"},
 			{"kind": "workspace", "name": "ws"},
 		},
 	}); rec.Code != http.StatusNoContent {
