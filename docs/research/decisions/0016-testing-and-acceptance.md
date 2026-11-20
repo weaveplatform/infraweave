@@ -146,7 +146,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@vcs` | Gitea container as the raw Git host, with a repository seeded per scenario; each provider's chi fake sends signed deliveries over HTTP and records received checks, statuses and comments | provider-shaped intake and feedback through the real server; raw Git stays under `sourcetest` (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
-| `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, also tags each under its untagged published `ghcr.io/weaveplatform/infraweave-runner-<vendor>` name for vendor-default scenarios, imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
+| `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, also tags each under its untagged published `ghcr.io/weaveplatform/infraweave-runner-<vendor>` name for vendor-default scenarios, imports a distinct `infraweave-runner:acceptance-<random>` reference owned by that suite, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module, privileged, with its bundled components disabled so that it pulls no image, joined to the run containers' Docker network; the scenario's kubeconfig names it by its network alias | Kubernetes stacks' runs, and Kubernetes workers (decision 0008) |
 | `@pulumi` | with `@docker`, the runner image `infraweave-runner-pulumi:acceptance` built from `deploy/images/`, and a host directory per scenario that `launcher.docker.extra_mounts` mounts for a `file://` Pulumi backend | Pulumi stacks' runs: a Pulumi YAML program with no provider, whose configuration and outputs, one of them secret, need no plugin download; `PULUMI_CONFIG_PASSPHRASE` is a write-only stack variable |
 | `@aws` | moto's server, serving S3 and CloudFormation, which run containers reach through `AWS_ENDPOINT_URL` with dummy credentials | CloudFormation stacks' runs: a template of an `AWS::SSM::Parameter` and an `AWS::S3::Bucket`, a template with a nested stack, and a `before_init` hook that writes the entry template, as `sam package` would |
@@ -175,6 +175,22 @@ everywhere, and the reason names where the contract checks it instead.
   run's state transitions against report 08's state machine, the stored
   state version, the masked log, and the events emitted
   ([0015](0015-events-notifications-webhooks-audit.md)).
+- **Independent runner-image owners.** Each `Launchers` instance allocates
+  its minimal root-image reference before import and uses that reference for
+  launcher defaults, network forwarders and tool fallback. Cleanup untags only
+  its owned reference without force, accepts an already absent image, and can
+  retry after cancellation; shared image content and custom runner references
+  remain intact. `TestAccRunnerImageOwnership` runs two independent test
+  processes against one actual Docker daemon. Both complete a Terraform plan,
+  then A deliberately fails its last step and exits through normal cleanup.
+  Only after A's image and containers are absent may B start its next launcher
+  and complete another plan. Native image and container readback verifies the
+  boundary; focused real-Docker tests also cover the root-image tool fallback,
+  shared content, custom tags and repeated/cancelled cleanup. Child Cucumber
+  reports have distinct names beside the main report, and covered children
+  write counters to the parent's coverage directory. Failure evidence remains
+  under the acceptance output's `runner-image-ownership/` directory. Published
+  and vendor runner-image selection remains the existing worker contract.
 - **The state backend before the runner.** `state/backend.feature`
   (`@postgres`, `@objectstore`, `@vcs` and `@docker`, with `@terraform` or
   `@tofu`) proves the backend before the runner executes phases: the

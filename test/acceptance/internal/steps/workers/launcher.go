@@ -32,7 +32,7 @@ import (
 // through the scenario's relay and runs its runs in containers on the
 // suite's Docker daemon, mounting the Linux build of infraweave as their
 // runner. A run's image is its stack's, else the runner image of the
-// scenario's tool, @terraform's or @tofu's, else RunnerImage; a launcher
+// scenario's tool, @terraform's or @tofu's, else the suite's owned root image; a launcher
 // of a @terraform or @tofu scenario downloads and verifies the tool
 // from the suite's tool mirror, and of a @terragrunt one Terragrunt too,
 // or, once the scenario says so, a tool's build altered on its way, which
@@ -76,6 +76,14 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	l.launchers = map[string]*launcher{}
 	l.w.IDs["runner.spacelift"] = deps.ImageSpaceliftRunnerTerraform
 	sc.After(l.end)
+	sc.Step(`^the suite's minimal runner image is kept as "([^\"]+)"$`, func(ctx context.Context, name string) error {
+		host, err := l.w.Suite.Launchers(ctx)
+		if err != nil {
+			return err
+		}
+		l.w.IDs[name] = host.Image
+		return nil
+	})
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
 	sc.Step(`^the launchers started from now on set the run request limits to (\d+) per second and a burst of (\d+)$`,
@@ -203,7 +211,7 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 		"poll_timeout":         "5s",
 		"cache_dir":            filepath.Join(dir, "cache"),
 		"admin_listen":         "127.0.0.1:0",
-		"default_runner_image": harness.RunnerImage,
+		"default_runner_image": host.Image,
 		"docker": map[string]any{
 			"network": l.network, "runner_binary": host.Runner,
 		},

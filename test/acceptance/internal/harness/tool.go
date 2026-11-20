@@ -36,7 +36,7 @@ type Tool struct {
 
 // ToolRun is what a Tool runs: Bin, mounted read-only, with Args and Env
 // in Dir, mounted as the workspace, on Network, labelled Scenario, in a
-// container of Image, one Launchers.Build built, or RunnerImage when it
+// container of Image, one Launchers.Build built, or Launchers.Image when it
 // is empty. Mounts are further host files, each mounted read-only at
 // the container path it maps to, and Stdin, when set, is written to the
 // process's standard input, which is then closed.
@@ -52,7 +52,7 @@ type ToolRun struct {
 // scenario reads and removes; on a Linux host the runner's UID would own
 // it.
 func (l *Launchers) RunTool(ctx context.Context, run ToolRun) (*Tool, error) {
-	image := cmp.Or(run.Image, RunnerImage)
+	image := cmp.Or(run.Image, l.Image)
 	binds := make([]string, 0, 2+len(run.Mounts))
 	binds = append(binds, run.Bin+":"+toolPath+":ro", run.Dir+":"+workspacePath)
 	for host, path := range run.Mounts {

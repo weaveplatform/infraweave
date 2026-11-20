@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,27 +17,20 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/go-chi/chi/v5"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
+	"github.com/moby/moby/client/pkg/jsonmessage"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
-
-// RunnerImage is the image of a @docker scenario's run containers, but
-// for the tools of @terraform and @tofu scenarios, which run in their
-// vendor's runner image: a filesystem with the user runner, UID and GID
-// 1983, and the workspace it owns, and nothing else, so no scenario pulls
-// an image. The launcher mounts the runner itself, and the relay's
-// forwarder runs in it.
-//
-// ref: decision 0008 § "The launcher and the runner"
-const RunnerImage = "infraweave-runner:acceptance"
 
 // LabelScenario labels the containers a scenario starts beside its
 // launchers', which its end removes.
@@ -47,10 +41,13 @@ const LabelScenario = "io.infraweave.acceptance"
 var ErrDockerArch = errors.New("no GOARCH for the Docker daemon's architecture")
 
 // Launchers are what a @docker scenario's launchers need of Docker, made
-// once per test binary: the daemon, RunnerImage, the Linux builds of
+// once per test binary: the daemon, its owned root image, the Linux builds of
 // infraweave and of testdata/forward for the daemon's architecture, and
 // the runner images, each built on first use.
 type Launchers struct {
+	// Image is the unique temporary root filesystem reference this owner
+	// imports and removes. It holds runner UID/GID 1983 and its workspace.
+	Image string
 	// Host is the daemon's address, which each launcher is given as
 	// DOCKER_HOST, so it reaches the daemon the suite found.
 	Host string
@@ -80,7 +77,7 @@ type Launchers struct {
 }
 
 // prepare builds what the launchers need into dir, from the module at
-// root, and imports RunnerImage.
+// root, and imports its own root filesystem image.
 func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
 	if err != nil {
@@ -103,7 +100,7 @@ func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 		"./test/acceptance/testdata/forward"); err != nil {
 		return err
 	}
-	return importRunnerImage(ctx, cli)
+	return l.importRunnerImage(ctx)
 }
 
 // buildLinux builds pkg statically for linux/arch into dir. The runner
@@ -120,9 +117,13 @@ func buildLinux(ctx context.Context, root, dir, arch, pkg string) (string, error
 	return bin, nil
 }
 
-// importRunnerImage imports RunnerImage from a filesystem made here,
-// which needs no registry and no builder.
-func importRunnerImage(ctx context.Context, cli *testcontainers.DockerClient) error {
+// importRunnerImage imports this owner's image from a filesystem made here,
+// which needs no registry and no builder. Allocating the reference before I/O
+// lets cleanup remove an import whose acknowledgement was lost or canceled.
+func (l *Launchers) importRunnerImage(ctx context.Context) error {
+	if l.Image == "" {
+		l.Image = "infraweave-runner:acceptance-" + strings.ToLower(rand.Text())
+	}
 	var root bytes.Buffer
 	tw := tar.NewWriter(&root)
 	for _, h := range []tar.Header{
@@ -153,16 +154,19 @@ func importRunnerImage(ctx context.Context, cli *testcontainers.DockerClient) er
 	if err := tw.Close(); err != nil {
 		return fmt.Errorf("runner image: %w", err)
 	}
-	res, err := cli.ImageImport(ctx, client.ImageImportSource{Source: &root, SourceName: "-"},
-		RunnerImage, client.ImageImportOptions{
+	res, err := l.cli.ImageImport(ctx, client.ImageImportSource{Source: &root, SourceName: "-"},
+		l.Image, client.ImageImportOptions{
 			Changes: []string{"USER runner", "WORKDIR /mnt/workspace"},
 		})
 	if err != nil {
 		return fmt.Errorf("runner image: %w", err)
 	}
 	defer res.Close()
-	if _, err := io.Copy(io.Discard, res); err != nil {
+	if err := jsonmessage.DisplayStream(res, io.Discard); err != nil {
 		return fmt.Errorf("runner image: %w", err)
+	}
+	if _, err := l.cli.ImageInspect(ctx, l.Image); err != nil {
+		return fmt.Errorf("runner image %s: inspect import: %w", l.Image, err)
 	}
 	return nil
 }
@@ -185,7 +189,7 @@ func (l *Launchers) Network(ctx context.Context, scenario string, ports ...strin
 	}
 	c, err := l.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
-			Image:      RunnerImage,
+			Image:      l.Image,
 			Entrypoint: []string{"/opt/forward"},
 			Cmd:        pairs,
 			Labels:     map[string]string{LabelScenario: scenario},
@@ -232,7 +236,7 @@ func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 }
 
 // Close stops the tool mirror and the run containers' caps, removes
-// RunnerImage and closes the client, returning each run container it
+// only its own root-image reference and closes the client, returning each run container it
 // could not cap.
 func (l *Launchers) Close(ctx context.Context) error {
 	if l.mirror != nil {
@@ -245,7 +249,16 @@ func (l *Launchers) Close(ctx context.Context) error {
 	if l.cli == nil {
 		return l.capErrs
 	}
-	_, err := l.cli.ImageRemove(ctx, RunnerImage, client.ImageRemoveOptions{Force: true})
+	var err error
+	if l.Image != "" {
+		_, err = l.cli.ImageRemove(ctx, l.Image, client.ImageRemoveOptions{})
+		if cerrdefs.IsNotFound(err) {
+			err = nil
+		}
+		if err != nil {
+			err = fmt.Errorf("runner image %s: remove: %w", l.Image, err)
+		}
+	}
 	return errors.Join(l.capErrs, err, l.cli.Close())
 }
 

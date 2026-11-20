@@ -4,7 +4,7 @@ Feature: The worker protocol end to end
   for runs, opens each run's sealed specification with the pool's private
   key, checks the run's commit out of the Gitea repository into its
   workspace, and runs it in a Docker container of
-  infraweave-runner:acceptance, whose root process is this build's
+  the suite's owned minimal image, whose root process is this build's
   runner. The runner reports the run's
   first phase started, and then failed with a note that the image has no
   sh to run the phase in, since the image holds nothing but the runner's
@@ -34,7 +34,8 @@ Feature: The worker protocol end to end
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
     And the answer's id names "pool"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","runnerImage":"infraweave-runner:acceptance","skipVendorBinaryDownload":true},"manageState":false}' through B
+    And the suite's minimal runner image is kept as "rootImage"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","runnerImage":"{rootImage}","skipVendorBinaryDownload":true},"manageState":false}' through B
     And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
 

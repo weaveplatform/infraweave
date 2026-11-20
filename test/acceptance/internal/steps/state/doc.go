@@ -6,7 +6,7 @@
 // credentials infraweave's agent writes; it reports the run's phases over
 // the worker API, recording the apply's outputs before its report as a
 // runner does; and it runs the pinned terraform or tofu in containers
-// of harness.RunnerImage, which reach the server through the scenario's
+// of the suite's owned root image, which reach the server through the scenario's
 // relay. The relay records each call and each 423's body, and holds the
 // backend's UNLOCK calls on demand, so a lock stays held while another
 // process asks for it, or its writes, so a tool holds its lock with its
