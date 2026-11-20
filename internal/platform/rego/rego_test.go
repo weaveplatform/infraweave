@@ -253,7 +253,7 @@ func TestUnitPreparedIsolation(t *testing.T) {
 			got := decision(t, out)["deny"].([]any)
 			want := fmt.Sprintf("%d-%d", i%2, i)
 			if len(got) != 1 || got[0] != want || out.Print != want+"\n" || out.PrintTruncated {
-				t.Errorf("cached helper/input leak: %s", out.Decision)
+				t.Errorf("cached helper/input/print leak: %s", out.Decision)
 			}
 		})
 	}
@@ -261,6 +261,7 @@ func TestUnitPreparedIsolation(t *testing.T) {
 	if e.cache.order.Len() != 4 {
 		t.Fatalf("cache holds %d queries for two bodies in each dialect", e.cache.order.Len())
 	}
+	e.cache = newCache()
 	e.cache.limit = 2
 	for _, kind := range []Type{Plan, Trigger, Login} {
 		evaluate(t, e, Policy{Type: kind, Engine: V1, Body: "package infraweave"}, `{}`)
