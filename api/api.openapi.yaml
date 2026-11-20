@@ -9348,6 +9348,57 @@ paths:
       x-infraweave-feature: policies
       x-infraweave-subject: body:space
       x-rest-style: create
+  /policies/check:
+    post:
+      operationId: policyCheck
+      summary: Check Policy
+      description: Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+      tags:
+        - Expressions
+      x-upstream: none
+      x-infraweave-feature: expressions
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      x-infraweave-cost: standard
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCheckRequest'
+      responses:
+        "200":
+          description: The policy's diagnostics, empty when compilation succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyCheck'
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
   /policies/search:
     post:
       operationId: searchPolicies
@@ -27295,6 +27346,32 @@ components:
         searchEvaluationRecordSuggestions: served by GET /policies/{policyId}/search-evaluation-record-suggestions
         searchEvaluationRecords: served by GET /policies/{policyId}/search-evaluation-records
       x-graphql-type: Policy
+    PolicyCheck:
+      type: object
+      description: Compiler diagnostics over the submitted body. An empty list means the policy compiles.
+      properties:
+        diagnostics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProblemFieldError'
+      required:
+        - diagnostics
+    PolicyCheckRequest:
+      type: object
+      additionalProperties: false
+      description: A policy module to compile without saving, evaluating or sampling it.
+      properties:
+        type:
+          $ref: '#/components/schemas/PolicyType'
+        body:
+          type: string
+        engineType:
+          allOf:
+            - $ref: '#/components/schemas/PolicyEngineType'
+          description: The dialect used by save-time compilation. Omission intentionally selects REGO_V1.
+      required:
+        - type
+        - body
     PolicyConnection:
       properties:
         cursor:

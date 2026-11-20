@@ -734,6 +734,10 @@ func (UnimplementedStrict) PolicyCreatev2(context.Context, PolicyCreatev2Request
 	return nil, &problem.NotImplementedError{OperationID: "policyCreatev2", Route: "POST /policies"}
 }
 
+func (UnimplementedStrict) PolicyCheck(context.Context, PolicyCheckRequestObject) (PolicyCheckResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyCheck", Route: "POST /policies/check"}
+}
+
 func (UnimplementedStrict) SearchPolicies(context.Context, SearchPoliciesRequestObject) (SearchPoliciesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchPolicies", Route: "POST /policies/search"}
 }

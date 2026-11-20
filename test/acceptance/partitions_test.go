@@ -84,6 +84,7 @@ func TestUnitPlace(t *testing.T) {
 	}{
 		{nil, "core"},
 		{[]string{"@plan-sanitization", "@postgres"}, "core"},
+		{[]string{"@policy-check", "@postgres"}, "core"},
 		{[]string{"@plan-sanitization", "@terraform", "@docker"}, "terraform"},
 		{[]string{"@plan-sanitization", "@tofu", "@docker"}, "runs"},
 		{[]string{"@plan-sanitization", "@vcs"}, "integrations"},

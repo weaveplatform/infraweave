@@ -380,6 +380,20 @@ and Text to name submitted source ranges, excluding generated preamble offsets.
 The check performs no policy write, receipt/sample/capture write or budget charge;
 simulation remains the P13b operation and console components remain P24c.
 
+`POST /policies/check` takes `type`, `body` and optional `engineType`. An omitted
+engine intentionally chooses V1, as policy creation does. Its account-authenticated
+operation uses the `expressions` capability and shared request controls; compiling
+supplied text reads no stored policy or space. The registry's check-only `policy`
+surface carries the domain's compiler callback and explicit source metadata; it
+does not introduce Rego rules, capabilities or defaults into expressions or link
+OPA into the CEL package. A successful compilation returns `diagnostics: []`.
+Invalid source returns 200 with the same `/body` field-error diagnostics as a
+refused save; each source range is optional because an error located only in the
+generated preamble has no corresponding user span. A missing compiler surface
+fails with 503. Unsupported enum values and malformed request JSON remain shared
+request-validation failures. Check-only surfaces are unavailable to CEL context
+operations, rather than being treated as expression environments.
+
 ## Rationale
 
 - **CEL fits what users write.** In the Flows template corpus, about 88% of

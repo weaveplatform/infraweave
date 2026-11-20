@@ -6163,6 +6163,22 @@ type Policy struct {
 // PolicyKind The concrete type, for union and interface responses.
 type PolicyKind string
 
+// PolicyCheck Compiler diagnostics over the submitted body. An empty list means the policy compiles.
+type PolicyCheck struct {
+	Diagnostics []ProblemFieldError `json:"diagnostics"`
+}
+
+// PolicyCheckRequest A policy module to compile without saving, evaluating or sampling it.
+type PolicyCheckRequest struct {
+	Body string `json:"body"`
+
+	// EngineType The dialect used by save-time compilation. Omission intentionally selects REGO_V1.
+	EngineType *PolicyEngineType `json:"engineType,omitempty"`
+
+	// Type PolicyType represents a type of policy.
+	Type PolicyType `json:"type"`
+}
+
 // PolicyConnection defines model for PolicyConnection.
 type PolicyConnection struct {
 	Cursor string `json:"cursor"`
@@ -11468,6 +11484,12 @@ type PolicyCreatev2Params struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// PolicyCheckParams defines parameters for PolicyCheck.
+type PolicyCheckParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // PolicyDeleteParams defines parameters for PolicyDelete.
 type PolicyDeleteParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
@@ -12703,6 +12725,9 @@ type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
 
 // PolicyCreatev2JSONRequestBody defines body for PolicyCreatev2 for application/json ContentType.
 type PolicyCreatev2JSONRequestBody = PolicyCreateInput
+
+// PolicyCheckJSONRequestBody defines body for PolicyCheck for application/json ContentType.
+type PolicyCheckJSONRequestBody = PolicyCheckRequest
 
 // SearchPoliciesJSONRequestBody defines body for SearchPolicies for application/json ContentType.
 type SearchPoliciesJSONRequestBody = SearchInput
@@ -16854,6 +16879,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
 	PolicyCreatev2(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyCheckWithBody Check Policy
+	//
+	// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+	PolicyCheckWithBody(ctx context.Context, params *PolicyCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyCheck Check Policy
+	//
+	// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+	PolicyCheck(ctx context.Context, params *PolicyCheckParams, body PolicyCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchPoliciesWithBody Search Policies
 	//
@@ -23820,6 +23863,44 @@ func (c *Client) PolicyCreatev2WithBody(ctx context.Context, params *PolicyCreat
 // Corresponds with POST /policies (the `PolicyCreatev2` operationId).
 func (c *Client) PolicyCreatev2(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPolicyCreatev2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyCheckWithBody Check Policy
+//
+// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+func (c *Client) PolicyCheckWithBody(ctx context.Context, params *PolicyCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyCheckRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyCheck Check Policy
+//
+// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+func (c *Client) PolicyCheck(ctx context.Context, params *PolicyCheckParams, body PolicyCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyCheckRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -38483,6 +38564,61 @@ func NewPolicyCreatev2RequestWithBody(server string, params *PolicyCreatev2Param
 	return req, nil
 }
 
+// NewPolicyCheckRequest calls the generic PolicyCheck builder with application/json body
+func NewPolicyCheckRequest(server string, params *PolicyCheckParams, body PolicyCheckJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPolicyCheckRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPolicyCheckRequestWithBody constructs an http.Request for the PolicyCheck method, with any body, and a specified content type
+func NewPolicyCheckRequestWithBody(server string, params *PolicyCheckParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/check")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewSearchPoliciesRequest calls the generic SearchPolicies builder with application/json body
 func NewSearchPoliciesRequest(server string, body SearchPoliciesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -52361,6 +52497,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
 	PolicyCreatev2WithResponse(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyCreatev2Response, error)
+
+	// PolicyCheckWithBodyWithResponse Check Policy
+	//
+	// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+	PolicyCheckWithBodyWithResponse(ctx context.Context, params *PolicyCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyCheckResponse, error)
+
+	// PolicyCheckWithResponse Check Policy
+	//
+	// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+	PolicyCheckWithResponse(ctx context.Context, params *PolicyCheckParams, body PolicyCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyCheckResponse, error)
 
 	// SearchPoliciesWithBodyWithResponse Search Policies
 	//
@@ -73202,6 +73356,122 @@ func (r PolicyCreatev2Response) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PolicyCreatev2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyCheckResponse200Headers the declared response headers of an HTTP 200 response for PolicyCheck
+type PolicyCheckResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyCheckResponse429Headers the declared response headers of an HTTP 429 response for PolicyCheck
+type PolicyCheckResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyCheckResponse503Headers the declared response headers of an HTTP 503 response for PolicyCheck
+type PolicyCheckResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyCheckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyCheck
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyCheckResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyCheckResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyCheckResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyCheckResponse) GetJSON200() *PolicyCheck {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyCheckResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyCheckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyCheckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyCheckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyCheckResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -97669,6 +97939,36 @@ func (c *ClientWithResponses) PolicyCreatev2WithResponse(ctx context.Context, pa
 		return nil, err
 	}
 	return ParsePolicyCreatev2Response(rsp)
+}
+
+// PolicyCheckWithBodyWithResponse Check Policy
+//
+// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+func (c *ClientWithResponses) PolicyCheckWithBodyWithResponse(ctx context.Context, params *PolicyCheckParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyCheckResponse, error) {
+	rsp, err := c.PolicyCheckWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyCheckResponse(rsp)
+}
+
+// PolicyCheckWithResponse Check Policy
+//
+// Compile a Rego body with the policy domain's preamble, capabilities and limits. Invalid source returns diagnostics with submitted-body ranges; no policy, receipt or sample is written.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/check (the `PolicyCheck` operationId).
+func (c *ClientWithResponses) PolicyCheckWithResponse(ctx context.Context, params *PolicyCheckParams, body PolicyCheckJSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyCheckResponse, error) {
+	rsp, err := c.PolicyCheck(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyCheckResponse(rsp)
 }
 
 // SearchPoliciesWithBodyWithResponse Search Policies
@@ -125385,6 +125685,149 @@ func ParsePolicyCreatev2Response(rsp *http.Response) (*PolicyCreatev2Response, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PolicyCreatev2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyCheckResponse parses an HTTP response from a PolicyCheckWithResponse call
+func ParsePolicyCheckResponse(rsp *http.Response) (*PolicyCheckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyCheckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyCheck
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyCheckResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyCheckResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyCheckResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

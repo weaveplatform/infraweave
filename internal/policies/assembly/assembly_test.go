@@ -33,3 +33,10 @@ func TestUnitDomainAPIPartial(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitPolicyCheckSurface(t *testing.T) {
+	surfaces := New(Deps{}).Surfaces()
+	if len(surfaces) != 1 || surfaces[0].Name != "policy" || surfaces[0].CheckPolicy == nil || surfaces[0].Env != nil {
+		t.Fatalf("invalid compiler contribution: %+v", surfaces)
+	}
+}

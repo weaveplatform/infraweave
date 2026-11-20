@@ -68,6 +68,7 @@ func TestUnitAPIOperations(t *testing.T) {
 		t.Fatalf("%d operations, want every scaffolded one", len(ops))
 	}
 	for key, want := range map[string]Operation{
+		"POST /api/v1/policies/check":                              {Cost: ratelimit.Standard, Gate: gate("expressions")},
 		"POST /api/v1/stacks/search":                               {Cost: ratelimit.Expensive, Search: true, Gate: gate("stacks")},
 		"POST /api/v1/stack-dependencies/batch":                    {Cost: ratelimit.Expensive, Gate: gate("stacks")},
 		"GET /api/v1/stacks":                                       {Cost: ratelimit.Standard, Gate: gate("stacks")},

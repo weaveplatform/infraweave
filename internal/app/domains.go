@@ -197,7 +197,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	workers.BindSignals(runs.Signals())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
-		slices.Concat(configuration.Surfaces(), runs.Surfaces(), vendors.Surfaces())...,
+		slices.Concat(configuration.Surfaces(), runs.Surfaces(), vendors.Surfaces(), policies.Surfaces())...,
 	)
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the surface or the setting

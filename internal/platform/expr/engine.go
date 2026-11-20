@@ -62,6 +62,12 @@ type Context struct {
 	Sample    map[string]any
 }
 
+// PolicySource is editor source and its caller-selected metadata. The surface
+// owner interprets type and engine; the registry knows no policy rules or defaults.
+type PolicySource struct {
+	Type, Engine, Body string
+}
+
 // Surface is a place where users write expressions, declared by the
 // domain that owns it. Another domain adds variables to it by declaring a
 // surface of the same name with no Env: the registry merges the two, and
@@ -80,6 +86,10 @@ type Surface struct {
 	//
 	// ref: decision 0024 "Workflow command templates"
 	Shell bool
+	// CheckPolicy is the owning domain's bounded policy compiler. It returns
+	// source diagnostics independently of CEL compilation and performs no save
+	// or evaluation. A check-only surface has no CEL Env.
+	CheckPolicy func(context.Context, kernel.Principal, PolicySource) ([]kernel.FieldError, error)
 }
 
 // Request names what to compile: the surface, the variables of the
@@ -262,8 +272,8 @@ type Registry struct {
 }
 
 // NewRegistry builds a registry of surfaces under cfg's limits, merging
-// the declarations of one name. A surface has one Env at most, a variable
-// appears once within its surface, and no surface declares now.
+// the declarations of one name. A surface has one Env and one CheckPolicy at
+// most; each variable appears once, and no surface declares now.
 func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -276,9 +286,9 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 	}
 	for _, s := range surfaces {
 		merged, dup := r.surfaces[s.Name]
-		if s.Name == "" || dup && merged.Env != nil && s.Env != nil {
+		if s.Name == "" || dup && (merged.Env != nil && s.Env != nil || merged.CheckPolicy != nil && s.CheckPolicy != nil) {
 			return nil, fmt.Errorf(
-				"%w: surface %q has two contexts or no name",
+				"%w: surface %q has duplicate owners or no name",
 				ErrRequest,
 				s.Name,
 			)
@@ -286,6 +296,9 @@ func NewRegistry(cfg Config, surfaces ...Surface) (*Registry, error) {
 		merged.Name = s.Name
 		if s.Env != nil {
 			merged.Env = s.Env
+		}
+		if s.CheckPolicy != nil {
+			merged.CheckPolicy = s.CheckPolicy
 		}
 		merged.Variables = slices.Concat(merged.Variables, s.Variables)
 		merged.Shell = merged.Shell || s.Shell

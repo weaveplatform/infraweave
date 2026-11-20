@@ -4,8 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/open-policy-agent/opa/v1/ast"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // Diagnostic preserves OPA's source point and byte span for editor adapters.
@@ -13,6 +17,29 @@ type Diagnostic struct {
 	File                        string
 	Row, Column, Offset, Length int
 	Message                     string
+}
+
+// SourceRange locates the submitted module's byte span using one-based Unicode
+// positions. Internal modules have no corresponding text in the user's body.
+func (d Diagnostic) SourceRange(body string) *kernel.Range {
+	if d.File != "policy.rego" || d.Offset < 0 || d.Offset > len(body) || d.Length < 0 {
+		return nil
+	}
+	start := d.Offset
+	if start < len(body) && !utf8.RuneStart(body[start]) {
+		return nil
+	}
+	end := start + min(d.Length, len(body)-start)
+	for end < len(body) && !utf8.RuneStart(body[end]) {
+		end++
+	}
+	return &kernel.Range{Start: sourcePosition(body, start), End: sourcePosition(body, end)}
+}
+
+func sourcePosition(body string, offset int) kernel.Position {
+	prefix := body[:offset]
+	last := strings.LastIndexByte(prefix, '\n')
+	return kernel.Position{Line: strings.Count(prefix, "\n") + 1, Column: utf8.RuneCountInString(prefix[last+1:]) + 1}
 }
 
 // CompileError is a save-time refusal with OPA's own diagnostics and location.

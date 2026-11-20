@@ -137,7 +137,7 @@ func (s Server) context(ctx context.Context, surface, ref string) (expr.Context,
 		return expr.Context{}, err
 	}
 	sf, ok := s.registry.Surface(surface)
-	if !ok {
+	if !ok || sf.Env == nil {
 		return expr.Context{}, &kernel.Invalid{
 			Detail: fmt.Sprintf("No surface is named %q.", surface),
 			Errors: []kernel.FieldError{{

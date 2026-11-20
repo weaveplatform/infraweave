@@ -11,6 +11,9 @@
 // type whose misspelt field is an error at check time; it builds one
 // cel-go environment per set of declared types, and caches each compiled
 // program by a hash of its surface, declared types, form and source.
+// A check-only policy surface supplies the owning domain's CheckPolicy callback;
+// the registry transports source metadata without interpreting Rego or linking
+// the policy runtime into clients that only use CEL.
 //
 // The library is the same on every surface: CEL's standard library and
 // optional values, cel-go's strings, lists, regex, maths, bindings and
