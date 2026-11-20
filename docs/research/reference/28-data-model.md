@@ -543,7 +543,8 @@ POL-05 persists policy management in the flat policies domain. Public policy
 identity is its immutable ULID, independent of its mutable display name; the
 reference's name-derived slug is not an extra infraweave identifier. Writes
 compile before committing, hold their owning space, recheck space-admin access
-inside the transaction and append a source-free `policy.changed` event. The
+inside the transaction and append a `policy.changed` event containing only
+the policy ID and change. The
 version fences conditional writes even when two updates share a Unix second.
 Account deletion purges policies in resumable batches, cascading their owned
 stack-attachment rows. The generic `policy_attachments` row above remains a

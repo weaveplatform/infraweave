@@ -679,7 +679,8 @@
         "lowestTier": "Starter",
         "phase": "P13",
         "also": "P13b, P25b (Intent project attachments)",
-        "state": "missing"
+        "state": "partial",
+        "notes": "POL-05 serves persisted policy CRUD and merge patch, account and inherited-space searches, and bounded save-time compilation. POL-06 owns attachment selection; evaluation, sampling, notification routing and Intent integration remain with their implementation phases."
       }
     },
     {
@@ -833,7 +834,7 @@
         "phase": "P22",
         "also": "each suggestion operation lands with its search, from P4",
         "state": "partial",
-        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key, session and stack grant views with them (P4b), counting a space's holders alone, and `searchTofuWorkspacesSuggestions` with `searchTofuWorkspaces` (P11), listing names and stacks; each other suggestion operation lands with its search"
+        "notes": "`searchSpacesSuggestions` is served with `searchSpaces` (P4), and the suggestions of the user, group, API key, session and stack grant views with them (P4b), counting a space's holders alone, and `searchTofuWorkspacesSuggestions` with `searchTofuWorkspaces` (P11), listing names and stacks; each other suggestion operation lands with its search; policy and inherited-space policy suggestions land with policy management (P13), counting only readable policies"
       }
     },
     {
