@@ -4,6 +4,7 @@ package vcslab
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -28,7 +29,7 @@ func CurrentCheck(provider string, items []NativeCheck, runURL, stack string) (N
 			}
 			count++
 			if item.ExternalID != stack {
-				return NativeCheck{}, false, ErrNative
+				return NativeCheck{}, false, fmt.Errorf("%w: current check stack mismatch", ErrNative)
 			}
 			selected = item
 		case "gitlab", "azure-devops":
@@ -50,7 +51,7 @@ func CurrentCheck(provider string, items []NativeCheck, runURL, stack string) (N
 		return NativeCheck{}, false, nil
 	}
 	if count != 1 {
-		return NativeCheck{}, false, ErrNative
+		return NativeCheck{}, false, fmt.Errorf("%w: %d current check resources", ErrNative, count)
 	}
 	return selected, selected.URL == runURL, nil
 }

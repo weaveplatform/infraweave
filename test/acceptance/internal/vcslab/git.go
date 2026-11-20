@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,6 +49,47 @@ func (n *Native) cloneURL() string {
 // sign its delivery. Source tests run before these mutations; Terraform destroys
 // the disposable repository afterwards. No synthetic webhook replaces this path.
 func (n *Native) Push(ctx context.Context, parent, branch, marker string, credential GitCredentials) (string, error) {
+	return n.push(ctx, parent, branch, credential, func(dir string, _ *git.Repository, work *git.Worktree) (plumbing.Hash, error) {
+		body := []byte("resource \"terraform_data\" \"lab\" {\n  input = \"" + marker + "\"\n}\n")
+		return commitNativeFile(dir, work, body)
+	})
+}
+
+// NativeRange records the two-commit push's endpoints without retaining its
+// repository URL, credential or provider response.
+type NativeRange struct{ Before, After string }
+
+// PushRoundTrip edits and restores main.tf in one genuine push. Equal endpoint
+// trees cannot stand in for the paths touched by its newly reachable commits.
+func (n *Native) PushRoundTrip(ctx context.Context, parent, branch, marker string, credential GitCredentials) (NativeRange, error) {
+	var before string
+	after, err := n.push(ctx, parent, branch, credential, func(dir string, repo *git.Repository, work *git.Worktree) (plumbing.Hash, error) {
+		head, err := repo.Head()
+		if err != nil {
+			return plumbing.ZeroHash, ErrNative
+		}
+		before = head.Hash().String()
+		body, err := os.ReadFile(filepath.Join(dir, "main.tf"))
+		if err != nil {
+			return plumbing.ZeroHash, ErrNative
+		}
+		if _, err := commitNativeFile(dir, work, append(slices.Clone(body), []byte("\n# native-range-"+marker+"\n")...)); err != nil {
+			return plumbing.ZeroHash, err
+		}
+		return commitNativeFile(dir, work, body)
+	})
+	if err != nil {
+		return NativeRange{}, err
+	}
+	return NativeRange{Before: before, After: after}, nil
+}
+
+func (n *Native) push(
+	ctx context.Context,
+	parent, branch string,
+	credential GitCredentials,
+	edit func(string, *git.Repository, *git.Worktree) (plumbing.Hash, error),
+) (string, error) {
 	if credential.User == "" || credential.Token == "" || plumbing.NewBranchReferenceName(branch).Validate() != nil {
 		return "", ErrNative
 	}
@@ -88,13 +130,7 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 			return "", ErrNative
 		}
 	}
-	if err := os.WriteFile(filepath.Join(dir, "main.tf"), []byte("resource \"terraform_data\" \"lab\" {\n  input = \""+marker+"\"\n}\n"), 0o600); err != nil {
-		return "", ErrNative
-	}
-	if _, err := work.Add("main.tf"); err != nil {
-		return "", ErrNative
-	}
-	hash, err := work.Commit("VCS lab verification", &git.CommitOptions{Author: &object.Signature{Name: "infraweave lab", Email: "lab@example.com", When: time.Now().UTC()}})
+	hash, err := edit(dir, repo, work)
 	if err != nil {
 		return "", ErrNative
 	}
@@ -103,6 +139,20 @@ func (n *Native) Push(ctx context.Context, parent, branch, marker string, creden
 		return "", nativeGitFailure("push", err)
 	}
 	return hash.String(), nil
+}
+
+func commitNativeFile(dir string, work *git.Worktree, body []byte) (plumbing.Hash, error) {
+	if err := os.WriteFile(filepath.Join(dir, "main.tf"), body, 0o600); err != nil {
+		return plumbing.ZeroHash, ErrNative
+	}
+	if _, err := work.Add("main.tf"); err != nil {
+		return plumbing.ZeroHash, ErrNative
+	}
+	hash, err := work.Commit("VCS lab verification", &git.CommitOptions{Author: &object.Signature{Name: "infraweave lab", Email: "lab@example.com", When: time.Now().UTC()}})
+	if err != nil {
+		return plumbing.ZeroHash, ErrNative
+	}
+	return hash, nil
 }
 
 // Native Git failures may contain credentials, repository URLs and server text.

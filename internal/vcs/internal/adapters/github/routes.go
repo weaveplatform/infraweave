@@ -39,6 +39,7 @@ type Route struct {
 var Routes = []Route{
 	{http.MethodGet, "/repos/{owner}/{repo}/pulls/{request}", ReadOnly},
 	{http.MethodGet, "/repos/{owner}/{repo}/commits/{ref}/check-runs", ReadOnly},
+	{http.MethodGet, "/repos/{owner}/{repo}/check-runs/{check}", ReadOnly},
 	{http.MethodPost, "/repos/{owner}/{repo}/check-runs", CheckWrite},
 	{http.MethodPatch, "/repos/{owner}/{repo}/check-runs/{check}", CheckWrite},
 	{http.MethodGet, "/repos/{owner}/{repo}/issues/{issue}/comments", CommentWrite},

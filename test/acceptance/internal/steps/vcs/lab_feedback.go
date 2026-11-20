@@ -52,6 +52,7 @@ func (s *liveLabSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the live request has exactly one native plan comment for run "(\w+)"$`, s.planComment)
 	sc.Step(`^the live request keeps both runs "(\w+)" and "(\w+)" with its earlier GitHub plan minimized$`, s.previousComment)
 	sc.Step(`^an ordinary live pull request comment is stored and starts no run$`, s.ordinaryComment)
+	s.registerPolicies(sc)
 }
 
 func (s *liveLabSteps) before(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
@@ -133,6 +134,10 @@ func (s *liveLabSteps) setup(ctx context.Context, provider, comments string) err
 		return fmt.Errorf("%w: live integration has no signing material", harness.ErrStep)
 	}
 	s.integration, s.secret = integration.ID, crypt.NewValue([]byte(secret))
+	s.w.IDs["liveIntegration"] = integration.ID
+	s.w.IDs["liveProvider"] = kind
+	s.w.IDs["liveNamespace"] = l.Namespace
+	s.w.IDs["liveOther"] = l.Other
 	directory := os.Getenv("INFRAWEAVE_LAB_HOOK_JOURNALS")
 	if directory == "" {
 		return fmt.Errorf("%w: private lab hook journal is not configured", harness.ErrStep)
@@ -331,7 +336,7 @@ func (s *liveLabSteps) pendingCheck(ctx context.Context, run string) error {
 		}
 		current, found, err := lab.CurrentCheck(s.provider, items, s.public+"/api/v1/runs/"+s.w.IDs[run], s.stack)
 		if err != nil {
-			return false, fmt.Errorf("%w: duplicate or foreign native resource", deps.ErrPermanent)
+			return false, fmt.Errorf("%w: current native check: %w", deps.ErrPermanent, err)
 		}
 		if !found {
 			return false, nil
@@ -364,7 +369,7 @@ func (s *liveLabSteps) successCheck(ctx context.Context, run string) error {
 		}
 		current, found, err := lab.CurrentCheck(s.provider, items, s.public+"/api/v1/runs/"+s.w.IDs[run], s.stack)
 		if err != nil {
-			return false, fmt.Errorf("%w: duplicate or foreign native resource", deps.ErrPermanent)
+			return false, fmt.Errorf("%w: current native check: %w", deps.ErrPermanent, err)
 		}
 		if !found || !slices.Contains([]string{"success", "SUCCESSFUL", "succeeded"}, current.State) {
 			return false, nil
