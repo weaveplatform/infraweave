@@ -53,13 +53,18 @@ type Commit struct {
 // It must use the supplied context for its database work and make no external
 // calls. An error is returned unchanged through wrapping; no run is created.
 type CreateRequest struct {
-	Account      kernel.AccountID
-	Stack        kernel.ULID
-	Type         kernel.RunType
-	Commit       Commit
-	TriggeredBy  string
-	Mode         DedupMode
-	BeforeCreate func(context.Context) error
+	Account     kernel.AccountID
+	Stack       kernel.ULID
+	Type        kernel.RunType
+	Commit      Commit
+	TriggeredBy string
+	// PolicyLockCaller is a stack-policy owner key, never a human caller key.
+	// Ordinary internal triggers leave it empty.
+	PolicyLockCaller string
+	Priority         kernel.RunPriority
+	Receipts         []PolicyReceipt
+	Mode             DedupMode
+	BeforeCreate     func(context.Context) error
 }
 
 // CreatedRun identifies the new or existing run. Created is false only for a

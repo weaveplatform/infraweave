@@ -417,6 +417,8 @@ type NewRun struct {
 	Overrides      []Override
 	Task           *kernel.Task
 	Note           string
+	// Receipts seed this run's policy-owned flags before QUEUED consequences.
+	Receipts []policiesapi.Receipt
 	// AlwaysCreate is an operation's explicit request for a fresh run.
 	// RuntimeConfig alone does not imply it: retries can reuse an active run.
 	AlwaysCreate bool
@@ -514,6 +516,14 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	}
 	if err := l.d.Store.Insert(ctx, run, step); err != nil {
 		return Run{}, false, err //nolint:wrapcheck // the store names the write
+	}
+	if len(n.Receipts) != 0 {
+		if l.d.Evidence == nil {
+			return Run{}, false, fmt.Errorf("%w: initial policy evidence recorder", kernel.ErrUnavailable)
+		}
+		if err := l.d.Evidence.RecordPolicyEvidence(ctx, run.Account, run.ID, run.Version, n.Receipts); err != nil {
+			return Run{}, false, err //nolint:wrapcheck // the evidence recorder names the fenced write
+		}
 	}
 	if len(n.Overrides) > 0 {
 		if err := l.d.Store.SetOverrides(ctx, run, n.Overrides); err != nil {
