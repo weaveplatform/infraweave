@@ -204,7 +204,10 @@ in the same database, in the `flows` PostgreSQL schema that
 - **`tx.Do`.** `tx.Do(ctx, db, opts, fn)` in `internal/platform/tx` runs `fn`
   in a transaction at `READ COMMITTED` unless `opts` asks for `SERIALIZABLE`.
   A `tx.Do` inside another joins the outer transaction, which owns the commit
-  and the retries.
+  and the retries. Every exit after a successful begin defers rollback,
+  including a callback's panic or `runtime.Goexit`; pgx permits rollback after
+  commit. Cleanup outlives request cancellation, preserves panic and goroutine
+  exit behavior, and never runs after-commit hooks for an aborted callback.
 - **Retries.** A transaction that fails with SQLSTATE `40001`
   (serialization failure) or `40P01` (deadlock) is retried up to three times,
   with 10 to 100 ms of jittered delay. So `fn` must have no effect outside the

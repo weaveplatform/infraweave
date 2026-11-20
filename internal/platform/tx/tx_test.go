@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -135,6 +136,9 @@ FOR EACH ROW EXECUTE FUNCTION fail_commit()`); err != nil {
 				if got := rows(t, pool); len(got) != 0 {
 					t.Fatalf("failed transaction kept rows: %v", got)
 				}
+				if acquired := pool.Stat().AcquiredConns(); acquired != 0 {
+					t.Fatalf("failed transaction retained %d acquired connections", acquired)
+				}
 			})
 		}
 	}
@@ -241,6 +245,187 @@ func TestAccTxCancelledWhileWaiting(t *testing.T) {
 	}
 }
 
+type capturedBeginner struct {
+	tx.Beginner
+	transaction pgx.Tx
+}
+
+func (b *capturedBeginner) BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error) {
+	transaction, err := b.Beginner.BeginTx(ctx, opts)
+	b.transaction = transaction
+	return transaction, err
+}
+
+func TestAccTxGoexit(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		nested    bool
+		cancelled bool
+	}{
+		{name: "direct"},
+		{name: "nested", nested: true},
+		{name: "cancelled", cancelled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) { testGoexit(t, tc.nested, tc.cancelled) })
+	}
+}
+
+func testGoexit(t *testing.T, nested, cancelled bool) {
+	t.Helper()
+	dsn := sqltest.DSN(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, "CREATE TABLE t (k int PRIMARY KEY)"); err != nil {
+		t.Fatal(err)
+	}
+	db := &capturedBeginner{Beginner: pool}
+	done := make(chan struct{})
+	var callbackErr error
+	returned, after := false, false
+	go func() {
+		defer close(done)
+		abort := func(ctx context.Context) error {
+			if _, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (1)"); err != nil {
+				return err
+			}
+			tx.AfterCommit(ctx, func(context.Context) { after = true })
+			if cancelled {
+				cancel()
+			}
+			runtime.Goexit()
+			return nil
+		}
+		callbackErr = tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+			if nested {
+				return tx.Do(ctx, db, tx.Options{Serializable: true, NoRetry: true}, abort)
+			}
+			return abort(ctx)
+		})
+		returned = true
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("transaction goroutine did not exit before its deadline")
+	}
+	// A broken implementation must still release its real lease before pool
+	// cleanup, so the regression reports the leak instead of hanging teardown.
+	defer func() {
+		if db.transaction != nil {
+			cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+			defer stop()
+			if err := db.transaction.Rollback(cleanup); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+				t.Errorf("baseline transaction cleanup: %v", err)
+			}
+		}
+	}()
+	if callbackErr != nil || returned || after {
+		t.Fatalf("Goexit returned=%v error=%v after-commit=%v", returned, callbackErr, after)
+	}
+	if acquired := pool.Stat().AcquiredConns(); acquired != 0 {
+		t.Fatalf("Goexit retained %d acquired PostgreSQL connections, want zero", acquired)
+	}
+	if got := rows(t, pool); len(got) != 0 {
+		t.Fatalf("Goexit kept uncommitted rows: %v", got)
+	}
+	if err := tx.Do(t.Context(), pool, tx.Options{}, func(ctx context.Context) error {
+		_, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (2)")
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := rows(t, pool); len(got) != 1 || got[0] != 2 {
+		t.Fatalf("subsequent transaction rows=%v, want [2]", got)
+	}
+}
+
+func TestAccTxCleanupOutcomes(t *testing.T) {
+	for _, outcome := range []string{"commit", "callback error", "panic", "cancelled commit"} {
+		t.Run(outcome, func(t *testing.T) {
+			pool := setup(t)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			marker := errors.New("original callback failure")
+			panicMarker := &struct{ message string }{message: "original panic"}
+			after := 0
+			var err error
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				err = tx.Do(ctx, pool, tx.Options{}, func(ctx context.Context) error {
+					if _, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (1)"); err != nil {
+						return err
+					}
+					tx.AfterCommit(ctx, func(context.Context) { after++ })
+					switch outcome {
+					case "callback error":
+						return marker
+					case "panic":
+						panic(panicMarker)
+					case "cancelled commit":
+						cancel()
+					}
+					return nil
+				})
+			}()
+			wantRows, wantAfter := 0, 0
+			switch outcome {
+			case "commit":
+				wantRows, wantAfter = 1, 1
+				if err != nil {
+					t.Errorf("commit: %v", err)
+				}
+			case "callback error":
+				if !errors.Is(err, marker) {
+					t.Errorf("callback error=%v, want original marker", err)
+				}
+			case "panic":
+				if recovered != panicMarker {
+					t.Errorf("panic=%v, want original marker", recovered)
+				}
+			case "cancelled commit":
+				if !errors.Is(err, context.Canceled) {
+					t.Errorf("cancelled commit=%v, want cancellation", err)
+				}
+			}
+			if outcome != "panic" && recovered != nil {
+				t.Errorf("unexpected panic: %v", recovered)
+			}
+			assertReleased(t, pool)
+			if got := rows(t, pool); len(got) != wantRows || after != wantAfter {
+				t.Errorf("%s rows=%v after=%d, want %d rows and %d hooks", outcome, got, after, wantRows, wantAfter)
+			}
+		})
+	}
+}
+
+func assertReleased(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	tick := time.NewTicker(time.Millisecond)
+	defer tick.Stop()
+	// A cancelled COMMIT can destroy its connection. pgxpool's asynchronous
+	// destruction must finish before its acquired-connection count falls.
+	for pool.Stat().AcquiredConns() != 0 {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("transaction cleanup retained %d acquired connections", pool.Stat().AcquiredConns())
+		case <-tick.C:
+		}
+	}
+}
+
 type failingBeginner struct{ err error }
 
 func (f failingBeginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
@@ -252,6 +437,7 @@ type noQuerier struct{ tx.Querier }
 type observedTx struct {
 	pgx.Tx
 	commitError        error
+	rollbackContextErr error
 	commits, rollbacks int
 }
 
@@ -260,8 +446,9 @@ func (o *observedTx) Commit(context.Context) error {
 	return o.commitError
 }
 
-func (o *observedTx) Rollback(context.Context) error {
+func (o *observedTx) Rollback(ctx context.Context) error {
 	o.rollbacks++
+	o.rollbackContextErr = ctx.Err()
 	return nil
 }
 
@@ -306,10 +493,72 @@ func TestUnitTxNoRetry(t *testing.T) {
 			} else if !errors.Is(err, conflict) || after != 0 {
 				t.Fatalf("failed transaction: error=%v after=%d", err, after)
 			}
-			if stage == "callback" && db.transactions[0].rollbacks != 1 {
-				t.Fatalf("callback error rolled back %d times", db.transactions[0].rollbacks)
+			if db.transactions[0].rollbacks != 1 {
+				t.Fatalf("%s cleanup rolled back %d times", stage, db.transactions[0].rollbacks)
 			}
 		})
+	}
+}
+
+func TestUnitTxGoexit(t *testing.T) {
+	db := &observedBeginner{}
+	done := make(chan struct{})
+	returned, after := false, false
+	go func() {
+		defer close(done)
+		_ = tx.Do(t.Context(), db, tx.Options{}, func(ctx context.Context) error {
+			tx.AfterCommit(ctx, func(context.Context) { after = true })
+			runtime.Goexit()
+			return nil
+		})
+		returned = true
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("transaction goroutine did not exit")
+	}
+	if len(db.transactions) != 1 || returned || after {
+		t.Fatalf("Goexit transactions=%d returned=%v after-commit=%v", len(db.transactions), returned, after)
+	}
+	if got := db.transactions[0]; got.commits != 0 || got.rollbacks != 1 {
+		t.Fatalf("Goexit commits=%d rollbacks=%d, want zero and one", got.commits, got.rollbacks)
+	}
+}
+
+func TestUnitTxCancelledCleanup(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	db := &observedBeginner{}
+	err := tx.Do(ctx, db, tx.Options{}, func(context.Context) error {
+		cancel()
+		return context.Canceled
+	})
+	if !errors.Is(err, context.Canceled) || len(db.transactions) != 1 {
+		t.Fatalf("cancelled transaction: error=%v transactions=%d", err, len(db.transactions))
+	}
+	got := db.transactions[0]
+	if got.commits != 0 || got.rollbacks != 1 || got.rollbackContextErr != nil {
+		t.Fatalf("cancelled cleanup: commits=%d rollbacks=%d context=%v", got.commits, got.rollbacks, got.rollbackContextErr)
+	}
+}
+
+func TestUnitTxCommitRetriesCleanEveryAttempt(t *testing.T) {
+	tx.SetBackoff(t, time.Millisecond)
+	conflict := &pgconn.PgError{Code: "40001"}
+	db := &observedBeginner{commitError: conflict}
+	after := 0
+	err := tx.Do(t.Context(), db, tx.Options{}, func(ctx context.Context) error {
+		tx.AfterCommit(ctx, func(context.Context) { after++ })
+		return nil
+	})
+	if !errors.Is(err, conflict) || after != 0 || len(db.transactions) != tx.MaxRetries+1 {
+		t.Fatalf("commit retries: error=%v after=%d attempts=%d", err, after, len(db.transactions))
+	}
+	for i, got := range db.transactions {
+		if got.commits != 1 || got.rollbacks != 1 {
+			t.Errorf("attempt %d: commits=%d rollbacks=%d", i, got.commits, got.rollbacks)
+		}
 	}
 }
 
