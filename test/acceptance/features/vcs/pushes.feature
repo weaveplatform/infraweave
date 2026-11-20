@@ -93,7 +93,7 @@ Feature: Default VCS push runs
       | vendor |
       | opentofu |
 
-  Scenario Outline: A new branch uses its default merge base, and a force push compares the full before tree
+  Scenario Outline: A new branch uses its default merge base, and a force push retains changes from endpoints and new commits
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","workerPool":"{pool}","projectRoot":"root","vendorConfig":{"<vendor>":{}}},"manageState":true}' through B
     And it answers 201
     And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
@@ -121,8 +121,11 @@ Feature: Default VCS push runs
       | root/main.tf | resource "terraform_data" "this" {\n  input = "default-advanced"\n}\n |
     And GitLab pushes "unchangedTrees" for integration "integration" from "advanced" to "same" on "same-tree" through A
     Then it answers 202
-    And GitLab push "unchangedTrees" for integration "integration" settles with 0 runs and 1 stack jobs
-    And stack "infra" has exactly 0 event runs for commit "same"
+    And GitLab push "unchangedTrees" for integration "integration" settles with 1 runs and 1 stack jobs
+    And stack "infra" has exactly 1 event runs for commit "same"
+    And the "PROPOSED" event run on stack "infra" for commit "same" is kept as "equalTreeRun"
+    And token "h" eventually reads the run "equalTreeRun" in the state "FINISHED" through B
+    And the event run "equalTreeRun" has a real tool plan through A
 
     @terraform
     Examples:
