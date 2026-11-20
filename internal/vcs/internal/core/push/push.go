@@ -105,6 +105,11 @@ type CapReporter interface {
 	Capped(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID, string, kernel.RunType, int) error
 }
 
+// PolicyReporter commits no-run provider checks through the durable effect path.
+type PolicyReporter interface {
+	ReportPush(context.Context, port.PushFeedback) error
+}
+
 // Lifecycle commits provider identity changes before selecting fan-out targets.
 type Lifecycle interface {
 	FanoutRepository(context.Context, kernel.AccountID, kernel.ULID, time.Time, vcsapi.Repository) (vcsapi.Repository, bool, error)
@@ -129,6 +134,7 @@ type Deps struct {
 	Jobs                intake.Jobs
 	Limits              *Limits
 	Checks              CapReporter
+	PolicyChecks        PolicyReporter
 	Ignored             IgnoredRecorder
 	Policies            policyapi.Evaluator
 	PolicyInputs        policyapi.PushInputBuilder

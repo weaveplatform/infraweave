@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -201,7 +202,7 @@ func validCheckBinding(b CheckBinding) bool {
 		(b.Type == kernel.RunTypeTracked || b.Type == kernel.RunTypeProposed) &&
 		!b.CreatedAt.IsZero() &&
 		(b.Policy.Mode == "INDIVIDUAL" || b.Policy.Mode == "AGGREGATED" || b.Policy.Mode == "ALL") &&
-		(b.Cap && b.Run.IsZero() && b.Limit > 0 || !b.Cap && !b.Run.IsZero() && b.Key == checkBindingKey(b.Run))
+		(b.Cap && b.Push == nil && b.Run.IsZero() && b.Limit > 0 || !b.Cap && b.Push != nil && b.Run.IsZero() && strings.HasPrefix(b.Key, "push:") || !b.noRun() && !b.Run.IsZero() && b.Key == checkBindingKey(b.Run))
 }
 
 func validCheckRequest(r CheckRequest) bool {
@@ -254,7 +255,7 @@ func (s *Service) enqueueCheck(ctx context.Context, target vcsapi.FeedbackTarget
 	}
 	if !request.Aggregate {
 		owner := binding.Run
-		if binding.Cap {
+		if binding.noRun() {
 			owner = binding.Stack
 		}
 		if err := s.checks.Store.ReserveCheck(

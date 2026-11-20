@@ -211,7 +211,7 @@ func TestAccCheckMalformedDurableBindingRequiresRepair(t *testing.T) {
 				t.Fatal("durable corruption was treated as missing", err)
 			}
 			if mode == "cap" {
-				caps, err := w.f.store.CapChecks(t.Context(), w.b, w.b.Type)
+				caps, err := w.f.store.NoRunChecks(t.Context(), w.b, w.b.Type)
 				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); !ok || len(caps) != 0 {
 					t.Fatal("malformed cap returned partial facts", caps, err)
 				}

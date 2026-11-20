@@ -166,12 +166,12 @@ func TestAccCommitCheckCapFactsSurviveRepositoryRename(t *testing.T) {
 	}
 	b := w.b
 	b.RepositoryID, b.Namespace, b.Repository = native.ID, "new-owner", "renamed"
-	caps, err := w.f.store.CapChecks(ctx, b, b.Type)
+	caps, err := w.f.store.NoRunChecks(ctx, b, b.Type)
 	if err != nil || len(caps) != 1 || caps[0].Limit != 2 || caps[0].RepositoryID != native.ID {
 		t.Fatal("renamed aggregate lost its original cap outcome", caps, err)
 	}
 	b.RepositoryID = "other-repository"
-	if caps, err := w.f.store.CapChecks(ctx, b, b.Type); err != nil || len(caps) != 0 {
+	if caps, err := w.f.store.NoRunChecks(ctx, b, b.Type); err != nil || len(caps) != 0 {
 		t.Fatal("cap facts followed a reused path instead of native identity", caps, err)
 	}
 }

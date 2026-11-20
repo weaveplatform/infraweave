@@ -202,6 +202,9 @@ func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.S
 		return decision, err
 	}
 	if decision.Outcome != Track && decision.Outcome != Propose {
+		if err := s.policyFeedback(ctx, input, stack, event, integration, evaluation); err != nil {
+			return decision, err
+		}
 		return decision, nil
 	}
 	if s.d.Creator == nil || s.d.Limits == nil {

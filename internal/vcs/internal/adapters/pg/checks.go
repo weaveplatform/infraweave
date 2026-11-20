@@ -39,10 +39,10 @@ func (s *Store) BindCheck(ctx context.Context, b feedback.CheckBinding) (feedbac
 	}
 	var kept feedback.CheckBinding
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `WITH owner AS (SELECT id FROM vcs_integrations WHERE account_id=$1 AND id=$5 FOR KEY SHARE)
-        INSERT INTO vcs_check_bindings(account_id,binding_key,run_id,stack_id,integration_id,namespace,repository,commit_hash,run_type,is_cap,binding)
-		SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11 FROM owner
-		ON CONFLICT(account_id,binding_key) DO UPDATE SET binding=CASE WHEN vcs_check_bindings.is_cap AND (vcs_check_bindings.binding->>'createdAt')::timestamptz <= (EXCLUDED.binding->>'createdAt')::timestamptz THEN EXCLUDED.binding ELSE vcs_check_bindings.binding END
-		RETURNING binding`, b.Account, b.Key, b.Run, b.Stack, b.Integration, b.Namespace, b.Repository, b.Commit, b.Type, b.Cap, b).Scan(&kept)
+        INSERT INTO vcs_check_bindings(account_id,binding_key,run_id,stack_id,integration_id,namespace,repository,commit_hash,run_type,is_cap,is_policy,binding)
+		SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12 FROM owner
+		ON CONFLICT(account_id,binding_key) DO UPDATE SET binding=CASE WHEN (vcs_check_bindings.is_cap OR vcs_check_bindings.is_policy) AND (vcs_check_bindings.binding->>'createdAt')::timestamptz <= (EXCLUDED.binding->>'createdAt')::timestamptz THEN EXCLUDED.binding ELSE vcs_check_bindings.binding END
+		RETURNING binding`, b.Account, b.Key, b.Run, b.Stack, b.Integration, b.Namespace, b.Repository, b.Commit, b.Type, b.Cap, b.Push != nil, b).Scan(&kept)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return b, feedback.ErrNoCheck
 	}
@@ -166,9 +166,9 @@ func (s *Store) ResolveCheckRepository(ctx context.Context, b feedback.CheckBind
 	return b, nil
 }
 
-func (s *Store) CapChecks(ctx context.Context, b feedback.CheckBinding, kind kernel.RunType) ([]feedback.CheckBinding, error) {
-	query := `SELECT binding FROM vcs_check_bindings WHERE account_id=$1 AND integration_id=$2
-		AND commit_hash=$3 AND run_type=$4 AND is_cap AND `
+func (s *Store) NoRunChecks(ctx context.Context, b feedback.CheckBinding, kind kernel.RunType) ([]feedback.CheckBinding, error) {
+	query := `SELECT DISTINCT ON (stack_id) binding FROM vcs_check_bindings WHERE account_id=$1 AND integration_id=$2
+		AND commit_hash=$3 AND run_type=$4 AND (is_cap OR is_policy) AND `
 	args := []any{b.Account, b.Integration, b.Commit, kind}
 	if b.RepositoryID != "" {
 		query += `binding->>'repositoryId'=$5`
@@ -177,9 +177,9 @@ func (s *Store) CapChecks(ctx context.Context, b feedback.CheckBinding, kind ker
 		query += `namespace=$5 AND repository=$6`
 		args = append(args, b.Namespace, b.Repository)
 	}
-	rows, err := tx.Q(ctx, s.db).Query(ctx, query+` ORDER BY binding_key`, args...)
+	rows, err := tx.Q(ctx, s.db).Query(ctx, query+` ORDER BY stack_id,(binding->>'createdAt')::timestamptz DESC,binding_key DESC`, args...)
 	if err != nil {
-		return nil, fmt.Errorf("vcs: read capped commit checks: %w", sql.Unavailable(err))
+		return nil, fmt.Errorf("vcs: read no-run commit checks: %w", sql.Unavailable(err))
 	}
 	bindings, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (feedback.CheckBinding, error) {
 		var b feedback.CheckBinding
@@ -187,7 +187,7 @@ func (s *Store) CapChecks(ctx context.Context, b feedback.CheckBinding, kind ker
 		return b, err //nolint:wrapcheck // the collector boundary names row decoding
 	})
 	if err != nil {
-		return nil, fmt.Errorf("vcs: read capped check row: %w", sql.Unavailable(err))
+		return nil, fmt.Errorf("vcs: read no-run check row: %w", sql.Unavailable(err))
 	}
 	return bindings, nil
 }

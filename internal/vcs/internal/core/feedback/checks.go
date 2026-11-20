@@ -44,7 +44,17 @@ type CheckBinding struct {
 	CreatedAt    time.Time        `json:"createdAt"`
 	Cap          bool             `json:"cap"`
 	Limit        int              `json:"limit,omitempty"`
+	Push         *PushCheck       `json:"push,omitempty"`
 }
+
+// PushCheck retains only the bounded public content of an ignored decision.
+type PushCheck struct {
+	Failed   bool   `json:"failed"`
+	Message  string `json:"message"`
+	Policies string `json:"policies"`
+}
+
+func (b CheckBinding) noRun() bool { return b.Cap || b.Push != nil }
 
 // CheckRequest carries only a binding and the transition that requested a
 // refresh. A worker reads current run facts; it never presents today's delta
@@ -81,7 +91,7 @@ type CheckStore interface {
 	HoldCheck(context.Context, CheckResource) (CheckResource, error)
 	ReportedCheck(context.Context, CheckResource) error
 	ResolveCheckRepository(context.Context, CheckBinding) (CheckBinding, error)
-	CapChecks(context.Context, CheckBinding, kernel.RunType) ([]CheckBinding, error)
+	NoRunChecks(context.Context, CheckBinding, kernel.RunType) ([]CheckBinding, error)
 	CheckPullRequests(context.Context, CheckBinding) ([]int, error)
 	DeleteStackChecks(context.Context, kernel.AccountID, kernel.ULID) error
 	PurgeChecks(context.Context, kernel.AccountID, int) (bool, error)

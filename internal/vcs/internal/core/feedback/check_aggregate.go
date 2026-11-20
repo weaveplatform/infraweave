@@ -55,13 +55,18 @@ func (s *Service) aggregateFacts(ctx context.Context, b CheckBinding) (aggregate
 		}
 	}
 	for _, kind := range []kernel.RunType{kernel.RunTypeTracked, kernel.RunTypeProposed} {
-		caps, err := s.checks.Store.CapChecks(ctx, b, kind)
+		caps, err := s.checks.Store.NoRunChecks(ctx, b, kind)
 		if err != nil {
 			return out, fmt.Errorf("VCS aggregate cap facts: %w", err)
 		}
 		for _, cap := range caps {
-			if !slices.Contains(ids, cap.Stack) || slices.ContainsFunc(out.runs, func(r runsapi.CheckRun) bool { return r.Stack == cap.Stack && r.Type == cap.Type }) {
+			if !slices.Contains(ids, cap.Stack) || slices.ContainsFunc(out.runs, func(r runsapi.CheckRun) bool {
+				return r.Stack == cap.Stack && r.Type == cap.Type && (cap.Push == nil || !r.CreatedAt.Before(cap.CreatedAt))
+			}) {
 				continue
+			}
+			if cap.Push != nil {
+				out.runs = slices.DeleteFunc(out.runs, func(r runsapi.CheckRun) bool { return r.Stack == cap.Stack && r.Type == cap.Type })
 			}
 			out.caps = append(out.caps, cap)
 			candidate := checkOwner{ID: cap.Stack, CreatedAt: cap.CreatedAt}
@@ -139,7 +144,12 @@ func aggregateConcluded(f aggregateFacts, kind kernel.RunType) bool {
 }
 
 func aggregateState(runs []runsapi.CheckRun, caps []CheckBinding) port.CheckState {
-	queued, active, failed := true, false, len(caps) > 0
+	queued, active, failed := true, false, false
+	for _, b := range caps {
+		if b.Cap || b.Push != nil && b.Push.Failed {
+			failed = true
+		}
+	}
 	for _, run := range runs {
 		state, ok := checkState(run.State, run.Delta)
 		if !ok {
@@ -164,6 +174,9 @@ func aggregateState(runs []runsapi.CheckRun, caps []CheckBinding) port.CheckStat
 	if failed {
 		return port.CheckFailure
 	}
+	if len(runs) == 0 {
+		return port.CheckSkipped
+	}
 	return port.CheckSuccess
 }
 
@@ -178,6 +191,11 @@ func aggregateSummary(runs []runsapi.CheckRun, caps []CheckBinding, slugs map[ke
 	}
 	slices.SortFunc(caps, func(a, b CheckBinding) int { return strings.Compare(a.Slug, b.Slug) })
 	for _, cap := range caps {
+		if cap.Push != nil {
+			state, _, summary := pushCheckContent(cap.Push)
+			fmt.Fprintf(&out, "%s: %s; %s\n", cap.Slug, state, summary)
+			continue
+		}
 		fmt.Fprintf(&out, "%s: failed; event reached the limit of %d runs.\n", cap.Slug, cap.Limit)
 	}
 	return out.String()

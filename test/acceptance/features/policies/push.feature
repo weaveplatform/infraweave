@@ -105,3 +105,17 @@ Feature: Git push policy workflow
     When GitLab pushes "overridePush" for integration "integration" from "seed" to "disabled" on "main" through B
     Then it answers 202
     And GitLab push "overridePush" for integration "integration" settles with 1 runs and 1 stack jobs
+
+  Scenario: A failed no-trigger decision commits a durable native check without creating a run
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Required event check","type":"GIT_PUSH","body":"package infraweave\nfail := true\nmessage contains \"event requires a release tag\"\n"}' through A
+    And it answers 201
+    And the answer's id names "policy"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{policy}" through B
+    And it answers 200
+    When the GitLab project "acme/platform/infra" commits files on "main" as "ignored":
+      | root/main.tf | resource "terraform_data" "this" { input = "required-check" } |
+    And GitLab pushes "ignoredPush" for integration "integration" from "seed" to "ignored" on "main" through A
+    Then it answers 202
+    And GitLab push "ignoredPush" for integration "integration" settles with 0 runs and 1 stack jobs
+    And the ignored commit "ignored" has a durable policy check
+    And the GitLab commit "ignored" has check "infraweave/infra/tracked" in state "failed" with message "event requires a release tag"

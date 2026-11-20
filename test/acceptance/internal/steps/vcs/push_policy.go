@@ -1,13 +1,16 @@
 package vcs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func (s *pushSteps) pushReceipt(policy string) error {
@@ -26,6 +29,41 @@ func (s *pushSteps) pushReceipt(policy string) error {
 		return fmt.Errorf("%w: initial public push receipt lost policy/version/outcome/flags", harness.ErrStep)
 	}
 	return nil
+}
+
+func (s *pushSteps) policyCheckJob(ctx context.Context, commit string) error {
+	db, err := s.w.Querier(ctx)
+	if err != nil {
+		return err
+	}
+	sha, err := s.commitHash(commit)
+	if err != nil {
+		return err
+	}
+	raw, err := db.Query(ctx, `SELECT count(*) FROM jobs WHERE kind='vcs.report_check' AND payload#>>'{binding,commit}'=`+harness.Literal(sha))
+	if err != nil {
+		return err
+	}
+	count, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || count < 1 {
+		return fmt.Errorf("%w: ignored policy decision left no durable provider check job", harness.ErrStep)
+	}
+	return nil
+}
+
+func (s *pushSteps) policyNativeCheck(ctx context.Context, commit, name, state, message string) error {
+	sha, err := s.commitHash(commit)
+	if err != nil {
+		return err
+	}
+	return deps.Eventually(ctx, "native ignored policy check", func(context.Context) (bool, error) {
+		for _, check := range s.gitlab.fake.Checks("acme/platform", "infra") {
+			if check.SHA == sha && check.Name == name && check.Status == state && strings.Contains(check.Description, message) {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
 }
 
 func (s *pushSteps) policyVersion(policy string) error {

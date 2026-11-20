@@ -265,7 +265,7 @@ func New(d Deps) (*Domain, error) {
 		Lifecycle: identities,
 		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
 		Integrations: integrations, Sources: sources, Actions: sources, Effects: pg.New(d.DB, d.Keys), ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
-		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
+		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, PolicyChecks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
 		Policies: d.Policies, PolicyInputs: d.PolicyInputs, PolicyStacks: d.PolicyStacks, PolicySpaces: d.PolicySpaces,
 		PolicyLocks: d.PolicyLocks,
 		PolicyPools: d.PolicyPools, PolicyRoles: d.PolicyRoles, PolicyContexts: d.PolicyContexts,

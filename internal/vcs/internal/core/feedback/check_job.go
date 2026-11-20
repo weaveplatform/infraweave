@@ -86,7 +86,7 @@ func (s *Service) checkHeld(ctx context.Context, job queue.Job, request CheckReq
 	individual := !request.Aggregate
 	if individual {
 		owner := b.Run
-		if b.Cap {
+		if b.noRun() {
 			owner = b.Stack
 		}
 		if resource.Owner != owner || !resource.Epoch.Equal(b.CreatedAt) || resource.Aggregate {
