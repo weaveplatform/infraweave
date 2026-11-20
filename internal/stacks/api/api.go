@@ -27,6 +27,21 @@ type Stack struct {
 	Space   kernel.ULID
 }
 
+// AttachedPolicy is the readable policy projection of an effective attachment.
+// ID names the attachment; Policy names the independent immutable policy.
+type AttachedPolicy struct {
+	ID, Policy       kernel.ULID
+	Name, Body, Type string
+	Labels           []string
+	Autoattached     bool
+}
+
+// StackPolicies is the policies reader bound after stacks construction. The
+// caller's principal confines policy projections to readable source spaces.
+type StackPolicies interface {
+	AttachedPolicies(context.Context, kernel.Principal, []kernel.ULID) (map[kernel.ULID][]AttachedPolicy, error)
+}
+
 // The hook phases, in the order a run reaches them. Each holds the
 // commands a stack runs there, in order.
 const (

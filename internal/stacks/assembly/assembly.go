@@ -131,6 +131,9 @@ func (d *Domain) BindConfiguration(c stacksapi.StackConfiguration) {
 	d.api.BindConfiguration(c)
 }
 
+// BindPolicies binds readable policy attachments after policies construction.
+func (d *Domain) BindPolicies(p stacksapi.StackPolicies) { d.api.BindPolicies(p) }
+
 // SetStackStatus binds the runs domain's reader of the run blocking each
 // stack, a back edge internal/app binds after it constructs that domain;
 // until then no run blocks a stack.

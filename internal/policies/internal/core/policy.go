@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // Policy is one account's policy. Identity and creation time survive updates;
@@ -51,6 +52,11 @@ type Store interface {
 	Update(context.Context, Policy) error
 	Delete(context.Context, kernel.AccountID, kernel.ULID) error
 	AttachmentCount(context.Context, kernel.AccountID, kernel.ULID) (int, error)
+	Attach(context.Context, Attachment) (Attachment, error)
+	Attachment(context.Context, kernel.AccountID, kernel.ULID) (Attachment, error)
+	Detach(context.Context, kernel.AccountID, kernel.ULID) error
+	Attachments(context.Context, kernel.AccountID, []kernel.ULID, bool) (map[kernel.ULID][]Attachment, error)
+	ByIDs(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]Policy, error)
 	Search(context.Context, kernel.AccountID, search.Input, Scope) (search.Result[Policy], error)
 	Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, Scope) (search.Suggestions, error)
 	InSpace(context.Context, kernel.AccountID, kernel.ULID) (bool, error)
@@ -67,6 +73,7 @@ type Deps struct {
 	Authz   accessapi.Authorizer
 	Runtime *rego.Engine
 	Events  Events
+	Stacks  stacksapi.Stacks
 	Now     func() time.Time
 }
 

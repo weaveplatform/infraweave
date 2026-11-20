@@ -157,11 +157,11 @@ func updateInput(in api.PolicyUpdateInput) core.Input {
 }
 
 func (s Server) view(ctx context.Context, p kernel.Principal, row core.Policy) (api.Policy, error) {
-	names, err := s.spaces.Slugs(ctx, p.AccountID)
+	all, err := s.views(ctx, p, row)
 	if err != nil {
-		return api.Policy{}, fmt.Errorf("policies: name spaces: %w", err)
+		return api.Policy{}, err
 	}
-	return policyView(row, names), nil
+	return all[0], nil
 }
 
 func policyView(row core.Policy, names map[kernel.ULID]string) api.Policy {

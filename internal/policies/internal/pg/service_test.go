@@ -65,11 +65,12 @@ func TestAccAttachedPolicyDeletion(t *testing.T) {
 	acct := f.principal.AccountID
 	if _, err := f.db.Exec(
 		t.Context(),
-		`INSERT INTO policy_stack_attachments (account_id,policy_id,stack_id,created_at) VALUES ($1,$2,$3,$4)`,
+		`INSERT INTO policy_stack_attachments (account_id,id,policy_id,stack_id,created_at) VALUES ($1,$5,$2,$3,$4)`,
 		acct,
 		p.ID,
 		kernel.NewULID(),
 		f.now,
+		kernel.NewULID(),
 	); err != nil {
 		t.Fatal(err)
 	}

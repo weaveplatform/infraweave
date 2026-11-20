@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/http"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/pg"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
 // ContractPattern is the policy schema route on the API listener.
@@ -36,6 +37,7 @@ type Deps struct {
 	Authz   accessapi.Authorizer
 	Runtime *rego.Engine
 	Events  *outbox.Outbox
+	Stacks  stacksapi.Stacks
 	Now     func() time.Time
 }
 
@@ -54,7 +56,7 @@ func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc }
 // New constructs policy management over its owned store and domain ports.
 func New(d Deps) *Domain {
 	store := pg.New(d.DB)
-	svc := core.New(core.Deps{Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Runtime: d.Runtime, Events: d.Events, Now: d.Now})
+	svc := core.New(core.Deps{Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Runtime: d.Runtime, Events: d.Events, Stacks: d.Stacks, Now: d.Now})
 	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store}
 }
 
@@ -78,6 +80,15 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 
 // SpaceOf resolves a policy subject using both its account and immutable ID.
 func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.svc.SpaceOf }
+
+// AttachmentEntity resolves subjects by attachment ID rather than policy ID.
+const AttachmentEntity = "policy_attachment"
+
+// AttachmentSpaceOf resolves the owning stack's space for attachment mutations.
+func (d *Domain) AttachmentSpaceOf() accessapi.SpaceOf { return d.svc.AttachmentSpaceOf }
+
+// StackPolicies is the readable projection port bound by app after construction.
+func (d *Domain) StackPolicies() stacksapi.StackPolicies { return d.svc }
 
 // Routes registers the domain's routes. A nil domain serves none, for tests
 // which construct only the domains their request reaches.

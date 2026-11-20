@@ -153,8 +153,12 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	if err != nil {
 		return Domains{}, fmt.Errorf("construct policy runtime: %w", err)
 	}
-	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime, Events: events})
+	policies := policiesassembly.New(
+		policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime, Events: events, Stacks: stacks.Stacks()},
+	)
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
+	access.ResolveSubjects(policiesassembly.AttachmentEntity, policies.AttachmentSpaceOf())
+	stacks.BindPolicies(policies.StackPolicies())
 	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:              db.Primary(),

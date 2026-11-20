@@ -14,6 +14,10 @@ import (
 // exists, and no stack is rolled back.
 type unbound struct{}
 
+func (unbound) AttachedPolicies(context.Context, kernel.Principal, []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedPolicy, error) {
+	return map[kernel.ULID][]stacksapi.AttachedPolicy{}, nil
+}
+
 func (unbound) PullRequests(context.Context, kernel.AccountID, []stacksapi.Settings) (map[kernel.ULID][]stacksapi.PullRequest, error) {
 	return map[kernel.ULID][]stacksapi.PullRequest{}, nil
 }
@@ -49,10 +53,27 @@ func (unbound) RuntimeConfig(context.Context, kernel.AccountID, []kernel.ULID) (
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
+	policies  stacksapi.StackPolicies
 	requests  stacksapi.PullRequestReader
 	config    stacksapi.StackConfiguration
 	status    stacksapi.StackStatus
 	rollbacks stacksapi.StateRollbacks
+}
+
+// BindPolicies binds the policy projections without a stacks-to-policies import.
+func (s Server) BindPolicies(p stacksapi.StackPolicies) { s.edges.policies = p }
+
+func policyView(p stacksapi.AttachedPolicy) api.StackPolicyAttachment {
+	return api.StackPolicyAttachment{
+		Id:                p.ID.String(),
+		PolicyId:          p.Policy.String(),
+		PolicyName:        p.Name,
+		PolicyBody:        p.Body,
+		PolicyLabels:      orEmpty(p.Labels),
+		PolicyType:        api.PolicyType(p.Type),
+		IsAutoattached:    p.Autoattached,
+		EvaluationRecords: []api.PolicyEvaluationRecord{},
+	}
 }
 
 // BindPullRequests binds the request history read after VCS construction.

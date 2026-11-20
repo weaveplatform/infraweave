@@ -101,8 +101,8 @@ func TestAccPurges(t *testing.T) {
 		}{
 			{`INSERT INTO policies (account_id,id,space_id,name,body,type,engine_type,created_at,updated_at)
 				VALUES ($1,$2,$3,'Guard','package infraweave','PLAN','REGO_V1',now(),now())`, []any{policy, x.acct.ULID}},
-			{`INSERT INTO policy_stack_attachments (account_id,policy_id,stack_id,created_at)
-				VALUES ($1,$2,$3,now())`, []any{policy, stack}},
+			{`INSERT INTO policy_stack_attachments (account_id,id,policy_id,stack_id,created_at)
+				VALUES ($1,$4,$2,$3,now())`, []any{policy, stack, kernel.NewULID()}},
 			{`INSERT INTO contexts (account_id, id, slug, space_id, name)
 				VALUES ($1, $2, 'shared', $3, 'Shared')`, []any{shared, kernel.NewULID()}},
 			{
