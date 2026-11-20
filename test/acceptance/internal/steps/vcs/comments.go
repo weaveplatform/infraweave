@@ -36,6 +36,7 @@ type commentSteps struct {
 	clock               time.Time
 	created             map[int]time.Time
 	appID, installation int64
+	lastDelivery        string
 }
 
 func (c *commentSteps) register(sc *godog.ScenarioContext) {
@@ -179,6 +180,7 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 	}
 	c.clock = c.clock.Add(time.Second)
 	deliveryID := kernel.NewULID().UUID()
+	c.lastDelivery = deliveryID
 	branch := "feature"
 	if action == "move" {
 		branch = "other"
@@ -225,6 +227,13 @@ func (c *commentSteps) sendRequest(ctx context.Context, id int, action, commit, 
 		request["head"] = map[string]any{"ref": branch, "sha": c.w.IDs[commit], "repo": body["repository"]}
 		request["base"] = map[string]any{"ref": "target-" + strconv.Itoa(id), "sha": c.w.IDs["commentBase"], "repo": body["repository"]}
 		request["html_url"] = fmt.Sprintf("https://github.example.com/acme/infra/pull/%d", id)
+		native, nativeErr := json.Marshal(request)
+		if nativeErr != nil {
+			return fmt.Errorf("native GitHub request encode: %w", nativeErr)
+		}
+		if err := c.github.fake.SetPullRequest(c.fixture.namespace, "infra", id, native); err != nil {
+			return fmt.Errorf("native GitHub request fixture: %w", err)
+		}
 		encoded, encodeErr := json.Marshal(body)
 		if encodeErr != nil {
 			return fmt.Errorf("comment request encode: %w", encodeErr)

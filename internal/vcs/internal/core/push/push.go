@@ -25,11 +25,12 @@ var Evaluate = queue.Kind{Name: "vcs.evaluate_event", Queue: queue.VCSInbox, Pol
 // Prepared keeps one event's full diff outside queue payloads. Commit belongs to
 // the immutable head SHA; Branch is the ref that supplied that head.
 type Prepared struct {
-	Event               vcsapi.Event      `json:"event"`
-	Commit              stacksapi.Commit  `json:"commit"`
-	Files               []string          `json:"files"`
-	Action              *port.ActionFacts `json:"action,omitempty"`
-	AffectedStacksCount *int64            `json:"affectedStacksCount"`
+	Event               vcsapi.Event       `json:"event"`
+	Commit              stacksapi.Commit   `json:"commit"`
+	Files               []string           `json:"files"`
+	Action              *port.ActionFacts  `json:"action,omitempty"`
+	AffectedStacksCount *int64             `json:"affectedStacksCount"`
+	Request             *port.RequestFacts `json:"request,omitempty"`
 }
 
 // Evaluation is a small durable reference, irrespective of diff or ref count.
@@ -75,6 +76,11 @@ type PolicyIntegrations interface {
 type Sources interface {
 	PreparePush(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, []string, error)
 	PrepareTag(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, error)
+}
+
+// RequestSources captures optional native request facts outside transactions.
+type RequestSources interface {
+	PrepareRequest(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (port.RequestFacts, error)
 }
 
 // ActionSources prepares native facts outside transactions and checks their
@@ -126,6 +132,7 @@ type Deps struct {
 	Spaces              accessapi.Spaces
 	Integrations        Integrations
 	Sources             Sources
+	Requests            RequestSources
 	Actions             ActionSources
 	Effects             ActionEffects
 	ActionRefused       func(context.Context, string)
@@ -137,6 +144,7 @@ type Deps struct {
 	PolicyChecks        PolicyReporter
 	Ignored             IgnoredRecorder
 	Policies            policyapi.Evaluator
+	PolicySelection     policyapi.Selection
 	PolicyInputs        policyapi.PushInputBuilder
 	PolicyStacks        stacksapi.PolicySnapshots
 	PolicyLocks         stacksapi.PolicyLocks

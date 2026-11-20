@@ -1,4 +1,4 @@
-@postgres @objectstore @gitlab
+@policy-push @postgres @objectstore @gitlab
 Feature: Git push policy workflow
   Stored verified deliveries evaluate attached push policies under the stack's
   creation and queue fences. A custom policy replaces the default push behavior.
@@ -121,7 +121,7 @@ Feature: Git push policy workflow
     And the GitLab commit "ignored" has check "infraweave/infra/tracked" in state "failed" with message "event requires a release tag"
 
   Scenario: Native request metadata reaches a custom policy before branch and request deduplication
-    Given token "h" sends "POST /api/v1/policies" with '{"name":"Native request","type":"GIT_PUSH","body":"package infraweave\npropose if { input.push == null; input.pull_request.author == \"creator\"; input.pull_request.action_initiator == \"reviewer\"; input.pull_request.action == \"opened\"; input.pull_request.base.branch == \"main\"; input.pull_request.head.branch == \"feature\" }\nflag contains \"pushed\"\n"}' through A
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Native request","type":"GIT_PUSH","body":"package infraweave\npropose if { input.push == null; input.pull_request.author == \"creator\"; input.pull_request.action_initiator == \"reviewer\"; input.pull_request.action == \"opened\"; input.pull_request.base.branch == \"main\"; input.pull_request.head.branch == \"feature\" }\npropose if input.push.branch == \"feature\"\nflag contains \"pushed\"\n"}' through A
     And it answers 201
     And the answer's id names "policy"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{policy}" through B

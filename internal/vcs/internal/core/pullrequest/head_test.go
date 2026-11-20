@@ -12,7 +12,6 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
-	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
 
 type requestHeadBindings struct {
@@ -68,13 +67,6 @@ func (h *requestHeads) ResolveRequestHead(ctx context.Context, in port.Integrati
 	return h.head, h.err
 }
 
-type requestNoRuns struct{ calls int }
-
-func (c *requestNoRuns) Create(context.Context, runsapi.CreateRequest) (runsapi.CreatedRun, error) {
-	c.calls++
-	return runsapi.CreatedRun{}, kernel.ErrUnavailable
-}
-
 func requestHeadEvent() vcsapi.Event {
 	e := requestEvent()
 	e.Head = "d3022fc0ca3d"
@@ -85,7 +77,7 @@ func requestHeadEvent() vcsapi.Event {
 	return e
 }
 
-func TestUnitRequestHeadPreparationKeepsImmutableSourceAndNoRuns(t *testing.T) {
+func TestUnitRequestHeadPreparationKeepsImmutableSourceAndDispatchFence(t *testing.T) {
 	for _, action := range []string{"opened", "edited"} {
 		t.Run(action, func(t *testing.T) {
 			d, e := requestDelivery(), requestHeadEvent()
@@ -95,14 +87,14 @@ func TestUnitRequestHeadPreparationKeepsImmutableSourceAndNoRuns(t *testing.T) {
 			bindings := &requestHeadBindings{account: d.Account, id: d.Integration}
 			head := "d3022fc0ca3d" + strings.Repeat("a", 28)
 			resolver := &requestHeads{t: t, integration: d.Integration, source: *e.PullRequest.HeadRepository, head: head}
-			runs := &requestNoRuns{}
-			s := New(Deps{Store: store, Integrations: bindings, Heads: map[string]Heads{d.Provider: resolver}, Pushes: push.New(push.Deps{Creator: runs})})
+			pushes := &pushPlan{}
+			s := New(Deps{Store: store, Integrations: bindings, Heads: map[string]Heads{d.Provider: resolver}, Pushes: pushes})
 			plan, err := s.Prepare(t.Context(), d, []vcsapi.Event{e})
 			if err != nil || plan == nil {
 				t.Fatal(err)
 			}
-			if len(store.rows) != 0 || resolver.calls != 1 || bindings.calls != 1 || runs.calls != 0 {
-				t.Fatal("preparation persisted, created a run or lost native bounds")
+			if len(store.rows) != 0 || resolver.calls != 1 || bindings.calls != 1 {
+				t.Fatal("preparation persisted or lost native bounds")
 			}
 			if err := plan.Commit(t.Context()); !errors.Is(err, ErrNoTransaction) {
 				t.Fatal("unfenced request snapshot committed")
@@ -115,14 +107,14 @@ func TestUnitRequestHeadPreparationKeepsImmutableSourceAndNoRuns(t *testing.T) {
 				store.rows[0].Namespace != "acme" ||
 				store.rows[0].Repository != "infra" ||
 				store.rows[0].HeadBranch != "feature" ||
-				runs.calls != 0 {
-				t.Fatal("request snapshot substituted destination/source, retained a prefix, or created a run")
+				pushes.committed != 1 {
+				t.Fatal("request snapshot substituted destination/source, retained a prefix, or lost dispatch")
 			}
 		})
 	}
 }
 
-func TestUnitRequestHeadRefusalsCannotPublishSnapshotsOrRuns(t *testing.T) {
+func TestUnitRequestHeadRefusalsCannotPublishSnapshotsOrDispatch(t *testing.T) {
 	for _, name := range []string{"missing source", "missing source ID", "missing source namespace", "missing source name", "mutable ref", "short ref", "zero ref", "nonhex ref", "foreign account", "foreign integration", "integration failure", "native failure", "native partial", "native invalid", "native mismatch", "unsupported provider", "missing resolver"} {
 		t.Run(name, func(t *testing.T) {
 			d, e := requestDelivery(), requestHeadEvent()
@@ -179,10 +171,10 @@ func TestUnitRequestHeadRefusalsCannotPublishSnapshotsOrRuns(t *testing.T) {
 			case "missing resolver":
 				providers = nil
 			}
-			runs := &requestNoRuns{}
-			s := New(Deps{Store: store, Integrations: bindings, Heads: providers, Pushes: push.New(push.Deps{Creator: runs})})
+			pushes := &pushPlan{}
+			s := New(Deps{Store: store, Integrations: bindings, Heads: providers, Pushes: pushes})
 			plan, err := s.Prepare(t.Context(), d, []vcsapi.Event{e})
-			if !errors.Is(err, wantErr) || plan != nil || len(store.rows) != 0 || runs.calls != 0 || resolver.calls != wantNative || bindings.calls != wantBinding {
+			if !errors.Is(err, wantErr) || plan != nil || len(store.rows) != 0 || resolver.calls != wantNative || bindings.calls != wantBinding {
 				t.Fatal("failed request preparation published work or lost scoped failure", err)
 			}
 		})
@@ -221,8 +213,8 @@ func TestUnitRequestHeadPreservesCompleteAndNonOpenPaths(t *testing.T) {
 				e.Comment = &vcsapi.Comment{Body: "ordinary comment", PullRequest: 17, Head: e.Head}
 				wantRows = 0
 			}
-			runs := &requestNoRuns{}
-			s := New(Deps{Store: store, Integrations: bindings, Heads: map[string]Heads{d.Provider: resolver}, Pushes: push.New(push.Deps{Creator: runs})})
+			pushes := &pushPlan{}
+			s := New(Deps{Store: store, Integrations: bindings, Heads: map[string]Heads{d.Provider: resolver}, Pushes: pushes})
 			plan, err := s.Prepare(t.Context(), d, []vcsapi.Event{e})
 			if err != nil {
 				t.Fatal(err)
@@ -230,8 +222,8 @@ func TestUnitRequestHeadPreservesCompleteAndNonOpenPaths(t *testing.T) {
 			if err := tx.Do(t.Context(), planDB{}, tx.Options{}, plan.Commit); err != nil {
 				t.Fatal(err)
 			}
-			if len(store.rows) != wantRows || resolver.calls != 0 || bindings.calls != 0 || runs.calls != 0 {
-				t.Fatal("complete/non-open/comment path acquired a native dependency or created a run")
+			if len(store.rows) != wantRows || resolver.calls != 0 || bindings.calls != 0 {
+				t.Fatal("complete/non-open/comment path acquired a native dependency")
 			}
 			if wantRows == 1 && store.rows[0].HeadSHA != e.Head {
 				t.Fatal("existing complete/non-open head changed")
@@ -278,10 +270,10 @@ func TestUnitExpandedRequestHeadMatchesExistingLowercaseRun(t *testing.T) {
 	store := &memoryStore{heads: map[kernel.ULID][]string{}}
 	binding := &requestHeadBindings{account: d.Account, id: d.Integration}
 	resolver := &requestHeads{t: t, integration: d.Integration, source: *e.PullRequest.HeadRepository, head: strings.ToUpper(full)}
-	creator := &requestNoRuns{}
+	pushes := &pushPlan{}
 	run := runsapi.CommitRun{ID: kernel.NewULID(), CommitSHA: full, CreatedAt: d.ReceivedAt}
 	existing := &commitRuns{rows: []runsapi.CommitRun{run}}
-	s := New(Deps{Store: store, Integrations: binding, Heads: map[string]Heads{d.Provider: resolver}, Runs: existing, Pushes: push.New(push.Deps{Creator: creator})})
+	s := New(Deps{Store: store, Integrations: binding, Heads: map[string]Heads{d.Provider: resolver}, Runs: existing, Pushes: pushes})
 	plan, err := s.Prepare(t.Context(), d, []vcsapi.Event{e})
 	if err != nil {
 		t.Fatal(err)
@@ -309,7 +301,7 @@ func TestUnitExpandedRequestHeadMatchesExistingLowercaseRun(t *testing.T) {
 	if stored.HeadSHA != full || len(views[stack.ID]) != 1 || views[stack.ID][0].HeadSHA != full || len(views[stack.ID][0].Runs) != 1 || views[stack.ID][0].Runs[0] != run.ID {
 		t.Fatal("expanded head lost canonical storage or the existing pushed-run association")
 	}
-	if creator.calls != 0 || existing.calls != 1 || existing.account != d.Account || existing.stack != stack.ID || binding.calls != 1 {
-		t.Fatal("request read created a run, reopened credentials or crossed account/stack scope")
+	if pushes.committed != 1 || existing.calls != 1 || existing.account != d.Account || existing.stack != stack.ID || binding.calls != 1 {
+		t.Fatal("request read lost dispatch, reopened credentials or crossed account/stack scope")
 	}
 }

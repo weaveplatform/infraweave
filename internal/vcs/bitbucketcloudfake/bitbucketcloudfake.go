@@ -88,18 +88,19 @@ type repository struct {
 // repositories in workspaces with the roles accounts hold on them, served
 // under /2.0.
 type Fake struct {
-	checks   checkStore
-	comments commentStore
-	webhooks map[string][]Hook
-	mu       sync.Mutex
-	accounts map[string]*account
-	tokens   map[string]*account
-	repos    map[string]*repository
-	nextID   int
-	fault    Fault
-	scope    string
-	until    time.Time
-	requests int
+	nativeRequests map[string]map[int]json.RawMessage
+	checks         checkStore
+	comments       commentStore
+	webhooks       map[string][]Hook
+	mu             sync.Mutex
+	accounts       map[string]*account
+	tokens         map[string]*account
+	repos          map[string]*repository
+	nextID         int
+	fault          Fault
+	scope          string
+	until          time.Time
+	requests       int
 }
 
 // New returns a fake with no account, token or repository.
@@ -223,6 +224,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Use(f.member)
 			f.checkRoutes(r)
 			f.commentRoutes(r)
+			r.Get("/pullrequests/{request}", f.nativeRequest)
 			r.Get("/hooks", f.listWebhooks)
 			r.Get("/refs/branches", f.branches)
 			r.Get("/refs/branches/*", f.branch)

@@ -104,27 +104,29 @@ type token struct {
 // repositories, served under /api/v3 as GitHub Enterprise Server serves
 // them.
 type Fake struct {
-	collabs     map[string]string
-	checks      checkStore
-	comments    commentStore
-	deployments deploymentStore
-	mu          sync.Mutex
-	apps        map[int64]*App
-	installs    map[int64]*Installation
-	repos       map[string]*Repo
-	repoIDs     map[*Repo]int64
-	ownerIDs    map[string]int64
-	tokens      map[string]token
-	minted      []TokenRequest
-	codes       map[string]string
-	nextID      int64
-	fault       Fault
-	scope       string
-	until       time.Time
-	requests    int
-	issued      int
-	logins      map[string]string
-	treeLimit   int
+	nativeRequests map[string]map[int]json.RawMessage
+	collabs        map[string]string
+	checks         checkStore
+	comments       commentStore
+	deployments    deploymentStore
+	mu             sync.Mutex
+	apps           map[int64]*App
+	installs       map[int64]*Installation
+	repos          map[string]*Repo
+	repoIDs        map[*Repo]int64
+	publicRepos    map[*Repo]bool
+	ownerIDs       map[string]int64
+	tokens         map[string]token
+	minted         []TokenRequest
+	codes          map[string]string
+	nextID         int64
+	fault          Fault
+	scope          string
+	until          time.Time
+	requests       int
+	issued         int
+	logins         map[string]string
+	treeLimit      int
 }
 
 // New returns a fake with no App, installation or repository, whose
@@ -342,6 +344,7 @@ func (f *Fake) apiRoutes(r chi.Router) {
 			r.Get("/contents/*", f.contents)
 			r.Get("/compare/*", f.compare)
 			r.Get("/branches", f.branches)
+			r.Get("/pulls/{request}", f.nativeRequest)
 		})
 	})
 }
@@ -460,15 +463,17 @@ func (f *Fake) reachable(next http.Handler) http.Handler {
 		t := r.Context().Value(tokenKey).(token)            //nolint:forcetypeassert // as above
 		f.mu.Lock()
 		repo, ok := f.repos[owner+"/"+name]
+		publicRead := f.publicRepos[repo] && r.Method == http.MethodGet
 		f.mu.Unlock()
-		if !ok || in.Owner != owner || !slices.Contains(in.Repos, name) ||
-			t.repos != nil && !slices.Contains(t.repos, name) {
+		if !ok || !publicRead && (in.Owner != owner || !slices.Contains(in.Repos, name) ||
+			t.repos != nil && !slices.Contains(t.repos, name)) {
 			answer(w, http.StatusNotFound, message("Not Found"))
 			return
 		}
 		deployment := strings.HasPrefix(strings.TrimPrefix(r.URL.Path, "/api/v3"), "/repos/"+owner+"/"+name+"/deployments")
 		comment := strings.Contains(r.URL.Path, "/issues/")
-		if !deployment && !comment && t.perms != nil && t.perms["contents"] == "" {
+		request := strings.Contains(r.URL.Path, "/pulls/")
+		if !deployment && !comment && !request && !publicRead && t.perms != nil && t.perms["contents"] == "" {
 			answer(w, http.StatusForbidden, message("Resource not accessible by integration"))
 			return
 		}
@@ -670,6 +675,12 @@ func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 		default:
 			files = append(files, map[string]any{"filename": ch.To})
 		}
+	}
+	// GitHub caps the complete comparison file list at 300 paths, even
+	// when commits are paginated. Tree responses remain independent.
+	// https://docs.github.com/en/rest/commits/commits#compare-two-commits
+	if len(files) > 300 {
+		files = files[:300]
 	}
 	paged(w, r, files, func(page []map[string]any) any {
 		return map[string]any{"status": "ahead", "files": page, "merge_base_commit": map[string]string{"sha": mergeBase}}

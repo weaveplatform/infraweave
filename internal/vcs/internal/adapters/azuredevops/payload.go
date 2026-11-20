@@ -86,6 +86,9 @@ type webhookRequest struct {
 	LastMergeSourceCommit struct {
 		CommitID string `json:"commitId"`
 	} `json:"lastMergeSourceCommit"`
+	LastMergeTargetCommit struct {
+		CommitID string `json:"commitId"`
+	} `json:"lastMergeTargetCommit"`
 	ForkSource *struct {
 		Repository *webhookRepository `json:"repository"`
 	} `json:"forkSource"`

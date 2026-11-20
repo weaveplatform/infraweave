@@ -253,13 +253,14 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Creator:          runs.Creator(),
 		Supersede:        runs.Supersede(),
 		Policies:         policies.Evaluator(), PolicyInputs: policies.PushInputBuilder(), PolicyStacks: stacks.PolicySnapshots(),
-		PolicyLocks:  stacks.PolicyLocks(),
-		PolicySpaces: access.PolicySpaces(), PolicyPools: workers.PoolMetadata(), PolicyRoles: access.StackRoles(),
+		PolicyLocks:     stacks.PolicyLocks(),
+		PolicySelection: policies.Selection(),
+		PolicySpaces:    access.PolicySpaces(), PolicyPools: workers.PoolMetadata(), PolicyRoles: access.StackRoles(),
 		PolicyContexts: configuration.PolicyContexts(), PolicyRuns: runs.PushRunReader(), PolicyCancellations: runs.PushCancellations(),
 		PolicyAllowed: func(ctx context.Context, account kernel.AccountID) (bool, error) {
 			org, err := access.AccountOrganization(ctx, account)
 			if err != nil {
-				return false, err
+				return false, fmt.Errorf("VCS policy account organization: %w", err)
 			}
 			return features.Allowed(ctx, org, "policies")
 		},

@@ -54,6 +54,11 @@ func (p *Provider) pushAffectedFiles(ctx context.Context, repo port.Repository, 
 		}
 		files = append(files, entries)
 	}
+	return changedTreePaths(files[0], files[1]), nil
+}
+
+func changedTreePaths(first, second map[string]treeFile) []string {
+	files := []map[string]treeFile{first, second}
 	changed := map[string]bool{}
 	for index, entries := range files {
 		for name, file := range entries {
@@ -67,7 +72,7 @@ func (p *Provider) pushAffectedFiles(ctx context.Context, repo port.Repository, 
 		paths = append(paths, name)
 	}
 	slices.Sort(paths)
-	return paths, nil
+	return paths
 }
 
 func treeFiles(ctx context.Context, client *github.Client, repo port.Repository, sha string) (map[string]treeFile, error) {

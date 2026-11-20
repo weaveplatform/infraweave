@@ -116,19 +116,20 @@ type Minted struct {
 // served under API, and the repository access tokens a repository's
 // admin mints, served under Tokens.
 type Fake struct {
-	checks   checkStore
-	comments commentStore
-	webhooks map[string][]Hook
-	mu       sync.Mutex
-	users    map[string]*user
-	tokens   map[string]*user
-	repos    map[string]*repository
-	minted   []*Minted
-	nextID   int
-	fault    Fault
-	scope    string
-	until    time.Time
-	requests int
+	nativeRequests map[string]map[int]json.RawMessage
+	checks         checkStore
+	comments       commentStore
+	webhooks       map[string][]Hook
+	mu             sync.Mutex
+	users          map[string]*user
+	tokens         map[string]*user
+	repos          map[string]*repository
+	minted         []*Minted
+	nextID         int
+	fault          Fault
+	scope          string
+	until          time.Time
+	requests       int
 }
 
 // New returns a fake with no user, token or repository.
@@ -264,6 +265,7 @@ func (f *Fake) Handler() http.Handler {
 			f.checkRoutes(r)
 			f.commentRoutes(r)
 			r.Get("/", f.repositoryMetadata)
+			r.Get("/pull-requests/{request}", f.nativeRequest)
 			r.Get("/webhooks", f.listWebhooks)
 			r.Get("/branches", f.branches)
 			r.Get("/tags/*", f.tag)

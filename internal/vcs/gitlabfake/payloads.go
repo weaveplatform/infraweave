@@ -47,6 +47,7 @@ func (f *Fake) refWebhook(namespace, repository, kind, event, ref, before, head 
 
 // MergeRequestWebhook follows the documented action and label-change shape.
 func (f *Fake) MergeRequestWebhook(namespace, repository string, in WebhookMergeRequest) (WebhookDelivery, error) {
+	f.rememberRequest(namespace, repository, in)
 	attributes := f.webhookRequest(namespace, repository, in)
 	attributes["action"], attributes["oldrev"] = in.Action, in.OldRev
 	changes := map[string]any{}
@@ -70,6 +71,7 @@ func (f *Fake) MergeRequestWebhook(namespace, repository string, in WebhookMerge
 // NoteWebhook follows a merge request comment, preserving the note verbatim;
 // no interpretation or command processing occurs in the fake or parser.
 func (f *Fake) NoteWebhook(namespace, repository string, in WebhookMergeRequest, note string) (WebhookDelivery, error) {
+	f.rememberRequest(namespace, repository, in)
 	return encodeWebhook("Note Hook", map[string]any{
 		"object_kind": "note", "user": webhookUser("reviewer"),
 		"project":           f.webhookProject(namespace, repository),

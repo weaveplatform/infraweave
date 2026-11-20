@@ -32,6 +32,8 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the event fixture pushes "(\w+)" from "(\w+)" to "(\w+)" on "([^"]+)" with "(valid|wrong)" verification through ([AB]) and receives (\d+)$`, s.push)
 	sc.Step(`^event delivery "(\w+)" settles with (\d+) new runs$`, s.settled)
 	sc.Step(`^event delivery "(\w+)" has exactly (\d+) stored rows$`, s.rows)
+	sc.Step(`^the event fixture sends request "(\w+)" through ([AB])$`, s.policyRequest)
+	sc.Step(`^the event fixture sends comment "(\w+)" through ([AB])$`, s.policyComment)
 }
 
 func (s *eventSteps) repository() checkRepository {

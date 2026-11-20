@@ -40,6 +40,10 @@ func (s *Service) policyDecision(ctx context.Context, input Evaluation, stack st
 		}
 	}
 	if !evaluation.HasPolicies {
+		defaultDecision := Default(event.Event, stack, event.Files)
+		if defaultDecision.Outcome == NoAction {
+			return defaultDecision, evaluation, nil
+		}
 		if s.d.PolicyStacks == nil {
 			return Decision{}, evaluation, fmt.Errorf("%w: VCS policy stack metadata is unavailable", kernel.ErrUnavailable)
 		}
@@ -50,7 +54,7 @@ func (s *Service) policyDecision(ctx context.Context, input Evaluation, stack st
 		if slices.Contains(snapshot.Labels, disableDefaultPush) {
 			return Decision{Ignored, DisabledByLabel}, evaluation, nil
 		}
-		return Default(event.Event, stack, event.Files), evaluation, nil
+		return defaultDecision, evaluation, nil
 	}
 	p := evaluation.Push
 	if p == nil {

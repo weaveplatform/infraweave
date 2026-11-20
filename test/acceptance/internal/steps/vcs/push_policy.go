@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,6 +13,32 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 	"github.com/weaveplatform/infraweave/test/deps"
 )
+
+func (s *pushSteps) policyCancellation(ctx context.Context, prior, replacement, state, replica string) error {
+	r, err := s.w.Do(ctx, replica, "h", http.MethodGet, "/api/v1/runs/"+s.w.IDs[prior], nil)
+	if err != nil {
+		return err
+	}
+	var run api.Run
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &run) != nil || string(run.State) != state || len(run.History) == 0 {
+		return fmt.Errorf("%w: push cancellation did not commit terminal run state %s", harness.ErrStep, state)
+	}
+	note := "canceled by push policy in favor of run " + s.w.IDs[replacement]
+	last := run.History[len(run.History)-1]
+	if string(last.State) != state || last.Note == nil || *last.Note != note {
+		return fmt.Errorf("%w: push cancellation lost the exact replacement note", harness.ErrStep)
+	}
+	count := 0
+	for _, transition := range run.History {
+		if transition.Note != nil && *transition.Note == note {
+			count++
+		}
+	}
+	if count != 1 {
+		return fmt.Errorf("%w: push cancellation was replayed %d times", harness.ErrStep, count)
+	}
+	return nil
+}
 
 func (s *pushSteps) pushReceipt(policy string) error {
 	var run api.Run

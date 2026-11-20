@@ -106,6 +106,7 @@ func (c *commentSteps) sendPeerRequest(ctx context.Context, delivery string, id 
 	}
 	request["id"] = id
 	if provider == "bitbucket_cloud" {
+		body["repository"] = c.peers.cloud.fake.RepositoryPayload(c.fixture.namespace, "infra")
 		request["created_on"], request["updated_on"] = created.Format(time.RFC3339), c.clock.Format(time.RFC3339)
 		request["source"] = map[string]any{"branch": map[string]string{"name": branch}, "commit": map[string]string{"hash": c.w.IDs[commit]}, "repository": body["repository"]}
 		request["destination"] = map[string]any{
@@ -114,14 +115,25 @@ func (c *commentSteps) sendPeerRequest(ctx context.Context, delivery string, id 
 			"repository": body["repository"],
 		}
 	} else {
-		ref, ok := request["toRef"].(map[string]any)
-		if !ok {
+		if _, ok := request["toRef"].(map[string]any); !ok {
 			return 0, fmt.Errorf("%w: missing native target", harness.ErrStep)
 		}
-		repository := ref["repository"]
+		repository := c.peers.dc.fake.RepositoryPayload(c.fixture.namespace, "infra")
 		request["createdDate"], request["updatedDate"] = created.UnixMilli(), c.clock.UnixMilli()
 		request["fromRef"] = map[string]any{"id": "refs/heads/" + branch, "displayId": branch, "latestCommit": c.w.IDs[commit], "repository": repository}
 		request["toRef"] = map[string]any{"id": "refs/heads/" + target, "displayId": target, "latestCommit": c.w.IDs["commentBase"], "repository": repository}
+	}
+	native, nativeErr := json.Marshal(request)
+	if nativeErr != nil {
+		return 0, fmt.Errorf("native Bitbucket request encode: %w", nativeErr)
+	}
+	if provider == "bitbucket_cloud" {
+		err = c.peers.cloud.fake.SetPullRequest(c.fixture.namespace, "infra", id, native)
+	} else {
+		err = c.peers.dc.fake.SetPullRequest(c.fixture.namespace, "infra", id, native)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("native Bitbucket request fixture: %w", err)
 	}
 	raw, err = json.Marshal(body)
 	if err != nil {

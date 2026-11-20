@@ -145,6 +145,12 @@ func (s *eventSteps) sendSignedComment(ctx context.Context, client *http.Client,
 		if !ok {
 			return 0, fmt.Errorf("%w: missing native comment request", harness.ErrStep)
 		}
+		request["fromRef"] = map[string]any{
+			"id":           "refs/heads/feature",
+			"displayId":    "feature",
+			"latestCommit": c.w.IDs["proposed"],
+			"repository":   c.peers.dc.fake.RepositoryPayload(c.fixture.namespace, "infra"),
+		}
 		request["toRef"] = map[string]any{
 			"id":           "refs/heads/target-12",
 			"displayId":    "target-12",

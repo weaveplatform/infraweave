@@ -123,6 +123,7 @@ type Deps struct {
 	Creator             runsapi.Creator
 	Supersede           runsapi.Supersede
 	Policies            policyapi.Evaluator
+	PolicySelection     policyapi.Selection
 	PolicyInputs        policyapi.PushInputBuilder
 	PolicyStacks        stacksapi.PolicySnapshots
 	PolicyLocks         stacksapi.PolicyLocks
@@ -262,14 +263,39 @@ func New(d Deps) (*Domain, error) {
 		return nil, fmt.Errorf("vcs: action counter: %w", err)
 	}
 	pushes := push.New(push.Deps{
-		Lifecycle: identities,
-		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
-		Integrations: integrations, Sources: sources, Actions: sources, Effects: pg.New(d.DB, d.Keys), ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
-		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, PolicyChecks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
-		Policies: d.Policies, PolicyInputs: d.PolicyInputs, PolicyStacks: d.PolicyStacks, PolicySpaces: d.PolicySpaces,
-		PolicyLocks: d.PolicyLocks,
-		PolicyPools: d.PolicyPools, PolicyRoles: d.PolicyRoles, PolicyContexts: d.PolicyContexts,
-		PolicyIntegrations: integrations, PolicyRuns: d.PolicyRuns, PolicyCancellations: d.PolicyCancellations, PolicyAllowed: d.PolicyAllowed,
+		Lifecycle:           identities,
+		DB:                  d.DB,
+		Store:               pg.New(d.DB, d.Keys),
+		Stacks:              d.Stacks,
+		Spaces:              d.Spaces,
+		Integrations:        integrations,
+		Sources:             sources,
+		Requests:            sources,
+		Actions:             sources,
+		Effects:             pg.New(d.DB, d.Keys),
+		ActionRefused:       actionRefused,
+		Creator:             d.Creator,
+		Supersede:           d.Supersede,
+		Jobs:                queue.New(d.DB),
+		Limits:              limits,
+		Checks:              checks,
+		PolicyChecks:        checks,
+		Now:                 clock,
+		Log:                 d.Log,
+		Ignored:             ignoredTriggers,
+		Policies:            d.Policies,
+		PolicyInputs:        d.PolicyInputs,
+		PolicyStacks:        d.PolicyStacks,
+		PolicySpaces:        d.PolicySpaces,
+		PolicySelection:     d.PolicySelection,
+		PolicyLocks:         d.PolicyLocks,
+		PolicyPools:         d.PolicyPools,
+		PolicyRoles:         d.PolicyRoles,
+		PolicyContexts:      d.PolicyContexts,
+		PolicyIntegrations:  integrations,
+		PolicyRuns:          d.PolicyRuns,
+		PolicyCancellations: d.PolicyCancellations,
+		PolicyAllowed:       d.PolicyAllowed,
 	})
 	requests := pullrequest.New(pullrequest.Deps{
 		Store: pg.New(d.DB, d.Keys), Integrations: integrations,

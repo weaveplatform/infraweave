@@ -27,6 +27,7 @@ type Route struct {
 var Routes = []Route{
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/commits/{commit}/statuses"},
 	{http.MethodPost, "/{project}/_apis/git/repositories/{repository}/commits/{commit}/statuses"},
+	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/pullRequests/{request}"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/pullRequests/{request}/iterations"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/pullRequests/{request}/iterations/{iteration}/statuses"},
 	{http.MethodPost, "/{project}/_apis/git/repositories/{repository}/pullRequests/{request}/iterations/{iteration}/statuses"},

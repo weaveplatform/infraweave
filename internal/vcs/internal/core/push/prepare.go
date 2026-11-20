@@ -36,6 +36,9 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 	ctx, cancel := context.WithTimeout(ctx, max(0, delivery.Deadline.Sub(s.d.Now())))
 	defer cancel()
 	selected := slices.DeleteFunc(slices.Clone(events), func(event vcsapi.Event) bool {
+		if requestEvent(event) {
+			return false
+		}
 		return event.Type != "check_action" && (event.Type != "push" && event.Type != "tag" || port.ZeroCommit(event.Head))
 	})
 
@@ -82,6 +85,14 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 			continue
 		}
 		if out.noSources {
+			out.events = append(out.events, prepared)
+			continue
+		}
+		if requestEvent(event) {
+			prepared, err = s.prepareRequest(ctx, delivery, event, use)
+			if err != nil {
+				return nil, err
+			}
 			out.events = append(out.events, prepared)
 			continue
 		}
