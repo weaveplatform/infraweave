@@ -2404,8 +2404,11 @@ Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
   enters only the first; a member no account admits gets a session that
   lists no account; switching the scheme back restores the bindings.
 - C54 is recorded, with offline body/hash comparison and REST replay after
-  the template implementation. Captures C47, C48, C52, C53 and C273 replay
-  once recorded.
+  the template implementation. Captures C47, C52, C53 and C273 replay
+  once recorded. C48 executes its implemented management/attachment subset
+  through real services; its [assertion handoff](../../test/fixtures/captures/C48/README.md)
+  retains the #650/#651/#654 workflow proof and unresolved entitled-account
+  comparison. A passing subset does not satisfy the remaining workflow gate.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P14: Public worker pool, Kubernetes workers and signed runs
