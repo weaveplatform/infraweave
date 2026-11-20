@@ -2,7 +2,8 @@ name: images | Publish runners
 
 on:
   push:
-    branches: [main]
+    # Temporary approved bootstrap; removed after the recipe verification.
+    branches: [main, feat/runner-images]
     paths:
       - 'deploy/images/**'
       - '!deploy/images/images.lock.json'
@@ -22,7 +23,8 @@ jobs:
   catalog:
     if: >-
       github.repository == 'weaveplatform/infraweave' &&
-      github.ref == 'refs/heads/main'
+      (github.ref == 'refs/heads/main' ||
+       (github.ref == 'refs/heads/feat/runner-images' && github.actor == 'ShocOne'))
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.catalog.outputs.matrix }}

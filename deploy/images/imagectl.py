@@ -66,7 +66,7 @@ def recipe(base=None):
                 content = subprocess.check_output(["git", "show", base + ":" + name])
                 digest.update(str(path).encode() + b"\0" + content + b"\0")
     else:
-        for path in sorted(p for p in HERE.rglob("*") if p.is_file() and included(p)):
+        for path in sorted(p for p in HERE.rglob("*") if p.is_file() and included(p.relative_to(HERE))):
             digest.update(str(path.relative_to(HERE)).encode() + b"\0" + path.read_bytes() + b"\0")
     return digest.hexdigest()
 
