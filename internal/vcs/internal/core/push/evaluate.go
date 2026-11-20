@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
@@ -193,21 +194,12 @@ func uses(stack stacksapi.Settings, use stacksapi.Use) bool {
 }
 
 func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.Settings, event Prepared, integration kernel.ULID) (Decision, error) {
-	decision := Default(event.Event, stack, event.Files)
-	if event.Event.Type == "push" {
-		if s.d.Supersede == nil {
-			return decision, fmt.Errorf("%w: event superseding is unavailable", kernel.ErrUnavailable)
-		}
-		if _, err := s.d.Supersede.Supersede(ctx, input.Account, input.Stack, event.Event.Branch, event.Commit.Hash); err != nil {
-			return decision, err //nolint:wrapcheck // runs names the existing stop-request write
-		}
-		if event.Event.Branch == stack.Branch {
-			head := event.Commit
-			head.Branch = ""
-			if err := s.d.Stacks.SetTracked(ctx, input.Account, input.Stack, &head, nil, ""); err != nil {
-				return decision, err //nolint:wrapcheck // stacks names the head-only projection
-			}
-		}
+	decision, evaluation, err := s.policyDecision(ctx, input, stack, event, integration)
+	if err != nil {
+		return decision, err
+	}
+	if err := s.advanceHead(ctx, input, stack, event, evaluation); err != nil {
+		return decision, err
 	}
 	if decision.Outcome != Track && decision.Outcome != Propose {
 		return decision, nil
@@ -219,11 +211,19 @@ func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.S
 	if decision.Outcome == Track {
 		kind = kernel.RunTypeTracked
 	}
-	created, err := s.d.Creator.Create(ctx, runsapi.CreateRequest{
+	request := runsapi.CreateRequest{
 		Account: input.Account, Stack: input.Stack, Type: kind, Commit: runsapi.Commit(event.Commit),
 		TriggeredBy: "vcs/commit", Mode: runsapi.OncePerCommit,
 		BeforeCreate: func(ctx context.Context) error { return s.admit(ctx, input) },
-	})
+	}
+	if evaluation.HasPolicies {
+		request.Receipts = receiptFacts(evaluation.Receipts)
+		request.PolicyLockCaller = policyLockCaller(stack, *evaluation.Push)
+		if stack.WorkerPool != nil {
+			request.Priority = kernel.RunPriority(evaluation.Push.Priority)
+		}
+	}
+	created, err := s.d.Creator.Create(ctx, request)
 	switch {
 	case errors.Is(err, ErrCapped):
 		if s.d.Checks != nil {
@@ -251,7 +251,43 @@ func (s *Service) apply(ctx context.Context, input Evaluation, stack stacksapi.S
 	if !created.Created {
 		return Decision{Outcome: Duplicate}, nil
 	}
+	if evaluation.HasPolicies {
+		if err := s.applyPolicyEffects(ctx, input, event, created.ID, *evaluation.Push); err != nil {
+			return decision, err
+		}
+	}
 	return decision, nil
+}
+
+func policyLockCaller(stack stacksapi.Settings, p policyapi.PushDecision) string {
+	if p.Unlock != "" && stack.Lock != nil && stack.Lock.Holder == stacksapi.PolicyLockPrefix+p.Unlock {
+		return stack.Lock.Holder
+	}
+	if p.Lock != "" {
+		return stacksapi.PolicyLockPrefix + p.Lock
+	}
+	return ""
+}
+
+func (s *Service) cancelForPolicy(ctx context.Context, input Evaluation, replacement kernel.ULID, p policyapi.PushDecision) (int, error) {
+	if len(p.Cancel) == 0 {
+		return 0, nil
+	}
+	if s.d.PolicyCancellations == nil {
+		return 0, fmt.Errorf("%w: VCS push cancellation owner is unavailable", kernel.ErrUnavailable)
+	}
+	ids := make([]kernel.ULID, 0, len(p.Cancel))
+	for _, id := range p.Cancel {
+		parsed, err := kernel.ParseULID(id)
+		if err == nil {
+			ids = append(ids, parsed)
+		}
+	}
+	count, err := s.d.PolicyCancellations.CancelForPush(ctx, input.Account, input.Stack, replacement, ids)
+	if err != nil {
+		return 0, fmt.Errorf("VCS push cancellation: %w", err)
+	}
+	return count, nil
 }
 
 func (s *Service) admit(ctx context.Context, input Evaluation) error {

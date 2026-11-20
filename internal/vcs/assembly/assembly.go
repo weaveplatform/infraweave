@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
@@ -22,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
@@ -43,6 +45,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/pullrequest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/source"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Stream is the domain's migration stream, which internal/app registers
@@ -101,24 +104,35 @@ var ErrConfig = errors.New("invalid vcs configuration")
 // stacks it reads and detaches, the policy for non-default creation, its settings, and the server's public
 // origin, which webhook and manifest URLs start with.
 type Deps struct {
-	DB               DB
-	Keys             pg.Sealer
-	Spaces           accessapi.Spaces
-	Authz            accessapi.Authorizer
-	Stacks           stacksapi.Stacks
-	Histories        runsapi.RunHistories
-	PlanningLogs     runsapi.PlanningLogs
-	CommitRuns       runsapi.CommitRuns
-	CheckFacts       runsapi.CheckFacts
-	Settings         Settings
-	Public           string
-	Log              *slog.Logger
-	Objects          Objects
-	Now              func() time.Time
-	PushEventTimeout time.Duration
-	Features         featuresapi.Options
-	Creator          runsapi.Creator
-	Supersede        runsapi.Supersede
+	DB                  DB
+	Keys                pg.Sealer
+	Spaces              accessapi.Spaces
+	Authz               accessapi.Authorizer
+	Stacks              stacksapi.Stacks
+	Histories           runsapi.RunHistories
+	PlanningLogs        runsapi.PlanningLogs
+	CommitRuns          runsapi.CommitRuns
+	CheckFacts          runsapi.CheckFacts
+	Settings            Settings
+	Public              string
+	Log                 *slog.Logger
+	Objects             Objects
+	Now                 func() time.Time
+	PushEventTimeout    time.Duration
+	Features            featuresapi.Options
+	Creator             runsapi.Creator
+	Supersede           runsapi.Supersede
+	Policies            policyapi.Evaluator
+	PolicyInputs        policyapi.PushInputBuilder
+	PolicyStacks        stacksapi.PolicySnapshots
+	PolicyLocks         stacksapi.PolicyLocks
+	PolicySpaces        accessapi.PolicySpaceReader
+	PolicyPools         workersapi.PoolMetadataReader
+	PolicyRoles         accessapi.StackRoleReader
+	PolicyContexts      configapi.PolicyContextReader
+	PolicyRuns          runsapi.PushRunReader
+	PolicyCancellations runsapi.PushCancellations
+	PolicyAllowed       func(context.Context, kernel.AccountID) (bool, error)
 	// Meter instruments this domain; nil uses its process OpenTelemetry meter.
 	Meter metric.Meter
 }
@@ -172,6 +186,7 @@ func New(d Deps) (*Domain, error) {
 		Installations: identities,
 		Store:         pg.New(d.DB, d.Keys), DB: d.DB, Spaces: d.Spaces, Authz: d.Authz,
 		Stacks: d.Stacks, Providers: Providers, Features: d.Features,
+		PolicySpaces: d.PolicySpaces,
 		Testers: map[string]port.Tester{
 			integration.GitHub: gh, integration.GitHubEnterprise: gh, integration.GitLab: gl,
 			integration.BitbucketCloud: bbc, integration.BitbucketDC: bbdc,
@@ -251,6 +266,10 @@ func New(d Deps) (*Domain, error) {
 		DB:        d.DB, Store: pg.New(d.DB, d.Keys), Stacks: d.Stacks, Spaces: d.Spaces,
 		Integrations: integrations, Sources: sources, Actions: sources, Effects: pg.New(d.DB, d.Keys), ActionRefused: actionRefused, Creator: d.Creator, Supersede: d.Supersede,
 		Jobs: queue.New(d.DB), Limits: limits, Checks: checks, Now: clock, Log: d.Log, Ignored: ignoredTriggers,
+		Policies: d.Policies, PolicyInputs: d.PolicyInputs, PolicyStacks: d.PolicyStacks, PolicySpaces: d.PolicySpaces,
+		PolicyLocks: d.PolicyLocks,
+		PolicyPools: d.PolicyPools, PolicyRoles: d.PolicyRoles, PolicyContexts: d.PolicyContexts,
+		PolicyIntegrations: integrations, PolicyRuns: d.PolicyRuns, PolicyCancellations: d.PolicyCancellations, PolicyAllowed: d.PolicyAllowed,
 	})
 	requests := pullrequest.New(pullrequest.Deps{
 		Store: pg.New(d.DB, d.Keys), Integrations: integrations,

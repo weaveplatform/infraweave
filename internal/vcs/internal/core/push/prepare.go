@@ -218,7 +218,6 @@ func (p *plan) selectTargets(ctx context.Context, use stacksapi.Use, events []Pr
 			admitted = append(admitted, prepared)
 			continue
 		}
-		admitted = append(admitted, prepared)
 		stacks, seen := repositories[prepared.Event.Repository]
 		if !seen {
 			var err error
@@ -228,9 +227,19 @@ func (p *plan) selectTargets(ctx context.Context, use stacksapi.Use, events []Pr
 			}
 			repositories[prepared.Event.Repository] = stacks
 		}
+		var affectedCount int64
 		for _, stack := range stacks {
 			targets[stack.ID] = true
+			settings, err := p.s.d.Stacks.Settings(ctx, p.delivery.Account, stack.ID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if affected(settings, prepared.Files) {
+				affectedCount++
+			}
 		}
+		prepared.AffectedStacksCount = &affectedCount
+		admitted = append(admitted, prepared)
 	}
 	return admitted, targets, nil
 }

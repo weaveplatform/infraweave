@@ -561,7 +561,7 @@ it adds no import.
 | `state` | features, access, stacks, runs | |
 | `cloud` | features, access, stacks | |
 | `registry` | features, access, workers, configuration, policies, runs, cloud | |
-| `vcs` | features, access, stacks, runs, registry, policies | |
+| `vcs` | features, access, stacks, configuration, workers, runs, registry, policies | |
 | `schedules` | features, access, stacks, runs | |
 | `events` | runs and vcs (P12b); features, access, workers and stacks (P18); policies (edge allowed when P13 introduces it, used in P18) | |
 | `templates` | features, access, stacks, runs | |

@@ -85,7 +85,10 @@ with its dependency rules as written there. In summary:
   one depguard rule per domain in `.golangci.yml` that lists the other
   domains' `api/` packages it may import. Back edges (below) are bound in
   `internal/app`, not imported, so they add no edge, and the graph is
-  acyclic; a cycle in the declared rules fails the schema check.
+  acyclic; a cycle in the declared rules fails the schema check. VCS reads
+  effective context IDs through configuration and credential-free private pool
+  metadata through workers for typed GIT_PUSH inputs; both owners precede VCS,
+  and their APIs retain attachment selection and account qualification.
 - **No foreign keys between domains.** A domain's tables reference its own
   tables and the platform's (`blob_objects`, `events`), and hold another
   domain's IDs as plain columns. No view reads another domain's table. Each

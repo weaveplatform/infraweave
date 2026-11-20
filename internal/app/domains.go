@@ -252,6 +252,17 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Features:         features.Entitlements(),
 		Creator:          runs.Creator(),
 		Supersede:        runs.Supersede(),
+		Policies:         policies.Evaluator(), PolicyInputs: policies.PushInputBuilder(), PolicyStacks: stacks.PolicySnapshots(),
+		PolicyLocks:  stacks.PolicyLocks(),
+		PolicySpaces: access.PolicySpaces(), PolicyPools: workers.PoolMetadata(), PolicyRoles: access.StackRoles(),
+		PolicyContexts: configuration.PolicyContexts(), PolicyRuns: runs.PushRunReader(), PolicyCancellations: runs.PushCancellations(),
+		PolicyAllowed: func(ctx context.Context, account kernel.AccountID) (bool, error) {
+			org, err := access.AccountOrganization(ctx, account)
+			if err != nil {
+				return false, err
+			}
+			return features.Allowed(ctx, org, "policies")
+		},
 	})
 	if err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the setting

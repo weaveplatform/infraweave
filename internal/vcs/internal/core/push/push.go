@@ -6,14 +6,17 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 // Evaluate is isolated per stack and deduplicated per delivery/stack.
@@ -22,10 +25,11 @@ var Evaluate = queue.Kind{Name: "vcs.evaluate_event", Queue: queue.VCSInbox, Pol
 // Prepared keeps one event's full diff outside queue payloads. Commit belongs to
 // the immutable head SHA; Branch is the ref that supplied that head.
 type Prepared struct {
-	Event  vcsapi.Event      `json:"event"`
-	Commit stacksapi.Commit  `json:"commit"`
-	Files  []string          `json:"files"`
-	Action *port.ActionFacts `json:"action,omitempty"`
+	Event               vcsapi.Event      `json:"event"`
+	Commit              stacksapi.Commit  `json:"commit"`
+	Files               []string          `json:"files"`
+	Action              *port.ActionFacts `json:"action,omitempty"`
+	AffectedStacksCount *int64            `json:"affectedStacksCount"`
 }
 
 // Evaluation is a small durable reference, irrespective of diff or ref count.
@@ -60,6 +64,11 @@ type EventContext struct {
 type Integrations interface {
 	HeldEventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
 	EventUse(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Use, bool, error)
+}
+
+// PolicyIntegrations reads only credential-free integration metadata.
+type PolicyIntegrations interface {
+	PolicyIntegration(context.Context, kernel.AccountID, kernel.ULID) (policyapi.VCSIntegrationFacts, error)
 }
 
 // Sources computes one full push diff and head metadata before any write lock.
@@ -105,28 +114,40 @@ type Lifecycle interface {
 
 // Deps is the forward domain graph and transactional stores used by VCS jobs.
 type Deps struct {
-	Lifecycle     Lifecycle
-	DB            tx.Beginner
-	Store         Store
-	Stacks        stacksapi.Stacks
-	Spaces        accessapi.Spaces
-	Integrations  Integrations
-	Sources       Sources
-	Actions       ActionSources
-	Effects       ActionEffects
-	ActionRefused func(context.Context, string)
-	Creator       runsapi.Creator
-	Supersede     runsapi.Supersede
-	Jobs          intake.Jobs
-	Limits        *Limits
-	Checks        CapReporter
-	Ignored       IgnoredRecorder
-	Now           func() time.Time
-	Log           *slog.Logger
+	Lifecycle           Lifecycle
+	DB                  tx.Beginner
+	Store               Store
+	Stacks              stacksapi.Stacks
+	Spaces              accessapi.Spaces
+	Integrations        Integrations
+	Sources             Sources
+	Actions             ActionSources
+	Effects             ActionEffects
+	ActionRefused       func(context.Context, string)
+	Creator             runsapi.Creator
+	Supersede           runsapi.Supersede
+	Jobs                intake.Jobs
+	Limits              *Limits
+	Checks              CapReporter
+	Ignored             IgnoredRecorder
+	Policies            policyapi.Evaluator
+	PolicyInputs        policyapi.PushInputBuilder
+	PolicyStacks        stacksapi.PolicySnapshots
+	PolicyLocks         stacksapi.PolicyLocks
+	PolicySpaces        accessapi.PolicySpaceReader
+	PolicyPools         workersapi.PoolMetadataReader
+	PolicyRoles         accessapi.StackRoleReader
+	PolicyContexts      configapi.PolicyContextReader
+	PolicyIntegrations  PolicyIntegrations
+	PolicyRuns          runsapi.PushRunReader
+	PolicyCancellations runsapi.PushCancellations
+	PolicyAllowed       func(context.Context, kernel.AccountID) (bool, error)
+	Now                 func() time.Time
+	Log                 *slog.Logger
 }
 
 // Service prepares outside transactions and evaluates only prepared facts under
-// the stack creation lock. It evaluates no push policy or comment command.
+// the stack creation lock.
 type Service struct{ d Deps }
 
 // New uses the supplied clock/log, with ordinary process defaults when omitted.

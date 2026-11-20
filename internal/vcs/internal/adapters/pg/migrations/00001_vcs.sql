@@ -190,7 +190,8 @@ CREATE TABLE vcs_ignored_triggers (
     stack_id uuid NOT NULL,
     commit_hash text NOT NULL,
     commit jsonb NOT NULL,
-    reason text NOT NULL CHECK(reason IN ('NO_AFFECTED_FILES_IN_PROJECT_ROOT','TAGS_IGNORED_BY_DEFAULT','RUN_LIMIT_REACHED')),
+    reason text NOT NULL CHECK(reason IN ('NO_AFFECTED_FILES_IN_PROJECT_ROOT','TAGS_IGNORED_BY_DEFAULT','RUN_LIMIT_REACHED',
+                                  'DISABLED_BY_LABEL','CUSTOM_POLICY','CUSTOM_POLICY_NO_TRIGGER')),
     created_at timestamptz NOT NULL,
     PRIMARY KEY(account_id,id),
     UNIQUE(account_id,stack_id,commit_hash,reason)

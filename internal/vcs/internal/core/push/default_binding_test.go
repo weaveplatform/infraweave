@@ -38,6 +38,15 @@ type reviewBindingStacks struct {
 	rows    []reviewBindingRow
 }
 
+func (s *reviewBindingStacks) Settings(_ context.Context, account kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	for _, row := range s.rows {
+		if account == s.account && row.id == id {
+			return stacksapi.Settings{ID: id, Namespace: row.namespace, Repository: row.name}, nil
+		}
+	}
+	return stacksapi.Settings{}, stacksapi.ErrNotFound
+}
+
 func (s *reviewBindingStacks) VCSRepositories(_ context.Context, account kernel.AccountID, use stacksapi.Use) ([]stacksapi.VCSRepository, error) {
 	var out []stacksapi.VCSRepository
 	for _, row := range s.rows {

@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
@@ -26,6 +27,17 @@ type ignoredStack struct {
 	stacksapi.Stacks
 	settings stacksapi.Settings
 	deleted  bool
+}
+
+type noPushPolicies struct{}
+
+func (noPushPolicies) Evaluate(context.Context, policyapi.EvaluationRequest) (policyapi.Evaluation, error) {
+	return policyapi.Evaluation{Type: policyapi.Push, Outcome: policyapi.NoPolicies}, nil
+}
+
+func (s *ignoredStack) PolicySnapshot(ctx context.Context, account kernel.AccountID, id kernel.ULID) (stacksapi.PolicySnapshot, error) {
+	settings, err := s.Settings(ctx, account, id)
+	return stacksapi.PolicySnapshot{Settings: settings}, err
 }
 
 func (s *ignoredStack) Settings(context.Context, kernel.AccountID, kernel.ULID) (stacksapi.Settings, error) {
@@ -148,6 +160,7 @@ func ignoredChild(t *testing.T, w *webhookWorld, name string, stack kernel.ULID,
 			Jobs:         w.queue,
 			Supersede:    ignoredSupersede{},
 			Ignored:      ignored.New(ignored.Deps{Store: w.f.store}),
+			Policies:     noPushPolicies{}, PolicyStacks: st, PolicyAllowed: func(context.Context, kernel.AccountID) (bool, error) { return true, nil },
 		},
 	)
 	return service, st, jobs[0]
@@ -181,6 +194,7 @@ func TestAccIgnoredTriggersFencedEvaluation(t *testing.T) {
 						Jobs:         rollbackIgnoredCompletion{w.queue, cause},
 						Supersede:    ignoredSupersede{},
 						Ignored:      ignored.New(ignored.Deps{Store: w.f.store}),
+						Policies:     noPushPolicies{}, PolicyStacks: st, PolicyAllowed: func(context.Context, kernel.AccountID) (bool, error) { return true, nil },
 					},
 				)
 			}

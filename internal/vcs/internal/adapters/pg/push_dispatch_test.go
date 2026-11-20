@@ -99,6 +99,15 @@ type dispatchTargets struct {
 	rows []stacksapi.Stack
 }
 
+func (s dispatchTargets) Settings(_ context.Context, _ kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
+	for _, row := range s.rows {
+		if row.ID == id {
+			return stacksapi.Settings{Stack: row}, nil
+		}
+	}
+	return stacksapi.Settings{}, stacksapi.ErrNotFound
+}
+
 func (s dispatchTargets) VCSRepositories(context.Context, kernel.AccountID, stacksapi.Use) ([]stacksapi.VCSRepository, error) {
 	if len(s.rows) == 0 {
 		return nil, nil
