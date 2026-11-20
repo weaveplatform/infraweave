@@ -10,8 +10,9 @@ import (
 func known[T any](value T) policyapi.Fact[T] { return policyapi.Fact[T]{Known: true, Value: &value} }
 
 // Facts includes every persisted run fact with a corresponding policy field.
-// Environment must contain actual winning values, never the key-only persisted
-// runtime record. Changes comes from the opened structural changes artifact.
+// An unavailable environment fact uses the snapshot's sealed recorded winners;
+// an explicit override must contain real values, never redacted key-only data.
+// Changes comes from the opened structural changes artifact.
 // Unmaterialized session/review/provider facts stay absent in the owner model.
 func Facts(snapshot Snapshot, environment policyapi.Fact[map[string]string], changes policyapi.Fact[[]policyapi.ChangeFacts]) policyapi.RunFacts {
 	r := snapshot.Run
@@ -31,6 +32,9 @@ func Facts(snapshot Snapshot, environment policyapi.Fact[map[string]string], cha
 	}
 	if r.ResolvedConfig != nil {
 		c := r.ResolvedConfig.Configuration
+		if !environment.Known && environment.Value == nil {
+			environment = snapshot.Environment
+		}
 		out.RuntimeConfig = known(policyapi.RuntimeConfigFacts{
 			AfterApply: known(slices.Clone(c.AfterApply)), AfterDestroy: known(slices.Clone(c.AfterDestroy)),
 			AfterInit: known(slices.Clone(c.AfterInit)), AfterPerform: known(slices.Clone(c.AfterPerform)),

@@ -282,6 +282,12 @@ Who calls the engine, when, and what the result does to the run of decision
   Its flags are a read snapshot. A new run, including a trigger-created run,
   starts with no flag ownership rows. Equal-time IDs break ties; retries of an
   older run cannot pick a later run.
+  The input transaction holds the predecessor's row while reading its state
+  and flag union. Runtime configuration keys select the original winning
+  values from that run's sealed overrides, including for `previous_run`;
+  current configuration values never refill a historical input. Empty recorded
+  keys mean a known empty environment. Missing required values fail input
+  construction, while sealed-storage failures roll back the caller.
   Receipt reads preserve the evaluated policy's name and version after rename
   or deletion. They expose safe failure metadata and whether the live policy
   still exists, without raw decisions, inputs, source or print output. A sample

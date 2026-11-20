@@ -2,12 +2,14 @@ package pg_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
@@ -64,5 +66,51 @@ func TestAccPolicyInputSnapshotsCurrentAndPreviousOwnedFlags(t *testing.T) {
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAccPreviousPolicyFlagsStayStableThroughInputTransaction(t *testing.T) {
+	w := newWorld(t)
+	previous := mustCreate(t, w, kernel.RunTypeTracked, "previous-fence")
+	w.now = w.now.Add(time.Second)
+	current := mustCreate(t, w, kernel.RunTypeTracked, "current-fence")
+	receipt := policyReceipt(w, kernel.NewULID())
+	start := make(chan struct{})
+	done := make(chan error, 1)
+	caller, stop := context.WithCancel(t.Context())
+	defer stop()
+	go func() {
+		select {
+		case <-start:
+		case <-caller.Done():
+			done <- caller.Err()
+			return
+		}
+		attempt, cancel := context.WithTimeout(caller, 250*time.Millisecond)
+		defer cancel()
+		err := tx.Do(attempt, w.db, tx.Options{NoRetry: true}, func(ctx context.Context) error {
+			return w.store.RecordPolicyEvidence(ctx, w.acct, previous.ID, previous.Version, []policiesapi.Receipt{receipt})
+		})
+		if err != nil && errors.Is(attempt.Err(), context.DeadlineExceeded) {
+			err = context.DeadlineExceeded
+		}
+		done <- err
+	}()
+	if err := w.in(t, func(ctx context.Context) error {
+		if _, err := policyinput.Read(ctx, w.store, w.acct, current.ID); err != nil {
+			return err
+		}
+		close(start)
+		if err := <-done; !errors.Is(err, context.DeadlineExceeded) {
+			return errors.New("previous flag ownership changed during the input transaction")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.in(t, func(ctx context.Context) error {
+		return w.store.RecordPolicyEvidence(ctx, w.acct, previous.ID, previous.Version, []policiesapi.Receipt{receipt})
+	}); err != nil {
+		t.Fatalf("previous-run writer did not resume after the snapshot: %v", err)
 	}
 }

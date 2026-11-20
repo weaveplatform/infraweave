@@ -155,11 +155,14 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture has no admin principal")
 	}
-	d := runstest.EvidenceDeps{DB: w.q, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
+	d := runstest.EvidenceDeps{DB: w.q, Keys: w.keys, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
 	if _, err := runstest.Input(t.Context(), d, w.d.Policies.RunInputBuilder(), policyapi.RunInputFacts{Account: w.acct}, run.ID); !errors.Is(err, runsapi.ErrNoTransaction) {
 		t.Fatalf("input helper lost the caller transaction boundary: %v", err)
 	}
 	if err := tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error {
+		if err := runstest.RecordRuntimeEnvironment(ctx, d, w.acct, run.ID, map[string]string{"HISTORICAL": "recorded-runtime-value"}); err != nil {
+			return err
+		}
 		next, err := w.d.Runs.Creator().Create(ctx, runsapi.CreateRequest{
 			Account: w.acct, Stack: stack.ID, Type: kernel.RunTypeTracked, Mode: runsapi.None,
 			Commit: runsapi.Commit{Hash: "next-receipt-test", Branch: "main", Timestamp: at, AuthorName: "Alice", Message: "next"}, TriggeredBy: "policy/trigger",
@@ -175,7 +178,7 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 		if !ok {
 			return fmt.Errorf("stack view: %T", view)
 		}
-		d := runstest.EvidenceDeps{DB: w.q, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
+		d := runstest.EvidenceDeps{DB: w.q, Keys: w.keys, Stacks: w.d.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
 		raw, err := runstest.Input(ctx, d, w.d.Policies.RunInputBuilder(), policyapi.RunInputFacts{
 			Account: w.acct, Type: policyapi.Plan, At: at,
 			Stack: policyapi.StackFacts{
@@ -193,8 +196,11 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 					Flags []string `json:"flags"`
 				} `json:"run"`
 				Previous struct {
-					ID    string   `json:"id"`
-					Flags []string `json:"flags"`
+					ID            string   `json:"id"`
+					Flags         []string `json:"flags"`
+					RuntimeConfig struct {
+						Environment map[string]string `json:"environment"`
+					} `json:"runtime_config"`
 				} `json:"previous_run"`
 			} `json:"infraweave"`
 		}
@@ -204,6 +210,9 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 		if len(input.Infraweave.Run.Flags) != 0 || input.Infraweave.Previous.ID != run.ID.String() || len(input.Infraweave.Previous.Flags) != 1 ||
 			input.Infraweave.Previous.Flags[0] != "evaluated" {
 			return errors.New("next run lost previous flags or inherited owners")
+		}
+		if input.Infraweave.Previous.RuntimeConfig.Environment["HISTORICAL"] != "recorded-runtime-value" {
+			return errors.New("previous run lost its sealed historical runtime values")
 		}
 		return nil
 	}); err != nil {

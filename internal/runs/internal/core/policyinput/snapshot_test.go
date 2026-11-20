@@ -58,6 +58,45 @@ func (s snapshotStore) PolicyEvidence(context.Context, kernel.AccountID, []kerne
 	return map[kernel.ULID]evidence.Snapshot{s.run.ID: {Flags: []string{"now"}}, s.previous.ID: {Flags: []string{"before"}}}, nil
 }
 
+func (s snapshotStore) Overrides(context.Context, lifecycle.Run) ([]lifecycle.Override, error) {
+	if s.phase == "overrides" {
+		return nil, errRead
+	}
+	return []lifecycle.Override{{Name: "VALUE", Value: "old"}, {Name: "VALUE", Value: "winning"}, {Name: "EMPTY", Value: ""}, {Name: "PROPOSAL", Value: "excluded"}}, nil
+}
+
+func TestUnitSnapshotRuntimeValuesKeepRecordedScope(t *testing.T) {
+	for _, test := range []struct {
+		name, phase string
+		keys        []runtimeconfig.Variable
+		want        map[string]string
+		err         error
+	}{
+		{name: "known empty", phase: "overrides", want: map[string]string{}},
+		{name: "recorded winners", keys: []runtimeconfig.Variable{{Key: "VALUE"}, {Key: "EMPTY"}}, want: map[string]string{"VALUE": "winning", "EMPTY": ""}},
+		{name: "missing recorded value", keys: []runtimeconfig.Variable{{Key: "MISSING"}}, err: policyapi.ErrInput},
+		{name: "operational read failure", phase: "overrides", keys: []runtimeconfig.Variable{{Key: "VALUE"}}, err: errRead},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := snapshotStore{
+				run:   lifecycle.Run{ID: kernel.NewULID(), ResolvedConfig: &runtimeconfig.Record{Configuration: runtimeconfig.Configuration{Environment: test.keys}}},
+				phase: test.phase,
+			}
+			err := tx.Do(t.Context(), beginner{}, tx.Options{}, func(ctx context.Context) error {
+				snapshot, err := Read(ctx, store, kernel.NewAccountID(), store.run.ID)
+				if test.err == nil &&
+					(err != nil || !snapshot.Environment.Known || snapshot.Environment.Value == nil || !reflect.DeepEqual(*snapshot.Environment.Value, test.want)) {
+					t.Fatal("recorded runtime environment was not preserved")
+				}
+				return err
+			})
+			if !errors.Is(err, test.err) {
+				t.Fatalf("runtime snapshot error=%v, want %v", err, test.err)
+			}
+		})
+	}
+}
+
 func TestUnitSnapshotPreservesReadFailuresAndTransactionRequirement(t *testing.T) {
 	store := snapshotStore{run: lifecycle.Run{ID: kernel.NewULID()}, previous: lifecycle.Run{ID: kernel.NewULID()}}
 	if _, err := Read(t.Context(), store, kernel.NewAccountID(), store.run.ID); !errors.Is(err, lifecycle.ErrNoTransaction) {

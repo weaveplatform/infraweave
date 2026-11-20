@@ -7,8 +7,9 @@
 // Read returns the fenced current run and its immediately preceding account/
 // stack run with committed flag snapshots. Facts and StructuralChanges convert
 // persisted runtime settings and structural metadata into explicit public DTOs.
-// Unknown facts remain absent; winning environment values must be supplied by
-// their owner rather than inferred from key-only persisted configuration.
+// Unknown facts remain absent. Runtime keys select their original winning
+// values from the run's sealed overrides, including for a previous run. Current
+// configuration values never replace historical runtime values.
 //
 // # Effects
 //
