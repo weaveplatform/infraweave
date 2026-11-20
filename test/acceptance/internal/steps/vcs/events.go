@@ -20,8 +20,10 @@ import (
 )
 
 type eventSteps struct {
-	comments   *commentSteps
-	deliveries map[string]string
+	comments      *commentSteps
+	deliveries    map[string]string
+	nativeCommits []nativeEventCommit
+	nativeRevert  bool
 }
 
 func (s *eventSteps) register(sc *godog.ScenarioContext) {
@@ -40,6 +42,19 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^event delivery "(\w+)" has a held child without native request facts$`, s.heldPolicyChild)
 	sc.Step(`^the event fixture releases child evaluations$`, s.releasePolicyChildren)
 	sc.Step(`^event delivery "(\w+)" commits a durable failed policy check$`, s.failedPolicyCheck)
+	sc.Step(`^the event fixture blocks child transaction completion$`, s.blockPolicyCompletion)
+	sc.Step(`^native request and branch deliveries race across A and B$`, s.racePolicyDeliveries)
+	sc.Step(`^both event replicas die during child completion without partial run or cancellation$`, s.crashPolicyCompletion)
+	sc.Step(`^replacement event replicas recover the persisted child jobs$`, s.restartPolicyCompletion)
+	sc.Step(`^the raced event deliveries settle with exactly one replacement$`, s.racedPolicySettled)
+	sc.Step(`^the failed push on commit "(\w+)" has durable native feedback and internal_error with no effects$`, s.policyFailureEvidence)
+	sc.Step(`^the event repository prepares (\d+) real native commits on "([^"]+)" as "(\w+)"$`, s.policyNativeCommits)
+	sc.Step(`^event delivery "(\w+)" retains (\d+) native commits with omission "([^"]*)"$`, s.policyNativeCommitEvidence)
+	sc.Step(
+		`^the event repository prepares a real native edit and revert on "([^"]+)" as "(\w+)"$`,
+		func(branch, key string) error { s.nativeRevert = true; return s.policyNativeCommits(2, branch, key) },
+	)
+	sc.Step(`^the event stack is unlocked in its public read and owner storage$`, s.policyUnlocked)
 }
 
 func (s *eventSteps) repository() checkRepository {
@@ -103,6 +118,9 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 		}
 		body["repository"], body["installation"] = repository, map[string]any{"id": c.installation, "app_id": c.appID}
 		body["ref"], body["before"], body["after"] = "refs/heads/"+branch, before, head
+		if s.nativeCommits != nil {
+			s.decorateNativeCommits(body)
+		}
 		raw, err = json.Marshal(body)
 		if err != nil {
 			return 0, fmt.Errorf("event push encode: %w", err)
@@ -122,6 +140,16 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 			return 0, fmt.Errorf("event GitLab push: %w", err)
 		}
 		delivery.ID = id
+		if s.nativeCommits != nil {
+			var body map[string]any
+			if err := json.Unmarshal(delivery.Body, &body); err != nil {
+				return 0, fmt.Errorf("native commit fixture decode: %w", err)
+			}
+			s.decorateNativeCommits(body)
+			if delivery.Body, err = json.Marshal(body); err != nil {
+				return 0, fmt.Errorf("native commit fixture encode: %w", err)
+			}
+		}
 		return gitlabfake.NewWebhookSender(client).Send(ctx, endpoint+"gitlab/"+c.fixture.integration, secret, delivery)
 	case "Azure DevOps":
 		delivery, err := c.peers.azure.fake.PushWebhook(

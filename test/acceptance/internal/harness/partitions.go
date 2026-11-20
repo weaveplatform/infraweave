@@ -78,6 +78,8 @@ var exemptTags = []string{
 	"@policy-approval-worker", "@policy-plan-worker",
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",
 	"@policy-management", "@policy-attachments", "@policy-check", "@policy-approval",
+	"@policy-push", "@policy-push-workers", "@policy-push-preparation", "@policy-push-forks",
+	"@policy-push-recovery", "@policy-push-failures", "@policy-push-commits", "@policy-push-locks",
 }
 
 // placing is every partition in the order Place tries them: the labs,

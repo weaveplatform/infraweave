@@ -30,7 +30,7 @@ func (s *Service) prepareRequest(ctx context.Context, delivery intake.Delivery, 
 	}
 	facts, err := s.d.Requests.PrepareRequest(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 	if err != nil {
-		return prepared, fmt.Errorf("VCS prepare policy request: %w", err)
+		return prepared, nativeRequestFailure{cause: err}
 	}
 	prepared.Request = &facts
 	prepared.Commit = facts.Head

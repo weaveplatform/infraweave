@@ -64,6 +64,18 @@ not provider names.
   values defined in [11 section 13](../reference/11-vcs-integrations.md#13-push-policy-interplay).
   The push policy input (0009) is built from `vcs.Event`, never from a raw
   payload.
+  Native pull-request context is read outside transactions, using the original
+  target integration, and frozen with the immutable compared commits and full
+  diff in the prepared event. A delivered head cannot silently follow a moved
+  native request. GitHub reads an accessible public fork with the target App's
+  token; it does not require a separate fork installation. Effective policy
+  presence is only a preparation hint: a newly attached policy causes a bounded
+  native preparation outside the child transaction, then rechecks the queue,
+  delivery, replay and stack fences before committing the first frozen snapshot.
+  Complete native push commit collections are retained in provider order and
+  projected through the typed contract. Truncated collections or unavailable
+  required per-commit facts stay absent, with an explicit omission reason in
+  the normalized event; see [POL-15 verification](../../implementation/push-policy-verification.md).
 - **Clients.** GitHub uses `github.com/google/go-github` with
   `github.com/bradleyfalzon/ghinstallation/v2` for App installation tokens;
   GitLab uses `gitlab.com/gitlab-org/api/client-go`; Bitbucket Cloud, Bitbucket
