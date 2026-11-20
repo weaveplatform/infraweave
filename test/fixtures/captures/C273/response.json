@@ -1,0 +1,1477 @@
+{
+  "exchanges": [
+    {
+      "stage": "initial-inventory",
+      "startedAt": "2026-11-19T23:13:56.315Z",
+      "finishedAt": "2026-11-19T23:13:56.455Z",
+      "request": {
+        "query": "query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "isFirstUser": true,
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    },
+    {
+      "stage": "test-key-setup",
+      "startedAt": "2026-11-19T23:20:23.034Z",
+      "finishedAt": "2026-11-19T23:20:23.294Z",
+      "request": {
+        "query": "mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}",
+        "variables": {
+          "input": {
+            "name": "capture-key-a",
+            "admin": false,
+            "teams": [],
+            "machine": false,
+            "description": "Approved #644 non-admin test key; expires in one hour and is deleted after capture.",
+            "expiresAt": 1795134023,
+            "roleBindings": [
+              {
+                "roleID": "01K00000000000000000000005",
+                "spaceID": "root"
+              }
+            ]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyCreate": {
+            "id": "01K00000000000000000000010",
+            "name": "capture-key-a",
+            "admin": false,
+            "isPersonal": false,
+            "expiresAt": 1795134023,
+            "secret": "<redacted>"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-managed-users-baseline-admission",
+      "startedAt": "2026-11-19T23:20:58.723Z",
+      "finishedAt": "2026-11-19T23:20:59.084Z",
+      "request": {
+        "query": "mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "test-principal-before-login-update",
+      "startedAt": "2026-11-19T23:23:55.357Z",
+      "finishedAt": "2026-11-19T23:23:55.415Z",
+      "request": {
+        "query": "query Capture644TestPrincipal { viewer { id name admin } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "viewer": {
+            "id": "api::01K00000000000000000000010",
+            "name": "capture-key-a",
+            "admin": false
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-configure-login",
+      "startedAt": "2026-11-19T23:24:43.321Z",
+      "finishedAt": "2026-11-19T23:24:43.461Z",
+      "request": {
+        "query": "mutation Capture644ConfigureLogin($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}",
+        "variables": {
+          "id": "policy-b-login",
+          "input": {
+            "name": "policy-b-login",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "updatedAt": 1795130683
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-login-update-session-effect",
+      "actor": "test-key",
+      "startedAt": "2026-11-19T23:28:05.833Z",
+      "finishedAt": "2026-11-19T23:28:05.923Z",
+      "request": {
+        "query": "query Capture644OldTestSession { viewer { id admin } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "viewer": {
+            "id": "api::01K00000000000000000000010",
+            "admin": false
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-login-update-session-effect",
+      "actor": "owner",
+      "startedAt": "2026-11-19T23:28:05.923Z",
+      "finishedAt": "2026-11-19T23:28:06.095Z",
+      "request": {
+        "query": "query Capture644CallerAfterLoginUpdate { authorizationScheme viewer{admin identityProvider isFirstUser} sessions{current admin type channel} policy(id:\"policy-b-login\"){id sampleCount evaluationRecords{key outcome timestamp}} }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "isFirstUser": false
+          },
+          "sessions": [
+            {
+              "current": false,
+              "admin": false,
+              "type": "API Key",
+              "channel": "UNKNOWN"
+            },
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "policy": {
+            "id": "policy-b-login",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-switch-to-login",
+      "at": "2026-11-19T23:49:26.535Z",
+      "request": {
+        "query": "mutation Capture644SwitchToLogin { accountUpdateAuthorizationScheme(schema:LOGIN_POLICIES) }"
+      },
+      "response": {
+        "data": {
+          "accountUpdateAuthorizationScheme": "LOGIN_POLICIES"
+        }
+      }
+    },
+    {
+      "stage": "C273-after-switch",
+      "actor": "owner",
+      "at": "2026-11-19T23:49:36.491Z",
+      "request": {
+        "query": "query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "LOGIN_POLICIES",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-after-switch",
+      "actor": "existing-test-key",
+      "at": "2026-11-19T23:49:36.567Z",
+      "request": {
+        "query": "query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }"
+      },
+      "response": {
+        "errors": [
+          {
+            "message": "unauthorized",
+            "path": [
+              "authorizationScheme"
+            ]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "stage": "C273-login-policy-admission",
+      "actor": "test-key",
+      "at": "2026-11-19T23:49:49.220Z",
+      "request": {
+        "query": "mutation Capture644LoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-login-flag-false-active-update",
+      "at": "2026-11-19T23:51:29.235Z",
+      "request": {
+        "query": "mutation Capture644LoginFlagFalse($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}",
+        "variables": {
+          "id": "policy-b-login",
+          "input": {
+            "name": "policy-b-login",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { false }\nsample := true\n",
+            "engineType": "REGO_V1"
+          }
+        }
+      },
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "updatedAt": 1795132289
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-active-login-update-old-session",
+      "actor": "test-key",
+      "at": "2026-11-19T23:51:47.939Z",
+      "request": {
+        "query": "query Capture644AfterActivePolicyUpdate { viewer { admin } }"
+      },
+      "response": {
+        "data": {
+          "viewer": null
+        }
+      }
+    },
+    {
+      "stage": "C273-restore-managed-users",
+      "at": "2026-11-19T23:53:14.766Z",
+      "request": {
+        "query": "mutation Capture644RestoreManagedUsers { accountUpdateAuthorizationScheme(schema:MANAGED_USERS) }"
+      },
+      "response": {
+        "data": {
+          "accountUpdateAuthorizationScheme": "MANAGED_USERS"
+        }
+      }
+    },
+    {
+      "stage": "C273-restore-verified",
+      "at": "2026-11-19T23:53:24.462Z",
+      "request": {
+        "query": "query Capture644RestoredAccount { authorizationScheme viewer { admin identityProvider apiKeys { id admin isPersonal } } managedUsers {status role} sessions {current admin type channel} policy(id:\"policy-b-login\"){id sampleCount evaluationRecords {key outcome timestamp}} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "policy": {
+            "id": "policy-b-login",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-api-key",
+      "at": "2026-11-19T23:53:45.779Z",
+      "request": {
+        "query": "mutation Capture644DeleteTestKey($id:ID!){apiKeyDelete(id:$id){id name}}",
+        "variables": {
+          "id": "01K00000000000000000000010"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyDelete": {
+            "id": "01K00000000000000000000010",
+            "name": "capture-key-a"
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-deleted-key-admission",
+      "at": "2026-11-19T23:53:58.595Z",
+      "request": {
+        "query": "mutation Capture644DeletedKeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": null
+        }
+      }
+    },
+    {
+      "stage": "cleanup-key-inventory",
+      "at": "2026-11-19T23:53:58.764Z",
+      "request": {
+        "query": "query Capture644KeyCleanupInventory { authorizationScheme apiKeys { id name admin isPersonal } managedUsers {status role} viewer {admin} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "viewer": {
+            "admin": true
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-deleted-key-session",
+      "actor": "test-key",
+      "at": "2026-11-19T23:54:21.593Z",
+      "request": {
+        "query": "query Capture644DeletedKeySession { viewer { admin } }"
+      },
+      "response": {
+        "data": {
+          "viewer": null
+        }
+      }
+    },
+    {
+      "stage": "C273-plan-used-by-fixture",
+      "at": "2026-11-19T23:54:36.310Z",
+      "request": {
+        "query": "mutation Capture644ReattachPlanForUI($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}",
+        "variables": {
+          "id": "policy-b-plan",
+          "stack": "stack-b"
+        }
+      },
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01K00000000000000000000050",
+            "stackId": "stack-b"
+          }
+        }
+      }
+    },
+    {
+      "reqid": 7475,
+      "source": "browser-network",
+      "request": {
+        "operationName": "SearchPolicies",
+        "variables": {
+          "input": {
+            "predicates": [
+              {
+                "field": "type",
+                "exclude": true,
+                "constraint": {
+                  "booleanEquals": null,
+                  "enumEquals": [
+                    "LOGIN"
+                  ],
+                  "stringEquals": null,
+                  "stringMatches": null,
+                  "hierarchyNodeValueEquals": null,
+                  "timeInRange": null,
+                  "timeInLast": null
+                }
+              }
+            ],
+            "fullTextSearch": "",
+            "first": 50,
+            "after": null,
+            "orderBy": [
+              {
+                "field": "name",
+                "direction": "ASC"
+              }
+            ]
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPolicies($input: SearchInput!) {\n  searchPolicies(input: $input) {\n    pageInfo {\n      hasNextPage\n      endCursor\n      startCursor\n      __typename\n    }\n    edges {\n      cursor\n      node {\n        id\n        name\n        type\n        labels\n        createdAt\n        updatedAt\n        body\n        description\n        plugin {\n          id\n          name\n          __typename\n        }\n        spaceDetails {\n          id\n          name\n          accessLevel\n          __typename\n        }\n        hasAttachedStacks\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "searchPolicies": {
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtdGFzay0yMDI2MTExOSI=.MDFNN1YxRDhDSkIwMkg1Wko3TkZHU0hZV0o=",
+              "startCursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtYXBwcm92YWwtMjAyNjExMTki.MDFNN1YxRDg0RFBLUjhWQVRSMUY5OEIwWEQ=",
+              "__typename": "PageInfo"
+            },
+            "edges": [
+              {
+                "cursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtYXBwcm92YWwtMjAyNjExMTki.MDFNN1YxRDg0RFBLUjhWQVRSMUY5OEIwWEQ=",
+                "node": {
+                  "id": "policy-b-approval",
+                  "name": "policy-b-approval",
+                  "type": "APPROVAL",
+                  "labels": [],
+                  "createdAt": 1795130040,
+                  "updatedAt": 1795130844,
+                  "body": "package spacelift\nimport rego.v1\napprove := true\nsample := true\n",
+                  "description": null,
+                  "plugin": null,
+                  "spaceDetails": {
+                    "id": "root",
+                    "name": "root",
+                    "accessLevel": "ADMIN",
+                    "__typename": "Space"
+                  },
+                  "hasAttachedStacks": false,
+                  "__typename": "Policy"
+                },
+                "__typename": "PolicyConnection"
+              },
+              {
+                "cursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtaW5pdGlhbGl6YXRpb24tMjAyNjExMTki.MDFNN1YxRDg4SjY0RFcwSk1KQ1FGRFg1S1E=",
+                "node": {
+                  "id": "policy-b-initialization",
+                  "name": "policy-b-initialization",
+                  "type": "INITIALIZATION",
+                  "labels": [],
+                  "createdAt": 1795130040,
+                  "updatedAt": 1795130040,
+                  "body": "package spacelift\nimport rego.v1\ndeny contains \"capture-644-initialization-denied\" if { true }\nsample := true\n",
+                  "description": null,
+                  "plugin": null,
+                  "spaceDetails": {
+                    "id": "root",
+                    "name": "root",
+                    "accessLevel": "ADMIN",
+                    "__typename": "Space"
+                  },
+                  "hasAttachedStacks": false,
+                  "__typename": "Policy"
+                },
+                "__typename": "PolicyConnection"
+              },
+              {
+                "cursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtbm90aWZpY2F0aW9uLTIwMjYxMTE5Ig==.MDFNN1YxRDhHRTZHUk1LQTAzWU1NRUszRTU=",
+                "node": {
+                  "id": "policy-b-notification",
+                  "name": "policy-b-notification",
+                  "type": "NOTIFICATION",
+                  "labels": [],
+                  "createdAt": 1795130040,
+                  "updatedAt": 1795130040,
+                  "body": "package spacelift\nimport rego.v1\nsample := true\n",
+                  "description": null,
+                  "plugin": null,
+                  "spaceDetails": {
+                    "id": "root",
+                    "name": "root",
+                    "accessLevel": "ADMIN",
+                    "__typename": "Space"
+                  },
+                  "hasAttachedStacks": false,
+                  "__typename": "Policy"
+                },
+                "__typename": "PolicyConnection"
+              },
+              {
+                "cursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtcGxhbi0yMDI2MTExOSI=.MDFNN1YxRDdaWURGS044WjhBRkc0TkhEU0o=",
+                "node": {
+                  "id": "policy-b-plan",
+                  "name": "policy-b-plan",
+                  "type": "PLAN",
+                  "labels": [],
+                  "createdAt": 1795130040,
+                  "updatedAt": 1795130844,
+                  "body": "package spacelift\nimport rego.v1\nsample := true\n",
+                  "description": null,
+                  "plugin": null,
+                  "spaceDetails": {
+                    "id": "root",
+                    "name": "root",
+                    "accessLevel": "ADMIN",
+                    "__typename": "Space"
+                  },
+                  "hasAttachedStacks": true,
+                  "__typename": "Policy"
+                },
+                "__typename": "PolicyConnection"
+              },
+              {
+                "cursor": "ImluZnJhd2VhdmUtY2FwdHVyZS02NDQtdGFzay0yMDI2MTExOSI=.MDFNN1YxRDhDSkIwMkg1Wko3TkZHU0hZV0o=",
+                "node": {
+                  "id": "policy-b-task",
+                  "name": "policy-b-task",
+                  "type": "TASK",
+                  "labels": [],
+                  "createdAt": 1795130040,
+                  "updatedAt": 1795131750,
+                  "body": "package spacelift\n\ndeny[\"capture-644-task-denied\"] { true }\nsample := true\n",
+                  "description": null,
+                  "plugin": null,
+                  "spaceDetails": {
+                    "id": "root",
+                    "name": "root",
+                    "accessLevel": "ADMIN",
+                    "__typename": "Space"
+                  },
+                  "hasAttachedStacks": true,
+                  "__typename": "Policy"
+                },
+                "__typename": "PolicyConnection"
+              }
+            ],
+            "__typename": "SearchPoliciesOutput"
+          }
+        }
+      },
+      "stage": "C273-browser-SearchPolicies",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7476,
+      "source": "browser-network",
+      "request": {
+        "operationName": "SearchPoliciesSuggestions",
+        "variables": {
+          "input": {
+            "predicates": [
+              {
+                "field": "type",
+                "exclude": true,
+                "constraint": {
+                  "booleanEquals": null,
+                  "enumEquals": [
+                    "LOGIN"
+                  ],
+                  "stringEquals": null,
+                  "stringMatches": null,
+                  "hierarchyNodeValueEquals": null,
+                  "timeInRange": null,
+                  "timeInLast": null
+                }
+              }
+            ],
+            "fullTextSearch": "",
+            "fields": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPoliciesSuggestions($input: SearchSuggestionsInput!) {\n  searchPoliciesSuggestions(input: $input) {\n    ...SearchSuggestionsFragment\n    __typename\n  }\n}\n\nfragment SearchSuggestionsFragment on SearchSuggestionsOutput {\n  filteredCount\n  ...SearchSuggestionsFieldsFragment\n  __typename\n}\n\nfragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {\n  fields {\n    name\n    orderable\n    filterable\n    type\n    possibleValuesBoolean {\n      values\n      counts\n      __typename\n    }\n    possibleValuesEnum {\n      values\n      counts\n      __typename\n    }\n    possibleValuesString {\n      values\n      counts\n      __typename\n    }\n    possibleValuesHierarchy {\n      values {\n        id\n        parentId\n        displayValue\n        __typename\n      }\n      counts\n      directCounts\n      __typename\n    }\n    __typename\n  }\n  __typename\n}"
+      },
+      "response": {
+        "data": {
+          "searchPoliciesSuggestions": {
+            "filteredCount": 5,
+            "fields": [
+              {
+                "name": "createdAt",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "folder",
+                "orderable": false,
+                "filterable": true,
+                "type": "HIERARCHY",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": {
+                  "values": [],
+                  "counts": [],
+                  "directCounts": null,
+                  "__typename": "SearchSuggestionsPossibleValuesHierarchy"
+                },
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "label",
+                "orderable": false,
+                "filterable": true,
+                "type": "STRING",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": {
+                  "values": [],
+                  "counts": [],
+                  "__typename": "SearchSuggestionsPossibleValuesString"
+                },
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "name",
+                "orderable": true,
+                "filterable": true,
+                "type": "STRING",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": {
+                  "values": [
+                    "policy-b-approval",
+                    "policy-b-initialization",
+                    "policy-b-notification",
+                    "policy-b-plan",
+                    "policy-b-task"
+                  ],
+                  "counts": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1
+                  ],
+                  "__typename": "SearchSuggestionsPossibleValuesString"
+                },
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "space",
+                "orderable": true,
+                "filterable": true,
+                "type": "HIERARCHY",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": {
+                  "values": [
+                    {
+                      "id": "root",
+                      "parentId": null,
+                      "displayValue": "root",
+                      "__typename": "SearchSuggestionsPossibleValuesHierarchyNode"
+                    }
+                  ],
+                  "counts": [
+                    5
+                  ],
+                  "directCounts": [
+                    5
+                  ],
+                  "__typename": "SearchSuggestionsPossibleValuesHierarchy"
+                },
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "type",
+                "orderable": true,
+                "filterable": true,
+                "type": "ENUM",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": {
+                  "values": [
+                    "APPROVAL",
+                    "INITIALIZATION",
+                    "LOGIN",
+                    "NOTIFICATION",
+                    "PLAN",
+                    "TASK",
+                    "ACCESS",
+                    "GIT_PUSH",
+                    "INTENT",
+                    "TRIGGER"
+                  ],
+                  "counts": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "__typename": "SearchSuggestionsPossibleValuesEnum"
+                },
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "updatedAt",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              }
+            ],
+            "__typename": "SearchSuggestionsOutput"
+          }
+        }
+      },
+      "stage": "C273-browser-SearchPoliciesSuggestions",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7477,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyNames",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyNames {\n  policies {\n    name\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policies": [
+            {
+              "name": "policy-b-login",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-approval",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-initialization",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-plan",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-task",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-notification",
+              "__typename": "Policy"
+            }
+          ]
+        }
+      },
+      "stage": "C273-browser-GetPolicyNames",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7777,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyNames",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyNames {\n  policies {\n    name\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policies": [
+            {
+              "name": "policy-b-login",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-approval",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-initialization",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-plan",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-task",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-notification",
+              "__typename": "Policy"
+            }
+          ]
+        }
+      },
+      "stage": "C273-browser-GetPolicyNames",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7778,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyForDetails",
+        "variables": {
+          "policyId": "policy-b-plan"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyForDetails($policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    name\n    body\n    description\n    spaceDetails {\n      id\n      name\n      accessLevel\n      __typename\n    }\n    labels\n    createdAt\n    updatedAt\n    type\n    hasAttachedStacks\n    sampleCount\n    engineType\n    plugin {\n      id\n      name\n      __typename\n    }\n    attachedStacks {\n      isModule\n      stackName\n      id\n      stackId\n      stackSpaceDetails {\n        name\n        id\n        __typename\n      }\n      __typename\n    }\n    attachedIntentProjects {\n      id\n      policyID\n      policyName\n      projectID\n      projectName\n      projectSpaceDetails {\n        id\n        name\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "name": "policy-b-plan",
+            "body": "package spacelift\nimport rego.v1\nsample := true\n",
+            "description": null,
+            "spaceDetails": {
+              "id": "root",
+              "name": "root",
+              "accessLevel": "ADMIN",
+              "__typename": "Space"
+            },
+            "labels": [],
+            "createdAt": 1795130040,
+            "updatedAt": 1795130844,
+            "type": "PLAN",
+            "hasAttachedStacks": true,
+            "sampleCount": 2,
+            "engineType": "REGO_V1",
+            "plugin": null,
+            "attachedStacks": [
+              {
+                "isModule": false,
+                "stackName": "stack-b",
+                "id": "01K00000000000000000000050",
+                "stackId": "stack-b",
+                "stackSpaceDetails": {
+                  "name": "root",
+                  "id": "root",
+                  "__typename": "Space"
+                },
+                "__typename": "PolicyStackAttachment"
+              }
+            ],
+            "attachedIntentProjects": [],
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyForDetails",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7791,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyEvaluationRecords",
+        "variables": {
+          "policyId": "policy-b-plan"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyEvaluationRecords($policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    evaluationRecords {\n      key\n      outcome\n      timestamp\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "evaluationRecords": [
+              {
+                "key": "01K00000000000000000000013/01K00000000000000000000059/allow",
+                "outcome": "allow",
+                "timestamp": 1795131502,
+                "__typename": "PolicyEvaluationRecord"
+              },
+              {
+                "key": "01K00000000000000000000013/01K00000000000000000000043/allow",
+                "outcome": "allow",
+                "timestamp": 1795130859,
+                "__typename": "PolicyEvaluationRecord"
+              }
+            ],
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyEvaluationRecords",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7792,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyEvaluationSample",
+        "variables": {
+          "policyId": "policy-b-plan",
+          "key": "01K00000000000000000000013/01K00000000000000000000059/allow"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyEvaluationSample($key: String!, $policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    evaluationSample(key: $key) {\n      input\n      body\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "evaluationSample": {
+              "input": "{\"ansible\":null,\"cloudformation\":null,\"kubernetes\":null,\"opentofu\":null,\"pulumi\":null,\"spacelift\":{\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"previous_run\":{\"based_on_local_workspace\":false,\"branch\":\"test/644-policy-tooling-captures\",\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"test/644-policy-tooling-captures\",\"created_at\":1795129346000000000,\"exist_on_tracked_branch\":true,\"hash\":\"005251b6fa351b887f84c1f864481fd7d7d8b3b3\",\"message\":\"test(policy): prepare a provider-free tooling capture project\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/005251b6fa351b887f84c1f864481fd7d7d8b3b3\"},\"created_at\":1795130847446029000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000037\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"DISCARDED\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131103934231000,\"user_provided_metadata\":[]},\"request\":{\"timestamp_ns\":1795131501193443600},\"run\":{\"based_on_local_workspace\":false,\"branch\":\"capture/sensitive-field\",\"changes\":[{\"action\":\"added\",\"entity\":{\"address\":\"output.visible\",\"data\":{\"sensitive\":false,\"value\":\"\\\"capture-644-public\\\"\",\"value_hash\":-8176968860172744000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"visible\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"output.secret\",\"data\":{\"sensitive\":true,\"value\":\"\\\"1b761c86\\\"\",\"value_hash\":3232416937539902000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"secret\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"terraform_data.sensitive\",\"data\":{\"address\":\"terraform_data.sensitive\",\"mode\":\"managed\",\"module\":\"\",\"provider\":\"terraform.io/builtin/terraform\",\"tainted\":false,\"values\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"values_hash\":-6104470241115395000},\"entity_type\":\"resource\",\"entity_vendor\":\"terraform\",\"name\":\"sensitive\",\"type\":\"terraform_data\"},\"moved\":false,\"phase\":\"plan\"}],\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"created_at\":1795131468421137000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000044\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"PLANNING\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131500670984000,\"user_provided_metadata\":[]},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"capture/sensitive-field\",\"id\":\"stack-b\",\"labels\":[\"infraweave-capture:644\"],\"locked_by\":null,\"name\":\"stack-b\",\"namespace\":\"weaveplatform\",\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"repository\":\"infraweave\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"PLANNING\",\"terraform_version\":\"1.5.7\",\"terraform_workflow_tool\":\"TERRAFORM_FOSS\",\"tracked_commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"worker_pool\":{\"public\":true}}},\"terraform\":{\"checks\":[],\"resource_changes\":[{\"address\":\"terraform_data.sensitive\",\"change\":{\"actions\":[\"create\"],\"after\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"after_sensitive\":{\"input\":true},\"after_unknown\":{\"id\":true,\"output\":true},\"before\":null,\"before_sensitive\":false},\"mode\":\"managed\",\"name\":\"sensitive\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}],\"terraform_version\":\"1.5.7\"},\"third_party_metadata\":{}}",
+              "body": "package spacelift\nimport rego.v1\nsample := true\n",
+              "__typename": "PolicyEvaluationSample"
+            },
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyEvaluationSample",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7829,
+      "source": "browser-network",
+      "request": {
+        "operationName": "SimulatePolicyV2",
+        "variables": {
+          "input": {
+            "body": "package spacelift\nimport rego.v1\nsample := true\n",
+            "input": "{\"ansible\":null,\"cloudformation\":null,\"kubernetes\":null,\"opentofu\":null,\"pulumi\":null,\"spacelift\":{\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"previous_run\":{\"based_on_local_workspace\":false,\"branch\":\"test/644-policy-tooling-captures\",\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"test/644-policy-tooling-captures\",\"created_at\":1795129346000000000,\"exist_on_tracked_branch\":true,\"hash\":\"005251b6fa351b887f84c1f864481fd7d7d8b3b3\",\"message\":\"test(policy): prepare a provider-free tooling capture project\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/005251b6fa351b887f84c1f864481fd7d7d8b3b3\"},\"created_at\":1795130847446029000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000037\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"DISCARDED\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131103934231000,\"user_provided_metadata\":[]},\"request\":{\"timestamp_ns\":1795131501193443600},\"run\":{\"based_on_local_workspace\":false,\"branch\":\"capture/sensitive-field\",\"changes\":[{\"action\":\"added\",\"entity\":{\"address\":\"output.visible\",\"data\":{\"sensitive\":false,\"value\":\"\\\"capture-644-public\\\"\",\"value_hash\":-8176968860172744000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"visible\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"output.secret\",\"data\":{\"sensitive\":true,\"value\":\"\\\"1b761c86\\\"\",\"value_hash\":3232416937539902000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"secret\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"terraform_data.sensitive\",\"data\":{\"address\":\"terraform_data.sensitive\",\"mode\":\"managed\",\"module\":\"\",\"provider\":\"terraform.io/builtin/terraform\",\"tainted\":false,\"values\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"values_hash\":-6104470241115395000},\"entity_type\":\"resource\",\"entity_vendor\":\"terraform\",\"name\":\"sensitive\",\"type\":\"terraform_data\"},\"moved\":false,\"phase\":\"plan\"}],\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"created_at\":1795131468421137000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000044\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"PLANNING\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131500670984000,\"user_provided_metadata\":[]},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"capture/sensitive-field\",\"id\":\"stack-b\",\"labels\":[\"infraweave-capture:644\"],\"locked_by\":null,\"name\":\"stack-b\",\"namespace\":\"weaveplatform\",\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"repository\":\"infraweave\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"PLANNING\",\"terraform_version\":\"1.5.7\",\"terraform_workflow_tool\":\"TERRAFORM_FOSS\",\"tracked_commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"worker_pool\":{\"public\":true}}},\"terraform\":{\"checks\":[],\"resource_changes\":[{\"address\":\"terraform_data.sensitive\",\"change\":{\"actions\":[\"create\"],\"after\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"after_sensitive\":{\"input\":true},\"after_unknown\":{\"id\":true,\"output\":true},\"before\":null,\"before_sensitive\":false},\"mode\":\"managed\",\"name\":\"sensitive\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}],\"terraform_version\":\"1.5.7\"},\"third_party_metadata\":{}}",
+            "type": "PLAN",
+            "engineType": "REGO_V1",
+            "libraries": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "mutation SimulatePolicyV2($input: PolicySimulateInput!) {\n  policySimulatev2(input: $input)\n}"
+      },
+      "response": {
+        "data": {
+          "policySimulatev2": "{\"deny\":[],\"flag\":[],\"info\":[],\"reset_flag\":[],\"sample\":true,\"warn\":[]}"
+        }
+      },
+      "stage": "C273-browser-SimulatePolicyV2",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7877,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyEvaluationSample",
+        "variables": {
+          "policyId": "policy-b-plan",
+          "key": "01K00000000000000000000013/01K00000000000000000000059/allow"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyEvaluationSample($key: String!, $policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    evaluationSample(key: $key) {\n      input\n      body\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "evaluationSample": {
+              "input": "{\"ansible\":null,\"cloudformation\":null,\"kubernetes\":null,\"opentofu\":null,\"pulumi\":null,\"spacelift\":{\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"previous_run\":{\"based_on_local_workspace\":false,\"branch\":\"test/644-policy-tooling-captures\",\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"test/644-policy-tooling-captures\",\"created_at\":1795129346000000000,\"exist_on_tracked_branch\":true,\"hash\":\"005251b6fa351b887f84c1f864481fd7d7d8b3b3\",\"message\":\"test(policy): prepare a provider-free tooling capture project\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/005251b6fa351b887f84c1f864481fd7d7d8b3b3\"},\"created_at\":1795130847446029000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000037\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"DISCARDED\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131103934231000,\"user_provided_metadata\":[]},\"request\":{\"timestamp_ns\":1795131501193443600},\"run\":{\"based_on_local_workspace\":false,\"branch\":\"capture/sensitive-field\",\"changes\":[{\"action\":\"added\",\"entity\":{\"address\":\"output.visible\",\"data\":{\"sensitive\":false,\"value\":\"\\\"capture-644-public\\\"\",\"value_hash\":-8176968860172744000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"visible\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"output.secret\",\"data\":{\"sensitive\":true,\"value\":\"\\\"1b761c86\\\"\",\"value_hash\":3232416937539902000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"secret\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"terraform_data.sensitive\",\"data\":{\"address\":\"terraform_data.sensitive\",\"mode\":\"managed\",\"module\":\"\",\"provider\":\"terraform.io/builtin/terraform\",\"tainted\":false,\"values\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"values_hash\":-6104470241115395000},\"entity_type\":\"resource\",\"entity_vendor\":\"terraform\",\"name\":\"sensitive\",\"type\":\"terraform_data\"},\"moved\":false,\"phase\":\"plan\"}],\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"created_at\":1795131468421137000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000044\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"PLANNING\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131500670984000,\"user_provided_metadata\":[]},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"capture/sensitive-field\",\"id\":\"stack-b\",\"labels\":[\"infraweave-capture:644\"],\"locked_by\":null,\"name\":\"stack-b\",\"namespace\":\"weaveplatform\",\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"repository\":\"infraweave\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"PLANNING\",\"terraform_version\":\"1.5.7\",\"terraform_workflow_tool\":\"TERRAFORM_FOSS\",\"tracked_commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"worker_pool\":{\"public\":true}}},\"terraform\":{\"checks\":[],\"resource_changes\":[{\"address\":\"terraform_data.sensitive\",\"change\":{\"actions\":[\"create\"],\"after\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"after_sensitive\":{\"input\":true},\"after_unknown\":{\"id\":true,\"output\":true},\"before\":null,\"before_sensitive\":false},\"mode\":\"managed\",\"name\":\"sensitive\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}],\"terraform_version\":\"1.5.7\"},\"third_party_metadata\":{}}",
+              "body": "package spacelift\nimport rego.v1\nsample := true\n",
+              "__typename": "PolicyEvaluationSample"
+            },
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyEvaluationSample",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7857,
+      "source": "browser-network",
+      "request": {
+        "operationName": "SearchEvaluationRecords",
+        "variables": {
+          "id": "policy-b-plan",
+          "input": {
+            "predicates": [],
+            "fullTextSearch": "",
+            "first": 50,
+            "after": null,
+            "requestedPage": null,
+            "orderBy": [
+              {
+                "field": "createdAt",
+                "direction": "DESC"
+              }
+            ]
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchEvaluationRecords($id: ID!, $input: SearchInput!) {\n  policy(id: $id) {\n    id\n    searchEvaluationRecords(input: $input) {\n      pageInfo {\n        endCursor\n        hasNextPage\n        __typename\n      }\n      edges {\n        cursor\n        node {\n          key\n          outcome\n          timestamp\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "searchEvaluationRecords": {
+              "pageInfo": {
+                "endCursor": "IjIwMjYtMTEtMTlUMjM6Mjc6MzguOTAxODAxWiI=.MDFNN1YyNjdDTktNWDVUMTVLUTlOMUpIRVI=",
+                "hasNextPage": false,
+                "__typename": "PageInfo"
+              },
+              "edges": [
+                {
+                  "cursor": "IjIwMjYtMTEtMTlUMjM6Mzg6MjEuMjY5OTc2WiI=.MDFNN1YyU1RQTjZDUFFRNkJQM0hHTVdHMjA=",
+                  "node": {
+                    "key": "01K00000000000000000000013/01K00000000000000000000059/allow",
+                    "outcome": "allow",
+                    "timestamp": 1795131501,
+                    "__typename": "PolicyEvaluationRecord"
+                  },
+                  "__typename": "PolicyEvaluationRecordConnection"
+                },
+                {
+                  "cursor": "IjIwMjYtMTEtMTlUMjM6Mjc6MzguOTAxODAxWiI=.MDFNN1YyNjdDTktNWDVUMTVLUTlOMUpIRVI=",
+                  "node": {
+                    "key": "01K00000000000000000000013/01K00000000000000000000043/allow",
+                    "outcome": "allow",
+                    "timestamp": 1795130858,
+                    "__typename": "PolicyEvaluationRecord"
+                  },
+                  "__typename": "PolicyEvaluationRecordConnection"
+                }
+              ],
+              "__typename": "SearchPolicyEvaluationRecordOutput"
+            },
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-SearchEvaluationRecords",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7858,
+      "source": "browser-network",
+      "request": {
+        "operationName": "SearchEvaluationRecordSuggestions",
+        "variables": {
+          "id": "policy-b-plan",
+          "input": {
+            "predicates": [],
+            "fullTextSearch": "",
+            "fields": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchEvaluationRecordSuggestions($id: ID!, $input: SearchSuggestionsInput!) {\n  policy(id: $id) {\n    id\n    searchEvaluationRecordSuggestions(input: $input) {\n      ...SearchSuggestionsFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment SearchSuggestionsFragment on SearchSuggestionsOutput {\n  filteredCount\n  ...SearchSuggestionsFieldsFragment\n  __typename\n}\n\nfragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {\n  fields {\n    name\n    orderable\n    filterable\n    type\n    possibleValuesBoolean {\n      values\n      counts\n      __typename\n    }\n    possibleValuesEnum {\n      values\n      counts\n      __typename\n    }\n    possibleValuesString {\n      values\n      counts\n      __typename\n    }\n    possibleValuesHierarchy {\n      values {\n        id\n        parentId\n        displayValue\n        __typename\n      }\n      counts\n      directCounts\n      __typename\n    }\n    __typename\n  }\n  __typename\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-plan",
+            "searchEvaluationRecordSuggestions": {
+              "filteredCount": 2,
+              "fields": [
+                {
+                  "name": "createdAt",
+                  "orderable": true,
+                  "filterable": false,
+                  "type": null,
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "outcome",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [
+                      "allow"
+                    ],
+                    "counts": [
+                      2
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "runDriftDetection",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "BOOLEAN",
+                  "possibleValuesBoolean": {
+                    "values": [
+                      false,
+                      true
+                    ],
+                    "counts": [
+                      2,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesBoolean"
+                  },
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "runType",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [
+                      "TRACKED"
+                    ],
+                    "counts": [
+                      2
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "stackName",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [
+                      "stack-b"
+                    ],
+                    "counts": [
+                      2
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "stackRepository",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [
+                      "infraweave"
+                    ],
+                    "counts": [
+                      2
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                }
+              ],
+              "__typename": "SearchSuggestionsOutput"
+            },
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-SearchEvaluationRecordSuggestions",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7986,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyNames",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyNames {\n  policies {\n    name\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policies": [
+            {
+              "name": "policy-b-login",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-approval",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-initialization",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-plan",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-task",
+              "__typename": "Policy"
+            },
+            {
+              "name": "policy-b-notification",
+              "__typename": "Policy"
+            }
+          ]
+        }
+      },
+      "stage": "C273-browser-GetPolicyNames",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7987,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyForDetails",
+        "variables": {
+          "policyId": "policy-b-notification"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyForDetails($policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    name\n    body\n    description\n    spaceDetails {\n      id\n      name\n      accessLevel\n      __typename\n    }\n    labels\n    createdAt\n    updatedAt\n    type\n    hasAttachedStacks\n    sampleCount\n    engineType\n    plugin {\n      id\n      name\n      __typename\n    }\n    attachedStacks {\n      isModule\n      stackName\n      id\n      stackId\n      stackSpaceDetails {\n        name\n        id\n        __typename\n      }\n      __typename\n    }\n    attachedIntentProjects {\n      id\n      policyID\n      policyName\n      projectID\n      projectName\n      projectSpaceDetails {\n        id\n        name\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-notification",
+            "name": "policy-b-notification",
+            "body": "package spacelift\nimport rego.v1\nsample := true\n",
+            "description": null,
+            "spaceDetails": {
+              "id": "root",
+              "name": "root",
+              "accessLevel": "ADMIN",
+              "__typename": "Space"
+            },
+            "labels": [],
+            "createdAt": 1795130040,
+            "updatedAt": 1795130040,
+            "type": "NOTIFICATION",
+            "hasAttachedStacks": false,
+            "sampleCount": 0,
+            "engineType": "REGO_V1",
+            "plugin": null,
+            "attachedStacks": [],
+            "attachedIntentProjects": [],
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyForDetails",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "reqid": 7996,
+      "source": "browser-network",
+      "request": {
+        "operationName": "GetPolicyEvaluationRecords",
+        "variables": {
+          "policyId": "policy-b-notification"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPolicyEvaluationRecords($policyId: ID!) {\n  policy(id: $policyId) {\n    id\n    evaluationRecords {\n      key\n      outcome\n      timestamp\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "response": {
+        "data": {
+          "policy": {
+            "id": "policy-b-notification",
+            "evaluationRecords": [],
+            "__typename": "Policy"
+          }
+        }
+      },
+      "stage": "C273-browser-GetPolicyEvaluationRecords",
+      "capturedAt": "2026-11-20"
+    },
+    {
+      "stage": "cleanup-final-inventory",
+      "at": "2026-11-20T00:03:14.383Z",
+      "request": {
+        "query": "query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          },
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

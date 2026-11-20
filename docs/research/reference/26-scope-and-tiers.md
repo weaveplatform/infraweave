@@ -560,3 +560,15 @@ explicit implementation inferences in
 Their upstream evidence questions remain open; the missing comparisons no longer
 block implementation. In particular, CRUD permission is distinct from evaluation
 entitlement, and public policy ID syntax does not decide reset eligibility.
+
+## Deprecated ACCESS creation observation, 2026-11-19
+
+The [C47 capture](../../../test/fixtures/captures/C47/README.md) records root
+ACCESS creation refusing an account with no legacy space. It cannot settle the
+post-disable-date evaluation question for retained legacy policies. C47 stays
+open; the accepted ACCESS supersession remains intentional.
+
+C50/C52 also show why creation, attachment or an API-key token alone cannot prove
+evaluation entitlement: attached TASK deny bodies under V0 and V1 produced no
+receipt and four FINISHED tasks; the LOGIN controls produced no LOGIN sample.
+These bounded observations do not add a new billing-feature mapping.

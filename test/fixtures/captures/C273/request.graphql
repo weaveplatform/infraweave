@@ -1,0 +1,460 @@
+# exchange 0
+# variables: {}
+query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }
+
+# exchange 1
+# variables: {"input":{"name":"capture-key-a","admin":false,"teams":[],"machine":false,"description":"Approved #644 non-admin test key; expires in one hour and is deleted after capture.","expiresAt":1795134023,"roleBindings":[{"roleID":"01K00000000000000000000005","spaceID":"root"}]}}
+mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}
+
+# exchange 2
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 3
+# variables: {}
+query Capture644TestPrincipal { viewer { id name admin } }
+
+# exchange 4
+# variables: {"id":"policy-b-login","input":{"name":"policy-b-login","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644ConfigureLogin($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}
+
+# exchange 5
+# variables: {}
+query Capture644OldTestSession { viewer { id admin } }
+
+# exchange 6
+# variables: {}
+query Capture644CallerAfterLoginUpdate { authorizationScheme viewer{admin identityProvider isFirstUser} sessions{current admin type channel} policy(id:"policy-b-login"){id sampleCount evaluationRecords{key outcome timestamp}} }
+
+# exchange 7
+# variables: {}
+mutation Capture644SwitchToLogin { accountUpdateAuthorizationScheme(schema:LOGIN_POLICIES) }
+
+# exchange 8
+# variables: {}
+query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }
+
+# exchange 9
+# variables: {}
+query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }
+
+# exchange 10
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644LoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 11
+# variables: {"id":"policy-b-login","input":{"name":"policy-b-login","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { false }\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644LoginFlagFalse($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}
+
+# exchange 12
+# variables: {}
+query Capture644AfterActivePolicyUpdate { viewer { admin } }
+
+# exchange 13
+# variables: {}
+mutation Capture644RestoreManagedUsers { accountUpdateAuthorizationScheme(schema:MANAGED_USERS) }
+
+# exchange 14
+# variables: {}
+query Capture644RestoredAccount { authorizationScheme viewer { admin identityProvider apiKeys { id admin isPersonal } } managedUsers {status role} sessions {current admin type channel} policy(id:"policy-b-login"){id sampleCount evaluationRecords {key outcome timestamp}} }
+
+# exchange 15
+# variables: {"id":"01K00000000000000000000010"}
+mutation Capture644DeleteTestKey($id:ID!){apiKeyDelete(id:$id){id name}}
+
+# exchange 16
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644DeletedKeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 17
+# variables: {}
+query Capture644KeyCleanupInventory { authorizationScheme apiKeys { id name admin isPersonal } managedUsers {status role} viewer {admin} }
+
+# exchange 18
+# variables: {}
+query Capture644DeletedKeySession { viewer { admin } }
+
+# exchange 19
+# variables: {"id":"policy-b-plan","stack":"stack-b"}
+mutation Capture644ReattachPlanForUI($id:ID!,$stack:ID!){policyAttach(id:$id,stack:$stack){id stackId}}
+
+# exchange 20
+# variables: {"input":{"predicates":[{"field":"type","exclude":true,"constraint":{"booleanEquals":null,"enumEquals":["LOGIN"],"stringEquals":null,"stringMatches":null,"hierarchyNodeValueEquals":null,"timeInRange":null,"timeInLast":null}}],"fullTextSearch":"","first":50,"after":null,"orderBy":[{"field":"name","direction":"ASC"}]}}
+query SearchPolicies($input: SearchInput!) {
+  searchPolicies(input: $input) {
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+      __typename
+    }
+    edges {
+      cursor
+      node {
+        id
+        name
+        type
+        labels
+        createdAt
+        updatedAt
+        body
+        description
+        plugin {
+          id
+          name
+          __typename
+        }
+        spaceDetails {
+          id
+          name
+          accessLevel
+          __typename
+        }
+        hasAttachedStacks
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 21
+# variables: {"input":{"predicates":[{"field":"type","exclude":true,"constraint":{"booleanEquals":null,"enumEquals":["LOGIN"],"stringEquals":null,"stringMatches":null,"hierarchyNodeValueEquals":null,"timeInRange":null,"timeInLast":null}}],"fullTextSearch":"","fields":null}}
+query SearchPoliciesSuggestions($input: SearchSuggestionsInput!) {
+  searchPoliciesSuggestions(input: $input) {
+    ...SearchSuggestionsFragment
+    __typename
+  }
+}
+
+fragment SearchSuggestionsFragment on SearchSuggestionsOutput {
+  filteredCount
+  ...SearchSuggestionsFieldsFragment
+  __typename
+}
+
+fragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {
+  fields {
+    name
+    orderable
+    filterable
+    type
+    possibleValuesBoolean {
+      values
+      counts
+      __typename
+    }
+    possibleValuesEnum {
+      values
+      counts
+      __typename
+    }
+    possibleValuesString {
+      values
+      counts
+      __typename
+    }
+    possibleValuesHierarchy {
+      values {
+        id
+        parentId
+        displayValue
+        __typename
+      }
+      counts
+      directCounts
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+# exchange 22
+# variables: {}
+query GetPolicyNames {
+  policies {
+    name
+    __typename
+  }
+}
+
+# exchange 23
+# variables: {}
+query GetPolicyNames {
+  policies {
+    name
+    __typename
+  }
+}
+
+# exchange 24
+# variables: {"policyId":"policy-b-plan"}
+query GetPolicyForDetails($policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    name
+    body
+    description
+    spaceDetails {
+      id
+      name
+      accessLevel
+      __typename
+    }
+    labels
+    createdAt
+    updatedAt
+    type
+    hasAttachedStacks
+    sampleCount
+    engineType
+    plugin {
+      id
+      name
+      __typename
+    }
+    attachedStacks {
+      isModule
+      stackName
+      id
+      stackId
+      stackSpaceDetails {
+        name
+        id
+        __typename
+      }
+      __typename
+    }
+    attachedIntentProjects {
+      id
+      policyID
+      policyName
+      projectID
+      projectName
+      projectSpaceDetails {
+        id
+        name
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 25
+# variables: {"policyId":"policy-b-plan"}
+query GetPolicyEvaluationRecords($policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    evaluationRecords {
+      key
+      outcome
+      timestamp
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 26
+# variables: {"policyId":"policy-b-plan","key":"01K00000000000000000000013/01K00000000000000000000059/allow"}
+query GetPolicyEvaluationSample($key: String!, $policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    evaluationSample(key: $key) {
+      input
+      body
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 27
+# variables: {"input":{"body":"package spacelift\nimport rego.v1\nsample := true\n","input":"{\"ansible\":null,\"cloudformation\":null,\"kubernetes\":null,\"opentofu\":null,\"pulumi\":null,\"spacelift\":{\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"previous_run\":{\"based_on_local_workspace\":false,\"branch\":\"test/644-policy-tooling-captures\",\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"test/644-policy-tooling-captures\",\"created_at\":1795129346000000000,\"exist_on_tracked_branch\":true,\"hash\":\"005251b6fa351b887f84c1f864481fd7d7d8b3b3\",\"message\":\"test(policy): prepare a provider-free tooling capture project\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/005251b6fa351b887f84c1f864481fd7d7d8b3b3\"},\"created_at\":1795130847446029000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000037\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"DISCARDED\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131103934231000,\"user_provided_metadata\":[]},\"request\":{\"timestamp_ns\":1795131501193443600},\"run\":{\"based_on_local_workspace\":false,\"branch\":\"capture/sensitive-field\",\"changes\":[{\"action\":\"added\",\"entity\":{\"address\":\"output.visible\",\"data\":{\"sensitive\":false,\"value\":\"\\\"capture-644-public\\\"\",\"value_hash\":-8176968860172744000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"visible\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"output.secret\",\"data\":{\"sensitive\":true,\"value\":\"\\\"1b761c86\\\"\",\"value_hash\":3232416937539902000},\"entity_type\":\"output\",\"entity_vendor\":\"terraform\",\"name\":\"secret\",\"type\":\"output\"},\"moved\":false,\"phase\":\"plan\"},{\"action\":\"added\",\"entity\":{\"address\":\"terraform_data.sensitive\",\"data\":{\"address\":\"terraform_data.sensitive\",\"mode\":\"managed\",\"module\":\"\",\"provider\":\"terraform.io/builtin/terraform\",\"tainted\":false,\"values\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"values_hash\":-6104470241115395000},\"entity_type\":\"resource\",\"entity_vendor\":\"terraform\",\"name\":\"sensitive\",\"type\":\"terraform_data\"},\"moved\":false,\"phase\":\"plan\"}],\"command\":\"\",\"commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"exist_on_tracked_branch\":true,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"created_at\":1795131468421137000,\"creator_session\":{\"admin\":true,\"creator_ip\":\"192.0.2.10\",\"identity\":{\"federations\":{\"github-oauth\":{\"id\":\"subject-a\",\"username\":\"actor-a\"}},\"ulid\":\"01J00000000000000000000011\"},\"idp_subject\":\"subject-a\",\"login\":\"actor-a\",\"machine\":false,\"name\":\"actor-a\",\"teams\":null},\"drift_detection\":false,\"flags\":[],\"force_apply_mode\":\"DISABLED\",\"id\":\"01K00000000000000000000044\",\"promoted\":false,\"runtime_config\":{\"after_apply\":[],\"after_destroy\":[],\"after_init\":[],\"after_perform\":[],\"after_plan\":[],\"after_run\":[],\"before_apply\":[],\"before_destroy\":[],\"before_init\":[],\"before_perform\":[],\"before_plan\":[],\"environment\":{},\"git_sparse_checkout_paths\":[],\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"runner_image\":\"public.ecr.aws/spacelift/runner-terraform:latest\",\"terraform_version\":\"1.5.7\"},\"state\":\"PLANNING\",\"trigger\":null,\"triggered_by\":\"actor-a\",\"type\":\"TRACKED\",\"updated_at\":1795131500670984000,\"user_provided_metadata\":[]},\"stack\":{\"additional_project_globs\":[],\"administrative\":false,\"autodeploy\":false,\"branch\":\"capture/sensitive-field\",\"id\":\"stack-b\",\"labels\":[\"infraweave-capture:644\"],\"locked_by\":null,\"name\":\"stack-b\",\"namespace\":\"weaveplatform\",\"project_root\":\"test/fixtures/policy-tooling-capture-project\",\"repository\":\"infraweave\",\"roles\":[],\"space\":{\"id\":\"root\",\"labels\":[],\"name\":\"root\"},\"state\":\"PLANNING\",\"terraform_version\":\"1.5.7\",\"terraform_workflow_tool\":\"TERRAFORM_FOSS\",\"tracked_commit\":{\"author\":\"actor-a\",\"branch\":\"capture/sensitive-field\",\"created_at\":1795131099000000000,\"hash\":\"6699d52b96b83cb8785243d406f085e0515ca423\",\"message\":\"test(policy): include a sensitive builtin resource in capture plans\",\"tag\":\"\",\"url\":\"https://github.com/weaveplatform/infraweave/commit/6699d52b96b83cb8785243d406f085e0515ca423\"},\"worker_pool\":{\"public\":true}}},\"terraform\":{\"checks\":[],\"resource_changes\":[{\"address\":\"terraform_data.sensitive\",\"change\":{\"actions\":[\"create\"],\"after\":{\"input\":\"1b761c86\",\"triggers_replace\":null},\"after_sensitive\":{\"input\":true},\"after_unknown\":{\"id\":true,\"output\":true},\"before\":null,\"before_sensitive\":false},\"mode\":\"managed\",\"name\":\"sensitive\",\"provider_name\":\"terraform.io/builtin/terraform\",\"type\":\"terraform_data\"}],\"terraform_version\":\"1.5.7\"},\"third_party_metadata\":{}}","type":"PLAN","engineType":"REGO_V1","libraries":null}}
+mutation SimulatePolicyV2($input: PolicySimulateInput!) {
+  policySimulatev2(input: $input)
+}
+
+# exchange 28
+# variables: {"policyId":"policy-b-plan","key":"01K00000000000000000000013/01K00000000000000000000059/allow"}
+query GetPolicyEvaluationSample($key: String!, $policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    evaluationSample(key: $key) {
+      input
+      body
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 29
+# variables: {"id":"policy-b-plan","input":{"predicates":[],"fullTextSearch":"","first":50,"after":null,"requestedPage":null,"orderBy":[{"field":"createdAt","direction":"DESC"}]}}
+query SearchEvaluationRecords($id: ID!, $input: SearchInput!) {
+  policy(id: $id) {
+    id
+    searchEvaluationRecords(input: $input) {
+      pageInfo {
+        endCursor
+        hasNextPage
+        __typename
+      }
+      edges {
+        cursor
+        node {
+          key
+          outcome
+          timestamp
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 30
+# variables: {"id":"policy-b-plan","input":{"predicates":[],"fullTextSearch":"","fields":null}}
+query SearchEvaluationRecordSuggestions($id: ID!, $input: SearchSuggestionsInput!) {
+  policy(id: $id) {
+    id
+    searchEvaluationRecordSuggestions(input: $input) {
+      ...SearchSuggestionsFragment
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment SearchSuggestionsFragment on SearchSuggestionsOutput {
+  filteredCount
+  ...SearchSuggestionsFieldsFragment
+  __typename
+}
+
+fragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {
+  fields {
+    name
+    orderable
+    filterable
+    type
+    possibleValuesBoolean {
+      values
+      counts
+      __typename
+    }
+    possibleValuesEnum {
+      values
+      counts
+      __typename
+    }
+    possibleValuesString {
+      values
+      counts
+      __typename
+    }
+    possibleValuesHierarchy {
+      values {
+        id
+        parentId
+        displayValue
+        __typename
+      }
+      counts
+      directCounts
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+# exchange 31
+# variables: {}
+query GetPolicyNames {
+  policies {
+    name
+    __typename
+  }
+}
+
+# exchange 32
+# variables: {"policyId":"policy-b-notification"}
+query GetPolicyForDetails($policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    name
+    body
+    description
+    spaceDetails {
+      id
+      name
+      accessLevel
+      __typename
+    }
+    labels
+    createdAt
+    updatedAt
+    type
+    hasAttachedStacks
+    sampleCount
+    engineType
+    plugin {
+      id
+      name
+      __typename
+    }
+    attachedStacks {
+      isModule
+      stackName
+      id
+      stackId
+      stackSpaceDetails {
+        name
+        id
+        __typename
+      }
+      __typename
+    }
+    attachedIntentProjects {
+      id
+      policyID
+      policyName
+      projectID
+      projectName
+      projectSpaceDetails {
+        id
+        name
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 33
+# variables: {"policyId":"policy-b-notification"}
+query GetPolicyEvaluationRecords($policyId: ID!) {
+  policy(id: $policyId) {
+    id
+    evaluationRecords {
+      key
+      outcome
+      timestamp
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 34
+# variables: {}
+query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }

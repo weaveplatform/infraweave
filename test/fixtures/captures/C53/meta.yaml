@@ -1,0 +1,11 @@
+entry: C53
+captured: 2026-11-20
+tier: V5_FREE
+introspection: sha256:d8445fffab3b41acd2e90f36041da9945e747c27dba9edae819ffd0783d5f4f0
+capturedBy: Codex via Chrome DevTools MCP
+redacted:
+  - browser headers and credentials are omitted
+  - test API-key secrets and JWTs were redacted in browser memory before export
+  - account, identities, source IPs and resource IDs are replaced consistently
+  - retained documents reuse the earlier C51/C53 identity aliases
+  - policy bodies, decisions, states, timestamps, nulls and dummy Terraform values are preserved

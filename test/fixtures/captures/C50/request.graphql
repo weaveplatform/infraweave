@@ -1,0 +1,107 @@
+# exchange 0
+# variables: {}
+query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }
+
+# exchange 1
+# variables: {"input":{"type":"LOGIN","engineType":"REGO_V1","input":"{}","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n"}}
+mutation Capture644ValidatePolicy($input:PolicySimulateInput!){policySimulatev2(input:$input)}
+
+# exchange 2
+# variables: {"input":{"name":"policy-b-login","type":"LOGIN","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n","engineType":"REGO_V1","space":"root"}}
+mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}
+
+# exchange 3
+# variables: {"input":{"name":"capture-key-a","admin":false,"teams":[],"machine":false,"description":"Approved #644 non-admin test key; expires in one hour and is deleted after capture.","expiresAt":1795134023,"roleBindings":[{"roleID":"01K00000000000000000000005","spaceID":"root"}]}}
+mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}
+
+# exchange 4
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 5
+# variables: {"stack":"stack-b"}
+query Capture644NonAdminAccess($stack:ID!){viewer{admin} stack(id:$stack){id canRead canWrite}}
+
+# exchange 6
+# variables: {"id":"policy-b-login","input":{"name":"policy-b-login","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644ConfigureLogin($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}
+
+# exchange 7
+# variables: {}
+mutation Capture644SwitchToLogin { accountUpdateAuthorizationScheme(schema:LOGIN_POLICIES) }
+
+# exchange 8
+# variables: {}
+query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }
+
+# exchange 9
+# variables: {}
+query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }
+
+# exchange 10
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644LoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 11
+# variables: {}
+query Capture644LoginEvidence { authorizationScheme policy(id:"policy-b-login") { id type engineType body sampleCount evaluationRecords { key outcome timestamp } } policyInputCaptures(space:"root",type:LOGIN) { id kind capturedAt } }
+
+# exchange 12
+# variables: {}
+query Capture644AdmittedKey { viewer { admin identityProvider } stack(id:"stack-b") { id canRead canWrite } }
+
+# exchange 14
+# variables: {"id":"policy-b-login","input":{"name":"policy-b-login","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { false }\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644LoginFlagFalse($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}
+
+# exchange 15
+# variables: {}
+query Capture644AfterActivePolicyUpdate { viewer { admin } }
+
+# exchange 16
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644FlagFalseAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 17
+# variables: {}
+query Capture644FlagFalseReadback { viewer { admin identityProvider } stack(id:"stack-b") { id canRead canWrite } }
+
+# exchange 18
+# variables: {}
+query Capture644LoginRoles { roles { id name slug } policy(id:"policy-b-login"){id sampleCount evaluationRecords{key outcome timestamp}} }
+
+# exchange 19
+# variables: {"id":"policy-b-login","input":{"name":"policy-b-login","body":"package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\ndeny if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n","engineType":"REGO_V1"}}
+mutation Capture644LoginDenyControl($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}
+
+# exchange 20
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644DeniedLoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 21
+# variables: {}
+mutation Capture644RestoreManagedUsers { accountUpdateAuthorizationScheme(schema:MANAGED_USERS) }
+
+# exchange 22
+# variables: {}
+query Capture644RestoredAccount { authorizationScheme viewer { admin identityProvider apiKeys { id admin isPersonal } } managedUsers {status role} sessions {current admin type channel} policy(id:"policy-b-login"){id sampleCount evaluationRecords {key outcome timestamp}} }
+
+# exchange 23
+# variables: {"id":"01K00000000000000000000010"}
+mutation Capture644DeleteTestKey($id:ID!){apiKeyDelete(id:$id){id name}}
+
+# exchange 24
+# variables: {"id":"01K00000000000000000000010","secret":"<redacted>"}
+mutation Capture644DeletedKeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}
+
+# exchange 25
+# variables: {}
+query Capture644KeyCleanupInventory { authorizationScheme apiKeys { id name admin isPersonal } managedUsers {status role} viewer {admin} }
+
+# exchange 26
+# variables: {}
+query Capture644DeletedKeySession { viewer { admin } }
+
+# exchange 27
+# variables: {}
+query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }

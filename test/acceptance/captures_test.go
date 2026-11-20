@@ -104,6 +104,9 @@ func TestAccCaptures(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, c := range captures {
+		if slices.Contains(policyToolingCaptures, c.ID) {
+			t.Run(c.ID+"/recorded", func(t *testing.T) { checkPolicyToolingCapture(t, c.ID) })
+		}
 		if slices.Contains(policyCaptureIDs, c.ID) {
 			t.Run(c.ID+"/recorded", func(t *testing.T) { checkPolicyCapture(t, c.ID) })
 		}

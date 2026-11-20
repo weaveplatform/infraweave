@@ -1,0 +1,119 @@
+{
+  "exchanges": [
+    {
+      "stage": "initial-inventory",
+      "startedAt": "2026-11-19T23:13:56.315Z",
+      "finishedAt": "2026-11-19T23:13:56.455Z",
+      "request": {
+        "query": "query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "isFirstUser": true,
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    },
+    {
+      "stage": "setup",
+      "startedAt": "2026-11-19T23:14:00.883Z",
+      "finishedAt": "2026-11-19T23:14:00.978Z",
+      "request": {
+        "query": "mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}",
+        "variables": {
+          "input": {
+            "name": "policy-b-access",
+            "type": "ACCESS",
+            "body": "package spacelift\nimport rego.v1\ndeny := true\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "errors": [
+          {
+            "message": "cannot create stack access policies outside of legacy space",
+            "path": [
+              "policyCreatev2"
+            ]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "stage": "C47-C52",
+      "startedAt": "2026-11-19T23:14:54.877Z",
+      "finishedAt": "2026-11-19T23:14:55.055Z",
+      "request": {
+        "query": "query Capture644LegacySpace { space(id:\"legacy\") { id name } authorizationScheme }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "space": null,
+          "authorizationScheme": "MANAGED_USERS"
+        }
+      }
+    },
+    {
+      "stage": "cleanup-final-inventory",
+      "at": "2026-11-20T00:03:14.383Z",
+      "request": {
+        "query": "query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          },
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

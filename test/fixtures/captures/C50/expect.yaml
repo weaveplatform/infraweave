@@ -1,0 +1,14 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/658
+observed:
+  "/exchanges/7/response/data/accountUpdateAuthorizationScheme": "LOGIN_POLICIES"
+  "/exchanges/9/response/errors/0/message": "unauthorized"
+  "/exchanges/10/response/data/apiKeyUser/admin": false
+  "/exchanges/11/response/data/policy/sampleCount": 0
+  "/exchanges/12/response/data/stack": null
+  "/exchanges/15/response/data/viewer": null
+  "/exchanges/16/response/data/apiKeyUser/admin": false
+  "/exchanges/17/response/data/stack": null
+  "/exchanges/20/response/data/apiKeyUser/admin": false
+  "/exchanges/21/response/data/accountUpdateAuthorizationScheme": "MANAGED_USERS"
+  "/exchanges/24/response/data/apiKeyUser": null
+  "/exchanges/27/response/data/apiKeys": []

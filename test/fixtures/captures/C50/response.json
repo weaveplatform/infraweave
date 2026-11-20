@@ -1,0 +1,659 @@
+{
+  "exchanges": [
+    {
+      "stage": "initial-inventory",
+      "startedAt": "2026-11-19T23:13:56.315Z",
+      "finishedAt": "2026-11-19T23:13:56.455Z",
+      "request": {
+        "query": "query Capture644BeforeLab { authorizationScheme viewer { admin identityProvider isFirstUser apiKeys { id admin isPersonal } } managedUsers { status role } sessions { current admin type channel } stacks { id } policies { id } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "isFirstUser": true,
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:56:56.374Z",
+      "finishedAt": "2026-11-19T22:56:56.461Z",
+      "request": {
+        "query": "mutation Capture644ValidatePolicy($input:PolicySimulateInput!){policySimulatev2(input:$input)}",
+        "variables": {
+          "input": {
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "input": "{}",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policySimulatev2": "{\"admin\":false,\"allow\":false,\"deny\":false,\"deny_admin\":false,\"deny_message\":[],\"flag\":[\"capture-644-login-flag\"],\"reset_flag\":[],\"roles\":{\"nothing\":{}},\"sample\":true,\"space_admin\":[],\"space_read\":[],\"space_write\":[],\"team\":[]}"
+        }
+      }
+    },
+    {
+      "stage": "C47-C52",
+      "startedAt": "2026-11-19T23:14:55.056Z",
+      "finishedAt": "2026-11-19T23:14:55.175Z",
+      "request": {
+        "query": "mutation Capture644CreatePolicy($input:PolicyCreateInput!){policyCreatev2(input:$input){id name type engineType createdAt updatedAt}}",
+        "variables": {
+          "input": {
+            "name": "policy-b-login",
+            "type": "LOGIN",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-b-login",
+            "name": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "createdAt": 1795130095,
+            "updatedAt": 1795130095
+          }
+        }
+      }
+    },
+    {
+      "stage": "test-key-setup",
+      "startedAt": "2026-11-19T23:20:23.034Z",
+      "finishedAt": "2026-11-19T23:20:23.294Z",
+      "request": {
+        "query": "mutation Capture644CreateTestKey($input:ApiKeyInput!){apiKeyCreate(input:$input){id name admin isPersonal expiresAt secret}}",
+        "variables": {
+          "input": {
+            "name": "capture-key-a",
+            "admin": false,
+            "teams": [],
+            "machine": false,
+            "description": "Approved #644 non-admin test key; expires in one hour and is deleted after capture.",
+            "expiresAt": 1795134023,
+            "roleBindings": [
+              {
+                "roleID": "01K00000000000000000000005",
+                "spaceID": "root"
+              }
+            ]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyCreate": {
+            "id": "01K00000000000000000000010",
+            "name": "capture-key-a",
+            "admin": false,
+            "isPersonal": false,
+            "expiresAt": 1795134023,
+            "secret": "<redacted>"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-managed-users-baseline-admission",
+      "startedAt": "2026-11-19T23:20:58.723Z",
+      "finishedAt": "2026-11-19T23:20:59.084Z",
+      "request": {
+        "query": "mutation Capture644KeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "non-admin-controls",
+      "startedAt": "2026-11-19T23:21:22.369Z",
+      "finishedAt": "2026-11-19T23:21:22.498Z",
+      "request": {
+        "query": "query Capture644NonAdminAccess($stack:ID!){viewer{admin} stack(id:$stack){id canRead canWrite}}",
+        "variables": {
+          "stack": "stack-b"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "viewer": {
+            "admin": false
+          },
+          "stack": {
+            "id": "stack-b",
+            "canRead": true,
+            "canWrite": true
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-configure-login",
+      "startedAt": "2026-11-19T23:24:43.321Z",
+      "finishedAt": "2026-11-19T23:24:43.461Z",
+      "request": {
+        "query": "mutation Capture644ConfigureLogin($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}",
+        "variables": {
+          "id": "policy-b-login",
+          "input": {
+            "name": "policy-b-login",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "updatedAt": 1795130683
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-switch-to-login",
+      "at": "2026-11-19T23:49:26.535Z",
+      "request": {
+        "query": "mutation Capture644SwitchToLogin { accountUpdateAuthorizationScheme(schema:LOGIN_POLICIES) }"
+      },
+      "response": {
+        "data": {
+          "accountUpdateAuthorizationScheme": "LOGIN_POLICIES"
+        }
+      }
+    },
+    {
+      "stage": "C273-after-switch",
+      "actor": "owner",
+      "at": "2026-11-19T23:49:36.491Z",
+      "request": {
+        "query": "query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "LOGIN_POLICIES",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-after-switch",
+      "actor": "existing-test-key",
+      "at": "2026-11-19T23:49:36.567Z",
+      "request": {
+        "query": "query Capture644AfterSchemeSwitch { authorizationScheme viewer { admin identityProvider } }"
+      },
+      "response": {
+        "errors": [
+          {
+            "message": "unauthorized",
+            "path": [
+              "authorizationScheme"
+            ]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "stage": "C273-login-policy-admission",
+      "actor": "test-key",
+      "at": "2026-11-19T23:49:49.220Z",
+      "request": {
+        "query": "mutation Capture644LoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-C273-login-samples",
+      "at": "2026-11-19T23:50:16.502Z",
+      "request": {
+        "query": "query Capture644LoginEvidence { authorizationScheme policy(id:\"policy-b-login\") { id type engineType body sampleCount evaluationRecords { key outcome timestamp } } policyInputCaptures(space:\"root\",type:LOGIN) { id kind capturedAt } }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "LOGIN_POLICIES",
+          "policy": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          },
+          "policyInputCaptures": []
+        }
+      }
+    },
+    {
+      "stage": "C50-login-key-grants-flag-true",
+      "actor": "test-key",
+      "at": "2026-11-19T23:50:33.159Z",
+      "request": {
+        "query": "query Capture644AdmittedKey { viewer { admin identityProvider } stack(id:\"stack-b\") { id canRead canWrite } }"
+      },
+      "response": {
+        "errors": [
+          {
+            "message": "denied",
+            "path": [
+              "stack"
+            ]
+          }
+        ],
+        "data": {
+          "viewer": {
+            "admin": false,
+            "identityProvider": "GITHUB"
+          },
+          "stack": null
+        }
+      }
+    },
+    {
+      "stage": "C50-login-jwt-claim-shape",
+      "at": "2026-11-19T23:50:48.541Z",
+      "summary": {
+        "keys": [
+          "aud",
+          "exp",
+          "jti",
+          "iat",
+          "iss",
+          "nbf",
+          "sub",
+          "avt",
+          "cip",
+          "psa",
+          "cea",
+          "IsMachineUser",
+          "IsIntegration",
+          "subdomain",
+          "member",
+          "full_name"
+        ]
+      }
+    },
+    {
+      "stage": "C50-login-flag-false-active-update",
+      "at": "2026-11-19T23:51:29.235Z",
+      "request": {
+        "query": "mutation Capture644LoginFlagFalse($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}",
+        "variables": {
+          "id": "policy-b-login",
+          "input": {
+            "name": "policy-b-login",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { false }\nsample := true\n",
+            "engineType": "REGO_V1"
+          }
+        }
+      },
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "updatedAt": 1795132289
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-active-login-update-old-session",
+      "actor": "test-key",
+      "at": "2026-11-19T23:51:47.939Z",
+      "request": {
+        "query": "query Capture644AfterActivePolicyUpdate { viewer { admin } }"
+      },
+      "response": {
+        "data": {
+          "viewer": null
+        }
+      }
+    },
+    {
+      "stage": "C50-login-flag-false-admission",
+      "actor": "test-key",
+      "at": "2026-11-19T23:51:48.202Z",
+      "request": {
+        "query": "mutation Capture644FlagFalseAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-login-key-grants-flag-false",
+      "actor": "test-key",
+      "at": "2026-11-19T23:52:02.127Z",
+      "request": {
+        "query": "query Capture644FlagFalseReadback { viewer { admin identityProvider } stack(id:\"stack-b\") { id canRead canWrite } }"
+      },
+      "response": {
+        "errors": [
+          {
+            "message": "denied",
+            "path": [
+              "stack"
+            ]
+          }
+        ],
+        "data": {
+          "viewer": {
+            "admin": false,
+            "identityProvider": "GITHUB"
+          },
+          "stack": null
+        }
+      }
+    },
+    {
+      "stage": "C50-login-roles-and-sampling",
+      "at": "2026-11-19T23:52:16.152Z",
+      "request": {
+        "query": "query Capture644LoginRoles { roles { id name slug } policy(id:\"policy-b-login\"){id sampleCount evaluationRecords{key outcome timestamp}} }"
+      },
+      "response": {
+        "data": {
+          "roles": [
+            {
+              "id": "01K00000000000000000000004",
+              "name": "Space reader",
+              "slug": "space-reader"
+            },
+            {
+              "id": "01K00000000000000000000005",
+              "name": "Space writer",
+              "slug": "space-writer"
+            },
+            {
+              "id": "01J00000000000000000000015",
+              "name": "Space admin",
+              "slug": "space-admin"
+            },
+            {
+              "id": "01K00000000000000000000006",
+              "name": "Worker pool controller",
+              "slug": "worker-pool-controller"
+            }
+          ],
+          "policy": {
+            "id": "policy-b-login",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-login-deny-key-control",
+      "at": "2026-11-19T23:52:52.280Z",
+      "request": {
+        "query": "mutation Capture644LoginDenyControl($id:ID!,$input:PolicyUpdateInput!){policyUpdatev2(id:$id,input:$input){id type engineType updatedAt}}",
+        "variables": {
+          "id": "policy-b-login",
+          "input": {
+            "name": "policy-b-login",
+            "body": "package spacelift\nimport rego.v1\nallow if { input.session.member }\nallow if { input.session.login == \"api::01K00000000000000000000010\" }\ndeny if { input.session.login == \"api::01K00000000000000000000010\" }\nroles[\"root\"] contains \"space-writer\" if { input.session.login == \"api::01K00000000000000000000010\" }\nflag contains \"capture-644-login-flag\" if { true }\nsample := true\n",
+            "engineType": "REGO_V1"
+          }
+        }
+      },
+      "response": {
+        "data": {
+          "policyUpdatev2": {
+            "id": "policy-b-login",
+            "type": "LOGIN",
+            "engineType": "REGO_V1",
+            "updatedAt": 1795132372
+          }
+        }
+      }
+    },
+    {
+      "stage": "C50-login-deny-control-admission",
+      "actor": "test-key",
+      "at": "2026-11-19T23:53:03.904Z",
+      "request": {
+        "query": "mutation Capture644DeniedLoginAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": {
+            "jwt": "<redacted>",
+            "admin": false,
+            "validUntil": 1795134022
+          }
+        }
+      }
+    },
+    {
+      "stage": "C273-restore-managed-users",
+      "at": "2026-11-19T23:53:14.766Z",
+      "request": {
+        "query": "mutation Capture644RestoreManagedUsers { accountUpdateAuthorizationScheme(schema:MANAGED_USERS) }"
+      },
+      "response": {
+        "data": {
+          "accountUpdateAuthorizationScheme": "MANAGED_USERS"
+        }
+      }
+    },
+    {
+      "stage": "C273-restore-verified",
+      "at": "2026-11-19T23:53:24.462Z",
+      "request": {
+        "query": "query Capture644RestoredAccount { authorizationScheme viewer { admin identityProvider apiKeys { id admin isPersonal } } managedUsers {status role} sessions {current admin type channel} policy(id:\"policy-b-login\"){id sampleCount evaluationRecords {key outcome timestamp}} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB",
+            "apiKeys": []
+          },
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "policy": {
+            "id": "policy-b-login",
+            "sampleCount": 0,
+            "evaluationRecords": []
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-api-key",
+      "at": "2026-11-19T23:53:45.779Z",
+      "request": {
+        "query": "mutation Capture644DeleteTestKey($id:ID!){apiKeyDelete(id:$id){id name}}",
+        "variables": {
+          "id": "01K00000000000000000000010"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyDelete": {
+            "id": "01K00000000000000000000010",
+            "name": "capture-key-a"
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-deleted-key-admission",
+      "at": "2026-11-19T23:53:58.595Z",
+      "request": {
+        "query": "mutation Capture644DeletedKeyAdmission($id:ID!,$secret:String!){apiKeyUser(id:$id,secret:$secret){jwt admin validUntil}}",
+        "variables": {
+          "id": "01K00000000000000000000010",
+          "secret": "<redacted>"
+        }
+      },
+      "response": {
+        "data": {
+          "apiKeyUser": null
+        }
+      }
+    },
+    {
+      "stage": "cleanup-key-inventory",
+      "at": "2026-11-19T23:53:58.764Z",
+      "request": {
+        "query": "query Capture644KeyCleanupInventory { authorizationScheme apiKeys { id name admin isPersonal } managedUsers {status role} viewer {admin} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "viewer": {
+            "admin": true
+          }
+        }
+      }
+    },
+    {
+      "stage": "cleanup-deleted-key-session",
+      "actor": "test-key",
+      "at": "2026-11-19T23:54:21.593Z",
+      "request": {
+        "query": "query Capture644DeletedKeySession { viewer { admin } }"
+      },
+      "response": {
+        "data": {
+          "viewer": null
+        }
+      }
+    },
+    {
+      "stage": "cleanup-final-inventory",
+      "at": "2026-11-20T00:03:14.383Z",
+      "request": {
+        "query": "query Capture644FinalInventory { authorizationScheme viewer { admin identityProvider } apiKeys{id} managedUsers{status role} sessions{current admin type channel} stacks{id} policies{id} }"
+      },
+      "response": {
+        "data": {
+          "authorizationScheme": "MANAGED_USERS",
+          "viewer": {
+            "admin": true,
+            "identityProvider": "GITHUB"
+          },
+          "apiKeys": [],
+          "managedUsers": [
+            {
+              "status": "ACTIVE",
+              "role": "OWNER"
+            }
+          ],
+          "sessions": [
+            {
+              "current": true,
+              "admin": true,
+              "type": "GitHub",
+              "channel": "WEB"
+            }
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

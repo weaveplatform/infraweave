@@ -804,3 +804,33 @@ inventory. Membership/body equality does not reveal the service's loading mechan
 The maintainer retains infraweave's V1 default as DV-028, adopts the captured
 hash, and withdraws DV-031. No run-based behavior was captured here: C51 reset
 eligibility and the remaining policy captures stay open.
+
+## Policy-page traffic and scheme controls, 2026-11-19/20
+
+The [C273 fixture](../../../test/fixtures/captures/C273/README.md) resolves the
+policy-page operation question with real Chrome DevTools network request and
+response bodies from the approved #644 lab. Its PLAN page has body, Used by 1,
+Samples 2, sample details and a simulation panel. The attachment names the one
+lab stack. The NOTIFICATION page has body and Samples 0, no Used by tab, and a
+message that its type is not evaluated on this V5_FREE account. This supplement
+does not retroactively change the Enterprise trial baseline above.
+
+Actual operations are SearchPolicies, SearchPoliciesSuggestions, GetPolicyNames,
+GetPolicyForDetails, GetPolicyEvaluationRecords, GetPolicyEvaluationSample,
+SearchEvaluationRecords, SearchEvaluationRecordSuggestions and SimulatePolicyV2.
+GetPolicyForDetails includes body, engine, metadata, counts and attachedStacks;
+Used by needs no invented separate query. SimulatePolicyV2 returns a JSON string.
+
+The same capture records MANAGED_USERS → LOGIN_POLICIES → MANAGED_USERS. Switching
+invalidated the existing test-key session and preserved the owner caller; editing
+the LOGIN body while active also invalidated that test session. An earlier edit
+while MANAGED_USERS was active left it valid. The original ACTIVE/OWNER and sole
+owner session were restored, with no queued invitations. The key was deleted and
+both its subsequent token exchange and old-session read failed. C50 separately
+retains the unresolved rule-enforcement/flag experiment; session invalidation
+alone does not prove its evaluation.
+
+The lab used one stack, six policies and exactly eight provider-free runs. It
+applied no infrastructure. Final inventory has zero stacks, policies and API
+keys; the temporary source branch was deleted and GitHub returned 404. C54 reuses
+#637's complete 62-template comparison rather than repeating the old 59 count.
