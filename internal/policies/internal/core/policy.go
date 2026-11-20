@@ -64,6 +64,7 @@ type Store interface {
 	Detach(context.Context, kernel.AccountID, kernel.ULID) error
 	Attachments(context.Context, kernel.AccountID, []kernel.ULID, bool) (map[kernel.ULID][]Attachment, error)
 	ByIDs(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]Policy, error)
+	Effective(context.Context, kernel.AccountID, rego.Type, []kernel.ULID, *kernel.ULID, []string) ([]Policy, error)
 	Search(context.Context, kernel.AccountID, search.Input, Scope) (search.Result[Policy], error)
 	Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, Scope) (search.Suggestions, error)
 	InSpace(context.Context, kernel.AccountID, kernel.ULID) (bool, error)

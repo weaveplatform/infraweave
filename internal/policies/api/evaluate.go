@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -115,13 +116,39 @@ type ApprovalDecision struct {
 // Evaluation is the typed aggregate and its stable per-policy evidence. No
 // policies is an explicit instruction for the caller to retain its own default.
 type Evaluation struct {
-	Type        Type              `json:"type"`
-	HasPolicies bool              `json:"hasPolicies"`
-	Outcome     Outcome           `json:"outcome"`
-	Plan        *PlanDecision     `json:"plan,omitempty"`
-	Approval    *ApprovalDecision `json:"approval,omitempty"`
-	Receipts    []Receipt         `json:"receipts"`
-	Failures    []Failure         `json:"failures"`
+	Type         Type                  `json:"type"`
+	HasPolicies  bool                  `json:"hasPolicies"`
+	Outcome      Outcome               `json:"outcome"`
+	Plan         *PlanDecision         `json:"plan,omitempty"`
+	Approval     *ApprovalDecision     `json:"approval,omitempty"`
+	Push         *PushDecision         `json:"push,omitempty"`
+	Trigger      *TriggerDecision      `json:"trigger,omitempty"`
+	Login        *LoginDecision        `json:"login,omitempty"`
+	Negative     *NegativeDecision     `json:"negative,omitempty"`
+	Notification *NotificationDecision `json:"notification,omitempty"`
+	Receipts     []Receipt             `json:"receipts"`
+	Failures     []Failure             `json:"failures"`
+	// Samples is an in-memory handoff to P13b's sealed persistence. It must
+	// never be copied into a response, event document or plaintext log.
+	// Workflow evaluation succeeds without an installed sampling consumer.
+	Samples []SampleRequest `json:"-"`
+}
+
+// ErrInput names unavailable or invalid policy facts from an input builder.
+// Other builder errors are operational failures and roll back the caller.
+var ErrInput = errors.New("policy input facts are unavailable or invalid")
+
+// ErrTarget refuses unsupported or mismatched execution targets explicitly.
+var ErrTarget = errors.New("unsupported policy evaluation target")
+
+// SampleRequest contains sensitive evidence for a later sealing sink. Sample
+// remains a request on Receipt until that sink durably links its own record.
+type SampleRequest struct {
+	Receipt        Receipt
+	Body           string
+	Input          json.RawMessage
+	Print          string
+	PrintTruncated bool
 }
 
 // Evaluator joins its caller's transaction. Policy failures return a fail-closed

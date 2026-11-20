@@ -2308,8 +2308,8 @@ P13b prepares public APIs for the P24c console, while P14 owns worker exec.
 | C46 | Real refusal recorded; maintainer-approved reason/label inferences in ADR 0009 unblock #652, without resolving the evidence question |
 | C48 | Free-tier facts recorded; approved inference maps WORKFLOW_POLICIES to GIT_PUSH/TRIGGER evaluation, without a blanket CRUD gate; entitled-account evidence remains open |
 | C51, C291 | New slug-ID reset and both rejection states recorded; approved owner-ID inference unblocks #649 while legacy evidence remains open. C291 replay awaits #650 |
-| C47, C50 (LOGIN), C52 | #644 records root ACCESS refusal and server initialization READY → FAILED; LOGIN flag effects and TASK deny-before-creation remain unobserved. Preserve those gates before affected P13b handlers |
-| C53, C273 | #644 records sample independence, resource-value masking, non-admin capture refusal and actual page requests. C273 resolved; C53 cadence/TTL/cross-space/direct sample reads remain open before affected #661/#662 behavior |
+| C47, C50 (LOGIN), C52 | #644 records root ACCESS refusal and server initialization READY → FAILED; LOGIN flag effects and TASK deny-before-creation remain unobserved. The maintainer's 2026-11-20 inference approval in ADR 0009 permits the accepted P13b contracts; evidence questions remain open |
+| C53, C273 | #644 records sample independence, resource-value masking, non-admin capture refusal and actual page requests. C273 resolved; C53 cadence/TTL/cross-space/direct sample reads remain unobserved. The 2026-11-20 inference approval permits #661/#662's accepted retention/privacy contracts without claiming vendor parity |
 | C55 module-version part | P17 registry triggers, not P13; no module event is fabricated to close the capture |
 | C50 NOTIFICATION / INTENT | P18 / P25 execution, not a P13b LOGIN claim |
 
@@ -2407,6 +2407,15 @@ Intent policies. The 2026-11-17 survey listed 59 templates; C54 records
   the template implementation. Captures C47, C48, C52, C53 and C273 replay
   once recorded.
 - `make gate` passes at 95% in total and 90% per package.
+
+Both policy phase delivery gates require the maintainer's 2026-11-20 real
+OPA/Rego acceptance matrix (#654 and #666): supported v0/v1 language forms,
+recorded decisions and pinned corpus, defaults/conflicts, timeouts and limits,
+isolated concurrent inputs/helpers/print, FIPS and forbidden built-ins. Assert
+the committed workflow result, receipt/flag ownership and rollback through each
+phase's actual APIs/workers and real services. The real-provider vcs-lab remains
+#655's independent requirement. Unit compilation or evaluator stubs do not
+complete this gate; retain exact revision and passing CI evidence for the matrix.
 
 ## P14: Public worker pool, Kubernetes workers and signed runs
 

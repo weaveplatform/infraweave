@@ -128,6 +128,12 @@ func newFixture(t *testing.T) *fixture {
 	if err := kinds.Register(policyapi.ChangedKind, policyapi.ChangedVersion, policyapi.ChangedSchema); err != nil {
 		t.Fatal(err)
 	}
+	if err := kinds.Register(policyapi.EvaluatedKind, policyapi.EvaluationEventVersion, policyapi.EvaluatedSchema); err != nil {
+		t.Fatal(err)
+	}
+	if err := kinds.Register(policyapi.InternalErrorKind, policyapi.EvaluationEventVersion, policyapi.InternalErrorSchema); err != nil {
+		t.Fatal(err)
+	}
 	runtime, err := rego.New(rego.Defaults())
 	if err != nil {
 		t.Fatal(err)

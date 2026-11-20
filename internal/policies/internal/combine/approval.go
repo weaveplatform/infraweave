@@ -16,7 +16,8 @@ func Approval(receipts []policyapi.Receipt) policyapi.Evaluation {
 	for i := range out.Receipts {
 		r := &out.Receipts[i]
 		var d inputs.ApprovalDecision
-		if r.Failure == nil && (r.Type != policyapi.Approval || decode(r.Decision, &d) != nil || d.Approve.IsNull() || d.Reject.IsNull() || d.ApproveWithNote.IsNull() || d.RejectWithNote.IsNull() || !common(r, d.Flag, d.ResetFlag, d.Sample, false)) {
+		if r.Failure == nil &&
+			(r.Type != policyapi.Approval || decode(r.Decision, &d) != nil || d.Approve.IsNull() || d.Reject.IsNull() || d.ApproveWithNote.IsNull() || d.RejectWithNote.IsNull() || !common(r, d.Flag, d.ResetFlag, d.Sample, false)) {
 			invalid(r, policyapi.Approval)
 		}
 		if r.Failure != nil {

@@ -16,7 +16,8 @@ func Plan(receipts []policyapi.Receipt) policyapi.Evaluation {
 	for i := range out.Receipts {
 		r := &out.Receipts[i]
 		var d inputs.PlanDecision
-		if r.Failure == nil && (r.Type != policyapi.Plan || decode(r.Decision, &d) != nil || d.Deny.IsNull() || d.Warn.IsNull() || d.Info.IsNull() || !common(r, d.Flag, d.ResetFlag, d.Sample, false)) {
+		if r.Failure == nil &&
+			(r.Type != policyapi.Plan || decode(r.Decision, &d) != nil || d.Deny.IsNull() || d.Warn.IsNull() || d.Info.IsNull() || !common(r, d.Flag, d.ResetFlag, d.Sample, false)) {
 			invalid(r, policyapi.Plan)
 		}
 		if r.Failure != nil {
