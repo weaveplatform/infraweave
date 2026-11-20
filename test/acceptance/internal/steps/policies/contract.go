@@ -23,6 +23,7 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	registerCheck(sc, w)
 	registerApproval(sc, w)
 	registerPlan(sc, w)
+	registerTrigger(sc, w)
 	sc.Step(`^the policy contract validates every recorded input and decision$`, func() error { return validate(w.Last()) })
 	sc.Step(`^the policy contract answer has the shared cache and rate headers$`, func() error {
 		r := w.Last()
