@@ -48,7 +48,11 @@ type EvaluationRequest struct {
 	Type    Type
 	Target  Target
 	Input   json.RawMessage
-	Run     *kernel.ULID
+	// BuildInput runs once, in the joined transaction, only when policies
+	// apply. It is mutually exclusive with Input; policy-free workflows do
+	// not need to materialize facts required only by policy evaluation.
+	BuildInput func(context.Context) (json.RawMessage, error)
+	Run        *kernel.ULID
 }
 
 // Outcome distinguishes the existing policy-free behavior from an attached
