@@ -310,3 +310,29 @@ CREATE TABLE run_artifacts (
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE,
     CHECK (kind IN ('artifact', 'workspace', 'observability'))
 );
+
+-- A review is bound to the exact state transition in which it was made. The
+-- credential and person IDs are historical metadata, not held access-domain
+-- references. Deleting or renaming a reviewer never rewrites a policy's facts.
+-- Only the latest review per author_key and state_version counts; earlier
+-- votes remain history so a reviewer may change their mind without losing it.
+CREATE TABLE run_reviews (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    id uuid NOT NULL,
+    author_key text NOT NULL,
+    caller text NOT NULL,
+    session_id uuid NOT NULL,
+    decision text NOT NULL CHECK (decision IN ('APPROVE','REJECT')),
+    note text,
+    state text NOT NULL CHECK (state IN ('QUEUED','UNCONFIRMED','PENDING_REVIEW')),
+    state_version bigint NOT NULL CHECK (state_version > 0),
+    created_at timestamptz NOT NULL,
+    request_id text NOT NULL,
+    facts jsonb NOT NULL CHECK (jsonb_typeof(facts)='object'),
+    PRIMARY KEY (account_id,id),
+    FOREIGN KEY (account_id,run_id,state_version)
+        REFERENCES run_state_transitions (account_id,run_id,sequence) ON DELETE CASCADE
+);
+
+CREATE INDEX run_reviews_history ON run_reviews (account_id,run_id,state_version,created_at,id);

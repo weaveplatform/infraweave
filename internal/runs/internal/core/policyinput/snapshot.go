@@ -32,6 +32,10 @@ type Snapshot struct {
 // Read locks the current run before reading its policy facts. Call it lazily
 // after effective policy selection, so policy-free transitions need no input.
 func Read(ctx context.Context, store Store, account kernel.AccountID, id kernel.ULID) (Snapshot, error) {
+	return readSnapshot(ctx, store, account, id, true)
+}
+
+func readSnapshot(ctx context.Context, store Store, account kernel.AccountID, id kernel.ULID, includePrevious bool) (Snapshot, error) {
 	if !tx.In(ctx) {
 		return Snapshot{}, lifecycle.ErrNoTransaction
 	}
@@ -39,9 +43,13 @@ func Read(ctx context.Context, store Store, account kernel.AccountID, id kernel.
 	if err != nil {
 		return Snapshot{}, err //nolint:wrapcheck // the owner names the read
 	}
-	previous, found, err := store.PreviousPolicyRun(ctx, run)
-	if err != nil {
-		return Snapshot{}, err //nolint:wrapcheck // the owner names the read
+	var previous lifecycle.Run
+	found := false
+	if includePrevious {
+		previous, found, err = store.PreviousPolicyRun(ctx, run)
+		if err != nil {
+			return Snapshot{}, fmt.Errorf("runs: read previous policy facts: %w", err)
+		}
 	}
 	ids := []kernel.ULID{run.ID}
 	if found {
@@ -98,4 +106,9 @@ func snapshotOf(ctx context.Context, store Store, run lifecycle.Run, flags []str
 	}
 	out.Environment = known(environment)
 	return out, nil
+}
+
+// Current reads only the current run's facts for contracts without previous_run.
+func Current(ctx context.Context, store Store, account kernel.AccountID, id kernel.ULID) (Snapshot, error) {
+	return readSnapshot(ctx, store, account, id, false)
 }

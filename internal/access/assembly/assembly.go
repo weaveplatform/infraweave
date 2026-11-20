@@ -25,6 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/reviewmeta"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
@@ -136,21 +137,22 @@ type Domain struct {
 	authn  *authn.Service
 	// exchanges keeps the tokens of API keys the state backend's clients
 	// send with every request.
-	exchanges *authn.Exchanges
-	authz     *authz.Service
-	subjects  *http.Subjects
-	keys      *apikey.Service
-	orgs      *operator.Service
-	orgAdmin  *orgadmin.Service
-	settings  *settings.Service
-	users     *user.Service
-	groups    *group.Service
-	roles     *role.Service
-	bindings  *binding.Service
-	holders   *holder.Service
-	oauth     *oauth.Service
-	spaces    *space.Service
-	manual    bool
+	exchanges      *authn.Exchanges
+	authz          *authz.Service
+	subjects       *http.Subjects
+	keys           *apikey.Service
+	orgs           *operator.Service
+	orgAdmin       *orgadmin.Service
+	settings       *settings.Service
+	users          *user.Service
+	groups         *group.Service
+	roles          *role.Service
+	reviewMetadata *reviewmeta.Service
+	bindings       *binding.Service
+	holders        *holder.Service
+	oauth          *oauth.Service
+	spaces         *space.Service
+	manual         bool
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
 	publicURL string
@@ -266,9 +268,10 @@ func New(d Deps) (*Domain, error) {
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
 		),
-		users:  user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
-		groups: group.NewService(group.Deps{Store: store, Now: now}),
-		roles:  role.NewService(role.Deps{Store: store}),
+		users:          user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
+		groups:         group.NewService(group.Deps{Store: store, Now: now}),
+		roles:          role.NewService(role.Deps{Store: store}),
+		reviewMetadata: reviewmeta.New(reviewmeta.Deps{DB: d.DB, Store: store}),
 		bindings: binding.NewService(
 			binding.Deps{Store: store, Authz: decide},
 		),
@@ -507,4 +510,12 @@ func (d *Domain) Cron() []cron.Task {
 			return d.tokens.Rotate(ctx) //nolint:wrapcheck // names itself
 		},
 	})
+}
+
+// ReviewMetadata supplies the access-owned immutable context of run reviewers.
+func (d *Domain) ReviewMetadata() accessapi.ReviewMetadataReader {
+	if d == nil {
+		return nil
+	}
+	return d.reviewMetadata
 }

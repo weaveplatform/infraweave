@@ -11,8 +11,8 @@ import (
 // Fact distinguishes unavailable facts, explicit null, and known values. A
 // value with Known=false is invalid rather than silently discarded.
 type Fact[T any] struct {
-	Known bool
-	Value *T
+	Known bool `json:"known"`
+	Value *T   `json:"value"`
 }
 
 // RunInputBuilder projects workflow facts into the published typed contract.
@@ -38,50 +38,54 @@ type RunInputFacts struct {
 // review per author. Known empty groups are explicit arrays, never a fabricated
 // approval or a review carried from a previous state.
 type ReviewsFacts struct {
-	Current ReviewGroupFacts
-	Older   ReviewGroupFacts
+	Current ReviewGroupFacts `json:"current"`
+	Older   ReviewGroupFacts `json:"older"`
 }
 
 // ReviewGroupFacts separates approval and rejection without rewriting history.
 type ReviewGroupFacts struct {
-	Approvals  []ReviewFacts
-	Rejections []ReviewFacts
+	Approvals  []ReviewFacts `json:"approvals"`
+	Rejections []ReviewFacts `json:"rejections"`
 }
 
 // ReviewFacts retains the metadata recorded at the authorized review, not the
 // reviewer's current roles or session at a later policy evaluation.
 type ReviewFacts struct {
-	Author       string
-	State        kernel.RunState
-	StateVersion int64
-	AuthorRoles  Fact[[]RoleFacts]
-	Identity     Fact[IdentityFacts]
-	Note         Fact[string]
-	Request      Fact[RequestFacts]
-	Session      Fact[SessionFacts]
+	Author       string              `json:"author"`
+	State        kernel.RunState     `json:"state"`
+	StateVersion int64               `json:"stateVersion"`
+	AuthorRoles  Fact[[]RoleFacts]   `json:"authorRoles"`
+	Identity     Fact[IdentityFacts] `json:"identity"`
+	Note         Fact[string]        `json:"note"`
+	Request      Fact[RequestFacts]  `json:"request"`
+	Session      Fact[SessionFacts]  `json:"session"`
 }
 
 // RoleFacts keeps the public role identity and immutable ULID distinct.
 type RoleFacts struct {
-	ID, Name, Slug, ULID string
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+	ULID string `json:"ulid"`
 }
 
 // IdentityFacts contains only identity data supplied by its owning domain.
 type IdentityFacts struct {
-	ULID        Fact[string]
-	Federations Fact[map[string]FederationFacts]
+	ULID        Fact[string]                     `json:"ulid"`
+	Federations Fact[map[string]FederationFacts] `json:"federations"`
 }
 
 // FederationFacts is the recorded external identity, when available.
 type FederationFacts struct {
-	ID, Username Fact[string]
+	ID       Fact[string] `json:"id"`
+	Username Fact[string] `json:"username"`
 }
 
 // RequestFacts fixes the request clock when the review is recorded. A later
 // evaluation must not replace it with its own timestamp or remote address.
 type RequestFacts struct {
-	At       time.Time
-	RemoteIP Fact[string]
+	At       time.Time    `json:"at"`
+	RemoteIP Fact[string] `json:"remoteIp"`
 }
 
 // SessionAdmin preserves the published human boolean and machine empty-string
@@ -96,12 +100,15 @@ const (
 
 // SessionFacts projects the recorded session without credentials or token data.
 type SessionFacts struct {
-	Machine                bool
-	Admin                  Fact[SessionAdmin]
-	Login, Name, CreatorIP Fact[string]
-	IDPSubject, StackID    Fact[string]
-	Teams                  Fact[[]string]
-	Identity               Fact[IdentityFacts]
+	Machine    bool                `json:"machine"`
+	Admin      Fact[SessionAdmin]  `json:"admin"`
+	Login      Fact[string]        `json:"login"`
+	Name       Fact[string]        `json:"name"`
+	CreatorIP  Fact[string]        `json:"creatorIp"`
+	IDPSubject Fact[string]        `json:"idpSubject"`
+	StackID    Fact[string]        `json:"stackId"`
+	Teams      Fact[[]string]      `json:"teams"`
+	Identity   Fact[IdentityFacts] `json:"identity"`
 }
 
 // RunFacts carries persisted facts without using a transport Run projection,
