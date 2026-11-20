@@ -44,6 +44,8 @@ type Input struct {
 type Store interface {
 	Create(context.Context, Policy) error
 	Get(context.Context, kernel.AccountID, kernel.ULID, bool) (Policy, error)
+	Update(context.Context, Policy) error
+	InSpace(context.Context, kernel.AccountID, kernel.ULID) (bool, error)
 }
 
 // ErrNotFound is an account-qualified lookup with no policy row.
@@ -77,13 +79,8 @@ func (e *Missing) Error() string { return fmt.Sprintf("policies: no %s %q", e.Ki
 
 // Create compiles a new policy, holds its space and persists the policy atomically.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Policy, error) {
-	var invalid []kernel.FieldError
-	if strings.TrimSpace(in.Name) == "" {
-		invalid = append(invalid, kernel.FieldError{Pointer: "/name", Reason: kernel.ReasonRequired, Message: "A policy needs a name."})
-	}
-	invalid = append(invalid, kernel.CheckLabels("/labels", in.Labels)...)
-	if len(invalid) > 0 {
-		return Policy{}, &kernel.Invalid{Detail: "The policy settings are refused.", Errors: invalid}
+	if err := checkInput(in); err != nil {
+		return Policy{}, err
 	}
 	if in.Engine == "" {
 		in.Engine = rego.V1
@@ -93,29 +90,142 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 	}
 	var out Policy
 	err := tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
-		space := p.AccountID.ULID
-		if in.Space != "" {
-			var err error
-			space, err = s.deps.Spaces.Find(ctx, p.AccountID, in.Space)
-			if errors.Is(err, accessapi.ErrNoSpace) {
-				return &Missing{Kind: "space", ID: in.Space}
-			}
-			if err != nil {
-				return fmt.Errorf("policies: resolve space: %w", err)
-			}
-		}
-		if err := s.deps.Spaces.Hold(ctx, p.AccountID, space); err != nil {
-			return fmt.Errorf("policies: hold space: %w", err)
+		space, err := s.writeSpace(ctx, p, in.Space)
+		if err != nil {
+			return err
 		}
 		now := s.deps.Now()
-		out = Policy{Account: p.AccountID, ID: kernel.NewULID(), Space: space, Name: strings.TrimSpace(in.Name), Body: in.Body, Description: in.Description, Labels: slices.Sorted(slices.Values(in.Labels)), Type: in.Type, Engine: in.Engine, Template: in.Template, CreatedAt: now, UpdatedAt: now, Version: 1}
-		if out.Labels == nil {
-			out.Labels = []string{}
+		out = Policy{
+			Account:     p.AccountID,
+			ID:          kernel.NewULID(),
+			Space:       space,
+			Name:        strings.TrimSpace(in.Name),
+			Body:        in.Body,
+			Description: in.Description,
+			Labels:      labels(in.Labels),
+			Type:        in.Type,
+			Engine:      in.Engine,
+			Template:    in.Template,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+			Version:     1,
 		}
 		return s.deps.Store.Create(ctx, out)
 	})
 	if err != nil {
 		return Policy{}, fmt.Errorf("policies: create: %w", err)
+	}
+	return out, nil
+}
+
+func checkInput(in Input) error {
+	var invalid []kernel.FieldError
+	if strings.TrimSpace(in.Name) == "" {
+		invalid = append(invalid, kernel.FieldError{Pointer: "/name", Reason: kernel.ReasonRequired, Message: "A policy needs a name."})
+	}
+	invalid = append(invalid, kernel.CheckLabels("/labels", in.Labels)...)
+	if len(invalid) > 0 {
+		return &kernel.Invalid{Detail: "The policy settings are refused.", Errors: invalid}
+	}
+	return nil
+}
+
+func labels(in []string) []string {
+	out := slices.Sorted(slices.Values(in))
+	if out == nil {
+		return []string{}
+	}
+	return out
+}
+
+// Denied is a transaction-time authorization refusal after resolving a space.
+type Denied struct{ Action accessapi.Action }
+
+func (e *Denied) Error() string { return fmt.Sprintf("policies: action %s is denied", e.Action) }
+
+func (s *Service) require(ctx context.Context, p kernel.Principal, space kernel.ULID) error {
+	ok, err := s.deps.Authz.Authorize(ctx, p, accessapi.ActionSpaceAdmin, space)
+	if err != nil {
+		return fmt.Errorf("policies: authorize write: %w", err)
+	}
+	if !ok {
+		return &Denied{Action: accessapi.ActionSpaceAdmin}
+	}
+	return nil
+}
+
+func (s *Service) writeSpace(ctx context.Context, p kernel.Principal, slug string) (kernel.ULID, error) {
+	space := p.AccountID.ULID
+	if slug != "" {
+		var err error
+		space, err = s.deps.Spaces.Find(ctx, p.AccountID, slug)
+		if errors.Is(err, accessapi.ErrNoSpace) {
+			return kernel.ULID{}, &Missing{Kind: "space", ID: slug}
+		}
+		if err != nil {
+			return kernel.ULID{}, fmt.Errorf("policies: resolve space: %w", err)
+		}
+	}
+	if err := s.deps.Spaces.Hold(ctx, p.AccountID, space); err != nil {
+		if errors.Is(err, accessapi.ErrNoSpace) {
+			return kernel.ULID{}, &Missing{Kind: "space", ID: slug}
+		}
+		return kernel.ULID{}, fmt.Errorf("policies: hold space: %w", err)
+	}
+	if err := s.require(ctx, p, space); err != nil {
+		return kernel.ULID{}, err
+	}
+	return space, nil
+}
+
+// Update preserves identity, type, template origin and an omitted engine while
+// replacing mutable settings. The row lock fences compilation against concurrent
+// engine changes, and a failed compile commits no policy change.
+func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, in Input) (Policy, error) {
+	if err := checkInput(in); err != nil {
+		return Policy{}, err
+	}
+	parsed, err := kernel.ParseULID(id)
+	if err != nil {
+		return Policy{}, &Missing{Kind: "policy", ID: id}
+	}
+	var out Policy
+	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		out, err = s.deps.Store.Get(ctx, p.AccountID, parsed, true)
+		if errors.Is(err, ErrNotFound) {
+			return &Missing{Kind: "policy", ID: id}
+		}
+		if err != nil {
+			return fmt.Errorf("policies: lock for update: %w", err)
+		}
+		if err := expect.Check(out.Version); err != nil {
+			return fmt.Errorf("policies: update version: %w", err)
+		}
+		if err := s.require(ctx, p, out.Space); err != nil {
+			return err
+		}
+		if in.Engine == "" {
+			in.Engine = out.Engine
+		}
+		if err := s.deps.Runtime.Check(ctx, rego.Policy{Type: out.Type, Engine: in.Engine, Body: in.Body}); err != nil {
+			return s.compileError(err)
+		}
+		space, err := s.writeSpace(ctx, p, in.Space)
+		if err != nil {
+			return err
+		}
+		out.Space = space
+		out.Name = strings.TrimSpace(in.Name)
+		out.Body = in.Body
+		out.Description = in.Description
+		out.Labels = labels(in.Labels)
+		out.Engine = in.Engine
+		out.UpdatedAt = s.deps.Now()
+		out.Version++
+		return s.deps.Store.Update(ctx, out)
+	})
+	if err != nil {
+		return Policy{}, fmt.Errorf("policies: update: %w", err)
 	}
 	return out, nil
 }
@@ -160,4 +270,14 @@ func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, id string)
 		return kernel.ULID{}, accessapi.ErrNoSubject
 	}
 	return p.Space, err //nolint:wrapcheck // the policy lookup names its failure
+}
+
+// SpaceInUse prevents deleting a space while it owns a policy.
+func (s *Service) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
+	return s.deps.Store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
+}
+
+// LostOnMove has no attachment reach to validate for management-only policies.
+func (s *Service) LostOnMove(context.Context, accessapi.SpaceMove) ([]accessapi.LostReach, error) {
+	return nil, nil
 }

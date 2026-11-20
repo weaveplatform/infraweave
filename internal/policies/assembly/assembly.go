@@ -7,6 +7,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
+	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/http"
@@ -37,6 +38,12 @@ const Entity = "policy"
 
 // Stream is the policies domain's migration stream, before runs.
 func Stream() migrate.Stream { return pg.Stream() }
+
+// Held declares cross-domain ownership for the shared integrity audit.
+func Held() []integrity.Held { return pg.Held() }
+
+// SpaceGuard prevents removing spaces that still own policies.
+func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc }
 
 // New constructs policy management over its owned store and domain ports.
 func New(d Deps) *Domain {

@@ -155,6 +155,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	}
 	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime})
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
+	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:              db.Primary(),
 		Keys:            keys,

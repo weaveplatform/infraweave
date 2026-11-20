@@ -179,6 +179,7 @@ func (p *platformSteps) grant(ctx context.Context, tok, feature, replica string)
 // drops what it holds when infraweave_invalidate tells it to, which lands
 // after the write that sends it has answered.
 func (p *platformSteps) eventuallyProblem(ctx context.Context, method, path, replica, tok, code, slug string) error {
+	path = p.w.Resolve(path)
 	return deps.Eventually(
 		ctx,
 		method+" "+path+" to answer "+code,
