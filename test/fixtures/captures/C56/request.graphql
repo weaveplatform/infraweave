@@ -1,0 +1,19 @@
+# exchange 0
+# variables: {"input":{"name":"policy-a","type":"PLAN","engineType":"REGO_V1","body":"package spacelift\nimport rego.v1\n\n# Unattached capture policy.\ndefault allow := true\n","space":"root"}}
+mutation Capture643Create($input: PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }
+
+# exchange 1
+# variables: {"id":"policy-a","input":{"name":"policy-a","body":"package spacelift\nimport rego.v1\n\ndefault allow := true\n# Timestamp update capture.\n"}}
+mutation Capture643Update($id:ID!,$input:PolicyUpdateInput!) { policyUpdatev2(id:$id,input:$input) { id type engineType createdAt updatedAt } }
+
+# exchange 2
+# variables: {"id":"policy-a"}
+mutation Capture643DeleteForce($id:ID!) { policyDelete(id:$id,force:true) { id } }
+
+# exchange 3
+# variables: {"id":"policy-a","stack":"stack-a"}
+query Capture643AttachmentCleanup($id:ID!,$stack:ID!) { policy(id:$id) { id } policies { id } stack(id:$stack) { id attachedPolicies { id } } }
+
+# exchange 4
+# variables: {}
+query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }

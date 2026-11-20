@@ -1606,7 +1606,7 @@
       "subject": "08",
       "severity": "unsupported",
       "finding": "T5, T24 and T29 gave an approval `reject` as `FAILED` only, while the approval page's walkthrough says Reject cancels the run",
-      "change": "Both statements recorded; the target is open (C40)",
+      "change": "Both documentation statements retained; C40 settles QUEUED, and the 2026-11-19 C291 real capture settles PENDING_REVIEW/UNCONFIRMED as FAILED, including mixed approval outcomes",
       "status": "folded",
       "files": [
         "docs/research/reference/08-run-lifecycle.md",
@@ -1618,7 +1618,7 @@
           "file": "docs/data/run-transitions.json",
           "present": [
             "while the review walkthrough on the same page describes **Reject** as canceling the run",
-            "the docs also describe reject as canceling (see T5)"
+            "C291’s 2026-11-19 real API capture confirms FAILED"
           ]
         }
       ]
@@ -2409,8 +2409,8 @@
       "subject": "09",
       "severity": "unsupported",
       "finding": "`createdAt` and `updatedAt` were given as Unix seconds; the schema says only Unix timestamp",
-      "change": "Unit marked as unstated (C56)",
-      "status": "open",
+      "change": "The schema alone did not settle units. The 2026-11-19 C56 real create/update request bounds establish Unix seconds and preserve createdAt on update",
+      "status": "folded",
       "files": [
         "docs/research/reference/09-policies.md"
       ],
@@ -2419,10 +2419,8 @@
         {
           "file": "docs/research/reference/09-policies.md",
           "present": [
-            "Unix timestamps; the schema does not state the unit [G]"
-          ],
-          "absent": [
-            "Unix seconds"
+            "Unix seconds, with createdAt preserved on update",
+            "C56"
           ]
         }
       ]

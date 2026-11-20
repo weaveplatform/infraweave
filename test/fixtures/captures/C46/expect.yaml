@@ -1,0 +1,9 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/652
+observed:
+  "/exchanges/3/response/errors/0/message": "Your billing tier does not support listing ignored runs."
+  "/exchanges/3/response/data/stack/searchRunIgnoredTriggers": null
+  "/exchanges/3/response/data/stack/runs/0/commit/hash": "332e6616e53e65328d730263c980e97db202e593"
+  "/exchanges/7/response/errors/0/message": "Your billing tier does not support listing ignored runs."
+  "/exchanges/7/response/data/stack/runs/0/commit/hash": "f414d450ee1bffe95df63ddc90d64a30f9576c1d"
+  "/exchanges/9/response/data/stacks": []
+  "/exchanges/9/response/data/policies": []

@@ -3,8 +3,9 @@
 A capture is one exchange with Spacelift's real API, taken on an account
 Spacelift has authorized for that use
 ([report 30, capture safety](../../../docs/research/reference/30-open-questions.md)),
-redacted and checked in here. Checking it in resolves its record in
-`docs/data/open-questions.json`
+redacted and checked in here. A complete observation resolves its record in
+`docs/data/open-questions.json`; a partial capture or a real entitlement refusal
+keeps its missing cases open and names them in the fixture README
 ([decision 0016, capture fixtures](../../../docs/research/decisions/0016-testing-and-acceptance.md#capture-fixtures)).
 
 | Path | Content |
@@ -29,6 +30,27 @@ as no capture.
   Once implemented, remove `replayAfter` and add calls. C49 intentionally expects
   a different infraweave default (V1); C57 must check the linked OPA version rather
   than freezing the reference service version.
-- `TestAccCaptures` (`make accept`) verifies the four policy observations and replays every enabled call against
+- `TestAccCaptures` (`make accept`) verifies the recorded policy observations and replays every enabled call against
   `infraweave serve`. A capture whose expectation fails is a parity bug,
   reported with its id, not a flaky test.
+
+The 2026-11-19 workflow lab used one stack, ten policies and four provider-free
+runs. The final live inventory contains no stacks or policies. Its temporary
+GitHub source branch was deleted and the CLI verified a 404 response. The public
+fixture source was commit `46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd`; no plan was
+applied. Each group retains its actual request/response sequence and cleanup.
+
+| Capture | Observed | Missing evidence | REST replay |
+|---|---|---|---|
+| C9 | Attached ordinary policy refuses deletion without force; force deletes it and its attachment | Context and plugin-managed deletion | #645 |
+| C46 | Real custom-ignore and default pushes; ignored-history query refused on V5_FREE | Entitled-account reason codes and disabling label | #652 |
+| C48 | Free-tier creation/attachment differences and actual PLAN/APPROVAL/INITIALIZATION evaluation | Complete type mapping with an entitled-account comparison | #645 |
+| C51 | New slug-ID policy successfully resets its own flag; historical receipt remains | Legacy internal-ID eligibility/migration and ULID-ID comparison | #649 |
+| C56 | Unix seconds for create/update; createdAt remains fixed | None | #645 |
+| C291 | Mixed-policy rejection fails UNCONFIRMED and PENDING_REVIEW with the exact note | None | #650 |
+
+C56 and C291 resolve their register questions. The partial cases remain open;
+their fixtures verify the evidence or refusal. The maintainer separately accepted
+ADR 0009's labelled inferences for C46/C48/C51 on 2026-11-19, lifting their
+implementation gates while keeping the evidence questions open. A CI pass alone
+would not establish a missing upstream observation.

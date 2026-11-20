@@ -256,7 +256,10 @@ Who calls the engine, when, and what the result does to the run of decision
   evaluation applies its `reset_flag` entries first, deleting only its own ownership rows,
   then inserts its `flag` entries ([09 section 5](../reference/09-policies.md#5-flags-flag-reset-and-sampling)).
   A flag is visible in `run.flags` while any owner row remains. Every infraweave policy has
-  a ULID, so every policy can reset.
+  a ULID, so every policy can reset. C51's 2026-11-19 real samples also show a
+  newly created Spacelift policy with a slug-shaped public ID resetting its flag;
+  public ID syntax does not determine eligibility. The legacy-policy comparison
+  remains unobserved and is not proved by this new-policy observation.
 - **Sampling.** When `sample` is true (login by default), the engine stores a record of
   input, body, engine type, result, outcome, error and print output.
   - Hourly sample budgets per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all
@@ -427,11 +430,54 @@ A Terragrunt `units` envelope applies the transform independently to each unit's
 saves only the workspace. Artifact bounds remain 0008's; policy input bounds
 remain this record's limits. The opt-out does not disable artifact sealing.
 
-Required live behavior captures block their affected implementation tickets.
+Required live behavior captures block their affected implementation tickets unless
+a dated maintainer decision explicitly accepts an inference, as below.
 The table in plan P13 names every gate, including remaining C9 policy deletion,
 C46, C48, C50, C51, C52, C56 and C291. An inaccessible tier or support-only fact
-stays unresolved. C49/C54/C57/C192 are recorded, with explicit REST replay
+stays unobserved; the approved inference below can unblock implementation. C49/C54/C57/C192 are recorded, with explicit REST replay
 handoffs. Do not close a capture by converting an interim choice into a fixture.
+
+### Maintainer-approved inferences for the remaining captures
+
+On 2026-11-19 the maintainer instructed **use inference** for #643's inaccessible
+cases. This unblocks the affected implementation; it does not turn an inference
+into a captured Spacelift fact. C46, C48 and C51 retain their open evidence
+questions and the authentic partial fixtures. C9's context/plugin remainder
+stays with its existing owner.
+
+- **C48: evaluation gates.** Infer WORKFLOW_POLICIES covers GIT_PUSH and TRIGGER.
+  The free account's console disables Access, Push, Trigger and Notification;
+  ACCESS_POLICIES and NOTIFICATION_POLICIES separately name the other two.
+  Actual free-tier receipts demonstrate PLAN, APPROVAL and INITIALIZATION
+  evaluation. TASK and LOGIN are outside the inferred WORKFLOW_POLICIES pair.
+  Do not apply a blanket WORKFLOW_POLICIES refusal to policy creation, update
+  or attachment: the live free-tier operations permit them. Installation-wide
+  policies controls, ordinary authorization and the intentional ACCESS
+  supersession still apply. This is an inferred type-to-feature mapping,
+  pending an entitled-account comparison; NOTIFICATION retains its separate
+  evaluation feature.
+- **C46: ignored reasons.** Infer CUSTOM_POLICY for an explicit custom ignore.
+  Infer CUSTOM_POLICY_NO_TRIGGER when the combined custom result schedules
+  no run without an explicit ignore, including a tracked notrigger result or
+  no positive action. Use DISABLED_BY_LABEL when no custom policy is attached
+  and the default policy is disabled. The upstream label was not observed:
+  infraweave deliberately selects `feature:disable_default_push_policy` for
+  that control. Its name and the reason split are implementation choices
+  under this authorization, not claims of observed upstream compatibility.
+  A custom policy replaces the default; the label does not override a custom
+  policy's result. Existing observed default push/filter behavior is retained.
+- **C51: reset eligibility.** Follow the documented internal PolicyULID rule
+  for interpreting upstream legacy behavior, without inferring that internal
+  field from a public slug or ULID. Every newly created infraweave policy has
+  its own stable owner ID and can reset its own ownership rows. The real
+  new-slug capture supports keeping public ID syntax out of eligibility.
+  Acquiring/migrating missing upstream legacy IDs is not implemented or
+  claimed verified.
+
+Acceptance tests must identify these expectations as inferred infraweave
+behavior. A future contradictory real capture is a parity finding; update the
+contract and affected implementation through a scoped ticket. Do not create a
+synthetic upstream response to resolve one of these register records.
 
 ## Rationale
 
@@ -486,7 +532,9 @@ handoffs. Do not close a capture by converting an interim choice into a fixture.
   approval policy rejects while another approves
   ([09 section 3.3](../reference/09-policies.md#33-approval)); infraweave fails the run on
   a reject in every state that evaluates approval policies, `PENDING_REVIEW` and
-  `UNCONFIRMED` included, which C291 checks against Spacelift.
+  `UNCONFIRMED` included. The [C291 fixture](../../../test/fixtures/captures/C291/README.md)
+  directly verifies both states on 2026-11-19, including mixed approve/reject
+  outcomes and the exact `Run rejected by approval policies` history note.
 - **Flags from types with no run.** What such a flag does is unverified (C50); infraweave
   ignores such flags.
 - Whether infraweave pins Spacelift's policy contract as a committed snapshot is PD-14,

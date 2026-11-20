@@ -244,8 +244,8 @@
       "runTypes": [
         "PROPOSED"
       ],
-      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5), and the console fails a run rejected in `QUEUED` (T5); C291 rejects in `PENDING_REVIEW`",
-      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
+      "cause": "An approval policy reject fires in PENDING_REVIEW; C291’s 2026-11-19 real API capture confirms FAILED with Run rejected by approval policies, including one rejecting policy among approving policies",
+      "evidence": "[C] [C291](../../test/fixtures/captures/C291/README.md), 2026-11-19; [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
       "source": "report 08"
     },
     {
@@ -299,8 +299,8 @@
       "runTypes": [
         "TRACKED"
       ],
-      "cause": "An approval policy `reject` rule fires; the docs also describe reject as canceling (see T5), and the console fails a run rejected in `QUEUED` (T5); C291 rejects in `UNCONFIRMED`",
-      "evidence": "[D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
+      "cause": "An approval policy reject fires in UNCONFIRMED; C291’s 2026-11-19 real API capture confirms FAILED with Run rejected by approval policies, including one rejecting policy among approving policies",
+      "evidence": "[C] [C291](../../test/fixtures/captures/C291/README.md), 2026-11-19; [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
       "source": "report 08"
     },
     {

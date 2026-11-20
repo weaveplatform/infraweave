@@ -1,0 +1,492 @@
+{
+  "exchanges": [
+    {
+      "startedAt": "2026-11-19T22:15:55.424Z",
+      "finishedAt": "2026-11-19T22:15:55.562Z",
+      "request": {
+        "query": "mutation Capture643Type($input:PolicyCreateInput!) { policyCreatev2(input:$input) { id name type engineType createdAt updatedAt hasAttachedStacks plugin { __typename } } }",
+        "variables": {
+          "input": {
+            "name": "policy-git_push",
+            "type": "GIT_PUSH",
+            "body": "package spacelift\nimport rego.v1\nignore := true\nsample := true\n",
+            "engineType": "REGO_V1",
+            "space": "root"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyCreatev2": {
+            "id": "policy-git_push",
+            "name": "policy-git_push",
+            "type": "GIT_PUSH",
+            "engineType": "REGO_V1",
+            "createdAt": 1795126555,
+            "updatedAt": 1795126555,
+            "hasAttachedStacks": false,
+            "plugin": null
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:20:30.225Z",
+      "finishedAt": "2026-11-19T22:20:30.370Z",
+      "request": {
+        "query": "mutation Capture643Attach($id:ID!,$stack:ID!) { policyAttach(id:$id,stack:$stack) { id stackId isAutoattached } }",
+        "variables": {
+          "id": "policy-git_push",
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyAttach": {
+            "id": "01J00000000000000000000023",
+            "stackId": "stack-a",
+            "isAutoattached": false
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:21:58.925Z",
+      "finishedAt": "2026-11-19T22:22:00.199Z",
+      "request": {
+        "query": "mutation Capture643StackSource($id:ID!,$input:StackInput!) { stackUpdate(id:$id,input:$input) { id provider repository namespace repositoryURL branch projectRoot autodeploy labels } }",
+        "variables": {
+          "id": "stack-a",
+          "input": {
+            "name": "stack-a",
+            "branch": "capture/643-policy-triggers",
+            "namespace": "actor-a",
+            "repository": "capture-repository",
+            "repositoryURL": null,
+            "provider": "GITHUB",
+            "space": "root",
+            "autodeploy": false,
+            "projectRoot": "test/fixtures/policy-capture-project",
+            "terraformVersion": "1.5.7",
+            "description": "Temporary provider-free policy contract capture for infraweave #643; delete after capture.",
+            "labels": [
+              "infraweave-capture:643"
+            ]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "stackUpdate": {
+            "id": "stack-a",
+            "provider": "GITHUB",
+            "repository": "capture-repository",
+            "namespace": "actor-a",
+            "repositoryURL": null,
+            "branch": "capture/643-policy-triggers",
+            "projectRoot": "test/fixtures/policy-capture-project",
+            "autodeploy": false,
+            "labels": [
+              "infraweave-capture:643"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:22:49.959Z",
+      "finishedAt": "2026-11-19T22:22:50.171Z",
+      "request": {
+        "query": "query Capture643Ignored($stack:ID!) { stack(id:$stack) { id searchRunIgnoredTriggers(input:{first:20}) { edges { node { id createdAt reasonType commit { hash } policyAttachments { policyName } } } pageInfo { hasNextPage } } runs { id state type commit { hash } } } }",
+        "variables": {
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "errors": [
+          {
+            "message": "Your billing tier does not support listing ignored runs.",
+            "path": [
+              "stack",
+              "searchRunIgnoredTriggers"
+            ]
+          }
+        ],
+        "data": {
+          "stack": {
+            "id": "stack-a",
+            "searchRunIgnoredTriggers": null,
+            "runs": [
+              {
+                "id": "01J00000000000000000000028",
+                "state": "UNCONFIRMED",
+                "type": "TRACKED",
+                "commit": {
+                  "hash": "332e6616e53e65328d730263c980e97db202e593"
+                }
+              },
+              {
+                "id": "01J00000000000000000000005",
+                "state": "FAILED",
+                "type": "TRACKED",
+                "commit": {
+                  "hash": "46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:23:21.765Z",
+      "finishedAt": "2026-11-19T22:23:21.963Z",
+      "request": {
+        "query": "query Capture643PushResult($stack:ID!,$run:ID!) { tier tierFeatures stack(id:$stack) { id attachedPolicies { id policyId policyType policyBody } run(id:$run) { id state type needsApproval policyReceipts { id policySlug policyType flags outcome sampled engineType } history { state note timestamp } } } policy(id:\"policy-git_push\") { id type evaluationRecords { key outcome timestamp } } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000028"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "BACKSTAGE_INTEGRATION",
+            "CLOUD_CREDENTIAL_GENERATION",
+            "SPACELIFT_INTELLIGENCE"
+          ],
+          "stack": {
+            "id": "stack-a",
+            "attachedPolicies": [
+              {
+                "id": "01J00000000000000000000023",
+                "policyId": "policy-git_push",
+                "policyType": "GIT_PUSH",
+                "policyBody": "package spacelift\nimport rego.v1\nignore := true\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000003",
+                "policyId": "policy-always",
+                "policyType": "APPROVAL",
+                "policyBody": "package spacelift\nimport rego.v1\napprove := true\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000002",
+                "policyId": "policy-approval",
+                "policyType": "APPROVAL",
+                "policyBody": "package spacelift\nimport rego.v1\n\napprove if { input.run.state == \"QUEUED\" }\napprove if { count(input.reviews.current.approvals) > 0 }\nreject if { count(input.reviews.current.rejections) > 0 }\nflag contains \"capture-643-reset\" if { input.run.state == \"QUEUED\" }\nreset_flag contains \"capture-643-reset\" if { input.run.state != \"QUEUED\" }\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000025",
+                "policyId": "policy-initialization",
+                "policyType": "INITIALIZATION",
+                "policyBody": "package spacelift\nimport rego.v1\nallow := true\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000004",
+                "policyId": "policy-plan-warn",
+                "policyType": "PLAN",
+                "policyBody": "package spacelift\nimport rego.v1\nwarn contains \"capture-643-warning\" if { true }\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000026",
+                "policyId": "policy-task",
+                "policyType": "TASK",
+                "policyBody": "package spacelift\nimport rego.v1\napprove := true\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000024",
+                "policyId": "policy-trigger",
+                "policyType": "TRIGGER",
+                "policyBody": "package spacelift\nimport rego.v1\ntrigger contains \"never\" if { false }\nsample := true\n"
+              },
+              {
+                "id": "01J00000000000000000000027",
+                "policyId": "policy-intent",
+                "policyType": "INTENT",
+                "policyBody": "package spacelift\nimport rego.v1\ndeny contains \"never\" if { false }\nsample := true\n"
+              }
+            ],
+            "run": {
+              "id": "01J00000000000000000000028",
+              "state": "UNCONFIRMED",
+              "type": "TRACKED",
+              "needsApproval": true,
+              "policyReceipts": [
+                {
+                  "id": "01J00000000000000000000029",
+                  "policySlug": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "undecided",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000030",
+                  "policySlug": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000031",
+                  "policySlug": "policy-plan-warn",
+                  "policyType": "PLAN",
+                  "flags": [],
+                  "outcome": "warn",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000032",
+                  "policySlug": "policy-initialization",
+                  "policyType": "INITIALIZATION",
+                  "flags": [],
+                  "outcome": "allow",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000033",
+                  "policySlug": "policy-approval",
+                  "policyType": "APPROVAL",
+                  "flags": [
+                    "capture-643-reset"
+                  ],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                },
+                {
+                  "id": "01J00000000000000000000034",
+                  "policySlug": "policy-always",
+                  "policyType": "APPROVAL",
+                  "flags": [],
+                  "outcome": "approve",
+                  "sampled": true,
+                  "engineType": "REGO_V1"
+                }
+              ],
+              "history": [
+                {
+                  "state": "UNCONFIRMED",
+                  "note": "Autodeploy is off",
+                  "timestamp": 1795126968
+                },
+                {
+                  "state": "PLANNING",
+                  "note": null,
+                  "timestamp": 1795126965
+                },
+                {
+                  "state": "INITIALIZING",
+                  "note": null,
+                  "timestamp": 1795126964
+                },
+                {
+                  "state": "PREPARING",
+                  "note": null,
+                  "timestamp": 1795126962
+                },
+                {
+                  "state": "READY",
+                  "note": null,
+                  "timestamp": 1795126958
+                },
+                {
+                  "state": "QUEUED",
+                  "note": null,
+                  "timestamp": 1795126958
+                }
+              ]
+            }
+          },
+          "policy": {
+            "id": "policy-git_push",
+            "type": "GIT_PUSH",
+            "evaluationRecords": []
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:23:57.387Z",
+      "finishedAt": "2026-11-19T22:23:57.632Z",
+      "request": {
+        "query": "mutation Capture643Discard($stack:ID!,$run:ID!) { runDiscard(stack:$stack,run:$run,note:\"capture-643-cleanup\") { id state } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000028"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runDiscard": {
+            "id": "01J00000000000000000000028",
+            "state": "DISCARDED"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:23:57.633Z",
+      "finishedAt": "2026-11-19T22:23:57.771Z",
+      "request": {
+        "query": "mutation Capture643Detach($id:ID!) { policyDetach(id:$id) { id stackId } }",
+        "variables": {
+          "id": "01J00000000000000000000023"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "policyDetach": {
+            "id": "01J00000000000000000000023",
+            "stackId": "stack-a"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:24:37.746Z",
+      "finishedAt": "2026-11-19T22:24:37.971Z",
+      "request": {
+        "query": "query Capture643DefaultResult($stack:ID!) { tier tierFeatures stack(id:$stack) { id attachedPolicies { policyId policyType } searchRunIgnoredTriggers(input:{first:20}) { edges { node { id reasonType commit { hash } } } } runs { id state type commit { hash } } } }",
+        "variables": {
+          "stack": "stack-a"
+        }
+      },
+      "status": 200,
+      "response": {
+        "errors": [
+          {
+            "message": "Your billing tier does not support listing ignored runs.",
+            "path": [
+              "stack",
+              "searchRunIgnoredTriggers"
+            ]
+          }
+        ],
+        "data": {
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "SPACELIFT_INTELLIGENCE",
+            "BACKSTAGE_INTEGRATION",
+            "CLOUD_CREDENTIAL_GENERATION"
+          ],
+          "stack": {
+            "id": "stack-a",
+            "attachedPolicies": [
+              {
+                "policyId": "policy-always",
+                "policyType": "APPROVAL"
+              },
+              {
+                "policyId": "policy-approval",
+                "policyType": "APPROVAL"
+              },
+              {
+                "policyId": "policy-initialization",
+                "policyType": "INITIALIZATION"
+              },
+              {
+                "policyId": "policy-plan-warn",
+                "policyType": "PLAN"
+              },
+              {
+                "policyId": "policy-task",
+                "policyType": "TASK"
+              },
+              {
+                "policyId": "policy-trigger",
+                "policyType": "TRIGGER"
+              },
+              {
+                "policyId": "policy-intent",
+                "policyType": "INTENT"
+              }
+            ],
+            "searchRunIgnoredTriggers": null,
+            "runs": [
+              {
+                "id": "01J00000000000000000000035",
+                "state": "UNCONFIRMED",
+                "type": "TRACKED",
+                "commit": {
+                  "hash": "f414d450ee1bffe95df63ddc90d64a30f9576c1d"
+                }
+              },
+              {
+                "id": "01J00000000000000000000028",
+                "state": "DISCARDED",
+                "type": "TRACKED",
+                "commit": {
+                  "hash": "332e6616e53e65328d730263c980e97db202e593"
+                }
+              },
+              {
+                "id": "01J00000000000000000000005",
+                "state": "FAILED",
+                "type": "TRACKED",
+                "commit": {
+                  "hash": "46ac93f71e8ae479cb0ef03ae5ad835c48fb74dd"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:24:55.520Z",
+      "finishedAt": "2026-11-19T22:24:55.806Z",
+      "request": {
+        "query": "mutation Capture643Discard($stack:ID!,$run:ID!) { runDiscard(stack:$stack,run:$run,note:\"capture-643-cleanup\") { id state } }",
+        "variables": {
+          "stack": "stack-a",
+          "run": "01J00000000000000000000035"
+        }
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "runDiscard": {
+            "id": "01J00000000000000000000035",
+            "state": "DISCARDED"
+          }
+        }
+      }
+    },
+    {
+      "startedAt": "2026-11-19T22:25:19.032Z",
+      "finishedAt": "2026-11-19T22:25:19.157Z",
+      "request": {
+        "query": "query Capture643FinalInventory { tier tierFeatures stacks { id name deleted deleting } policies { id name } }",
+        "variables": {}
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "tier": "V5_FREE",
+          "tierFeatures": [
+            "BACKSTAGE_INTEGRATION",
+            "CLOUD_CREDENTIAL_GENERATION",
+            "SPACELIFT_INTELLIGENCE"
+          ],
+          "stacks": [],
+          "policies": []
+        }
+      }
+    }
+  ]
+}

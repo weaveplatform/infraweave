@@ -1,0 +1,8 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+observed:
+  "/exchanges/0/response/data/tier": "V5_FREE"
+  "/exchanges/0/response/data/tierFeatures": ["SPACELIFT_INTELLIGENCE", "BACKSTAGE_INTEGRATION", "CLOUD_CREDENTIAL_GENERATION"]
+  "/exchanges/18/response/errors/0/message": "policy of type NOTIFICATION cannot be attached to a stack"
+  "/exchanges/20/response/data/stack/run/state": "FAILED"
+  "/exchanges/23/response/data/stacks": []
+  "/exchanges/23/response/data/policies": []

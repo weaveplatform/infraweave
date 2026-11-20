@@ -1,0 +1,9 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+observed:
+  "/exchanges/3/response/errors/0/message": "policy still has attachments"
+  "/exchanges/4/response/data/policy/hasAttachedStacks": true
+  "/exchanges/5/response/data/policyDelete/id": "policy-a"
+  "/exchanges/6/response/data/policy": null
+  "/exchanges/6/response/data/stack/attachedPolicies": []
+  "/exchanges/7/response/data/stacks": []
+  "/exchanges/7/response/data/policies": []

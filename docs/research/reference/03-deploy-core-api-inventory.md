@@ -992,3 +992,13 @@ reads by the state backend) *(unverified)* (C8).
 - <https://docs.spacelift.io/concepts/worker-pools> **[D]**
 - <https://docs.spacelift.io/vendors/terraform/module-registry> **[D]**
 - Tier pages cited in section 10 **[D]**.
+
+## Policy deletion capture, 2026-11-19
+
+The [C9 fixture](../../../test/fixtures/captures/C9/README.md) observes
+policyDelete without force refusing an attached ordinary PLAN policy, and
+force:true deleting it together with its attachment. Context and plugin-managed
+object semantics remain unverified under C9. The [C48 observations](../../../test/fixtures/captures/C48/README.md)
+also show that creation/update/attachment is not a blanket paid-tier refusal on
+V5_FREE; the older WORKFLOW_POLICIES pairings above remain inferences pending
+the complete type/entitlement comparison, not verified authorization rules.

@@ -1,0 +1,12 @@
+replayAfter: https://github.com/weaveplatform/infraweave/issues/650
+observed:
+  "/exchanges/7/response/data/stack/run/state": "UNCONFIRMED"
+  "/exchanges/8/response/data/runReview/state": "UNCONFIRMED"
+  "/exchanges/9/response/data/stack/run/state": "FAILED"
+  "/exchanges/9/response/data/stack/run/history/0/note": "Run rejected by approval policies"
+  "/exchanges/11/response/data/stack/run/state": "PENDING_REVIEW"
+  "/exchanges/12/response/data/runReview/state": "PENDING_REVIEW"
+  "/exchanges/13/response/data/stack/run/state": "FAILED"
+  "/exchanges/13/response/data/stack/run/history/0/note": "Run rejected by approval policies"
+  "/exchanges/14/response/data/stacks": []
+  "/exchanges/14/response/data/policies": []
