@@ -16,9 +16,15 @@ var _ port.PushHistory = (*Provider)(nil)
 
 // RecoverPush pages the native ancestry range independently of compare's
 // 300-file limit, then compares complete trees for each commit's first parent.
-func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (port.PushRange, error) {
+func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (result port.PushRange, retErr error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
-	defer cancel()
+	defer func() {
+		// Native I/O can report EOF after cancellation; preserve both causes.
+		if retErr != nil {
+			retErr = errors.Join(retErr, ctx.Err())
+		}
+		cancel()
+	}()
 	c, _, err := p.repo(ctx, repo)
 	if err != nil {
 		return port.PushRange{}, err
@@ -68,11 +74,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 			Files: new(changedTreePaths(previous, current)),
 		})
 	}
-	result, err := port.RecoveredRange(base, "github/REST compare commits and complete trees", items)
+	facts, err := port.RecoveredRange(base, "github/REST compare commits and complete trees", items)
 	if err != nil {
 		return port.PushRange{}, fmt.Errorf("github: recover push range: %w", err)
 	}
-	return result, nil
+	return facts, nil
 }
 
 func pushCommits(ctx context.Context, client *github.Client, repo port.Repository, base, head string) ([]*github.RepositoryCommit, string, error) {

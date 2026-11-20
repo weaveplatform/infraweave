@@ -41,17 +41,9 @@ func PushHistory(t *testing.T, source port.PushHistory, repo port.Repository, hi
 	} {
 		t.Run(check.name, func(t *testing.T) {
 			got, err := source.RecoverPush(t.Context(), repo, check.before, check.head)
-			if err != nil {
+			want := rangeExpectation{before: check.before, base: check.anchor, commits: check.commits, files: check.files}
+			if err := checkRecoveredRange(got, err, want); err != nil {
 				t.Fatal(err)
-			}
-			files, complete := port.NativeCommitFiles(got.Commits)
-			if !complete || got.Base != check.anchor || got.Commits.Source == "" || len(got.Commits.Items) != check.commits || !slices.Equal(files, check.files) {
-				t.Fatalf("range = %+v, %q, complete=%t; want base=%s, %d commits, %q", got, files, complete, check.anchor, check.commits, check.files)
-			}
-			for _, commit := range got.Commits.Items {
-				if commit.Author == "" || commit.Message == "" || commit.URL == "" || commit.Hash == check.before {
-					t.Fatalf("recovery omitted or misattributed native commit facts: %+v", commit)
-				}
 			}
 		})
 	}
@@ -73,24 +65,43 @@ func PushHistoryPages(t *testing.T, source port.PushHistory, repo port.Repositor
 		head = history.Commit("pages", fmt.Sprintf("paged change %03d", i), map[string]string{"page.tf": fmt.Sprint(i)})
 	}
 	got, err := source.RecoverPush(t.Context(), repo, base, head)
-	if err != nil || got.Commits == nil || len(got.Commits.Items) != 105 {
-		t.Fatalf("paged range lost commits: %+v, %v", got, err)
-	}
-	files, complete := port.NativeCommitFiles(got.Commits)
-	if !complete || !slices.Equal(files, []string{"page.tf"}) {
-		t.Fatalf("paged range paths = %q, complete=%t", files, complete)
+	if err := checkRecoveredRange(got, err, rangeExpectation{before: base, base: base, commits: 105, files: []string{"page.tf"}}); err != nil {
+		t.Fatal(err)
 	}
 	paths := map[string]string{}
+	wantFiles := make([]string, 0, 205)
 	for i := range 205 {
-		paths[fmt.Sprintf("many/file%03d.tf", i)] = "new"
+		name := fmt.Sprintf("many/file%03d.tf", i)
+		paths[name] = "new"
+		wantFiles = append(wantFiles, name)
 	}
 	after := history.Commit("pages", "more than two file pages", paths)
 	got, err = source.RecoverPush(t.Context(), repo, head, after)
-	if err != nil || got.Commits == nil || len(got.Commits.Items) != 1 {
-		t.Fatalf("paged files lost commit: %+v, %v", got, err)
+	if err := checkRecoveredRange(got, err, rangeExpectation{before: head, base: head, commits: 1, files: wantFiles}); err != nil {
+		t.Fatal(err)
 	}
-	files, complete = port.NativeCommitFiles(got.Commits)
-	if !complete || len(files) != 205 || !slices.Contains(files, "many/file204.tf") {
-		t.Fatalf("paged range lost paths: count=%d complete=%t", len(files), complete)
+}
+
+type rangeExpectation struct {
+	before, base string
+	commits      int
+	files        []string
+}
+
+// The oracle checks required facts as well as exact unions. A provider must
+// not pass by returning the right count with missing or substituted paths.
+func checkRecoveredRange(got port.PushRange, err error, want rangeExpectation) error {
+	if err != nil {
+		return fmt.Errorf("%w: recovery failed: %w", ErrContract, err)
 	}
+	files, complete := port.NativeCommitFiles(got.Commits)
+	if !complete || got.Base != want.base || got.Commits.Source == "" || len(got.Commits.Items) != want.commits || !slices.Equal(files, want.files) {
+		return fmt.Errorf("%w: recovered range has incomplete or misattributed commits/paths", ErrContract)
+	}
+	for _, commit := range got.Commits.Items {
+		if commit.Author == "" || commit.Message == "" || commit.URL == "" || commit.Hash == want.before {
+			return fmt.Errorf("%w: recovery omitted or misattributed commit metadata", ErrContract)
+		}
+	}
+	return nil
 }

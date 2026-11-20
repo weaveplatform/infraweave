@@ -2,6 +2,7 @@ package gitlab
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -16,9 +17,15 @@ var _ port.PushHistory = (*Provider)(nil)
 
 // RecoverPush uses the paged revision-range log and complete repository trees;
 // comparison diffs and per-commit diff lists can hit GitLab's diff limits.
-func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (port.PushRange, error) {
+func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (result port.PushRange, retErr error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
-	defer cancel()
+	defer func() {
+		// Native I/O can report EOF after cancellation; preserve both causes.
+		if retErr != nil {
+			retErr = errors.Join(retErr, ctx.Err())
+		}
+		cancel()
+	}()
 	c, h, pid, err := p.repo(repo)
 	if err != nil {
 		return port.PushRange{}, err
@@ -60,11 +67,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 			Files: new(pushTreeChanges(previous, current)),
 		})
 	}
-	result, err := port.RecoveredRange(base, "gitlab/REST revision-range commits and complete trees", items)
+	facts, err := port.RecoveredRange(base, "gitlab/REST revision-range commits and complete trees", items)
 	if err != nil {
 		return port.PushRange{}, fmt.Errorf("gitlab: recover push range: %w", err)
 	}
-	return result, nil
+	return facts, nil
 }
 
 func pushBase(ctx context.Context, c *gitlab.Client, pid, base, head string) (string, error) {

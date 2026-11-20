@@ -3,11 +3,13 @@ package github_test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/vcs/githubfake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/github"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/sourcetest"
 )
@@ -58,4 +60,9 @@ func TestUnitPushHistoryOperationalFailures(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUnitPushHistoryPreservesDeadlineCauses(t *testing.T) {
+	l := newLab(t)
+	sourcetest.PushHistoryDeadlines(t, func(rt http.RoundTripper) port.PushHistory { return github.NewOver(rt) }, l.repo, github.Timeout)
 }

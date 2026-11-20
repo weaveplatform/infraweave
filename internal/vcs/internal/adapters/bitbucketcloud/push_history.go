@@ -2,6 +2,7 @@ package bitbucketcloud
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -15,9 +16,15 @@ var _ port.PushHistory = (*Provider)(nil)
 
 // RecoverPush follows native include/exclude pagination and each commit's
 // paged first-parent diffstat, independently of the webhook's five-commit cap.
-func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (port.PushRange, error) {
+func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (result port.PushRange, retErr error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
-	defer cancel()
+	defer func() {
+		// Native I/O can report EOF after cancellation; preserve both causes.
+		if retErr != nil {
+			retErr = errors.Join(retErr, ctx.Err())
+		}
+		cancel()
+	}()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return port.PushRange{}, err
@@ -38,11 +45,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(p.out(repo, commit), files))
 	}
-	result, err := port.RecoveredRange(base, "bitbucketcloud/REST include-exclude commits and paged diffstat", items)
+	facts, err := port.RecoveredRange(base, "bitbucketcloud/REST include-exclude commits and paged diffstat", items)
 	if err != nil {
 		return port.PushRange{}, fmt.Errorf("bitbucketcloud: recover push range: %w", err)
 	}
-	return result, nil
+	return facts, nil
 }
 
 func (p *Provider) pushBase(ctx context.Context, repo port.Repository, rp, base, head string) (string, error) {

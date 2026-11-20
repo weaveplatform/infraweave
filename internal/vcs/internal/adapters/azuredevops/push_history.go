@@ -2,6 +2,7 @@ package azuredevops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -18,9 +19,15 @@ var _ port.PushHistory = (*Provider)(nil)
 // RecoverPush subtracts complete immutable before ancestors from head ancestors.
 // Azure's fromCommitId/toCommitId filters are alphabetical, not ancestry bounds.
 // Reading each ref's documented paged history also attributes multi-ref pushes.
-func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (port.PushRange, error) {
+func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (result port.PushRange, retErr error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
-	defer cancel()
+	defer func() {
+		// Native I/O can report EOF after cancellation; preserve both causes.
+		if retErr != nil {
+			retErr = errors.Join(retErr, ctx.Err())
+		}
+		cancel()
+	}()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return port.PushRange{}, err
@@ -56,11 +63,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(out(o, repo, commit), files))
 	}
-	result, err := port.RecoveredRange(base, "azuredevops/REST immutable histories and paged commit changes", items)
+	facts, err := port.RecoveredRange(base, "azuredevops/REST immutable histories and paged commit changes", items)
 	if err != nil {
 		return port.PushRange{}, fmt.Errorf("azuredevops: recover push range: %w", err)
 	}
-	return result, nil
+	return facts, nil
 }
 
 func (p *Provider) pushHistory(ctx context.Context, in port.Integration, rp, ref string) ([]commit, error) {

@@ -2,6 +2,7 @@ package bitbucketdc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -14,9 +15,15 @@ var _ port.PushHistory = (*Provider)(nil)
 
 // RecoverPush pages since-exclusive/until-inclusive native commits and uses
 // complete file trees and per-path diffs instead of the capped changes list.
-func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (port.PushRange, error) {
+func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, head string) (result port.PushRange, retErr error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
-	defer cancel()
+	defer func() {
+		// Native I/O can report EOF after cancellation; preserve both causes.
+		if retErr != nil {
+			retErr = errors.Join(retErr, ctx.Err())
+		}
+		cancel()
+	}()
 	rp, err := repoPath(repo)
 	if err != nil {
 		return port.PushRange{}, err
@@ -49,11 +56,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(out(h, repo, commit), files))
 	}
-	result, err := port.RecoveredRange(base, "bitbucketdc/REST since-until commits and complete file diffs", items)
+	facts, err := port.RecoveredRange(base, "bitbucketdc/REST since-until commits and complete file diffs", items)
 	if err != nil {
 		return port.PushRange{}, fmt.Errorf("bitbucketdc: recover push range: %w", err)
 	}
-	return result, nil
+	return facts, nil
 }
 
 func (p *Provider) pushBase(ctx context.Context, in port.Integration, rp, base, head string) (string, error) {
