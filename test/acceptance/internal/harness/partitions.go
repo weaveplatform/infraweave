@@ -76,7 +76,7 @@ var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 var exemptTags = []string{
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",
-	"@policy-management", "@policy-attachments", "@policy-check",
+	"@policy-management", "@policy-attachments", "@policy-check", "@policy-approval",
 }
 
 // placing is every partition in the order Place tries them: the labs,
