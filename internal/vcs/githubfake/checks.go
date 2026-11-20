@@ -93,9 +93,27 @@ func (f *Fake) checkRoutes(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(f.checkPermission)
 		r.Get("/commits/{sha}/check-runs", f.listChecks)
+		r.Get("/check-runs/{check}", f.getCheck)
 		r.Post("/check-runs", f.createCheck)
 		r.Patch("/check-runs/{check}", f.updateCheck)
 	})
+}
+
+func (f *Fake) getCheck(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "check"), 10, 64)
+	if err != nil {
+		answer(w, http.StatusNotFound, message("Not Found"))
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, check := range f.checks.records[deploymentRepo(r)] {
+		if check.ID == id {
+			answer(w, http.StatusOK, checkJSON(check))
+			return
+		}
+	}
+	answer(w, http.StatusNotFound, message("Not Found"))
 }
 
 func (f *Fake) checkPermission(next http.Handler) http.Handler {

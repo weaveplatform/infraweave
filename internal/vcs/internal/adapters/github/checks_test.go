@@ -27,6 +27,7 @@ func TestUnitCommitChecksNativeLifecycle(t *testing.T) {
 	if err != nil || id == "" {
 		t.Fatal(id, err)
 	}
+	r.NativeID = id
 	for _, state := range []port.CheckState{port.CheckInProgress, port.CheckSuccess} {
 		r.State = state
 		r.Title = string(state)

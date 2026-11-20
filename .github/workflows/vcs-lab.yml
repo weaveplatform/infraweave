@@ -35,8 +35,9 @@ env:
 jobs:
   provider:
     name: 'vcs-lab ${{ matrix.provider }}'
-    # The environment's branch rule admits only main.
-    if: ${{ github.ref == 'refs/heads/main' }}
+    # The protected environment admits main. A manual candidate run also needs
+    # an explicitly authorized, temporary exception in that environment's rules.
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -378,28 +379,65 @@ jobs:
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
           INFRAWEAVE_ACCEPT_TAGS: '@lab:${{ matrix.provider }}'
+          INFRAWEAVE_ACCEPT_PROGRESS: '1'
+          INFRAWEAVE_ACCEPT_OUT: ${{ github.workspace }}/out
         run: |
           set -o pipefail
+          results="lab-results/$PROVIDER"
+          mkdir -p "$results"
+          jq -n --arg revision "$GITHUB_SHA" --arg provider "$PROVIDER" \
+            --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg opa "$(go list -m -f '{{.Version}}' github.com/open-policy-agent/opa)" \
+            --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{revision:$revision,provider:$provider,attempt:$attempt,opa:$opa,run:$run}' > "$results/run.json"
+          run_feature() {
+            local suite_name="$1" feature_path="$2" outcome=0
+            rm -f out/progress.jsonl cover/accept/cucumber.json
+            INFRAWEAVE_ACCEPT_FEATURES="$feature_path" make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log || outcome=$?
+            mkdir -p "$results/$suite_name"
+            if [ -f cover/accept/cucumber.json ]; then
+              cp cover/accept/cucumber.json "$results/$suite_name/cucumber.json"
+            fi
+            if [ -f out/progress.jsonl ]; then
+              cp out/progress.jsonl "$results/$suite_name/progress.jsonl"
+            fi
+            return "$outcome"
+          }
           # Keep immutable source history checks ahead of the real pushes.
-          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/sources.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
-          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/webhooks.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
-          INFRAWEAVE_ACCEPT_FEATURES=features/vcs/feedback.feature make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log
+          run_feature sources features/vcs/sources.feature
+          run_feature webhooks features/vcs/webhooks.feature
+          run_feature feedback features/vcs/feedback.feature
 
       - name: Restore the dedicated App's parked webhook
+        id: restore_app
         if: ${{ always() && matrix.provider == 'github' && steps.helper.outcome == 'success' }}
         run: '"$RUNNER_TEMP/vcs-lab" restore-app --journal-directory "$RUNNER_TEMP/vcs-lab-hooks"'
 
       - name: Detach run-owned repository hooks
+        id: detach_hooks
         if: ${{ always() && matrix.provider != 'github' && steps.apply.outcome == 'success' }}
         run: terraform -chdir="$ROOT" apply -input=false -auto-approve -no-color -var='hook_url=' -var='hook_secret='
 
       # Only a run that reached apply has anything to destroy, or the root
       # initialized.
       - name: Destroy the lab
+        id: destroy
         if: ${{ always() && steps.apply.outcome != 'skipped' }}
         run: terraform -chdir="$ROOT" destroy -input=false -auto-approve -no-color
 
+      - name: Verify the lab's managed resources are absent
+        id: absence
+        if: ${{ always() && steps.destroy.outcome == 'success' }}
+        run: |
+          remaining=$(terraform -chdir="$ROOT" state list)
+          if [ -n "$remaining" ]; then
+            echo 'The lab still has Terraform-managed resources after destroy.'
+            exit 1
+          fi
+          echo 'The lab has no remaining Terraform-managed resources.'
+
       - name: Close the run's tunnel and verify its terminal outcome
+        id: stop_tunnel
         if: ${{ always() && steps.helper.outcome == 'success' && matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
         run: |
           if [ -n "${INFRAWEAVE_LAB_TUNNEL_SESSION:-}" ]; then
@@ -407,11 +445,48 @@ jobs:
           fi
 
       - name: Stop the run's local VCS container
+        id: stop_provider
         if: ${{ always() && steps.config.outputs.configured == 'true' && (matrix.provider == 'gitlab' || matrix.provider == 'bitbucket-dc') }}
         run: |
           container=gitlab
           [ "$PROVIDER" != bitbucket-dc ] || container=bitbucket
           docker rm -f "$container"
+
+      - name: Collect executed scenarios and cleanup outcomes
+        if: ${{ always() && steps.apply.outcome != 'skipped' }}
+        env:
+          RESTORE_APP: ${{ steps.restore_app.outcome }}
+          DETACH_HOOKS: ${{ steps.detach_hooks.outcome }}
+          DESTROY: ${{ steps.destroy.outcome }}
+          ABSENCE: ${{ steps.absence.outcome }}
+          STOP_TUNNEL: ${{ steps.stop_tunnel.outcome }}
+          STOP_PROVIDER: ${{ steps.stop_provider.outcome }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          results="lab-results/$PROVIDER"
+          mkdir -p "$results"
+          reports=("$results"/*/cucumber.json)
+          if [ "${#reports[@]}" -gt 0 ]; then
+            jq -s 'add' "${reports[@]}" > "$results/cucumber.json"
+            jq -r '"Executed \([.[].elements[]?] | length) scenarios"' "$results/cucumber.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          jq -n --arg revision "$GITHUB_SHA" --arg provider "$PROVIDER" \
+            --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg restoreApp "$RESTORE_APP" --arg detachHooks "$DETACH_HOOKS" \
+            --arg destroy "$DESTROY" --arg absence "$ABSENCE" --arg stopTunnel "$STOP_TUNNEL" \
+            --arg stopProvider "$STOP_PROVIDER" \
+            '{revision:$revision,provider:$provider,attempt:$attempt,run:$run,restoreApp:$restoreApp,detachHooks:$detachHooks,destroy:$destroy,absence:$absence,stopTunnel:$stopTunnel,stopProvider:$stopProvider}' \
+            > "$results/cleanup.json"
+
+      - name: Upload lab results
+        if: ${{ always() && steps.apply.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vcs-lab-results-${{ matrix.provider }}
+          path: lab-results/${{ matrix.provider }}
+          retention-days: 14
 
       # One open issue per provider tracks its failing runs: the first
       # failure opens it, and each later one comments on it until a person

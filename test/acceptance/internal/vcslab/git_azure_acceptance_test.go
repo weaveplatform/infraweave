@@ -2,7 +2,10 @@ package vcslab
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/pem"
+	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -86,8 +89,53 @@ func TestAccNativeAzureCloneFallback(t *testing.T) {
 			t.Fatal("pushed tree does not contain the verification marker", err)
 		}
 	}
-	if refused.Load() != 3 {
-		t.Fatalf("fallback was exercised %d times, want 3", refused.Load())
+	before, err := g.Head(t.Context(), "native-push", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := g.Files(t.Context(), "native-push", before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rangePush, err := native.PushRoundTrip(t.Context(), parent, "main", "round-trip", GitCredentials{User: "lab", Token: token, CAFile: ca})
+	if err != nil || rangePush.Before != before {
+		t.Fatal("round-trip push lost its actual starting commit", err)
+	}
+	after, err := g.Head(t.Context(), "native-push", "main")
+	if err != nil || after != rangePush.After || after == before {
+		t.Fatal("round-trip push did not advance the actual remote", err)
+	}
+	files, err := g.Files(t.Context(), "native-push", after)
+	if err != nil || !maps.Equal(original, files) {
+		t.Fatal("actual remote round-trip did not restore its endpoint tree", err)
+	}
+	parentOf := func(sha string) string {
+		t.Helper()
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, g.URL+"/api/v1/repos/infraweave/native-push/git/commits/"+sha, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.SetBasicAuth("infraweave", "infraweave-gitea")
+		response, err := g.Client.Do(request)
+		if err != nil {
+			t.Fatal("read actual remote parent", err)
+		}
+		defer response.Body.Close()
+		var commit struct {
+			Parents []struct {
+				SHA string `json:"sha"`
+			} `json:"parents"`
+		}
+		if response.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&commit) != nil || len(commit.Parents) != 1 {
+			t.Fatal("actual remote commit has no unique parent")
+		}
+		return commit.Parents[0].SHA
+	}
+	if parentOf(parentOf(after)) != before {
+		t.Fatal("actual remote range does not contain exactly two commits")
+	}
+	if refused.Load() != 4 {
+		t.Fatalf("fallback was exercised %d times, want 4", refused.Load())
 	}
 	entries, err := os.ReadDir(parent)
 	if err != nil || len(entries) != 0 {

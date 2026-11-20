@@ -500,3 +500,183 @@ Feature: Repository runs report native checks and deployments
     Examples: azure-devops
       | provider |
       | azure-devops |
+
+  @vcs-lab @terraform @case:policy-live-exit
+  Scenario Outline: Real upstream proposals retain both policy dialects and one native plan comment
+    Given a live "<provider>" lab integration and stack with plan comments "enabled"
+    And token "h" sends "GET /api/v1/policy-runtime" through A
+    And it answers 200
+    And the runtime version matches the pinned OPA module
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live push","type":"GIT_PUSH","space":"acme","engineType":"REGO_V1","body":"package infraweave\npropose if input.push.branch != input.stack.branch\npropose if input.pull_request.action == \"opened\"\nflag contains \"live-push\" if propose\n"}' through A
+    And it answers 201
+    And the answer's id names "livePush"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{livePush}" through B
+    And it answers 200
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live plan V1","type":"PLAN","space":"acme","engineType":"REGO_V1","body":"package infraweave\nnative if { input.terraform.resource_changes[_].address == \"terraform_data.lab\"; count(input.terraform.terraform_version) > 0 }\nwarn contains \"Review actual live plan V1\" if native\ndeny contains \"Missing actual live plan\" if not native\nflag contains \"live-plan-v1\" if native\n"}' through A
+    And it answers 201
+    And the answer's id names "livePlanV1"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{livePlanV1}" through B
+    And it answers 200
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live plan V0","type":"PLAN","space":"acme","engineType":"REGO_V0","body":"package infraweave\nimport future.keywords\nnative { input.terraform.resource_changes[_].address == \"terraform_data.lab\"; count(input.terraform.terraform_version) > 0 }\nwarn[\"Review actual live plan V0\"] { native }\ndeny[\"Missing actual live plan\"] { not native }\nflag[\"live-plan-v0\"] { native }\n"}' through A
+    And it answers 201
+    And the answer's id names "livePlanV0"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{livePlanV0}" through B
+    And it answers 200
+    When the live lab pushes a "PROPOSED" commit
+    Then the live signed push creates exactly one "PROPOSED" run kept as "policyRun"
+    When the live lab opens its pull request without another run
+    Then the live request has the current pushed head before planning completes
+    And the live native check for run "policyRun" is pending before its worker reports
+    And token "h" eventually reads the run "policyRun" in the state "FINISHED" through A
+    And the answer's PLAN receipt outcomes are "ALLOW, ALLOW"
+    And the answer's plan policy outcomes are '[{"deny":[],"warn":["Review actual live plan V0","Review actual live plan V1"]}]'
+    And the live run "policyRun" retains these policy owners and receipts:
+      | policy     | name         | type     | engine  | outcome | flag         |
+      | livePush   | Live push    | GIT_PUSH | REGO_V1 | PUSH    | live-push    |
+      | livePlanV0 | Live plan V0 | PLAN     | REGO_V0 | ALLOW   | live-plan-v0 |
+      | livePlanV1 | Live plan V1 | PLAN     | REGO_V1 | ALLOW   | live-plan-v1 |
+    And the live native check for run "policyRun" reaches success in its original resource
+    And the live request has exactly one native plan comment for run "policyRun"
+
+    @lab:github
+    Examples: github
+      | provider |
+      | github |
+
+    @lab:gitlab
+    Examples: gitlab
+      | provider |
+      | gitlab |
+
+    @lab:bitbucket-cloud
+    Examples: bitbucket-cloud
+      | provider |
+      | bitbucket-cloud |
+
+    @lab:bitbucket-dc
+    Examples: bitbucket-dc
+      | provider |
+      | bitbucket-dc |
+
+    @lab:azure-devops
+    Examples: azure-devops
+      | provider |
+      | azure-devops |
+
+  @vcs-lab @tofu @case:policy-live-exit
+  Scenario Outline: Real upstream replacements discard an OpenTofu plan and trigger an isolated target
+    Given a live "<provider>" lab integration and stack with plan comments "disabled"
+    And token "h" sends "PATCH /api/v1/stacks/lab" with '{"vendorConfig":{"opentofu":{}}}' through B
+    And it answers 200
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab target","namespace":"{liveNamespace}","repository":"{liveOther}","branch":"main","provider":"{liveProvider}","space":"acme","vcsIntegrationId":"{liveIntegration}","workerPool":"{pool}","autodeploy":true,"labels":["ghenv:-","glenv:-"],"vendorConfig":{"opentofu":{}}},"manageState":true}' through A
+    And it answers 201
+    And the live stack "lab-target" has its tracked commit kept as "liveTargetHead"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live replacement","type":"GIT_PUSH","space":"acme","engineType":"REGO_V1","body":"package infraweave\ntrack if input.push.branch == input.stack.branch\npriority := \"high\"\ncancel contains run.id if { track; some run in input.in_progress }\nflag contains \"live-push\" if track\n"}' through A
+    And it answers 201
+    And the answer's id names "livePush"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{livePush}" through B
+    And it answers 200
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live OpenTofu plan","type":"PLAN","space":"acme","engineType":"REGO_V0","body":"package infraweave\nimport future.keywords\nnative { input.opentofu.resource_changes[_].address == \"terraform_data.lab\"; count(input.opentofu.opentofu_version) > 0 }\nwarn[\"Review actual live OpenTofu plan\"] { native }\ndeny[\"Missing actual live OpenTofu plan\"] { not native }\nflag[\"live-plan-v0\"] { native }\n"}' through A
+    And it answers 201
+    And the answer's id names "livePlanV0"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{livePlanV0}" through B
+    And it answers 200
+    When the live lab pushes a "TRACKED" commit
+    Then the live signed push creates exactly one "TRACKED" run kept as "livePrior"
+    And the live native check for run "livePrior" is pending before its worker reports
+    And token "h" eventually reads the run "livePrior" in the state "UNCONFIRMED" through B
+    And the answer's PLAN receipt outcomes are "ALLOW"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live terminal target","type":"TRIGGER","space":"acme","engineType":"REGO_V1","body":"package infraweave\ntrigger contains \"lab-target\" if { input.run.id == \"{livePrior}\"; input.run.state == \"DISCARDED\"; \"live-plan-v0\" in input.run.flags; some target in input.stacks; target.id == \"lab-target\" }\nflag contains \"live-trigger\" if count(trigger) > 0\n"}' through A
+    And it answers 201
+    And the answer's id names "liveTrigger"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{liveTrigger}" through B
+    And it answers 200
+    When the live lab pushes a "TRACKED" commit
+    Then the live signed push creates exactly one "TRACKED" run kept as "liveReplacement"
+    And run "livePrior" records push cancellation in favor of "liveReplacement" with state "DISCARDED" through A
+    And the live native check for run "liveReplacement" is pending before its worker reports
+    And token "h" eventually reads the run "liveReplacement" in the state "UNCONFIRMED" through B
+    And the answer's priorityPreset is '"high"'
+    And the answer's PLAN receipt outcomes are "ALLOW"
+    And token "h" eventually reads the single policy-triggered run of stack "lab-target" from stack "lab" run "livePrior" as "liveChild" through A
+    And token "h" eventually reads the run "liveChild" in the state "FINISHED" through B
+    And the answer's commit hash is "{liveTargetHead}"
+    And the answer's flags is '[]'
+    And the answer's triggeredBy is '"policy/lab/{livePrior}"'
+    And token "h" eventually reads TRIGGER outcomes "TRIGGER" for run "livePrior" through A
+    And the live run "livePrior" retains these policy owners and receipts:
+      | policy      | name                 | type     | engine  | outcome | flag         |
+      | livePush    | Live replacement     | GIT_PUSH | REGO_V1 | PUSH    | live-push    |
+      | livePlanV0  | Live OpenTofu plan   | PLAN     | REGO_V0 | ALLOW   | live-plan-v0 |
+      | liveTrigger | Live terminal target | TRIGGER  | REGO_V1 | TRIGGER | live-trigger |
+    When token "h" sends "POST /api/v1/stacks/lab/runs/discard" with '{"run":"{liveReplacement}"}' through B
+    Then it answers 200
+    And token "h" eventually reads the run "liveReplacement" in the state "DISCARDED" through A
+    And check events for run "liveReplacement" have settled
+
+    @lab:github
+    Examples: github
+      | provider |
+      | github |
+
+    @lab:gitlab
+    Examples: gitlab
+      | provider |
+      | gitlab |
+
+    @lab:bitbucket-cloud
+    Examples: bitbucket-cloud
+      | provider |
+      | bitbucket-cloud |
+
+    @lab:bitbucket-dc
+    Examples: bitbucket-dc
+      | provider |
+      | bitbucket-dc |
+
+    @lab:azure-devops
+    Examples: azure-devops
+      | provider |
+      | azure-devops |
+
+  @vcs-lab @terraform @case:policy-live-exit
+  Scenario Outline: Real upstream edit and revert pushes preserve every touched path
+    Given a live "<provider>" lab integration and stack with plan comments "disabled"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Live reverted range","type":"GIT_PUSH","space":"acme","engineType":"REGO_V1","body":"package infraweave\ncomplete if { input.push.branch == input.stack.branch; count(input.push.commits) == 2; input.push.affected_files == [\"main.tf\"] }\ntrack if complete\nflag contains \"live-range\" if complete\n"}' through A
+    And it answers 201
+    And the answer's id names "liveRange"
+    And token "h" sends "PUT /api/v1/stacks/lab/policies/{liveRange}" through B
+    And it answers 200
+    When the live lab pushes an edit and revert with equal endpoint trees
+    Then the live signed push creates exactly one "TRACKED" run kept as "rangeRun"
+    And the live native check for run "rangeRun" is pending before its worker reports
+    And token "h" eventually reads the run "rangeRun" in the state "FINISHED" through A
+    And the live run "rangeRun" retains these policy owners and receipts:
+      | policy    | name                | type     | engine  | outcome | flag       |
+      | liveRange | Live reverted range | GIT_PUSH | REGO_V1 | PUSH    | live-range |
+    And the live native check for run "rangeRun" reaches success in its original resource
+
+    @lab:github
+    Examples: github
+      | provider |
+      | github |
+
+    @lab:gitlab
+    Examples: gitlab
+      | provider |
+      | gitlab |
+
+    @lab:bitbucket-cloud
+    Examples: bitbucket-cloud
+      | provider |
+      | bitbucket-cloud |
+
+    @lab:bitbucket-dc
+    Examples: bitbucket-dc
+      | provider |
+      | bitbucket-dc |
+
+    @lab:azure-devops
+    Examples: azure-devops
+      | provider |
+      | azure-devops |
