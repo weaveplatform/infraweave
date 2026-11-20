@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -241,6 +242,85 @@ func TestAccTxCancelledWhileWaiting(t *testing.T) {
 	}
 }
 
+type capturedBeginner struct {
+	tx.Beginner
+	transaction pgx.Tx
+}
+
+func (b *capturedBeginner) BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error) {
+	transaction, err := b.Beginner.BeginTx(ctx, opts)
+	b.transaction = transaction
+	return transaction, err
+}
+
+func TestAccTxGoexit(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	config, err := pgxpool.ParseConfig(sqltest.DSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, "CREATE TABLE t (k int PRIMARY KEY)"); err != nil {
+		t.Fatal(err)
+	}
+	db := &capturedBeginner{Beginner: pool}
+	done := make(chan struct{})
+	var callbackErr error
+	returned, after := false, false
+	go func() {
+		defer close(done)
+		callbackErr = tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+			if _, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (1)"); err != nil {
+				return err
+			}
+			tx.AfterCommit(ctx, func(context.Context) { after = true })
+			runtime.Goexit()
+			return nil
+		})
+		returned = true
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatal("transaction goroutine did not exit before its deadline")
+	}
+	// A broken implementation must still release its real lease before pool
+	// cleanup, so the regression reports the leak instead of hanging teardown.
+	defer func() {
+		if db.transaction != nil {
+			cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+			defer stop()
+			if err := db.transaction.Rollback(cleanup); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+				t.Errorf("baseline transaction cleanup: %v", err)
+			}
+		}
+	}()
+	if callbackErr != nil || returned || after {
+		t.Fatalf("Goexit returned=%v error=%v after-commit=%v", returned, callbackErr, after)
+	}
+	if acquired := pool.Stat().AcquiredConns(); acquired != 0 {
+		t.Fatalf("Goexit retained %d acquired PostgreSQL connections, want zero", acquired)
+	}
+	if got := rows(t, pool); len(got) != 0 {
+		t.Fatalf("Goexit kept uncommitted rows: %v", got)
+	}
+	if err := tx.Do(ctx, pool, tx.Options{}, func(ctx context.Context) error {
+		_, err := tx.Q(ctx, pool).Exec(ctx, "INSERT INTO t VALUES (2)")
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := rows(t, pool); len(got) != 1 || got[0] != 2 {
+		t.Fatalf("subsequent transaction rows=%v, want [2]", got)
+	}
+}
+
 type failingBeginner struct{ err error }
 
 func (f failingBeginner) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
@@ -310,6 +390,32 @@ func TestUnitTxNoRetry(t *testing.T) {
 				t.Fatalf("callback error rolled back %d times", db.transactions[0].rollbacks)
 			}
 		})
+	}
+}
+
+func TestUnitTxGoexit(t *testing.T) {
+	db := &observedBeginner{}
+	done := make(chan struct{})
+	returned, after := false, false
+	go func() {
+		defer close(done)
+		_ = tx.Do(t.Context(), db, tx.Options{}, func(ctx context.Context) error {
+			tx.AfterCommit(ctx, func(context.Context) { after = true })
+			runtime.Goexit()
+			return nil
+		})
+		returned = true
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("transaction goroutine did not exit")
+	}
+	if len(db.transactions) != 1 || returned || after {
+		t.Fatalf("Goexit transactions=%d returned=%v after-commit=%v", len(db.transactions), returned, after)
+	}
+	if got := db.transactions[0]; got.commits != 0 || got.rollbacks != 1 {
+		t.Fatalf("Goexit commits=%d rollbacks=%d, want zero and one", got.commits, got.rollbacks)
 	}
 }
 
