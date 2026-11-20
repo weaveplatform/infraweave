@@ -36,7 +36,7 @@ type Tool struct {
 
 // ToolRun is what a Tool runs: Bin, mounted read-only, with Args and Env
 // in Dir, mounted as the workspace, on Network, labelled Scenario, in a
-// container of Image, one Launchers.Build built, or RunnerImage when it
+// container of Image, one Launchers.EnsureRunnerImage prepared, or RunnerImage when it
 // is empty. Mounts are further host files, each mounted read-only at
 // the container path it maps to, and Stdin, when set, is written to the
 // process's standard input, which is then closed.

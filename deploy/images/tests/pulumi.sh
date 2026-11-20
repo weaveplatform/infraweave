@@ -4,6 +4,8 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 export PULUMI_CONFIG_PASSPHRASE=runner-image-test PULUMI_SKIP_UPDATE_CHECK=true
 pulumi version
+expected=${RUNNER_TOOL_VERSION:-$(jq -r '.tools.pulumi.version' /opt/image-tests/versions.json)}
+[ "$(pulumi version)" = "v$expected" ]
 mkdir "$work/state"
 pulumi login "file://$work/state"
 for language in nodejs python; do

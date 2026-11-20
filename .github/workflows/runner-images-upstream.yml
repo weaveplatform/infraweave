@@ -1,0 +1,55 @@
+name: images | Refresh upstreams
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+    - cron: '41 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Refresh the base/packages even without a new tool release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-image-inputs
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.repository == 'weaveplatform/infraweave' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ vars.RP_APP_ID }}
+          private-key: ${{ secrets.RP_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Discover stable releases and resolve verified build inputs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REBUILD: ${{ inputs.rebuild || github.event.schedule == '41 7 * * 1' }}
+        run: |
+          if [ "$REBUILD" = true ]; then
+            python3 tools/runnerimages/refresh.py --rebuild
+          else
+            python3 tools/runnerimages/refresh.py
+          fi
+      - name: Open or update the single input PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cat > /tmp/image-inputs-body.md <<'EOF'
+          Refresh the runner environments for new stable upstream releases or the weekly base/package rebuild. Terraform and OpenTofu remain per-run mounted tools; additional stable backports are tested and released without changing the newest default cohort.
+
+          Required CI builds each candidate once per platform and executes the actual tool contracts. Publication on main creates signed public indexes; a separate pin PR updates application and acceptance consumers after publication succeeds.
+          EOF
+          bash tools/runnerimages/pr.sh deps/runner-image-inputs \
+            'chore(images): refresh runner environment inputs' /tmp/image-inputs-body.md deploy/images

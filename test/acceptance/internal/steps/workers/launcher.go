@@ -240,14 +240,14 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 		if t.image == "" {
 			continue
 		}
-		if err := host.Build(ctx, t.image); err != nil {
+		if err := host.EnsureRunnerImage(ctx, t.image); err != nil {
 			return err //nolint:wrapcheck // names the image
 		}
 		settings["default_runner_image"] = t.image
 	}
 	if image != nil {
 		if *image == harness.RunnerTerraform || *image == harness.RunnerOpenTofu {
-			if err := host.Build(ctx, *image); err != nil {
+			if err := host.EnsureRunnerImage(ctx, *image); err != nil {
 				return err //nolint:wrapcheck // names the image
 			}
 		}

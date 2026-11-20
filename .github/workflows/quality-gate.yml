@@ -479,6 +479,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       images: ${{ steps.diff.outputs.images }}
+      image_matrix: ${{ steps.diff.outputs.image_matrix }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -502,6 +503,10 @@ jobs:
             images=false
           fi
           echo "images=$images" | tee -a "$GITHUB_OUTPUT"
+          echo "image_matrix=$(python3 deploy/images/imagectl.py matrix)" >> "$GITHUB_OUTPUT"
+          if [ "$images" = true ] && [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            python3 deploy/images/imagectl.py validate-revision --base "$BASE"
+          fi
 
   # infraweave's runner images, each built for both platforms a worker runs
   # on, arm64 under QEMU, and held to the runner image contract by
@@ -509,16 +514,16 @@ jobs:
   # it runs.
   # ref: decision 0008 § "Runner images"
   images:
-    name: 'Runner image (${{ matrix.image }}, ${{ matrix.platform }})'
+    name: 'Runner image (${{ matrix.candidate.id }}, ${{ matrix.platform }})'
     needs: [changes]
     if: needs.changes.outputs.images == 'true'
     strategy:
       fail-fast: false
       matrix:
-        image: [runner-terraform, runner-opentofu]
+        candidate: ${{ fromJSON(needs.changes.outputs.image_matrix).include }}
         platform: [linux/amd64, linux/arm64]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -536,18 +541,25 @@ jobs:
 
       - name: Build
         env:
-          IMAGE: ${{ matrix.image }}
+          IMAGE: ${{ matrix.candidate.kind }}
+          VERSION: ${{ matrix.candidate.version }}
+          IMAGE_ID: ${{ matrix.candidate.id }}
           PLATFORM: ${{ matrix.platform }}
-        run: docker build --platform "$PLATFORM" -t "$IMAGE:contract" "deploy/images/$IMAGE"
+        run: |
+          python3 deploy/images/imagectl.py generate --check
+          python3 deploy/images/imagectl.py build "$IMAGE" --platform "$PLATFORM" --version "$VERSION" \
+            --tag "infraweave-image-check:$IMAGE_ID-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
 
       - name: Check the contract
         env:
-          IMAGE: ${{ matrix.image }}
+          IMAGE: ${{ matrix.candidate.kind }}
+          VERSION: ${{ matrix.candidate.version }}
+          IMAGE_ID: ${{ matrix.candidate.id }}
           PLATFORM: ${{ matrix.platform }}
         run: |
-          line=$(docker run --rm --platform "$PLATFORM" -i "$IMAGE:contract" sh -s < deploy/images/contract.sh)
-          echo "$line"
-          echo "$IMAGE ($PLATFORM): $line" >> "$GITHUB_STEP_SUMMARY"
+          python3 deploy/images/imagectl.py smoke "$IMAGE" \
+            "infraweave-image-check:$IMAGE_ID-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --platform "$PLATFORM" --version "$VERSION"
+          echo "$IMAGE ($PLATFORM): real tool contract passed (ARM64 uses QEMU)" >> "$GITHUB_STEP_SUMMARY"
 
   # images is the one job that may be skipped: it is when the change leaves
   # the image definitions alone.

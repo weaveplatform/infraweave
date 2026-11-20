@@ -93,7 +93,7 @@ Feature: API tokens and sessions
     When the browser logs out through B
     Then the browser's ended cookie answers 401 at the viewer through A within a second
     And the viewer through A with token "cli" answers 200
-    And the account reads through B with token "cli" answer the home account, type "ORG" and runner image "ghcr.io/weaveplatform/infraweave-runner-terraform"
+    And the account reads through B with token "cli" answer the home account, type "ORG" and runner image "builtin:terraform"
 
   @op:cliConfirmationToken @case:denial
   Scenario: Only a member's browser session issues a CLI token

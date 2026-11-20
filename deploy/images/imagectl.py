@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -48,26 +49,61 @@ def inputs():
     return data
 
 
-def recipe():
+def recipe(base=None):
     # Output pins, release records and documentation never cause rebuilds.
     digest = hashlib.sha256()
-    paths = [p for p in HERE.rglob("*") if p.is_file() and (
-        p.name in ("versions.json", "imagectl.py", "contract.sh", "requirements.lock", "Dockerfile")
+    def included(p):
+        return (
+        p.name in ("versions.json", "imagectl.py", "contract.sh", "Dockerfile") or p.suffix == ".lock"
         or p.suffix in (".py", ".sh", ".yml", ".js") and "tests" in p.parts
         or "rootfs" in p.parts or "callback_plugins" in p.parts
-    ) and "__pycache__" not in p.parts]
-    for path in sorted(paths):
-        digest.update(str(path.relative_to(HERE)).encode() + b"\0" + path.read_bytes() + b"\0")
+        ) and "__pycache__" not in p.parts
+    if base:
+        names = run("git", "ls-tree", "-r", "--name-only", base, "deploy/images", capture=True).splitlines()
+        for name in sorted(names):
+            path = Path(name).relative_to("deploy/images")
+            if included(path):
+                content = subprocess.check_output(["git", "show", base + ":" + name])
+                digest.update(str(path).encode() + b"\0" + content + b"\0")
+    else:
+        for path in sorted(p for p in HERE.rglob("*") if p.is_file() and included(p)):
+            digest.update(str(path.relative_to(HERE)).encode() + b"\0" + path.read_bytes() + b"\0")
     return digest.hexdigest()
 
 
-def tag(kind):
+def tag(kind, version=None):
     data = inputs()
     revision = f"r{data['revision']}"
     if kind == "test-support":
         return revision
     prefix = "tested-" if kind in ("terraform", "opentofu") else ""
-    return f"{prefix}{data['tools'][kind]['version']}-{revision}"
+    return f"{prefix}{version or data['tools'][kind]['version']}-{revision}"
+
+
+def matrix():
+    data = inputs()
+    entries = [{"kind": k, "tag": tag(k), "id": k, "version": data["tools"].get(k, {}).get("version", "")}
+               for k in KINDS]
+    for kind, cohorts in data.get("cohorts", {}).items():
+        if kind == "terragrunt":
+            continue
+        for entry in cohorts:
+            version = entry["version"]
+            entries.append({"kind": kind, "version": version, "tag": tag(kind, version), "id": kind + "-" + version})
+    return entries
+
+
+def render(kind, before, data, tool):
+    after = before
+    if kind != "test-support":
+        after = re.sub(r"(?m)^FROM alpine:[^\n]+", "FROM " + data["base"], after)
+    if kind == "pulumi":
+        after = re.sub(r"pulumi-v[0-9.]+-linux", f"pulumi-v{tool['version']}-linux", after)
+        after = re.sub(r"/download/v[0-9.]+/", f"/download/v{tool['version']}/", after)
+        for arch, upstream in (("amd64", "x64"), ("arm64", "arm64")):
+            checksum = tool["sha256"][f"pulumi-v{tool['version']}-linux-{upstream}.tar.gz"]
+            after = re.sub(rf"({arch}\) arch={upstream}; sum=)[a-f0-9]+", rf"\g<1>{checksum}", after)
+    return after
 
 
 def generate(check=False):
@@ -76,16 +112,7 @@ def generate(check=False):
     for kind in KINDS:
         path = HERE / f"runner-{kind}/Dockerfile"
         before = path.read_text()
-        after = before
-        if kind != "test-support":
-            after = re.sub(r"(?m)^FROM alpine:[^\n]+", "FROM " + data["base"], after)
-        if kind == "pulumi":
-            tool = data["tools"][kind]
-            after = re.sub(r"pulumi-v[0-9.]+-linux", f"pulumi-v{tool['version']}-linux", after)
-            after = re.sub(r"/download/v[0-9.]+/", f"/download/v{tool['version']}/", after)
-            for arch, upstream in (("amd64", "x64"), ("arm64", "arm64")):
-                checksum = tool["sha256"][f"pulumi-v{tool['version']}-linux-{upstream}.tar.gz"]
-                after = re.sub(rf"({arch}\) arch={upstream}; sum=)[a-f0-9]+", rf"\g<1>{checksum}", after)
+        after = render(kind, before, data, data["tools"].get(kind))
         if before != after:
             changed.append(str(path.relative_to(ROOT)))
             if not check:
@@ -106,6 +133,11 @@ def generate(check=False):
             ref = entry["reference"]
             if not re.fullmatch(re.escape(REGISTRY + kind) + r"@sha256:[0-9a-f]{64}", ref):
                 raise ValueError(f"invalid locked reference: {ref}")
+            pattern = {"terraform": r"tested-[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
+                       "opentofu": r"tested-[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
+                       "test-support": r"r[1-9][0-9]*"}.get(kind, r"[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*")
+            if not re.fullmatch(pattern, entry["tag"]) or set(entry["platforms"]) != set(PLATFORMS):
+                raise ValueError(f"invalid release tag/platforms for {kind}")
             name = {"opentofu": "OpenTofu", "test-support": "TestSupport"}.get(kind, kind.title())
             lines += [f"\t// {name} is the {kind} environment, {entry['tag']}.", f'\t{name} = "{ref}"']
         lines += [")", ""]
@@ -132,7 +164,21 @@ def build(args):
         command += ["--load"]
     if args.metadata:
         command += ["--metadata-file", args.metadata]
-    run(*command, str(HERE / f"runner-{args.kind}"))
+    data = inputs()
+    selected = next((e for e in data.get("cohorts", {}).get(args.kind, []) if e["version"] == args.version), None)
+    if args.version and args.version != data["tools"].get(args.kind, {}).get("version") and selected is None:
+        raise ValueError("version is not an approved build input")
+    if selected is None:
+        run(*command, str(HERE / f"runner-{args.kind}"))
+    else:
+        with tempfile.TemporaryDirectory(prefix="infraweave-image-context-") as directory:
+            context = Path(directory) / "context"
+            shutil.copytree(HERE / f"runner-{args.kind}", context, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            dockerfile = context / "Dockerfile"
+            dockerfile.write_text(render(args.kind, dockerfile.read_text(), data, selected))
+            if args.kind == "ansible":
+                shutil.copyfile(context / f"cohorts/{args.version}.lock", context / "requirements.lock")
+            run(*command, str(context))
 
 
 def inspect(reference):
@@ -141,8 +187,10 @@ def inspect(reference):
 
 def record(args):
     images = {}
-    for kind in KINDS:
-        meta = read(Path(args.directory) / f"{kind}.json")
+    releases = []
+    for candidate in matrix():
+        kind = candidate["kind"]
+        meta = read(Path(args.directory) / (candidate["id"] + ".json"))
         digest = meta["containerimage.digest"]
         reference = REGISTRY + kind + "@" + digest
         manifest = inspect(reference)
@@ -150,9 +198,14 @@ def record(args):
                      for m in manifest["manifests"] if m["platform"]["os"] != "unknown"}
         if set(platforms) != set(PLATFORMS):
             raise ValueError(f"{kind}: missing platform: {platforms}")
-        images[kind] = {"reference": reference, "tag": tag(kind), "platforms": platforms,
-                        "recipe": recipe(), "source": run("git", "rev-parse", "HEAD", capture=True).strip()}
-    write(args.output, {"schema": 1, "images": images})
+        entry = {"reference": reference, "tag": candidate["tag"], "platforms": platforms,
+                 "kind": kind, "version": candidate["version"], "recipe": recipe(),
+                 "source": run("git", "rev-parse", "HEAD", capture=True).strip()}
+        if candidate["id"] == kind:
+            images[kind] = entry
+        else:
+            releases.append(entry)
+    write(args.output, {"schema": 1, "images": images, "releases": releases})
 
 
 def anonymous(reference, platform):
@@ -161,7 +214,7 @@ def anonymous(reference, platform):
         run("docker", "--config", config, "pull", "--platform", platform, reference)
 
 
-def attestations(reference):
+def attestations(reference, expected=None):
     for field in ("SBOM", "Provenance"):
         value = json.loads(run("docker", "buildx", "imagetools", "inspect", reference,
                               "--format", "{{json ." + field + "}}", capture=True))
@@ -169,10 +222,19 @@ def attestations(reference):
             raise ValueError(f"{reference}: missing {field} for both platforms")
         for platform in PLATFORMS:
             document = value[platform]
-            if field == "SBOM" and "SPDX" not in json.dumps(document):
-                raise ValueError(f"{reference}: not an SPDX SBOM on {platform}")
-            if field == "Provenance" and "predicate" not in json.dumps(document):
-                raise ValueError(f"{reference}: no provenance predicate on {platform}")
+            if field == "SBOM":
+                spdx = document.get("SPDX", {})
+                if not spdx.get("spdxVersion", "").startswith("SPDX-") or not spdx.get("SPDXID"):
+                    raise ValueError(f"{reference}: not an SPDX SBOM on {platform}")
+            else:
+                # Buildx unwraps the in-toto envelope into its SLSA predicate.
+                slsa = document.get("SLSA", {})
+                if not slsa.get("buildDefinition") or not slsa.get("runDetails", {}).get("builder"):
+                    raise ValueError(f"{reference}: no SLSA build definition/builder on {platform}")
+                if expected:
+                    labels = slsa["buildDefinition"]["externalParameters"]["request"]["args"]
+                    if labels.get("label:io.infraweave.recipe") != expected["recipe"] or labels.get("label:org.opencontainers.image.revision") != expected["source"]:
+                        raise ValueError(f"{reference}: provenance does not match approved recipe/source on {platform}")
 
 
 def smoke(args):
@@ -190,6 +252,7 @@ def smoke(args):
     run("docker", "run", "--rm", "--platform", args.platform,
         "--mount", f"type=bind,src={HERE},dst=/opt/image-tests,readonly",
         "--env", "RUNNER_KIND=" + args.kind,
+        "--env", "RUNNER_TOOL_VERSION=" + (args.version or ""),
         args.reference, "sh", "/opt/image-tests/tests/contract.sh")
 
 
@@ -206,11 +269,12 @@ def registry_tag(reference):
 
 def promote(args):
     lock = read(args.lock)
-    for kind in KINDS:
-        entry = lock["images"][kind]
-        if entry["recipe"] != recipe() or entry["tag"] != tag(kind):
+    entries = [(k, e) for k, e in lock["images"].items()] + [(e["kind"], e) for e in lock.get("releases", [])]
+    allowed = {(e["kind"], e["tag"]) for e in matrix()}
+    for kind, entry in entries:
+        if entry["recipe"] != recipe() or (kind, entry["tag"]) not in allowed:
             raise ValueError(f"{kind}: unapproved recipe/tag")
-        attestations(entry["reference"])
+        attestations(entry["reference"], entry)
         for platform in PLATFORMS:
             anonymous(entry["reference"], platform)
         target = REGISTRY + kind + ":" + entry["tag"]
@@ -218,8 +282,7 @@ def promote(args):
         if existing and existing != entry["reference"].split("@", 1)[1]:
             raise ValueError(f"immutable tag already exists at another digest: {target}")
     # Complete all checks before writing any readable release tag.
-    for kind in KINDS:
-        entry = lock["images"][kind]
+    for kind, entry in entries:
         run("docker", "buildx", "imagetools", "create", "--prefer-index=false", "--tag",
             REGISTRY + kind + ":" + entry["tag"], entry["reference"])
 
@@ -231,17 +294,21 @@ def main():
     generate_parser.add_argument("--check", action="store_true")
     sub.add_parser("recipe")
     sub.add_parser("matrix")
+    revision_parser = sub.add_parser("validate-revision")
+    revision_parser.add_argument("--base", required=True)
     b = sub.add_parser("build")
     b.add_argument("kind", choices=KINDS)
     b.add_argument("--platform", required=True)
     b.add_argument("--tag", required=True)
     b.add_argument("--push", action="store_true")
     b.add_argument("--metadata")
+    b.add_argument("--version")
     s = sub.add_parser("smoke")
     s.add_argument("kind", choices=KINDS)
     s.add_argument("reference")
     s.add_argument("--platform", required=True, choices=PLATFORMS)
     s.add_argument("--anonymous", action="store_true")
+    s.add_argument("--version")
     r = sub.add_parser("record")
     r.add_argument("directory")
     r.add_argument("--output", required=True)
@@ -253,7 +320,15 @@ def main():
     elif args.command == "recipe":
         print(recipe())
     elif args.command == "matrix":
-        print(json.dumps({"include": [{"kind": k, "tag": tag(k)} for k in KINDS]}))
+        print(json.dumps({"include": matrix()}))
+    elif args.command == "validate-revision":
+        previous = subprocess.run(["git", "show", args.base + ":deploy/images/images.lock.json"],
+                                  capture_output=True, text=True)
+        if previous.returncode == 0:
+            if recipe(args.base) != recipe():
+                before = json.loads(run("git", "show", args.base + ":deploy/images/versions.json", capture=True))
+                if inputs()["revision"] <= before["revision"]:
+                    raise ValueError("a changed recipe must advance versions.json revision; released tags are immutable")
     elif args.command == "build":
         build(args)
     elif args.command == "smoke":

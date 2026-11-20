@@ -183,8 +183,8 @@ func DockerTags(tags []string) []string {
 }
 
 // Launchers returns what a @docker scenario's launchers need, building it
-// into buildDir from the module on first use; the dependencies' Close
-// removes its image.
+// into buildDir from the module on first use. Close retains the shared
+// immutable image cache for other suites.
 func (s *Suite) Launchers(ctx context.Context) (*Launchers, error) {
 	s.launchOnce.Do(func() {
 		root, err := filepath.Abs(RepoRoot)

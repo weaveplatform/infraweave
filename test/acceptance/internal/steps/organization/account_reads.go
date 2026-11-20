@@ -8,6 +8,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -27,6 +28,9 @@ func (s *accountSteps) register(sc *godog.ScenarioContext) {
 // reads checks each Account read against the tenant's seeded account,
 // whose name is its slug.
 func (s *accountSteps) reads(ctx context.Context, replica, tok, who, typ, image string) error {
+	if image == "builtin:terraform" {
+		image = runnerimages.Terraform
+	}
 	t := harness.Tenants[who]
 	for path, want := range map[string]string{
 		"/api/v1/id":   t.Account,

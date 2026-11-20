@@ -1,39 +1,29 @@
 package harness
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 	"strings"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
-	"github.com/moby/moby/client/pkg/jsonmessage"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
-// The runner images of @terraform and @tofu scenarios, built from their
-// definitions under deploy/images, the ones CI builds and a release
-// publishes. A scenario's tool runs in its vendor's, and a stack names
-// its vendor's unless it exercises vendor-default selection. Both images
-// are also tagged under their untagged published names for that case.
-//
-// ref: decision 0016
+// Released immutable environments, shared with product defaults.
 const (
-	RunnerTerraform = "infraweave-runner-terraform:acceptance"
-	RunnerOpenTofu  = "infraweave-runner-opentofu:acceptance"
+	RunnerTerraform = runnerimages.Terraform
+	RunnerOpenTofu  = runnerimages.OpenTofu
 )
 
-// runnerDefinitions are the directories under deploy/images that define
-// the runner images.
-var runnerDefinitions = map[string]string{
-	RunnerTerraform: "runner-terraform",
-	RunnerOpenTofu:  "runner-opentofu",
+var runnerReferences = map[string]bool{
+	RunnerTerraform: true, RunnerOpenTofu: true,
+	runnerimages.Pulumi: true, runnerimages.Ansible: true, RunnerImage: true,
 }
 
 // contractPath is where RunnerContract mounts deploy/images/contract.sh.
@@ -41,60 +31,52 @@ const contractPath = "/opt/contract.sh"
 
 // Errors of the runner images.
 var (
-	// ErrRunnerImage is returned for an image no definition builds.
-	ErrRunnerImage = errors.New("no runner image definition")
+	// ErrRunnerImage is returned for an image outside the released catalogue.
+	ErrRunnerImage = errors.New("no released runner image")
 	// ErrRunnerContract is returned for an image that breaks the runner
 	// image contract.
 	ErrRunnerContract = errors.New("the runner image contract")
 )
 
-// Build builds image, RunnerTerraform or RunnerOpenTofu, once per test
-// binary, on first use, under its acceptance and published names.
-func (l *Launchers) Build(ctx context.Context, image string) error {
+// EnsureRunnerImage pulls a missing released image. It never builds or
+// retags an image and never removes one owned by another suite. Failed
+// pulls are retryable; only successful preparation is memoized.
+func (l *Launchers) EnsureRunnerImage(ctx context.Context, image string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if err, ok := l.built[image]; ok {
-		return err
-	}
-	if l.built == nil {
-		l.built = map[string]error{}
-	}
-	l.built[image] = BuildRunner(ctx, l.cli, l.root, image)
-	return l.built[image]
-}
-
-// BuildRunner builds image from its definition under root's deploy/images
-// with the daemon's own builder, which needs no builder of its own. The
-// suite leaves the image, so the next run's build of an unchanged
-// definition reuses its layers rather than installing its packages again.
-func BuildRunner(ctx context.Context, cli *testcontainers.DockerClient, root, image string) error {
-	def, ok := runnerDefinitions[image]
-	if !ok {
+	if !runnerReferences[image] {
 		return fmt.Errorf("%w: %q", ErrRunnerImage, image)
 	}
-	var tarball bytes.Buffer
-	tw := tar.NewWriter(&tarball)
-	if err := tw.AddFS(os.DirFS(filepath.Join(root, "deploy", "images", def))); err != nil {
-		return fmt.Errorf("build %s: %w", image, err)
+	if l.ready[image] {
+		return nil
 	}
-	if err := tw.Close(); err != nil {
-		return fmt.Errorf("build %s: %w", image, err)
+	if err := pullRunnerImage(ctx, l.cli, image); err != nil {
+		return err
 	}
-	res, err := cli.ImageBuild(ctx, &tarball, client.ImageBuildOptions{
-		Tags:   []string{image, "ghcr.io/weaveplatform/infraweave-" + def},
-		Remove: true, ForceRemove: true,
-	})
+	if l.ready == nil {
+		l.ready = map[string]bool{}
+	}
+	l.ready[image] = true
+	return nil
+}
+
+func pullRunnerImage(ctx context.Context, cli *testcontainers.DockerClient, image string) error {
+	if _, err := cli.ImageInspect(ctx, image); err == nil {
+		return nil
+	} else if !cerrdefs.IsNotFound(err) {
+		return fmt.Errorf("inspect runner image %s: %w", image, err)
+	}
+	pull, err := cli.ImagePull(ctx, image, client.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("build %s: %w", image, err)
+		return fmt.Errorf("pull runner image %s: %w", image, err)
 	}
-	defer res.Body.Close()
-	if err := jsonmessage.DisplayStream(res.Body, io.Discard); err != nil {
-		return fmt.Errorf("build %s: %w", image, err)
+	if err := pull.Wait(ctx); err != nil {
+		return fmt.Errorf("pull runner image %s: %w", image, err)
 	}
 	return nil
 }
 
-// RunnerContract builds image and runs deploy/images/contract.sh in a
+// RunnerContract pulls the released image and runs deploy/images/contract.sh in a
 // container of it, as the image's own user and from its own working
 // directory, as CI's images job does, and answers the line the script
 // wrote. It refuses an image that breaks the contract as
@@ -105,7 +87,7 @@ func RunnerContract(ctx context.Context, root, image string) (string, error) {
 		return "", fmt.Errorf("docker: %w", err)
 	}
 	defer cli.Close()
-	if err := BuildRunner(ctx, cli, root, image); err != nil {
+	if err := pullRunnerImage(ctx, cli, image); err != nil {
 		return "", err
 	}
 	c, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{

@@ -198,11 +198,13 @@ everywhere, and the reason names where the contract checks it instead.
   `deps-refresh.yml` reads from k3s's releases, since the image's `latest`
   tag trails them by more than a year
   ([33 section 1](../reference/33-vendor-tool-documents.md#1-versions)).
-  The runner images the suite builds pin their Alpine base by digest in
-  their Dockerfiles under `deploy/images/`, which Dependabot moves, and
-  `-pulumi`'s Pulumi CLI and `-ansible`'s ansible-core by version and
-  SHA-256, which `deps-refresh.yml` moves, so CI, the suite and a release
-  build from one pin. An archive is downloaded once into
+  The runner environments use the same committed immutable GHCR digest pins
+  as product launchers. Their build inputs live in `deploy/images/versions.json`;
+  `runner-images-upstream.yml` discovers stable tool releases daily and refreshes
+  the base/packages weekly, through required-CI input PRs. A successful signed
+  publication opens a separate consumer-pin PR. Candidate image jobs build once
+  per platform and run real tool contracts; ordinary suites reuse released
+  images and remove only owned containers. An archive is downloaded once into
   the user's cache directory and checked against its pin each time a test
   binary uses it.
 - **The newest releases everywhere.** A scenario's stack sets no version,

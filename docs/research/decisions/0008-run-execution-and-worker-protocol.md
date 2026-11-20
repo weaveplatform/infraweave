@@ -1350,6 +1350,10 @@ has failed":
   `ps` and `tzdata`) and no Terraform or OpenTofu binary, which the
   launcher mounts, as Spacelift's images do
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
+  Built-in references are immutable digest pins shared by the application and
+  acceptance harness. Runner environment releases have their own cadence
+  (decision 0020); Terraform/OpenTofu tags identify the tested mounted-tool
+  cohort, and the run's requested tool version remains authoritative.
   - **`-pulumi`** adds the Pulumi CLI and its language hosts from Pulumi's
     release archive, checked against the SHA-256 its Dockerfile pins, with
     Node.js and npm, and Python and pip, from Alpine; Go and .NET programs

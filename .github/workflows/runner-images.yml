@@ -71,25 +71,29 @@ jobs:
       - name: Build immutable preview with provenance and SPDX SBOM
         env:
           KIND: ${{ matrix.kind }}
+          VERSION: ${{ matrix.version }}
+          IMAGE_ID: ${{ matrix.id }}
         run: |
           python3 deploy/images/imagectl.py build "$KIND" \
             --platform linux/amd64,linux/arm64 --push \
-            --tag "ghcr.io/weaveplatform/infraweave-runner-$KIND:preview-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            --metadata "$KIND.json"
+            --tag "ghcr.io/weaveplatform/infraweave-runner-$KIND:preview-$IMAGE_ID-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --version "$VERSION" --metadata "$IMAGE_ID.json"
       - name: Execute both platform contracts (ARM64 emulated)
         env:
           KIND: ${{ matrix.kind }}
+          VERSION: ${{ matrix.version }}
+          IMAGE_ID: ${{ matrix.id }}
         run: |
-          digest=$(jq -r '.["containerimage.digest"]' "$KIND.json")
+          digest=$(jq -r '.["containerimage.digest"]' "$IMAGE_ID.json")
           ref="ghcr.io/weaveplatform/infraweave-runner-$KIND@$digest"
           for platform in linux/amd64 linux/arm64; do
             docker pull --platform "$platform" "$ref"
-            python3 deploy/images/imagectl.py smoke "$KIND" "$ref" --platform "$platform"
+            python3 deploy/images/imagectl.py smoke "$KIND" "$ref" --platform "$platform" --version "$VERSION"
           done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: runner-metadata-${{ matrix.kind }}
-          path: ${{ matrix.kind }}.json
+          name: runner-metadata-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
           retention-days: 30
 
   verify-publish:
@@ -153,15 +157,15 @@ jobs:
           spec = importlib.util.spec_from_file_location('imagectl', 'deploy/images/imagectl.py')
           ctl = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(ctl)
-          for entry in json.load(open('candidate-lock.json'))['images'].values():
-              ctl.attestations(entry['reference'])
+          for entry in list(json.load(open('candidate-lock.json'))['images'].values()) + json.load(open('candidate-lock.json')).get('releases', []):
+              ctl.attestations(entry['reference'], entry)
               for platform in ctl.PLATFORMS:
                   ctl.anonymous(entry['reference'], platform)
           PY
       - name: Sign and verify exact indexes with this workflow's OIDC identity
         run: |
           identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/runner-images.yml@$GITHUB_REF"
-          jq -r '.images[].reference' candidate-lock.json | while IFS= read -r ref; do
+          jq -r '[.images[].reference, .releases[]?.reference] | unique[]' candidate-lock.json | while IFS= read -r ref; do
             cosign sign --yes "$ref"
             cosign verify --certificate-identity "$identity" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com "$ref"
@@ -178,3 +182,34 @@ jobs:
         run: |
           echo 'Verified multi-platform runner indexes (anonymous pulls, SPDX, provenance, Sigstore):' >> "$GITHUB_STEP_SUMMARY"
           jq -r '.images | to_entries[] | "- \(.key): `\(.value.reference)` (\(.value.tag))"' candidate-lock.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        if: github.ref == 'refs/heads/main'
+        with:
+          app-id: ${{ vars.RP_APP_ID }}
+          private-key: ${{ secrets.RP_APP_PRIVATE_KEY }}
+      - name: Open the CI-checked consumer pin PR
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Supply the App token through a temporary askpass, never through
+          # git's remote URL or command arguments. App pushes trigger PR CI.
+          askpass=$(mktemp)
+          trap 'rm -f "$askpass"' EXIT
+          cat > "$askpass" <<'EOF'
+          #!/bin/sh
+          case "$1" in *Username*) echo x-access-token ;; *) printf '%s\n' "$GH_TOKEN" ;; esac
+          EOF
+          chmod 700 "$askpass"
+          export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
+          cp candidate-lock.json deploy/images/images.lock.json
+          python3 deploy/images/imagectl.py generate
+          cat > /tmp/image-pins-body.md <<'EOF'
+          Update product defaults and acceptance harnesses to the exact runner indexes that passed real tool execution on AMD64 and ARM64, anonymous GHCR pulls, SPDX/provenance checks and Sigstore signature verification.
+
+          Build inputs remain unchanged. Required PR CI verifies application behavior against these images before this pin update can merge. Previous released digests remain available for rollback.
+          EOF
+          bash tools/runnerimages/pr.sh deps/runner-image-pins \
+            'chore(images): update verified runner digest pins' /tmp/image-pins-body.md \
+            deploy/images/images.lock.json internal/platform/runnerimages/images.gen.go

@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -25,18 +24,13 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 	stateapi "github.com/weaveplatform/infraweave/internal/state/api"
 )
 
-// RunnerImage is the image of a @docker scenario's run containers, but
-// for the tools of @terraform and @tofu scenarios, which run in their
-// vendor's runner image: a filesystem with the user runner, UID and GID
-// 1983, and the workspace it owns, and nothing else, so no scenario pulls
-// an image. The launcher mounts the runner itself, and the relay's
-// forwarder runs in it.
-//
-// ref: decision 0008 § "The launcher and the runner"
-const RunnerImage = "infraweave-runner:acceptance"
+// RunnerImage is the shared, immutable shell-free fixture. The current
+// application and forwarder executables are mounted by each suite.
+const RunnerImage = runnerimages.TestSupport
 
 // LabelScenario labels the containers a scenario starts beside its
 // launchers', which its end removes.
@@ -49,7 +43,7 @@ var ErrDockerArch = errors.New("no GOARCH for the Docker daemon's architecture")
 // Launchers are what a @docker scenario's launchers need of Docker, made
 // once per test binary: the daemon, RunnerImage, the Linux builds of
 // infraweave and of testdata/forward for the daemon's architecture, and
-// the runner images, each built on first use.
+// the runner images, each pulled on first use and retained for other suites.
 type Launchers struct {
 	// Host is the daemon's address, which each launcher is given as
 	// DOCKER_HOST, so it reaches the daemon the suite found.
@@ -63,11 +57,9 @@ type Launchers struct {
 	// binary its containers run is built or fetched for.
 	Arch string
 	cli  *testcontainers.DockerClient
-	// root is the module's root; built holds each runner image Build
-	// built, and how its build ended.
-	root  string
+	// ready holds successfully inspected or pulled immutable image references.
 	mu    sync.Mutex
-	built map[string]error
+	ready map[string]bool
 	// mirror is the tool mirror, once Mirror starts it. Its lock is its
 	// own, so a build never holds up a download.
 	mirrorMu sync.Mutex
@@ -80,13 +72,13 @@ type Launchers struct {
 }
 
 // prepare builds what the launchers need into dir, from the module at
-// root, and imports RunnerImage.
+// root, and pulls RunnerImage when absent.
 func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 	cli, err := testcontainers.NewDockerClientWithOpts(ctx)
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)
 	}
-	l.cli, l.Host, l.root = cli, cli.DaemonHost(), root
+	l.cli, l.Host = cli, cli.DaemonHost()
 	info, err := cli.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return fmt.Errorf("docker: %w", err)
@@ -103,7 +95,7 @@ func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 		"./test/acceptance/testdata/forward"); err != nil {
 		return err
 	}
-	return importRunnerImage(ctx, cli)
+	return l.EnsureRunnerImage(ctx, RunnerImage)
 }
 
 // buildLinux builds pkg statically for linux/arch into dir. The runner
@@ -118,53 +110,6 @@ func buildLinux(ctx context.Context, root, dir, arch, pkg string) (string, error
 		return "", fmt.Errorf("build %s for linux/%s: %w: %s", pkg, arch, err, out)
 	}
 	return bin, nil
-}
-
-// importRunnerImage imports RunnerImage from a filesystem made here,
-// which needs no registry and no builder.
-func importRunnerImage(ctx context.Context, cli *testcontainers.DockerClient) error {
-	var root bytes.Buffer
-	tw := tar.NewWriter(&root)
-	for _, h := range []tar.Header{
-		{Name: "etc/", Typeflag: tar.TypeDir, Mode: 0o755},
-		{Name: "mnt/", Typeflag: tar.TypeDir, Mode: 0o755},
-		{Name: "mnt/workspace/", Typeflag: tar.TypeDir, Mode: 0o755, Uid: 1983, Gid: 1983},
-		{Name: "opt/", Typeflag: tar.TypeDir, Mode: 0o755},
-		{Name: "tmp/", Typeflag: tar.TypeDir, Mode: 0o1777},
-	} {
-		if err := tw.WriteHeader(&h); err != nil {
-			return fmt.Errorf("runner image: %w", err)
-		}
-	}
-	for name, body := range map[string]string{
-		"etc/passwd": "root:x:0:0:root:/:/sbin/nologin\n" +
-			"runner:x:1983:1983:runner:/mnt/workspace:/sbin/nologin\n",
-		"etc/group": "root:x:0:\nrunner:x:1983:\n",
-	} {
-		if err := tw.WriteHeader(&tar.Header{
-			Name: name, Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(body)),
-		}); err != nil {
-			return fmt.Errorf("runner image: %w", err)
-		}
-		if _, err := io.WriteString(tw, body); err != nil {
-			return fmt.Errorf("runner image: %w", err)
-		}
-	}
-	if err := tw.Close(); err != nil {
-		return fmt.Errorf("runner image: %w", err)
-	}
-	res, err := cli.ImageImport(ctx, client.ImageImportSource{Source: &root, SourceName: "-"},
-		RunnerImage, client.ImageImportOptions{
-			Changes: []string{"USER runner", "WORKDIR /mnt/workspace"},
-		})
-	if err != nil {
-		return fmt.Errorf("runner image: %w", err)
-	}
-	defer res.Close()
-	if _, err := io.Copy(io.Discard, res); err != nil {
-		return fmt.Errorf("runner image: %w", err)
-	}
-	return nil
 }
 
 // Network is the launcher.docker.network that puts a run container where
@@ -231,9 +176,8 @@ func (l *Launchers) Remove(ctx context.Context, key, value string) error {
 	return removeContainers(ctx, l.cli, key, value)
 }
 
-// Close stops the tool mirror and the run containers' caps, removes
-// RunnerImage and closes the client, returning each run container it
-// could not cap.
+// Close stops the tool mirror and run-container caps and closes this
+// owner's client. Shared immutable images remain cached for other suites.
 func (l *Launchers) Close(ctx context.Context) error {
 	if l.mirror != nil {
 		l.mirror.srv.Close()
@@ -245,8 +189,7 @@ func (l *Launchers) Close(ctx context.Context) error {
 	if l.cli == nil {
 		return l.capErrs
 	}
-	_, err := l.cli.ImageRemove(ctx, RunnerImage, client.ImageRemoveOptions{Force: true})
-	return errors.Join(l.capErrs, err, l.cli.Close())
+	return errors.Join(l.capErrs, l.cli.Close())
 }
 
 // Call is one request a relay passed on and the status it answered.

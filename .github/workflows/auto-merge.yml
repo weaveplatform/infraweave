@@ -24,7 +24,9 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
       (startsWith(github.event.workflow_run.head_branch, 'dependabot/') ||
-       github.event.workflow_run.head_branch == 'deps/refresh')
+       github.event.workflow_run.head_branch == 'deps/refresh' ||
+       github.event.workflow_run.head_branch == 'deps/runner-image-inputs' ||
+       github.event.workflow_run.head_branch == 'deps/runner-image-pins')
     runs-on: ubuntu-latest
     permissions:
       contents: write

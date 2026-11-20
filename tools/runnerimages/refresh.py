@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Discover stable upstream releases without backfilling historical images."""
+
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import urllib.request
+
+ROOT = Path(__file__).resolve().parents[2]
+HERE = ROOT / "deploy/images"
+spec = importlib.util.spec_from_file_location("imagectl", HERE / "imagectl.py")
+ctl = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ctl)
+REPOS = {"terraform": "hashicorp/terraform", "opentofu": "opentofu/opentofu",
+         "terragrunt": "gruntwork-io/terragrunt", "pulumi": "pulumi/pulumi"}
+
+
+def fetch(url):
+    headers = {"User-Agent": "infraweave-runner-image-updater"}
+    if url.startswith("https://api.github.com/") and os.environ.get("GH_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as response:
+        return response.read()
+
+
+def stable(version):
+    return bool(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version))
+
+
+def version_key(version):
+    return tuple(map(int, version.split(".")))
+
+
+def releases(tool, since):
+    if tool == "ansible":
+        document = json.loads(fetch("https://pypi.org/pypi/ansible-core/json"))
+        return [v for v, files in document["releases"].items() if stable(v) and files and
+                any(not f.get("yanked") and f["upload_time_iso_8601"] > since for f in files)]
+    versions = []
+    for page in range(1, 101):
+        records = json.loads(fetch(f"https://api.github.com/repos/{REPOS[tool]}/releases?per_page=100&page={page}"))
+        if not records:
+            break
+        for record in records:
+            version = record["tag_name"].removeprefix("v")
+            if stable(version) and not record["draft"] and not record["prerelease"] and record["published_at"] > since:
+                versions.append(version)
+        # GitHub orders releases by creation; a recently published backport can
+        # have an older tag. Exhaust pagination instead of a date early exit.
+    return versions
+
+
+def checksums(tool, version):
+    if tool == "terraform":
+        url = f"https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS"
+        names = [f"terraform_{version}_linux_{a}.zip" for a in ("amd64", "arm64")]
+    elif tool == "opentofu":
+        url = f"https://github.com/opentofu/opentofu/releases/download/v{version}/tofu_{version}_SHA256SUMS"
+        names = [f"tofu_{version}_linux_{a}.zip" for a in ("amd64", "arm64")]
+    elif tool == "terragrunt":
+        url = f"https://github.com/gruntwork-io/terragrunt/releases/download/v{version}/SHA256SUMS"
+        names = [f"terragrunt_linux_{a}" for a in ("amd64", "arm64")]
+    else:
+        url = f"https://github.com/pulumi/pulumi/releases/download/v{version}/pulumi-{version}-checksums.txt"
+        names = [f"pulumi-v{version}-linux-{a}.tar.gz" for a in ("x64", "arm64")]
+    sums = {parts[1].lstrip("*"): parts[0] for line in fetch(url).decode().splitlines()
+            if len(parts := line.split()) == 2}
+    selected = {name: sums[name] for name in names}
+    if not all(re.fullmatch(r"[a-f0-9]{64}", digest) for digest in selected.values()):
+        raise ValueError(f"{tool} {version}: invalid upstream checksum")
+    return selected
+
+
+def ansible_lock(version, base):
+    # Resolve on the target Python/Alpine, not the updater host's interpreter.
+    script = """apk add --no-cache python3 py3-pip >&2
+python3 -m venv /tmp/lock
+/tmp/lock/bin/pip download --only-binary=:all: \"ansible-core==$VERSION\" -d /tmp/wheels >&2
+/tmp/lock/bin/python - <<'PY'
+import glob,json,zipfile
+from email.parser import BytesParser
+packages={}
+for path in glob.glob('/tmp/wheels/*'):
+ with zipfile.ZipFile(path) as archive:
+  metadata=BytesParser().parsebytes(archive.read(next(n for n in archive.namelist() if n.endswith('.dist-info/METADATA'))))
+  packages[metadata['Name']]=metadata['Version']
+print(json.dumps(packages))
+PY
+"""
+    packages = json.loads(subprocess.check_output(
+        ["docker", "run", "--rm", "-i", "--env", "VERSION=" + version, base, "sh", "-e"],
+        input=script, text=True))
+    lines = ["# Alpine-resolved ansible-core and dependencies; official hashes for both architectures."]
+    for name, pin in sorted(packages.items(), key=lambda item: item[0].lower()):
+        document = json.loads(fetch(f"https://pypi.org/pypi/{name}/{pin}/json"))
+        sums = sorted({f["digests"]["sha256"] for f in document["urls"] if f["packagetype"] == "bdist_wheel" and not f.get("yanked")})
+        if not sums:
+            raise ValueError(f"{name} {pin}: no non-yanked wheels")
+        lines.append(name + "==" + pin + " \\\n" + " \\\n".join("    --hash=sha256:" + value for value in sums))
+    return "\n".join(lines) + "\n"
+
+
+def refresh(rebuild=False):
+    data = ctl.inputs()
+    state = ctl.read(HERE / "upstream.json")
+    lock_path = HERE / "images.lock.json"
+    if lock_path.exists() and any(e["recipe"] != ctl.recipe() for e in ctl.read(lock_path)["images"].values()):
+        print("Previous recipe is awaiting successful publication and its pin PR; no overlapping update.")
+        return
+    updates = {}
+    cohorts = {}
+    pending_files = {}
+    for tool in ("terraform", "opentofu", "terragrunt", "pulumi", "ansible"):
+        known = set(state["seen"][tool])
+        versions = sorted(set(releases(tool, state["since"])) - known, key=version_key)
+        if not versions:
+            continue
+        entries = []
+        for version in versions:
+            entry = {"version": version}
+            if tool != "ansible":
+                entry["sha256"] = checksums(tool, version)
+            else:
+                pending_files[HERE / f"runner-ansible/cohorts/{version}.lock"] = ansible_lock(version, data["base"])
+            entries.append(entry)
+        latest = max([data["tools"][tool]] + entries, key=lambda entry: version_key(entry["version"]))
+        if latest is not data["tools"][tool]:
+            # Preserve the separately tested historical cohort.
+            if "previous" in data["tools"][tool]:
+                latest["previous"] = data["tools"][tool]["previous"]
+            data["tools"][tool] = latest
+        cohorts[tool] = [entry for entry in entries if entry["version"] != latest["version"]]
+        state["seen"][tool] = sorted(known | set(versions), key=version_key)
+        updates[tool] = versions
+    if not updates and not rebuild:
+        print("No new stable upstream releases; no PR or image rebuild.")
+        return
+    if rebuild:
+        # Refresh the current pinned Alpine line and the actual index digest.
+        repository = json.loads(fetch("https://hub.docker.com/v2/repositories/library/alpine/tags?page_size=100&ordering=last_updated"))
+        tags = [tag["name"] for tag in repository["results"] if stable(tag["name"])]
+        newest = max(tags, key=version_key)
+        manifest = json.loads(ctl.run("docker", "buildx", "imagetools", "inspect", "alpine:" + newest,
+                                      "--format", "{{json .Manifest}}", capture=True))
+        data["base"] = "alpine:" + newest + "@" + manifest["digest"]
+    data["revision"] += 1
+    data["cohorts"] = cohorts
+    if "ansible" in updates or rebuild:
+        selected = data["tools"]["ansible"]["version"]
+        path = HERE / f"runner-ansible/cohorts/{selected}.lock"
+        pending_files[HERE / "runner-ansible/requirements.lock"] = pending_files.get(path) or ansible_lock(selected, data["base"])
+    # All upstream lookups/resolution finish before changing build inputs.
+    for path, content in pending_files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    ctl.write(HERE / "versions.json", data)
+    ctl.write(HERE / "upstream.json", state)
+    ctl.generate()
+    print(json.dumps({"new_releases": updates, "revision": data["revision"], "rebuild": rebuild}))
+
+
+if __name__ == "__main__":
+    refresh("--rebuild" in sys.argv)

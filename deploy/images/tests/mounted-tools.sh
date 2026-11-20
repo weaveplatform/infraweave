@@ -12,6 +12,9 @@ mkdir "$work/bin"
 export PATH="$work/bin:$PATH" TF_IN_AUTOMATION=1 CHECKPOINT_DISABLE=1
 for cohort in current previous; do
  selector=".tools.$RUNNER_KIND"
+ if [ "$cohort" = current ] && [ -n "${RUNNER_TOOL_VERSION:-}" ]; then
+  selector="([.tools.$RUNNER_KIND] + (.cohorts.$RUNNER_KIND // []) | map(select(.version == \"$RUNNER_TOOL_VERSION\")) | first)"
+ fi
  [ "$cohort" = current ] || selector="$selector.previous"
  version=$(jq -r "$selector.version" "$inputs")
  file="${tool}_${version}_linux_${arch}.zip"
@@ -37,9 +40,9 @@ TF
  [ "$("$tool" output -raw proof)" = runner-image-contract ]
  "$tool" plan -input=false -detailed-exitcode
 done
-version=$(jq -r '.tools.terragrunt.version' "$inputs")
+for version in $(jq -r '[.tools.terragrunt.version] + [(.cohorts.terragrunt // [])[].version] | unique[]' "$inputs"); do
 file="terragrunt_linux_$arch"
-sum=$(jq -r ".tools.terragrunt.sha256[\"$file\"]" "$inputs")
+sum=$(jq -r "([.tools.terragrunt] + (.cohorts.terragrunt // []) | map(select(.version == \"$version\")) | first).sha256[\"$file\"]" "$inputs")
 curl -fsSL --retry 3 "https://github.com/gruntwork-io/terragrunt/releases/download/v$version/$file" -o "$work/bin/terragrunt"
 echo "$sum  $work/bin/terragrunt" | sha256sum -c -
 chmod 755 "$work/bin/terragrunt"
@@ -47,4 +50,5 @@ chmod 755 "$work/bin/terragrunt"
 export TG_TF_PATH="$work/bin/$tool"
 terragrunt --version
 terragrunt plan -input=false -detailed-exitcode
+done
 echo "mounted-tool compatibility: current, previous, and Terragrunt passed"
