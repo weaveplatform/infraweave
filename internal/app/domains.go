@@ -153,8 +153,21 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	if err != nil {
 		return Domains{}, fmt.Errorf("construct policy runtime: %w", err)
 	}
-	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime, Events: events})
+	policies := policiesassembly.New(
+		policiesassembly.Deps{
+			DB:      db.Primary(),
+			Spaces:  access.Spaces(),
+			Authz:   access.Authorizer(),
+			Runtime: policyRuntime,
+			Events:  events,
+			Stacks:  stacks.Stacks(),
+			Targets: stacks.AttachmentTargets(),
+		},
+	)
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
+	access.ResolveSubjects(policiesassembly.AttachmentEntity, policies.AttachmentSpaceOf())
+	stacks.BindPolicies(policies.StackPolicies())
+	stacks.GuardStacks(policies.StackGuard())
 	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:              db.Primary(),
@@ -267,6 +280,9 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		return Domains{}, err
 	}
 	if err := configuration.Subscribe(events); err != nil {
+		return Domains{}, err //nolint:wrapcheck // names the consumer
+	}
+	if err := policies.Subscribe(events); err != nil {
 		return Domains{}, err //nolint:wrapcheck // names the consumer
 	}
 	if err := vcs.Subscribe(events); err != nil {

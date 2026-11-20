@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/646
+replayWith: policy-forced-deletion
 observed:
   "/exchanges/3/response/errors/0/message": "policy still has attachments"
   "/exchanges/4/response/data/policy/hasAttachedStacks": true

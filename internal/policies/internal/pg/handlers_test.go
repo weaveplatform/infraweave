@@ -46,6 +46,37 @@ func handlers(ctx context.Context, s policyhttp.Server, id string) map[string]fu
 			_, err := s.SearchSpacePoliciesSuggestions(ctx, api.SearchSpacePoliciesSuggestionsRequestObject{Body: &api.SearchSpacePoliciesSuggestionsRequest{Space: "team"}})
 			return err
 		},
+		"attach": func() error {
+			_, err := s.PolicyAttach(ctx, api.PolicyAttachRequestObject{StackId: "infra", PolicyId: id})
+			return err
+		},
+		"detach": func() error {
+			_, err := s.PolicyDetach(ctx, api.PolicyDetachRequestObject{AttachmentId: id})
+			return err
+		},
+		"policy-attachment": func() error {
+			_, err := s.PolicyAttachedStack(ctx, api.PolicyAttachedStackRequestObject{PolicyId: id, Params: api.PolicyAttachedStackParams{Id: id}})
+			return err
+		},
+		"stack-attachment": func() error {
+			_, err := s.StackPolicyAttachment(ctx, api.StackPolicyAttachmentRequestObject{StackId: "infra", Params: api.StackPolicyAttachmentParams{Id: id}})
+			return err
+		},
+		"space-candidates": func() error {
+			_, err := s.AttachablePoliciesInSpace(ctx, api.AttachablePoliciesInSpaceRequestObject{Params: api.AttachablePoliciesInSpaceParams{Id: "root"}})
+			return err
+		},
+		"stack-candidates": func() error {
+			_, err := s.StackAttachablePolicies(ctx, api.StackAttachablePoliciesRequestObject{StackId: "infra"})
+			return err
+		},
+		"preview": func() error {
+			_, err := s.AutoattachmentForLabels(
+				ctx,
+				api.AutoattachmentForLabelsRequestObject{Params: api.AutoattachmentForLabelsParams{Space: "root", Labels: []string{"autoattach:*"}}},
+			)
+			return err
+		},
 	}
 }
 

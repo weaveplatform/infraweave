@@ -66,6 +66,9 @@ CREATE TABLE stacks (
     blocked                          boolean     NOT NULL DEFAULT false,
     deleting                         boolean     NOT NULL DEFAULT false,
     created_at                       timestamptz NOT NULL DEFAULT now(),
+    -- Owned updates use clock_timestamp(): a later write in an older transaction
+    -- must sort after an earlier write in a newer transaction in target previews.
+    updated_at                       timestamptz NOT NULL DEFAULT clock_timestamp(),
     version                          bigint      NOT NULL DEFAULT 1,
     PRIMARY KEY (account_id, id),
     UNIQUE (account_id, slug),

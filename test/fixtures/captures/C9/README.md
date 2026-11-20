@@ -9,6 +9,9 @@ All test policies returned `plugin: null`; this capture does not infer plugin be
 
 The final exchange verifies cleanup. POL-05's `TestAccAttachedPolicyDeletion`
 checks refusal, preservation, forced cascade and transactional events against
-real PostgreSQL with an authored attachment relation fixture. Full REST replay
-awaits #646's attachment APIs; this does not claim an attachment workflow is
-already served by policy management.
+real PostgreSQL with an authored attachment relation fixture. `TestAccCaptures/C9`
+also creates the stack, policy and attachment through the running REST server,
+checks refusal and preservation, forces deletion, verifies both projections are
+gone, and deletes the stack with a final 404 cleanup check. Raw upstream evidence
+is unchanged; the replayer checks the invariant using infraweave's status and
+module contracts.

@@ -171,6 +171,22 @@ type SpaceGuard interface {
 	LostOnMove(ctx context.Context, m SpaceMove) ([]LostReach, error)
 }
 
+// SpaceChange is the proposed parent and inheritance of one space. Version is
+// the version the same transaction will commit if every guard accepts it.
+type SpaceChange struct {
+	Account       kernel.AccountID
+	Space, Parent kernel.ULID
+	Inherit       bool
+	Version       int64
+}
+
+// SpaceChangeGuard extends a registered SpaceGuard for both parent and
+// inheritance changes. It runs after the changed subtree is locked, before
+// writing it, and may enqueue work in that same transaction.
+type SpaceChangeGuard interface {
+	SpaceChanging(context.Context, SpaceChange) error
+}
+
 // ErrNoSpace reports a space the account lacks.
 var ErrNoSpace = errors.New("no such space")
 

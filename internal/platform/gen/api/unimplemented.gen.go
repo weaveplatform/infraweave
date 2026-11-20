@@ -174,6 +174,10 @@ func (UnimplementedStrict) AttachableExternalIntegrationInSpace(context.Context,
 	return nil, &problem.NotImplementedError{OperationID: "attachableExternalIntegrationInSpace", Route: "GET /attachable-external-integration-in-space"}
 }
 
+func (UnimplementedStrict) AttachablePoliciesInSpace(context.Context, AttachablePoliciesInSpaceRequestObject) (AttachablePoliciesInSpaceResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "attachablePoliciesInSpace", Route: "GET /attachable-policies-in-space"}
+}
+
 func (UnimplementedStrict) AttachableVCSIntegrationsForProviderInSpace(context.Context, AttachableVCSIntegrationsForProviderInSpaceRequestObject) (AttachableVCSIntegrationsForProviderInSpaceResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "attachableVCSIntegrationsForProviderInSpace", Route: "GET /attachable-vcs-integrations-for-provider-in-space"}
 }
@@ -212,6 +216,10 @@ func (UnimplementedStrict) AuthSessionAccount(context.Context, AuthSessionAccoun
 
 func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) (ApiKeyUserResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
+}
+
+func (UnimplementedStrict) AutoattachmentForLabels(context.Context, AutoattachmentForLabelsRequestObject) (AutoattachmentForLabelsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "autoattachmentForLabels", Route: "GET /autoattachment-for-labels"}
 }
 
 func (UnimplementedStrict) AvailableBillingAddons(context.Context, AvailableBillingAddonsRequestObject) (AvailableBillingAddonsResponseObject, error) {
@@ -750,6 +758,14 @@ func (UnimplementedStrict) PolicyUpdatev2(context.Context, PolicyUpdatev2Request
 	return nil, &problem.NotImplementedError{OperationID: "policyUpdatev2", Route: "PUT /policies/{policyId}"}
 }
 
+func (UnimplementedStrict) PolicyAttachedStack(context.Context, PolicyAttachedStackRequestObject) (PolicyAttachedStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyAttachedStack", Route: "GET /policies/{policyId}/attached-stack"}
+}
+
+func (UnimplementedStrict) PolicyDetach(context.Context, PolicyDetachRequestObject) (PolicyDetachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyDetach", Route: "DELETE /policy-attachments/{attachmentId}"}
+}
+
 func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestObject) (PolicyRuntimeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "policyRuntime", Route: "GET /policy-runtime"}
 }
@@ -1084,6 +1100,10 @@ func (UnimplementedStrict) StackManagedStateRollback(context.Context, StackManag
 
 func (UnimplementedStrict) StackMigrateVendor(context.Context, StackMigrateVendorRequestObject) (StackMigrateVendorResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackMigrateVendor", Route: "POST /stacks/{stackId}/migrate-vendor"}
+}
+
+func (UnimplementedStrict) PolicyAttach(context.Context, PolicyAttachRequestObject) (PolicyAttachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyAttach", Route: "PUT /stacks/{stackId}/policies/{policyId}"}
 }
 
 func (UnimplementedStrict) StackPolicyAttachment(context.Context, StackPolicyAttachmentRequestObject) (StackPolicyAttachmentResponseObject, error) {

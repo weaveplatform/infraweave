@@ -1,5 +1,55 @@
 components:
     schemas:
+        AutoattachmentTarget:
+            description: |-
+                AutoattachmentTarget is a stack or module that is autoattached to an
+                entity that supports autoattachment.
+            properties:
+                id:
+                    description: The ID (slug) of the target.
+                    type: string
+                isModule:
+                    description: True if the target is a module.
+                    type: boolean
+                labels:
+                    description: List of labels on the target.
+                    items:
+                        type: string
+                    type: array
+                name:
+                    description: Name of the target.
+                    type: string
+                space:
+                    description: ID of the space to which the target belongs.
+                    type: string
+                spaceDetails:
+                    $ref: '#/components/schemas/SpaceRef'
+            required:
+                - id
+                - isModule
+                - labels
+                - name
+                - space
+                - spaceDetails
+            type: object
+            x-graphql-type: AutoattachmentTarget
+        AutoattachmentTargets:
+            description: AutoattachmentTargets is the list of autoattached stacks and modules.
+            properties:
+                count:
+                    description: The total number of autoattachment targets.
+                    format: int32
+                    type: integer
+                sample:
+                    description: Top 100 results.
+                    items:
+                        $ref: '#/components/schemas/AutoattachmentTarget'
+                    type: array
+            required:
+                - count
+                - sample
+            type: object
+            x-graphql-type: AutoattachmentTargets
         PolicyConnection:
             properties:
                 cursor:
@@ -127,6 +177,114 @@ components:
             type: object
             x-graphql-args-of: searchSpacePoliciesSuggestions
 paths:
+    /attachable-policies-in-space:
+        get:
+            description: List of policies that can be attached to Stacks/Modules in given space.
+            operationId: attachablePoliciesInSpace
+            parameters:
+                - in: query
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: id
+                - $ref: '#/components/parameters/Cursor'
+                - $ref: '#/components/parameters/Limit'
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PolicyPage'
+                    description: The attachablePoliciesInSpace result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "400":
+                    $ref: '#/components/responses/InvalidCursor'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Attachable Policies in Space
+            tags:
+                - Policies
+            x-bruno: Policies/Attachable Policies in Space.bru
+            x-graphql:
+                field: attachablePoliciesInSpace
+                operation: query
+                type: Query
+            x-infraweave-action: SPACE_READ
+            x-infraweave-cost: standard
+            x-infraweave-divergence:
+                - cursor-pagination
+                - rate-limit
+            x-infraweave-feature: policies
+            x-infraweave-subject: query:id
+            x-rest-style: read
+    /autoattachment-for-labels:
+        get:
+            description: |-
+                Given the space and the labels, returns the list of autoattachment targets.
+                The list is not exhaustive, it only contains the 100 most recently updated
+                targets.
+            operationId: autoattachmentForLabels
+            parameters:
+                - in: query
+                  name: space
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: space
+                - in: query
+                  name: labels
+                  required: true
+                  schema:
+                    items:
+                        type: string
+                    type: array
+                  x-graphql-arg: labels
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AutoattachmentTargets'
+                    description: The autoattachmentForLabels result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Autoattachment for Labels
+            tags:
+                - Policies
+            x-bruno: Policies/Autoattachment for Labels.bru
+            x-graphql:
+                field: autoattachmentForLabels
+                operation: query
+                type: Query
+            x-infraweave-action: SPACE_READ
+            x-infraweave-cost: standard
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-feature: policies
+            x-infraweave-subject: query:space
+            x-rest-style: read
     /policies:
         get:
             description: List of all the polices in the account.
@@ -467,6 +625,59 @@ paths:
             x-infraweave-feature: policies
             x-infraweave-subject: path:policyId:policy
             x-rest-style: update
+    /policies/{policyId}/attached-stack:
+        get:
+            description: Single stack attachment for this Policy.
+            operationId: policyAttachedStack
+            parameters:
+                - description: Selects the parent object.
+                  in: path
+                  name: policyId
+                  required: true
+                  schema:
+                    type: string
+                - in: query
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: id
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PolicyStackAttachment'
+                    description: The attachedStack result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Policy attached stack
+            tags:
+                - Policies
+            x-graphql:
+                field: attachedStack
+                operation: query
+                type: Policy
+            x-infraweave-action: SPACE_READ
+            x-infraweave-cost: standard
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-feature: policies
+            x-infraweave-subject: path:policyId:policy
+            x-rest-style: field
     /policies/search:
         post:
             operationId: searchPolicies
@@ -561,6 +772,54 @@ paths:
             x-infraweave-feature: policies
             x-infraweave-subject: list
             x-rest-style: search
+    /policy-attachments/{attachmentId}:
+        delete:
+            description: Detach Policy from a Stack.
+            operationId: policyDetach
+            parameters:
+                - in: path
+                  name: attachmentId
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: id
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PolicyStackAttachment'
+                    description: The policyDetach result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Detach Policy
+            tags:
+                - Policies
+            x-bruno: Policies/Detach Policy.bru
+            x-graphql:
+                field: policyDetach
+                operation: mutation
+                type: Mutation
+            x-infraweave-action: STACK_POLICY_DETACH
+            x-infraweave-cost: standard
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-feature: policies
+            x-infraweave-subject: path:attachmentId:policy_attachment
+            x-rest-style: detach
     /space-policies/search/suggestions:
         post:
             description: The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
@@ -609,3 +868,60 @@ paths:
             x-infraweave-feature: policies
             x-infraweave-subject: body:space
             x-rest-style: search
+    /stacks/{stackId}/policies/{policyId}:
+        put:
+            description: Attach Policy to a Stack.
+            operationId: policyAttach
+            parameters:
+                - description: ID of the stack to attach the policy to
+                  in: path
+                  name: stackId
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: stack
+                  x-terraform:
+                    - spacelift_policy_attachment.stack_id
+                - in: path
+                  name: policyId
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: id
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PolicyStackAttachment'
+                    description: The policyAttach result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Attach Policy
+            tags:
+                - Policies
+            x-bruno: Policies/Attach Policy.bru
+            x-graphql:
+                field: policyAttach
+                operation: mutation
+                type: Mutation
+            x-infraweave-action: STACK_POLICY_ATTACH
+            x-infraweave-cost: standard
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-feature: policies
+            x-infraweave-subject: path:stackId:stack
+            x-rest-style: attach

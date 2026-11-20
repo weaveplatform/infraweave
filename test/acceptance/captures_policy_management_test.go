@@ -14,6 +14,7 @@ var statefulCaptureReplayers = map[string]func(*testing.T, *sdk.Client){
 	"policy-runtime":               replayPolicyRuntime,
 	"policy-timestamps":            replayPolicyTimestamps,
 	"policy-create-engine-default": replayPolicyCreateEngineDefault,
+	"policy-forced-deletion":       replayPolicyForcedDeletion,
 }
 
 func TestUnitStatefulCaptureReplayers(t *testing.T) {

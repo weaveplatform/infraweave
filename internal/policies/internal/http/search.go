@@ -2,11 +2,11 @@ package http
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 )
 
 // Policies lists full policy views in the caller's readable spaces.
@@ -23,14 +23,15 @@ func (s Server) Policies(ctx context.Context, req api.PoliciesRequestObject) (ap
 	if err != nil {
 		return nil, policyError(err)
 	}
-	names, err := s.spaces.Slugs(ctx, p.AccountID)
-	if err != nil {
-		return nil, fmt.Errorf("policies: name list spaces: %w", err)
-	}
-	out := api.PolicyPage{Items: make([]api.Policy, 0, len(res.Edges))}
+	rows := make([]core.Policy, 0, len(res.Edges))
 	for _, edge := range res.Edges {
-		out.Items = append(out.Items, policyView(edge.Node, names))
+		rows = append(rows, edge.Node)
 	}
+	views, err := s.views(ctx, p, rows...)
+	if err != nil {
+		return nil, err
+	}
+	out := api.PolicyPage{Items: views}
 	if res.HasNext {
 		out.NextCursor = &res.End
 	}

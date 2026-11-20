@@ -11,9 +11,11 @@ const (
 
 // The management changes a Changed event records.
 const (
-	ChangeCreated = "created"
-	ChangeUpdated = "updated"
-	ChangeDeleted = "deleted"
+	ChangeCreated  = "created"
+	ChangeUpdated  = "updated"
+	ChangeDeleted  = "deleted"
+	ChangeAttached = "attached"
+	ChangeDetached = "detached"
 )
 
 // Changed identifies a policy change without copying its source into the outbox.
@@ -28,6 +30,6 @@ var ChangedSchema = []byte(`{
   "required":["policy","change"],
   "properties":{
     "policy":{"type":"string","minLength":26,"maxLength":26},
-    "change":{"enum":["created","updated","deleted"]}
+    "change":{"enum":["created","updated","deleted","attached","detached"]}
   }
 }`)

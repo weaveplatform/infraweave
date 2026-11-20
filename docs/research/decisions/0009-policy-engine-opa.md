@@ -462,6 +462,27 @@ policies stay in the account's root space. These management operations and
 their persisted searches do not deliver attachment selection, evaluation,
 sampling, notification routing or Intent integration owned by later tickets.
 
+POL-06 supplies the attachment boundary separately. Each policy/stack pair has
+one account-qualified relation and an attachment ULID distinct from the policy.
+Explicit attachment preserves that identity and clears its automatic marker;
+automatic reconciliation cannot replace it. The account's policy attachment lock
+precedes policy row locks. Policy saves reconcile labels transactionally, and
+stack-change consumers read current labels and reach rather than replaying old
+event payloads. LOGIN, NOTIFICATION and INTENT do not attach to stacks.
+
+Access calls the optional `SpaceChangeGuard` under its tree and subtree locks
+for parent or inheritance changes. Policies refuses lost manual reach and
+enqueues automatic reconciliation in that same transaction. Jobs are unique per
+accepted space version, so a change cannot be lost to an already-running job's
+earlier snapshot. Inheritance-only updates lock descendants `FOR UPDATE`, which
+waits for attachment writers' space holds. Stack guards refuse manual reach loss
+and remove owned rows on deletion. Effective projections check current reach and
+labels while durable cleanup is pending. Preview counts and limits are applied
+inside the stack-owned query after account, reach and readable-space filtering;
+its sample uses persisted stack update time, with a deterministic ID tie break.
+This selection boundary does not claim workflow evaluation, module or Intent
+attachment execution, samples or notification routing.
+
 P13 emits `policy_evaluated` and `internal_error` through the transactional
 outbox and enqueues existing VCS checks. P18 adds notification policy routing,
 inbox delivery and other sinks; an emitted event is not proof of those sinks.

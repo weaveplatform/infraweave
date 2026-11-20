@@ -40,7 +40,7 @@ type Server struct {
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces, catalog vendorsapi.Catalog) Server {
 	return Server{
 		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
-		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}},
+		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}, policies: unbound{}},
 	}
 }
 
@@ -402,6 +402,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the configuration domain names the read
 	}
+	policies, err := s.edges.policies.AttachedPolicies(ctx, p, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the policies reader names the read
+	}
 	config, err := s.edges.config.Config(ctx, p.AccountID, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -443,6 +447,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 			return nil, err
 		}
 		v.AttachedContexts = make([]api.StackContextAttachment, 0, len(attached[st.ID]))
+		v.AttachedPolicies = make([]api.StackPolicyAttachment, 0, len(policies[st.ID]))
+		for _, policy := range policies[st.ID] {
+			v.AttachedPolicies = append(v.AttachedPolicies, policyView(policy))
+		}
 		for _, c := range attached[st.ID] {
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}

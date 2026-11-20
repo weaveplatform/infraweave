@@ -228,6 +228,7 @@ func (s *Store) UpdateSpace(
 	ctx context.Context,
 	acct kernel.AccountID,
 	slug, parentSlug string,
+	inherit bool,
 	edit func(
 		ctx context.Context,
 		current, parent space.Space,
@@ -256,6 +257,16 @@ func (s *Store) UpdateSpace(
 				return err
 			}
 			if err := lockSpaces(ctx, q, acct, m.Subtree); err != nil {
+				return err
+			}
+		} else if inherit != cur.InheritEntities {
+			// Inheritance changes cut reach for the entire subtree too. A plain
+			// non-key UPDATE would not wait for attachment writers' KEY SHARE.
+			subtree, err := ids(ctx, q, `SELECT descendant_id FROM space_closure WHERE ancestor_id=$1 ORDER BY descendant_id`, cur.ID)
+			if err != nil {
+				return err
+			}
+			if err := lockSpaces(ctx, q, acct, subtree); err != nil {
 				return err
 			}
 		}

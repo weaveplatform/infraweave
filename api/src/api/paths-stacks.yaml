@@ -7927,7 +7927,7 @@ paths:
     get:
       description: List of policies that can be attached to this Stack.
       operationId: stackAttachablePolicies
-      x-infraweave-feature: stacks
+      x-infraweave-feature: policies
       x-infraweave-action: SPACE_READ
       x-infraweave-subject: path:stackId:stack
       parameters:
@@ -8802,7 +8802,7 @@ paths:
     get:
       description: Retrieve stack policy attachment by a known ID.
       operationId: stackPolicyAttachment
-      x-infraweave-feature: stacks
+      x-infraweave-feature: policies
       x-infraweave-action: SPACE_READ
       x-infraweave-subject: path:stackId:stack
       parameters:

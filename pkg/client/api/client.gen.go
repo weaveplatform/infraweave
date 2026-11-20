@@ -3350,6 +3350,37 @@ type AuthSessionAccountRequest struct {
 	Account string `json:"account"`
 }
 
+// AutoattachmentTarget AutoattachmentTarget is a stack or module that is autoattached to an
+// entity that supports autoattachment.
+type AutoattachmentTarget struct {
+	// Id The ID (slug) of the target.
+	Id string `json:"id"`
+
+	// IsModule True if the target is a module.
+	IsModule bool `json:"isModule"`
+
+	// Labels List of labels on the target.
+	Labels []string `json:"labels"`
+
+	// Name Name of the target.
+	Name string `json:"name"`
+
+	// Space ID of the space to which the target belongs.
+	Space string `json:"space"`
+
+	// SpaceDetails A reference to a Space; fetch it with GET /spaces/{spaceId}.
+	SpaceDetails SpaceRef `json:"spaceDetails"`
+}
+
+// AutoattachmentTargets AutoattachmentTargets is the list of autoattached stacks and modules.
+type AutoattachmentTargets struct {
+	// Count The total number of autoattachment targets.
+	Count int32 `json:"count"`
+
+	// Sample Top 100 results.
+	Sample []AutoattachmentTarget `json:"sample"`
+}
+
 // AvailableUserGroupsPage One page of a cursor-paginated list.
 type AvailableUserGroupsPage struct {
 	Items []string `json:"items"`
@@ -10777,6 +10808,17 @@ type AttachableExternalIntegrationInSpaceParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// AttachablePoliciesInSpaceParams defines parameters for AttachablePoliciesInSpace.
+type AttachablePoliciesInSpaceParams struct {
+	Id string `form:"id" json:"id"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // AttachableVCSIntegrationsForProviderInSpaceParams defines parameters for AttachableVCSIntegrationsForProviderInSpace.
 type AttachableVCSIntegrationsForProviderInSpaceParams struct {
 	Id       string      `form:"id" json:"id"`
@@ -10834,6 +10876,12 @@ type AuthSessionAccountParams struct {
 type ApiKeyUserParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AutoattachmentForLabelsParams defines parameters for AutoattachmentForLabels.
+type AutoattachmentForLabelsParams struct {
+	Space  string   `form:"space" json:"space"`
+	Labels []string `form:"labels" json:"labels"`
 }
 
 // AvailableBillingAddonsParams defines parameters for AvailableBillingAddons.
@@ -11441,6 +11489,11 @@ type PolicyUpdatev2PatchParams struct {
 type PolicyUpdatev2Params struct {
 	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// PolicyAttachedStackParams defines parameters for PolicyAttachedStack.
+type PolicyAttachedStackParams struct {
+	Id string `form:"id" json:"id"`
 }
 
 // RepositoriesParams defines parameters for Repositories.
@@ -15223,6 +15276,13 @@ type ClientInterface interface {
 	// Corresponds with GET /attachable-external-integration-in-space (the `AttachableExternalIntegrationInSpace` operationId).
 	AttachableExternalIntegrationInSpace(ctx context.Context, params *AttachableExternalIntegrationInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AttachablePoliciesInSpace Attachable Policies in Space
+	//
+	// List of policies that can be attached to Stacks/Modules in given space.
+	//
+	// Corresponds with GET /attachable-policies-in-space (the `AttachablePoliciesInSpace` operationId).
+	AttachablePoliciesInSpace(ctx context.Context, params *AttachablePoliciesInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AttachableVCSIntegrationsForProviderInSpace Attachable VCS Integrations
 	//
 	// List of VCS integrations that can be attached Stacks/Modules in given space.
@@ -15364,6 +15424,15 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AutoattachmentForLabels Autoattachment for Labels
+	//
+	// Given the space and the labels, returns the list of autoattachment targets.
+	// The list is not exhaustive, it only contains the 100 most recently updated
+	// targets.
+	//
+	// Corresponds with GET /autoattachment-for-labels (the `AutoattachmentForLabels` operationId).
+	AutoattachmentForLabels(ctx context.Context, params *AutoattachmentForLabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AvailableBillingAddons Available Billing Addons
 	//
@@ -16868,6 +16937,20 @@ type ClientInterface interface {
 	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
 	PolicyUpdatev2(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PolicyAttachedStack Policy attached stack
+	//
+	// Single stack attachment for this Policy.
+	//
+	// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
+	PolicyAttachedStack(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyDetach Detach Policy
+	//
+	// Detach Policy from a Stack.
+	//
+	// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
+	PolicyDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PolicyRuntime Policy Runtime
 	//
 	// Read the OPA library version linked into this server binary.
@@ -17956,6 +18039,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/migrate-vendor (the `StackMigrateVendor` operationId).
 	StackMigrateVendor(ctx context.Context, stackId string, params *StackMigrateVendorParams, body StackMigrateVendorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyAttach Attach Policy
+	//
+	// Attach Policy to a Stack.
+	//
+	// Corresponds with PUT /stacks/{stackId}/policies/{policyId} (the `PolicyAttach` operationId).
+	PolicyAttach(ctx context.Context, stackId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackPolicyAttachment Stack policy attachment
 	//
@@ -20261,6 +20351,23 @@ func (c *Client) AttachableExternalIntegrationInSpace(ctx context.Context, param
 	return c.Client.Do(req)
 }
 
+// AttachablePoliciesInSpace Attachable Policies in Space
+//
+// List of policies that can be attached to Stacks/Modules in given space.
+//
+// Corresponds with GET /attachable-policies-in-space (the `AttachablePoliciesInSpace` operationId).
+func (c *Client) AttachablePoliciesInSpace(ctx context.Context, params *AttachablePoliciesInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachablePoliciesInSpaceRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AttachableVCSIntegrationsForProviderInSpace Attachable VCS Integrations
 //
 // List of VCS integrations that can be attached Stacks/Modules in given space.
@@ -20533,6 +20640,25 @@ func (c *Client) ApiKeyUserWithBody(ctx context.Context, params *ApiKeyUserParam
 // Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApiKeyUserRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AutoattachmentForLabels Autoattachment for Labels
+//
+// Given the space and the labels, returns the list of autoattachment targets.
+// The list is not exhaustive, it only contains the 100 most recently updated
+// targets.
+//
+// Corresponds with GET /autoattachment-for-labels (the `AutoattachmentForLabels` operationId).
+func (c *Client) AutoattachmentForLabels(ctx context.Context, params *AutoattachmentForLabelsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAutoattachmentForLabelsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -23886,6 +24012,40 @@ func (c *Client) PolicyUpdatev2(ctx context.Context, policyId string, params *Po
 	return c.Client.Do(req)
 }
 
+// PolicyAttachedStack Policy attached stack
+//
+// Single stack attachment for this Policy.
+//
+// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
+func (c *Client) PolicyAttachedStack(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyAttachedStackRequest(c.Server, policyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyDetach Detach Policy
+//
+// Detach Policy from a Stack.
+//
+// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
+func (c *Client) PolicyDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyDetachRequest(c.Server, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PolicyRuntime Policy Runtime
 //
 // Read the OPA library version linked into this server binary.
@@ -26215,6 +26375,23 @@ func (c *Client) StackMigrateVendorWithBody(ctx context.Context, stackId string,
 // Corresponds with POST /stacks/{stackId}/migrate-vendor (the `StackMigrateVendor` operationId).
 func (c *Client) StackMigrateVendor(ctx context.Context, stackId string, params *StackMigrateVendorParams, body StackMigrateVendorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackMigrateVendorRequest(c.Server, stackId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyAttach Attach Policy
+//
+// Attach Policy to a Stack.
+//
+// Corresponds with PUT /stacks/{stackId}/policies/{policyId} (the `PolicyAttach` operationId).
+func (c *Client) PolicyAttach(ctx context.Context, stackId string, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyAttachRequest(c.Server, stackId, policyId)
 	if err != nil {
 		return nil, err
 	}
@@ -31189,6 +31366,80 @@ func NewAttachableExternalIntegrationInSpaceRequest(server string, params *Attac
 	return req, nil
 }
 
+// NewAttachablePoliciesInSpaceRequest constructs an http.Request for the AttachablePoliciesInSpace method
+func NewAttachablePoliciesInSpaceRequest(server string, params *AttachablePoliciesInSpaceParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/attachable-policies-in-space")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAttachableVCSIntegrationsForProviderInSpaceRequest constructs an http.Request for the AttachableVCSIntegrationsForProviderInSpace method
 func NewAttachableVCSIntegrationsForProviderInSpaceRequest(server string, params *AttachableVCSIntegrationsForProviderInSpaceParams) (*http.Request, error) {
 	var err error
@@ -31719,6 +31970,68 @@ func NewApiKeyUserRequestWithBody(server string, params *ApiKeyUserParams, conte
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewAutoattachmentForLabelsRequest constructs an http.Request for the AutoattachmentForLabels method
+func NewAutoattachmentForLabelsRequest(server string, params *AutoattachmentForLabelsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/autoattachment-for-labels")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Labels != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "labels", params.Labels, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -38495,6 +38808,97 @@ func NewPolicyUpdatev2RequestWithBody(server string, policyId string, params *Po
 	return req, nil
 }
 
+// NewPolicyAttachedStackRequest constructs an http.Request for the PolicyAttachedStack method
+func NewPolicyAttachedStackRequest(server string, policyId string, params *PolicyAttachedStackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s/attached-stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicyDetachRequest constructs an http.Request for the PolicyDetach method
+func NewPolicyDetachRequest(server string, attachmentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policy-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPolicyRuntimeRequest constructs an http.Request for the PolicyRuntime method
 func NewPolicyRuntimeRequest(server string) (*http.Request, error) {
 	var err error
@@ -43050,6 +43454,47 @@ func NewStackMigrateVendorRequestWithBody(server string, stackId string, params 
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewPolicyAttachRequest constructs an http.Request for the PolicyAttach method
+func NewPolicyAttachRequest(server string, stackId string, policyId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/policies/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -50158,6 +50603,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /attachable-external-integration-in-space (the `AttachableExternalIntegrationInSpace` operationId).
 	AttachableExternalIntegrationInSpaceWithResponse(ctx context.Context, params *AttachableExternalIntegrationInSpaceParams, reqEditors ...RequestEditorFn) (*AttachableExternalIntegrationInSpaceResponse, error)
 
+	// AttachablePoliciesInSpaceWithResponse Attachable Policies in Space
+	//
+	// List of policies that can be attached to Stacks/Modules in given space.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /attachable-policies-in-space (the `AttachablePoliciesInSpace` operationId).
+	AttachablePoliciesInSpaceWithResponse(ctx context.Context, params *AttachablePoliciesInSpaceParams, reqEditors ...RequestEditorFn) (*AttachablePoliciesInSpaceResponse, error)
+
 	// AttachableVCSIntegrationsForProviderInSpaceWithResponse Attachable VCS Integrations
 	//
 	// List of VCS integrations that can be attached Stacks/Modules in given space.
@@ -50311,6 +50765,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUserWithResponse(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUserResponse, error)
+
+	// AutoattachmentForLabelsWithResponse Autoattachment for Labels
+	//
+	// Given the space and the labels, returns the list of autoattachment targets.
+	// The list is not exhaustive, it only contains the 100 most recently updated
+	// targets.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /autoattachment-for-labels (the `AutoattachmentForLabels` operationId).
+	AutoattachmentForLabelsWithResponse(ctx context.Context, params *AutoattachmentForLabelsParams, reqEditors ...RequestEditorFn) (*AutoattachmentForLabelsResponse, error)
 
 	// AvailableBillingAddonsWithResponse Available Billing Addons
 	//
@@ -51983,6 +52448,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
 	PolicyUpdatev2WithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyUpdatev2Response, error)
 
+	// PolicyAttachedStackWithResponse Policy attached stack
+	//
+	// Single stack attachment for this Policy.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
+	PolicyAttachedStackWithResponse(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*PolicyAttachedStackResponse, error)
+
+	// PolicyDetachWithResponse Detach Policy
+	//
+	// Detach Policy from a Stack.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
+	PolicyDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*PolicyDetachResponse, error)
+
 	// PolicyRuntimeWithResponse Policy Runtime
 	//
 	// Read the OPA library version linked into this server binary.
@@ -53157,6 +53640,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /stacks/{stackId}/migrate-vendor (the `StackMigrateVendor` operationId).
 	StackMigrateVendorWithResponse(ctx context.Context, stackId string, params *StackMigrateVendorParams, body StackMigrateVendorJSONRequestBody, reqEditors ...RequestEditorFn) (*StackMigrateVendorResponse, error)
+
+	// PolicyAttachWithResponse Attach Policy
+	//
+	// Attach Policy to a Stack.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/policies/{policyId} (the `PolicyAttach` operationId).
+	PolicyAttachWithResponse(ctx context.Context, stackId string, policyId string, reqEditors ...RequestEditorFn) (*PolicyAttachResponse, error)
 
 	// StackPolicyAttachmentWithResponse Stack policy attachment
 	//
@@ -58525,6 +59017,101 @@ func (r AttachableExternalIntegrationInSpaceResponse) ContentType() string {
 	return ""
 }
 
+// AttachablePoliciesInSpaceResponse200Headers the declared response headers of an HTTP 200 response for AttachablePoliciesInSpace
+type AttachablePoliciesInSpaceResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AttachablePoliciesInSpaceResponse429Headers the declared response headers of an HTTP 429 response for AttachablePoliciesInSpace
+type AttachablePoliciesInSpaceResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AttachablePoliciesInSpaceResponse503Headers the declared response headers of an HTTP 503 response for AttachablePoliciesInSpace
+type AttachablePoliciesInSpaceResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AttachablePoliciesInSpaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AttachablePoliciesInSpaceResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AttachablePoliciesInSpaceResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AttachablePoliciesInSpaceResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AttachablePoliciesInSpaceResponse) GetJSON200() *PolicyPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AttachablePoliciesInSpaceResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AttachablePoliciesInSpaceResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AttachablePoliciesInSpaceResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AttachablePoliciesInSpaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AttachablePoliciesInSpaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AttachablePoliciesInSpaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AttachablePoliciesInSpaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AttachablePoliciesInSpaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AttachableVCSIntegrationsForProviderInSpaceResponse200Headers the declared response headers of an HTTP 200 response for AttachableVCSIntegrationsForProviderInSpace
 type AttachableVCSIntegrationsForProviderInSpaceResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -59534,6 +60121,94 @@ func (r ApiKeyUserResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ApiKeyUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AutoattachmentForLabelsResponse200Headers the declared response headers of an HTTP 200 response for AutoattachmentForLabels
+type AutoattachmentForLabelsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AutoattachmentForLabelsResponse429Headers the declared response headers of an HTTP 429 response for AutoattachmentForLabels
+type AutoattachmentForLabelsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AutoattachmentForLabelsResponse503Headers the declared response headers of an HTTP 503 response for AutoattachmentForLabels
+type AutoattachmentForLabelsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AutoattachmentForLabelsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AutoattachmentTargets
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AutoattachmentForLabelsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AutoattachmentForLabelsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AutoattachmentForLabelsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AutoattachmentForLabelsResponse) GetJSON200() *AutoattachmentTargets {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AutoattachmentForLabelsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AutoattachmentForLabelsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AutoattachmentForLabelsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AutoattachmentForLabelsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AutoattachmentForLabelsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AutoattachmentForLabelsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AutoattachmentForLabelsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -73127,6 +73802,196 @@ func (r PolicyUpdatev2Response) ContentType() string {
 	return ""
 }
 
+// PolicyAttachedStackResponse200Headers the declared response headers of an HTTP 200 response for PolicyAttachedStack
+type PolicyAttachedStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyAttachedStackResponse429Headers the declared response headers of an HTTP 429 response for PolicyAttachedStack
+type PolicyAttachedStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyAttachedStackResponse503Headers the declared response headers of an HTTP 503 response for PolicyAttachedStack
+type PolicyAttachedStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyAttachedStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyAttachedStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyAttachedStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyAttachedStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyAttachedStackResponse) GetJSON200() *PolicyStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyAttachedStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyAttachedStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyAttachedStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyAttachedStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyAttachedStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyAttachedStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyAttachedStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyAttachedStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyDetachResponse200Headers the declared response headers of an HTTP 200 response for PolicyDetach
+type PolicyDetachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyDetachResponse429Headers the declared response headers of an HTTP 429 response for PolicyDetach
+type PolicyDetachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyDetachResponse503Headers the declared response headers of an HTTP 503 response for PolicyDetach
+type PolicyDetachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyDetachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyDetachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyDetachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyDetachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyDetachResponse) GetJSON200() *PolicyStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyDetachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyDetachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyDetachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyDetachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyDetachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyDetachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyDetachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyDetachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // PolicyRuntimeResponse200Headers the declared response headers of an HTTP 200 response for PolicyRuntime
 type PolicyRuntimeResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -81455,6 +82320,101 @@ func (r StackMigrateVendorResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r StackMigrateVendorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyAttachResponse200Headers the declared response headers of an HTTP 200 response for PolicyAttach
+type PolicyAttachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyAttachResponse429Headers the declared response headers of an HTTP 429 response for PolicyAttach
+type PolicyAttachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyAttachResponse503Headers the declared response headers of an HTTP 503 response for PolicyAttach
+type PolicyAttachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyAttachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyAttachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyAttachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyAttachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyAttachResponse) GetJSON200() *PolicyStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyAttachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyAttachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyAttachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyAttachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyAttachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyAttachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyAttachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyAttachResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -93812,6 +94772,21 @@ func (c *ClientWithResponses) AttachableExternalIntegrationInSpaceWithResponse(c
 	return ParseAttachableExternalIntegrationInSpaceResponse(rsp)
 }
 
+// AttachablePoliciesInSpaceWithResponse Attachable Policies in Space
+//
+// List of policies that can be attached to Stacks/Modules in given space.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /attachable-policies-in-space (the `AttachablePoliciesInSpace` operationId).
+func (c *ClientWithResponses) AttachablePoliciesInSpaceWithResponse(ctx context.Context, params *AttachablePoliciesInSpaceParams, reqEditors ...RequestEditorFn) (*AttachablePoliciesInSpaceResponse, error) {
+	rsp, err := c.AttachablePoliciesInSpace(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachablePoliciesInSpaceResponse(rsp)
+}
+
 // AttachableVCSIntegrationsForProviderInSpaceWithResponse Attachable VCS Integrations
 //
 // List of VCS integrations that can be attached Stacks/Modules in given space.
@@ -94048,6 +95023,23 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 		return nil, err
 	}
 	return ParseApiKeyUserResponse(rsp)
+}
+
+// AutoattachmentForLabelsWithResponse Autoattachment for Labels
+//
+// Given the space and the labels, returns the list of autoattachment targets.
+// The list is not exhaustive, it only contains the 100 most recently updated
+// targets.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /autoattachment-for-labels (the `AutoattachmentForLabels` operationId).
+func (c *ClientWithResponses) AutoattachmentForLabelsWithResponse(ctx context.Context, params *AutoattachmentForLabelsParams, reqEditors ...RequestEditorFn) (*AutoattachmentForLabelsResponse, error) {
+	rsp, err := c.AutoattachmentForLabels(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAutoattachmentForLabelsResponse(rsp)
 }
 
 // AvailableBillingAddonsWithResponse Available Billing Addons
@@ -96825,6 +97817,36 @@ func (c *ClientWithResponses) PolicyUpdatev2WithResponse(ctx context.Context, po
 	return ParsePolicyUpdatev2Response(rsp)
 }
 
+// PolicyAttachedStackWithResponse Policy attached stack
+//
+// Single stack attachment for this Policy.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
+func (c *ClientWithResponses) PolicyAttachedStackWithResponse(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*PolicyAttachedStackResponse, error) {
+	rsp, err := c.PolicyAttachedStack(ctx, policyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyAttachedStackResponse(rsp)
+}
+
+// PolicyDetachWithResponse Detach Policy
+//
+// Detach Policy from a Stack.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
+func (c *ClientWithResponses) PolicyDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*PolicyDetachResponse, error) {
+	rsp, err := c.PolicyDetach(ctx, attachmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyDetachResponse(rsp)
+}
+
 // PolicyRuntimeWithResponse Policy Runtime
 //
 // Read the OPA library version linked into this server binary.
@@ -98748,6 +99770,21 @@ func (c *ClientWithResponses) StackMigrateVendorWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseStackMigrateVendorResponse(rsp)
+}
+
+// PolicyAttachWithResponse Attach Policy
+//
+// Attach Policy to a Stack.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/policies/{policyId} (the `PolicyAttach` operationId).
+func (c *ClientWithResponses) PolicyAttachWithResponse(ctx context.Context, stackId string, policyId string, reqEditors ...RequestEditorFn) (*PolicyAttachResponse, error) {
+	rsp, err := c.PolicyAttach(ctx, stackId, policyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyAttachResponse(rsp)
 }
 
 // StackPolicyAttachmentWithResponse Stack policy attachment
@@ -106204,6 +107241,128 @@ func ParseAttachableExternalIntegrationInSpaceResponse(rsp *http.Response) (*Att
 	return response, nil
 }
 
+// ParseAttachablePoliciesInSpaceResponse parses an HTTP response from a AttachablePoliciesInSpaceWithResponse call
+func ParseAttachablePoliciesInSpaceResponse(rsp *http.Response) (*AttachablePoliciesInSpaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AttachablePoliciesInSpaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AttachablePoliciesInSpaceResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AttachablePoliciesInSpaceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AttachablePoliciesInSpaceResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAttachableVCSIntegrationsForProviderInSpaceResponse parses an HTTP response from a AttachableVCSIntegrationsForProviderInSpaceWithResponse call
 func ParseAttachableVCSIntegrationsForProviderInSpaceResponse(rsp *http.Response) (*AttachableVCSIntegrationsForProviderInSpaceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -107488,6 +108647,121 @@ func ParseApiKeyUserResponse(rsp *http.Response) (*ApiKeyUserResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ApiKeyUserResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAutoattachmentForLabelsResponse parses an HTTP response from a AutoattachmentForLabelsWithResponse call
+func ParseAutoattachmentForLabelsResponse(rsp *http.Response) (*AutoattachmentForLabelsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AutoattachmentForLabelsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AutoattachmentTargets
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AutoattachmentForLabelsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AutoattachmentForLabelsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AutoattachmentForLabelsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -124898,6 +126172,250 @@ func ParsePolicyUpdatev2Response(rsp *http.Response) (*PolicyUpdatev2Response, e
 	return response, nil
 }
 
+// ParsePolicyAttachedStackResponse parses an HTTP response from a PolicyAttachedStackWithResponse call
+func ParsePolicyAttachedStackResponse(rsp *http.Response) (*PolicyAttachedStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyAttachedStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyAttachedStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyAttachedStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyAttachedStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyDetachResponse parses an HTTP response from a PolicyDetachWithResponse call
+func ParsePolicyDetachResponse(rsp *http.Response) (*PolicyDetachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyDetachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyDetachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyDetachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyDetachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParsePolicyRuntimeResponse parses an HTTP response from a PolicyRuntimeWithResponse call
 func ParsePolicyRuntimeResponse(rsp *http.Response) (*PolicyRuntimeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -135601,6 +137119,128 @@ func ParseStackMigrateVendorResponse(rsp *http.Response) (*StackMigrateVendorRes
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackMigrateVendorResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyAttachResponse parses an HTTP response from a PolicyAttachWithResponse call
+func ParsePolicyAttachResponse(rsp *http.Response) (*PolicyAttachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyAttachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyAttachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyAttachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyAttachResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

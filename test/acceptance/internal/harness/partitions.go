@@ -69,7 +69,7 @@ var Partitions = []Partition{
 // selects policy management cases without changing their dependencies.
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
-var exemptTags = []string{"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization", "@policy-management"}
+var exemptTags = []string{"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization", "@policy-management", "@policy-attachments"}
 
 // placing is every partition in the order Place tries them: the labs,
 // then the pull request's.
