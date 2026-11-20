@@ -23,8 +23,16 @@ blob without sensitivity paths, and is hashed in DEFAULT and SMART, as are
 configuration expression constants. Invalid input, exhausted bounds and failed
 uploads fail planning; the runner never falls back to uploading original bytes.
 
+Nonempty `deferred_changes`, `action_invocations` and
+`deferred_action_invocations` fail DEFAULT/SMART before an artifact is recorded.
+Their value trees and sensitivity masks are not yet supported. Absent, null and
+empty families remain valid; NONE preserves valid payloads in a sealed artifact.
+Malformed families fail every mode without echoing values. Full transformation,
+real tool-produced fixtures and projection decisions remain in #675.
+
 Terragrunt uploads `{"units":[{"path":".","plan":{}}]}` with each selected unit's
-complete tool plan, in path order. `useRunAll: false` includes only the project
+complete tool plan, in path order. The owned wrapper accepts only `units` at the
+root and `path`/`plan` per entry, so extra value trees cannot bypass sanitization. `useRunAll: false` includes only the project
 root unit, including the saved-plan show fallback used by releases that produce
 JSON only with `--all`. The combined envelope is bounded at 64 MiB. SMART collects
 sensitive strings across units before transforming any unit. Unit checks are
@@ -42,8 +50,8 @@ sections remain in the artifact. This phase supplies the builder and verifies it
 on real uploaded bytes. POL-08 (#647) owns isolated decision combination and
 POL-14 (#651) owns plan-gate integration. Structural changes/history/comment
 inputs acquire no raw resource values. Deferred-change and action payload families
-are the separate explicit follow-up #675; the resource-change projection here
-does not imply acceptance of those additional full-document families.
+are the separate explicit follow-up #675. This projection does not include those
+families, including when NONE explicitly preserves them in the full artifact.
 
 ## Worker v1 compatibility and rollout
 
@@ -80,13 +88,18 @@ selected units, repeated replan sanitization, resumed apply, invalid sensitivity
 markers and permanent upload refusal. `sanitization_fence.feature` separately
 uses real protocol requests to exercise old-session and previously uploaded
 object bypasses. `workers/pools.feature` verifies old registration rejection.
+`sanitization_unsupported.feature` injects explicitly authored released-shape
+payloads through custom show commands into the actual worker upload path. It
+verifies the three-family DEFAULT/SMART refusal, no recorded plan, safe logs,
+sealed storage, and exact NONE payload preservation. These injected documents
+are not claimed as tool-produced fixtures or upstream captures.
 
 The six checked-in full plans from `internal/iac/plan/testdata` are also projected
 and schema-validated without losing any resource-change key or JSON type.
 Additional metadata tests are authored contract cases, not upstream captures.
 
 Primary tool definitions: [Terraform JSON format](https://developer.hashicorp.com/terraform/internals/json-format),
-[Terraform jsonplan](https://github.com/hashicorp/terraform/blob/main/internal/command/jsonplan/plan.go),
+[Terraform v1.17.2 jsonplan](https://github.com/hashicorp/terraform/blob/v1.17.2/internal/command/jsonplan/plan.go),
 [OpenTofu jsonplan](https://github.com/opentofu/opentofu/blob/main/internal/command/jsonplan/plan.go).
 
 ref: decision 0008

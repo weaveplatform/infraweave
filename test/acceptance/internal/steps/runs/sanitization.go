@@ -128,6 +128,30 @@ func registerSanitization(sc *godog.ScenarioContext, w *harness.World) {
 			return nil
 		},
 	)
+	sc.Step(
+		`^the opened worker plan of the run "(\w+)" retains "([a-z_]+)" as '([^']+)'$`,
+		func(ctx context.Context, run, family, expected string) error {
+			plain, _, err := w.ReadPlanArtifact(ctx, run)
+			if err != nil {
+				return err
+			}
+			var plan map[string]json.RawMessage
+			if err := json.Unmarshal(plain, &plan); err != nil {
+				return err
+			}
+			var got, want any
+			if err := json.Unmarshal(plan[family], &got); err != nil {
+				return fmt.Errorf("%w: opened plan is missing its payload family", harness.ErrStep)
+			}
+			if err := json.Unmarshal([]byte(expected), &want); err != nil {
+				return fmt.Errorf("%w: invalid expected payload family", harness.ErrStep)
+			}
+			if !reflect.DeepEqual(got, want) {
+				return fmt.Errorf("%w: opened plan changed its explicit opt-out payload", harness.ErrStep)
+			}
+			return nil
+		},
+	)
 	sc.Step(`^the run "(\w+)" recorded (\d+) worker plan artifacts$`, func(ctx context.Context, run string, want int) error {
 		var count int
 		if err := w.Row(
