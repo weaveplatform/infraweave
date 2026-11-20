@@ -290,10 +290,9 @@ func (d *Domain) Surfaces() []expr.Surface {
 	return []expr.Surface{{Name: configapi.Surface, Variables: []expr.Variable{surface.Variable()}}}
 }
 
-// Jobs are the domain's job handlers, which the scheduler registers:
-// lifecycle.ScheduleKind's, which moves a stack's queued runs to READY,
-// and lifecycle.CompactKind's, which writes a state's log to one object
-// and may stream as long as the longest handler may run.
+// Jobs are the domain's handlers: durable approval scans and reevaluations,
+// stack scheduling, and log compaction. Compaction may stream as long as the
+// longest handler may run. Registration order carries no scheduling priority.
 func (d *Domain) Jobs() []queue.Registration {
 	return []queue.Registration{
 		{Kind: approval.ScanKind, Handler: d.approvalReconciler.Scan},

@@ -374,7 +374,12 @@ func TestAccRunClaim(t *testing.T) {
 			t.Fatal(err)
 		}
 		run := res.(api.RunTrigger200JSONResponse).Body.Id
-		sched := w.d.Runs.Jobs()[0]
+		registrations := w.d.Runs.Jobs()
+		index := slices.IndexFunc(registrations, func(reg queue.Registration) bool { return reg.Kind.Name == "run.schedule" })
+		if index < 0 {
+			t.Fatal("runs has no run.schedule handler")
+		}
+		sched := registrations[index]
 		jobs, err := queue.New(w.q).Claim(ctx, sched.Kind.Queue, []string{sched.Kind.Name}, 10,
 			time.Minute, "test")
 		if err != nil || len(jobs) != 1 {
