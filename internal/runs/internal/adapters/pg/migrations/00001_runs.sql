@@ -107,7 +107,7 @@ CREATE INDEX runs_stack ON runs (account_id, stack_id, type, id DESC);
 -- before type also serves event deduplication's full equality check under the
 -- stack creation lock; an ended run suppresses another event of its type/commit.
 CREATE INDEX runs_commit ON runs (account_id, stack_id, (commit->>'hash'), type);
-CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at);
+CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at, id);
 CREATE INDEX runs_state ON runs (account_id, state);
 
 -- A run token names its run by ID alone, with no account, so an ID names
@@ -153,6 +153,49 @@ CREATE TABLE run_state_transitions (
     has_logs   boolean     NOT NULL DEFAULT false,
     log_chunks bigint      CHECK (log_chunks >= 0),
     PRIMARY KEY (account_id, run_id, sequence),
+    FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
+);
+
+-- Historical policy IDs are account-qualified snapshots, not live cross-domain
+-- foreign keys: deleting a policy keeps the evidence for an existing run.
+CREATE TABLE run_policy_receipts (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    id uuid NOT NULL,
+    state_version bigint NOT NULL,
+    ordinal bigint NOT NULL,
+    policy_id uuid NOT NULL,
+    policy_name text NOT NULL,
+    policy_version bigint NOT NULL CHECK (policy_version > 0),
+    policy_type text NOT NULL,
+    engine_type text NOT NULL,
+    outcome text NOT NULL,
+    decision jsonb NOT NULL,
+    flags text[] NOT NULL DEFAULT '{}',
+    reset_flags text[] NOT NULL DEFAULT '{}',
+    sample_requested boolean NOT NULL DEFAULT false,
+    sample_evaluation_id uuid,
+    error_code text,
+    error_message text,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id, run_id, id),
+    UNIQUE (account_id, id),
+    UNIQUE (account_id, run_id, ordinal),
+    FOREIGN KEY (account_id, run_id, state_version)
+        REFERENCES run_state_transitions (account_id, run_id, sequence) ON DELETE CASCADE,
+    CHECK ((error_code IS NULL) = (error_message IS NULL))
+);
+CREATE INDEX run_policy_receipts_transition ON run_policy_receipts (account_id, run_id, state_version);
+
+-- A flag remains visible while any policy owns it. Reset deletes one policy's
+-- rows before adding that same evaluation's new flags.
+CREATE TABLE run_flags (
+    account_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    policy_id uuid NOT NULL,
+    flag text NOT NULL,
+    created_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id, run_id, flag, policy_id),
     FOREIGN KEY (account_id, run_id) REFERENCES runs (account_id, id) ON DELETE CASCADE
 );
 

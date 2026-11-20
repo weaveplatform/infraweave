@@ -115,6 +115,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // Evaluator supplies transactional decision evidence without owning run state.
 func (d *Domain) Evaluator() policyapi.Evaluator { return d.svc }
 
+// RunInputBuilder supplies the typed projection for run workflow callers.
+func (d *Domain) RunInputBuilder() policyapi.RunInputBuilder { return d.svc }
+
 // Autoattach names the durable stack-change consumer on every replica.
 const Autoattach = "policies.autoattach"
 

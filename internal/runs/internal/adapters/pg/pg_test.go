@@ -20,7 +20,9 @@ import (
 
 // TestMain migrates the platform stream and the runs stream alone: no
 // runs table references another domain's.
-func TestMain(m *testing.M) { os.Exit(sqltest.Main(m, schema.Stream(), pg.Stream())) }
+func TestMain(m *testing.M) {
+	os.Exit(sqltest.Main(m, schema.Stream(), pg.Stream()))
+}
 
 func pool(t *testing.T) *pgxpool.Pool {
 	t.Helper()

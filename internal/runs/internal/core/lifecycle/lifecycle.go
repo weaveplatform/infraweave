@@ -12,7 +12,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -271,12 +273,13 @@ type Jobs interface {
 // Deps are what the lifecycle writes through. Sources is nil until
 // internal/app binds the vcs domain's; Now defaults to time.Now.
 type Deps struct {
-	Store   Store
-	Stacks  stacksapi.Stacks
-	Events  Events
-	Jobs    Jobs
-	Sources runsapi.RunSources
-	Now     func() time.Time
+	Store    Store
+	Stacks   stacksapi.Stacks
+	Events   Events
+	Jobs     Jobs
+	Sources  runsapi.RunSources
+	Now      func() time.Time
+	Evidence evidence.Store
 }
 
 // Lifecycle is the one place a run is created or changes state.
@@ -301,16 +304,17 @@ func (l *Lifecycle) BindSources(s runsapi.RunSources) { l.d.Sources = s }
 // checked, who takes it, a note, when a timed state ends, and the
 // run.timers rule that takes it, which its run_updated event names.
 type Request struct {
-	Account kernel.AccountID
-	Run     kernel.ULID
-	Version int64
-	To      kernel.RunState
-	Driver  machine.Driver
-	Checked []machine.Guard
-	Actor   Actor
-	Note    string
-	Until   *time.Time
-	Timer   runsapi.Timer
+	Account  kernel.AccountID
+	Run      kernel.ULID
+	Version  int64
+	To       kernel.RunState
+	Driver   machine.Driver
+	Checked  []machine.Guard
+	Actor    Actor
+	Note     string
+	Until    *time.Time
+	Timer    runsapi.Timer
+	Receipts []policiesapi.Receipt
 }
 
 // Transition moves req's run in the transaction ctx carries, so its row,
@@ -357,6 +361,14 @@ func (l *Lifecycle) Transition(ctx context.Context, req Request) (Run, error) {
 	}
 	from := run.State
 	run.State, run.Version, run.StateChangedAt, run.UpdatedAt = req.To, step.Sequence, now, now
+	if len(req.Receipts) != 0 {
+		if l.d.Evidence == nil {
+			return Run{}, kernel.ErrUnavailable
+		}
+		if err := l.d.Evidence.RecordPolicyEvidence(ctx, run.Account, run.ID, run.Version, req.Receipts); err != nil {
+			return Run{}, err //nolint:wrapcheck // the recorder names the transactional write
+		}
+	}
 	if err := l.consequences(ctx, run, step, req.Timer); err != nil {
 		return Run{}, err
 	}
@@ -577,12 +589,25 @@ func (l *Lifecycle) Project(ctx context.Context, acct kernel.AccountID, stack ke
 // updated appends run's run_updated event for step, which timer took
 // when it is not empty.
 func (l *Lifecycle) updated(ctx context.Context, run Run, step Step, timer runsapi.Timer) error {
+	snapshot := evidence.Empty()
+	if l.d.Evidence != nil {
+		byRun, err := l.d.Evidence.PolicyEvidence(ctx, run.Account, []kernel.ULID{run.ID})
+		if err != nil {
+			return err //nolint:wrapcheck // the evidence store names the read
+		}
+		snapshot = byRun[run.ID]
+	}
+	receipts := make([]runsapi.PolicyReceiptSummary, 0, len(snapshot.Receipts))
+	for _, r := range snapshot.Receipts {
+		receipts = append(receipts, runsapi.PolicyReceiptSummary{Type: string(r.Type), Name: r.PolicyName, Outcome: string(r.Outcome), Flags: r.Flags})
+	}
 	st, err := l.d.Stacks.Get(ctx, run.Account, run.Stack)
 	if err != nil {
 		return err //nolint:wrapcheck // the stacks domain names the read
 	}
 	doc, err := json.Marshal(runsapi.Updated{
 		State: run.State, Username: step.Username, Note: step.Note, Timer: timer,
+		PolicyReceipts: receipts,
 		Run: runsapi.UpdatedRun{
 			ID: run.ID, Type: run.Type, State: run.State,
 			Commit: runsapi.UpdatedCommit{
@@ -592,6 +617,7 @@ func (l *Lifecycle) updated(ctx context.Context, run Run, step Step, timer runsa
 			},
 			CreatedAt: run.CreatedAt.UnixNano(), UpdatedAt: run.UpdatedAt.UnixNano(),
 			DriftDetection: run.DriftDetection, TriggeredBy: optional(run.TriggeredBy),
+			Flags: snapshot.Flags,
 		},
 		Stack: runsapi.UpdatedStack{ID: st.Slug, ULID: st.ID, Name: st.Name},
 	})

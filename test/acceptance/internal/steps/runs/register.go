@@ -16,4 +16,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&changeSteps{w: w}).register(sc)
 	(&trackedSteps{w: w}).register(sc)
 	(&clockSteps{w: w}).register(sc)
+	(&policyEvidenceSteps{w: w}).register(sc)
 }

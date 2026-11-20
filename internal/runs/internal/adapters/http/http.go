@@ -333,6 +333,10 @@ func forbidden(a accessapi.Action, detail string) error {
 
 // runOf is v as the API answers a run.
 func runOf(v read.View) api.Run {
+	flags := v.Flags
+	if flags == nil {
+		flags = []string{}
+	}
 	r := v.Run
 	history := make([]api.RunStateTransition, len(v.History))
 	for i, st := range v.History {
@@ -394,7 +398,8 @@ func runOf(v read.View) api.Run {
 		IsDependedOnBy:       []api.RunDependency{},
 		PlanPoliciesOutcomes: []api.PlanPoliciesOutcome{},
 		PluginLogs:           []api.PluginLogsResponse{},
-		PolicyReceipts:       []api.RunPolicyReceipt{},
+		PolicyReceipts:       receiptsOf(v.PolicyReceipts),
+		Flags:                &flags,
 		PriorityPreset:       api.RunPriorityPreset(r.Priority),
 		PromoteBlocker:       sentence(v.Guards.Promote),
 		RetryBlocker:         sentence(v.Guards.Retry),

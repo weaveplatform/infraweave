@@ -291,7 +291,7 @@ func newWorld(t *testing.T) *world {
 // lifecycle is a lifecycle of w's over store, events and jobs.
 func (w *world) lifecycle(store lifecycle.Store, events lifecycle.Events, jobs lifecycle.Jobs) *lifecycle.Lifecycle {
 	lc := lifecycle.New(lifecycle.Deps{
-		Store: store, Stacks: w.stacks, Events: events, Jobs: jobs,
+		Store: store, Stacks: w.stacks, Events: events, Jobs: jobs, Evidence: w.store,
 		Now: func() time.Time { return w.now },
 	})
 	lc.BindSources(w.sources)
