@@ -74,4 +74,59 @@ func registerTrigger(sc *godog.ScenarioContext, w *harness.World) {
 		}
 		return nil
 	})
+	sc.Step(`^token "(\w+)" eventually reads TRIGGER outcomes "([^"]*)" for run "(\w+)" through ([AB])$`,
+		func(ctx context.Context, token, want, run, replica string) error {
+			return deps.Eventually(ctx, "committed terminal TRIGGER receipts", func(ctx context.Context) (bool, error) {
+				response, err := w.Do(ctx, replica, token, http.MethodGet, "/api/v1/runs/"+url.PathEscape(w.IDs[run]), nil)
+				if err != nil {
+					return false, err
+				}
+				if response.Status != http.StatusOK {
+					return false, fmt.Errorf("%w: source run read answered %d", harness.ErrStep, response.Status)
+				}
+				var source api.Run
+				if err := json.Unmarshal(response.Body, &source); err != nil {
+					return false, fmt.Errorf("decode terminal source receipts: %w", err)
+				}
+				outcomes := []string{}
+				for _, receipt := range source.PolicyReceipts {
+					if receipt.PolicyType == api.PolicyTypeTRIGGER {
+						outcomes = append(outcomes, receipt.Outcome)
+					}
+				}
+				return strings.Join(outcomes, ", ") == want, nil
+			})
+		})
+	sc.Step(`^the answer contains a TRIGGER error receipt "([A-Z_]+)"$`, func(code string) error {
+		var run api.Run
+		if err := json.Unmarshal(w.Last().Body, &run); err != nil {
+			return fmt.Errorf("decode trigger error receipt: %w", err)
+		}
+		for _, receipt := range run.PolicyReceipts {
+			if receipt.PolicyType == api.PolicyTypeTRIGGER && receipt.Error != nil && receipt.Error.Code == code {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: no safe TRIGGER %s error receipt", harness.ErrStep, code)
+	})
+	sc.Step(`^token "(\w+)" reads no policy-triggered run of stack "([^"]+)" from stack "([^"]+)" run "(\w+)" through ([AB])$`,
+		func(ctx context.Context, token, target, sourceStack, source, replica string) error {
+			response, err := w.Do(ctx, replica, token, http.MethodGet, "/api/v1/stacks/"+url.PathEscape(target)+"/runs", nil)
+			if err != nil {
+				return err
+			}
+			if response.Status != http.StatusOK {
+				return fmt.Errorf("%w: target run listing answered %d", harness.ErrStep, response.Status)
+			}
+			var page api.RunPage
+			if err := json.Unmarshal(response.Body, &page); err != nil {
+				return fmt.Errorf("decode refused target runs: %w", err)
+			}
+			for _, run := range page.Items {
+				if run.TriggeredBy != nil && *run.TriggeredBy == "policy/"+sourceStack+"/"+w.IDs[source] {
+					return fmt.Errorf("%w: refused target has a policy-triggered run", harness.ErrStep)
+				}
+			}
+			return nil
+		})
 }

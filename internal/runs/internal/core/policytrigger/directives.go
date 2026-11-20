@@ -43,7 +43,7 @@ func (s *Service) directives(ctx context.Context, run lifecycle.Run, result *pol
 		}
 		for _, name := range directive.Trigger {
 			target, exists := targets[name]
-			if !exists || target.TrackedCommit == nil || !reaches(identity.Space, target.Space, nodes) {
+			if !exists || !eligibleTarget(target) || !reaches(identity.Space, target.Space, nodes) {
 				receipt.Failure = &policyapi.Failure{Code: "TARGET", Message: "A trigger target is unavailable or outside the policy's reach."}
 				receipt.Outcome, receipt.Flags, receipt.ResetFlags = policyapi.Ignore, []string{"policy.internal_error"}, []string{}
 				fatal = true
@@ -61,6 +61,15 @@ func (s *Service) directives(ctx context.Context, run lifecycle.Run, result *pol
 		result.Outcome, result.Trigger.Targets = policyapi.Ignore, []string{}
 	}
 	return nil
+}
+
+// These are committed owner refusals, rather than transient storage errors.
+// Checking the locked snapshot before any creation allows their evidence and
+// job completion to commit without partially creating the other targets.
+func eligibleTarget(target stacksapi.Settings) bool {
+	return target.TrackedCommit != nil && target.TrackedCommit.Hash != "" &&
+		!target.Disabled && !target.Deleting && !target.VCSDetached &&
+		(target.Lock == nil || target.Lock.Holder == "")
 }
 
 func reaches(ancestor, target kernel.ULID, nodes map[kernel.ULID]accessapi.SpaceNode) bool {
