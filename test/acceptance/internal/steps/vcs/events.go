@@ -34,6 +34,10 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^event delivery "(\w+)" has exactly (\d+) stored rows$`, s.rows)
 	sc.Step(`^the event fixture sends request "(\w+)" through ([AB])$`, s.policyRequest)
 	sc.Step(`^the event fixture sends comment "(\w+)" through ([AB])$`, s.policyComment)
+	sc.Step(`^the event fixture holds future child evaluations$`, s.holdPolicyChildren)
+	sc.Step(`^event delivery "(\w+)" has a held child without native request facts$`, s.heldPolicyChild)
+	sc.Step(`^the event fixture releases child evaluations$`, s.releasePolicyChildren)
+	sc.Step(`^event delivery "(\w+)" commits a durable failed policy check$`, s.failedPolicyCheck)
 }
 
 func (s *eventSteps) repository() checkRepository {

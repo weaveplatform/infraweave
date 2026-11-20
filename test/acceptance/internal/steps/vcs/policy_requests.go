@@ -17,11 +17,11 @@ func (s *eventSteps) policyRequest(ctx context.Context, name, replica string) er
 	return nil
 }
 
-func (s *eventSteps) policyComment(ctx context.Context, name, _ string) error {
+func (s *eventSteps) policyComment(ctx context.Context, name, replica string) error {
 	id := kernel.NewULID().UUID()
 	s.deliveries[name] = id
 	s.comments.w.IDs["proposed"] = s.comments.w.IDs["seed"]
-	status, err := s.sendComment(ctx, id, "plan this commit")
+	status, err := s.sendComment(ctx, id, "plan this commit", replica)
 	if err != nil {
 		return err
 	}
