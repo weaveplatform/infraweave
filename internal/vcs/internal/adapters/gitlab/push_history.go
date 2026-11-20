@@ -173,11 +173,12 @@ func pushPages[T any](what string, read func(int64) ([]T, *gitlab.Response, erro
 			return nil, fmt.Errorf("%w: gitlab: incomplete %s pagination", kernel.ErrUnavailable, what)
 		}
 		out = append(out, items...)
-		if response.NextPage != 0 {
+		switch {
+		case response.NextPage != 0:
 			page = response.NextPage
-		} else if len(items) == 100 {
+		case len(items) == 100:
 			page++
-		} else {
+		default:
 			return out, nil
 		}
 	}

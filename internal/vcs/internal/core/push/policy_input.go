@@ -8,7 +8,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
-	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 func known[T any](value T) policyapi.Fact[T] {
@@ -104,17 +103,14 @@ func (s *Service) policyInput(ctx context.Context, input Evaluation, event Prepa
 		return s.d.PolicyInputs.BuildPushInput(ctx, facts) //nolint:wrapcheck // policy owner reports a safe typed input failure
 	}
 	commit := commitFacts(event.Commit)
-	collection := event.Event.Commits
-	if event.RecoveredCommits != nil {
-		collection = event.RecoveredCommits
-		if _, complete := port.NativeCommitFiles(collection); !complete || collection.Source == "" {
-			return nil, fmt.Errorf("%w: invalid stored recovered push facts", kernel.ErrUnavailable)
-		}
+	commits, err := preparedPushCommits(event)
+	if err != nil {
+		return nil, err
 	}
 	facts.Push = known(policyapi.PushFacts{
 		Author: commit.Author, Branch: commit.Branch, Hash: event.Commit.Hash,
 		Message: commit.Message, At: commit.At, AffectedFiles: event.Files, AffectedStacksCount: *event.AffectedStacksCount, Tag: commit.Tag,
-		Commits: pushCommitFacts(collection, event.Event.Branch),
+		Commits: commits,
 	})
 	facts.PullRequest.Known = true
 	return s.d.PolicyInputs.BuildPushInput(ctx, facts) //nolint:wrapcheck // the policy owner reports a safe typed input failure
