@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	runsapi "github.com/weaveplatform/infraweave/internal/runs/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
@@ -28,6 +30,38 @@ type inputOwners struct {
 	cause       error
 	reads       []string
 	input       policyapi.PushInputFacts
+}
+
+func TestUnitPushInputPrefersCompleteRecoveredFactsWithoutChangingSignedProvenance(t *testing.T) {
+	s, owners, input, event, integration := newInputOwners(t)
+	item := vcsapi.PushCommit{Hash: strings.Repeat("a", 40), At: time.Now(), Author: "Native author", Message: "Native message", Files: new([]string{"root/main.tf"})}
+	event.Event.Commits = &vcsapi.CommitCollection{Source: "signed array", Omission: "provider-commit-limit", Items: []vcsapi.PushCommit{item}}
+	event.RecoveredCommits = &vcsapi.CommitCollection{Source: "native REST", Items: []vcsapi.PushCommit{item}}
+	if _, err := s.policyInput(t.Context(), input, event, integration); err != nil {
+		t.Fatal(err)
+	}
+	commits := owners.input.Push.Value.Commits
+	if !commits.Known || commits.Value == nil || len(*commits.Value) != 1 || (*commits.Value)[0].Commit.Hash.Value == nil || *(*commits.Value)[0].Commit.Hash.Value != item.Hash ||
+		event.Event.Commits.Omission != "provider-commit-limit" {
+		t.Fatal("available recovered facts were omitted or signed provenance changed", commits, event.Event.Commits)
+	}
+	for _, mode := range []string{"missing source", "partial range", "unknown files"} {
+		t.Run(mode, func(t *testing.T) {
+			bad := &vcsapi.CommitCollection{Source: "native REST", Items: []vcsapi.PushCommit{item}}
+			switch mode {
+			case "missing source":
+				bad.Source = ""
+			case "partial range":
+				bad.Omission = "provider limit"
+			case "unknown files":
+				bad.Items[0].Files = nil
+			}
+			event.RecoveredCommits = bad
+			if _, err := s.policyInput(t.Context(), input, event, integration); !errors.Is(err, kernel.ErrUnavailable) {
+				t.Fatal("corrupt stored recovered facts became omitted optional input", err)
+			}
+		})
+	}
 }
 
 func (o *inputOwners) read(name string) error {

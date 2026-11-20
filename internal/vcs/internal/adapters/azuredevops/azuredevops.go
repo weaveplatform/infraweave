@@ -419,7 +419,7 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	var paths []string
 	for skip := 0; ; {
 		var pg struct {
-			Changes []change `json:"changes"`
+			Changes *[]change `json:"changes"`
 		}
 		query := url.Values{
 			"baseVersion": {from}, "baseVersionType": {"commit"},
@@ -432,7 +432,10 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 		if _, err := p.decode(ctx, *repo.Integration, rp+"/diffs/commits", query, base+"..."+head, &pg); err != nil {
 			return nil, err
 		}
-		for _, c := range pg.Changes {
+		if pg.Changes == nil {
+			return nil, fmt.Errorf("%w: azuredevops: missing push comparison changes", kernel.ErrUnavailable)
+		}
+		for _, c := range *pg.Changes {
 			if c.Item.IsFolder {
 				continue
 			}
@@ -442,10 +445,10 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 				}
 			}
 		}
-		if len(pg.Changes) < top {
+		if len(*pg.Changes) < top {
 			break
 		}
-		skip += len(pg.Changes)
+		skip += len(*pg.Changes)
 	}
 	slices.Sort(paths)
 	return slices.Compact(paths), nil

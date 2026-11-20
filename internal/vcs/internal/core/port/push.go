@@ -26,7 +26,7 @@ type PushRange struct {
 // policy input. Empty ranges are valid for unchanged and backward force pushes.
 func RecoveredRange(base, source string, items []vcsapi.PushCommit) (PushRange, error) {
 	native := NativeCommits(source, items, "")
-	if _, complete := NativeCommitFiles(native); !ValidCommit(base) || !complete {
+	if _, complete := NativeCommitFiles(native); !ValidCommit(base) || !complete || source == "" {
 		return PushRange{}, fmt.Errorf("%w: incomplete recovered push range", kernel.ErrUnavailable)
 	}
 	seen := make(map[string]bool, len(items))
@@ -42,6 +42,9 @@ func RecoveredRange(base, source string, items []vcsapi.PushCommit) (PushRange, 
 // RecoveredCommit carries the same preferred author identity as a resolved
 // commit; a present empty file list proves an actual empty commit.
 func RecoveredCommit(commit vcsapi.Commit, files []string) vcsapi.PushCommit {
+	if files == nil {
+		files = []string{}
+	}
 	author := commit.AuthorName
 	if commit.AuthorLogin != nil && *commit.AuthorLogin != "" {
 		author = *commit.AuthorLogin

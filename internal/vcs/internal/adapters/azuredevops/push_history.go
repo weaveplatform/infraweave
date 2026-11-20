@@ -56,7 +56,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(out(o, repo, commit), files))
 	}
-	return port.RecoveredRange(base, "azuredevops/REST immutable histories and paged commit changes", items)
+	result, err := port.RecoveredRange(base, "azuredevops/REST immutable histories and paged commit changes", items)
+	if err != nil {
+		return port.PushRange{}, fmt.Errorf("azuredevops: recover push range: %w", err)
+	}
+	return result, nil
 }
 
 func (p *Provider) pushHistory(ctx context.Context, in port.Integration, rp, ref string) ([]commit, error) {

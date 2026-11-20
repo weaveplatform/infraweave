@@ -12,7 +12,11 @@ import (
 
 // PushHistory checks actual Git ancestry independently of native pagination or
 // comparison implementations, including paths canceled out by endpoint trees.
-func PushHistory(t *testing.T, source port.PushHistory, repo port.Repository, history History) {
+func PushHistory(t *testing.T, source port.PushHistory, repo port.Repository, history interface {
+	History
+	Orphan(string, string, string) string
+},
+) {
 	t.Helper()
 	base := history.Commit("trunk", "range base", map[string]string{"root/main.tf": "before", "old.txt": "remove"})
 	history.SetDefaultBranch("trunk")
@@ -21,6 +25,7 @@ func PushHistory(t *testing.T, source port.PushHistory, repo port.Repository, hi
 	renamed := history.Commit("trunk", "rename and delete", map[string]string{"root/main.tf": "", "root/renamed.tf": "before", "old.txt": ""})
 	history.Branch("topic", base)
 	topic := history.Commit("topic", "independent ref", map[string]string{"topic.txt": "topic"})
+	orphan := history.Orphan("replacement", base, "independent history")
 	for _, check := range []struct {
 		name, before, head, anchor string
 		commits                    int
@@ -32,6 +37,7 @@ func PushHistory(t *testing.T, source port.PushHistory, repo port.Repository, hi
 		{"divergent force push excludes old ancestors", renamed, topic, renamed, 1, []string{"topic.txt"}},
 		{"backward force push has no newly reachable commits", reverted, base, reverted, 0, nil},
 		{"same commit has empty range", edit, edit, edit, 0, nil},
+		{"unrelated history includes real root paths", base, orphan, base, 1, []string{"README.md", "main.tf", "modules/new.tf", "old.txt", "root/main.tf"}},
 	} {
 		t.Run(check.name, func(t *testing.T) {
 			got, err := source.RecoverPush(t.Context(), repo, check.before, check.head)

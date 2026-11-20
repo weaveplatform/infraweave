@@ -13,14 +13,16 @@ import (
 func TestUnitRecoveredRangeRejectsPartialFacts(t *testing.T) {
 	base, head := strings.Repeat("a", 40), strings.Repeat("b", 40)
 	valid := vcsapi.PushCommit{Hash: head, At: time.Now(), Files: new([]string{"main.tf"})}
-	for _, mode := range []string{"complete", "empty", "invalid base", "missing files", "missing date", "duplicate"} {
+	for _, mode := range []string{"complete", "empty", "invalid base", "missing source", "missing files", "missing date", "duplicate"} {
 		t.Run(mode, func(t *testing.T) {
-			anchor, items := base, []vcsapi.PushCommit{valid}
+			anchor, source, items := base, "REST range", []vcsapi.PushCommit{valid}
 			switch mode {
 			case "empty":
-				items = nil
+				items = items[:0]
 			case "invalid base":
 				anchor = "main"
+			case "missing source":
+				source = ""
 			case "missing files":
 				items[0].Files = nil
 			case "missing date":
@@ -28,7 +30,7 @@ func TestUnitRecoveredRangeRejectsPartialFacts(t *testing.T) {
 			case "duplicate":
 				items = append(items, valid)
 			}
-			got, err := RecoveredRange(anchor, "REST range", items)
+			got, err := RecoveredRange(anchor, source, items)
 			if mode == "complete" || mode == "empty" {
 				if err != nil || got.Base != base || got.Commits.Source != "REST range" || len(got.Commits.Items) != len(items) {
 					t.Fatal(got, err)
@@ -44,7 +46,7 @@ func TestUnitRecoveredCommitKeepsNativeIdentityAndExplicitEmptyPaths(t *testing.
 	commit := vcsapi.Commit{Hash: strings.Repeat("a", 40), AuthorName: "Name", Message: "Message", URL: "https://git.example/commit", Timestamp: time.Now()}
 	for _, login := range []*string{nil, new(""), new("native-login")} {
 		commit.AuthorLogin = login
-		got := RecoveredCommit(commit, []string{})
+		got := RecoveredCommit(commit, nil)
 		want := "Name"
 		if login != nil && *login != "" {
 			want = *login

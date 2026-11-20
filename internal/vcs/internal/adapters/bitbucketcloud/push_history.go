@@ -38,7 +38,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(p.out(repo, commit), files))
 	}
-	return port.RecoveredRange(base, "bitbucketcloud/REST include-exclude commits and paged diffstat", items)
+	result, err := port.RecoveredRange(base, "bitbucketcloud/REST include-exclude commits and paged diffstat", items)
+	if err != nil {
+		return port.PushRange{}, fmt.Errorf("bitbucketcloud: recover push range: %w", err)
+	}
+	return result, nil
 }
 
 func (p *Provider) pushBase(ctx context.Context, repo port.Repository, rp, base, head string) (string, error) {

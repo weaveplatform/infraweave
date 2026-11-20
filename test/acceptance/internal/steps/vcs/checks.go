@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
+	"github.com/go-git/go-git/v5/plumbing/object"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/vcs/azuredevopsfake"
@@ -25,6 +26,7 @@ import (
 type checkRepository interface {
 	Branch(string, string)
 	Commit(string, string, map[string]string) string
+	Resolve(string) (*object.Commit, error)
 	HoldUploadPacks()
 	HeldUploadPacks() int
 	ReleaseUploadPacks()

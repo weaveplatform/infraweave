@@ -28,9 +28,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		return port.PushRange{}, err
 	}
 	ref := base + ".." + head
-	options := &gitlab.ListCommitsOptions{RefName: &ref, ListOptions: gitlab.ListOptions{Page: 1, PerPage: 100}}
-	commits, err := all(ctx, "push range commits", func(o ...gitlab.RequestOptionFunc) ([]*gitlab.Commit, *gitlab.Response, error) {
-		return c.Commits.ListCommits(pid, options, o...)
+	commits, err := pushPages("push range commits", func(page int64) ([]*gitlab.Commit, *gitlab.Response, error) {
+		return c.Commits.ListCommits(pid, &gitlab.ListCommitsOptions{
+			RefName:     &ref,
+			ListOptions: gitlab.ListOptions{Page: page, PerPage: 100},
+		}, gitlab.WithContext(ctx))
 	})
 	if err != nil {
 		return port.PushRange{}, err
@@ -58,7 +60,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 			Files: new(pushTreeChanges(previous, current)),
 		})
 	}
-	return port.RecoveredRange(base, "gitlab/REST revision-range commits and complete trees", items)
+	result, err := port.RecoveredRange(base, "gitlab/REST revision-range commits and complete trees", items)
+	if err != nil {
+		return port.PushRange{}, fmt.Errorf("gitlab: recover push range: %w", err)
+	}
+	return result, nil
 }
 
 func pushBase(ctx context.Context, c *gitlab.Client, pid, base, head string) (string, error) {
@@ -69,14 +75,14 @@ func pushBase(ctx context.Context, c *gitlab.Client, pid, base, head string) (st
 	if err != nil {
 		return "", classify(response, err, "push default branch")
 	}
-	if project.DefaultBranch == "" {
+	if project == nil || project.DefaultBranch == "" {
 		return "", fmt.Errorf("%w: gitlab: missing push default branch", port.ErrNotFound)
 	}
 	ancestor, response, err := c.Repositories.MergeBase(pid, &gitlab.MergeBaseOptions{Ref: new([]string{project.DefaultBranch, head})}, gitlab.WithContext(ctx))
 	if err != nil {
 		return "", classify(response, err, "push default merge base")
 	}
-	if !port.ValidCommit(ancestor.ID) {
+	if ancestor == nil || !port.ValidCommit(ancestor.ID) {
 		return "", fmt.Errorf("%w: gitlab: missing push merge base", kernel.ErrUnavailable)
 	}
 	return ancestor.ID, nil
@@ -91,9 +97,11 @@ func pushTree(ctx context.Context, c *gitlab.Client, pid, ref string, cache map[
 	if !port.ValidCommit(ref) {
 		return nil, fmt.Errorf("%w: gitlab: invalid push tree ref", kernel.ErrUnavailable)
 	}
-	options := &gitlab.ListTreeOptions{Ref: &ref, Recursive: new(true), ListOptions: gitlab.ListOptions{Page: 1, PerPage: 100}}
-	entries, err := all(ctx, "push repository tree", func(o ...gitlab.RequestOptionFunc) ([]*gitlab.TreeNode, *gitlab.Response, error) {
-		return c.Repositories.ListTree(pid, options, o...)
+	entries, err := pushPages("push repository tree", func(page int64) ([]*gitlab.TreeNode, *gitlab.Response, error) {
+		return c.Repositories.ListTree(pid, &gitlab.ListTreeOptions{
+			Ref: &ref, Recursive: new(true),
+			ListOptions: gitlab.ListOptions{Page: page, PerPage: 100},
+		}, gitlab.WithContext(ctx))
 	})
 	if err != nil {
 		return nil, err
@@ -150,4 +158,27 @@ func (p *Provider) pushAffectedFiles(ctx context.Context, repo port.Repository, 
 		return nil, err
 	}
 	return pushTreeChanges(before, after), nil
+}
+
+// A full page without a next header is ambiguous. Read one further offset
+// page rather than silently treating a provider's omitted header as completion.
+func pushPages[T any](what string, read func(int64) ([]T, *gitlab.Response, error)) ([]T, error) {
+	out := []T{}
+	for page := int64(1); ; {
+		items, response, err := read(page)
+		if err != nil {
+			return nil, classify(response, err, what)
+		}
+		if items == nil || response == nil || response.NextPage != 0 && (response.NextPage <= page || len(items) == 0) {
+			return nil, fmt.Errorf("%w: gitlab: incomplete %s pagination", kernel.ErrUnavailable, what)
+		}
+		out = append(out, items...)
+		if response.NextPage != 0 {
+			page = response.NextPage
+		} else if len(items) == 100 {
+			page++
+		} else {
+			return out, nil
+		}
+	}
 }

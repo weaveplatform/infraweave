@@ -2,9 +2,12 @@ package vcs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
+	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -21,23 +24,11 @@ func (s *eventSteps) policyNativeCommits(count int, branch, key string) error {
 			value = "one"
 		}
 		hash := s.repository().Commit(branch, fmt.Sprintf("native commit %d", i), deploymentFiles(value))
-		var native nativeEventCommit
-		switch c.fixture.provider {
-		case "GitHub":
-			commit, err := c.github.fake.Repo(c.fixture.namespace, "infra").Resolve(hash)
-			if err != nil {
-				return fmt.Errorf("native commit fixture: %w", err)
-			}
-			native = nativeEventCommit{hash, commit.Author.Name, commit.Message, commit.Author.When}
-		case "GitLab":
-			commit, err := c.gitlab.fake.Repo(c.fixture.namespace, "infra").Resolve(hash)
-			if err != nil {
-				return fmt.Errorf("native commit fixture: %w", err)
-			}
-			native = nativeEventCommit{hash, commit.Author.Name, commit.Message, commit.Author.When}
-		default:
-			return fmt.Errorf("%w: native complete-commit fixture needs GitHub or GitLab", harness.ErrStep)
+		commit, err := s.repository().Resolve(hash)
+		if err != nil {
+			return fmt.Errorf("native commit fixture: %w", err)
 		}
+		native := nativeEventCommit{hash, commit.Author.Name, commit.Message, commit.Author.When}
 		s.nativeCommits = append(s.nativeCommits, native)
 		c.w.IDs[key] = hash
 	}
@@ -46,6 +37,58 @@ func (s *eventSteps) policyNativeCommits(count int, branch, key string) error {
 
 func (s *eventSteps) decorateNativeCommits(body map[string]any) {
 	commits := s.nativeCommits
+	provider := s.comments.fixture.provider
+	if provider == "Azure DevOps" {
+		resource := body["resource"].(map[string]any) //nolint:forcetypeassert // the native fake creates this envelope
+		if s.nativeMode == "missing" {
+			delete(resource, "commits")
+			return
+		}
+		items := make([]any, 0, len(commits))
+		for _, commit := range commits {
+			items = append(items, map[string]any{
+				"commitId": commit.hash, "comment": commit.message,
+				"author": map[string]any{"name": commit.author, "date": commit.at.Format(time.RFC3339Nano)},
+			})
+		}
+		resource["commits"] = items
+		if s.nativeMode == "multi-ref" {
+			refs := resource["refUpdates"].([]any) //nolint:forcetypeassert // JSON-decoded native fake ref array
+			resource["refUpdates"] = append(refs, map[string]any{"name": "refs/heads/other", "oldObjectId": s.comments.w.IDs["seed"], "newObjectId": s.nativeOther})
+		}
+		return
+	}
+	if provider == "Bitbucket Cloud" {
+		push := body["push"].(map[string]any)                 //nolint:forcetypeassert // sendBitbucket creates this exact native fixture
+		change := push["changes"].([]any)[0].(map[string]any) //nolint:forcetypeassert // one native ref change
+		if s.nativeMode == "missing" {
+			delete(change, "commits")
+			return
+		}
+		if len(commits) > 5 {
+			commits = commits[len(commits)-5:]
+		}
+		items := make([]any, 0, len(commits))
+		for _, commit := range commits {
+			items = append(items, map[string]any{
+				"hash": commit.hash, "message": commit.message,
+				"author": map[string]any{"raw": commit.author}, "date": commit.at.Format(time.RFC3339Nano),
+			})
+		}
+		change["commits"], change["truncated"] = items, len(s.nativeCommits) > 5
+		return
+	}
+	if provider == "Bitbucket DC" {
+		return
+	}
+	if s.nativeMode == "missing" {
+		delete(body, "commits")
+		delete(body, "total_commits_count")
+		return
+	}
+	if provider == "GitHub" && len(commits) > 2048 {
+		commits = commits[:2048]
+	}
 	if s.comments.fixture.provider == "GitLab" && len(commits) > 20 {
 		commits = commits[len(commits)-20:]
 	}
@@ -68,6 +111,62 @@ func (s *eventSteps) decorateNativeCommits(body map[string]any) {
 	if s.comments.fixture.provider == "GitLab" {
 		body["total_commits_count"] = len(s.nativeCommits)
 	}
+}
+
+func (s *eventSteps) nativeMetadataMode(mode string) error {
+	s.nativeMode = mode
+	if mode != "multi-ref" {
+		return nil
+	}
+	if s.comments.fixture.provider != "Azure DevOps" {
+		return fmt.Errorf("%w: multi-ref native array needs Azure", harness.ErrStep)
+	}
+	s.repository().Branch("other", s.comments.w.IDs["seed"])
+	s.nativeOther = s.repository().Commit("other", "other ref only", deploymentFiles("other-ref"))
+	commit, err := s.repository().Resolve(s.nativeOther)
+	if err != nil {
+		return fmt.Errorf("native other-ref fixture: %w", err)
+	}
+	s.nativeCommits = append(s.nativeCommits, nativeEventCommit{s.nativeOther, commit.Author.Name, commit.Message, commit.Author.When})
+	return nil
+}
+
+func (s *eventSteps) recoveredRangeEvidence(ctx context.Context, name, branch string, count int, paths, omission string) error {
+	var raw json.RawMessage
+	err := s.comments.w.Row(ctx, `SELECT p.event FROM vcs_prepared_events p JOIN vcs_deliveries d ON d.account_id=p.account_id AND d.id=p.delivery_id
+		WHERE d.account_id=$1 AND d.integration_id=$2 AND d.delivery_id=$3 AND p.event#>>'{event,branch}'=$4`,
+		[]any{harness.UUIDOf(harness.Home.Account), harness.UUIDOf(s.comments.fixture.integration), s.deliveries[name], branch}, &raw)
+	if err != nil {
+		return err
+	}
+	var got struct {
+		Files               []string                 `json:"files"`
+		AffectedStacksCount int                      `json:"affectedStacksCount"`
+		Recovered           *vcsapi.CommitCollection `json:"recoveredCommits"`
+		Event               struct {
+			Commits *vcsapi.CommitCollection `json:"commits"`
+		} `json:"event"`
+	}
+	var want []string
+	if json.Unmarshal(raw, &got) != nil || json.Unmarshal([]byte(paths), &want) != nil || got.Recovered == nil || got.Recovered.Omission != "" || got.Recovered.Source == "" ||
+		len(got.Recovered.Items) != count ||
+		got.AffectedStacksCount != 1 ||
+		!slices.Equal(got.Files, want) {
+		return fmt.Errorf("%w: recovered range facts are incomplete or misattributed", harness.ErrStep)
+	}
+	if omission == "absent" {
+		if got.Event.Commits != nil {
+			return fmt.Errorf("%w: recovery overwrote absent signed native provenance", harness.ErrStep)
+		}
+	} else if got.Event.Commits == nil || got.Event.Commits.Omission != omission {
+		return fmt.Errorf("%w: recovery overwrote partial signed native provenance", harness.ErrStep)
+	}
+	for _, commit := range got.Recovered.Items {
+		if commit.Files == nil || commit.At.IsZero() || commit.Hash == "" || commit.Hash == s.nativeOther {
+			return fmt.Errorf("%w: recovered range lost per-commit facts or crossed refs", harness.ErrStep)
+		}
+	}
+	return nil
 }
 
 func (s *eventSteps) policyNativeCommitEvidence(ctx context.Context, name string, count int, omission string) error {

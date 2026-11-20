@@ -263,6 +263,9 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 		if err := p.decode(ctx, in, rel, q, what, &pg); err != nil {
 			return nil, err
 		}
+		if pg.Values == nil {
+			return nil, fmt.Errorf("%w: bitbucketdc: %s: missing page values", kernel.ErrUnavailable, what)
+		}
 		out = append(out, pg.Values...)
 		if pg.IsLastPage {
 			return out, nil

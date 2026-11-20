@@ -56,7 +56,7 @@ func TestUnitRoutes(t *testing.T) {
 		"/2.0/repositories/acme/infra/refs/tags/v9":             http.StatusNotFound,
 		"/2.0/repositories/acme/infra/commit/abc":               http.StatusNotFound,
 		"/2.0/repositories/acme/infra/src/" + head + "/nope.tf": http.StatusNotFound,
-		"/2.0/repositories/acme/infra/diffstat/" + head:         http.StatusNotFound,
+		"/2.0/repositories/acme/infra/diffstat/" + head:         http.StatusOK,
 		"/2.0/repositories/acme/infra/src/" + head + "/a/b.tf":  http.StatusOK,
 	} {
 		if w := me(path); w.Code != want {

@@ -501,7 +501,7 @@ func (f *Fake) diffs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	folders := map[string]bool{}
-	var out []map[string]any
+	out := []map[string]any{}
 	for _, ch := range changes {
 		item, kind, source := ch.To, "edit", ""
 		switch {

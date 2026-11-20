@@ -92,3 +92,20 @@ func (r *Repo) FullTree(ctx context.Context, ref string) ([]TreeEntry, error) {
 	slices.SortFunc(out, func(a, b TreeEntry) int { return strings.Compare(a.Path, b.Path) })
 	return out, nil
 }
+
+// Orphan creates an independent root with treeRef's exact tree, for native
+// forced-push fixtures that cannot rely on a common ancestor.
+func (r *Repo) Orphan(branch, treeRef, message string) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	base, err := r.resolve(treeRef)
+	must(err)
+	signature := r.signature()
+	commit := &object.Commit{Author: *signature, Committer: *signature, Message: message, TreeHash: base.TreeHash}
+	encoded := r.git.Storer.NewEncodedObject()
+	must(commit.Encode(encoded))
+	hash, err := r.git.Storer.SetEncodedObject(encoded)
+	must(err)
+	must(r.git.Storer.SetReference(plumbing.NewHashReference(plumbing.NewBranchReferenceName(branch), hash)))
+	return hash.String()
+}

@@ -49,7 +49,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		}
 		items = append(items, port.RecoveredCommit(out(h, repo, commit), files))
 	}
-	return port.RecoveredRange(base, "bitbucketdc/REST since-until commits and complete file diffs", items)
+	result, err := port.RecoveredRange(base, "bitbucketdc/REST since-until commits and complete file diffs", items)
+	if err != nil {
+		return port.PushRange{}, fmt.Errorf("bitbucketdc: recover push range: %w", err)
+	}
+	return result, nil
 }
 
 func (p *Provider) pushBase(ctx context.Context, in port.Integration, rp, base, head string) (string, error) {

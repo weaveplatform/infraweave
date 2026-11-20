@@ -8,6 +8,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 func known[T any](value T) policyapi.Fact[T] {
@@ -106,6 +107,9 @@ func (s *Service) policyInput(ctx context.Context, input Evaluation, event Prepa
 	collection := event.Event.Commits
 	if event.RecoveredCommits != nil {
 		collection = event.RecoveredCommits
+		if _, complete := port.NativeCommitFiles(collection); !complete || collection.Source == "" {
+			return nil, fmt.Errorf("%w: invalid stored recovered push facts", kernel.ErrUnavailable)
+		}
 	}
 	facts.Push = known(policyapi.PushFacts{
 		Author: commit.Author, Branch: commit.Branch, Hash: event.Commit.Hash,

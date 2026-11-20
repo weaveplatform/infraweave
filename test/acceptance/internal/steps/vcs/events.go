@@ -24,6 +24,9 @@ type eventSteps struct {
 	deliveries    map[string]string
 	nativeCommits []nativeEventCommit
 	nativeRevert  bool
+	nativeMode    string
+	nativeOther   string
+	rangeFault    string
 }
 
 func (s *eventSteps) register(sc *godog.ScenarioContext) {
@@ -55,7 +58,13 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 		func(branch, key string) error { s.nativeRevert = true; return s.policyNativeCommits(2, branch, key) },
 	)
 	sc.Step(`^the event stack is unlocked in its public read and owner storage$`, s.policyUnlocked)
-	sc.Step(`^the GitHub event push omits its native commit collection$`, func() { s.nativeCommits = nil })
+	sc.Step(`^the GitHub event push omits its native commit collection$`, func() { s.nativeMode = "missing" })
+	sc.Step(`^the event push uses "(missing|native|multi-ref)" native commit metadata$`, s.nativeMetadataMode)
+	sc.Step(`^event delivery "(\w+)" retains a recovered "([^"]+)" range of (\d+) commits and touched paths '([^']*)' with native omission "([^"]*)"$`, s.recoveredRangeEvidence)
+	sc.Step(`^the event range source refuses with "(rate limit|server failure)"$`, s.refuseRangeSource)
+	sc.Step(`^event delivery "(\w+)" waits for source recovery with no provisional effects$`, s.rangeWaiting)
+	sc.Step(`^the event range source recovers and delivery "(\w+)" becomes due$`, s.resumeRangeSource)
+	sc.Step(`^event delivery "(\w+)" expires before source recovery$`, s.expireRangeSource)
 }
 
 func (s *eventSteps) repository() checkRepository {
@@ -119,7 +128,7 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 		}
 		body["repository"], body["installation"] = repository, map[string]any{"id": c.installation, "app_id": c.appID}
 		body["ref"], body["before"], body["after"] = "refs/heads/"+branch, before, head
-		if s.nativeCommits != nil {
+		if s.nativeCommits != nil || s.nativeMode != "" {
 			s.decorateNativeCommits(body)
 		}
 		raw, err = json.Marshal(body)
@@ -141,7 +150,7 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 			return 0, fmt.Errorf("event GitLab push: %w", err)
 		}
 		delivery.ID = id
-		if s.nativeCommits != nil {
+		if s.nativeCommits != nil || s.nativeMode != "" {
 			var body map[string]any
 			if err := json.Unmarshal(delivery.Body, &body); err != nil {
 				return 0, fmt.Errorf("native commit fixture decode: %w", err)
@@ -161,6 +170,16 @@ func (s *eventSteps) send(ctx context.Context, id, before, head, branch, verific
 		)
 		if err != nil {
 			return 0, fmt.Errorf("event Azure push: %w", err)
+		}
+		if s.nativeCommits != nil || s.nativeMode != "" {
+			var body map[string]any
+			if err := json.Unmarshal(delivery.Body, &body); err != nil {
+				return 0, fmt.Errorf("native Azure commit fixture: %w", err)
+			}
+			s.decorateNativeCommits(body)
+			if delivery.Body, err = json.Marshal(body); err != nil {
+				return 0, fmt.Errorf("native Azure commit fixture encode: %w", err)
+			}
 		}
 		return azuredevopsfake.NewWebhookSender(azuredevopsfake.WebhookSenderOptions{Client: client}).
 			Send(ctx, endpoint+"azure_devops/"+c.fixture.integration, "", secret, delivery)
@@ -207,6 +226,9 @@ func (s *eventSteps) sendBitbucket(ctx context.Context, client *http.Client, end
 				"type":     "UPDATE",
 			},
 		}
+	}
+	if s.nativeCommits != nil || s.nativeMode != "" {
+		s.decorateNativeCommits(body)
 	}
 	raw, err = json.Marshal(body)
 	if err != nil {

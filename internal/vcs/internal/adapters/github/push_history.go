@@ -44,6 +44,9 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 	trees := make(map[string]map[string]treeFile)
 	items := make([]vcsapi.PushCommit, 0, len(commits))
 	for _, commit := range commits {
+		if commit == nil || commit.Parents == nil || !port.ValidCommit(commit.GetSHA()) {
+			return port.PushRange{}, fmt.Errorf("%w: github: incomplete push commit", kernel.ErrUnavailable)
+		}
 		current, err := pushCommitTree(ctx, c, repo, commit.GetSHA(), trees)
 		if err != nil {
 			return port.PushRange{}, err
@@ -65,7 +68,11 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 			Files: new(changedTreePaths(previous, current)),
 		})
 	}
-	return port.RecoveredRange(base, "github/REST compare commits and complete trees", items)
+	result, err := port.RecoveredRange(base, "github/REST compare commits and complete trees", items)
+	if err != nil {
+		return port.PushRange{}, fmt.Errorf("github: recover push range: %w", err)
+	}
+	return result, nil
 }
 
 func pushCommits(ctx context.Context, client *github.Client, repo port.Repository, base, head string) ([]*github.RepositoryCommit, string, error) {
@@ -79,7 +86,7 @@ func pushCommits(ctx context.Context, client *github.Client, repo port.Repositor
 			}
 			return nil, "", classify(err, "push comparison")
 		}
-		if comparison.TotalCommits == nil || total >= 0 && total != comparison.GetTotalCommits() {
+		if comparison == nil || response == nil || comparison.TotalCommits == nil || total >= 0 && total != comparison.GetTotalCommits() {
 			return nil, "", fmt.Errorf("%w: github: incomplete push commit count", kernel.ErrUnavailable)
 		}
 		total = comparison.GetTotalCommits()

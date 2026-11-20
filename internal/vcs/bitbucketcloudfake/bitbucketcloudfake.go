@@ -554,8 +554,12 @@ func paged(w http.ResponseWriter, r *http.Request, items []map[string]any) {
 	}
 	start := min((n-1)*per, len(items))
 	end := min(start+per, len(items))
+	values := items[start:end]
+	if values == nil {
+		values = []map[string]any{}
+	}
 	body := map[string]any{
-		"pagelen": per, "page": n, "size": len(items), "values": items[start:end],
+		"pagelen": per, "page": n, "size": len(items), "values": values,
 	}
 	if end < len(items) {
 		q.Set("page", strconv.Itoa(n+1))
