@@ -103,6 +103,9 @@ func TestAccCaptures(t *testing.T) {
 	if err := validateCaptureReplayers(captures, statefulCaptureReplayers); err != nil {
 		t.Fatal(err)
 	}
+	if err := validateCaptureSubsetReplayers(captures, captureSubsetReplayers); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range captures {
 		if slices.Contains(policyToolingCaptures, c.ID) {
 			t.Run(c.ID+"/recorded", func(t *testing.T) { checkPolicyToolingCapture(t, c.ID) })
@@ -151,7 +154,7 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	real, replayed := 0, 0
+	real, replayed, subsets := 0, 0, 0
 	recorded := map[string]bool{}
 	for _, c := range captures {
 		recorded[c.ID] = true
@@ -159,6 +162,22 @@ func TestAccCaptures(t *testing.T) {
 			real++
 		}
 		t.Run(c.ID, func(t *testing.T) {
+			if c.ReplaySubset != "" {
+				executed := captureSubsetReplayers[c.ReplaySubset](t, api)
+				if err := c.CheckSubset(executed); err != nil {
+					t.Fatal(err)
+				}
+				if !t.Failed() {
+					subsets++
+				}
+				for _, ptr := range slices.Sorted(maps.Keys(c.Handoffs)) {
+					h := c.Handoffs[ptr]
+					if h.Classification != "rest" {
+						t.Logf("%s %s: %s; owner %s; %s", c.ID, ptr, h.Classification, h.Owner, h.Detail)
+					}
+				}
+				return
+			}
 			if c.ReplayWith != "" {
 				run, ok := statefulCaptureReplayers[c.ReplayWith]
 				if !ok {
@@ -190,13 +209,26 @@ func TestAccCaptures(t *testing.T) {
 			})
 		}
 	}
-	deferred := 0
+	deferred, handoffs := 0, 0
 	for _, c := range captures {
 		if c.ReplayAfter != "" {
 			deferred++
 		}
+		for _, h := range c.Handoffs {
+			if h.Classification != "rest" {
+				handoffs++
+			}
+		}
 	}
-	t.Logf("loaded %d captures (%d real); completed %d REST replays; %d await REST implementation", len(captures), real, replayed, deferred)
+	t.Logf(
+		"loaded %d captures (%d real); completed %d full REST replays; executed %d REST subsets; %d captures await REST implementation; %d assertion handoffs remain",
+		len(captures),
+		real,
+		replayed,
+		subsets,
+		deferred,
+		handoffs,
+	)
 }
 
 // asserting names the features that assert an awaited capture's choices,

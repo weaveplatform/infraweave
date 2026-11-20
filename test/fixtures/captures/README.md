@@ -27,9 +27,19 @@ as no capture.
 - `expect.yaml` may instead contain `observed` (JSON Pointer to recorded value)
   and `replayAfter` (the implementation issue). Such a capture has no REST calls:
   offline observations are checked now, and REST replay is explicitly deferred.
-  Once implemented, remove `replayAfter` and add calls. C49 intentionally expects
+  Once implemented, remove `replayAfter` and add calls or `replayWith`, a named
+  stateful REST replayer. C49 intentionally expects
   a different infraweave default (V1); C57 must check the linked OPA version rather
   than freezing the reference service version.
+- A partial handoff uses `replaySubset` and `handoffs`, keyed by exactly the
+  recorded `observed` pointers. Each handoff needs `classification` (`rest`,
+  `deferred`, `upstream`, `inference` or `deviation`), `owner` and `detail`. Both
+  executable REST assertions and remaining handoffs are required. The subset
+  handler must return exactly the REST assertion pointers it executed. Missing,
+  unknown or empty handlers fail; subsets count separately from full REST
+  replays. C48 demonstrates this without converting its partial workflow capture
+  into a complete one. Subsets cannot mix with calls, full replayers or blanket
+  deferral.
 - `TestAccCaptures` (`make accept`) verifies the recorded policy observations and replays every enabled call against
   `infraweave serve`. A capture whose expectation fails is a parity bug,
   reported with its id, not a flaky test.
@@ -44,7 +54,7 @@ applied. Each group retains its actual request/response sequence and cleanup.
 |---|---|---|---|
 | C9 | Attached ordinary policy refuses deletion without force; force deletes it and its attachment | Context and plugin-managed deletion | #645 |
 | C46 | Real custom-ignore and default pushes; ignored-history query refused on V5_FREE | Entitled-account reason codes and disabling label | #652 |
-| C48 | Free-tier creation/attachment differences and actual PLAN/APPROVAL/INITIALIZATION evaluation | Complete type mapping with an entitled-account comparison | #645 |
+| C48 | Free-tier creation/attachment differences and actual PLAN/APPROVAL/INITIALIZATION evaluation | Complete type mapping with an entitled-account comparison | #683 executes management/attachment subset; #650/#651/#654 own remaining workflow; #656 audits evidence |
 | C51 | New slug-ID policy successfully resets its own flag; historical receipt remains | Legacy internal-ID eligibility/migration and ULID-ID comparison | #649 |
 | C56 | Unix seconds for create/update; createdAt remains fixed | None | #645 |
 | C291 | Mixed-policy rejection fails UNCONFIRMED and PENDING_REVIEW with the exact note | None | #650 |

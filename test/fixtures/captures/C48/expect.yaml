@@ -1,4 +1,29 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/645
+replaySubset: policy-free-tier-management
+handoffs:
+  "/exchanges/0/response/data/tier":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical V5_FREE account inventory; infraweave has a different feature model and no equivalent tier response. C48's entitled-account comparison remains open.
+  "/exchanges/0/response/data/tierFeatures":
+    classification: inference
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical feature names are preserved. ADR 0009's WORKFLOW_POLICIES mapping to GIT_PUSH/TRIGGER evaluation is maintainer-approved inference pending C48's entitled-account comparison; creation is not gated by that inference.
+  "/exchanges/18/response/errors/0/message":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/646
+    detail: PUT stack policy attachment returns the equivalent 422 validation-failed refusal for NOTIFICATION and leaves no relation; REST problem wording differs from GraphQL.
+  "/exchanges/20/response/data/stack/run/state":
+    classification: deferred
+    owner: https://github.com/weaveplatform/infraweave/issues/650
+    detail: Approval-policy rejection after PENDING_REVIEW requires 650; PLAN warnings require 651, and the complete real workflow is verified by 654. CRUD success does not prove FAILED.
+  "/exchanges/23/response/data/stacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/683
+    detail: Create a temporary local stack, delete it through the shared API, then verify 404 and restoration of the original stack inventory.
+  "/exchanges/23/response/data/policies":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/683
+    detail: Create and read all eight captured policy types, attach the six supported stack types, delete all temporary policies and verify 404 plus restoration of the original inventory. INTENT attachment remains reserved for P25.
 observed:
   "/exchanges/0/response/data/tier": "V5_FREE"
   "/exchanges/0/response/data/tierFeatures": ["SPACELIFT_INTELLIGENCE", "BACKSTAGE_INTEGRATION", "CLOUD_CREDENTIAL_GENERATION"]

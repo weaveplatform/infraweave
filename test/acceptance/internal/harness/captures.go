@@ -81,6 +81,15 @@ type CaptureExpect struct {
 	Body map[string]any `yaml:"body"`
 }
 
+// CaptureHandoff assigns a recorded assertion to its executable subset or to
+// the owner of the remaining implementation or evidence. It never changes the
+// historical value in Observed.
+type CaptureHandoff struct {
+	Classification string `yaml:"classification"`
+	Owner          string `yaml:"owner"`
+	Detail         string `yaml:"detail"`
+}
+
 // Capture is one checked-in capture directory.
 type Capture struct {
 	ID    string
@@ -92,7 +101,11 @@ type Capture struct {
 	// ReplayWith names a stateful REST replayer for invariants such as request
 	// time bounds that cannot be expressed as static JSON pointer equality.
 	ReplayWith string
-	Observed   map[string]any
+	// ReplaySubset executes only assertions classified rest in Handoffs. Its
+	// success cannot count as completion of the whole capture's REST contract.
+	ReplaySubset string
+	Handoffs     map[string]CaptureHandoff
+	Observed     map[string]any
 }
 
 var (
@@ -143,10 +156,12 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 		return fail("%v", err)
 	}
 	var expect struct {
-		Calls       []CaptureCall  `yaml:"calls"`
-		ReplayAfter string         `yaml:"replayAfter"`
-		ReplayWith  string         `yaml:"replayWith"`
-		Observed    map[string]any `yaml:"observed"`
+		Calls        []CaptureCall             `yaml:"calls"`
+		ReplayAfter  string                    `yaml:"replayAfter"`
+		ReplayWith   string                    `yaml:"replayWith"`
+		ReplaySubset string                    `yaml:"replaySubset"`
+		Handoffs     map[string]CaptureHandoff `yaml:"handoffs"`
+		Observed     map[string]any            `yaml:"observed"`
 	}
 	if err := decodeStrict(filepath.Join(dir, ExpectFile), &expect); err != nil {
 		return fail("%v", err)
@@ -154,6 +169,8 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 	c.Calls = expect.Calls
 	c.ReplayAfter = expect.ReplayAfter
 	c.ReplayWith = expect.ReplayWith
+	c.ReplaySubset = expect.ReplaySubset
+	c.Handoffs = expect.Handoffs
 	c.Observed = expect.Observed
 	if reason := c.invalid(entries); reason != "" {
 		return fail("%s", reason)
@@ -207,12 +224,17 @@ func (c *Capture) invalid(entries map[string]bool) string {
 		return "meta.yaml needs tier, capturedBy and redacted"
 	case !introspection.MatchString(m.Introspection):
 		return "meta.yaml introspection is not sha256:<64 hex digits>"
-	case len(c.Calls) == 0 && (strings.TrimSpace(c.ReplayAfter) == "" && strings.TrimSpace(c.ReplayWith) == "" || len(c.Observed) == 0):
+	case len(c.Calls) == 0 && (strings.TrimSpace(c.ReplayAfter) == "" && strings.TrimSpace(c.ReplayWith) == "" && strings.TrimSpace(c.ReplaySubset) == "" || len(c.Observed) == 0):
 		return "expect.yaml has no calls"
 	case c.ReplayAfter != "" && len(c.Calls) != 0:
 		return "expect.yaml cannot defer REST replay and supply calls"
 	case c.ReplayWith != "" && (len(c.Calls) != 0 || c.ReplayAfter != ""):
 		return "expect.yaml cannot mix a stateful replayer with calls or deferral"
+	case c.ReplaySubset != "" && (len(c.Calls) != 0 || c.ReplayAfter != "" || c.ReplayWith != ""):
+		return "expect.yaml cannot mix a subset replayer with calls, deferral or a full replayer"
+	}
+	if reason := c.invalidHandoffs(); reason != "" {
+		return reason
 	}
 	if _, err := time.Parse(time.DateOnly, m.Captured); err != nil {
 		return "meta.yaml captured: " + err.Error()
@@ -223,6 +245,64 @@ func (c *Capture) invalid(entries map[string]bool) string {
 		}
 	}
 	return ""
+}
+
+func (c *Capture) invalidHandoffs() string {
+	if c.ReplaySubset == "" {
+		if len(c.Handoffs) != 0 {
+			return "expect.yaml handoffs require a subset replayer"
+		}
+		return ""
+	}
+	rest := 0
+	for _, ptr := range slices.Sorted(mapKeys(c.Observed)) {
+		h, ok := c.Handoffs[ptr]
+		if !ok {
+			return "expect.yaml has no handoff for " + ptr
+		}
+		if !slices.Contains([]string{"rest", "deferred", "upstream", "inference", "deviation"}, h.Classification) ||
+			strings.TrimSpace(h.Owner) == "" || strings.TrimSpace(h.Detail) == "" {
+			return "expect.yaml has invalid handoff for " + ptr
+		}
+		if h.Classification == "rest" {
+			rest++
+		}
+	}
+	if len(c.Handoffs) != len(c.Observed) {
+		return "expect.yaml handoffs must name exactly the observed assertions"
+	}
+	if rest == 0 || rest == len(c.Handoffs) {
+		return "expect.yaml subset needs both REST assertions and remaining handoffs"
+	}
+	return ""
+}
+
+// CheckSubset requires a replayer to identify exactly the assertions it executed.
+// An empty handler or an unrelated successful operation cannot complete a subset.
+func (c *Capture) CheckSubset(executed []string) error {
+	fail := func(reason string) error {
+		return fmt.Errorf("%w %s: REST subset %s", ErrParity, c.ID, reason)
+	}
+	if c.ReplaySubset == "" || len(executed) == 0 {
+		return fail("executed no assertions")
+	}
+	want := 0
+	for _, h := range c.Handoffs {
+		if h.Classification == "rest" {
+			want++
+		}
+	}
+	seen := make(map[string]bool, len(executed))
+	for _, ptr := range executed {
+		if c.Handoffs[ptr].Classification != "rest" || seen[ptr] {
+			return fail("returned unknown, non-REST or duplicate assertion " + ptr)
+		}
+		seen[ptr] = true
+	}
+	if len(seen) != want {
+		return fail("did not execute every declared REST assertion")
+	}
+	return nil
 }
 
 // invalid returns why the call cannot be replayed, or "" when it can.
