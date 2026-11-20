@@ -47,12 +47,29 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 		return queue.Snooze(min(max(time.Second, limited.Reset.Sub(s.d.Now())), remaining)) //nolint:wrapcheck // queue scheduling control consumes no attempt
 	}
 	if err == nil {
-		err = tx.Do(work, s.d.DB, tx.Options{}, func(ctx context.Context) error {
-			if err := s.d.Jobs.HoldTx(ctx, job); err != nil {
-				return err //nolint:wrapcheck // the queue names the lost claim
+		var requests map[int]requestBackfill
+		for preparation := range 2 {
+			err = tx.Do(work, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+				if err := s.d.Jobs.HoldTx(ctx, job); err != nil {
+					return err //nolint:wrapcheck // the queue names the lost claim
+				}
+				return s.evaluate(ctx, job, input, attempts, requests)
+			})
+			if !errors.Is(err, errRequestPreparation) || preparation != 0 {
+				break
 			}
-			return s.evaluate(ctx, job, input, attempts)
-		})
+			requests, err = s.prepareRequestBackfills(work, job, input)
+			if err != nil {
+				break
+			}
+		}
+	}
+	if limited, ok := errors.AsType[*port.RateLimited](err); ok {
+		remaining := input.Deadline.Sub(s.d.Now())
+		if remaining <= 0 {
+			return s.finish(ctx, job, input, Expired)
+		}
+		return queue.Snooze(min(max(time.Second, limited.Reset.Sub(s.d.Now())), remaining)) //nolint:wrapcheck // late native preparation preserves the queue's non-consuming wait
 	}
 	if errors.Is(err, errExpired) || errors.Is(err, context.DeadlineExceeded) && !s.d.Now().Before(input.Deadline) {
 		return s.finish(ctx, job, input, Expired)
@@ -65,7 +82,7 @@ func (s *Service) Evaluated(ctx context.Context, job queue.Job) error {
 	return err //nolint:wrapcheck // each fenced step names its boundary
 }
 
-func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation, attempts map[int]actionAttempt) error {
+func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation, attempts map[int]actionAttempt, requests map[int]requestBackfill) error {
 	meta, found, err := s.d.Store.EventContext(ctx, input.Account, input.Delivery)
 	if err != nil {
 		return err //nolint:wrapcheck // the store names the owner check
@@ -108,6 +125,9 @@ func (s *Service) evaluate(ctx context.Context, job queue.Job, input Evaluation,
 			return s.d.Jobs.CompleteTx(ctx, job) //nolint:wrapcheck // queue acknowledgement joins the completion transaction
 		}
 		return errExpired
+	}
+	if err := s.commitRequestBackfills(ctx, input, use, events, requests); err != nil {
+		return err
 	}
 	matched := false
 	for index, event := range events {

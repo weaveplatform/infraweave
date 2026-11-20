@@ -32,6 +32,9 @@ func (s *Service) policyDecision(ctx context.Context, input Evaluation, stack st
 		evaluation, err = s.d.Policies.Evaluate(ctx, policyapi.EvaluationRequest{
 			Account: input.Account, Type: policyapi.Push, Target: policyapi.Target{Kind: policyapi.StackTarget, ID: input.Stack},
 			BuildInput: func(ctx context.Context) (json.RawMessage, error) {
+				if requestEvent(event.Event) && event.Request == nil {
+					return nil, errRequestPreparation
+				}
 				return s.policyInput(ctx, input, event, integration)
 			},
 		})
