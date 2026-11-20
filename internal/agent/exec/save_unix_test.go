@@ -4,9 +4,11 @@ package exec_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -76,8 +78,9 @@ func TestUnitExecSave(t *testing.T) {
 	equal(t, "reports", w.events(), []string{
 		"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5",
 	})
-	if got := string(w.opened(5, exec.PlanArtifact)); got != planJSON {
-		t.Errorf("plan.json = %q", got)
+	var got, want any
+	if json.Unmarshal(w.opened(5, exec.PlanArtifact), &got) != nil || json.Unmarshal([]byte(planJSON), &want) != nil || !reflect.DeepEqual(got, want) {
+		t.Error("saved plan changed the structural document")
 	}
 	changes, err := plan.Read(bytes.NewReader(w.opened(5, exec.ChangesArtifact)))
 	if err != nil || len(changes) != 1 || changes[0].Address != "terraform_data.x" {

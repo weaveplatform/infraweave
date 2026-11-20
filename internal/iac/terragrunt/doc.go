@@ -2,7 +2,7 @@
 // vendor: Kind, the vendorConfig member that holds its settings, and
 // ValidateSettings, which checks them when a stack is written. A
 // Terragrunt stack drives OpenTofu or Terraform, which its tool names;
-// the manually provisioned tool, smart sanitization, reusing the saved
+// the manually provisioned tool, reusing the saved
 // plan in apply and prefixing resource names are refused, as infraweave
 // does not run them yet. Read decodes the settings the server reads, and
 // Settings' Driven names the vendor kind of the tool whose release a run

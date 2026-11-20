@@ -19,14 +19,14 @@ import (
 // answers, not a server.
 var storage = &http.Client{Timeout: 30 * time.Second}
 
-// RecordArtifact does with body what a runner does with an artifact the
+// UploadArtifact does with body what a runner does with an artifact the
 // run of the account acct uploads in state at state version version as
 // name: it seals body under the content key derived from the run's
 // artifact key and the object's key, which the runner builds as the
 // server does, declares it to upload-urls, checks that the answer names
-// the same key, PUTs it to the signed URL and commits it to artifacts,
+// the same key and PUTs it to the signed URL without indexing it,
 // each call with the run token kept as token through replica.
-func (w *World) RecordArtifact(
+func (w *World) UploadArtifact(
 	ctx context.Context,
 	replica, token string,
 	acct kernel.AccountID,
@@ -54,12 +54,13 @@ func (w *World) RecordArtifact(
 	}
 	sum := sha256.Sum256(sealed.Bytes())
 	path := "/worker/v1/runs/" + run.String()
+	upload := map[string]any{"kind": "artifact", "name": name, "size": sealed.Len(), "sha256": hex.EncodeToString(sum[:])}
+	if name == "plan.json" {
+		upload["planSanitization"] = "DEFAULT"
+	}
 	r, err := w.Do(ctx, replica, token, http.MethodPost, path+"/upload-urls", map[string]any{
 		"stateVersion": version,
-		"uploads": []map[string]any{{
-			"kind": "artifact", "name": name, "size": sealed.Len(),
-			"sha256": hex.EncodeToString(sum[:]),
-		}},
+		"uploads":      []map[string]any{upload},
 	})
 	if err != nil && r.Status == 0 {
 		return err
@@ -97,9 +98,30 @@ func (w *World) RecordArtifact(
 		return fmt.Errorf("%w: the PUT of %s answered %d %s", ErrStep, name, resp.StatusCode,
 			answer)
 	}
-	r, err = w.Do(ctx, replica, token, http.MethodPost, path+"/artifacts", map[string]any{
-		"stateVersion": version,
-		"artifacts":    []map[string]any{{"kind": "artifact", "name": name}},
+	return nil
+}
+
+// RecordArtifact uploads and indexes the fixture artifact through the real worker API.
+func (w *World) RecordArtifact(
+	ctx context.Context,
+	replica, token string,
+	acct kernel.AccountID,
+	run kernel.ULID,
+	state kernel.RunState,
+	version int64,
+	name string,
+	artifactKey, body []byte,
+) error {
+	if err := w.UploadArtifact(ctx, replica, token, acct, run, state, version, name, artifactKey, body); err != nil {
+		return err
+	}
+	record := map[string]any{"kind": "artifact", "name": name}
+	if name == "plan.json" {
+		record["planSanitization"] = "DEFAULT"
+	}
+	path := "/worker/v1/runs/" + run.String()
+	r, err := w.Do(ctx, replica, token, http.MethodPost, path+"/artifacts", map[string]any{
+		"stateVersion": version, "artifacts": []map[string]any{record},
 	})
 	if err != nil && r.Status == 0 {
 		return err

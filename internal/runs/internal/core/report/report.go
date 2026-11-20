@@ -508,6 +508,11 @@ func (s *Service) Uploads(ctx context.Context, id kernel.ULID, version int64, up
 	if err := checkUploads(ups); err != nil {
 		return nil, err
 	}
+	for i, u := range ups {
+		if err := planReceipt(run, u.Kind, u.Name, u.PlanSanitization, fmt.Sprintf("/uploads/%d/planSanitization", i)); err != nil {
+			return nil, err
+		}
+	}
 	var (
 		artifact crypt.Value
 		opened   bool
@@ -656,6 +661,11 @@ func (s *Service) Artifacts(ctx context.Context, id kernel.ULID, version int64, 
 		return err
 	}
 	for i, r := range recs {
+		if err := planReceipt(run, r.Kind, r.Name, r.PlanSanitization, fmt.Sprintf("/artifacts/%d/planSanitization", i)); err != nil {
+			return err
+		}
+	}
+	for i, r := range recs {
 		store, ok := storeOf[r.Kind]
 		if !ok || r.Kind == workersapi.UploadLogChunk || !name.MatchString(r.Name) {
 			return &kernel.Invalid{
@@ -735,4 +745,28 @@ func (s *Service) PurgeObjects(ctx context.Context, acct kernel.AccountID, batch
 		return nil
 	})
 	return done, err //nolint:wrapcheck // named above
+}
+
+// planReceipt fences old in-flight runners as well as new registrations. An old
+// signed PUT is not enough to index a raw plan after the server is upgraded.
+func planReceipt(run lifecycle.Run, kind workersapi.UploadKind, name string, mode workersapi.SanitizationMode, pointer string) error {
+	if kind != workersapi.UploadArtifact || name != "plan.json" {
+		if mode == "" {
+			return nil
+		}
+	} else {
+		expected := workersapi.SanitizationDefault
+		if run.ResolvedConfig != nil && run.ResolvedConfig.Execution.PlanSanitization != "" {
+			expected = run.ResolvedConfig.Execution.PlanSanitization
+		}
+		if (mode == workersapi.SanitizationDefault || mode == workersapi.SanitizationSmart || mode == workersapi.SanitizationNone) && mode == expected {
+			return nil
+		}
+	}
+	return &kernel.Invalid{
+		Detail: "The plan sanitization receipt is refused.",
+		Errors: []kernel.FieldError{
+			{Pointer: pointer, Reason: kernel.ReasonRule, Message: "plan.json requires its resolved sanitization mode; upgrade the launcher and retry the run."},
+		},
+	}
 }

@@ -581,3 +581,18 @@ func (d *Dependencies) Close(ctx context.Context) error {
 	d.cleanup = nil
 	return err
 }
+
+// Read reads one object as the server's storage client can read it. Acceptance
+// callers keep encrypted bytes distinct from any independently opened content.
+func (o *ObjectStore) Read(ctx context.Context, bucket, key string) ([]byte, error) {
+	out, err := o.client().GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
+	if err != nil {
+		return nil, fmt.Errorf("@objectstore: read %s: %w", key, err)
+	}
+	defer out.Body.Close()
+	body, err := io.ReadAll(out.Body)
+	if err != nil {
+		return nil, fmt.Errorf("@objectstore: read %s: %w", key, err)
+	}
+	return body, nil
+}

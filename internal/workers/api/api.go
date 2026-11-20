@@ -98,10 +98,12 @@ type Spec struct {
 	// Tool is the infrastructure tool the run's launcher mounts, nil for a
 	// vendor with none.
 	Tool *SpecTool
+	// PlanSanitization selects the transformation before server-readable plan upload.
+	// An omitted mode from an older v1 specification means DEFAULT.
+	PlanSanitization SanitizationMode
 	// Terragrunt is the Terragrunt the run's launcher mounts beside Tool,
 	// which drives it, for a Terragrunt stack's run alone; nil for every
-	// other vendor. Its presence marks a run that records no plan, changes
-	// or outputs documents.
+	// other vendor. It uploads a units plan, without changes or outputs documents.
 	Terragrunt *SpecTerragrunt
 	// Task is what a TASK run performs, nil for every other type.
 	Task *kernel.Task
@@ -112,6 +114,16 @@ type Spec struct {
 	Environment []Variable
 	Files       []File
 }
+
+// SanitizationMode is the worker protocol's plan JSON transformation.
+type SanitizationMode string
+
+// Plan modes; NONE is the stack label's explicit opt-out.
+const (
+	SanitizationDefault SanitizationMode = "DEFAULT"
+	SanitizationSmart   SanitizationMode = "SMART"
+	SanitizationNone    SanitizationMode = "NONE"
+)
 
 // SpecRun is the run a Spec is for, at the state version its secrets are
 // sealed for. Account is the run's account, which the key of each object
@@ -330,10 +342,11 @@ const (
 // sequence number in decimal, and the size and SHA-256 of its bytes as
 // uploaded.
 type Upload struct {
-	Kind   UploadKind
-	Name   string
-	Size   int64
-	SHA256 []byte
+	PlanSanitization SanitizationMode
+	Kind             UploadKind
+	Name             string
+	Size             int64
+	SHA256           []byte
 }
 
 // SignedUpload is where to upload a declared object: its kind and name,
@@ -360,8 +373,9 @@ type LogChunk struct {
 // Recorded is an uploaded object other than a log chunk, to record by
 // its kind and name.
 type Recorded struct {
-	Kind UploadKind
-	Name string
+	PlanSanitization SanitizationMode
+	Kind             UploadKind
+	Name             string
 }
 
 // Refusals of Reports, besides ErrNotOnWorker.

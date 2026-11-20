@@ -332,7 +332,8 @@ func (l *Launcher) register(ctx context.Context) error {
 	var backoff time.Duration
 	for {
 		jws, err := l.id.sign(claims{
-			Version: l.d.Version, OS: l.d.OS, Arch: l.d.Arch, Metadata: l.d.Config.Metadata,
+			Capabilities: []string{"plan-sanitization-v1"},
+			Version:      l.d.Version, OS: l.d.OS, Arch: l.d.Arch, Metadata: l.d.Config.Metadata,
 			Worker: l.st.Worker,
 		}, l.d.Now())
 		if err != nil {

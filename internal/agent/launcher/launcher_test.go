@@ -333,6 +333,10 @@ func TestUnitLauncherRegistersPollsAndDeregisters(t *testing.T) {
 			t.Fatalf("registrations: %+v", regs)
 		}
 		c := regs[0].Claims
+		capabilities, ok := c["capabilities"].([]any)
+		if !ok || len(capabilities) != 1 || capabilities[0] != "plan-sanitization-v1" {
+			t.Fatalf("signed capabilities: %v", c["capabilities"])
+		}
 		meta, _ := c["metadata"].(map[string]any)
 		if c["pool"] != w.pool.ID || c["version"] != "1.2.3" || c["os"] != "linux" ||
 			c["arch"] != "arm64" || meta["zone"] != "a" || c["jti"] == "" {

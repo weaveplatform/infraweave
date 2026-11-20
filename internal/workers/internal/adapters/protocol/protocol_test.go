@@ -257,7 +257,7 @@ func (f *fixture) registration(t *testing.T, named string) string {
 	}
 	b, err := json.Marshal(map[string]any{
 		"pool": f.store.pool.ID.String(), "iat": time.Now().Unix(),
-		"jti": kernel.NewULID().String(), "version": "1.0.0", "os": "linux", "arch": "amd64",
+		"jti": kernel.NewULID().String(), "capabilities": []string{"plan-sanitization-v1"}, "version": "1.0.0", "os": "linux", "arch": "amd64",
 		"worker": named,
 	})
 	if err != nil {

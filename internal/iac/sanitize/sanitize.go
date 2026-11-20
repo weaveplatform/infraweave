@@ -23,11 +23,13 @@ const (
 	MaxSize = 64 << 20
 )
 
-// Errors distinguish an invalid document, exhausted bound and unknown mode.
+// Errors distinguish invalid documents, exhausted bounds, unknown modes and
+// unsupported value families that cannot yet be safely transformed.
 var (
-	ErrMalformed = errors.New("sanitize: malformed plan")
-	ErrTooLarge  = errors.New("sanitize: plan exceeds 64 MiB")
-	ErrMode      = errors.New("sanitize: unknown mode")
+	ErrMalformed   = errors.New("sanitize: malformed plan")
+	ErrTooLarge    = errors.New("sanitize: plan exceeds 64 MiB")
+	ErrMode        = errors.New("sanitize: unknown mode")
+	ErrUnsupported = errors.New("sanitize: unsupported plan values")
 )
 
 // Value hashes a UTF-8 string as the final eight lowercase SHA-256 hex
@@ -93,10 +95,16 @@ func Plan(w io.Writer, r io.Reader, mode Mode) error {
 	op := &operation{mode: mode, known: map[string]struct{}{}}
 	transform := func() error {
 		if units, exists := doc["units"]; exists {
+			if len(doc) != 1 {
+				return fmt.Errorf("%w: units document has extra root fields", ErrMalformed)
+			}
 			if units == nil {
 				return fmt.Errorf("%w: units must be an array", ErrMalformed)
 			}
 			return objects(units, func(unit map[string]any) error {
+				if len(unit) != 2 {
+					return fmt.Errorf("%w: a unit has only path and plan", ErrMalformed)
+				}
 				if _, ok := unit["path"].(string); !ok {
 					return fmt.Errorf("%w: unit path must be a string", ErrMalformed)
 				}
@@ -151,6 +159,20 @@ func terraform(doc map[string]any, op *operation) error {
 	version, ok := doc["format_version"].(string)
 	if !ok || !strings.HasPrefix(version, "1.") {
 		return fmt.Errorf("%w: expected plan format 1.x", ErrMalformed)
+	}
+	// These released full-document families carry values outside the supported
+	// resource-change transform. Keep them from reaching a server-readable
+	// artifact until their masks/contracts are implemented, rather than copying
+	// an untransformed value tree. NONE is the explicit, still-sealed opt-out.
+	for _, key := range []string{"deferred_changes", "action_invocations", "deferred_action_invocations"} {
+		if err := objects(doc[key], func(map[string]any) error {
+			if op.mode != None {
+				return fmt.Errorf("%w: %s", ErrUnsupported, key)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
 	}
 	for _, key := range []string{"resource_changes", "resource_drift"} {
 		if err := objects(doc[key], func(resource map[string]any) error {
@@ -277,6 +299,25 @@ func change(c map[string]any, op *operation) error {
 			return err
 		}
 	}
+	for _, key := range []string{"before_identity", "after_identity"} {
+		if err := field(c, key, nil, op); err != nil {
+			return err
+		}
+	}
+	importing, err := mapping(c["importing"])
+	if err != nil {
+		return err
+	}
+	for _, key := range []string{"id", "identity"} {
+		if err := field(importing, key, nil, op); err != nil {
+			return err
+		}
+	}
+	// Generated HCL is an opaque value blob with no usable sensitivity paths.
+	if generated, exists := c["generated_config"]; exists && op.mode != None && !op.collect {
+		c["generated_config"] = hashTree(generated)
+	}
+
 	return nil
 }
 
@@ -306,6 +347,9 @@ func values(v map[string]any, op *operation) error {
 
 func module(m map[string]any, op *operation) error {
 	if err := objects(m["resources"], func(resource map[string]any) error {
+		if err := field(resource, "identity", nil, op); err != nil {
+			return err
+		}
 		return field(resource, "values", resource["sensitive_values"], op)
 	}); err != nil {
 		return err

@@ -71,7 +71,7 @@ func (s Server) WorkerRunUploadURLs(ctx context.Context, req gen.WorkerRunUpload
 		// no SHA-256, which the runs domain refuses by its field.
 		sum, _ := hex.DecodeString(u.Sha256)
 		ups = append(ups, workersapi.Upload{
-			Kind: workersapi.UploadKind(u.Kind), Name: u.Name, Size: u.Size, SHA256: sum,
+			Kind: workersapi.UploadKind(u.Kind), Name: u.Name, Size: u.Size, SHA256: sum, PlanSanitization: receipt(u.PlanSanitization),
 		})
 	}
 	signed, err := s.svc.Uploads(ctx, b, run, req.Body.StateVersion, ups)
@@ -119,7 +119,7 @@ func (s Server) WorkerRunArtifacts(ctx context.Context, req gen.WorkerRunArtifac
 	run, _ := kernel.ParseULID(req.Run)
 	recs := make([]workersapi.Recorded, 0, len(req.Body.Artifacts))
 	for _, a := range req.Body.Artifacts {
-		recs = append(recs, workersapi.Recorded{Kind: workersapi.UploadKind(a.Kind), Name: a.Name})
+		recs = append(recs, workersapi.Recorded{Kind: workersapi.UploadKind(a.Kind), Name: a.Name, PlanSanitization: receipt(a.PlanSanitization)})
 	}
 	if err := s.svc.Artifacts(ctx, b, run, req.Body.StateVersion, recs); err != nil {
 		return nil, s.answer(ctx, err)
@@ -142,4 +142,11 @@ func (s Server) WorkerRunWorkspace(ctx context.Context, req gen.WorkerRunWorkspa
 	return gen.WorkerRunWorkspace307Response{
 		Headers: gen.WorkerRunWorkspace307ResponseHeaders{Location: &url},
 	}, nil
+}
+
+func receipt(mode *gen.PlanSanitization) workersapi.SanitizationMode {
+	if mode == nil {
+		return ""
+	}
+	return workersapi.SanitizationMode(*mode)
 }

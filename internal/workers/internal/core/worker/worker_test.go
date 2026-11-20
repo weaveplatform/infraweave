@@ -409,7 +409,7 @@ func (*fixture) sign(t *testing.T, ca credential.CA, p kernel.ULID, serial int64
 func (f *fixture) payload() map[string]any {
 	return map[string]any{
 		"pool": f.pool.ID.String(), "iat": time.Now().Unix(), "jti": kernel.NewULID().String(),
-		"version": "1.4.0", "os": "linux", "arch": "arm64",
+		"capabilities": []string{"plan-sanitization-v1"}, "version": "1.4.0", "os": "linux", "arch": "arm64",
 		"metadata": map[string]string{"host": "a"},
 	}
 }

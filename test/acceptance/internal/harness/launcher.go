@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -294,15 +295,19 @@ const maxRefusal = 64 << 10
 // still to come.
 type Relay struct {
 	// URL is the relay's base URL; Port is its port.
-	URL, Port string
-	srv       *http.Server
-	mu        sync.Mutex
-	calls     []Call
-	refusals  []Refusal
-	reports   *gate
-	unlocks   *gate
-	writes    *gate
+	URL, Port   string
+	srv         *http.Server
+	mu          sync.Mutex
+	calls       []Call
+	refusals    []Refusal
+	refusePlans bool
+	reports     *gate
+	unlocks     *gate
+	writes      *gate
 }
+
+// RefusePlanUploads injects a permanent declaration refusal for the actual runner.
+func (r *Relay) RefusePlanUploads() { r.mu.Lock(); defer r.mu.Unlock(); r.refusePlans = true }
 
 // StartRelay starts a relay to the API listener at target, a host:port.
 func StartRelay(ctx context.Context, target string) (*Relay, error) {
@@ -351,6 +356,34 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 		if r.writes.wait(req.Context(), req.URL.Path) {
 			proxy.ServeHTTP(w, req)
 		}
+	})
+	mux.Post("/worker/v1/runs/{run}/upload-urls", func(w http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(io.LimitReader(req.Body, 1<<20))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		req.Body = io.NopCloser(bytes.NewReader(body))
+		r.mu.Lock()
+		refuse := r.refusePlans
+		r.mu.Unlock()
+		if refuse {
+			var document struct {
+				Uploads []struct {
+					Name string `json:"name"`
+				} `json:"uploads"`
+			}
+			if json.Unmarshal(body, &document) == nil {
+				for _, upload := range document.Uploads {
+					if upload.Name == "plan.json" {
+						r.record(req.Method, req.URL.Path, http.StatusForbidden)
+						w.WriteHeader(http.StatusForbidden)
+						return
+					}
+				}
+			}
+		}
+		proxy.ServeHTTP(w, req)
 	})
 	mux.Handle("/*", proxy)
 	r.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}

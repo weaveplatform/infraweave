@@ -10,6 +10,17 @@ components:
         maxLength: 26
       description: The run's ID.
   schemas:
+    PlanSanitization:
+      type: string
+      enum: [DEFAULT, SMART, NONE]
+      default: DEFAULT
+      description: >-
+        The resolved plan JSON transformation: the explicit opt-out label selects
+        NONE before useSmartSanitization selects SMART, otherwise DEFAULT.
+        RunSpec omission from an older server means DEFAULT. A new server requires
+        this mode as a receipt on each plan.json declaration and recording, and
+        refuses missing, unknown or mismatched receipts. A new runner omits receipts
+        only when the old server omitted RunSpec.planSanitization.
     RunSpec:
       description: >-
         What a claimed run needs. Every value that is not a secret is here in
@@ -60,6 +71,8 @@ components:
           $ref: '#/components/schemas/RunSpecSource'
         tool:
           $ref: '#/components/schemas/RunSpecTool'
+        planSanitization:
+          $ref: '#/components/schemas/PlanSanitization'
         terragrunt:
           $ref: '#/components/schemas/RunSpecTerragrunt'
         task:
@@ -605,6 +618,8 @@ components:
       additionalProperties: false
       required: [kind, name, size, sha256]
       properties:
+        planSanitization:
+          $ref: '#/components/schemas/PlanSanitization'
         kind:
           $ref: '#/components/schemas/UploadKind'
         name:
@@ -730,6 +745,8 @@ components:
       additionalProperties: false
       required: [kind, name]
       properties:
+        planSanitization:
+          $ref: '#/components/schemas/PlanSanitization'
         kind:
           type: string
           enum: [artifact, workspace, observability]

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -287,14 +288,15 @@ type Registration struct {
 
 // claims are a registration's payload.
 type claims struct {
-	Pool     string            `json:"pool"`
-	IssuedAt int64             `json:"iat"`
-	ID       string            `json:"jti"`
-	Version  string            `json:"version"`
-	OS       string            `json:"os"`
-	Arch     string            `json:"arch"`
-	Metadata map[string]string `json:"metadata"`
-	Worker   string            `json:"worker"`
+	Capabilities []string          `json:"capabilities"`
+	Pool         string            `json:"pool"`
+	IssuedAt     int64             `json:"iat"`
+	ID           string            `json:"jti"`
+	Version      string            `json:"version"`
+	OS           string            `json:"os"`
+	Arch         string            `json:"arch"`
+	Metadata     map[string]string `json:"metadata"`
+	Worker       string            `json:"worker"`
 }
 
 // refuse is ErrUnauthenticated, naming why for the log.
@@ -342,6 +344,9 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 	}
 	if err := s.supported(c.Version); err != nil {
 		return Registration{}, err
+	}
+	if !slices.Contains(c.Capabilities, "plan-sanitization-v1") {
+		return Registration{}, invalid(kernel.ReasonRule, "The launcher must support plan-sanitization-v1; upgrade the launcher before registering.")
 	}
 	var out Registration
 	err = tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -454,6 +459,14 @@ func verify(jws *jose.JSONWebSignature, ca []byte, now time.Time) (claims, *x509
 // bounded refuses a payload whose description exceeds the registration's
 // bounds, counting characters as the API's labels do.
 func (c claims) bounded() error {
+	if len(c.Capabilities) > 16 {
+		return invalid(kernel.ReasonMaxLength, "A registration carries at most 16 capabilities.")
+	}
+	for _, capability := range c.Capabilities {
+		if utf8.RuneCountInString(capability) > 64 {
+			return invalid(kernel.ReasonMaxLength, "A capability is at most 64 characters.")
+		}
+	}
 	for _, f := range [...]struct{ name, v string }{
 		{"version", c.Version}, {"os", c.OS}, {"arch", c.Arch},
 	} {

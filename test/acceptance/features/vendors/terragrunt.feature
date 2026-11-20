@@ -1,4 +1,4 @@
-@postgres
+@plan-sanitization @postgres
 Feature: Terragrunt stacks
   A stack whose vendorConfig sets terragrunt runs Terragrunt, which drives
   OpenTofu or Terraform as its tool setting chooses, TERRAFORM_FOSS when it
@@ -11,7 +11,7 @@ Feature: Terragrunt stacks
   infraweave keeps its state is decided when it is created: by
   useStateManagement when it is set, by the create's manageState when it
   is null, and an update leaves it as it was. A manually provisioned tool,
-  smart sanitization, reusing the saved plan and prefixing resource names
+  reusing the saved plan and prefixing resource names
   ask for what infraweave does not run yet, and answer 422 naming the
   setting. The vendor-terragrunt option gates every request that sets the
   member. A queued run's specification names Terragrunt and the tool it
@@ -80,7 +80,6 @@ Feature: Terragrunt stacks
     And the problem refuses the field "/input/vendorConfig/terragrunt/tool" as "rule"
     When token "h" sends "POST /api/v1/stacks" with '{"input":{"provider":"GIT","name":"Later","repository":"infra","branch":"main","space":"legacy","vendorConfig":{"terragrunt":{"useRunAll":true,"useSmartSanitization":true,"skipReplan":true,"skipReplanWhenRunAll":true,"prefixResourceNamesWithModuleName":true,"terragruntVersion":"latest"}}},"manageState":true}' through B
     Then it answers a 422 problem "validation-failed"
-    And the problem refuses the field "/input/vendorConfig/terragrunt/useSmartSanitization" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/skipReplan" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/skipReplanWhenRunAll" as "rule"
     And the problem refuses the field "/input/vendorConfig/terragrunt/prefixResourceNamesWithModuleName" as "rule"
@@ -91,10 +90,9 @@ Feature: Terragrunt stacks
     Then it answers a 422 problem "validation-failed"
     And the problem refuses the field "/vendorConfig/terragrunt/skipReplan" as "rule"
     When token "h" sends "PATCH /api/v1/stacks/infra" with '{"vendorConfig":{"terragrunt":{"useSmartSanitization":true}}}' through A
-    Then it answers a 422 problem "validation-failed"
-    And the problem refuses the field "/vendorConfig/terragrunt/useSmartSanitization" as "rule"
+    Then it answers 200
     When token "h" sends "GET /api/v1/stacks/infra" through B
-    Then the answer's vendorConfig's useSmartSanitization is 'false'
+    Then the answer's vendorConfig's useSmartSanitization is 'true'
     And the answer's vendorConfig's skipReplan is 'false'
 
   @op:stackCreate @op:stackUpdate @op:stackPatch @case:denial

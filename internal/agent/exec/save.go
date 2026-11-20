@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 	"github.com/weaveplatform/infraweave/internal/iac/plan"
+	"github.com/weaveplatform/infraweave/internal/iac/sanitize"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
@@ -56,8 +57,8 @@ type upload struct {
 // the server opens them, and, for a tracked run whose plan changes
 // something, which may wait for the plan's confirmation and apply in
 // another container, the workspace sealed to the pool's key, which the
-// server cannot open. A Terragrunt run saves its workspace alone, since
-// the server reads no plan or changes of one. It answers the note of what
+// server cannot open. A Terragrunt run saves its units plan and workspace,
+// without a changes document. It answers the note of what
 // failed, empty when nothing did.
 //
 // ref: decision 0008 § "Logs and artifacts"
@@ -71,11 +72,11 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 		name  string
 		write func(io.Writer) error
 	}{
-		{PlanArtifact, func(w io.Writer) error { return copyFile(w, r.options.PlanJSON) }},
+		{PlanArtifact, r.writePlan},
 		{ChangesArtifact, func(w io.Writer) error { return plan.Write(w, p.Changes) }},
 	}
 	if r.terragrunt() {
-		artifacts = nil
+		artifacts = artifacts[:1]
 	}
 	ups := make([]upload, 0, 3)
 	for _, a := range artifacts {
@@ -274,6 +275,10 @@ func (r *run) send(ctx context.Context, version int64, ups []upload) error {
 	for i, u := range ups {
 		decl.Uploads[i] = wire.Upload{Kind: u.kind, Name: u.name, Size: u.size, Sha256: u.sum}
 		rec.Artifacts[i] = wire.ArtifactRecord{Kind: wire.ArtifactRecordKind(u.kind), Name: u.name}
+		if u.kind == wire.UploadKindArtifact && u.name == PlanArtifact && r.h.Spec.PlanSanitization != nil {
+			decl.Uploads[i].PlanSanitization = r.h.Spec.PlanSanitization
+			rec.Artifacts[i].PlanSanitization = r.h.Spec.PlanSanitization
+		}
 	}
 	deadline := time.Now().Add(reportRetry)
 	wait := reportWait
@@ -322,4 +327,22 @@ func (r *run) transfer(ctx context.Context, decl wire.UploadURLsRequest, rec wir
 	}
 	err := r.d.Uploads.Artifacts(ctx, r.h.RunToken, r.h.Run, rec)
 	return err //nolint:wrapcheck // client names the call
+}
+
+// writePlan transforms a copy for the server-readable artifact. The tool's
+// source JSON and binary workspace remain available to resume apply.
+func (r *run) writePlan(w io.Writer) error {
+	file, err := os.Open(r.options.PlanJSON)
+	if err != nil {
+		return fmt.Errorf("open plan JSON: %w", err)
+	}
+	defer file.Close()
+	mode := sanitize.Default
+	if r.h.Spec.PlanSanitization != nil {
+		mode = sanitize.Mode(*r.h.Spec.PlanSanitization)
+	}
+	if err := sanitize.Plan(w, file, mode); err != nil {
+		return fmt.Errorf("sanitize plan JSON: %w", err)
+	}
+	return nil
 }
