@@ -24,6 +24,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -141,12 +142,18 @@ type Owner struct {
 // opens its transactions on, the runs' storage, the objects, the
 // lifecycle, and the stacks the plan decision reads.
 type Deps struct {
-	DB        tx.Beginner
-	Store     Store
-	Objects   Objects
-	Lifecycle Mover
-	Stacks    Stacks
-	Spaces    accessapi.Spaces
+	Policies       policyapi.Evaluator
+	Inputs         policyapi.RunInputBuilder
+	PolicyStore    policyinput.Store
+	PolicyStacks   stacksapi.PolicySnapshots
+	PolicyMetadata policyinput.Metadata
+	Now            func() time.Time
+	DB             tx.Beginner
+	Store          Store
+	Objects        Objects
+	Lifecycle      Mover
+	Stacks         Stacks
+	Spaces         accessapi.Spaces
 }
 
 // Service is the runs domain's workersapi.Reports.
@@ -158,7 +165,12 @@ type Service struct{ d Deps }
 var _ workersapi.Reports = (*Service)(nil)
 
 // New returns the service over d.
-func New(d Deps) *Service { return &Service{d: d} }
+func New(d Deps) *Service {
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	return &Service{d: d}
+}
 
 // The largest object of each kind a worker may declare, as uploaded: a
 // log chunk the runner cuts at 1 MiB, an artifact as large as a plan's
@@ -355,8 +367,22 @@ func (s *Service) decide(ctx context.Context, run lifecycle.Run, r workersapi.Re
 	if err := s.d.Store.SetDelta(ctx, run, *r.Delta); err != nil {
 		return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
 	}
-	return s.move(ctx, run, Decision(run.Type, *r.Delta, st), machine.DriverDecision,
-		lifecycle.Actor{}, r.Details)
+	result, err := s.evaluatePlan(ctx, run)
+	if err != nil {
+		return workersapi.Step{}, err
+	}
+	to, note := Decision(run.Type, *r.Delta, st), r.Details
+	if result.Outcome == policyapi.Deny {
+		to, note = kernel.RunStateFailed, "denied by plan policy"
+	}
+	moved, err := s.d.Lifecycle.Transition(ctx, lifecycle.Request{
+		Account: run.Account, Run: run.ID, Version: run.Version, To: to, Driver: machine.DriverDecision,
+		Note: note, Receipts: result.Receipts,
+	})
+	if err != nil {
+		return workersapi.Step{}, err
+	}
+	return step(moved), nil
 }
 
 // Decision is the state the plan decision moves a run of type t out of

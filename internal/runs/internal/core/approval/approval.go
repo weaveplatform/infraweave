@@ -3,15 +3,12 @@ package approval
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
-	"github.com/weaveplatform/infraweave/internal/iac/plan"
 	"github.com/weaveplatform/infraweave/internal/kernel"
-	"github.com/weaveplatform/infraweave/internal/platform/objectstore"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
@@ -109,11 +106,12 @@ func (s *Service) input(ctx context.Context, run lifecycle.Run) (json.RawMessage
 	if err != nil {
 		return nil, fmt.Errorf("runs: invalid approval review history: %w", kernel.ErrUnavailable)
 	}
-	st, err := s.stackFacts(ctx, run, stack)
+	metadata := policyinput.Metadata{Store: s.d.Store, Objects: s.d.Objects, Pools: s.d.Pools, Roles: s.d.Roles, SpaceFacts: s.d.SpaceFacts, Contexts: s.d.Contexts}
+	st, err := metadata.Stack(ctx, run, stack)
 	if err != nil {
 		return nil, err
 	}
-	changeFacts, err := s.changeFacts(ctx, run, stack.Settings.Vendor)
+	changeFacts, err := metadata.Changes(ctx, run, stack.Settings.Vendor)
 	if err != nil {
 		return nil, err
 	}
@@ -121,89 +119,4 @@ func (s *Service) input(ctx context.Context, run lifecycle.Run) (json.RawMessage
 		Account: run.Account, Type: policyapi.Approval, At: s.d.Now().UTC(),
 		Run: policyinput.Facts(snapshot, snapshot.Environment, changeFacts), Stack: st, Reviews: known(reviews),
 	})
-}
-
-func (s *Service) stackFacts(ctx context.Context, run lifecycle.Run, snapshot stacksapi.PolicySnapshot) (policyapi.StackFacts, error) {
-	st := snapshot.Settings
-	roles, err := s.d.Roles.StackRoles(ctx, run.Account, run.Stack)
-	if err != nil {
-		return policyapi.StackFacts{}, fmt.Errorf("runs: read approval stack roles: %w", err)
-	}
-	roleFacts := make([]policyapi.RoleFacts, 0, len(roles))
-	for _, role := range roles {
-		roleFacts = append(roleFacts, policyapi.RoleFacts{ID: role.ID, Slug: role.Slug, Name: role.Name})
-	}
-	contexts, err := s.d.Contexts.PolicyContextSlugs(ctx, run.Account, run.Stack)
-	if err != nil {
-		return policyapi.StackFacts{}, fmt.Errorf("runs: read approval contexts: %w", err)
-	}
-	tool, err := workflowTool(st)
-	if err != nil {
-		return policyapi.StackFacts{}, err
-	}
-	out := policyapi.StackFacts{
-		ID: st.ID, Slug: st.Slug, Name: st.Name, Branch: st.Branch, Namespace: st.Namespace,
-		Repository: st.Repository, State: snapshot.State, Autodeploy: st.Autodeploy, Labels: known(snapshot.Labels),
-		AdditionalProjectGlobs: known(st.AdditionalProjectGlobs), TerraformVersion: policyapi.Fact[string]{Known: true, Value: st.TerraformVersion},
-		Roles: known(roleFacts), Contexts: known(contexts),
-		WorkflowTool: tool, LockedBy: policyapi.Fact[string]{Known: true}, TrackedCommit: policyapi.Fact[policyapi.CommitFacts]{Known: true},
-	}
-	if st.ProjectRoot != nil {
-		out.ProjectRoot = *st.ProjectRoot
-	}
-	if st.Lock != nil {
-		out.LockedBy = known(st.Lock.By)
-	}
-	if st.TrackedCommit != nil {
-		c := st.TrackedCommit
-		out.TrackedCommit = known(
-			policyapi.CommitFacts{Author: commitAuthor(*c), Branch: st.Branch, Message: c.Message, At: c.Timestamp, Hash: known(c.Hash), Tag: known(c.Tag), URL: known(c.URL)},
-		)
-	}
-	space, err := s.d.SpaceFacts.PolicySpace(ctx, run.Account, st.Space)
-	if err != nil {
-		return out, err //nolint:wrapcheck // the owner names the failing operation
-	}
-	out.Space = known(policyapi.SpaceFacts{ID: space.Slug, Name: space.Name, Labels: known(space.Labels)})
-	if run.WorkerPool != nil {
-		pool, err := s.d.Pools.PoolMetadata(ctx, run.Account, *run.WorkerPool)
-		if err != nil && !errors.Is(err, workersapi.ErrNoPool) {
-			return out, err //nolint:wrapcheck // the owner names the failing operation
-		}
-		if err == nil {
-			out.WorkerPool = known(policyapi.WorkerPoolFacts{ID: known(pool.ID.String()), Name: known(pool.Name), Labels: known(pool.Labels), Public: pool.Public})
-		}
-	}
-	return out, nil
-}
-
-func commitAuthor(c stacksapi.Commit) string {
-	if c.AuthorLogin != nil && *c.AuthorLogin != "" {
-		return *c.AuthorLogin
-	}
-	return c.AuthorName
-}
-
-func (s *Service) changeFacts(ctx context.Context, run lifecycle.Run, vendor string) (policyapi.Fact[[]policyapi.ChangeFacts], error) {
-	key, found, err := s.d.Store.Changes(ctx, run)
-	if err != nil || !found {
-		return policyapi.Fact[[]policyapi.ChangeFacts]{}, err //nolint:wrapcheck // the owner names the failing operation
-	}
-	document, err := s.d.Objects.Open(ctx, objectstore.RunArtifacts, key)
-	if errors.Is(err, objectstore.ErrNotFound) {
-		return policyapi.Fact[[]policyapi.ChangeFacts]{}, policyapi.ErrInput
-	}
-	if err != nil {
-		return policyapi.Fact[[]policyapi.ChangeFacts]{}, err //nolint:wrapcheck // the owner names the failing operation
-	}
-	defer document.Close()
-	structural, err := plan.Read(document)
-	if err != nil {
-		return policyapi.Fact[[]policyapi.ChangeFacts]{}, policyapi.ErrInput
-	}
-	facts, err := policyinput.StructuralChanges(vendor, structural)
-	if err != nil {
-		return policyapi.Fact[[]policyapi.ChangeFacts]{}, err //nolint:wrapcheck // the owner names the failing operation
-	}
-	return known(facts), nil
 }
