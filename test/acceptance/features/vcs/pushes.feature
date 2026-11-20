@@ -83,7 +83,7 @@ Feature: Default VCS push runs
     And stack "infra" has exactly 0 event runs for commit "seed"
     And no GitLab webhook token reaches retained rows or server logs
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | vendor |
       | terraform |
@@ -127,7 +127,7 @@ Feature: Default VCS push runs
     And token "h" eventually reads the run "equalTreeRun" in the state "FINISHED" through B
     And the event run "equalTreeRun" has a real tool plan through A
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | vendor |
       | terraform |
@@ -137,7 +137,7 @@ Feature: Default VCS push runs
       | vendor |
       | opentofu |
 
-  @terraform
+  @terraform @terraform-vcs
   Scenario: A newer push stops an older real planning proposal on the same branch
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","workerPool":"{pool}","projectRoot":"root","vendorConfig":{"terraform":{}},"beforePlan":["echo old-planning; sleep 300"]},"manageState":true}' through B
     And it answers 201
@@ -163,7 +163,7 @@ Feature: Default VCS push runs
     And token "h" eventually reads the run "newRun" in the state "FINISHED" through B
     And the event run "newRun" has a real tool plan through A
 
-  @terraform
+  @terraform @terraform-vcs
   Scenario: Parallel stack children share one delivery cap and retain the admitted run
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Alpha","namespace":"acme/platform","repository":"infra","branch":"main","provider":"GITLAB","space":"acme","workerPool":"{pool}","projectRoot":"root","vendorConfig":{"terraform":{}}},"manageState":true}' through A
     And it answers 201

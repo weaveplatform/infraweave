@@ -533,7 +533,7 @@ coverage it would contribute is not waived.
     that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
-- A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform`, `accept-runs`,
+- A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform-vcs`, `accept-terraform`, `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
   `@postgres` `@terraform` scenario runs once, in `accept-terraform`.
   The planned `accept-vendors` precedes them when its vendors are
@@ -543,11 +543,14 @@ coverage it would contribute is not waived.
   expanded scenario to prove exactly one owning job, no missing cases,
   and conjunction with focus tags. Comma alternatives distribute their
   exclusions and focus conditions into every arm.
-  `TestUnitTerraformSplitCoverage` proves the disjoint union of the two
+  `TestUnitTerraformSplitCoverage` proves the disjoint union of the three
   Terraform jobs equals the complete original `@terraform` selection, using
   actual expanded scenarios rather than a fixed count. The plan-artifact
   workload's tag belongs only on existing Terraform-owned sanitization cases;
   protocol-only fence scenarios keep their integration partition.
+  `@terraform-vcs` selects existing Terraform-owned native provider workflow
+  cases; it retains their actual dependency tags and does not move OpenTofu-only
+  cases out of their existing run partition.
   `TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload` checks the harness
   registry against required/nightly/stress matrices and the aggregate artifact
   gates, so adding a selector without a required job cannot silently lose work.
@@ -555,14 +558,19 @@ coverage it would contribute is not waived.
   it produces coverage, of `coverage`.
 - When a partition approaches its timeout, it splits by tag into two
   required jobs; scenarios are never dropped to fit.
-  The Terraform plan-artifact workload, other Terraform cases and remaining
+  The Terraform plan-artifact workload, native VCS workflows, other Terraform cases and remaining
   worker run cases each retain a ten-minute Go test deadline and thirty-minute
   Actions job budget. The Go deadline includes test cleanup: each partition
   needs margin for container teardown and coverage/report flushing after its
   scenario assertions finish. Their profiles and Cucumber results all join the
-  same gates. Nightly acceptance and weekly/requested stress include all three
+  same gates. Nightly acceptance and weekly/requested stress include all four
   workloads; FIPS continues to run the complete suite under its existing
   thirty-minute Go test deadline and forty-five-minute Actions job budget.
+  Required acceptance also writes an incremental `out/progress.jsonl` when
+  `INFRAWEAVE_ACCEPT_PROGRESS=1`. Scenario and step identities, elapsed times,
+  run IDs and states survive a process timeout independently of the final
+  Cucumber report. Request bodies, step text, policy source and raw errors are
+  excluded; a suite-end record follows normal test and dependency cleanup.
 
 
 ### Policy phase evidence

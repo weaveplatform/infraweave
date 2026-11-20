@@ -39,13 +39,19 @@ func (p *Provider) RecoverPush(ctx context.Context, repo port.Repository, base, 
 		if base == "" {
 			return port.PushRange{}, fmt.Errorf("%w: github: missing push default branch", port.ErrNotFound)
 		}
+		// Resolve the mutable name once before paging an immutable range.
+		comparison, _, err := c.Repositories.CompareCommits(ctx, repo.Namespace, repo.Name, base, head, &github.ListOptions{PerPage: 1})
+		if err != nil {
+			return port.PushRange{}, classify(err, "push default merge base")
+		}
+		base = comparison.GetMergeBaseCommit().GetSHA()
+		if !port.ValidCommit(base) {
+			return port.PushRange{}, fmt.Errorf("%w: github: missing push default merge base", kernel.ErrUnavailable)
+		}
 	}
-	commits, ancestor, err := pushCommits(ctx, c, repo, base, head)
+	commits, _, err := pushCommits(ctx, c, repo, base, head)
 	if err != nil {
 		return port.PushRange{}, err
-	}
-	if newBranch {
-		base = ancestor
 	}
 	trees := make(map[string]map[string]treeFile)
 	items := make([]vcsapi.PushCommit, 0, len(commits))

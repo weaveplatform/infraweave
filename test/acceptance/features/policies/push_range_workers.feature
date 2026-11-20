@@ -33,7 +33,7 @@ Feature: Reverted pushed paths still run actual workers through default selectio
     Then event delivery "redelivery" settles with 0 new runs
     And stack "infra" has exactly 1 event runs for commit "collected"
 
-    @terraform
+    @terraform @terraform-vcs
     Examples:
       | provider | vendor    |
       | GitHub   | terraform |

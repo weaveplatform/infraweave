@@ -31,6 +31,11 @@ For a new branch, recovery freezes the merge base with the repository's default
 branch and returns that immutable anchor to source preparation. The later
 endpoint comparison uses the anchor, rather than rereading a mutable default
 branch. Deleted branches and tag events retain their existing separate paths.
+GitHub resolves that anchor before requesting any commit pages. A deterministic
+real-Git regression moves the default branch between equal-length sibling
+histories after the first comparison response. Exact commit identities and
+per-commit paths must remain those of the frozen range even when both histories
+have the same total count.
 
 ## Native APIs and limits
 
@@ -145,3 +150,32 @@ Documentation, signature, reference and generated-code checks also pass. The
 remaining affected regressions, race/shuffle, lint, merged coverage and required
 CI/FIPS/parity checks are final merge gates, not inferred from this focused
 matrix. The CI run on the final PR head remains authoritative.
+
+## Partition capacity and retained timeout evidence
+
+The 174-case Terraform partition reached its unchanged ten-minute deadline in
+Linux CI on both `3891f00c` ([job](https://github.com/weaveplatform/infraweave/actions/runs/44753636655/job/136347990609))
+and `68061cdd` ([job](https://github.com/weaveplatform/infraweave/actions/runs/44762544555/job/136378553382)).
+The latter head's FIPS job passed. Timing-only local reproduction of the failed
+seed `1795188218632548489` reached 600.967 seconds with 162 scenarios completed
+and no assertion failure. The preceding head also exceeded the deadline; an
+unrelated compiler overlapped that local comparison, so its wall-time difference
+does not establish a code performance regression.
+
+The workload now has separate required `terraform` and `terraform-vcs` jobs,
+with 117 and 57 expanded scenarios respectively. The 39-case `terraform-plans`
+job is retained. Actual-parser tests prove that their disjoint union preserves
+all 213 original Terraform scenarios. Native VCS rows retain their dependency
+tags; OpenTofu-only rows retain their existing run partition. Required, nightly,
+stress, coverage and parity collection include every job, and FIPS still runs
+the complete acceptance workload. Each partition retains its ten-minute Go test
+deadline and thirty-minute Actions budget.
+
+`INFRAWEAVE_ACCEPT_PROGRESS=1` writes incremental scenario/step timing and
+validated run-state metadata to `out/progress.jsonl`. Direct writes survive a
+process timeout independently of Godog's final report. Step text, request bodies,
+credentials, policy source and raw errors are excluded. A diagnostic I/O failure
+cannot skip a product step or replace its error; it is reported separately after
+normal suite cleanup. Actual Godog tests cover original passing and failing
+outcomes under early and late writer failures, private sentinels, invalid IDs,
+file lifecycle and finalization.

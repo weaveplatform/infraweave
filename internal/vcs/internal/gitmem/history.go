@@ -93,6 +93,28 @@ func (r *Repo) FullTree(ctx context.Context, ref string) ([]TreeEntry, error) {
 	return out, nil
 }
 
+// Merge creates a merge commit with treeRef's exact tree and explicit parents.
+// It models a native Git graph without asking a provider fake to invent ancestry.
+func (r *Repo) Merge(branch, treeRef, message string, parents ...string) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	tree, err := r.resolve(treeRef)
+	must(err)
+	signature := r.signature()
+	commit := &object.Commit{Author: *signature, Committer: *signature, Message: message, TreeHash: tree.TreeHash}
+	for _, ref := range parents {
+		parent, err := r.resolve(ref)
+		must(err)
+		commit.ParentHashes = append(commit.ParentHashes, parent.Hash)
+	}
+	encoded := r.git.Storer.NewEncodedObject()
+	must(commit.Encode(encoded))
+	hash, err := r.git.Storer.SetEncodedObject(encoded)
+	must(err)
+	must(r.git.Storer.SetReference(plumbing.NewHashReference(plumbing.NewBranchReferenceName(branch), hash)))
+	return hash.String()
+}
+
 // Orphan creates an independent root with treeRef's exact tree, for native
 // forced-push fixtures that cannot rely on a common ancestor.
 func (r *Repo) Orphan(branch, treeRef, message string) string {
