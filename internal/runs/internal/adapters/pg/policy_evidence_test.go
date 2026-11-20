@@ -73,7 +73,9 @@ func TestAccTransitionCommitsItsPolicyEvidence(t *testing.T) {
 		t.Fatalf("event omitted committed evidence: %+v", updates)
 	}
 	var decision string
-	if err := w.db.QueryRow(t.Context(), `SELECT decision::text FROM run_policy_receipts WHERE account_id=$1 AND run_id=$2 AND id=$3`, w.acct, run.ID, receipt.ID).Scan(&decision); err != nil || !strings.Contains(decision, "9007199254740993") {
+	if err := w.db.QueryRow(t.Context(), `SELECT decision::text FROM run_policy_receipts WHERE account_id=$1 AND run_id=$2 AND id=$3`, w.acct, run.ID, receipt.ID).
+		Scan(&decision); err != nil ||
+		!strings.Contains(decision, "9007199254740993") {
 		t.Fatalf("stored decision lost number precision: %s %v", decision, err)
 	}
 	public, err := json.Marshal(updates[1].Doc)

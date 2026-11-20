@@ -274,6 +274,21 @@ Who calls the engine, when, and what the result does to the run of decision
   newly created Spacelift policy with a slug-shaped public ID resetting its flag;
   public ID syntax does not determine eligibility. The legacy-policy comparison
   remains unobserved and is not proved by this new-policy observation.
+  Runs materializes the committed owner union for every later evaluation of that
+  run. For `PLAN` inputs, infraweave defines `previous_run` as the immediately
+  preceding run of the same account and stack ordered by `(created_at, id)`,
+  strictly before the current run. This deterministic selector is an infraweave
+  definition; the captures establish flag visibility, not this ordering rule.
+  Its flags are a read snapshot. A new run, including a trigger-created run,
+  starts with no flag ownership rows. Equal-time IDs break ties; retries of an
+  older run cannot pick a later run.
+  Receipt reads preserve the evaluated policy's name and version after rename
+  or deletion. They expose safe failure metadata and whether the live policy
+  still exists, without raw decisions, inputs, source or print output. A sample
+  request alone is not `sampled`: that becomes true only after a sealed sample
+  owner supplies the durable sample link. Storage/evaluator proof belongs to
+  POL-11; public review and policy-aware worker-report integration remain a
+  mandatory POL-16 gate after POL-12 and POL-13 implement those paths.
 - **Sampling.** When `sample` is true (login by default), the engine stores a record of
   input, body, engine type, result, outcome, error and print output.
   - Hourly sample budgets per account: 200 for `NOTIFICATION`, 200 for `GIT_PUSH`, 500 for all

@@ -1,6 +1,3 @@
-// Package evidence defines the runs-owned persistence of policy evidence. The
-// policy domain supplies independent decisions; the run's transaction records
-// them and applies each policy's own flag resets before its additions.
 package evidence
 
 import (

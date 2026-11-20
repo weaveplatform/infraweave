@@ -107,7 +107,7 @@ CREATE INDEX runs_stack ON runs (account_id, stack_id, type, id DESC);
 -- before type also serves event deduplication's full equality check under the
 -- stack creation lock; an ended run suppresses another event of its type/commit.
 CREATE INDEX runs_commit ON runs (account_id, stack_id, (commit->>'hash'), type);
-CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at);
+CREATE INDEX runs_stack_created ON runs (account_id, stack_id, created_at, id);
 CREATE INDEX runs_state ON runs (account_id, state);
 
 -- A run token names its run by ID alone, with no account, so an ID names
