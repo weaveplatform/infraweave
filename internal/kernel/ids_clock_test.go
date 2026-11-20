@@ -74,3 +74,12 @@ func TestUnitULIDSerializesDelayedClockCapture(t *testing.T) {
 		t.Fatalf("same-millisecond ID regressed after a delayed older clock capture: first=%s later=%s", firstLater, secondLater)
 	}
 }
+
+func TestUnitULIDPreservesActualBackwardsClockTimestamp(t *testing.T) {
+	newer, older := time.UnixMilli(1795185500001), time.UnixMilli(1795185500000)
+	first := newULID(func() time.Time { return newer })
+	second := newULID(func() time.Time { return older })
+	if !first.Time().Equal(newer) || !second.Time().Equal(older) || bytes.Compare(second[:], first[:]) >= 0 {
+		t.Fatal("actual backwards clock changed timestamp semantics", first, second)
+	}
+}

@@ -31,22 +31,26 @@ var (
 	ulidEntropy = ulid.Monotonic(rand.Reader, 0)
 )
 
-// NewULID returns a ULID for the current millisecond, greater than every
-// ULID this process generated before it in the same millisecond.
+// NewULID returns a ULID for the current millisecond. Clock readings and
+// entropy advancement are serialized, so IDs generated within that millisecond
+// sort in generation order. A system clock moving backwards retains its
+// observed timestamp; order does not extend across that change or processes.
 func NewULID() ULID {
 	return newULID(time.Now)
 }
 
 func newULID(now func() time.Time) ULID {
-	return newULIDAt(now())
+	ulidMu.Lock()
+	defer ulidMu.Unlock()
+	// An older pending caller must not reset entropy after a later clock
+	// reading. Sample time under the same lock as monotonic advancement.
+	// MustNew panics only when the monotonic entropy overflows, after about
+	// 2^48 IDs in one millisecond.
+	return ULID(ulid.MustNew(ulid.Timestamp(now()), ulidEntropy))
 }
 
 func newULIDAt(t time.Time) ULID {
-	ulidMu.Lock()
-	defer ulidMu.Unlock()
-	// MustNew panics only when the monotonic entropy overflows, after about
-	// 2^48 IDs in one millisecond.
-	return ULID(ulid.MustNew(ulid.Timestamp(t), ulidEntropy))
+	return newULID(func() time.Time { return t })
 }
 
 // ParseULID reads the 26-character wire form, in either case.
