@@ -22,7 +22,7 @@ Feature: Public reviews preserve independent flag owners and reset ordering
     And the answer's id names "Alpha"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{Alpha}" through B
     And it answers 200
-    And token "h" sends "POST /api/v1/policies" with '{"name":"Beta","type":"APPROVAL","space":"legacy","engineType":"REGO_V0","body":"package infraweave\nimport future.keywords.in\nn := count(input.reviews.current.approvals)\napprove { n >= 2 }\nflag[\"shared\"] { n < 2 }\nflag[\"b-old\"] { n < 2 }\nflag[\"b-last\"] { n >= 2 }\nreset_flag[\"shared\"] { n >= 2 }\nreset_flag[\"b-old\"] { n >= 2 }\n"}' through A
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Beta","type":"APPROVAL","space":"legacy","engineType":"REGO_V0","body":"package infraweave\nimport future.keywords.in\nn := count(input.reviews.current.approvals)\napprove { n >= 2 }\nflag[\"shared\"] { n in {0, 1} }\nflag[\"b-old\"] { n in {0, 1} }\nflag[\"b-last\"] { n >= 2 }\nreset_flag[\"shared\"] { n >= 2 }\nreset_flag[\"b-old\"] { n >= 2 }\n"}' through A
     And it answers 201
     And the answer's id names "Beta"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{Beta}" through B
@@ -34,16 +34,19 @@ Feature: Public reviews preserve independent flag owners and reset ordering
     Then it answers 200
     And the answer's id names "run"
     And token "h" eventually reads run "run" flags '["a-old","b-old","shared"]' through B
+    And the committed workflow update of run "run" matches the public policy snapshot
     And the answer's state is '"QUEUED"'
     And the answer's needsApproval is 'true'
     When token "h" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE","note":"First flag snapshot"}' through A
     Then it answers 200
     And token "h" eventually reads run "run" flags '["a-new","b-old","saw-initial","shared"]' through B
+    And the committed workflow update of run "run" matches the public policy snapshot
     And the answer's state is '"QUEUED"'
     And the answer's needsApproval is 'true'
     When token "m" sends "POST /api/v1/stacks/infra/runs/review" with '{"run":"{run}","decision":"APPROVE","note":"Second flag snapshot"}' through B
     Then it answers 200
     And token "h" eventually reads the run "run" in the state "READY" through A
     And token "h" eventually reads run "run" flags '["a-last","b-last","saw-later","shared"]' through B
+    And the committed workflow update of run "run" matches the public policy snapshot
     And the answer's needsApproval is 'false'
     And the answer's review decisions are "APPROVE, APPROVE"
