@@ -55,7 +55,7 @@ func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc }
 func New(d Deps) *Domain {
 	store := pg.New(d.DB)
 	svc := core.New(core.Deps{Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Runtime: d.Runtime, Events: d.Events, Now: d.Now})
-	return &Domain{server: http.New(svc, d.Authz, d.Spaces), svc: svc, store: store}
+	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store}
 }
 
 // PurgeBatch bounds each account-deletion transaction.
@@ -66,8 +66,8 @@ func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
 	for {
 		done, err := d.store.Purge(ctx, acct, PurgeBatch)
 		if err != nil || done {
-			return err
-		} //nolint:wrapcheck // the store names the purge
+			return err //nolint:wrapcheck // the store names the purge
+		}
 	}
 }
 

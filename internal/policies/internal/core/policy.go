@@ -100,12 +100,15 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 		in.Engine = rego.V1
 	}
 	if err := s.deps.Runtime.Check(ctx, rego.Policy{Type: in.Type, Engine: in.Engine, Body: in.Body}); err != nil {
-		return Policy{}, s.compileError(err)
+		return Policy{}, s.compileError(err, in.Body)
 	}
 	var out Policy
 	err := tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
 		space, err := s.writeSpace(ctx, p, in.Space)
 		if err != nil {
+			return err
+		}
+		if err := checkPlacement(in.Type, space, p.AccountID); err != nil {
 			return err
 		}
 		now := s.deps.Now()
@@ -125,7 +128,7 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 			Version:     1,
 		}
 		if err := s.deps.Store.Create(ctx, out); err != nil {
-			return err
+			return err //nolint:wrapcheck // the transaction adds the create operation
 		}
 		return s.changed(ctx, out, policyapi.ChangeCreated)
 	})
@@ -221,14 +224,18 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		if err := s.require(ctx, p, out.Space); err != nil {
 			return err
 		}
-		if in.Engine == "" {
-			in.Engine = out.Engine
+		engine := in.Engine
+		if engine == "" {
+			engine = out.Engine
 		}
-		if err := s.deps.Runtime.Check(ctx, rego.Policy{Type: out.Type, Engine: in.Engine, Body: in.Body}); err != nil {
-			return s.compileError(err)
+		if err := s.deps.Runtime.Check(ctx, rego.Policy{Type: out.Type, Engine: engine, Body: in.Body}); err != nil {
+			return s.compileError(err, in.Body)
 		}
 		space, err := s.writeSpace(ctx, p, in.Space)
 		if err != nil {
+			return err
+		}
+		if err := checkPlacement(out.Type, space, p.AccountID); err != nil {
 			return err
 		}
 		out.Space = space
@@ -236,11 +243,11 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		out.Body = in.Body
 		out.Description = in.Description
 		out.Labels = labels(in.Labels)
-		out.Engine = in.Engine
+		out.Engine = engine
 		out.UpdatedAt = s.deps.Now()
 		out.Version++
 		if err := s.deps.Store.Update(ctx, out); err != nil {
-			return err
+			return err //nolint:wrapcheck // the transaction adds the update operation
 		}
 		return s.changed(ctx, out, policyapi.ChangeUpdated)
 	})
@@ -250,15 +257,23 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 	return out, nil
 }
 
-func (s *Service) compileError(err error) error {
+func checkPlacement(kind rego.Type, space kernel.ULID, acct kernel.AccountID) error {
+	if kind == rego.Login && space != acct.ULID {
+		return &kernel.Invalid{
+			Detail: "Login policies belong to the root space.",
+			Errors: []kernel.FieldError{{Pointer: "/space", Reason: kernel.ReasonRule, Message: "A login policy must stay in the account's root space."}},
+		}
+	}
+	return nil
+}
+
+func (s *Service) compileError(err error, body string) error {
 	var compile *rego.CompileError
 	if errors.As(err, &compile) {
 		fields := make([]kernel.FieldError, 0, len(compile.Diagnostics))
 		for _, d := range compile.Diagnostics {
 			field := kernel.FieldError{Pointer: "/body", Reason: kernel.ReasonRule, Message: d.Message}
-			if d.Row > 0 && d.Column > 0 {
-				field.Range = &kernel.Range{Start: kernel.Position{Line: d.Row, Column: d.Column}, End: kernel.Position{Line: d.Row, Column: d.Column + max(d.Length, 1)}}
-			}
+			field.Range = sourceRange(body, d)
 			fields = append(fields, field)
 		}
 		return &kernel.Invalid{Detail: "The policy does not compile.", Errors: fields}
@@ -299,7 +314,7 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 			return &kernel.Invalid{Detail: "The policy still has attachments; detach them first, or delete with force."}
 		}
 		if err := s.deps.Store.Delete(ctx, p.AccountID, parsed); err != nil {
-			return err
+			return err //nolint:wrapcheck // the transaction adds the delete operation
 		}
 		deleted := out
 		deleted.Version++
@@ -316,7 +331,18 @@ func (s *Service) changed(ctx context.Context, p Policy, change string) error {
 	if err != nil {
 		return fmt.Errorf("policies: encode change: %w", err)
 	}
-	_, err = s.deps.Events.Append(ctx, outbox.Event{Account: p.Account.ULID, Kind: policyapi.ChangedKind, SchemaVersion: policyapi.ChangedVersion, Space: p.Space.String(), Subject: outbox.Subject{Kind: "policy", ID: p.ID.String()}, Sequence: p.Version, Document: doc})
+	_, err = s.deps.Events.Append(
+		ctx,
+		outbox.Event{
+			Account:       p.Account.ULID,
+			Kind:          policyapi.ChangedKind,
+			SchemaVersion: policyapi.ChangedVersion,
+			Space:         p.Space.String(),
+			Subject:       outbox.Subject{Kind: "policy", ID: p.ID.String()},
+			Sequence:      p.Version,
+			Document:      doc,
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("policies: append change: %w", err)
 	}

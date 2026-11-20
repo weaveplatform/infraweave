@@ -4,6 +4,24 @@ Feature: Persisted policy management
   with the selected per-policy dialect before committing. Management does not
   imply delivery of the policy type's workflow integration.
 
+  @op:policyCreatev2 @op:policyUpdatev2 @case:failure
+  Scenario: Login policies are account-wide and cannot move into child spaces
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    When token "h" sends "POST /api/v1/policies" with '{"name":"Misplaced login","type":"LOGIN","space":"legacy","body":"package infraweave\n"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/space" as "rule"
+    When token "h" sends "POST /api/v1/policies" with '{"name":"Account login","type":"LOGIN","body":"package infraweave\n"}' through B
+    Then it answers 201
+    And the answer's id names "login"
+    When token "h" sends "PUT /api/v1/policies/{login}" with '{"name":"Moved login","space":"legacy","body":"package infraweave\n"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem refuses the field "/space" as "rule"
+    When token "h" sends "GET /api/v1/policies/{login}" through B
+    Then it answers 200
+    And the answer's name is '"Account login"'
+    And the answer's space is '"acme"'
+
   @op:policyUpdatev2Patch @case:success @case:failure
   Scenario: Merge patch keeps source and dialect while resetting nullable settings
     Given two infraweave servers, A and B, on one database
@@ -59,7 +77,7 @@ Feature: Persisted policy management
     When token "h" sends "GET /api/v1/policies/{policy}" through A
     Then it answers a 404 problem "not-found"
 
-  @op:policyCreatev2 @op:policy @op:policyUpdatev2 @case:denial
+  @op:policyCreatev2 @op:policy @op:policyUpdatev2 @op:policyUpdatev2Patch @op:policyDelete @case:denial
   Scenario: A space reader reads its policy but cannot save policy settings
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
@@ -81,6 +99,10 @@ Feature: Persisted policy management
     When token "m" sends "POST /api/v1/policies" with '{"name":"Forbidden","type":"PLAN","space":"legacy","body":"package infraweave\n"}' through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"SPACE_ADMIN"'
+    When token "m" sends "PATCH /api/v1/policies/{readable}" with '{"name":"Forbidden"}' through B
+    Then it answers a 403 problem "forbidden"
+    When token "m" sends "DELETE /api/v1/policies/{readable}?force=true" through A
+    Then it answers a 403 problem "forbidden"
     When token "m" sends "PUT /api/v1/policies/{readable}" with '{"name":"Forbidden","space":"legacy","body":"package infraweave\n"}' through A
     Then it answers a 403 problem "forbidden"
     When token "h" sends "GET /api/v1/policies/{readable}" through B
@@ -99,7 +121,7 @@ Feature: Persisted policy management
     When token "h" sends "PUT /api/v1/policies/01JAAAAAAAAAAAAAAAAAAAAAAA" with '{"name":"Disabled","body":"package infraweave\n"}' through A
     Then it answers a 404 problem "not-found"
 
-  @op:policyCreatev2 @op:policy @op:policyUpdatev2 @case:denial
+  @op:policies @op:policyCreatev2 @op:policy @op:policyUpdatev2 @op:policyUpdatev2Patch @op:policyDelete @op:searchPolicies @op:searchPoliciesSuggestions @op:searchSpacePolicies @op:searchSpacePoliciesSuggestions @case:denial
   Scenario: Revoking the policy entitlement refuses known policies on both replicas
     Given two infraweave servers, A and B, on one database, with an operator key
     And the operator key is exchanged through A for token "op"
@@ -115,6 +137,20 @@ Feature: Persisted policy management
     When token "h" sends "PUT /api/v1/policies/{policy}" with '{"name":"Must not change","body":"package infraweave\n"}' through A
     Then it answers a 403 problem "feature-not-in-tier"
     When token "h" sends "POST /api/v1/policies" with '{"name":"Must not persist","type":"PLAN","body":"package infraweave\n"}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"name":"Must not change"}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "DELETE /api/v1/policies/{policy}?force=true" through A
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "GET /api/v1/policies" through A
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "POST /api/v1/policies/search" with '{}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "POST /api/v1/policies/search/suggestions" with '{}' through A
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "POST /api/v1/space-policies/search" with '{"space":"acme","input":{}}' through B
+    Then it answers a 403 problem "feature-not-in-tier"
+    When token "h" sends "POST /api/v1/space-policies/search/suggestions" with '{"space":"acme","input":{}}' through A
     Then it answers a 403 problem "feature-not-in-tier"
 
   @op:policyCreatev2 @op:policyUpdatev2 @op:spaceDelete @case:failure @case:success
@@ -160,7 +196,7 @@ Feature: Persisted policy management
     And the answer's engineType is '"REGO_V1"'
 
   @op:policyUpdatev2 @case:success
-  Scenario: Omitting the update engine preserves an explicitly created V0 policy
+  Scenario: An omitted engine preserves V0 while an explicit switch recompiles under V1
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And token "h" sends "POST /api/v1/policies" with '{"name":"Legacy guard","type":"PLAN","space":"acme","engineType":"REGO_V0","body":"package infraweave\nwarn[\"legacy\"] { true }\n"}' through A
@@ -173,6 +209,13 @@ Feature: Persisted policy management
     Then it answers 200
     And the answer's name is '"Renamed guard"'
     And the answer's engineType is '"REGO_V0"'
+    When token "h" sends "PUT /api/v1/policies/{policy}" with '{"name":"Upgraded guard","engineType":"REGO_V1","body":"package infraweave\nwarn contains \"upgraded\" if { true }\n"}' through B
+    Then it answers 200
+    And the answer's engineType is '"REGO_V1"'
+    When token "h" sends "GET /api/v1/policies/{policy}" through A
+    Then it answers 200
+    And the answer's name is '"Upgraded guard"'
+    And the answer's engineType is '"REGO_V1"'
 
   @op:policyCreatev2 @op:policy @case:success
   Scenario: A compiled policy persists across replicas with the intentional V1 default

@@ -12,7 +12,7 @@ import (
 )
 
 func TestUnitContractPublisher(t *testing.T) {
-	server := New(nil, nil, nil)
+	server := New(nil, nil)
 	for range 2 {
 		r := chi.NewRouter()
 		server.Routes(r)

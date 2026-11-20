@@ -23,14 +23,13 @@ type Server struct {
 	contract func() ([]byte, error)
 	version  func() (string, error)
 	svc      *core.Service
-	authz    accessapi.Authorizer
 	spaces   accessapi.Spaces
 }
 
-// New reflects the contract at most once per domain, reusing the immutable
-// schema bytes without caching an authenticated HTTP response.
-func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
-	return Server{contract: sync.OnceValues(func() ([]byte, error) { return encodeContract(inputs.Contract) }), svc: svc, authz: authz, spaces: spaces}
+// New serves policy management and reflects the contract at most once per
+// domain without caching an authenticated HTTP response.
+func New(svc *core.Service, spaces accessapi.Spaces) Server {
+	return Server{contract: sync.OnceValues(func() ([]byte, error) { return encodeContract(inputs.Contract) }), svc: svc, spaces: spaces}
 }
 
 func encodeContract(build func() (inputs.ContractDocument, error)) ([]byte, error) {

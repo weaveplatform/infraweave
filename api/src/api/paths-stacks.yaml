@@ -1961,7 +1961,7 @@ components:
           description: Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
           type: boolean
         id:
-          description: Unique (within a single organization), immutable name of the policy.
+          description: Immutable ULID of the policy within its owning account.
           type: string
         kind:
           description: The concrete type, for union and interface responses.

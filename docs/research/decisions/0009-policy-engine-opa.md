@@ -417,6 +417,18 @@ by app after construction. Access never imports policiesapi. The policies check
 surface is supplied through `policies.Surfaces()` and served by expressions;
 its authorization and compiler are the same ones used by policy management.
 
+POL-05's management boundary stores policies under account-qualified ULIDs and
+the policies feature gate. Omitted create engines use the intentional V1
+default; an omitted update engine preserves the version locked by that write,
+including after a transaction retry. Failed compilation commits no policy or
+change event. The REST merge patch uses the same compiler and conditional-write
+path as replacement. Compile diagnostics locate the submitted `body` with
+one-based Unicode columns and an exclusive end across multiline byte spans;
+locations in an internal preamble do not become user-source ranges. LOGIN
+policies stay in the account's root space. These management operations and
+their persisted searches do not deliver attachment selection, evaluation,
+sampling, notification routing or Intent integration owned by later tickets.
+
 P13 emits `policy_evaluated` and `internal_error` through the transactional
 outbox and enqueues existing VCS checks. P18 adds notification policy routing,
 inbox delivery and other sinks; an emitted event is not proof of those sinks.

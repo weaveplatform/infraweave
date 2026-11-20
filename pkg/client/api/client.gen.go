@@ -6097,7 +6097,7 @@ type Policy struct {
 	// HasAttachedStacks Indicates whether any stacks are attached to this policy, either directly or via auto-attachment.
 	HasAttachedStacks bool `json:"hasAttachedStacks"`
 
-	// Id Unique (within a single organization), immutable name of the policy.
+	// Id Immutable ULID of the policy within its owning account.
 	Id string `json:"id"`
 
 	// Kind The concrete type, for union and interface responses.

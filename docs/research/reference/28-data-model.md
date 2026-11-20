@@ -532,11 +532,22 @@ installation is a plan decision.
 
 | Table | Key | Main columns | Foreign keys | Indexes | Driven by |
 |---|---|---|---|---|---|
-| `policies` | `(account, ulid)` | slug, name, space, type, engine type, body, labels, description | `space` | unique `(account, slug)`; `(space, type)`; labels for auto-attach | Report 09 sections 1 and 9 |
+| `policies` | `(account, ulid)` | name, space, type, engine type, body, labels, description, template origin, created/updated timestamps, version | space held through access's API; no cross-domain foreign key | `(account, space)`; GIN labels | Report 09 sections 1 and 9; POL-05 |
+| `policy_stack_attachments` | `(account, policy, stack)` | creation timestamp | same-domain `(account, policy)` with cascading deletion; stack held through its API when attachment management is delivered | primary key | POL-05's force-delete boundary; attachment IDs, explicit/automatic mutation and projections are POL-06 |
 | `policy_attachments` | `(account, id)` | policy, target kind (stack, module, Intent project), target, `is_autoattached` | `policy`, target | unique `(policy, target kind, target)`; `(target kind, target)` | Report 09 section 7 |
 | `policy_evaluations` | `(policy, key)` | outcome, timestamp, sampled input reference | `policy` | `(policy, timestamp)` | Report 09 section 6 |
 | `contexts` | `(account, ulid)` | slug, name, space, description, labels, hooks | `space` | unique `(account, slug)`; `(space)`; labels | Report 13 section 5 |
 | `context_attachments` | `(account, id)` | context, target kind (stack, module), target, priority, `is_autoattached` | `context`, target | unique `(context, target)`; `(target, priority)` for precedence | Report 13 sections 5.3 and 7 |
+
+POL-05 persists policy management in the flat policies domain. Public policy
+identity is its immutable ULID, independent of its mutable display name; the
+reference's name-derived slug is not an extra infraweave identifier. Writes
+compile before committing, hold their owning space, recheck space-admin access
+inside the transaction and append a source-free `policy.changed` event. The
+version fences conditional writes even when two updates share a Unix second.
+Account deletion purges policies in resumable batches, cascading their owned
+stack-attachment rows. The generic `policy_attachments` row above remains a
+future target model; it does not claim module or Intent attachment delivery.
 
 ### 12.5 Workers
 

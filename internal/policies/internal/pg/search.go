@@ -44,7 +44,8 @@ func searchScope(acct kernel.AccountID, scope core.Scope) sqlsearch.Scope {
 
 func scan(row pgx.Row, extra ...any) (core.Policy, error) {
 	var p core.Policy
-	args := []any{&p.Account, &p.ID, &p.Space, &p.Name, &p.Body, &p.Description, &p.Labels, &p.Type, &p.Engine, &p.Template, &p.CreatedAt, &p.UpdatedAt, &p.Version}
+	args := make([]any, 0, 13+len(extra))
+	args = append(args, &p.Account, &p.ID, &p.Space, &p.Name, &p.Body, &p.Description, &p.Labels, &p.Type, &p.Engine, &p.Template, &p.CreatedAt, &p.UpdatedAt, &p.Version)
 	err := row.Scan(append(args, extra...)...)
 	return p, err //nolint:wrapcheck // callers name and classify the database failure
 }

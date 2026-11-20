@@ -2168,6 +2168,16 @@ in as `test/fixtures/policy-inputs`
    `searchSpacePoliciesSuggestions`, `stackAttachablePolicies`,
    `stackPolicyAttachment`. `ACCESS` and the superseded aliases are absent
    from `PolicyType`. Records DV-028 to DV-031.
+   POL-05 supplies the management and five search operations first, plus their
+   REST merge patch: account-qualified ULIDs, bounded compilation before writes,
+   the policies gate, space-admin writes, readable-space filtering before
+   pagination/facet counts, inherited-space search, conditional versions and
+   transactional `policy.changed` events. Its real two-server/PostgreSQL
+   acceptance lives in `features/policies/{management,search}.feature`; separate
+   PostgreSQL tests cover C9's force-delete boundary, rollback on event/storage
+   failure, timestamps, transaction retries and resumable account purge.
+   POL-06 still owns attachment IDs, attachment APIs and automatic selection;
+   those workflows are not implied by management DTO fields.
 3. `internal/policies/internal/{inputs,combine}`: per-type input structs
    matching report 09 section 4 and every key of the recorded inputs in
    `test/fixtures/policy-inputs`, with the reference's `spacelift.*` input
@@ -2266,7 +2276,8 @@ in as `test/fixtures/policy-inputs`
 - The behaviours C37, C40 and C41 settled hold in acceptance;
   C49, C57 and C192 are recorded with offline checks; their REST replay
   follows the implementation issues in each fixture. C56 and C291 are now
-  recorded; their REST replays await #645 and #650. C51 records successful
+  recorded; C56's request-bound timestamp invariant replays through real REST
+  in #645, while C291's replay awaits #650. C51 records successful
   new slug-ID reset, but its unavailable legacy comparison stays open. C50
   remains pending. C55's module-version part belongs to P17.
 - `make gate` passes at 95% in total and 90% per package.
@@ -2284,8 +2295,8 @@ P13b prepares public APIs for the P24c console, while P14 owns worker exec.
 
 | Capture | Required behavior / implementation gate |
 |---|---|
-| C49/C54/C57/C192 | Recorded by #637; REST handoffs remain #645/#664/#640/#663 |
-| C9 (policy part), C56 | Ordinary attached-policy force deletion and Unix-second units recorded by #643; replay #645. Context/plugin remainder stays open with its owner |
+| C49/C54/C57/C192 | Recorded by #637; C49's real REST replay checks the approved V1 deviation in #645. Other handoffs remain #664/#640/#663 |
+| C9 (policy part), C56 | Recorded by #643. #645 replays C56's Unix-second request bounds through real REST and verifies C9's deletion boundary with a PostgreSQL relation fixture; full C9 REST replay awaits #646's attachment APIs. Context/plugin remainder stays open with its owner |
 | C46 | Real refusal recorded; maintainer-approved reason/label inferences in ADR 0009 unblock #652, without resolving the evidence question |
 | C48 | Free-tier facts recorded; approved inference maps WORKFLOW_POLICIES to GIT_PUSH/TRIGGER evaluation, without a blanket CRUD gate; entitled-account evidence remains open |
 | C51, C291 | New slug-ID reset and both rejection states recorded; approved owner-ID inference unblocks #649 while legacy evidence remains open. C291 replay awaits #650 |

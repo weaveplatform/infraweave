@@ -89,7 +89,10 @@ type Capture struct {
 	// ReplayAfter names the implementation issue that enables REST replay.
 	// Observed still verifies the recorded response before that issue lands.
 	ReplayAfter string
-	Observed    map[string]any
+	// ReplayWith names a stateful REST replayer for invariants such as request
+	// time bounds that cannot be expressed as static JSON pointer equality.
+	ReplayWith string
+	Observed   map[string]any
 }
 
 var (
@@ -142,6 +145,7 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 	var expect struct {
 		Calls       []CaptureCall  `yaml:"calls"`
 		ReplayAfter string         `yaml:"replayAfter"`
+		ReplayWith  string         `yaml:"replayWith"`
 		Observed    map[string]any `yaml:"observed"`
 	}
 	if err := decodeStrict(filepath.Join(dir, ExpectFile), &expect); err != nil {
@@ -149,6 +153,7 @@ func loadCapture(dir string, entries map[string]bool) (Capture, error) {
 	}
 	c.Calls = expect.Calls
 	c.ReplayAfter = expect.ReplayAfter
+	c.ReplayWith = expect.ReplayWith
 	c.Observed = expect.Observed
 	if reason := c.invalid(entries); reason != "" {
 		return fail("%s", reason)
@@ -202,10 +207,12 @@ func (c *Capture) invalid(entries map[string]bool) string {
 		return "meta.yaml needs tier, capturedBy and redacted"
 	case !introspection.MatchString(m.Introspection):
 		return "meta.yaml introspection is not sha256:<64 hex digits>"
-	case len(c.Calls) == 0 && (strings.TrimSpace(c.ReplayAfter) == "" || len(c.Observed) == 0):
+	case len(c.Calls) == 0 && (strings.TrimSpace(c.ReplayAfter) == "" && strings.TrimSpace(c.ReplayWith) == "" || len(c.Observed) == 0):
 		return "expect.yaml has no calls"
 	case c.ReplayAfter != "" && len(c.Calls) != 0:
 		return "expect.yaml cannot defer REST replay and supply calls"
+	case c.ReplayWith != "" && (len(c.Calls) != 0 || c.ReplayAfter != ""):
+		return "expect.yaml cannot mix a stateful replayer with calls or deferral"
 	}
 	if _, err := time.Parse(time.DateOnly, m.Captured); err != nil {
 		return "meta.yaml captured: " + err.Error()

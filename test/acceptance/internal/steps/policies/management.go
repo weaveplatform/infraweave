@@ -12,6 +12,27 @@ import (
 )
 
 func registerManagement(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^the policy (list|search) cursor is kept as "([^"]*)"$`, func(kind, name string) error {
+		var out struct {
+			NextCursor string `json:"nextCursor"`
+			PageInfo   struct {
+				EndCursor string `json:"endCursor"`
+				HasNext   bool   `json:"hasNextPage"`
+			} `json:"pageInfo"`
+		}
+		if err := json.Unmarshal(w.Last().Body, &out); err != nil {
+			return fmt.Errorf("decode policy page cursor: %w", err)
+		}
+		cursor := out.PageInfo.EndCursor
+		if kind == "list" {
+			cursor = out.NextCursor
+		}
+		if cursor == "" || kind == "search" && !out.PageInfo.HasNext {
+			return fmt.Errorf("%w: no following policy search page: %s", harness.ErrStep, w.Last().Body)
+		}
+		w.IDs[name] = cursor
+		return nil
+	})
 	sc.Step(`^the policy inheritance flags are "([^"]*)"$`, func(want string) error {
 		var out struct {
 			Edges []struct {
