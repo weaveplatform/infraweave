@@ -3,6 +3,8 @@ package pg_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -58,13 +60,16 @@ sample := true`
 	if err != nil {
 		t.Fatal(err)
 	}
+	var logs bytes.Buffer
+	slog.New(slog.NewTextHandler(&logs, nil)).Info("evaluation", "sample", got.Samples[0], "decision", got)
+	rendered := string(serialized) + fmt.Sprint(got) + fmt.Sprintf("%#v", got) + logs.String()
 	var events string
 	if err := f.db.QueryRow(t.Context(), "SELECT string_agg(document::text,',') FROM events WHERE account_id=$1", f.principal.AccountID).Scan(&events); err != nil {
 		t.Fatal(err)
 	}
 	for _, marker := range []string{"private-source-marker", "private-print-marker", "private-input-marker"} {
-		if bytes.Contains(serialized, []byte(marker)) || strings.Contains(events, marker) {
-			t.Fatalf("sampling data escaped into plaintext JSON/outbox: %s", marker)
+		if strings.Contains(rendered, marker) || strings.Contains(events, marker) {
+			t.Fatalf("sampling data escaped into plaintext formatting, logs or events: %s", marker)
 		}
 	}
 	decision := bytes.Clone(got.Receipts[0].Decision)

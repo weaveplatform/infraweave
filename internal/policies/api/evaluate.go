@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -149,6 +150,16 @@ type SampleRequest struct {
 	Input          json.RawMessage
 	Print          string
 	PrintTruncated bool
+}
+
+// String and GoString keep the private sealing handoff out of text/debug logs.
+func (r SampleRequest) String() string { return "policy sample " + r.Receipt.ID.String() }
+
+func (r SampleRequest) GoString() string { return r.String() }
+
+// LogValue exposes correlation identifiers without input, body or print data.
+func (r SampleRequest) LogValue() slog.Value {
+	return slog.GroupValue(slog.String("evaluation", r.Receipt.ID.String()), slog.String("policy", r.Receipt.Policy.String()))
 }
 
 // Evaluator joins its caller's transaction. Policy failures return a fail-closed
