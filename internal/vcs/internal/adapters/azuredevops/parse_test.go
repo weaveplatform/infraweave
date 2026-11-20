@@ -70,6 +70,11 @@ func TestUnitAzureDevOpsWebhookParse(t *testing.T) {
 		}}},
 	} {
 		t.Run(tc.fixture, func(t *testing.T) {
+			if tc.fixture == "push" {
+				for i := range tc.want {
+					tc.want[i].Commits = &vcsapi.CommitCollection{Source: "resource.commits", Omission: "multiple-ref-updates", Items: []vcsapi.PushCommit{}}
+				}
+			}
 			body := azureFixture(t, tc.fixture, nil)
 			headers := http.Header{"X-Event-Type": {"spoofed"}, "X-Github-Delivery": {"spoofed-id"}}
 			events, err := provider.Parse(headers, body)

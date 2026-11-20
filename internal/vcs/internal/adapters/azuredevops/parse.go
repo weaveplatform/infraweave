@@ -150,6 +150,7 @@ func parseWebhookPush(resource *webhookResource) ([]vcsapi.Event, error) {
 			return nil, errWebhookPayload
 		}
 		event := vcsapi.Event{Type: kind, Repository: repository, Before: ref.OldObjectID, Head: ref.NewObjectID, Author: resource.PushedBy.login()}
+		event.Commits = resource.pushCommits()
 		if kind == "tag" {
 			event.Tag = name
 		} else {

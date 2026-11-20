@@ -103,6 +103,7 @@ func pushPayload(payload webhookPayload, event vcsapi.Event, tag bool) ([]vcsapi
 		return nil, errWebhookPayload
 	}
 	event.Type, event.Before, event.Head = "push", payload.Before, payload.After
+	event.Commits = payload.pushCommits()
 	event.Author = payload.UserUsername
 	if event.Author == "" {
 		event.Author = payload.UserName

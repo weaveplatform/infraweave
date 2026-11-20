@@ -105,7 +105,7 @@ func (s *Service) Prepare(ctx context.Context, delivery intake.Delivery, events 
 				return nil, fmt.Errorf("%w: provider resolved another push commit", kernel.ErrUnavailable)
 			}
 			prepared.Commit.Branch = event.Branch
-			prepared.Files = slices.Clone(prepared.Files)
+			prepared.Files = pushAffectedFiles(prepared.Files, event.Commits)
 		} else {
 			prepared.Commit, err = s.d.Sources.PrepareTag(ctx, delivery.Account, delivery.Integration, delivery.Provider, event)
 			if err != nil {

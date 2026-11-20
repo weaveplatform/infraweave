@@ -8,20 +8,42 @@ import "time"
 //
 // ref: decision 0012
 type Event struct {
-	Type         string        `json:"type"`
-	Action       string        `json:"action,omitempty"`
-	Repository   Repository    `json:"repository"`
-	Branch       string        `json:"branch,omitempty"`
-	Tag          string        `json:"tag,omitempty"`
-	Before       string        `json:"before,omitempty"`
-	Head         string        `json:"head,omitempty"`
-	Forced       bool          `json:"forced,omitempty"`
-	Author       string        `json:"author,omitempty"`
-	PullRequest  *PullRequest  `json:"pullRequest,omitempty"`
-	Comment      *Comment      `json:"comment,omitempty"`
-	CheckAction  *CheckAction  `json:"checkAction,omitempty"`
-	Installation *Installation `json:"installation,omitempty"`
-	OwnerRename  *OwnerRename  `json:"ownerRename,omitempty"`
+	Type         string            `json:"type"`
+	Action       string            `json:"action,omitempty"`
+	Repository   Repository        `json:"repository"`
+	Branch       string            `json:"branch,omitempty"`
+	Tag          string            `json:"tag,omitempty"`
+	Before       string            `json:"before,omitempty"`
+	Head         string            `json:"head,omitempty"`
+	Forced       bool              `json:"forced,omitempty"`
+	Author       string            `json:"author,omitempty"`
+	PullRequest  *PullRequest      `json:"pullRequest,omitempty"`
+	Comment      *Comment          `json:"comment,omitempty"`
+	CheckAction  *CheckAction      `json:"checkAction,omitempty"`
+	Installation *Installation     `json:"installation,omitempty"`
+	OwnerRename  *OwnerRename      `json:"ownerRename,omitempty"`
+	Commits      *CommitCollection `json:"commits,omitempty"`
+}
+
+// CommitCollection preserves the provider's native push collection and its
+// documented location. Omission explains why that collection cannot supply
+// the policy contract's complete per-commit facts; a partial list is retained
+// for provenance but never projected as the complete policy collection.
+type CommitCollection struct {
+	Source   string       `json:"source"`
+	Omission string       `json:"omission,omitempty"`
+	Items    []PushCommit `json:"items"`
+}
+
+// PushCommit is native metadata, with nil Files meaning unavailable rather
+// than an assertion that this commit changed no files.
+type PushCommit struct {
+	Hash    string    `json:"hash"`
+	Author  string    `json:"author"`
+	Message string    `json:"message"`
+	URL     string    `json:"url,omitempty"`
+	At      time.Time `json:"at"`
+	Files   *[]string `json:"files,omitempty"`
 }
 
 // Repository identifies the provider's repository and its current path.
