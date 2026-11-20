@@ -6,9 +6,9 @@ import http.client
 import json
 import os
 from pathlib import Path
+import argparse
 import re
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -194,5 +194,24 @@ def refresh(rebuild=False):
     print(json.dumps({"new_releases": updates, "revision": data["revision"], "rebuild": rebuild}))
 
 
+def verify_upstreams():
+    data = ctl.inputs()
+    state = ctl.read(HERE / "upstream.json")
+    for tool in ("terraform", "opentofu", "terragrunt", "pulumi", "ansible"):
+        versions = releases(tool, state["since"])
+        if tool != "ansible" and checksums(tool, data["tools"][tool]["version"]) != data["tools"][tool]["sha256"]:
+            raise ValueError(f"{tool}: official checksums differ from the selected build inputs")
+        print(json.dumps({"tool": tool, "discovered_stable_releases": versions,
+                          "selected_version": data["tools"][tool]["version"], "verified": True}), flush=True)
+
+
 if __name__ == "__main__":
-    refresh("--rebuild" in sys.argv)
+    parser = argparse.ArgumentParser(__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--rebuild", action="store_true")
+    mode.add_argument("--verify-upstreams", action="store_true", help="Read official indexes/checksums without changing inputs")
+    options = parser.parse_args()
+    if options.verify_upstreams:
+        verify_upstreams()
+    else:
+        refresh(options.rebuild)

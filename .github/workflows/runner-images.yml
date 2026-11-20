@@ -172,6 +172,11 @@ jobs:
           done
       - name: Verify real GHCR promotion, duplicate and failure contracts
         run: python3 tools/runnerimages/accept_promotion.py candidate-lock.json
+      - name: Verify upstream discovery with the repository-scoped credential
+        if: github.ref == 'refs/heads/feat/runner-images'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/runnerimages/refresh.py --verify-upstreams
       - name: Promote main's verified recipes without rebuilding
         if: github.ref == 'refs/heads/main'
         run: python3 deploy/images/imagectl.py promote candidate-lock.json
