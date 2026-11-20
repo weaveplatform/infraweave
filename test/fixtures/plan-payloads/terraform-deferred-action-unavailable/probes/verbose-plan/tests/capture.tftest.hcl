@@ -1,0 +1,3 @@
+run "capture" {
+  command = plan
+}

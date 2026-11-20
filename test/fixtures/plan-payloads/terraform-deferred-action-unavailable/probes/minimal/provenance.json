@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-11-20T20:20:25.329410+00:00",
+  "classification": "native producer limitation; not a supported payload fixture",
+  "tool": "terraform",
+  "version": "1.17.0-alpha20260827",
+  "platform": "darwin_arm64",
+  "binarySHA256": "fead2fabc2ad3602ea0dba7e1800e5df746644babe11a5929e765f8b823681a5",
+  "provider": "hashicorp/local 2.9.1",
+  "providerInitialization": "reused the existing verified package with this exact lockfile; reproduce with terraform init -backend=false -input=false -no-color",
+  "executedCommands": [
+    [
+      "terraform",
+      "plan",
+      "-allow-deferral=true",
+      "-input=false",
+      "-no-color",
+      "-out=tfplan"
+    ],
+    [
+      "terraform",
+      "show",
+      "-json",
+      "-no-color",
+      "tfplan"
+    ]
+  ],
+  "environment": {
+    "CHECKPOINT_DISABLE": "1",
+    "TF_IN_AUTOMATION": "1",
+    "TF_INPUT": "0"
+  },
+  "results": {
+    "planExit": 0,
+    "showExit": 1,
+    "fullDeferredActionJSON": false
+  },
+  "applyExecuted": false,
+  "actionExecuted": false,
+  "fileSHA256": {
+    "main.tf": "ea235ce4fb2893eae1615e3c4b7797c432a86a8bb0e16448122cbd3925055b80",
+    ".terraform.lock.hcl": "e18750d267c597ae656e1c46249eccf0ad6865f56ee0886cf20a5063a6b3517b",
+    "plan.txt": "ab6d75aea24e7684bd1d7749fdfc48abcaada8131fd2092bf169fa4264dbe822",
+    "show-error.txt": "748cdf8bec12012bba239fff642a8738a0bea4a109b127529a3ae614be1a1d56"
+  },
+  "savedPlanSHA256": "06bdfb0d4d85781aa83bf828365e6a20eb09b936d84eeafabf122bd9d99e3dca"
+}

@@ -31,6 +31,10 @@ checksums and source manifests are in
 | Terraform 1.17.0-rc2 | Same experimental flag | Same refusal; a release candidate is not sufficient |
 | Public Terraform 1.17.0-alpha20260827 | Unknown resource count, experimental flag | Plans and emits actual `deferred_changes` JSON, including `index_unknown: true` and a wildcard instance address |
 | Same public alpha | Unknown action count or an action's deferred resource prerequisite | Both plan commands succeed, but `show -json` fails with `invalid action trigger event INVALID_EVENT`; no full JSON capture is claimed |
+| Public Terraform 1.17.0-alpha20260812 | Same deferred-resource prerequisite project | Plan succeeds; saved-plan JSON read fails with the same invalid-event error |
+| Newest public alpha, minimized project | Unknown action count with builtin resources and a harmless local command only | Plan succeeds; JSON read fails without variables or sensitive values, isolating the producer round-trip problem |
+| Newest public alpha, direct `-invoke` | Unknown-count instance; known action with unknown resource prerequisite | Native plan refuses the target or partially applied configuration; no deferred-action document is produced |
+| Newest public alpha, `test -allow-deferral=true -verbose -json` | Explicit plan-only test of the deferred prerequisite project | Native test succeeds and emits a renderer plan with two deferred resources, but omits the full deferred-action family |
 | Terraform 1.17.2 reading the alpha's saved plan | `show -json` | Refuses the different producer version; no cross-version workaround is claimed |
 | OpenTofu 1.13.9, latest stable | Same action project; experimental flag | Rejects `action`/`action_trigger` blocks and the unknown flag; an ordinary builtin plan emits none of the three families |
 
@@ -114,6 +118,21 @@ GOWORK=off INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 INFRAWEAVE_ACCEPT_TAGS=@plan-sanit
 
 ## 5. Required remaining proof
 
+The additional [native diagnosis and raw probes](../../../test/fixtures/plan-payloads/terraform-deferred-action-unavailable/probes/README.md)
+pin the newest public alpha's source to `0fe280f9` and the older comparison to
+`5e83043c`. A minimal project reproduces the failure without sensitive values:
+planning exits 0 and saved-plan JSON reading exits 1. The alpha's deferred
+trigger constructor leaves its lifecycle event unset; the writer encodes that
+as an invalid event and the reader rejects it. The older public alpha has the
+same constructor and actual native result. [S10][S11]
+
+Two bounded alternatives do not supply the missing fixture. Direct invocation
+requires known configuration and rejects provider deferral, and the native
+verbose test formatter emits a renderer projection without the full
+deferred-action family. Actual command output confirms both boundaries. No
+development build, binary patch, payload rewrite, apply or action invocation
+is used to manufacture a successful result. [S12][S13]
+
 [#675](https://github.com/weaveplatform/infraweave/issues/675) remains open for
 its mandatory real `deferred_action_invocations` full JSON fixture and the
 corresponding value/mask and actual upload compatibility assertions (the
@@ -122,8 +141,9 @@ successfully but its JSON reader fails; the stable and release candidate refuse
 experimental planning. An authored wrapper or source-derived mask is not a
 replacement for that missing real result.
 
-The open implementation PR stays draft and uses `Refs #675` while this proof is
-missing. The inference approval for unrelated Spacelift workflow captures does
+PR #680 was externally merged as partial work at `56285bea`; that merge does
+not resolve these criteria. A follow-up implementation PR stays draft and uses
+`Refs #675` while this proof is missing. The inference approval for unrelated Spacelift workflow captures does
 not apply here. Real supported-family acceptance does not close this gap, and
 passing CI alone does not complete the ticket.
 
@@ -139,3 +159,7 @@ passing CI alone does not complete the ticket.
 - [S8] [Terraform JSON format](https://developer.hashicorp.com/terraform/internals/json-format) and [action block reference](https://developer.hashicorp.com/terraform/language/block/action).
 
 - [S9] [Terraform machine-readable UI](https://developer.hashicorp.com/terraform/internals/machine-readable-ui).
+- [S10] [Official Aug27 alpha deferred-trigger constructor](https://github.com/hashicorp/terraform/blob/0fe280f90274bcbf16b9d0e6631a5a80eb3e2fd5/internal/terraform/node_resource_abstract_instance.go#L3158) and [same constructor in the official Aug12 alpha](https://github.com/hashicorp/terraform/blob/5e83043c788062d9bc735e6b86809ac6c0b2a409/internal/terraform/node_resource_abstract_instance.go#L3141).
+- [S11] [Aug27 saved-plan reader/writer event handling](https://github.com/hashicorp/terraform/blob/0fe280f90274bcbf16b9d0e6631a5a80eb3e2fd5/internal/plans/planfile/tfplan.go#L1347).
+- [S12] [Aug27 direct-invocation known-value and deferral restrictions](https://github.com/hashicorp/terraform/blob/0fe280f90274bcbf16b9d0e6631a5a80eb3e2fd5/internal/terraform/node_action_invoke.go#L255).
+- [S13] [Aug27 verbose test JSON formatter](https://github.com/hashicorp/terraform/blob/0fe280f90274bcbf16b9d0e6631a5a80eb3e2fd5/internal/command/views/test.go#L594), [its test flags](https://github.com/hashicorp/terraform/blob/0fe280f90274bcbf16b9d0e6631a5a80eb3e2fd5/internal/command/arguments/test.go#L46), and [official plan-only/verbose test command documentation](https://developer.hashicorp.com/terraform/cli/commands/test).

@@ -28,3 +28,5 @@ test/fixtures/rego-compatibility/** text eol=lf
 
 # Recorded tool JSON/provenance has byte-exact NONE and checksum assertions.
 test/fixtures/plan-payloads/** text eol=lf
+# Raw CLI captures retain the terminal's final blank lines and their checksums.
+test/fixtures/plan-payloads/terraform-deferred-action-unavailable/probes/**/plan*.txt whitespace=-blank-at-eof

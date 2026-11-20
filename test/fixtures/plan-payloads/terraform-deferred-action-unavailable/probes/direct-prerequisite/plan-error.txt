@@ -1,0 +1,10 @@
+
+Error: Partially applied configuration
+
+  on main.tf line 15:
+  15: action "local_command" "capture" {
+
+The action action.local_command.capture contains unknown values while
+planning. This means it is referencing resources that have not yet been
+created, please run a complete plan/apply cycle to ensure the state matches
+the configuration before using the -invoke argument.

@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-11-20T20:20:25.518693+00:00",
+  "classification": "native producer limitation; not a supported payload fixture",
+  "tool": "terraform",
+  "version": "1.17.0-alpha20260827",
+  "platform": "darwin_arm64",
+  "binarySHA256": "fead2fabc2ad3602ea0dba7e1800e5df746644babe11a5929e765f8b823681a5",
+  "provider": "hashicorp/local 2.9.1",
+  "providerInitialization": "reused the existing verified package with this exact lockfile; reproduce with terraform init -backend=false -input=false -no-color",
+  "executedCommands": [
+    [
+      "terraform",
+      "test",
+      "-allow-deferral=true",
+      "-json",
+      "-verbose",
+      "-no-color"
+    ]
+  ],
+  "environment": {
+    "CHECKPOINT_DISABLE": "1",
+    "TF_IN_AUTOMATION": "1",
+    "TF_INPUT": "0",
+    "TF_VAR_secret": "dummy-action-secret-675"
+  },
+  "results": {
+    "testExit": 0,
+    "testPlanRecords": 1,
+    "fullDeferredActionJSON": false,
+    "rendererDeferredResourceCount": 2
+  },
+  "applyExecuted": false,
+  "actionExecuted": false,
+  "fileSHA256": {
+    "main.tf": "f2be6c125ac27331dff00ff52e2e105620583ea49386b74759a3059c658ed2e1",
+    ".terraform.lock.hcl": "e18750d267c597ae656e1c46249eccf0ad6865f56ee0886cf20a5063a6b3517b",
+    "tests/capture.tftest.hcl": "12634c89f8592a8b08ae96730f2f56a7b471d1252d1722dbec6348086ba2c6fb",
+    "test.jsonl": "e1b8d166d9e5885790921b8e5a216ce67f3d66eb3839e33778781b9842ea8f7e",
+    "test.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

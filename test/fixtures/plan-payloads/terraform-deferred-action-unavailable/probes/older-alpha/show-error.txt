@@ -1,0 +1,4 @@
+
+Error: Couldn't show local plan
+
+Plan read error: invalid action trigger event INVALID_EVENT

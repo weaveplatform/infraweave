@@ -41,6 +41,16 @@
       "archive": "terraform_1.17.0-rc2_darwin_arm64.zip",
       "url": "https://releases.hashicorp.com/terraform/1.17.0-rc2/terraform_1.17.0-rc2_darwin_arm64.zip",
       "checksumSource": "https://releases.hashicorp.com/terraform/1.17.0-rc2/terraform_1.17.0-rc2_SHA256SUMS"
+    },
+    {
+      "version": "1.17.0-alpha20260812",
+      "stability": "older official public experimental alpha; comparison only",
+      "platform": "darwin_arm64",
+      "name": "terraform",
+      "archive": "terraform_1.17.0-alpha20260812_darwin_arm64.zip",
+      "url": "https://releases.hashicorp.com/terraform/1.17.0-alpha20260812/terraform_1.17.0-alpha20260812_darwin_arm64.zip",
+      "sha256": "a6adb3e57fa1cc00ae792db92750916c4d96017a2b0806004ec0b7dabbed0ece",
+      "checksumSource": "https://releases.hashicorp.com/terraform/1.17.0-alpha20260812/terraform_1.17.0-alpha20260812_SHA256SUMS"
     }
   ],
   "plans": {

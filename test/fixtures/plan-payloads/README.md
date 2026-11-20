@@ -13,6 +13,7 @@ remote resource was created.
 | `terraform-deferred` | Public experimental Terraform 1.17.0-alpha20260827 with `-allow-deferral=true`; one actual deferred resource with wildcard address, unknown index, reason and sensitivity/unknown masks |
 | `opentofu` | OpenTofu 1.13.9; ordinary builtin plan; no action/deferred family is emitted |
 | `terraform-deferred-action-unavailable` | The public alpha plans successfully, but its `show -json` fails with `invalid action trigger event INVALID_EVENT`; no JSON fixture exists here |
+| `terraform-deferred-action-unavailable/probes` | Additional real producer diagnosis: minimal round-trip failure, older official alpha, direct-invocation refusals, and the native verbose test renderer's omitted family; no supported full deferred-action payload |
 
 Each `plan.json` is unchanged CLI `show -json` output. Its adjacent project,
 provider lockfile where applicable, provenance and manifest checksum preserve the
@@ -49,3 +50,8 @@ execution. The fixtures are tool documents, not captured Spacelift policy inputs
 field/version boundaries, primary sources and #675's remaining required
 `deferred_action_invocations` capture and value/mask acceptance gap. Authored
 malformed cases remain in unit/feature tests and are not classified as captures.
+
+The [bounded producer diagnosis](terraform-deferred-action-unavailable/probes/README.md)
+retains raw outputs, exact project/lock files, command and binary provenance,
+and the minimized upstream failure. These negative/renderer probes do not add
+to the four supported full-document fixtures in `manifest.json`.
