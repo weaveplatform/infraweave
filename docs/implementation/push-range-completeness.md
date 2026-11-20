@@ -132,6 +132,16 @@ refusals and fails all five different-ID cases because native source reads
 occurred. Native identity checks also cover bound rename success and actual
 rename-plus-path-reuse refusal before reading the old ref.
 
-These checks are a checkpoint. The final implementation head still requires
-the complete recovery/regression matrix, generation/lint/docs checks, merged
-coverage and required CI/FIPS/parity gates before the issue is complete.
+The combined implementation matrix passes **44 scenarios / 1,041 steps** under
+certified FIPS in **181.057 seconds**, seed `696008`, at revision
+`c4fbd234c099a37f595743524d1a74c787204c6a`. The covered app's SHA-256 is
+`c3f2c65563ad610d7984694f68ff7dab8bbd5ca231b602ea0c73084614f07af0`.
+It includes 12 native-boundary cases, 15 source-fault/retry/expiry cases, ten
+signed repository identity refusals, both actual worker cases and five cases
+that kill both server processes during child completion and recover once.
+All 1,041 recorded steps pass; no scenario is skipped.
+
+Documentation, signature, reference and generated-code checks also pass. The
+remaining affected regressions, race/shuffle, lint, merged coverage and required
+CI/FIPS/parity checks are final merge gates, not inferred from this focused
+matrix. The CI run on the final PR head remains authoritative.
