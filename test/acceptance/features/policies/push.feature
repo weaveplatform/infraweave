@@ -119,3 +119,27 @@ Feature: Git push policy workflow
     And GitLab push "ignoredPush" for integration "integration" settles with 0 runs and 1 stack jobs
     And the ignored commit "ignored" has a durable policy check
     And the GitLab commit "ignored" has check "infraweave/infra/tracked" in state "failed" with message "event requires a release tag"
+
+  Scenario: Native request metadata reaches a custom policy before branch and request deduplication
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Native request","type":"GIT_PUSH","body":"package infraweave\npropose if { input.push == null; input.pull_request.author == \"creator\"; input.pull_request.action_initiator == \"reviewer\"; input.pull_request.action == \"opened\"; input.pull_request.base.branch == \"main\"; input.pull_request.head.branch == \"feature\" }\nflag contains \"pushed\"\n"}' through A
+    And it answers 201
+    And the answer's id names "policy"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{policy}" through B
+    And it answers 200
+    And token "h" sends "GET /api/v1/policies/{policy}" through A
+    And the policy version for "policy" is kept from its ETag
+    And the GitLab project "acme/platform/infra" branches "feature" from "seed"
+    And the GitLab project "acme/platform/infra" commits files on "feature" as "request":
+      | root/main.tf | resource "terraform_data" "this" { input = "request" } |
+    When GitLab sends request snapshots for integration "integration" through A:
+      | id | action | project             | head    | base | commit  | draft |
+      | 17 | open   | acme/platform/infra | feature | main | request | false |
+    Then the stored request delivery has 1 policy evaluation jobs
+    And the "PROPOSED" event run on stack "infra" for commit "request" is kept as "run"
+    When token "h" sends "GET /api/v1/runs/{run}" through B
+    Then the answer carries initial push evidence for policy "policy"
+    And the answer's flags is '["pushed"]'
+    When GitLab pushes "branchPush" for integration "integration" from "seed" to "request" on "feature" through B
+    Then it answers 202
+    And GitLab push "branchPush" for integration "integration" settles with 0 runs and 1 stack jobs
+    And stack "infra" has exactly 1 event runs for commit "request"

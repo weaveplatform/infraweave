@@ -51,6 +51,22 @@ func (s *pushSteps) policyCheckJob(ctx context.Context, commit string) error {
 	return nil
 }
 
+func (s *pushSteps) requestPolicyJobs(ctx context.Context, want int) error {
+	db, err := s.w.Querier(ctx)
+	if err != nil {
+		return err
+	}
+	raw, err := db.Query(ctx, `SELECT count(*) FROM jobs WHERE kind='vcs.evaluate_event' AND account_id=`+harness.Literal(harness.UUIDOf(harness.Home.Account))+`::uuid`)
+	if err != nil {
+		return err
+	}
+	got, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || got != want {
+		return fmt.Errorf("%w: stored request created %d evaluation jobs, want %d", harness.ErrStep, got, want)
+	}
+	return nil
+}
+
 func (s *pushSteps) policyNativeCheck(ctx context.Context, commit, name, state, message string) error {
 	sha, err := s.commitHash(commit)
 	if err != nil {
