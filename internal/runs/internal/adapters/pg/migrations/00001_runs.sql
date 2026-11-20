@@ -185,6 +185,7 @@ CREATE TABLE run_policy_receipts (
         REFERENCES run_state_transitions (account_id, run_id, sequence) ON DELETE CASCADE,
     CHECK ((error_code IS NULL) = (error_message IS NULL))
 );
+CREATE INDEX run_policy_receipts_transition ON run_policy_receipts (account_id, run_id, state_version);
 
 -- A flag remains visible while any policy owns it. Reset deletes one policy's
 -- rows before adding that same evaluation's new flags.
