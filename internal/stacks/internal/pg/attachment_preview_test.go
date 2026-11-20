@@ -108,13 +108,15 @@ func TestAccAttachmentPreviewOrdersByWriteTime(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := tx.Do(t.Context(), db, tx.Options{}, func(ctx context.Context) error {
+	writerCtx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	if err := tx.Do(writerCtx, db, tx.Options{}, func(ctx context.Context) error {
 		var started time.Time
 		if err := tx.Q(ctx, db).QueryRow(ctx, "SELECT transaction_timestamp()").Scan(&started); err != nil {
 			return err
 		}
 		// This separate committed write is newer than the enclosing transaction.
-		if err := s.SetRunState(t.Context(), acct, first, kernel.StackState("NONE"), false); err != nil {
+		if err := s.SetRunState(writerCtx, acct, first, kernel.StackState("NONE"), false); err != nil {
 			return err
 		}
 		return s.SetRunState(ctx, acct, last, kernel.StackState("NONE"), false)
