@@ -8,6 +8,8 @@
 // the context's sample values with the request's in their place, every
 // secret key read as the mask, and a source that does not type-check or
 // an evaluation that fails refused at /source with the fault's range.
+// PolicyCheck dispatches to the policy surface's own compiler, returning its
+// /body field diagnostics and optional source ranges without writing or evaluating.
 //
 // # Input and output
 //

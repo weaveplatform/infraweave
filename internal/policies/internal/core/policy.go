@@ -303,10 +303,13 @@ func checkPlacement(kind rego.Type, space kernel.ULID, acct kernel.AccountID) er
 func (s *Service) compileError(err error, body string) error {
 	var compile *rego.CompileError
 	if errors.As(err, &compile) {
+		if len(compile.Diagnostics) == 0 {
+			return fmt.Errorf("policies: compile without source diagnostics: %w", err)
+		}
 		fields := make([]kernel.FieldError, 0, len(compile.Diagnostics))
 		for _, d := range compile.Diagnostics {
 			field := kernel.FieldError{Pointer: "/body", Reason: kernel.ReasonRule, Message: d.Message}
-			field.Range = sourceRange(body, d)
+			field.Range = d.SourceRange(body)
 			fields = append(fields, field)
 		}
 		return &kernel.Invalid{Detail: "The policy does not compile.", Errors: fields}

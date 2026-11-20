@@ -10,6 +10,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
@@ -56,6 +57,9 @@ func Held() []integrity.Held { return pg.Held() }
 
 // SpaceGuard prevents removing spaces that still own policies.
 func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc }
+
+// Surfaces supplies the domain-owned compiler to the shared editor registry.
+func (d *Domain) Surfaces() []expr.Surface { return []expr.Surface{d.svc.CheckSurface()} }
 
 // New constructs policy management over its owned store and domain ports.
 func New(d Deps) *Domain {

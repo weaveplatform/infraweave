@@ -17,5 +17,5 @@
 // # Dependencies
 //
 // access/api, stacks/api, policies/api, internal/kernel and its search package,
-// and platform/outbox, platform/queue, platform/rego and platform/tx.
+// and platform/expr, platform/outbox, platform/queue, platform/rego and platform/tx.
 package core
