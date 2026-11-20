@@ -11,6 +11,7 @@ import (
 )
 
 var statefulCaptureReplayers = map[string]func(*testing.T, *sdk.Client){
+	"policy-runtime":               replayPolicyRuntime,
 	"policy-timestamps":            replayPolicyTimestamps,
 	"policy-create-engine-default": replayPolicyCreateEngineDefault,
 }
@@ -20,10 +21,8 @@ func TestUnitStatefulCaptureReplayers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, capture := range all {
-		if capture.ReplayWith != "" && statefulCaptureReplayers[capture.ReplayWith] == nil {
-			t.Errorf("%s has no REST replayer %q", capture.ID, capture.ReplayWith)
-		}
+	if err := validateCaptureReplayers(all, statefulCaptureReplayers); err != nil {
+		t.Fatal(err)
 	}
 }
 

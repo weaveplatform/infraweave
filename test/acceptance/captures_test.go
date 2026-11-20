@@ -100,6 +100,9 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := validateCaptureReplayers(captures, statefulCaptureReplayers); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range captures {
 		if slices.Contains(policyCaptureIDs, c.ID) {
 			t.Run(c.ID+"/recorded", func(t *testing.T) { checkPolicyCapture(t, c.ID) })
@@ -145,7 +148,7 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	real := 0
+	real, replayed := 0, 0
 	recorded := map[string]bool{}
 	for _, c := range captures {
 		recorded[c.ID] = true
@@ -159,6 +162,9 @@ func TestAccCaptures(t *testing.T) {
 					t.Fatalf("capture %s names unknown REST replayer %q", c.ID, c.ReplayWith)
 				}
 				run(t, api)
+				if !t.Failed() {
+					replayed++
+				}
 				return
 			}
 			if c.ReplayAfter != "" {
@@ -168,6 +174,9 @@ func TestAccCaptures(t *testing.T) {
 				if err := harness.Replay(t.Context(), api, call); err != nil {
 					t.Errorf("%s call %d: %v", c.ID, i+1, err)
 				}
+			}
+			if !t.Failed() {
+				replayed++
 			}
 		})
 	}
@@ -184,7 +193,7 @@ func TestAccCaptures(t *testing.T) {
 			deferred++
 		}
 	}
-	t.Logf("verified %d real captures; replayed %d and the example; %d await REST implementation", real, real-deferred, deferred)
+	t.Logf("loaded %d captures (%d real); completed %d REST replays; %d await REST implementation", len(captures), real, replayed, deferred)
 }
 
 // asserting names the features that assert an awaited capture's choices,

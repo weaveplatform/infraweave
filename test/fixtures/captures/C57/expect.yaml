@@ -1,4 +1,4 @@
-# Observed upstream facts, independent of pending infraweave REST behavior.
-replayAfter: https://github.com/weaveplatform/infraweave/issues/640
+# The upstream version is historical; REST replay verifies the current build pin.
+replayWith: policy-runtime
 observed:
   "/data/policyRuntime/openPolicyAgentVersion": "v1.17.1"

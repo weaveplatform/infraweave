@@ -166,7 +166,10 @@ comparison is missing, and report 26 owns the unresolved tier mapping.
 - `policyRuntime { openPolicyAgentVersion }` returns the OPA version Spacelift runs
   [G] [D] policy. **[C] 2026-11-19:** it answers `v1.17.1`
   ([C57](../../../test/fixtures/captures/C57/response.json)); this is a dated
-  observation, not infraweave's dependency pin. The example library's CI pins OPA 0.64.0 and Regal v0.36.1 and runs
+  observation, not infraweave's dependency pin. C57's
+  [REST handoff](../../../test/fixtures/captures/C57/README.md) now reads the real
+  infraweave runtime and checks its current linked dependency pin separately,
+  retaining the original upstream response. The example library's CI pins OPA 0.64.0 and Regal v0.36.1 and runs
   `opa check --strict` and `opa test` [S]
   [`continuous-integration.yaml#L16-L58`](https://github.com/spacelift-io/spacelift-policies-example-library/blob/6ff5edb08bc8/.github/workflows/continuous-integration.yaml#L16-L58).
   Library policies written for both engines carry an import, quoted from the MIT
