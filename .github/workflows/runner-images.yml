@@ -170,6 +170,8 @@ jobs:
             cosign verify --certificate-identity "$identity" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com "$ref"
           done
+      - name: Verify real GHCR promotion, duplicate and failure contracts
+        run: python3 tools/runnerimages/accept_promotion.py candidate-lock.json
       - name: Promote main's verified recipes without rebuilding
         if: github.ref == 'refs/heads/main'
         run: python3 deploy/images/imagectl.py promote candidate-lock.json
