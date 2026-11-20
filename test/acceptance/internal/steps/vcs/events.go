@@ -68,6 +68,7 @@ func (s *eventSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^event delivery "(\w+)" waits for source recovery with no provisional effects$`, s.rangeWaiting)
 	sc.Step(`^the event range source recovers and delivery "(\w+)" becomes due$`, s.resumeRangeSource)
 	sc.Step(`^event delivery "(\w+)" expires before source recovery$`, s.expireRangeSource)
+	sc.Step(`^the native workflow feedback for run "(\w+)" on request (\d+) has terminal check state "([^"]+)"$`, s.workflowFeedback)
 }
 
 func (s *eventSteps) repository() checkRepository {

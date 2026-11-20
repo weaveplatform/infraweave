@@ -235,8 +235,12 @@ func TestUnitPreparedIsolation(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := range 80 {
 		wg.Go(func() {
-			body := fmt.Sprintf("package infraweave\nhelper := %d\ndeny contains sprintf(\"%%v-%%v\", [helper,input.id]) if true", i%2)
-			out, err := e.Evaluate(t.Context(), Request{Policy: Policy{Type: Plan, Engine: V1, Body: body}, Input: fmt.Appendf(nil, `{"id":%d}`, i)})
+			engine, rule := V1, "deny contains message if { print(message) }"
+			if i%4 >= 2 {
+				engine, rule = V0, "deny[message] { print(message) }"
+			}
+			body := fmt.Sprintf("package infraweave\nhelper := %d\nmessage := sprintf(\"%%v-%%v\", [helper,input.id])\n%s", i%2, rule)
+			out, err := e.Evaluate(t.Context(), Request{Policy: Policy{Type: Plan, Engine: engine, Body: body}, Input: fmt.Appendf(nil, `{"id":%d}`, i)})
 			if err != nil {
 				t.Error(err)
 				return
@@ -247,15 +251,17 @@ func TestUnitPreparedIsolation(t *testing.T) {
 				return
 			}
 			got := decision(t, out)["deny"].([]any)
-			if len(got) != 1 || got[0] != fmt.Sprintf("%d-%d", i%2, i) {
-				t.Errorf("cached helper/input leak: %s", out.Decision)
+			want := fmt.Sprintf("%d-%d", i%2, i)
+			if len(got) != 1 || got[0] != want || out.Print != want+"\n" || out.PrintTruncated {
+				t.Errorf("cached helper/input/print leak: %s", out.Decision)
 			}
 		})
 	}
 	wg.Wait()
-	if e.cache.order.Len() != 2 {
-		t.Fatalf("cache holds %d queries for two bodies", e.cache.order.Len())
+	if e.cache.order.Len() != 4 {
+		t.Fatalf("cache holds %d queries for two bodies in each dialect", e.cache.order.Len())
 	}
+	e.cache = newCache()
 	e.cache.limit = 2
 	for _, kind := range []Type{Plan, Trigger, Login} {
 		evaluate(t, e, Policy{Type: kind, Engine: V1, Body: "package infraweave"}, `{}`)
