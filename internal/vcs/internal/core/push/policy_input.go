@@ -103,10 +103,14 @@ func (s *Service) policyInput(ctx context.Context, input Evaluation, event Prepa
 		return s.d.PolicyInputs.BuildPushInput(ctx, facts) //nolint:wrapcheck // policy owner reports a safe typed input failure
 	}
 	commit := commitFacts(event.Commit)
+	collection := event.Event.Commits
+	if event.RecoveredCommits != nil {
+		collection = event.RecoveredCommits
+	}
 	facts.Push = known(policyapi.PushFacts{
 		Author: commit.Author, Branch: commit.Branch, Hash: event.Commit.Hash,
 		Message: commit.Message, At: commit.At, AffectedFiles: event.Files, AffectedStacksCount: *event.AffectedStacksCount, Tag: commit.Tag,
-		Commits: pushCommitFacts(event.Event.Commits, event.Event.Branch),
+		Commits: pushCommitFacts(collection, event.Event.Branch),
 	})
 	facts.PullRequest.Known = true
 	return s.d.PolicyInputs.BuildPushInput(ctx, facts) //nolint:wrapcheck // the policy owner reports a safe typed input failure

@@ -14,6 +14,7 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 )
 
 type eventUse struct {
@@ -74,7 +75,7 @@ func (s *pushSource) PrepareTag(ctx context.Context, _ kernel.AccountID, _ kerne
 	return stacksapi.Commit{Hash: event.Head, Tag: event.Tag}, s.err
 }
 
-func (s *pushSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
+func (s *pushSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (port.PreparedPush, error) {
 	s.t.Helper()
 	if tx.In(ctx) {
 		s.t.Fatal("provider work held a transaction")
@@ -87,7 +88,7 @@ func (s *pushSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kern
 	if s.wrongHead {
 		head = "different"
 	}
-	return stacksapi.Commit{Hash: head}, s.files, s.err
+	return port.PreparedPush{Commit: stacksapi.Commit{Hash: head}, Files: s.files}, s.err
 }
 
 func TestUnitPreparedMultiRefFanout(t *testing.T) {

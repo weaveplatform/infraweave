@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -216,7 +215,12 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 	q.Set("pagelen", pagelen)
 	next := p.api + rel + "?" + q.Encode()
 	var out []T
+	seen := map[string]bool{}
 	for next != "" {
+		if seen[next] {
+			return nil, fmt.Errorf("%w: bitbucketcloud: cyclic %s pagination", kernel.ErrUnavailable, what)
+		}
+		seen[next] = true
 		if !strings.HasPrefix(next, p.api+"/") {
 			return nil, fmt.Errorf("%w: bitbucketcloud: %s: a next page off the API: %s",
 				kernel.ErrUnavailable, what, next)
@@ -224,6 +228,9 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 		var pg page[T]
 		if err := p.decode(ctx, in, next, what, &pg); err != nil {
 			return nil, err
+		}
+		if pg.Values == nil {
+			return nil, fmt.Errorf("%w: bitbucketcloud: missing %s page values", kernel.ErrUnavailable, what)
 		}
 		out = append(out, pg.Values...)
 		next = pg.Next
@@ -368,21 +375,10 @@ func (p *Provider) AffectedFiles(ctx context.Context, repo port.Repository, base
 	}
 	query := url.Values{}
 	if comparison == port.PushDiff {
-		newBranch := port.ZeroCommit(base)
-		query.Set("topic", strconv.FormatBool(newBranch))
-		if newBranch {
-			var metadata struct {
-				MainBranch struct {
-					Name string `json:"name"`
-				} `json:"mainbranch"`
-			}
-			if err := p.decode(ctx, *repo.Integration, p.api+rp, "default branch", &metadata); err != nil {
-				return nil, err
-			}
-			if metadata.MainBranch.Name == "" {
-				return nil, fmt.Errorf("%w: bitbucketcloud: default branch", port.ErrNotFound)
-			}
-			base = metadata.MainBranch.Name
+		query.Set("topic", "false")
+		base, err = p.pushBase(ctx, repo, rp, base, head)
+		if err != nil {
+			return nil, err
 		}
 	}
 	type side struct {

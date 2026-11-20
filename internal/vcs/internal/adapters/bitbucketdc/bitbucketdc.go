@@ -278,7 +278,10 @@ func all[T any](ctx context.Context, p *Provider, in port.Integration, rel strin
 // commit is a commit as Bitbucket answers it, its author a user when
 // Bitbucket links its e-mail to one.
 type commit struct {
-	ID              string `json:"id"`
+	ID      string `json:"id"`
+	Parents []struct {
+		ID string `json:"id"`
+	} `json:"parents"`
 	Message         string `json:"message"`
 	AuthorTimestamp int64  `json:"authorTimestamp"`
 	Author          struct {

@@ -25,12 +25,13 @@ var Evaluate = queue.Kind{Name: "vcs.evaluate_event", Queue: queue.VCSInbox, Pol
 // Prepared keeps one event's full diff outside queue payloads. Commit belongs to
 // the immutable head SHA; Branch is the ref that supplied that head.
 type Prepared struct {
-	Event               vcsapi.Event       `json:"event"`
-	Commit              stacksapi.Commit   `json:"commit"`
-	Files               []string           `json:"files"`
-	Action              *port.ActionFacts  `json:"action,omitempty"`
-	AffectedStacksCount *int64             `json:"affectedStacksCount"`
-	Request             *port.RequestFacts `json:"request,omitempty"`
+	Event               vcsapi.Event             `json:"event"`
+	Commit              stacksapi.Commit         `json:"commit"`
+	Files               []string                 `json:"files"`
+	Action              *port.ActionFacts        `json:"action,omitempty"`
+	AffectedStacksCount *int64                   `json:"affectedStacksCount"`
+	Request             *port.RequestFacts       `json:"request,omitempty"`
+	RecoveredCommits    *vcsapi.CommitCollection `json:"recoveredCommits,omitempty"`
 }
 
 // Evaluation is a small durable reference, irrespective of diff or ref count.
@@ -74,7 +75,7 @@ type PolicyIntegrations interface {
 
 // Sources computes one full push diff and head metadata before any write lock.
 type Sources interface {
-	PreparePush(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, []string, error)
+	PreparePush(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (port.PreparedPush, error)
 	PrepareTag(context.Context, kernel.AccountID, kernel.ULID, string, vcsapi.Event) (stacksapi.Commit, error)
 }
 

@@ -41,6 +41,8 @@ var Routes = []Route{
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/refs"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/commits/{commit}"},
+	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/commits"},
+	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/commits/{commit}/changes"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/annotatedtags/{object}"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/items"},
 	{http.MethodGet, "/{project}/_apis/git/repositories/{repository}/diffs/commits"},

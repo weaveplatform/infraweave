@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/gitmem"
@@ -339,6 +340,7 @@ func (f *Fake) apiRoutes(r chi.Router) {
 			f.commentRoutes(r)
 			r.Get("/", f.repositoryMetadata)
 			r.Get("/git/trees/{tree}", f.gitTree)
+			r.Get("/commits", f.commits)
 			r.Get("/commits/*", f.commit)
 			r.Get("/git/ref/tags/*", f.tagRef)
 			r.Get("/contents/*", f.contents)
@@ -604,15 +606,21 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 		answer(w, http.StatusUnprocessableEntity, message("No commit found for SHA: "+ref))
 		return
 	}
-	// GitHub names the account that owns the author's e-mail, and null
-	// when none does.
+	answer(w, http.StatusOK, f.commitJSON(r, c))
+}
+
+func (f *Fake) commitJSON(r *http.Request, c *object.Commit) map[string]any {
 	f.mu.Lock()
 	var author map[string]string
 	if login, ok := f.logins[c.Author.Email]; ok {
 		author = map[string]string{"login": login}
 	}
 	f.mu.Unlock()
-	answer(w, http.StatusOK, map[string]any{
+	parents := make([]map[string]string, 0, len(c.ParentHashes))
+	for _, hash := range c.ParentHashes {
+		parents = append(parents, map[string]string{"sha": hash.String()})
+	}
+	return map[string]any{
 		"sha": c.Hash.String(),
 		"html_url": fmt.Sprintf("%s/%s/%s/commit/%s",
 			host(r), chi.URLParam(r, "owner"), chi.URLParam(r, "repo"), c.Hash),
@@ -624,8 +632,26 @@ func (f *Fake) commit(w http.ResponseWriter, r *http.Request) {
 				"date": c.Author.When.UTC().Format(time.RFC3339),
 			},
 		},
-		"author": author,
-	})
+		"author": author, "parents": parents,
+	}
+}
+
+func (f *Fake) commits(w http.ResponseWriter, r *http.Request) {
+	repo := r.Context().Value(repoKey).(*Repo) //nolint:forcetypeassert // reachable sets it
+	ref := r.URL.Query().Get("sha")
+	if ref == "" {
+		ref = repo.DefaultBranch()
+	}
+	commits, err := repo.Range(r.Context(), "", ref)
+	if err != nil {
+		answer(w, http.StatusNotFound, message("Not Found"))
+		return
+	}
+	items := make([]map[string]any, 0, len(commits))
+	for _, commit := range commits {
+		items = append(items, f.commitJSON(r, commit))
+	}
+	paged(w, r, items, func(page []map[string]any) any { return page })
 }
 
 func (f *Fake) tagRef(w http.ResponseWriter, r *http.Request) {
@@ -682,8 +708,22 @@ func (f *Fake) compare(w http.ResponseWriter, r *http.Request) {
 	if len(files) > 300 {
 		files = files[:300]
 	}
-	paged(w, r, files, func(page []map[string]any) any {
-		return map[string]any{"status": "ahead", "files": page, "merge_base_commit": map[string]string{"sha": mergeBase}}
+	commits, err := repo.Range(r.Context(), base, head)
+	if err != nil {
+		answer(w, http.StatusNotFound, message("Not Found"))
+		return
+	}
+	slices.Reverse(commits)
+	items := make([]map[string]any, 0, len(commits))
+	for _, commit := range commits {
+		items = append(items, f.commitJSON(r, commit))
+	}
+	paged(w, r, items, func(page []map[string]any) any {
+		out := map[string]any{"status": "ahead", "commits": page, "total_commits": len(items), "merge_base_commit": map[string]string{"sha": mergeBase}}
+		if r.URL.Query().Get("page") == "" || r.URL.Query().Get("page") == "1" {
+			out["files"] = files
+		}
+		return out
 	})
 }
 

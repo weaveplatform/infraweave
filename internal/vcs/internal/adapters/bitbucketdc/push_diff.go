@@ -15,29 +15,9 @@ func (p *Provider) pushAffectedFiles(ctx context.Context, repo port.Repository, 
 	if err != nil {
 		return nil, err
 	}
-	if port.ZeroCommit(base) {
-		var branch ref
-		if err := p.decode(ctx, *repo.Integration, rp+"/branches/default", nil, "default branch", &branch); err != nil {
-			return nil, err
-		}
-		if branch.LatestCommit == "" {
-			return nil, fmt.Errorf("%w: bitbucketdc: missing default branch head", kernel.ErrUnavailable)
-		}
-		var ancestor commit
-		if err := p.decode(
-			ctx,
-			*repo.Integration,
-			rp+"/commits/"+url.PathEscape(head)+"/merge-base",
-			url.Values{"otherCommitId": {branch.LatestCommit}},
-			"default branch merge base",
-			&ancestor,
-		); err != nil {
-			return nil, err
-		}
-		if ancestor.ID == "" {
-			return nil, fmt.Errorf("%w: bitbucketdc: missing merge base", kernel.ErrUnavailable)
-		}
-		base = ancestor.ID
+	base, err = p.pushBase(ctx, *repo.Integration, rp, base, head)
+	if err != nil {
+		return nil, err
 	}
 	// The global /changes response has an unpageable hard cap. Enumerate both
 	// complete trees, then ask for one file at a time. Truncated hunk content

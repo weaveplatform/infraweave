@@ -254,6 +254,8 @@ func (f *Fake) Handler() http.Handler {
 				r.Get("/pullRequests/{request}", f.nativeRequest)
 				r.Get("/refs", f.refs)
 				r.Get("/commits/{commit}", f.commit)
+				r.Get("/commits", f.commits)
+				r.Get("/commits/{commit}/changes", f.commitChanges)
 				r.Get("/annotatedtags/{object}", f.annotatedTag)
 				r.Get("/items", f.items)
 				r.Get("/diffs/commits", f.diffs)
@@ -486,9 +488,11 @@ func (f *Fake) items(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) diffs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	base, target := q.Get("baseVersion"), q.Get("targetVersion")
+	common := ""
 	var mergeErr error
 	if sha.MatchString(base) && sha.MatchString(target) && q.Get("diffCommonCommit") == "true" {
 		base, mergeErr = repoOf(r).repo.MergeBase(base, target)
+		common = base
 	}
 	changes, err := repoOf(r).repo.Changes(r.Context(), base, target)
 	if !sha.MatchString(base) || !sha.MatchString(target) || mergeErr != nil || err != nil {
@@ -534,7 +538,7 @@ func (f *Fake) diffs(w http.ResponseWriter, r *http.Request) {
 	end := min(start+per, len(out))
 	answer(w, http.StatusOK, map[string]any{
 		"allChangesIncluded": end == len(out), "changes": out[start:end],
-		"baseCommit": base, "targetCommit": target,
+		"baseCommit": base, "targetCommit": target, "commonCommit": common,
 	})
 }
 

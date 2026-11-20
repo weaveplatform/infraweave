@@ -281,6 +281,10 @@ func (r *Repo) Changes(ctx context.Context, base, head string) ([]Change, error)
 	defer r.mu.Unlock()
 	trees := make([]*object.Tree, 0, 2)
 	for _, ref := range []string{base, head} {
+		if ref == "" {
+			trees = append(trees, nil)
+			continue
+		}
 		c, err := r.resolve(ref)
 		if err != nil {
 			return nil, err

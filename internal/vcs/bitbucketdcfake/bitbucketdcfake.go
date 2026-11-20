@@ -270,6 +270,7 @@ func (f *Fake) Handler() http.Handler {
 			r.Get("/branches", f.branches)
 			r.Get("/tags/*", f.tag)
 			r.Get("/commits/{commit}", f.commit)
+			r.Get("/commits", f.commits)
 			r.Get("/raw/*", f.raw)
 			r.Get("/compare/changes", f.changes)
 			r.Get("/files", f.files)

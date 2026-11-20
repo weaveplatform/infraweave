@@ -20,6 +20,7 @@ import (
 	vcsapi "github.com/weaveplatform/infraweave/internal/vcs/api"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/intake"
+	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/port/webhooktest"
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/core/push"
 )
@@ -137,12 +138,12 @@ func (s *dispatchSource) PrepareTag(ctx context.Context, _ kernel.AccountID, _ k
 	return stacksapi.Commit{Hash: event.Head, Tag: event.Tag}, nil
 }
 
-func (s *dispatchSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (stacksapi.Commit, []string, error) {
+func (s *dispatchSource) PreparePush(ctx context.Context, _ kernel.AccountID, _ kernel.ULID, _ string, event vcsapi.Event) (port.PreparedPush, error) {
 	if tx.In(ctx) {
-		return stacksapi.Commit{}, nil, errors.New("provider read under transaction")
+		return port.PreparedPush{}, errors.New("provider read under transaction")
 	}
 	s.calls++
-	return stacksapi.Commit{Hash: event.Head}, s.files, nil
+	return port.PreparedPush{Commit: stacksapi.Commit{Hash: event.Head}, Files: s.files}, nil
 }
 
 type refusedDispatchCompletion struct {

@@ -39,7 +39,7 @@ func TestUnitKnownUnavailableDoesNotReachProvider(t *testing.T) {
 			if _, err := f.svc.Credential(t.Context(), f.acct, f.stack, f.run); !errors.Is(err, refusal) {
 				t.Fatal(err)
 			}
-			if _, _, err := f.svc.PreparePush(
+			if _, err := f.svc.PreparePush(
 				t.Context(),
 				f.acct,
 				f.in.ID,
