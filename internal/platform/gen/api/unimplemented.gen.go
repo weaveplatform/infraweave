@@ -718,6 +718,38 @@ func (UnimplementedStrict) PersonalApiKeyDisable(context.Context, PersonalApiKey
 	return nil, &problem.NotImplementedError{OperationID: "personalApiKeyDisable", Route: "POST /personal-api-keys/{personalApiKeyId}/disable"}
 }
 
+func (UnimplementedStrict) Policies(context.Context, PoliciesRequestObject) (PoliciesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policies", Route: "GET /policies"}
+}
+
+func (UnimplementedStrict) PolicyCreatev2(context.Context, PolicyCreatev2RequestObject) (PolicyCreatev2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyCreatev2", Route: "POST /policies"}
+}
+
+func (UnimplementedStrict) SearchPolicies(context.Context, SearchPoliciesRequestObject) (SearchPoliciesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPolicies", Route: "POST /policies/search"}
+}
+
+func (UnimplementedStrict) SearchPoliciesSuggestions(context.Context, SearchPoliciesSuggestionsRequestObject) (SearchPoliciesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPoliciesSuggestions", Route: "POST /policies/search/suggestions"}
+}
+
+func (UnimplementedStrict) PolicyDelete(context.Context, PolicyDeleteRequestObject) (PolicyDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyDelete", Route: "DELETE /policies/{policyId}"}
+}
+
+func (UnimplementedStrict) Policy(context.Context, PolicyRequestObject) (PolicyResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policy", Route: "GET /policies/{policyId}"}
+}
+
+func (UnimplementedStrict) PolicyUpdatev2Patch(context.Context, PolicyUpdatev2PatchRequestObject) (PolicyUpdatev2PatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyUpdatev2Patch", Route: "PATCH /policies/{policyId}"}
+}
+
+func (UnimplementedStrict) PolicyUpdatev2(context.Context, PolicyUpdatev2RequestObject) (PolicyUpdatev2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyUpdatev2", Route: "PUT /policies/{policyId}"}
+}
+
 func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestObject) (PolicyRuntimeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "policyRuntime", Route: "GET /policy-runtime"}
 }
@@ -828,6 +860,10 @@ func (UnimplementedStrict) SearchSpaceContextsSuggestions(context.Context, Searc
 
 func (UnimplementedStrict) SearchSpacePolicies(context.Context, SearchSpacePoliciesRequestObject) (SearchSpacePoliciesResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchSpacePolicies", Route: "POST /space-policies/search"}
+}
+
+func (UnimplementedStrict) SearchSpacePoliciesSuggestions(context.Context, SearchSpacePoliciesSuggestionsRequestObject) (SearchSpacePoliciesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchSpacePoliciesSuggestions", Route: "POST /space-policies/search/suggestions"}
 }
 
 func (UnimplementedStrict) Spaces(context.Context, SpacesRequestObject) (SpacesResponseObject, error) {

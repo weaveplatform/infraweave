@@ -6132,6 +6132,41 @@ type Policy struct {
 // PolicyKind The concrete type, for union and interface responses.
 type PolicyKind string
 
+// PolicyConnection defines model for PolicyConnection.
+type PolicyConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node A reference to a Policy; fetch it with GET /policies/{policyId}.
+	Node PolicyRef `json:"node"`
+}
+
+// PolicyCreateInput All arguments to create an individual Policy.
+type PolicyCreateInput struct {
+	// Body Body of the policy.
+	Body string `json:"body"`
+
+	// Description Description of the policy.
+	Description *string `json:"description,omitempty"`
+
+	// EngineType The per-policy Rego dialect. Omission intentionally defaults to REGO_V1.
+	EngineType *PolicyEngineType `json:"engineType,omitempty"`
+
+	// Labels User-defined labels for the Policy.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name Name of the policy.
+	Name string `json:"name"`
+
+	// PolicyTemplateULID Optional ULID of a template that is used to create the policy.
+	PolicyTemplateULID *string `json:"policyTemplateULID,omitempty"`
+
+	// Space ID of the space this Policy will belong to.
+	Space *string `json:"space,omitempty"`
+
+	// Type Type of the policy.
+	Type PolicyType `json:"type"`
+}
+
 // PolicyEngineType PolicyEngineType represents a type of policy engine that will be used to evaluate policy
 type PolicyEngineType string
 
@@ -6215,6 +6250,27 @@ type PolicyStackAttachment struct {
 
 // PolicyType PolicyType represents a type of policy.
 type PolicyType string
+
+// PolicyUpdateInput All arguments to update an individual Policy.
+type PolicyUpdateInput struct {
+	// Body Body of the policy.
+	Body string `json:"body"`
+
+	// Description Description of the policy.
+	Description *string `json:"description,omitempty"`
+
+	// EngineType Omission preserves the stored engine; an explicit change recompiles the new body.
+	EngineType *PolicyEngineType `json:"engineType,omitempty"`
+
+	// Labels User-defined labels for the Policy.
+	Labels *[]string `json:"labels,omitempty"`
+
+	// Name Name of the policy.
+	Name string `json:"name"`
+
+	// Space ID of the space this Policy will belong to.
+	Space *string `json:"space,omitempty"`
+}
 
 // Problem An RFC 9457 problem detail. Every error response uses the status code and this body.
 type Problem struct {
@@ -7459,6 +7515,12 @@ type SearchManagedEntitiesOutput struct {
 	PageInfo PageInfo                    `json:"pageInfo"`
 }
 
+// SearchPoliciesOutput defines model for SearchPoliciesOutput.
+type SearchPoliciesOutput struct {
+	Edges    []PolicyConnection `json:"edges"`
+	PageInfo PageInfo           `json:"pageInfo"`
+}
+
 // SearchQueryFieldConstraint SearchQueryFieldConstraint constraints the values of a field.
 type SearchQueryFieldConstraint struct {
 	// BooleanEquals booleanEquals constraints the field to be equal to one of the given values.
@@ -7594,6 +7656,12 @@ type SearchSpacePoliciesOutput struct {
 type SearchSpacePoliciesRequest struct {
 	Input SearchInput `json:"input"`
 	Space string      `json:"space"`
+}
+
+// SearchSpacePoliciesSuggestionsRequest The arguments of searchSpacePoliciesSuggestions not carried in the path.
+type SearchSpacePoliciesSuggestionsRequest struct {
+	Input SearchSuggestionsInput `json:"input"`
+	Space string                 `json:"space"`
 }
 
 // SearchSpacesInput Arguments used to filter spaces.
@@ -11337,6 +11405,44 @@ type PersonalApiKeyDisableParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// PoliciesParams defines parameters for Policies.
+type PoliciesParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PolicyCreatev2Params defines parameters for PolicyCreatev2.
+type PolicyCreatev2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PolicyDeleteParams defines parameters for PolicyDelete.
+type PolicyDeleteParams struct {
+	Force *bool `form:"force,omitempty" json:"force,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// PolicyUpdatev2PatchParams defines parameters for PolicyUpdatev2Patch.
+type PolicyUpdatev2PatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// PolicyUpdatev2Params defines parameters for PolicyUpdatev2.
+type PolicyUpdatev2Params struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
 // RepositoriesParams defines parameters for Repositories.
 type RepositoriesParams struct {
 	Provider         *VCSProvider `form:"provider,omitempty" json:"provider,omitempty"`
@@ -12542,6 +12648,21 @@ type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
 // PersonalApiKeyCreateJSONRequestBody defines body for PersonalApiKeyCreate for application/json ContentType.
 type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
 
+// PolicyCreatev2JSONRequestBody defines body for PolicyCreatev2 for application/json ContentType.
+type PolicyCreatev2JSONRequestBody = PolicyCreateInput
+
+// SearchPoliciesJSONRequestBody defines body for SearchPolicies for application/json ContentType.
+type SearchPoliciesJSONRequestBody = SearchInput
+
+// SearchPoliciesSuggestionsJSONRequestBody defines body for SearchPoliciesSuggestions for application/json ContentType.
+type SearchPoliciesSuggestionsJSONRequestBody = SearchSuggestionsInput
+
+// PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody defines body for PolicyUpdatev2Patch for application/merge-patch+json ContentType.
+type PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// PolicyUpdatev2JSONRequestBody defines body for PolicyUpdatev2 for application/json ContentType.
+type PolicyUpdatev2JSONRequestBody = PolicyUpdateInput
+
 // RoleCreateJSONRequestBody defines body for RoleCreate for application/json ContentType.
 type RoleCreateJSONRequestBody = RoleInput
 
@@ -12568,6 +12689,9 @@ type SearchSpaceContextsSuggestionsJSONRequestBody = SearchSpaceContextsSuggesti
 
 // SearchSpacePoliciesJSONRequestBody defines body for SearchSpacePolicies for application/json ContentType.
 type SearchSpacePoliciesJSONRequestBody = SearchSpacePoliciesRequest
+
+// SearchSpacePoliciesSuggestionsJSONRequestBody defines body for SearchSpacePoliciesSuggestions for application/json ContentType.
+type SearchSpacePoliciesSuggestionsJSONRequestBody = SearchSpacePoliciesSuggestionsRequest
 
 // SpaceCreateJSONRequestBody defines body for SpaceCreate for application/json ContentType.
 type SpaceCreateJSONRequestBody = SpaceInput
@@ -16637,6 +16761,113 @@ type ClientInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisable(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// Policies List Policies
+	//
+	// List of all the polices in the account.
+	//
+	// Corresponds with GET /policies (the `Policies` operationId).
+	Policies(ctx context.Context, params *PoliciesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyCreatev2WithBody Create Policy
+	//
+	// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+	PolicyCreatev2WithBody(ctx context.Context, params *PolicyCreatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyCreatev2 Create Policy
+	//
+	// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+	PolicyCreatev2(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchPoliciesWithBody Search Policies
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+	SearchPoliciesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchPolicies Search Policies
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+	SearchPolicies(ctx context.Context, body SearchPoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchPoliciesSuggestionsWithBody Search Policies Suggestions
+	//
+	// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+	SearchPoliciesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchPoliciesSuggestions Search Policies Suggestions
+	//
+	// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+	SearchPoliciesSuggestions(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyDelete Delete Policy
+	//
+	// Delete an existing Policy.
+	//
+	// Corresponds with DELETE /policies/{policyId} (the `PolicyDelete` operationId).
+	PolicyDelete(ctx context.Context, policyId string, params *PolicyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Policy Get Policy
+	//
+	// Details of a single Policy.
+	//
+	// Corresponds with GET /policies/{policyId} (the `Policy` operationId).
+	Policy(ctx context.Context, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyUpdatev2PatchWithBody Patch Policy
+	//
+	// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+	PolicyUpdatev2PatchWithBody(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBody Patch Policy
+	//
+	// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+	PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, body PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyUpdatev2WithBody Update Policy
+	//
+	// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+	PolicyUpdatev2WithBody(ctx context.Context, policyId string, params *PolicyUpdatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyUpdatev2 Update Policy
+	//
+	// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+	PolicyUpdatev2(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PolicyRuntime Policy Runtime
 	//
 	// Read the OPA library version linked into this server binary.
@@ -16990,6 +17221,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /space-policies/search (the `SearchSpacePolicies` operationId).
 	SearchSpacePolicies(ctx context.Context, body SearchSpacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpacePoliciesSuggestionsWithBody Search Space Policies Suggestions
+	//
+	// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+	SearchSpacePoliciesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchSpacePoliciesSuggestions Search Space Policies Suggestions
+	//
+	// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+	SearchSpacePoliciesSuggestions(ctx context.Context, body SearchSpacePoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Spaces List Spaces
 	//
@@ -23400,6 +23649,243 @@ func (c *Client) PersonalApiKeyDisable(ctx context.Context, personalApiKeyId str
 	return c.Client.Do(req)
 }
 
+// Policies List Policies
+//
+// List of all the polices in the account.
+//
+// Corresponds with GET /policies (the `Policies` operationId).
+func (c *Client) Policies(ctx context.Context, params *PoliciesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPoliciesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyCreatev2WithBody Create Policy
+//
+// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+func (c *Client) PolicyCreatev2WithBody(ctx context.Context, params *PolicyCreatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyCreatev2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyCreatev2 Create Policy
+//
+// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+func (c *Client) PolicyCreatev2(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyCreatev2Request(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchPoliciesWithBody Search Policies
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+func (c *Client) SearchPoliciesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchPoliciesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchPolicies Search Policies
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+func (c *Client) SearchPolicies(ctx context.Context, body SearchPoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchPoliciesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchPoliciesSuggestionsWithBody Search Policies Suggestions
+//
+// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+func (c *Client) SearchPoliciesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchPoliciesSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchPoliciesSuggestions Search Policies Suggestions
+//
+// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+func (c *Client) SearchPoliciesSuggestions(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchPoliciesSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyDelete Delete Policy
+//
+// Delete an existing Policy.
+//
+// Corresponds with DELETE /policies/{policyId} (the `PolicyDelete` operationId).
+func (c *Client) PolicyDelete(ctx context.Context, policyId string, params *PolicyDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyDeleteRequest(c.Server, policyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Policy Get Policy
+//
+// Details of a single Policy.
+//
+// Corresponds with GET /policies/{policyId} (the `Policy` operationId).
+func (c *Client) Policy(ctx context.Context, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyRequest(c.Server, policyId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyUpdatev2PatchWithBody Patch Policy
+//
+// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+func (c *Client) PolicyUpdatev2PatchWithBody(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyUpdatev2PatchRequestWithBody(c.Server, policyId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBody Patch Policy
+//
+// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+func (c *Client) PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, body PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyUpdatev2PatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, policyId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyUpdatev2WithBody Update Policy
+//
+// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+func (c *Client) PolicyUpdatev2WithBody(ctx context.Context, policyId string, params *PolicyUpdatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyUpdatev2RequestWithBody(c.Server, policyId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyUpdatev2 Update Policy
+//
+// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+func (c *Client) PolicyUpdatev2(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyUpdatev2Request(c.Server, policyId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PolicyRuntime Policy Runtime
 //
 // Read the OPA library version linked into this server binary.
@@ -24114,6 +24600,44 @@ func (c *Client) SearchSpacePoliciesWithBody(ctx context.Context, contentType st
 // Corresponds with POST /space-policies/search (the `SearchSpacePolicies` operationId).
 func (c *Client) SearchSpacePolicies(ctx context.Context, body SearchSpacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchSpacePoliciesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpacePoliciesSuggestionsWithBody Search Space Policies Suggestions
+//
+// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+func (c *Client) SearchSpacePoliciesSuggestionsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpacePoliciesSuggestionsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchSpacePoliciesSuggestions Search Space Policies Suggestions
+//
+// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+func (c *Client) SearchSpacePoliciesSuggestions(ctx context.Context, body SearchSpacePoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchSpacePoliciesSuggestionsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -37525,6 +38049,452 @@ func NewPersonalApiKeyDisableRequest(server string, personalApiKeyId string, par
 	return req, nil
 }
 
+// NewPoliciesRequest constructs an http.Request for the Policies method
+func NewPoliciesRequest(server string, params *PoliciesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicyCreatev2Request calls the generic PolicyCreatev2 builder with application/json body
+func NewPolicyCreatev2Request(server string, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPolicyCreatev2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPolicyCreatev2RequestWithBody constructs an http.Request for the PolicyCreatev2 method, with any body, and a specified content type
+func NewPolicyCreatev2RequestWithBody(server string, params *PolicyCreatev2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewSearchPoliciesRequest calls the generic SearchPolicies builder with application/json body
+func NewSearchPoliciesRequest(server string, body SearchPoliciesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchPoliciesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchPoliciesRequestWithBody constructs an http.Request for the SearchPolicies method, with any body, and a specified content type
+func NewSearchPoliciesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchPoliciesSuggestionsRequest calls the generic SearchPoliciesSuggestions builder with application/json body
+func NewSearchPoliciesSuggestionsRequest(server string, body SearchPoliciesSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchPoliciesSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchPoliciesSuggestionsRequestWithBody constructs an http.Request for the SearchPoliciesSuggestions method, with any body, and a specified content type
+func NewSearchPoliciesSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/search/suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPolicyDeleteRequest constructs an http.Request for the PolicyDelete method
+func NewPolicyDeleteRequest(server string, policyId string, params *PolicyDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Force != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "force", *params.Force, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewPolicyRequest constructs an http.Request for the Policy method
+func NewPolicyRequest(server string, policyId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicyUpdatev2PatchRequestWithApplicationMergePatchPlusJSONBody calls the generic PolicyUpdatev2Patch builder with application/merge-patch+json body
+func NewPolicyUpdatev2PatchRequestWithApplicationMergePatchPlusJSONBody(server string, policyId string, params *PolicyUpdatev2PatchParams, body PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPolicyUpdatev2PatchRequestWithBody(server, policyId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewPolicyUpdatev2PatchRequestWithBody constructs an http.Request for the PolicyUpdatev2Patch method, with any body, and a specified content type
+func NewPolicyUpdatev2PatchRequestWithBody(server string, policyId string, params *PolicyUpdatev2PatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewPolicyUpdatev2Request calls the generic PolicyUpdatev2 builder with application/json body
+func NewPolicyUpdatev2Request(server string, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPolicyUpdatev2RequestWithBody(server, policyId, params, "application/json", bodyReader)
+}
+
+// NewPolicyUpdatev2RequestWithBody constructs an http.Request for the PolicyUpdatev2 method, with any body, and a specified content type
+func NewPolicyUpdatev2RequestWithBody(server string, policyId string, params *PolicyUpdatev2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewPolicyRuntimeRequest constructs an http.Request for the PolicyRuntime method
 func NewPolicyRuntimeRequest(server string) (*http.Request, error) {
 	var err error
@@ -38861,6 +39831,46 @@ func NewSearchSpacePoliciesRequestWithBody(server string, contentType string, bo
 	}
 
 	operationPath := fmt.Sprintf("/space-policies/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSearchSpacePoliciesSuggestionsRequest calls the generic SearchSpacePoliciesSuggestions builder with application/json body
+func NewSearchSpacePoliciesSuggestionsRequest(server string, body SearchSpacePoliciesSuggestionsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchSpacePoliciesSuggestionsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchSpacePoliciesSuggestionsRequestWithBody constructs an http.Request for the SearchSpacePoliciesSuggestions method, with any body, and a specified content type
+func NewSearchSpacePoliciesSuggestionsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/space-policies/search/suggestions")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -50860,6 +51870,119 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /personal-api-keys/{personalApiKeyId}/disable (the `PersonalApiKeyDisable` operationId).
 	PersonalApiKeyDisableWithResponse(ctx context.Context, personalApiKeyId string, params *PersonalApiKeyDisableParams, reqEditors ...RequestEditorFn) (*PersonalApiKeyDisableResponse, error)
 
+	// PoliciesWithResponse List Policies
+	//
+	// List of all the polices in the account.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies (the `Policies` operationId).
+	PoliciesWithResponse(ctx context.Context, params *PoliciesParams, reqEditors ...RequestEditorFn) (*PoliciesResponse, error)
+
+	// PolicyCreatev2WithBodyWithResponse Create Policy
+	//
+	// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+	PolicyCreatev2WithBodyWithResponse(ctx context.Context, params *PolicyCreatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyCreatev2Response, error)
+
+	// PolicyCreatev2WithResponse Create Policy
+	//
+	// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+	PolicyCreatev2WithResponse(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyCreatev2Response, error)
+
+	// SearchPoliciesWithBodyWithResponse Search Policies
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+	SearchPoliciesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchPoliciesResponse, error)
+
+	// SearchPoliciesWithResponse Search Policies
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+	SearchPoliciesWithResponse(ctx context.Context, body SearchPoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchPoliciesResponse, error)
+
+	// SearchPoliciesSuggestionsWithBodyWithResponse Search Policies Suggestions
+	//
+	// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+	SearchPoliciesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchPoliciesSuggestionsResponse, error)
+
+	// SearchPoliciesSuggestionsWithResponse Search Policies Suggestions
+	//
+	// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+	SearchPoliciesSuggestionsWithResponse(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchPoliciesSuggestionsResponse, error)
+
+	// PolicyDeleteWithResponse Delete Policy
+	//
+	// Delete an existing Policy.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /policies/{policyId} (the `PolicyDelete` operationId).
+	PolicyDeleteWithResponse(ctx context.Context, policyId string, params *PolicyDeleteParams, reqEditors ...RequestEditorFn) (*PolicyDeleteResponse, error)
+
+	// PolicyWithResponse Get Policy
+	//
+	// Details of a single Policy.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies/{policyId} (the `Policy` operationId).
+	PolicyWithResponse(ctx context.Context, policyId string, reqEditors ...RequestEditorFn) (*PolicyResponse, error)
+
+	// PolicyUpdatev2PatchWithBodyWithResponse Patch Policy
+	//
+	// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+	PolicyUpdatev2PatchWithBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyUpdatev2PatchResponse, error)
+
+	// PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Policy
+	//
+	// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+	PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, body PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyUpdatev2PatchResponse, error)
+
+	// PolicyUpdatev2WithBodyWithResponse Update Policy
+	//
+	// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+	PolicyUpdatev2WithBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyUpdatev2Response, error)
+
+	// PolicyUpdatev2WithResponse Update Policy
+	//
+	// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+	PolicyUpdatev2WithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyUpdatev2Response, error)
+
 	// PolicyRuntimeWithResponse Policy Runtime
 	//
 	// Read the OPA library version linked into this server binary.
@@ -51251,6 +52374,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /space-policies/search (the `SearchSpacePolicies` operationId).
 	SearchSpacePoliciesWithResponse(ctx context.Context, body SearchSpacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacePoliciesResponse, error)
+
+	// SearchSpacePoliciesSuggestionsWithBodyWithResponse Search Space Policies Suggestions
+	//
+	// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+	SearchSpacePoliciesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpacePoliciesSuggestionsResponse, error)
+
+	// SearchSpacePoliciesSuggestionsWithResponse Search Space Policies Suggestions
+	//
+	// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+	SearchSpacePoliciesSuggestionsWithResponse(ctx context.Context, body SearchSpacePoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacePoliciesSuggestionsResponse, error)
 
 	// SpacesWithResponse List Spaces
 	//
@@ -71195,6 +72336,797 @@ func (r PersonalApiKeyDisableResponse) ContentType() string {
 	return ""
 }
 
+// PoliciesResponse200Headers the declared response headers of an HTTP 200 response for Policies
+type PoliciesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PoliciesResponse429Headers the declared response headers of an HTTP 429 response for Policies
+type PoliciesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PoliciesResponse503Headers the declared response headers of an HTTP 503 response for Policies
+type PoliciesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PoliciesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PoliciesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PoliciesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PoliciesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PoliciesResponse) GetJSON200() *PolicyPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r PoliciesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PoliciesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PoliciesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PoliciesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PoliciesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PoliciesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PoliciesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PoliciesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyCreatev2Response201Headers the declared response headers of an HTTP 201 response for PolicyCreatev2
+type PolicyCreatev2Response201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyCreatev2Response429Headers the declared response headers of an HTTP 429 response for PolicyCreatev2
+type PolicyCreatev2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyCreatev2Response503Headers the declared response headers of an HTTP 503 response for PolicyCreatev2
+type PolicyCreatev2Response503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyCreatev2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Policy
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *PolicyCreatev2Response201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyCreatev2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyCreatev2Response503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r PolicyCreatev2Response) GetJSON201() *Policy {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PolicyCreatev2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PolicyCreatev2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyCreatev2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyCreatev2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyCreatev2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyCreatev2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyCreatev2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyCreatev2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyCreatev2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchPoliciesResponse200Headers the declared response headers of an HTTP 200 response for SearchPolicies
+type SearchPoliciesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchPoliciesResponse429Headers the declared response headers of an HTTP 429 response for SearchPolicies
+type SearchPoliciesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchPoliciesResponse503Headers the declared response headers of an HTTP 503 response for SearchPolicies
+type SearchPoliciesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchPoliciesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchPoliciesOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchPoliciesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchPoliciesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchPoliciesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchPoliciesResponse) GetJSON200() *SearchPoliciesOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchPoliciesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchPoliciesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchPoliciesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchPoliciesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchPoliciesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchPoliciesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchPoliciesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchPoliciesSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchPoliciesSuggestions
+type SearchPoliciesSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchPoliciesSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchPoliciesSuggestions
+type SearchPoliciesSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchPoliciesSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchPoliciesSuggestions
+type SearchPoliciesSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchPoliciesSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchPoliciesSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchPoliciesSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchPoliciesSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchPoliciesSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchPoliciesSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchPoliciesSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchPoliciesSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchPoliciesSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchPoliciesSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchPoliciesSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchPoliciesSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyDeleteResponse200Headers the declared response headers of an HTTP 200 response for PolicyDelete
+type PolicyDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyDeleteResponse429Headers the declared response headers of an HTTP 429 response for PolicyDelete
+type PolicyDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyDeleteResponse503Headers the declared response headers of an HTTP 503 response for PolicyDelete
+type PolicyDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Policy
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyDeleteResponse) GetJSON200() *Policy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r PolicyDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyResponse200Headers the declared response headers of an HTTP 200 response for Policy
+type PolicyResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyResponse429Headers the declared response headers of an HTTP 429 response for Policy
+type PolicyResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyResponse503Headers the declared response headers of an HTTP 503 response for Policy
+type PolicyResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Policy
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyResponse) GetJSON200() *Policy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyUpdatev2PatchResponse200Headers the declared response headers of an HTTP 200 response for PolicyUpdatev2Patch
+type PolicyUpdatev2PatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyUpdatev2PatchResponse429Headers the declared response headers of an HTTP 429 response for PolicyUpdatev2Patch
+type PolicyUpdatev2PatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyUpdatev2PatchResponse503Headers the declared response headers of an HTTP 503 response for PolicyUpdatev2Patch
+type PolicyUpdatev2PatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyUpdatev2PatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Policy
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyUpdatev2PatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyUpdatev2PatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyUpdatev2PatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyUpdatev2PatchResponse) GetJSON200() *Policy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyUpdatev2PatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyUpdatev2PatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyUpdatev2PatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyUpdatev2PatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyUpdatev2PatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyUpdatev2Response200Headers the declared response headers of an HTTP 200 response for PolicyUpdatev2
+type PolicyUpdatev2Response200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyUpdatev2Response429Headers the declared response headers of an HTTP 429 response for PolicyUpdatev2
+type PolicyUpdatev2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyUpdatev2Response503Headers the declared response headers of an HTTP 503 response for PolicyUpdatev2
+type PolicyUpdatev2Response503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyUpdatev2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Policy
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyUpdatev2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyUpdatev2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyUpdatev2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyUpdatev2Response) GetJSON200() *Policy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyUpdatev2Response) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r PolicyUpdatev2Response) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyUpdatev2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyUpdatev2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyUpdatev2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyUpdatev2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyUpdatev2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyUpdatev2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyUpdatev2Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // PolicyRuntimeResponse200Headers the declared response headers of an HTTP 200 response for PolicyRuntime
 type PolicyRuntimeResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -73852,6 +75784,94 @@ func (r SearchSpacePoliciesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SearchSpacePoliciesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SearchSpacePoliciesSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for SearchSpacePoliciesSuggestions
+type SearchSpacePoliciesSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpacePoliciesSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for SearchSpacePoliciesSuggestions
+type SearchSpacePoliciesSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// SearchSpacePoliciesSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for SearchSpacePoliciesSuggestions
+type SearchSpacePoliciesSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type SearchSpacePoliciesSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SearchSpacePoliciesSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *SearchSpacePoliciesSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *SearchSpacePoliciesSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchSpacePoliciesSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r SearchSpacePoliciesSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r SearchSpacePoliciesSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SearchSpacePoliciesSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchSpacePoliciesSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchSpacePoliciesSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchSpacePoliciesSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchSpacePoliciesSuggestionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -94614,6 +96634,197 @@ func (c *ClientWithResponses) PersonalApiKeyDisableWithResponse(ctx context.Cont
 	return ParsePersonalApiKeyDisableResponse(rsp)
 }
 
+// PoliciesWithResponse List Policies
+//
+// List of all the polices in the account.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies (the `Policies` operationId).
+func (c *ClientWithResponses) PoliciesWithResponse(ctx context.Context, params *PoliciesParams, reqEditors ...RequestEditorFn) (*PoliciesResponse, error) {
+	rsp, err := c.Policies(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePoliciesResponse(rsp)
+}
+
+// PolicyCreatev2WithBodyWithResponse Create Policy
+//
+// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+func (c *ClientWithResponses) PolicyCreatev2WithBodyWithResponse(ctx context.Context, params *PolicyCreatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyCreatev2Response, error) {
+	rsp, err := c.PolicyCreatev2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyCreatev2Response(rsp)
+}
+
+// PolicyCreatev2WithResponse Create Policy
+//
+// Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies (the `PolicyCreatev2` operationId).
+func (c *ClientWithResponses) PolicyCreatev2WithResponse(ctx context.Context, params *PolicyCreatev2Params, body PolicyCreatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyCreatev2Response, error) {
+	rsp, err := c.PolicyCreatev2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyCreatev2Response(rsp)
+}
+
+// SearchPoliciesWithBodyWithResponse Search Policies
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+func (c *ClientWithResponses) SearchPoliciesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchPoliciesResponse, error) {
+	rsp, err := c.SearchPoliciesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchPoliciesResponse(rsp)
+}
+
+// SearchPoliciesWithResponse Search Policies
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/search (the `SearchPolicies` operationId).
+func (c *ClientWithResponses) SearchPoliciesWithResponse(ctx context.Context, body SearchPoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchPoliciesResponse, error) {
+	rsp, err := c.SearchPolicies(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchPoliciesResponse(rsp)
+}
+
+// SearchPoliciesSuggestionsWithBodyWithResponse Search Policies Suggestions
+//
+// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+func (c *ClientWithResponses) SearchPoliciesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchPoliciesSuggestionsResponse, error) {
+	rsp, err := c.SearchPoliciesSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchPoliciesSuggestionsResponse(rsp)
+}
+
+// SearchPoliciesSuggestionsWithResponse Search Policies Suggestions
+//
+// The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
+func (c *ClientWithResponses) SearchPoliciesSuggestionsWithResponse(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchPoliciesSuggestionsResponse, error) {
+	rsp, err := c.SearchPoliciesSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchPoliciesSuggestionsResponse(rsp)
+}
+
+// PolicyDeleteWithResponse Delete Policy
+//
+// Delete an existing Policy.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /policies/{policyId} (the `PolicyDelete` operationId).
+func (c *ClientWithResponses) PolicyDeleteWithResponse(ctx context.Context, policyId string, params *PolicyDeleteParams, reqEditors ...RequestEditorFn) (*PolicyDeleteResponse, error) {
+	rsp, err := c.PolicyDelete(ctx, policyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyDeleteResponse(rsp)
+}
+
+// PolicyWithResponse Get Policy
+//
+// Details of a single Policy.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies/{policyId} (the `Policy` operationId).
+func (c *ClientWithResponses) PolicyWithResponse(ctx context.Context, policyId string, reqEditors ...RequestEditorFn) (*PolicyResponse, error) {
+	rsp, err := c.Policy(ctx, policyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyResponse(rsp)
+}
+
+// PolicyUpdatev2PatchWithBodyWithResponse Patch Policy
+//
+// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+func (c *ClientWithResponses) PolicyUpdatev2PatchWithBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyUpdatev2PatchResponse, error) {
+	rsp, err := c.PolicyUpdatev2PatchWithBody(ctx, policyId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyUpdatev2PatchResponse(rsp)
+}
+
+// PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Policy
+//
+// Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /policies/{policyId} (the `PolicyUpdatev2Patch` operationId).
+func (c *ClientWithResponses) PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2PatchParams, body PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyUpdatev2PatchResponse, error) {
+	rsp, err := c.PolicyUpdatev2PatchWithApplicationMergePatchPlusJSONBody(ctx, policyId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyUpdatev2PatchResponse(rsp)
+}
+
+// PolicyUpdatev2WithBodyWithResponse Update Policy
+//
+// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+func (c *ClientWithResponses) PolicyUpdatev2WithBodyWithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicyUpdatev2Response, error) {
+	rsp, err := c.PolicyUpdatev2WithBody(ctx, policyId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyUpdatev2Response(rsp)
+}
+
+// PolicyUpdatev2WithResponse Update Policy
+//
+// Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /policies/{policyId} (the `PolicyUpdatev2` operationId).
+func (c *ClientWithResponses) PolicyUpdatev2WithResponse(ctx context.Context, policyId string, params *PolicyUpdatev2Params, body PolicyUpdatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicyUpdatev2Response, error) {
+	rsp, err := c.PolicyUpdatev2(ctx, policyId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyUpdatev2Response(rsp)
+}
+
 // PolicyRuntimeWithResponse Policy Runtime
 //
 // Read the OPA library version linked into this server binary.
@@ -95226,6 +97437,36 @@ func (c *ClientWithResponses) SearchSpacePoliciesWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseSearchSpacePoliciesResponse(rsp)
+}
+
+// SearchSpacePoliciesSuggestionsWithBodyWithResponse Search Space Policies Suggestions
+//
+// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpacePoliciesSuggestionsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchSpacePoliciesSuggestionsResponse, error) {
+	rsp, err := c.SearchSpacePoliciesSuggestionsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpacePoliciesSuggestionsResponse(rsp)
+}
+
+// SearchSpacePoliciesSuggestionsWithResponse Search Space Policies Suggestions
+//
+// The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /space-policies/search/suggestions (the `SearchSpacePoliciesSuggestions` operationId).
+func (c *ClientWithResponses) SearchSpacePoliciesSuggestionsWithResponse(ctx context.Context, body SearchSpacePoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchSpacePoliciesSuggestionsResponse, error) {
+	rsp, err := c.SearchSpacePoliciesSuggestions(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchSpacePoliciesSuggestionsResponse(rsp)
 }
 
 // SpacesWithResponse List Spaces
@@ -121632,6 +123873,1031 @@ func ParsePersonalApiKeyDisableResponse(rsp *http.Response) (*PersonalApiKeyDisa
 	return response, nil
 }
 
+// ParsePoliciesResponse parses an HTTP response from a PoliciesWithResponse call
+func ParsePoliciesResponse(rsp *http.Response) (*PoliciesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PoliciesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PoliciesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PoliciesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PoliciesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyCreatev2Response parses an HTTP response from a PolicyCreatev2WithResponse call
+func ParsePolicyCreatev2Response(rsp *http.Response) (*PolicyCreatev2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyCreatev2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers PolicyCreatev2Response201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyCreatev2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyCreatev2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchPoliciesResponse parses an HTTP response from a SearchPoliciesWithResponse call
+func ParseSearchPoliciesResponse(rsp *http.Response) (*SearchPoliciesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchPoliciesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchPoliciesOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchPoliciesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchPoliciesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchPoliciesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchPoliciesSuggestionsResponse parses an HTTP response from a SearchPoliciesSuggestionsWithResponse call
+func ParseSearchPoliciesSuggestionsResponse(rsp *http.Response) (*SearchPoliciesSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchPoliciesSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchPoliciesSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchPoliciesSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchPoliciesSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyDeleteResponse parses an HTTP response from a PolicyDeleteWithResponse call
+func ParsePolicyDeleteResponse(rsp *http.Response) (*PolicyDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyResponse parses an HTTP response from a PolicyWithResponse call
+func ParsePolicyResponse(rsp *http.Response) (*PolicyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyUpdatev2PatchResponse parses an HTTP response from a PolicyUpdatev2PatchWithResponse call
+func ParsePolicyUpdatev2PatchResponse(rsp *http.Response) (*PolicyUpdatev2PatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyUpdatev2PatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyUpdatev2PatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyUpdatev2PatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyUpdatev2PatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyUpdatev2Response parses an HTTP response from a PolicyUpdatev2WithResponse call
+func ParsePolicyUpdatev2Response(rsp *http.Response) (*PolicyUpdatev2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyUpdatev2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyUpdatev2Response200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyUpdatev2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyUpdatev2Response503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParsePolicyRuntimeResponse parses an HTTP response from a PolicyRuntimeWithResponse call
 func ParsePolicyRuntimeResponse(rsp *http.Response) (*PolicyRuntimeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -125056,6 +128322,121 @@ func ParseSearchSpacePoliciesResponse(rsp *http.Response) (*SearchSpacePoliciesR
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SearchSpacePoliciesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSearchSpacePoliciesSuggestionsResponse parses an HTTP response from a SearchSpacePoliciesSuggestionsWithResponse call
+func ParseSearchSpacePoliciesSuggestionsResponse(rsp *http.Response) (*SearchSpacePoliciesSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchSpacePoliciesSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SearchSpacePoliciesSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers SearchSpacePoliciesSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers SearchSpacePoliciesSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

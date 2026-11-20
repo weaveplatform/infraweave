@@ -210,7 +210,7 @@ func TestUnitAPIOperations(t *testing.T) {
 	// The fs driver's routes are mounted, so a table pattern the driver
 	// does not serve fails the walk below.
 	mux, ok := API(discard(), config.Defaults().Server, memory(config.Defaults().Server),
-		Domains{Auth: byAddress{}, Policies: policiesassembly.New()}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
+		Domains{Auth: byAddress{}, Policies: policiesassembly.New(policiesassembly.Deps{})}, Platform{}, Blobs{Routes: (&fs.Bucket{}).Routes}).(*chi.Mux)
 	if !ok {
 		t.Fatal("API is not a chi router")
 	}

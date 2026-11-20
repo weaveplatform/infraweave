@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
+	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
@@ -147,7 +149,12 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	)
 	stacks.GuardStacks(configuration.StackGuard())
 	stacks.BindConfiguration(configuration.Configuration())
-	policies := policiesassembly.New()
+	policyRuntime, err := rego.New(c.Policy)
+	if err != nil {
+		return Domains{}, fmt.Errorf("construct policy runtime: %w", err)
+	}
+	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime})
+	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
 	runs := runsassembly.New(runsassembly.Deps{
 		DB:              db.Primary(),
 		Keys:            keys,

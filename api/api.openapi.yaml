@@ -9136,6 +9136,440 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: action
+  /policies:
+    get:
+      description: List of all the polices in the account.
+      operationId: policies
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyPage'
+          description: The policies result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Policies
+      tags:
+        - Policies
+      x-bruno: Policies/List Policies.bru
+      x-graphql:
+        field: policies
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: list
+      x-rest-style: list
+    post:
+      description: Create a policy after bounded compilation of its infraweave module. An omitted engineType stores REGO_V1. Management does not enable the type's workflow integration.
+      operationId: policyCreatev2
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: |
+                package infraweave
+                warn contains "review" if { true }
+              name: Plan guard
+              space: acme
+              type: PLAN
+            schema:
+              $ref: '#/components/schemas/PolicyCreateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Policy
+      tags:
+        - Policies
+      x-bruno: Policies/Create Policy.bru
+      x-graphql:
+        field: policyCreatev2
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: body:space
+      x-rest-style: create
+  /policies/search:
+    post:
+      operationId: searchPolicies
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchPoliciesOutput'
+          description: The searchPolicies result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Policies
+      tags:
+        - Policies
+      x-bruno: Policies/Search Policies.bru
+      x-graphql:
+        field: searchPolicies
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: list
+      x-rest-style: search
+  /policies/search/suggestions:
+    post:
+      description: The fields a policy search filters and orders by, with the values the policies the predicates keep hold and how many hold each. Only policies in spaces the caller may read are counted.
+      operationId: searchPoliciesSuggestions
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchPoliciesSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Policies Suggestions
+      tags:
+        - Policies
+      x-bruno: Advanced/Search Suggestions/Search Policies Suggestions.bru
+      x-graphql:
+        field: searchPoliciesSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: list
+      x-rest-style: search
+  /policies/{policyId}:
+    delete:
+      description: Delete an existing Policy.
+      operationId: policyDelete
+      parameters:
+        - in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - in: query
+          name: force
+          schema:
+            type: boolean
+          x-graphql-arg: force
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: The policyDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Policy
+      tags:
+        - Policies
+      x-bruno: Policies/Delete Policy.bru
+      x-graphql:
+        field: policyDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: path:policyId:policy
+      x-rest-style: delete
+    get:
+      description: Details of a single Policy.
+      operationId: policy
+      parameters:
+        - in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: The policy result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Policy
+      tags:
+        - Policies
+      x-bruno: Policies/Get Policy.bru
+      x-graphql:
+        field: policy
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: path:policyId:policy
+      x-rest-style: item
+    patch:
+      description: Change the members of PolicyUpdateInput that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through policyUpdatev2, so it validates and persists as the PUT does.
+      operationId: policyUpdatev2Patch
+      parameters:
+        - in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of PolicyUpdateInput.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: The policyUpdatev2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Policy
+      tags:
+        - Policies
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: path:policyId:policy
+      x-upstream: none
+    put:
+      description: Replace mutable policy settings after compiling the new body. Omitted engineType preserves the stored dialect. If-Match fences stale writes.
+      operationId: policyUpdatev2
+      parameters:
+        - in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: |
+                package infraweave
+                warn contains "review" if { true }
+              name: Plan guard
+              space: acme
+            schema:
+              $ref: '#/components/schemas/PolicyUpdateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+          description: The policyUpdatev2 result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Policy
+      tags:
+        - Policies
+      x-bruno: Policies/Update Policy.bru
+      x-graphql:
+        field: policyUpdatev2
+        operation: mutation
+        type: Mutation
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: path:policyId:policy
+      x-rest-style: update
   /policy-runtime:
     get:
       operationId: policyRuntime
@@ -10606,11 +11040,59 @@ paths:
         operation: query
         type: Query
       x-infraweave-action: SPACE_READ
-      x-infraweave-cost: expensive
+      x-infraweave-cost: standard
       x-infraweave-divergence:
         - rate-limit
-      x-infraweave-feature: spaces
-      x-infraweave-subject: list
+      x-infraweave-feature: policies
+      x-infraweave-subject: body:space
+      x-rest-style: search
+  /space-policies/search/suggestions:
+    post:
+      description: The fields a search of the space's policies filters and orders by, with the values the policies it keeps hold and how many hold each.
+      operationId: searchSpacePoliciesSuggestions
+      requestBody:
+        content:
+          application/json:
+            example:
+              input: {}
+              space: SPACE_ID_HERE
+            schema:
+              $ref: '#/components/schemas/SearchSpacePoliciesSuggestionsRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSpacePoliciesSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Space Policies Suggestions
+      tags:
+        - Policies
+      x-bruno: Advanced/Search Suggestions/Search Space Policies Suggestions.bru
+      x-graphql:
+        field: searchSpacePoliciesSuggestions
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-feature: policies
+      x-infraweave-subject: body:space
       x-rest-style: search
   /spaces:
     get:
@@ -26497,6 +26979,73 @@ components:
         searchEvaluationRecordSuggestions: served by GET /policies/{policyId}/search-evaluation-record-suggestions
         searchEvaluationRecords: served by GET /policies/{policyId}/search-evaluation-records
       x-graphql-type: Policy
+    PolicyConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/PolicyRef'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: PolicyConnection
+    PolicyCreateInput:
+      additionalProperties: false
+      description: All arguments to create an individual Policy.
+      properties:
+        body:
+          description: Body of the policy.
+          type: string
+          x-terraform:
+            - spacelift_policy.body
+        description:
+          description: Description of the policy.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_policy.description
+        engineType:
+          allOf:
+            - $ref: '#/components/schemas/PolicyEngineType'
+          description: The per-policy Rego dialect. Omission intentionally defaults to REGO_V1.
+          x-terraform:
+            - spacelift_policy.engine_type
+        labels:
+          description: User-defined labels for the Policy.
+          items:
+            type: string
+          nullable: true
+          type: array
+          x-terraform:
+            - spacelift_policy.labels
+        name:
+          description: Name of the policy.
+          type: string
+          x-terraform:
+            - spacelift_policy.name
+        policyTemplateULID:
+          description: Optional ULID of a template that is used to create the policy.
+          nullable: true
+          type: string
+        space:
+          description: ID of the space this Policy will belong to.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_policy.space_id
+        type:
+          allOf:
+            - $ref: '#/components/schemas/PolicyType'
+          description: Type of the policy.
+          x-terraform:
+            - spacelift_policy.type
+      required:
+        - body
+        - name
+        - type
+      type: object
+      x-graphql-type: PolicyCreateInput
     PolicyEngineType:
       description: PolicyEngineType represents a type of policy engine that will be used to evaluate policy
       enum:
@@ -26642,6 +27191,39 @@ components:
         TASK: Task policy - allows blocking tasks from executing.
         TRIGGER: Trigger policy, allows creating event-driven workflows between stacks.
       x-graphql-type: PolicyType
+    PolicyUpdateInput:
+      additionalProperties: false
+      description: All arguments to update an individual Policy.
+      properties:
+        body:
+          description: Body of the policy.
+          type: string
+        description:
+          description: Description of the policy.
+          nullable: true
+          type: string
+        engineType:
+          allOf:
+            - $ref: '#/components/schemas/PolicyEngineType'
+          description: Omission preserves the stored engine; an explicit change recompiles the new body.
+        labels:
+          description: User-defined labels for the Policy.
+          items:
+            type: string
+          nullable: true
+          type: array
+        name:
+          description: Name of the policy.
+          type: string
+        space:
+          description: ID of the space this Policy will belong to.
+          nullable: true
+          type: string
+      required:
+        - body
+        - name
+      type: object
+      x-graphql-type: PolicyUpdateInput
     Problem:
       description: >-
         An RFC 9457 problem detail. Every error response uses the status code and this body.
@@ -28812,6 +29394,19 @@ components:
         - pageInfo
       type: object
       x-graphql-type: SearchManagedEntitiesOutput
+    SearchPoliciesOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/PolicyConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchPoliciesOutput
     SearchQueryFieldConstraint:
       additionalProperties: false
       description: SearchQueryFieldConstraint constraints the values of a field.
@@ -29090,6 +29685,19 @@ components:
         - space
       type: object
       x-graphql-args-of: searchSpacePolicies
+    SearchSpacePoliciesSuggestionsRequest:
+      additionalProperties: false
+      description: The arguments of searchSpacePoliciesSuggestions not carried in the path.
+      properties:
+        input:
+          $ref: '#/components/schemas/SearchSuggestionsInput'
+        space:
+          type: string
+      required:
+        - input
+        - space
+      type: object
+      x-graphql-args-of: searchSpacePoliciesSuggestions
     SearchSpacesInput:
       additionalProperties: false
       description: Arguments used to filter spaces.

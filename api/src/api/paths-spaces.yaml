@@ -2726,11 +2726,11 @@ paths:
         operation: query
         type: Query
       x-infraweave-action: SPACE_READ
-      x-infraweave-cost: expensive
+      x-infraweave-cost: standard
       x-infraweave-divergence:
         - rate-limit
-      x-infraweave-feature: spaces
-      x-infraweave-subject: list
+      x-infraweave-feature: policies
+      x-infraweave-subject: body:space
       x-rest-style: search
   /spaces:
     get:
