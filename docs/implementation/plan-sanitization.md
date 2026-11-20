@@ -23,12 +23,19 @@ blob without sensitivity paths, and is hashed in DEFAULT and SMART, as are
 configuration expression constants. Invalid input, exhausted bounds and failed
 uploads fail planning; the runner never falls back to uploading original bytes.
 
-Nonempty `deferred_changes`, `action_invocations` and
-`deferred_action_invocations` fail DEFAULT/SMART before an artifact is recorded.
-Their value trees and sensitivity masks are not yet supported. Absent, null and
-empty families remain valid; NONE preserves valid payloads in a sealed artifact.
-Malformed families fail every mode without echoing values. Full transformation,
-real tool-produced fixtures and projection decisions remain in #675.
+Action `config_values` and deferred resource change values now follow the same
+modes, with their sensitivity masks and identical copies handled before upload.
+Unknown flags, action/provider names, addresses, reasons and replacement paths retain their
+structural meaning; unknown future payload fields fail closed. The real stable
+action producer and the recorded experimental resource compatibility case are
+separate evidence classes, documented in
+[report 35](../research/reference/35-modern-plan-payloads.md).
+
+Nonempty `deferred_action_invocations` still fail DEFAULT/SMART before an artifact
+is recorded because the mandatory real full-JSON/mask proof remains unavailable.
+Absent/null/empty arrays remain valid; explicit NONE retains their sealed raw
+payload. #675 stays open for that required proof and its remaining acceptance.
+The execution catalogue continues to exclude experimental releases.
 
 Terragrunt uploads `{"units":[{"path":".","plan":{}}]}` with each selected unit's
 complete tool plan, in path order. The owned wrapper accepts only `units` at the
@@ -49,9 +56,9 @@ change fields fail projection instead of disappearing. Other full-document
 sections remain in the artifact. This phase supplies the builder and verifies it
 on real uploaded bytes. POL-08 (#647) owns isolated decision combination and
 POL-14 (#651) owns plan-gate integration. Structural changes/history/comment
-inputs acquire no raw resource values. Deferred-change and action payload families
-are the separate explicit follow-up #675. This projection does not include those
-families, including when NONE explicitly preserves them in the full artifact.
+inputs acquire no raw resource values. The full action/deferred sections remain
+artifact-only under #675, including when NONE explicitly preserves their values.
+They add no member to the published policy block.
 
 ## Worker v1 compatibility and rollout
 
@@ -90,9 +97,14 @@ uses real protocol requests to exercise old-session and previously uploaded
 object bypasses. `workers/pools.feature` verifies old registration rejection.
 `sanitization_unsupported.feature` injects explicitly authored released-shape
 payloads through custom show commands into the actual worker upload path. It
-verifies the three-family DEFAULT/SMART refusal, no recorded plan, safe logs,
+verifies the remaining deferred-action DEFAULT/SMART refusal, no recorded plan, safe logs,
 sealed storage, and exact NONE payload preservation. These injected documents
 are not claimed as tool-produced fixtures or upstream captures.
+`sanitization_actions.feature` uses the actual stable producer for native action
+modes, targeted replan, selected Terragrunt units and safe malformed-mask failures.
+`sanitization_deferred.feature` uploads the unchanged experimental resource
+fixture through a workflow file's show command; it proves artifact compatibility,
+including exact NONE bytes, without claiming native experimental execution.
 
 The six checked-in full plans from `internal/iac/plan/testdata` are also projected
 and schema-validated without losing any resource-change key or JSON type.

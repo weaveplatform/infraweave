@@ -1,0 +1,29 @@
+{
+  "source": "authored project executed by released OpenTofu; plan.json tool-produced",
+  "version": "1.13.9",
+  "platform": "darwin_arm64",
+  "commands": [
+    [
+      "init",
+      "-backend=false",
+      "-input=false",
+      "-no-color"
+    ],
+    [
+      "plan",
+      "-input=false",
+      "-no-color",
+      "-out=tfplan"
+    ],
+    [
+      "show",
+      "-json",
+      "tfplan"
+    ]
+  ],
+  "planSHA256": "66d35c4f7e4d93aebd02704647153f5d313b1859335b23c03d1a7f74cddd2d71",
+  "actionProjectInitExit": 1,
+  "deferralProbeExit": 1,
+  "familiesPresent": [],
+  "applyExecution": false
+}

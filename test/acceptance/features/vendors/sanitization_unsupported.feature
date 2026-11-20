@@ -38,10 +38,6 @@ Feature: Unsupported full-plan value families fail closed before upload
 
     Examples:
       | mode | smart | labels | family | payload |
-      | DEFAULT | false | [] | deferred_changes | [{"reason":"instance_count_unknown","resource_change":{"address":"terraform_data.hidden","mode":"managed","type":"terraform_data","name":"hidden","change":{"actions":["create"],"after":{"input":"dummy-plan-secret-642"},"after_sensitive":{"input":true}}}}] |
-      | SMART | true | [] | deferred_changes | [{"reason":"instance_count_unknown","resource_change":{"address":"terraform_data.hidden","mode":"managed","type":"terraform_data","name":"hidden","change":{"actions":["create"],"after":{"input":"dummy-plan-secret-642"},"after_sensitive":{"input":true}}}}] |
-      | DEFAULT | false | [] | action_invocations | [{"address":"action.example.send","type":"example","name":"send","config_values":{"token":"dummy-plan-secret-642"},"config_sensitive":{"token":true}}] |
-      | SMART | true | [] | action_invocations | [{"address":"action.example.send","type":"example","name":"send","config_values":{"token":"dummy-plan-secret-642"},"config_sensitive":{"token":true}}] |
       | DEFAULT | false | [] | deferred_action_invocations | [{"reason":"resource_config_unknown","action_invocation":{"address":"action.example.send","type":"example","name":"send","config_values":{"token":"dummy-plan-secret-642"},"config_sensitive":{"token":true}}}] |
       | SMART | true | [] | deferred_action_invocations | [{"reason":"resource_config_unknown","action_invocation":{"address":"action.example.send","type":"example","name":"send","config_values":{"token":"dummy-plan-secret-642"},"config_sensitive":{"token":true}}}] |
 

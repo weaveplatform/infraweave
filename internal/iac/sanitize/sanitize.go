@@ -160,19 +160,8 @@ func terraform(doc map[string]any, op *operation) error {
 	if !ok || !strings.HasPrefix(version, "1.") {
 		return fmt.Errorf("%w: expected plan format 1.x", ErrMalformed)
 	}
-	// These released full-document families carry values outside the supported
-	// resource-change transform. Keep them from reaching a server-readable
-	// artifact until their masks/contracts are implemented, rather than copying
-	// an untransformed value tree. NONE is the explicit, still-sealed opt-out.
-	for _, key := range []string{"deferred_changes", "action_invocations", "deferred_action_invocations"} {
-		if err := objects(doc[key], func(map[string]any) error {
-			if op.mode != None {
-				return fmt.Errorf("%w: %s", ErrUnsupported, key)
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
+	if err := modernFamilies(doc, op); err != nil {
+		return err
 	}
 	for _, key := range []string{"resource_changes", "resource_drift"} {
 		if err := objects(doc[key], func(resource map[string]any) error {
@@ -249,6 +238,29 @@ func terraform(doc map[string]any, op *operation) error {
 		}
 	}
 	return constants(configuration, op)
+}
+
+func modernFamilies(doc map[string]any, op *operation) error {
+	// Deferred actions have no verified full-JSON artifact contract. Refuse
+	// their value trees until a real fixture settles the masks and metadata;
+	// NONE remains the explicit, still-sealed opt-out.
+	for _, key := range []string{"deferred_action_invocations"} {
+		if err := objects(doc[key], func(map[string]any) error {
+			if op.mode != None {
+				return fmt.Errorf("%w: %s", ErrUnsupported, key)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	if err := objects(doc["deferred_changes"], func(d map[string]any) error { return deferredResource(d, op) }); err != nil {
+		return err
+	}
+	if err := objects(doc["action_invocations"], func(a map[string]any) error { return action(a, op) }); err != nil {
+		return err
+	}
+	return nil
 }
 
 func mapping(value any) (map[string]any, error) {

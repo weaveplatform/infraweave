@@ -1,0 +1,17 @@
+{
+  "source": "authored configuration executed by real released tools; plan.json is tool-produced",
+  "terraformVersion": "1.17.2",
+  "platform": "darwin_arm64",
+  "provider": "registry.terraform.io/hashicorp/local",
+  "providerVersion": "2.9.1",
+  "actionExecution": false,
+  "applyExecution": false,
+  "remoteResourcesCreated": false,
+  "commands": [
+    "terraform init -backend=false -input=false -no-color",
+    "TF_VAR_secret=dummy-action-secret-675 terraform plan -input=false -no-color -out=tfplan",
+    "terraform show -json tfplan"
+  ],
+  "planSHA256": "b9a712f5bd1dc12b53831f39838833119d71e5561a6264a5601d1378343e79f8",
+  "sensitivityOrigin": "only action expressions use sensitive(); input variable and identical copies remain unmarked"
+}

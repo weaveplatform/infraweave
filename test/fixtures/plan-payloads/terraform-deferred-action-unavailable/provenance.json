@@ -1,0 +1,24 @@
+{
+  "captureDate": "2026-11-20",
+  "version": "1.17.0-alpha20260827",
+  "stability": "public experimental alpha",
+  "provider": "hashicorp/local 2.9.1",
+  "commands": [
+    "TF_VAR_secret=dummy-action-secret-675 terraform init -backend=false -input=false -no-color",
+    "TF_VAR_secret=dummy-action-secret-675 terraform plan -allow-deferral=true -input=false -no-color -out=tfplan",
+    "terraform show -json tfplan"
+  ],
+  "planExit": 0,
+  "showExit": 1,
+  "binaryPlanSHA256": "1ca5e6d3ba3fcec9b722538daaa731c1cd99364d49b9c11de3bf3b2ec6b0ab99",
+  "fullJSONAvailable": false,
+  "applyExecution": false,
+  "actionExecution": false,
+  "machineReadableUIProbe": {
+    "command": "terraform plan -allow-deferral=true -json -input=false",
+    "exitCode": 0,
+    "containsConfigValues": false,
+    "containsConfigSensitive": false,
+    "containsDeferredActionInvocations": false
+  }
+}

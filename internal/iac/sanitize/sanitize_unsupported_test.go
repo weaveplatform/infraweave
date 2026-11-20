@@ -15,8 +15,6 @@ import (
 func TestUnitUnsupportedPlanFamilies(t *testing.T) {
 	const secret = "dummy-unsupported-642"
 	families := map[string]string{
-		"deferred_changes":            `[{"reason":"instance_count_unknown","resource_change":{"change":{"after":{"input":"` + secret + `"},"after_sensitive":{"input":true}}}}]`,
-		"action_invocations":          `[{"address":"action.example.send","config_values":{"token":"` + secret + `"},"config_sensitive":{"token":true}}]`,
 		"deferred_action_invocations": `[{"reason":"resource_config_unknown","action_invocation":{"address":"action.example.send","config_values":{"token":"` + secret + `"},"config_sensitive":{"token":true}}}]`,
 	}
 	for name, payload := range families {
