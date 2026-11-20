@@ -1,4 +1,4 @@
-@plan-sanitization @postgres @objectstore @vcs @docker @terraform
+@terraform-plans @plan-sanitization @postgres @objectstore @vcs @docker @terraform
 Feature: Native action plan values are sanitized before upload
   The released Terraform and local provider actually produce these invocations.
   Planning does not invoke the action or apply a resource.

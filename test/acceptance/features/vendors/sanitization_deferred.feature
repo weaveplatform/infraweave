@@ -1,4 +1,4 @@
-@plan-sanitization @postgres @objectstore @vcs @docker @terraform
+@terraform-plans @plan-sanitization @postgres @objectstore @vcs @docker @terraform
 Feature: Captured deferred-resource document compatibility at the real upload boundary
   The JSON is the unchanged tool-produced experimental fixture, injected via a
   custom show command into the actual stable worker. This proves artifact

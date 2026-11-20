@@ -138,6 +138,7 @@ everywhere, and the reason names where the contract checks it instead.
 | `@postgres` | `postgres` container, testcontainers-go `postgres` module | every scenario that stores anything |
 | `@objectstore` | RustFS container, used through the `s3` driver | state, logs, uploads, module and provider archives |
 | `@terraform` | a pinned Terraform release, fetched once and checked against its SHA-256 | a real run (below) |
+| `@terraform-plans` | the same real dependencies as its `@terraform` plan-artifact scenarios | selects the plan-artifact workload into its own required partition; it never replaces the actual dependency tags |
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
 | `@terragrunt` | a pinned Terragrunt release, checked against its signed `SHA256SUMS`, beside `@terraform` or `@tofu` | a Terragrunt stack's run and its units' workspaces |
 | `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
@@ -421,7 +422,8 @@ coverage it would contribute is not waived.
 | `unit` | `ubuntu-latest`, `macos-latest`, `windows-latest` | `make test` | 15 min | yes |
 | `accept-core` | `ubuntu-latest` | untagged, `@postgres`, `@objectstore`, `@oidc`, `@vault` | 20 min | yes |
 | `accept-vendors` | `ubuntu-latest` | `@pulumi`, `@aws`, `@kubernetes`, `@ansible` | 30 min | yes |
-| `accept-terraform` | `ubuntu-latest` | `@terraform` | 30 min | yes |
+| `accept-terraform-plans` | `ubuntu-latest` | `@terraform-plans` plan artifact/sanitization scenarios, also carrying `@terraform` and their actual dependency tags | 30 min | yes |
+| `accept-terraform` | `ubuntu-latest` | remaining `@terraform` | 30 min | yes |
 | `accept-runs` | `ubuntu-latest` | remaining `@docker`, `@tofu`, `@terragrunt`, `@flows-agent`; `@kubernetes` until `accept-vendors` is implemented | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
@@ -531,7 +533,7 @@ coverage it would contribute is not waived.
     that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
-- A scenario's partition is the first of `accept-terraform`, `accept-runs`,
+- A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform`, `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
   `@postgres` `@terraform` scenario runs once, in `accept-terraform`.
   The planned `accept-vendors` precedes them when its vendors are
@@ -541,15 +543,26 @@ coverage it would contribute is not waived.
   expanded scenario to prove exactly one owning job, no missing cases,
   and conjunction with focus tags. Comma alternatives distribute their
   exclusions and focus conditions into every arm.
+  `TestUnitTerraformSplitCoverage` proves the disjoint union of the two
+  Terraform jobs equals the complete original `@terraform` selection, using
+  actual expanded scenarios rather than a fixed count. The plan-artifact
+  workload's tag belongs only on existing Terraform-owned sanitization cases;
+  protocol-only fence scenarios keep their integration partition.
+  `TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload` checks the harness
+  registry against required/nightly/stress matrices and the aggregate artifact
+  gates, so adding a selector without a required job cannot silently lose work.
 - Every required job is in the `needs` of the `Quality gate` job and, when
   it produces coverage, of `coverage`.
 - When a partition approaches its timeout, it splits by tag into two
   required jobs; scenarios are never dropped to fit.
-  Terraform-tagged cases are split from the other run cases for this
-  reason. Both retain the ten-minute test limit and thirty-minute job
-  limit; their profiles and Cucumber results all join the same gates.
-  Nightly acceptance includes both partitions, and the weekly or
-  requested stress run applies to both, preserving the full run workload.
+  The Terraform plan-artifact workload, other Terraform cases and remaining
+  worker run cases each retain a ten-minute Go test deadline and thirty-minute
+  Actions job budget. The Go deadline includes test cleanup: each partition
+  needs margin for container teardown and coverage/report flushing after its
+  scenario assertions finish. Their profiles and Cucumber results all join the
+  same gates. Nightly acceptance and weekly/requested stress include all three
+  workloads; FIPS continues to run the complete suite under its existing
+  thirty-minute Go test deadline and forty-five-minute Actions job budget.
 
 
 ### Policy phase evidence
