@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -10,8 +11,11 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 )
 
 // Policy is one account's policy. Identity and creation time survive updates;
@@ -45,6 +49,10 @@ type Store interface {
 	Create(context.Context, Policy) error
 	Get(context.Context, kernel.AccountID, kernel.ULID, bool) (Policy, error)
 	Update(context.Context, Policy) error
+	Delete(context.Context, kernel.AccountID, kernel.ULID) error
+	AttachmentCount(context.Context, kernel.AccountID, kernel.ULID) (int, error)
+	Search(context.Context, kernel.AccountID, search.Input, Scope) (search.Result[Policy], error)
+	Suggest(context.Context, kernel.AccountID, search.SuggestionsInput, Scope) (search.Suggestions, error)
 	InSpace(context.Context, kernel.AccountID, kernel.ULID) (bool, error)
 }
 
@@ -58,7 +66,13 @@ type Deps struct {
 	Spaces  accessapi.Spaces
 	Authz   accessapi.Authorizer
 	Runtime *rego.Engine
+	Events  Events
 	Now     func() time.Time
+}
+
+// Events appends policy changes in the transaction carried by the context.
+type Events interface {
+	Append(context.Context, outbox.Event) (outbox.Event, error)
 }
 
 // Service compiles policy bodies before their transactional writes.
@@ -110,7 +124,10 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 			UpdatedAt:   now,
 			Version:     1,
 		}
-		return s.deps.Store.Create(ctx, out)
+		if err := s.deps.Store.Create(ctx, out); err != nil {
+			return err
+		}
+		return s.changed(ctx, out, policyapi.ChangeCreated)
 	})
 	if err != nil {
 		return Policy{}, fmt.Errorf("policies: create: %w", err)
@@ -222,7 +239,10 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		out.Engine = in.Engine
 		out.UpdatedAt = s.deps.Now()
 		out.Version++
-		return s.deps.Store.Update(ctx, out)
+		if err := s.deps.Store.Update(ctx, out); err != nil {
+			return err
+		}
+		return s.changed(ctx, out, policyapi.ChangeUpdated)
 	})
 	if err != nil {
 		return Policy{}, fmt.Errorf("policies: update: %w", err)
@@ -247,6 +267,60 @@ func (s *Service) compileError(err error) error {
 		return &kernel.Invalid{Detail: "The policy settings are refused.", Errors: []kernel.FieldError{{Pointer: "/body", Reason: kernel.ReasonRule, Message: err.Error()}}}
 	}
 	return fmt.Errorf("policies: compile: %w", err)
+}
+
+// Delete returns the persisted policy before removing it. Attached policies need
+// an explicit force request; their owned attachment rows are removed atomically.
+func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, expect kernel.Expect, force bool) (Policy, error) {
+	parsed, err := kernel.ParseULID(id)
+	if err != nil {
+		return Policy{}, &Missing{Kind: "policy", ID: id}
+	}
+	var out Policy
+	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		out, err = s.deps.Store.Get(ctx, p.AccountID, parsed, true)
+		if errors.Is(err, ErrNotFound) {
+			return &Missing{Kind: "policy", ID: id}
+		}
+		if err != nil {
+			return fmt.Errorf("policies: lock for delete: %w", err)
+		}
+		if err := s.require(ctx, p, out.Space); err != nil {
+			return err
+		}
+		if err := expect.Check(out.Version); err != nil {
+			return fmt.Errorf("policies: delete version: %w", err)
+		}
+		count, err := s.deps.Store.AttachmentCount(ctx, p.AccountID, parsed)
+		if err != nil {
+			return fmt.Errorf("policies: count attachments: %w", err)
+		}
+		if count > 0 && !force {
+			return &kernel.Invalid{Detail: "The policy still has attachments; detach them first, or delete with force."}
+		}
+		if err := s.deps.Store.Delete(ctx, p.AccountID, parsed); err != nil {
+			return err
+		}
+		deleted := out
+		deleted.Version++
+		return s.changed(ctx, deleted, policyapi.ChangeDeleted)
+	})
+	if err != nil {
+		return Policy{}, fmt.Errorf("policies: delete: %w", err)
+	}
+	return out, nil
+}
+
+func (s *Service) changed(ctx context.Context, p Policy, change string) error {
+	doc, err := json.Marshal(policyapi.Changed{Policy: p.ID, Change: change})
+	if err != nil {
+		return fmt.Errorf("policies: encode change: %w", err)
+	}
+	_, err = s.deps.Events.Append(ctx, outbox.Event{Account: p.Account.ULID, Kind: policyapi.ChangedKind, SchemaVersion: policyapi.ChangedVersion, Space: p.Space.String(), Subject: outbox.Subject{Kind: "policy", ID: p.ID.String()}, Sequence: p.Version, Document: doc})
+	if err != nil {
+		return fmt.Errorf("policies: append change: %w", err)
+	}
+	return nil
 }
 
 // Get reads an account's immutable policy ID.

@@ -153,7 +153,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	if err != nil {
 		return Domains{}, fmt.Errorf("construct policy runtime: %w", err)
 	}
-	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime})
+	policies := policiesassembly.New(policiesassembly.Deps{DB: db.Primary(), Spaces: access.Spaces(), Authz: access.Authorizer(), Runtime: policyRuntime, Events: events})
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
 	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
@@ -306,6 +306,7 @@ func newKinds() *outbox.Kinds {
 	_ = accessassembly.RegisterEvents(kinds)
 	_ = stacksassembly.RegisterEvents(kinds)
 	_ = configurationassembly.RegisterEvents(kinds)
+	_ = policiesassembly.RegisterEvents(kinds)
 	_ = runsassembly.RegisterEvents(kinds)
 	return kinds
 }

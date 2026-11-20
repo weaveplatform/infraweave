@@ -4,6 +4,61 @@ Feature: Persisted policy management
   with the selected per-policy dialect before committing. Management does not
   imply delivery of the policy type's workflow integration.
 
+  @op:policyUpdatev2Patch @case:success @case:failure
+  Scenario: Merge patch keeps source and dialect while resetting nullable settings
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Patch guard","type":"PLAN","engineType":"REGO_V0","description":"old","labels":["prod"],"body":"package infraweave\nwarn[\"old\"] { true }\n"}' through A
+    And it answers 201
+    And the answer's id names "policy"
+    And token "h" sends "GET /api/v1/policies/{policy}" through B
+    And it answers 200
+    And the answer's ETag is kept as "first"
+    When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"name":"Patched guard","description":null,"labels":null}' if matching the ETag "first" through A
+    Then it answers 200
+    And the answer's name is '"Patched guard"'
+    And the answer's engineType is '"REGO_V0"'
+    And the answer's labels is '[]'
+    And the answer's body is '"package infraweave\nwarn[\"old\"] { true }\n"'
+    When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"name":"Lost write"}' if matching the ETag "first" through B
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"engineType":"REGO_V1"}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the policy refusal locates the body source
+    When token "h" sends "PATCH /api/v1/policies/{policy}" with '{"unknown":"value"}' through A
+    Then it answers a 400 problem "invalid-request"
+    When token "h" sends "GET /api/v1/policies/{policy}" through B
+    Then it answers 200
+    And the answer's name is '"Patched guard"'
+    And the answer's engineType is '"REGO_V0"'
+
+  @op:policyDelete @op:policyUpdatev2 @case:success @case:failure
+  Scenario: Conditional updates and deletion refuse stale policy versions across replicas
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Versioned","type":"PLAN","body":"package infraweave\n"}' through A
+    And it answers 201
+    And the answer's id names "policy"
+    And token "h" sends "GET /api/v1/policies/{policy}" through B
+    And it answers 200
+    And the answer's ETag is kept as "first"
+    When token "h" sends "PUT /api/v1/policies/{policy}" with '{"name":"Changed","body":"package infraweave\n"}' if matching the ETag "first" through A
+    Then it answers 200
+    And the answer's ETag is kept as "second"
+    When token "h" sends "PUT /api/v1/policies/{policy}" with '{"name":"Stale","body":"package infraweave\n"}' if matching the ETag "first" through B
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "DELETE /api/v1/policies/{policy}" if matching the ETag "first" through B
+    Then it answers a 412 problem "precondition-failed"
+    When token "h" sends "GET /api/v1/policies/{policy}" through A
+    Then it answers 200
+    And the answer's name is '"Changed"'
+    When token "h" sends "DELETE /api/v1/policies/{policy}" if matching the ETag "second" through B
+    Then it answers 200
+    And the answer's id is '"{policy}"'
+    And the answer's name is '"Changed"'
+    When token "h" sends "GET /api/v1/policies/{policy}" through A
+    Then it answers a 404 problem "not-found"
+
   @op:policyCreatev2 @op:policy @op:policyUpdatev2 @case:denial
   Scenario: A space reader reads its policy but cannot save policy settings
     Given two infraweave servers, A and B, on one database

@@ -31,6 +31,7 @@ func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "policies", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "policies", Columns: []string{"account_id", "space_id"}},
+		{Entity: "stack", Table: "policy_stack_attachments", Columns: []string{"account_id", "stack_id"}},
 	}
 }
 
@@ -98,4 +99,31 @@ func (s *Store) InSpace(ctx context.Context, acct kernel.AccountID, space kernel
 		return false, fmt.Errorf("policies: space use: %w", sql.Unavailable(err))
 	}
 	return used, nil
+}
+
+// AttachmentCount counts only attachments owned by the account and policy.
+func (s *Store) AttachmentCount(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (int, error) {
+	var n int
+	if err := tx.Q(ctx, s.db).QueryRow(ctx, "SELECT count(*) FROM policy_stack_attachments WHERE account_id=$1 AND policy_id=$2", acct, id).Scan(&n); err != nil {
+		return 0, fmt.Errorf("policies: count stack attachments: %w", sql.Unavailable(err))
+	}
+	return n, nil
+}
+
+// Delete removes a policy and its attachments through the owned foreign key.
+func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
+	if _, err := tx.Q(ctx, s.db).Exec(ctx, "DELETE FROM policies WHERE account_id=$1 AND id=$2", acct, id); err != nil {
+		return fmt.Errorf("policies: delete row: %w", sql.Unavailable(err))
+	}
+	return nil
+}
+
+// Purge removes one bounded batch of a deleted account's policies. Their owned
+// attachments disappear in the same statement; another account's rows stay.
+func (s *Store) Purge(ctx context.Context, acct kernel.AccountID, batch int) (bool, error) {
+	tag, err := tx.Q(ctx, s.db).Exec(ctx, `DELETE FROM policies WHERE account_id=$1 AND id IN (SELECT id FROM policies WHERE account_id=$1 LIMIT $2)`, acct, batch)
+	if err != nil {
+		return false, fmt.Errorf("policies: purge account: %w", sql.Unavailable(err))
+	}
+	return tag.RowsAffected() == 0, nil
 }

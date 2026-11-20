@@ -3,6 +3,8 @@ package policies
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/cucumber/godog"
 
@@ -10,6 +12,72 @@ import (
 )
 
 func registerManagement(sc *godog.ScenarioContext, w *harness.World) {
+	sc.Step(`^the policy inheritance flags are "([^"]*)"$`, func(want string) error {
+		var out struct {
+			Edges []struct {
+				Inherited bool `json:"inherited"`
+			} `json:"edges"`
+		}
+		if err := json.Unmarshal(w.Last().Body, &out); err != nil {
+			return fmt.Errorf("decode inheritance flags: %w", err)
+		}
+		got := []string{}
+		for _, edge := range out.Edges {
+			got = append(got, fmt.Sprint(edge.Inherited))
+		}
+		if strings.Join(got, ", ") != want {
+			return fmt.Errorf("%w: inherited flags %v, want %s", harness.ErrStep, got, want)
+		}
+		return nil
+	})
+	sc.Step(`^the policy search field "([^"]*)" is '(.*)'$`, func(name, want string) error {
+		var out struct {
+			Fields []map[string]any `json:"fields"`
+		}
+		var expected map[string]any
+		if err := json.Unmarshal(w.Last().Body, &out); err != nil {
+			return fmt.Errorf("decode search fields: %w", err)
+		}
+		if err := json.Unmarshal([]byte(w.Resolve(want)), &expected); err != nil {
+			return fmt.Errorf("decode expected field: %w", err)
+		}
+		for _, field := range out.Fields {
+			if field["name"] == name && reflect.DeepEqual(field, expected) {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: field %s does not match %s: %s", harness.ErrStep, name, want, w.Last().Body)
+	})
+	sc.Step(`^the policy page IDs are "([^"]*)"$`, func(want string) error {
+		var out struct {
+			Items []struct {
+				ID string `json:"id"`
+			} `json:"items"`
+			Edges []struct {
+				Node struct {
+					ID string `json:"id"`
+				} `json:"node"`
+			} `json:"edges"`
+		}
+		if err := json.Unmarshal(w.Last().Body, &out); err != nil || w.Last().Status != 200 {
+			return fmt.Errorf("%w: policy page is not a successful response: %s", harness.ErrStep, w.Last().Body)
+		}
+		got := []string{}
+		for _, item := range out.Items {
+			got = append(got, item.ID)
+		}
+		for _, edge := range out.Edges {
+			got = append(got, edge.Node.ID)
+		}
+		expected := []string{}
+		if want != "" {
+			expected = strings.Split(w.Resolve(want), ", ")
+		}
+		if !reflect.DeepEqual(got, expected) {
+			return fmt.Errorf("%w: policy IDs %v, want %v", harness.ErrStep, got, expected)
+		}
+		return nil
+	})
 	sc.Step(`^the policy refusal locates the body source$`, func() error {
 		var problem struct {
 			Errors []struct {
