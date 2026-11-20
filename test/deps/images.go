@@ -17,17 +17,17 @@ const (
 	// ImagePostgres serves @postgres: PostgreSQL 18, the version floor.
 	//
 	// ref: decision 0005
-	ImagePostgres = "postgres:18.7@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc"
+	ImagePostgres = "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a"
 	// ImagePostgresNext is the next major, its beta or release candidate
 	// until it is generally available, which the postgres-next job runs.
 	//
 	// ref: decision 0016
-	ImagePostgresNext = "postgres:19rc2@sha256:15924313d5606f326836976643a5f681a64fb30f591e79fcb15e160979323802"
+	ImagePostgresNext = "postgres:19.0@sha256:bb6e70add742cd868fb62cb3b2f67d1dd2bdd2b65a521e778420748753687c60"
 	// ImagePostgresBelowFloor is PostgreSQL 17, one major below the version
 	// floor, which every process mode must refuse.
 	//
 	// ref: decision 0005
-	ImagePostgresBelowFloor = "postgres:17.12@sha256:0d938e975177bef9f1f61f3f9dbcf2e0aa0a139568f66d3415ed8892eb97f6ac"
+	ImagePostgresBelowFloor = "postgres:17.12@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c"
 	// ImageObjectStore serves @objectstore: RustFS, the S3-compatible store
 	// the suite runs the s3 driver against.
 	//
@@ -43,7 +43,7 @@ const (
 	ImageFakeGCS = "fsouza/fake-gcs-server:1.56.1@sha256:797ce226d62f947c009dc40246b30cfb456b8473d8241407f9d6f2c04e4d69ef"
 	// ImageAzurite is the Blob Storage emulator objectstoretest's
 	// azureblob suite runs against.
-	ImageAzurite = "mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5"
+	ImageAzurite = "mcr.microsoft.com/azure-storage/azurite:3.38.0@sha256:c26024d62bf4a5b88a40968afd217234c00e1fc9a4790dc6105d1ca7979f6eec"
 	// ImageVault is the Vault whose Transit engine the vault KEK
 	// provider's suite, the vault start and @vault run against.
 	ImageVault = "hashicorp/vault:2.2.2@sha256:dfa48c2fa2b0099ccb47681ec5c4804bf5aec9d6879ecfee07ad4b92a5427ad6"
@@ -67,7 +67,7 @@ const (
 	// only on paid tiers; the job reads the pin from this line.
 	//
 	// ref: decision 0016
-	ImageGitLabCE = "gitlab/gitlab-ce:19.5.6-ce.0@sha256:0f93f5fdb28a5ae0f2713ef5d40d9438615b8b21a42841a2fe7bd56813934e0b"
+	ImageGitLabCE = "gitlab/gitlab-ce:19.6.1-ce.0@sha256:d3727f8b1a1ee6de44916bb9113f3dc40339dba2d6a6ad6ef331d0f239004056"
 	// ImageSpaceliftRunnerTerraform is Spacelift's public Terraform runner
 	// image, a weekly rebuild of a release, which a stack names as its
 	// runner image to show that an image meeting the runner image contract
