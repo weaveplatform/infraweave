@@ -2140,6 +2140,10 @@ Decisions: [0009](../research/decisions/0009-policy-engine-opa.md), [0008](../re
 
 **Depends on:** P12b.
 
+The [verification ownership audit](policy-verification-ownership.md) maps every
+remaining policy requirement to its implementation, real-service proof and phase
+gate, with a dated native dependency snapshot.
+
 Embedded OPA evaluates plan, approval, push and trigger policies at the run's
 state points, with receipts committed in the transition they justify.
 Spacelift's console creates approval, push, plan, trigger, notification and

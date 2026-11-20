@@ -1,0 +1,774 @@
+{
+  "auditedAt": "2026-11-20T05:37:38.152296+00:00",
+  "repository": "weaveplatform/infraweave",
+  "sourceRevision": "5968157bc067f0c65d66c7dcfd034d468acdcf8d",
+  "epics": [
+    635,
+    636
+  ],
+  "nativeGraphAcyclic": true,
+  "uniqueNativeParents": true,
+  "openTicketBodyAndNativeBlockersAgree": true,
+  "closedLegacyBodyFormatsPreserved": [
+    672
+  ],
+  "completedSupportingReferencesAreNotDirectBlockers": true,
+  "ticketCount": 36,
+  "tickets": [
+    {
+      "number": 637,
+      "url": "https://github.com/weaveplatform/infraweave/issues/637",
+      "title": "[POL-01] Check in the observed policy runtime, dialect, hash and catalogue contracts",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-19T21:10:08Z",
+      "bodySHA256": "32476f8bff85a3d81bb7362cad474d801a3056250c9f1b29314ac69404d04d5d",
+      "directBlockers": []
+    },
+    {
+      "number": 638,
+      "url": "https://github.com/weaveplatform/infraweave/issues/638",
+      "title": "[POL-02] Reconcile the two policy phases with the domain graph and captured decisions",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-19T21:26:35Z",
+      "bodySHA256": "66ee5fd5c49dddf4e718f0dfe254c4a03f1fadf08ce9b59c65a0e74e5ce1ed5c",
+      "directBlockers": [
+        {
+          "number": 637,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 639,
+      "url": "https://github.com/weaveplatform/infraweave/issues/639",
+      "title": "[POL-03] Implement the shared sanitization hash and Terraform-family document transforms",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-19T22:16:47Z",
+      "bodySHA256": "de63f88def834c45b6869f30c27c50aee892aa812d91009b23f0adb8e3f91f43",
+      "directBlockers": [
+        {
+          "number": 638,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 640,
+      "url": "https://github.com/weaveplatform/infraweave/issues/640",
+      "title": "[POL-04] Embed the bounded Rego runtime and serve its actual version",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T00:07:07Z",
+      "bodySHA256": "dbd2b04d7d2d10a0dd2f4a384515b420bfc63fb8e1bcc1499f75f8e083c5fb16",
+      "directBlockers": [
+        {
+          "number": 639,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 641,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 641,
+      "url": "https://github.com/weaveplatform/infraweave/issues/641",
+      "title": "[POL-07] Build typed policy inputs, decisions and the published JSON contract",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-19T23:36:52Z",
+      "bodySHA256": "f757ddc78f24ba702183900f31bcd981b04ae7fc6a3e6ab7f4091896c06e9f7e",
+      "directBlockers": [
+        {
+          "number": 638,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 642,
+      "url": "https://github.com/weaveplatform/infraweave/issues/642",
+      "title": "[POL-10] Upload sanitized Terraform, OpenTofu and Terragrunt plan JSON",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T01:53:51Z",
+      "bodySHA256": "74a396a60b50ceeca03036cb399331cbec4048e0a25c9b180b8ddded9ee72e30",
+      "directBlockers": [
+        {
+          "number": 639,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 641,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 643,
+      "url": "https://github.com/weaveplatform/infraweave/issues/643",
+      "title": "[POL-12] Capture policy deletion, flag reset, review rejection and ignored-trigger semantics",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T00:18:00Z",
+      "bodySHA256": "e1c8a75ebed9e0b72504677bceb58b4163d251eeaca4f3045b1fb380a8621ec8",
+      "directBlockers": [
+        {
+          "number": 638,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 644,
+      "url": "https://github.com/weaveplatform/infraweave/issues/644",
+      "title": "[PWB-01] Capture login, deprecated policy, sampling and workbench behavior",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 636,
+      "updatedAt": "2026-11-20T04:58:32Z",
+      "bodySHA256": "798594cdc196bf9a064b186ca42548b3f619777c39d96597a2e68c437164fbc1",
+      "directBlockers": [
+        {
+          "number": 638,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 645,
+      "url": "https://github.com/weaveplatform/infraweave/issues/645",
+      "title": "[POL-05] Serve policy management and account-scoped searches",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T02:37:34Z",
+      "bodySHA256": "7290b3977f49df87847930b49ae78bd5914dbf003c17e1496b7a89ce05cb882a",
+      "directBlockers": [
+        {
+          "number": 640,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 643,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 646,
+      "url": "https://github.com/weaveplatform/infraweave/issues/646",
+      "title": "[POL-06] Attach policies explicitly and by inheritable labels",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T04:20:55Z",
+      "bodySHA256": "83c2069d4f384f73d7cf74f06fa42c0ff7fa90485fdb1c6f1972226c293da7d3",
+      "directBlockers": [
+        {
+          "number": 645,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 647,
+      "url": "https://github.com/weaveplatform/infraweave/issues/647",
+      "title": "[POL-08] Combine isolated policy decisions with per-type error outcomes",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:04Z",
+      "bodySHA256": "128886f40f12a5ac87f80c63c79cc20ff7848937deb091539164ed6bc199d0d3",
+      "directBlockers": [
+        {
+          "number": 646,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 641,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 648,
+      "url": "https://github.com/weaveplatform/infraweave/issues/648",
+      "title": "[POL-09] Compile policies through the shared check endpoint with ranged diagnostics",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T05:33:58Z",
+      "bodySHA256": "8e9775b1b0515c16eb4e109e3e0f7879800f15954479b05e33c0dd33b8c65df0",
+      "directBlockers": [
+        {
+          "number": 645,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 649,
+      "url": "https://github.com/weaveplatform/infraweave/issues/649",
+      "title": "[POL-11] Commit run receipts and policy-owned flags with transitions",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T05:25:43Z",
+      "bodySHA256": "47bda7ced3fed9c24637a44dfcb88f41aeae100dc410424708c018bc3126a1c5",
+      "directBlockers": [
+        {
+          "number": 645,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 641,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 647,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 650,
+      "url": "https://github.com/weaveplatform/infraweave/issues/650",
+      "title": "[POL-13] Gate queued runs and reviews with approval policies",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:09Z",
+      "bodySHA256": "9ecbf21d3f36159e21ea5d220d67fc2e9e0977db9311923b697a0e380abd7d54",
+      "directBlockers": [
+        {
+          "number": 647,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 649,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 651,
+      "url": "https://github.com/weaveplatform/infraweave/issues/651",
+      "title": "[POL-14] Evaluate plan policies before deciding the next worker state",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:11Z",
+      "bodySHA256": "47ff7f4d2207de7212556ad86cef76edfeb3d7dd1c205be03dd688c29cd11d1e",
+      "directBlockers": [
+        {
+          "number": 642,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 650,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 652,
+      "url": "https://github.com/weaveplatform/infraweave/issues/652",
+      "title": "[POL-15] Apply push policy decisions in every provider event job",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:13Z",
+      "bodySHA256": "ddc3f926f39dee40e142819561841e626eae9af47d676d7acbfbfef32a9d96d2",
+      "directBlockers": [
+        {
+          "number": 647,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 649,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 653,
+      "url": "https://github.com/weaveplatform/infraweave/issues/653",
+      "title": "[POL-16] Trigger tracked runs durably from terminal run and task decisions",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:15Z",
+      "bodySHA256": "b02bcea474fef17ad87784d361497bbfeeccf3961f89788fce7f9d3a6b870219",
+      "directBlockers": [
+        {
+          "number": 647,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 649,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 654,
+      "url": "https://github.com/weaveplatform/infraweave/issues/654",
+      "title": "[POL-17] Prove workflow policies and sanitization through real dependencies",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T05:28:13Z",
+      "bodySHA256": "46c9e2395fe3890204731da31dd682d7a30739e9bf9ec22464a665f781d1da52",
+      "directBlockers": [
+        {
+          "number": 648,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 651,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 652,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 653,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 687,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 655,
+      "url": "https://github.com/weaveplatform/infraweave/issues/655",
+      "title": "[POL-18] Drive the policy GitOps walkthrough in the real-provider vcs-lab",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-19T20:47:18Z",
+      "bodySHA256": "b915116875d250b4cb3c66a20f334e79f0a328d7011ad300716ba8d41d6a18bf",
+      "directBlockers": [
+        {
+          "number": 654,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 656,
+      "url": "https://github.com/weaveplatform/infraweave/issues/656",
+      "title": "[POL-19] Audit the P13 evidence matrix, captures and delivery gate",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T04:57:29Z",
+      "bodySHA256": "7bd6c636daf9c53b9f23c0f371fd097f4d46f1d8f4bbce74fcb95b97bcfdb022",
+      "directBlockers": [
+        {
+          "number": 655,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 679,
+          "state": "closed",
+          "stateReason": "completed"
+        },
+        {
+          "number": 683,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 685,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 657,
+      "url": "https://github.com/weaveplatform/infraweave/issues/657",
+      "title": "[PWB-02] Switch account authorization schemes without losing inactive configuration",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:22Z",
+      "bodySHA256": "023eaa615844dae92c3fcfdb0d109fd0f4dea741141aad92468acd3162447f4c",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 644,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 658,
+      "url": "https://github.com/weaveplatform/infraweave/issues/658",
+      "title": "[PWB-03] Evaluate account-entry login policies and persist session grants",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:24Z",
+      "bodySHA256": "7c69ce176ced1f618883b439a0f11afda37960690daac2f8092108cfd66f1bfa",
+      "directBlockers": [
+        {
+          "number": 657,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 659,
+      "url": "https://github.com/weaveplatform/infraweave/issues/659",
+      "title": "[PWB-04] Deny disallowed tasks before creating a task run",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:26Z",
+      "bodySHA256": "704df2ff111dae90c22003f82078b68dfa95d3bb4b76c139b951afeffe9699ff",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 644,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 660,
+      "url": "https://github.com/weaveplatform/infraweave/issues/660",
+      "title": "[PWB-05] Evaluate deprecated server-side initialization policies before scheduling",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:27Z",
+      "bodySHA256": "b2cb2ad3654e395629c44b9f0fe546030448a6f1992e51f9aec44ce449d0cb59",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 644,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 661,
+      "url": "https://github.com/weaveplatform/infraweave/issues/661",
+      "title": "[PWB-06] Store sealed policy samples with atomic budgets and expiration",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:29Z",
+      "bodySHA256": "e55a3db0063ac37601ec9d804478463939bffe1f81e350c6da492f3d3dd0d6f4",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 644,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 662,
+      "url": "https://github.com/weaveplatform/infraweave/issues/662",
+      "title": "[PWB-07] Serve root-admin policy samples, searches and input captures",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:31Z",
+      "bodySHA256": "68b54722e7acddcfd02cfad865593d132de0c78871bf028e21aa79d1a6d3db4c",
+      "directBlockers": [
+        {
+          "number": 661,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 663,
+      "url": "https://github.com/weaveplatform/infraweave/issues/663",
+      "title": "[PWB-08] Simulate edited policies without creating receipts or samples",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:33Z",
+      "bodySHA256": "14d3aacd1d0b853e52d7a965db4ce275c726b6558d49135b3bf5d68f70c1df5c",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 664,
+      "url": "https://github.com/weaveplatform/infraweave/issues/664",
+      "title": "[PWB-09] Serve the captured MIT policy catalogue and run its complete corpus",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-20T05:25:48Z",
+      "bodySHA256": "3d96d63d4712e62f50ccd3ff04851808fd0652ac7f9d7fc87656f6f048227ba4",
+      "directBlockers": [
+        {
+          "number": 656,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 663,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 665,
+      "url": "https://github.com/weaveplatform/infraweave/issues/665",
+      "title": "[PWB-10] Complete policy page projections through the public API",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-19T20:47:36Z",
+      "bodySHA256": "0afe96bddabcfad97ac1dd2ed17955e85fb0a50a3745e1e719d123689fd28bff",
+      "directBlockers": [
+        {
+          "number": 658,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 662,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 663,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 664,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 666,
+      "url": "https://github.com/weaveplatform/infraweave/issues/666",
+      "title": "[PWB-11] Prove account isolation, policy tooling and the P13b delivery gate",
+      "state": "open",
+      "stateReason": null,
+      "parent": 636,
+      "updatedAt": "2026-11-20T04:47:07Z",
+      "bodySHA256": "cf9d24ea447f50217b38f13f6f999685d683caaa5b0e750e0de14de7f084005a",
+      "directBlockers": [
+        {
+          "number": 659,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 660,
+          "state": "open",
+          "stateReason": null
+        },
+        {
+          "number": 665,
+          "state": "open",
+          "stateReason": null
+        }
+      ]
+    },
+    {
+      "number": 672,
+      "url": "https://github.com/weaveplatform/infraweave/issues/672",
+      "title": "[POL-FOLLOWUP] Decide Rego v2 compatibility after upstream OPA support",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T01:52:42Z",
+      "bodySHA256": "e617193bddbe5b2578f56646395c612b4723b3f1fee159c1cc51172996b5726c",
+      "directBlockers": [
+        {
+          "number": 640,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 675,
+      "url": "https://github.com/weaveplatform/infraweave/issues/675",
+      "title": "[POL-FOLLOWUP] Handle deferred-change and action payloads in plan sanitization",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T04:45:45Z",
+      "bodySHA256": "d65df85ba8fd0352bb3aedf6260a6ac11830116eef49023ccac3d0db67916092",
+      "directBlockers": [
+        {
+          "number": 642,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 679,
+      "url": "https://github.com/weaveplatform/infraweave/issues/679",
+      "title": "[POL-FOLLOWUP] Activate the C57 policy runtime REST replay",
+      "state": "closed",
+      "stateReason": "completed",
+      "parent": 635,
+      "updatedAt": "2026-11-20T04:03:52Z",
+      "bodySHA256": "6a77360bd0d7343e03a065b73fb834d0f47fc72d4dfd49230408b4ca80ea25bc",
+      "directBlockers": [
+        {
+          "number": 645,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 683,
+      "url": "https://github.com/weaveplatform/infraweave/issues/683",
+      "title": "[POL-FOLLOWUP] Reconcile the C48 tier-specific REST replay handoff",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T03:43:24Z",
+      "bodySHA256": "f6d13c7960aa4695e184746175fb70c09b0e7ebfb9f05a5a2043b35f406123a6",
+      "directBlockers": [
+        {
+          "number": 646,
+          "state": "closed",
+          "stateReason": "completed"
+        }
+      ]
+    },
+    {
+      "number": 685,
+      "url": "https://github.com/weaveplatform/infraweave/issues/685",
+      "title": "[POL-FOLLOWUP] Audit verification prerequisites against phase owners",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T04:55:31Z",
+      "bodySHA256": "ec94c0d75059c50e0b8915a34a86090e49917fbd020a19402d0c0e8cdba13bb2",
+      "directBlockers": []
+    },
+    {
+      "number": 687,
+      "url": "https://github.com/weaveplatform/infraweave/issues/687",
+      "title": "[TST-FOLLOWUP] Split Terraform acceptance before its Go test deadline",
+      "state": "open",
+      "stateReason": null,
+      "parent": 635,
+      "updatedAt": "2026-11-20T05:24:51Z",
+      "bodySHA256": "e3b139b2b69a6d71b5a5b8055adbc1d26766295b5840cf01b49c7080d9ff6cae",
+      "directBlockers": []
+    }
+  ],
+  "reconciliation": [
+    {
+      "issue": 649,
+      "prerequisite": 647,
+      "reason": "approved actual-evaluator proof"
+    },
+    {
+      "issue": 664,
+      "prerequisite": 663,
+      "reason": "approved public import/create/simulate test"
+    },
+    {
+      "issue": 654,
+      "prerequisite": 687,
+      "reason": "required CI and complete real-dependency matrix capacity"
+    }
+  ],
+  "verificationOwnership": {
+    "receiptStorage": 649,
+    "publicReviewAndReportFlagProof": 654,
+    "publicReviewImplementation": 650,
+    "workerReportPolicyImplementation": 651,
+    "realProviderLab": 655,
+    "P13Exit": 656,
+    "P13bExit": 666
+  }
+}
