@@ -233,6 +233,42 @@ func TestUnitPartitionSelections(t *testing.T) {
 	}
 }
 
+// The split must preserve the actual parser's complete previous Terraform
+// selection, with no duplicated or misplaced scenario in either required job.
+func TestUnitTerraformSplitCoverage(t *testing.T) {
+	legacy := godogScenarios(t, "~@vcs-lab && @terraform")
+	union := map[string]string{}
+	for _, name := range []string{"terraform", "terraform-plans"} {
+		expr, err := harness.TagExpression(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		actual := godogScenarios(t, expr)
+		if len(actual) == 0 {
+			t.Fatalf("required partition %s has no real scenarios", name)
+		}
+		for id, scenario := range actual {
+			if _, ok := legacy[id]; !ok {
+				t.Errorf("%s: %s is misplaced in %s", scenario.Uri, scenario.Name, name)
+			}
+			if previous, ok := union[id]; ok {
+				t.Errorf("%s: %s runs in both %s and %s", scenario.Uri, scenario.Name, previous, name)
+			}
+			union[id] = name
+			if name == "terraform-plans" && !slices.Contains(pickleTags(scenario), "@plan-sanitization") {
+				t.Errorf("%s: %s is outside the plan artifact workload", scenario.Uri, scenario.Name)
+			}
+		}
+		t.Logf("%s: %d expanded scenarios", name, len(actual))
+	}
+	for id, scenario := range legacy {
+		if _, ok := union[id]; !ok {
+			t.Errorf("%s: %s disappeared from Terraform acceptance", scenario.Uri, scenario.Name)
+		}
+	}
+	t.Logf("preserved union: %d expanded scenarios", len(legacy))
+}
+
 func godogScenarios(t *testing.T, expr string) map[string]*messages.Pickle {
 	t.Helper()
 	suite := godog.TestSuite{Options: &godog.Options{Paths: []string{"features"}, Tags: expr}}
