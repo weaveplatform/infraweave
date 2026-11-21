@@ -47,6 +47,13 @@ coverage threshold is removed. The added required Terraform policy batch runs
 under certified FIPS and contributes coverage separately from its retained
 Cucumber/evidence report.
 
+`--fips` builds and runs infraweave's covered application and acceptance harness
+with `GOFIPS140=certified` and `GODEBUG=fips140=only`. The helper is built with the
+same settings in CI. These settings are scoped to those processes: official
+Terraform's provider installer uses OpenPGP key IDs that require SHA-1 and cannot
+inherit the application's FIPS-only runtime switch. Provider signature and locked
+package-checksum verification remain enabled.
+
 `--terraform /absolute/path` chooses the control-plane Terraform executable;
 `--helper /absolute/path` names the built lab helper. `up` and `down` support
 manual inspection of a deployment. A second successful `down` verifies absence

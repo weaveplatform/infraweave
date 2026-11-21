@@ -71,5 +71,27 @@
   "remainingMigration": [
     "application and launcher process lifecycle uses the existing harness",
     "GitLab/DC fixture servers use their existing startup helpers"
-  ]
+  ],
+  "providerInstallerFipsScope": {
+    "ciFailureRun": 44878879668,
+    "ciFailureJob": 136769566166,
+    "error": "official Terraform OpenPGP signing-key parsing panics when the provisioning process inherits GODEBUG=fips140=only",
+    "scope": "FIPS settings apply to infraweave helper build and --fips acceptance/application processes; provisioning Terraform retains standard upstream signature and locked checksum verification",
+    "pairedRealInstallations": [
+      {
+        "name": "inherited-only",
+        "exitCode": 11,
+        "sha1FipsPanic": true,
+        "initialized": false
+      },
+      {
+        "name": "provisioning-default",
+        "exitCode": 0,
+        "sha1FipsPanic": false,
+        "initialized": true
+      }
+    ],
+    "localArtifacts": "/private/tmp/infraweave-lab-provider-fips-scope-proof",
+    "classification": "local regression; corrected CI required"
+  }
 }
