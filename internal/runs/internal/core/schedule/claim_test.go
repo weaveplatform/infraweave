@@ -64,9 +64,13 @@ func (s *store) ProbeCandidate(
 	states []kernel.RunState,
 	last int,
 	after *schedule.ClaimCursor,
+	excluded []kernel.ULID,
 ) (lifecycle.Run, bool, error) {
 	var out []lifecycle.Run
 	for _, r := range s.runs {
+		if slices.Contains(excluded, r.Stack) {
+			continue
+		}
 		if after != nil && cmp.Or(cmp.Compare(tier(r), after.Tier), r.CreatedAt.Compare(after.CreatedAt), bytes.Compare(r.ID[:], after.ID[:])) <= 0 {
 			continue
 		}
@@ -95,6 +99,8 @@ func (*store) CandidateAttempt(ctx context.Context, fn func(context.Context) (bo
 func (*store) HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
 	return true, nil
 }
+
+func (*store) WakeClaims(context.Context, kernel.ULID) error { return nil }
 
 func (s *store) Waiting(_ context.Context, states []kernel.RunState) (map[kernel.ULID]int, error) {
 	out := map[kernel.ULID]int{}

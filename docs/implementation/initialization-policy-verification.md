@@ -21,8 +21,11 @@ policies, with singular/plural notes and each policy's messages preserved.
 The worker row serializes one worker's claims. Candidate selection probes without
 locking the run, then takes nonblocking space→stack→run fences and revalidates
 account, pool, state and version. A savepoint releases partial candidate locks
-before another target is tried. The finite drift-limit fence precedes candidate
-locks. A denied run commits its policy evidence and FAILED transition before the
+before another target is tried. A contended stack stays excluded for the whole
+queue walk, so its lock freeing mid-walk cannot let a lower-priority sibling
+run overtake the head. Assignment and refusal commit a pool wake-up when their
+owner fences are released; sleeping polls then restart from the queue head.
+The finite drift-limit fence precedes candidate locks. A denied run commits its policy evidence and FAILED transition before the
 same poll retries selection in a fresh transaction; it never marks the worker
 busy or mints a token for that run. Repeated scheduling jobs cannot reevaluate
 an assigned run.
@@ -64,7 +67,11 @@ approval scheduling tests remain part of the full acceptance gate.
 
 Real PostgreSQL claim tests check contended candidate skipping, two competing
 claimants, account-qualified owner reads and savepoint lock release before the
-outer transaction commits. Unit tests separately exercise operational port
+outer transaction commits. The full application test also races fifty workers
+through two replicas over sixty real READY runs on one stack and preserves
+the first-fifty ordering, single assignment, drift limits and isolation. A real
+LISTEN control verifies claim wake-ups commit and disappear on rollback.
+Unit tests separately exercise operational port
 failures; they are not presented as real OPA acceptance evidence. The complete
 coverage, FIPS and acceptance checks must pass at the PR's final head before
 this ticket is closed.

@@ -81,8 +81,9 @@ func (s *simultaneousProbes) ProbeCandidate(
 	states []kernel.RunState,
 	last int,
 	after *schedule.ClaimCursor,
+	excluded []kernel.ULID,
 ) (lifecycle.Run, bool, error) {
-	run, found, err := s.ClaimStore.ProbeCandidate(ctx, account, pool, states, last, after)
+	run, found, err := s.ClaimStore.ProbeCandidate(ctx, account, pool, states, last, after, excluded)
 	if err == nil && found && after == nil && s.count.Add(1) <= 2 {
 		s.probed <- run.ID
 		select {

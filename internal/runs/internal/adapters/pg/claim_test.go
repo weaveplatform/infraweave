@@ -292,11 +292,12 @@ func (f failingClaims) ProbeCandidate(
 	states []kernel.RunState,
 	last int,
 	after *schedule.ClaimCursor,
+	excluded []kernel.ULID,
 ) (lifecycle.Run, bool, error) {
 	if f.fail == "Next" || (f.fail == "NextEarlier" && last < 6) {
 		return lifecycle.Run{}, false, errInjected
 	}
-	return f.ClaimStore.ProbeCandidate(ctx, a, p, states, last, after)
+	return f.ClaimStore.ProbeCandidate(ctx, a, p, states, last, after, excluded)
 }
 
 func (f failingClaims) LockCandidate(ctx context.Context, r lifecycle.Run, p kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
@@ -326,6 +327,13 @@ func (f failingClaims) Assign(ctx context.Context, run lifecycle.Run, worker ker
 	return f.ClaimStore.Assign(ctx, run, worker)
 }
 
+func (f failingClaims) WakeClaims(ctx context.Context, pool kernel.ULID) error {
+	if f.fail == "WakeClaims" {
+		return errInjected
+	}
+	return f.ClaimStore.WakeClaims(ctx, pool)
+}
+
 // TestAccClaimFailures fails each call a claim makes, and checks that the
 // failure reaches the caller and its transaction leaves the run waiting.
 func TestAccClaimFailures(t *testing.T) {
@@ -348,6 +356,7 @@ func TestAccClaimFailures(t *testing.T) {
 		"LockCandidate":    schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "LockCandidate"}, w.lc, w),
 		"CandidateAttempt": schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "CandidateAttempt"}, w.lc, w),
 		"Assign":           schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "Assign"}, w.lc, w),
+		"WakeClaims":       schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "WakeClaims"}, w.lc, w),
 		"Move":             schedule.NewClaims(w.store, moving, w),
 	} {
 		if _, _, err := w.take(t, c, plain, kernel.NewULID(), nil); !errors.Is(err, errInjected) {
@@ -410,6 +419,51 @@ func TestAccClaimAnnounce(t *testing.T) {
 	}
 }
 
+func TestAccClaimWakeCommitsAndRollsBack(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	conn, err := w.db.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, "LISTEN "+notify.Runs); err != nil {
+		t.Fatal(err)
+	}
+	rolledBack, committed := kernel.NewULID(), kernel.NewULID()
+	rollback := errors.New("rollback claim notification")
+	if err := w.in(t, func(ctx context.Context) error {
+		if err := w.store.WakeClaims(ctx, rolledBack); err != nil {
+			return err
+		}
+		return rollback
+	}); !errors.Is(err, rollback) {
+		t.Fatal(err)
+	}
+	if err := w.in(t, func(ctx context.Context) error {
+		return w.store.WakeClaims(ctx, committed)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.db.Exec(ctx, `SELECT pg_notify($1, 'claim-marker')`, notify.Runs); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for {
+		n, err := conn.Conn().WaitForNotification(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n.Payload == "claim-marker" {
+			break
+		}
+		got = append(got, n.Payload)
+	}
+	if len(got) != 1 || got[0] != committed.String() {
+		t.Fatalf("claim wake escaped rollback or missed commit: %v", got)
+	}
+}
+
 // TestAccClaimStoreUnavailable checks that each claim call fails on a
 // closed pool.
 func TestAccClaimStoreUnavailable(t *testing.T) {
@@ -421,13 +475,13 @@ func TestAccClaimStoreUnavailable(t *testing.T) {
 	run := lifecycle.Run{Account: acct, ID: id, WorkerPool: &id}
 	_, holdingErr := s.Holding(ctx, acct, id)
 	_, driftingErr := s.Drifting(ctx, acct, id)
-	_, _, nextErr := s.ProbeCandidate(ctx, acct, id, kernel.RunStates(), 7, nil)
+	_, _, nextErr := s.ProbeCandidate(ctx, acct, id, kernel.RunStates(), 7, nil, nil)
 	_, _, candidateErr := s.LockCandidate(ctx, run, id, kernel.RunStates(), 7)
 	_, waitingErr := s.Waiting(ctx, kernel.RunStates())
 	for name, err := range map[string]error{
 		"Holding": holdingErr, "Drifting": driftingErr, "Next": nextErr, "Waiting": waitingErr,
-		"LockCandidate": candidateErr,
-		"TakeDrift":     s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
+		"LockCandidate": candidateErr, "WakeClaims": s.WakeClaims(ctx, id),
+		"TakeDrift": s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
 		"Announce": s.Announce(ctx, run),
 	} {
 		if err == nil {

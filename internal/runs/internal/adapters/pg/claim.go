@@ -45,6 +45,15 @@ func (s *Store) Announce(ctx context.Context, run lifecycle.Run) error {
 	return nil
 }
 
+// WakeClaims is delivered only after the claim transaction commits and
+// releases owner fences that may have made another idle poll skip its work.
+func (s *Store) WakeClaims(ctx context.Context, pool kernel.ULID) error {
+	if err := notify.Notify(ctx, tx.Q(ctx, s.db), notify.Runs, pool.String()); err != nil {
+		return fmt.Errorf("runs: wake contended claims: %w", sql.Unavailable(err))
+	}
+	return nil
+}
+
 // Holding reports whether acct's worker holds a run: one it claimed last
 // that is in a state on a worker.
 func (s *Store) Holding(ctx context.Context, acct kernel.AccountID, worker kernel.ULID) (bool, error) {
@@ -96,7 +105,11 @@ func (s *Store) ProbeCandidate(
 	states []kernel.RunState,
 	last int,
 	after *schedule.ClaimCursor,
+	excluded []kernel.ULID,
 ) (lifecycle.Run, bool, error) {
+	if excluded == nil {
+		excluded = []kernel.ULID{}
+	}
 	var tier *int
 	var at *time.Time
 	var id *kernel.ULID
@@ -105,10 +118,10 @@ func (s *Store) ProbeCandidate(
 	}
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND worker_pool_id = $2 AND state = ANY($3)
-			AND priority_tier <= $4
+			AND priority_tier <= $4 AND NOT (stack_id=ANY($8::uuid[]))
 			AND ($5::int IS NULL OR (priority_tier,created_at,id)>($5,$6::timestamptz,$7::uuid))
 		ORDER BY priority_tier, created_at, id
-		LIMIT 1`, acct, pool, names(states), last, tier, at, id))
+		LIMIT 1`, acct, pool, names(states), last, tier, at, id, excluded))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return lifecycle.Run{}, false, nil
@@ -174,6 +187,7 @@ func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULI
 		return fmt.Errorf("runs: assign run %s to worker %s: %w", run.ID, worker,
 			sql.Unavailable(err))
 	}
+
 	return nil
 }
 

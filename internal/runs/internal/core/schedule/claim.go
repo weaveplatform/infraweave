@@ -28,11 +28,21 @@ type ClaimStore interface {
 	TakeDrift(ctx context.Context, acct kernel.AccountID, pool kernel.ULID) error
 	// ProbeCandidate reads the next candidate without locking its run. Owner
 	// fences must precede the exact row lock, including after a skipped target.
-	ProbeCandidate(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int, after *ClaimCursor) (lifecycle.Run, bool, error)
+	ProbeCandidate(
+		ctx context.Context,
+		acct kernel.AccountID,
+		pool kernel.ULID,
+		states []kernel.RunState,
+		last int,
+		after *ClaimCursor,
+		excluded []kernel.ULID,
+	) (lifecycle.Run, bool, error)
 	LockCandidate(ctx context.Context, candidate lifecycle.Run, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error)
 	// CandidateAttempt rolls back all candidate locks when fn answers false
 	// or fails. It retains them on true. fn must make no writes or callbacks.
 	CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error)
+	// WakeClaims wakes contended polls when commit releases candidate owner locks.
+	WakeClaims(context.Context, kernel.ULID) error
 	// Assign writes worker as run's worker.
 	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
 	// Waiting counts the runs in one of states of each private pool, of
@@ -110,10 +120,13 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	}
 	if run.State == kernel.RunStateReady && s.initialization != nil {
 		refused, err := s.initialize(ctx, run)
+		if err == nil && refused {
+			err = s.store.WakeClaims(ctx, c.Pool)
+		}
 		if err != nil || refused {
 			// A refusal must commit before selecting another stack. The worker
 			// repeats selection in a fresh transaction without becoming busy.
-			return workersapi.Assignment{Retry: refused && err == nil}, false, err
+			return workersapi.Assignment{Retry: refused && err == nil}, false, err //nolint:wrapcheck // the gate/store names the failed evaluation or wake
 		}
 	}
 	// Every claimable state has a claim edge for each type the machine
@@ -128,6 +141,9 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	}
 	if err := s.store.Assign(ctx, moved, c.Worker); err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the write
+	}
+	if err := s.store.WakeClaims(ctx, c.Pool); err != nil {
+		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the notification
 	}
 	return workersapi.Assignment{Run: moved.ID, State: moved.State, StateVersion: moved.Version},
 		true, nil
@@ -191,22 +207,31 @@ func (s *Claims) allowedTier(ctx context.Context, c workersapi.Claim) (int, erro
 
 func (s *Claims) candidate(ctx context.Context, c workersapi.Claim, last int) (lifecycle.Run, bool, error) {
 	var after *ClaimCursor
+	var excluded []kernel.ULID
 	for {
-		probe, found, err := s.store.ProbeCandidate(ctx, c.Account, c.Pool, machine.Claimable(), last, after)
+		probe, found, err := s.store.ProbeCandidate(ctx, c.Account, c.Pool, machine.Claimable(), last, after, excluded)
 		if err != nil || !found {
 			return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the read
 		}
 		var run lifecycle.Run
+		var fenced bool
 		held, err := s.store.CandidateAttempt(ctx, func(ctx context.Context) (bool, error) {
-			ok, err := s.fence.HoldClaim(ctx, probe.Account, probe.Stack)
-			if err != nil || !ok {
+			var err error
+			fenced, err = s.fence.HoldClaim(ctx, probe.Account, probe.Stack)
+			if err != nil || !fenced {
 				return false, err //nolint:wrapcheck // the owner names the fence
 			}
+			var ok bool
 			run, ok, err = s.store.LockCandidate(ctx, probe, c.Pool, machine.Claimable(), last)
 			return ok, err //nolint:wrapcheck // the store names revalidation
 		})
 		if err != nil || held {
 			return run, held, err //nolint:wrapcheck // the attempt names rollback/release failures
+		}
+		if !fenced {
+			// Never revisit this owner midway through the same selection: its
+			// fence freeing must not let a lower-priority sibling overtake it.
+			excluded = append(excluded, probe.Stack)
 		}
 		// The unsuccessful attempt released every owner/run lock. Advancing
 		// cannot introduce a cross-stack lock order or retry a contended row.
