@@ -13,9 +13,9 @@ handoffs:
     owner: https://github.com/weaveplatform/infraweave/issues/646
     detail: PUT stack policy attachment returns the equivalent 422 validation-failed refusal for NOTIFICATION and leaves no relation; REST problem wording differs from GraphQL.
   "/exchanges/20/response/data/stack/run/state":
-    classification: deferred
-    owner: https://github.com/weaveplatform/infraweave/issues/650
-    detail: Approval-policy rejection after PENDING_REVIEW requires 650; PLAN warnings require 651, and the complete real workflow is verified by 654. CRUD success does not prove FAILED.
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Compare C48's complete captured approval, warning and always-approve inputs with C291, then execute the real worker/review rejection workflow and require FAILED after PENDING_REVIEW. Preserve the separate C48 report; management success alone does not prove rejection.
   "/exchanges/23/response/data/stacks":
     classification: rest
     owner: https://github.com/weaveplatform/infraweave/issues/683

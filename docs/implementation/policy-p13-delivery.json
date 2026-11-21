@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "auditedOn": "2026-11-20",
+  "auditedOn": "2026-11-21",
   "status": "incomplete",
   "issue": 656,
   "sourceRevision": "1120bb8aa7e4c09e5c3468cd876567db13e9e3b9",
@@ -1853,14 +1853,37 @@
       ],
       "result": "passed",
       "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L69"
+    },
+    "L1": {
+      "feature": "runs/logs.feature",
+      "line": 128,
+      "name": "An in-run token cannot read the stack's full run or task projections",
+      "partition": "integrations",
+      "stepCount": 57,
+      "tags": [
+        "@postgres",
+        "@objectstore",
+        "@vcs",
+        "@policy-projection-denial",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@op:stackProposedRuns",
+        "@op:stackTasks",
+        "@op:stackRunsInRange",
+        "@case:denial"
+      ],
+      "result": "passed-locally-final-CI-outstanding",
+      "source": "test/acceptance/features/runs/logs.feature",
+      "mode": "certified-FIPS-only",
+      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
     }
   },
   "requiredOpenEvidence": [
     {
       "issue": 655,
-      "pr": 709,
+      "pr": 715,
       "state": "live-run-outstanding",
-      "head": "7a452082d14c50efb90edd26745881dac1b94df0"
+      "head": "202e61f5f591c5cef0c2ccbcce4a4f5733106f90"
     },
     {
       "issue": 656,
@@ -1868,13 +1891,12 @@
     },
     {
       "issue": 675,
-      "pr": 708,
       "state": "native-deferred-action-positive-proof-outstanding"
     },
     {
       "issue": 703,
-      "pr": 707,
-      "state": "held-pending-runner-image-design"
+      "pr": 716,
+      "state": "public-image-isolation-final-ci-outstanding"
     }
   ],
   "projectionOperations": [
@@ -1897,11 +1919,12 @@
       "path": "/api/v1/stacks/{stackId}/run",
       "cases": {
         "success": "S34",
-        "denial": "S33",
+        "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag",
-      "literal403": "unproven-at-audited-source; candidate @policy-projection-denial awaiting execution"
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
     },
     {
       "operation": "stackRuns",
@@ -1910,11 +1933,12 @@
       "path": "/api/v1/stacks/{stackId}/runs",
       "cases": {
         "success": "S34",
-        "denial": "S33",
+        "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag",
-      "literal403": "unproven-at-audited-source; candidate @policy-projection-denial awaiting execution"
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
     },
     {
       "operation": "stackProposedRuns",
@@ -1923,11 +1947,12 @@
       "path": "/api/v1/stacks/{stackId}/proposed-runs",
       "cases": {
         "success": "S34",
-        "denial": "S33",
+        "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag",
-      "literal403": "unproven-at-audited-source; candidate @policy-projection-denial awaiting execution"
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
     },
     {
       "operation": "stackTasks",
@@ -1936,11 +1961,12 @@
       "path": "/api/v1/stacks/{stackId}/tasks",
       "cases": {
         "success": "S34",
-        "denial": "S33",
+        "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag",
-      "literal403": "unproven-at-audited-source; candidate @policy-projection-denial awaiting execution"
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
     },
     {
       "operation": "stackRunsInRange",
@@ -1949,11 +1975,12 @@
       "path": "/api/v1/stacks/{stackId}/runs-in-range",
       "cases": {
         "success": "S34",
-        "denial": "S33",
+        "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag",
-      "literal403": "unproven-at-audited-source; candidate @policy-projection-denial awaiting execution"
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
     },
     {
       "operation": "runTrigger",
@@ -2415,14 +2442,17 @@
       "selector": "@policy-projection-denial",
       "feature": "test/acceptance/features/runs/logs.feature",
       "scenario": "An in-run token cannot read the stack's full run or task projections",
-      "status": "not-yet-executed",
+      "status": "local-FIPS-passed-final-CI-outstanding",
       "literal403Operations": [
         "stackRun",
         "stackRuns",
         "stackProposedRuns",
         "stackTasks",
         "stackRunsInRange"
-      ]
+      ],
+      "scenarios": 1,
+      "steps": 57,
+      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
     }
   ],
   "typedFixtureProvenance": [
@@ -2443,5 +2473,54 @@
       "tag:Stacks": "partial"
     },
     "correction": "tag:Infrastructure recorded missing becomes its computed partial state; no tag becomes implemented"
+  },
+  "captureReconciliation": {
+    "status": "local-real-worker-FIPS-passed-final-CI-outstanding",
+    "C291": "full rejection replay in both captured review states",
+    "C51": "current-owner flag reset/rejection/cleanup REST subset; sampled input deferred to 662; legacy comparison remains inferred",
+    "C46": "cleanup REST subset; historical billing/native SHA assertions retained upstream; reason/label behavior remains inferred",
+    "C48": "management and equivalent captured approval workflow; historical tier/entitled-account assertions retained upstream"
+  },
+  "localCaptureProof": [
+    {
+      "capture": "C291",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "33dfea7f02efe391e7c412577e188dfb7baa0ee54afc0f4e697749dfba997e15",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C46",
+      "scenarios": 1,
+      "steps": 29,
+      "reportSHA256": "11e1f27fa393931f9db32ef129481c7368dc0833bf2c173e23be2da8a600b283",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C48",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "bc0224f8a7f8f802ddf0c38d1eecc039e20643e9cedacbb6d887cd5f0ddbb0de",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C51",
+      "scenarios": 1,
+      "steps": 39,
+      "reportSHA256": "29d4852698093c49fd20ed4630aae507867bb3239581fde0e0814041ed95197b",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    }
+  ],
+  "currentIntegrationBase": {
+    "revision": "e909e739b50646d32aeb754a310272d9648d514a",
+    "policyPR": 715,
+    "policyCI": 44867086361,
+    "liveLab": 44869808030,
+    "liveStatus": "in-progress",
+    "runnerProofPR": 716
   }
 }

@@ -49,6 +49,19 @@ func captureReplayRegistry(parent *testing.T) (map[string]func(*testing.T, *sdk.
 		contents, names := approvalCaptureFeature(t)
 		workers.Run(t, "C291", contents, names)
 	}
+	management := subsets["policy-free-tier-management"]
+	subsets["policy-free-tier-management"] = func(t *testing.T, client *sdk.Client) []string {
+		executed := management(t, client)
+		verifyApprovalCapturePrograms(t)
+		if workers == nil {
+			workers = harness.NewFeatureReplay(parent, append(slices.Clone(areas), registerCaptureWorkflow))
+		}
+		contents, names := approvalCaptureFeature(t)
+		workers.Run(t, "C48", contents, names)
+		return append(executed, c48Workflow)
+	}
+	registerFlagCaptureReplay(parent, subsets, &workers)
+	registerIgnoredCaptureReplay(parent, subsets, &workers)
 	return full, subsets
 }
 
@@ -79,31 +92,12 @@ func approvalCaptureFeature(t *testing.T) ([]byte, []string) {
 		}
 		programs[i] = string(encoded)
 	}
-	background := `@terraform @postgres @objectstore @vcs @docker
-Feature: C291 captured mixed approval rejection
-  Background:
-    Given the release indexes serve the recorded fixtures
-    And two infraweave servers, A and B, on one database
-    And the home key is exchanged through A for token "h"
-    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
-    And a certificate signing request for a P-256 key is kept as "csr"
-    And a Gitea repository "infra" with the files:
-      | main.tf | resource "terraform_data" "this" {\n  input = "C291 replay"\n} |
-    And the head of "main" of "infra" is kept as "seed"
-    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
-    And the answer's id names "pool"
-    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
-    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
-    And the capture's stack and policy inventories are kept
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"C291 replay","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
-    And it answers 201
-    And token "h" eventually reads the stack "c291-replay" tracking the commit kept as "seed" through A
-`
+	background := captureWorkflowBackground()
 	for i, name := range []string{"approval", "warning", "always"} {
 		background += fmt.Sprintf(`    And token "h" sends "POST /api/v1/policies" with '%s' through A
     And it answers 201
     And the answer's id names "%s"
-    And token "h" sends "PUT /api/v1/stacks/c291-replay/policies/{%s}" through B
+    And token "h" sends "PUT /api/v1/stacks/policy-replay/policies/{%s}" through B
     And it answers 200
 `, programs[i], name, name)
 	}
@@ -111,7 +105,7 @@ Feature: C291 captured mixed approval rejection
 	for i, row := range []struct{ kind, state string }{{"TRACKED", "UNCONFIRMED"}, {"PROPOSED", "PENDING_REVIEW"}} {
 		background += fmt.Sprintf(`
   Scenario: %s
-    When token "h" sends "POST /api/v1/stacks/c291-replay/runs" with '{"commitSha":"{seed}","runType":"%s"}' through A
+    When token "h" sends "POST /api/v1/stacks/policy-replay/runs" with '{"commitSha":"{seed}","runType":"%s"}' through A
     Then it answers 200
     And the answer's id names "run"
     And token "h" eventually reads the run "run" in the state "%s" through B
@@ -122,9 +116,9 @@ Feature: C291 captured mixed approval rejection
     And token "h" eventually reads the run "run" in the state "FAILED" through A
     And the run "run" replays C291 rejection from "%s" with its latest mixed receipts
     And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
-    When token "h" sends "DELETE /api/v1/stacks/c291-replay" through A
+    When token "h" sends "DELETE /api/v1/stacks/policy-replay" through A
     Then it answers 200
-    And token "h" sends "GET /api/v1/stacks/c291-replay" through B
+    And token "h" sends "GET /api/v1/stacks/policy-replay" through B
     And it answers 404
 `, names[i], row.kind, row.state, row.state, row.state, row.state)
 		for _, name := range []string{"approval", "warning", "always"} {
@@ -145,6 +139,10 @@ func registerCaptureWorkflow(sc *godog.ScenarioContext, w *harness.World) {
 	sc.Step(`^the capture's stack and policy inventories are restored$`, s.restored)
 	sc.Step(`^the C291 captured rejection reviews run "(\w+)" in "(UNCONFIRMED|PENDING_REVIEW)"$`, s.reject)
 	sc.Step(`^the run "(\w+)" replays C291 rejection from "(UNCONFIRMED|PENDING_REVIEW)" with its latest mixed receipts$`, s.rejection)
+	sc.Step(`^the C51 captured rejection reviews run "(\w+)" in "(UNCONFIRMED)"$`, func(ctx context.Context, name, state string) error {
+		return s.reviewRecorded(ctx, "C51", name, state)
+	})
+	sc.Step(`^the run "(\w+)" retains C51's historical flag and its current reset$`, s.flagReset)
 }
 
 type captureWorkflowSteps struct {
@@ -211,18 +209,21 @@ func (s *captureWorkflowSteps) restored(ctx context.Context) error {
 	return nil
 }
 
-func c291Recorded() (workflowCapture, map[string]string, error) {
+func recordedWorkflow(id string) (workflowCapture, map[string]string, error) {
 	var capture workflowCapture
 	var reviews struct {
 		Exchanges []struct {
 			Response struct {
 				Data struct {
-					Review *struct{ State, Note string } `json:"runReview"`
+					Review *struct {
+						State string `json:"state"`
+						Note  string `json:"note"`
+					} `json:"runReview"`
 				} `json:"data"`
 			} `json:"response"`
 		} `json:"exchanges"`
 	}
-	data, err := os.ReadFile(filepath.Join(capturesRoot, "C291", harness.ResponseFile))
+	data, err := os.ReadFile(filepath.Join(capturesRoot, id, harness.ResponseFile))
 	if err != nil {
 		return capture, nil, fmt.Errorf("read C291 capture: %w", err)
 	}
@@ -242,7 +243,11 @@ func c291Recorded() (workflowCapture, map[string]string, error) {
 }
 
 func (s *captureWorkflowSteps) reject(ctx context.Context, name, state string) error {
-	_, notes, err := c291Recorded()
+	return s.reviewRecorded(ctx, "C291", name, state)
+}
+
+func (s *captureWorkflowSteps) reviewRecorded(ctx context.Context, captureID, name, state string) error {
+	_, notes, err := recordedWorkflow(captureID)
 	if err != nil {
 		return err
 	}
@@ -258,14 +263,14 @@ func (s *captureWorkflowSteps) reject(ctx context.Context, name, state string) e
 	if version == nil {
 		return fmt.Errorf("%w: C291 review lacks its current state fence", harness.ErrStep)
 	}
-	_, err = s.w.Do(ctx, "B", "h", http.MethodPost, "/api/v1/stacks/c291-replay/runs/review", map[string]any{
+	_, err = s.w.Do(ctx, "B", "h", http.MethodPost, "/api/v1/stacks/policy-replay/runs/review", map[string]any{
 		"run": run.Id, "decision": "REJECT", "note": notes[state], "stateVersion": *version,
 	})
 	return err
 }
 
 func (s *captureWorkflowSteps) rejection(_ context.Context, name, state string) error {
-	capture, _, err := c291Recorded()
+	capture, _, err := recordedWorkflow("C291")
 	if err != nil {
 		return err
 	}
@@ -308,4 +313,27 @@ func (s *captureWorkflowSteps) rejection(_ context.Context, name, state string) 
 		identities[*actual.PolicySlug] = true
 	}
 	return nil
+}
+
+func captureWorkflowBackground() string {
+	return `@terraform @postgres @objectstore @vcs @docker
+Feature: Captured policy workflows
+  Background:
+    Given the release indexes serve the recorded fixtures
+    And two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And token "h" eventually reads the Terraform versions through A as the fixture's stable releases newest first
+    And a certificate signing request for a P-256 key is kept as "csr"
+    And a Gitea repository "infra" with the files:
+      | main.tf | resource "terraform_data" "this" {\n  input = "Policy replay"\n} |
+    And the head of "main" of "infra" is kept as "seed"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"acme","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    And token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    And token "h" eventually reads the worker "l" of the pool "pool" as "IDLE" through B
+    And the capture's stack and policy inventories are kept
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Policy replay","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"acme","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    And it answers 201
+    And token "h" eventually reads the stack "policy-replay" tracking the commit kept as "seed" through A
+`
 }

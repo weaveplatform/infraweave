@@ -10,7 +10,11 @@ Partial capture: no legacy policy lacking the internal PolicyULID, nor a policy
 with a ULID-shaped public ID, was available. Public ID appearance is not an
 eligibility test. Acquisition/migration of the internal PolicyULID remains open.
 
-The final exchange verifies cleanup. REST replay remains deferred to #649.
+The final exchange verifies cleanup. The `policy-current-owner-reset` subset
+replays creation, real tracked planning, historical flag retention, current
+flag reset, review rejection and verified cleanup. The captured sample input
+after reset stays explicitly deferred to #662; its public read surface belongs
+to P13b. This subset does not supply the missing legacy-policy comparison.
 
 Maintainer decision, 2026-11-19: use labelled inference for the missing case,
 as specified in ADR 0009. Implementation is unblocked; the absent upstream

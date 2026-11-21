@@ -1,10 +1,10 @@
 # P13 delivery evidence audit
 
-Audit for [POL-19 (#656)](https://github.com/weaveplatform/infraweave/issues/656), dated 2026-11-20. **P13 remains In progress.** This audit records the passing local-service contracts and the evidence still required for delivery; it does not close the phase, epic #635, or its outstanding follow-ups.
+Audit for [POL-19 (#656)](https://github.com/weaveplatform/infraweave/issues/656), dated 2026-11-21. **P13 remains In progress.** This audit records the passing local-service contracts and the evidence still required for delivery; it does not close the phase, epic #635, or its outstanding follow-ups.
 
 ## Revision and executed results
 
-The audited merged source is [`1120bb8a`](https://github.com/weaveplatform/infraweave/commit/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9). Its own [push quality gate](https://github.com/weaveplatform/infraweave/actions/runs/44808423418) passed, independently of [PR #706](https://github.com/weaveplatform/infraweave/pull/706)'s tested head `fcd3ab623de01a71d611a7a8603476a59beefb03`. The gate passed normal acceptance, certified FIPS, PostgreSQL-next, all three OS unit suites, race checks, generation, parity, lint, vulnerability checks, cross-compilation and aggregate Quality. Coverage was **95.5% (49,560/51,922)**; every package met 90%.
+The retained historical execution baseline is [`1120bb8a`](https://github.com/weaveplatform/infraweave/commit/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9). Its own [push quality gate](https://github.com/weaveplatform/infraweave/actions/runs/44808423418) passed, independently of [PR #706](https://github.com/weaveplatform/infraweave/pull/706)'s tested head `fcd3ab623de01a71d611a7a8603476a59beefb03`. The gate passed normal acceptance, certified FIPS, PostgreSQL-next, all three OS unit suites, race checks, generation, parity, lint, vulnerability checks, cross-compilation and aggregate Quality. Coverage was **95.5% (49,560/51,922)**; every package met 90%.
 
 The six downloaded Cucumber reports contain **1,040 scenarios and 25,407 steps, all passed**. The adjacent [execution index](policy-p13-delivery.json) retains report hashes, artifact IDs, exact scenario names, source locations and operation tags. These are executed results, not a count of source tags. Artifacts can expire; reproduce the same partitions when refreshing this dated audit.
 
@@ -106,7 +106,7 @@ mappers do not establish that every route has exercised every populated field.
 
 | Projection / actual served operations | Passing evidence at the audited revision | Audit limit |
 |---|---|---|
-| Full Run reads: `run`, `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns`, `stackTasks` | [S29](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/policy_evidence.feature#L8) checks receipts, deleted-policy snapshots, flags, privacy and event projection through two servers. [S31](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L136), [S34](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L198) and [S35](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L242) execute list/read success and malformed/unknown/cursor failures. | `run` has a genuine in-run-token `403` in [S30](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L128). The other five routes' tagged denial is unreadable-stack `404` in [S33](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L223); literal `403` remains an explicit audit gap. |
+| Full Run reads: `run`, `stackRun`, `stackRuns`, `stackRunsInRange`, `stackProposedRuns`, `stackTasks` | [S29](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/policy_evidence.feature#L8) checks receipts, deleted-policy snapshots, flags, privacy and event projection through two servers. [S31](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L136), [S34](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L198) and [S35](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L242) execute list/read success and malformed/unknown/cursor failures. | `run` has a genuine in-run-token `403` in [S30](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L128). The other five routes' tagged denial is unreadable-stack `404` in [S33](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L223); the local `@policy-projection-denial` replay now supplies literal `403` for all five routes through both replicas (one scenario / 57 steps). Final CI for that repair remains required. |
 | Full Run mutation responses: `runTrigger`, `runProposeLocalWorkspace`, `proposeWithOverrides`, `taskCreate`, `runRetry`, `runPromote`, `runLogsDelete`, `runCancel`, `runStop`, `runKill`, `runConfirm`, `runDiscard`, `runTargetedReplan`, `runPrioritySet` | Existing per-operation success/denial/failure scenarios are included in the execution index. Actual policy workflows verify review/worker gating, replan messages, cancellation and trigger effects; [POL-17](policy-phase-verification.md) maps their real OPA and committed-state assertions. | These routes share the full Run mapper. A baseline lifecycle success with empty policy fields is not a populated policy-evidence assertion. `runReview` instead returns its review record, not a full Run. |
 | Full Stack responses: `stacks`, `searchStacks`, `stack`, `runStack`, `stackCreate`, `stackUpdate`, `stackPatch`, `stackDelete`, `stackReslug`, `stackDisable`, `stackEnable`, `stackLock`, `stackSyncCommit`, `stackSetCurrentCommit`, `stackUnlock`, `starSet` | [S13](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L294) checks populated `attachedPolicies` and detach; [S36](https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L334) verifies forced deletion clears both projections. Baseline operation scenarios remain in the index. | Each uses the same effective, account-qualified attachment reader. Ordinary unreadable entities answer `404` under [0007](../research/decisions/0007-authorization-spaces-and-roles.md); an index denial tag does not assert a literal `403`. |
 | `run_updated` event | Actual public review and native report owner-reset scenarios compare public flags/receipts with committed projection and SQL. Historical deleted-policy evidence checks the safe event fields. | This is an outbox projection, not an HTTP operation. Raw decisions, input documents, private print output and policy source are not public receipt metadata. P18 owns delivery sinks. |
@@ -119,10 +119,11 @@ must not be described as populated receipt or attachment projections.
 
 ## Capture assertions and their owners
 
-At the audited revision, `TestAccCaptures` validates **15 authentic policy/tooling
-records**, then executes four complete policy REST replayers (C9/C49/C56/C57),
-one C48 REST subset and the unrelated example replay. Ten authentic records still
-have deferred REST replay. A `/recorded` pass checks captured bytes and declared
+The historical baseline validates **15 authentic policy/tooling records**,
+executes four complete policy REST replayers (C9/C49/C56/C57), one C48 subset
+and the unrelated example replay, with ten authentic records deferred. The
+local reconciliation below adds the C291 complete replay, C46/C51 subsets and
+C48 workflow assertions. Final CI must refresh the complete capture census. A `/recorded` pass checks captured bytes and declared
 observations; it does not exercise the equivalent infraweave workflow. The rows
 below keep those distinctions and the original capture provenance intact.
 
@@ -132,9 +133,9 @@ below keep those distinctions and the original capture provenance intact.
 | [C56](../../test/fixtures/captures/C56/README.md) | Real create/update timestamps remain within captured request bounds at Unix-second precision. | #645; real REST replay executed. |
 | [C57](../../test/fixtures/captures/C57/README.md) | Upstream recorded OPA `v1.17.1`; real local runtime endpoint independently equals linked `v1.22.4` from `go.mod`. | #679 / #640; real REST replay executed. Equal historical/local versions are not asserted. |
 | [C9](../../test/fixtures/captures/C9/README.md), policy assertions | Non-forced deletion refuses a relation; force deletes policy and clears both attachment projections. | #646; real REST replay executed. Context/plugin remainder retains its separate owner. |
-| [C291](../../test/fixtures/captures/C291/README.md) | Both UNCONFIRMED and PENDING_REVIEW become FAILED with exact note `Run rejected by approval policies`; one rejection dominates other approving policies. Actual worker/public scenarios pass, but the fixture's `replayAfter: #650` still skips capture replay. | #650/#651/#654 implemented behavior; #656 must execute/reconcile the capture assertions before counting replay complete. |
-| [C51](../../test/fixtures/captures/C51/README.md) | Recorded new slug-ID policy sets its own flag and later resets it. Public owner-reset proof passes; fixture still defers replay to closed #649. The unavailable legacy-policy comparison remains unobserved. | #649/#654 behavior; #656 must split executable current-owner assertions from the accepted legacy inference. Never derive reset eligibility from public ID syntax. |
-| [C46](../../test/fixtures/captures/C46/README.md) | Actual free-tier ignored-history entitlement refusal/null, two real tracked commit hashes and cleanup are recorded. No native reason was observed. Fixture still defers replay to closed #652. | #652 behavior / #656 replay reconciliation; approved ignored-reason and default-disable-label choices remain inference, upstream question open. |
+| [C291](../../test/fixtures/captures/C291/README.md) | The executable REST replay uses the captured policy sources with real worker plans and reviews. Both UNCONFIRMED and PENDING_REVIEW become FAILED with the exact captured note; latest mixed approval receipts and verified cleanup are checked. | #656 executes the previously skipped #650/#651/#654 handoff. |
+| [C51](../../test/fixtures/captures/C51/README.md) | The current-owner REST subset creates the captured policy, performs a real tracked plan, checks the historical flag receipt/current reset and stored ownership, rejects the review and verifies cleanup. | Sample-input reads remain explicitly deferred to #662. The missing legacy comparison remains an approved inference; public ID syntax never determines eligibility. |
+| [C46](../../test/fixtures/captures/C46/README.md) | The REST subset creates/attaches the captured policy and verifies stack/policy deletion and restored inventories. Historical billing refusal/null and two genuine commit hashes remain upstream assertions. | #656 removes the stale #652 deferral. Ignored-reason/default-disable-label choices remain approved inferences, distinct from unobserved entitled-account behavior and #655 live execution. |
 | [C48](../../test/fixtures/captures/C48/README.md) | Current REST subset creates all ten policies/eight types, attaches eight relations/six stack types, refuses NOTIFICATION attachment and restores inventory. Captured FAILED warned proposal remains handed to closed #650/#651/#654 rather than executed capture replay. | #683 subset complete; #656 must execute/reconcile PLAN warning → PENDING_REVIEW → approval rejection → FAILED. Historical tier/feature names and entitled-account comparison remain distinct. |
 | C37/C40/C41 | [Console report 32](../research/reference/32-spacelift-console-survey.md), sections 16.1–16.3, and the checked-in input fixtures retain push cancellation of an unconfirmed run, queued rejection and reject precedence. Actual push/review worker scenarios assert the corresponding state/history. | Fixture-backed observations retained; these are not additional directories or newly recorded upstream captures. |
 | [C192](../../test/fixtures/captures/C192/response.json) | Captured `sanitized()` results and full supported decisions execute offline through actual OPA; REST simulation remains deferred. | #663; future P13b surface, not missing P13 simulation delivery. |
@@ -152,8 +153,8 @@ capture or substitutes for its replay.
 
 ## Real-provider lab and independent delivery gates
 
-[POL-18 PR #709](https://github.com/weaveplatform/infraweave/pull/709) is draft at
-`7a452082d14c50efb90edd26745881dac1b94df0`. Its new real-provider policy matrix
+[POL-18 PR #715](https://github.com/weaveplatform/infraweave/pull/715) is open at
+`202e61f5f591c5cef0c2ccbcce4a4f5733106f90`. Its new real-provider policy matrix
 has **not executed**. Its local compiler/helper checks and pending required CI
 are implementation evidence, not live-service acceptance. The `vcs-lab`
 environment is restricted to main; this audit grants no branch-rule exception.
@@ -161,10 +162,10 @@ environment is restricted to main; this audit grants no branch-rule exception.
 The earlier real [baseline run 44803036616](https://github.com/weaveplatform/infraweave/actions/runs/44803036616)
 at `db2b8e58028970f350ff3eaa6b8ac93f73e8ed47` failed GitHub's native check
 uniqueness/ownership assertion. GitLab, Bitbucket Cloud and Azure DevOps passed
-the preceding workflow; their passes do not execute PR #709's new cases.
+the preceding workflow; their passes do not execute PR #715's new cases.
 Bitbucket Data Center's successful job was unconfigured and supplies no native
 DC evidence. Recorded cleanup completed. The GitHub known-check-ID repair in
-#709 remains unproved against GitHub until the repaired lab runs.
+#715 remains unproved against GitHub until the repaired lab runs.
 
 | Provider | Prior baseline | New policy matrix and cleanup |
 |---|---|---|
@@ -186,11 +187,11 @@ mandatory; licence-less DC is the documented conditional peer.
 | Embedded OPA, supported dialects, typed schema and recorded fixtures | Merged source gate above; actual linked runtime, contract schema and all checked-in input/decision round trips. `rego.v2` remains released but intentionally unsupported. |
 | Public review/report language, flags, rollback, isolation and runtime limits | [POL-17 matrix](policy-phase-verification.md), merged PR #706, and own merged-source run 44808423418 passed. Representative corpus is additional proof; full catalogue remains #664. |
 | DEFAULT/SMART/NONE and real vendor artifacts | Native Terraform/OpenTofu/Terragrunt mode, selected-unit, decrypted upload, replan, sealing and worker-capability fence tests passed in the source gate. Modern positive action/deferred-resource fixtures retain exact vendor provenance. |
-| Full native `deferred_action_invocations` and positive masked/decrypted upload | #675 remains OPEN. Partial #680 was externally merged; [draft #708](https://github.com/weaveplatform/infraweave/pull/708) records authentic plan/show failures, not a positive fixture. Its green CI does not satisfy missing AC2/AC3 or remove the fail-closed guard. |
-| Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #709 still needs the new real-provider union case. |
-| Runner image ownership/publication follow-up | #703 / PR #707 remains held for the maintainer's shared published-image design. Existing workload passed but a new normal core test reached its deadline; FIPS passed. This is not accepted complete, and #656 alone cannot declare all of epic #635 done. |
-| Capture replay/assertion handoffs | Four real complete REST replays and C48 subset pass; stale C291/C51/C46 and C48 workflow handoffs above remain open audit work. Future-only owners remain explicit. |
-| Real-provider workflow | #655 / #709 pending, all new live rows outstanding. Baseline failure is retained. |
+| Full native `deferred_action_invocations` and positive masked/decrypted upload | #675 remains OPEN. Partial #680 was externally merged. Rejected/unmerged #708 provides no accepted completion proof. The mandatory positive fixture and real masked/decrypted upload remain missing; the fail-closed guard stays in place. |
+| Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #715 still needs the new real-provider union case. |
+| Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Final CI remains required, including the unchanged external Spacelift-image check after its registry-quota failure. |
+| Capture replay/assertion handoffs | C291 now executes both captured review rejection states. C51 current-owner reset and C46 cleanup execute as strict subsets; sample/upstream handoffs remain explicit. C48 checks complete source equality with C291 and executes that real worker rejection workflow in its own retained report, alongside its management subset. |
+| Real-provider workflow | #655 / #715 pending, all new live rows outstanding. Baseline failure is retained. |
 | Final audit head and generated evidence | Required CI for this audit, `make gate`, `make verify-parity verify-generate`, and `specref parity --product deploy --states --check` remain final gates. Current main's success does not attest to future edits. |
 | Phase/capability status | P13 stays In progress. The actual merged-report parity command computes Infrastructure, Policies, Runs and Stacks as partial. Only Infrastructure's stale missing state is corrected to partial; no tag becomes implemented. #656 scoped proof does not close #675/#703 or all of epic #635. |
 
@@ -205,3 +206,34 @@ The prior P12b [#529](https://github.com/weaveplatform/infraweave/issues/529),
 [#551](https://github.com/weaveplatform/infraweave/issues/551) and
 [PR #634](https://github.com/weaveplatform/infraweave/pull/634) completion history
 is retained. Its lab evidence does not replace the new policy lab.
+
+
+## Local capture and projection reconciliation — 2026-11-21
+
+The capture replay matrix passed six scenarios / 300 steps under certified
+FIPS with actual PostgreSQL, object storage, Gitea, Terraform workers and
+public review calls. C291 has two complete rejection replays; C48 verifies
+identical captured programs and retains its own two workflow reports; C46
+executes its cleanup subset; C51 executes current-owner reset and rejection.
+Each replay requires its expected scenarios to complete and verifies public
+resource deletion/inventory restoration. The execution index retains the four
+report hashes and counts separately from the historical merged CI baseline.
+
+The new projection-denial scenario exposed a real authorization gap: a stack's
+implicit reader grant admitted an in-run token to full run/task projections.
+The run HTTP adapter now rejects run principals before loading those views,
+after the shared route guard checks stack visibility. The actual protocol-issued
+in-run token still reads its stack, while all five run/task projection routes
+return SPACE_READ 403 through both servers. This passed one scenario / 57 steps
+under certified FIPS. Unit tests cover direct read/search refusals before any
+projection dependency is used; the normal user/API-key paths remain covered by
+the existing real-service matrix.
+
+Local parity passes with the six complete reports from successful PR #715 CI
+44867086361 (1,040 scenarios / 25,407 steps), plus the separately identified
+projection regression. This mixed-source local check verifies the evidence
+mapping; it does not attest to the audit's final revision. The exact final PR
+and merged main still require their complete CI, generated checks and live lab.
+Main's current policy-lab revision is e909e739b50646d32aeb754a310272d9648d514a;
+[lab 44869808030](https://github.com/weaveplatform/infraweave/actions/runs/44869808030)
+is in progress. P13 remains In progress until its delivery gates pass.
