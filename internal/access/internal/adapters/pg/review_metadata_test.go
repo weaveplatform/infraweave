@@ -13,9 +13,40 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/reviewmeta"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
+
+func TestAccReviewMetadataRetainsExactSwitchingSession(t *testing.T) {
+	x, caller, _ := schemeFixture(t)
+	ctx := t.Context()
+	service := reviewmeta.New(reviewmeta.Deps{DB: x.db, Store: x.s})
+	for _, scheme := range []accessapi.AuthorizationScheme{accessapi.LoginPolicies, accessapi.ManagedUsers} {
+		if _, err := x.s.SetAuthorizationScheme(ctx, caller, scheme, onTrail(x, settings.ActionAuthorizationScheme)); err != nil {
+			t.Fatal(err)
+		}
+		got, err := service.ReviewMetadata(ctx, caller, x.acct.ULID)
+		if err != nil || !got.CanReview || len(got.Roles) != 1 || got.Roles[0].Slug != role.SpaceAdmin {
+			t.Fatalf("retained caller's review grants under %s: %+v, %v", scheme, got, err)
+		}
+	}
+	if _, err := x.db.Exec(ctx, `DELETE FROM role_bindings WHERE account_id = $1`, x.acct); err != nil {
+		t.Fatal(err)
+	}
+	retained, err := service.ReviewMetadata(ctx, caller, x.acct.ULID)
+	if err != nil || !retained.CanReview || len(retained.Roles) != 1 {
+		t.Fatalf("exact session lost its retained review grant: %+v, %v", retained, err)
+	}
+	other := x.keySession(time.Now().Add(time.Hour))
+	if err := x.s.CreateSession(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	unretained, err := service.ReviewMetadata(ctx, other.Principal(), x.acct.ULID)
+	if err != nil || unretained.CanReview || len(unretained.Roles) != 0 {
+		t.Fatalf("another session inherited the retained review grant: %+v, %v", unretained, err)
+	}
+}
 
 func TestAccReviewMetadataFromRealAccessOwners(t *testing.T) {
 	x := seed(t, pool(t), "review-metadata-key")

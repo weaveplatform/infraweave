@@ -29,7 +29,7 @@ func (s *Store) Settings(ctx context.Context, acct kernel.AccountID) (settings.S
 		reason, described *string
 	)
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `
-		SELECT coalesce(st.personal_api_keys, true),
+		SELECT a.authorization_scheme, coalesce(st.personal_api_keys, true),
 			coalesce(st.api_key_non_human_managers, false), a.api_key_non_admin_managers,
 			coalesce(st.security_email, ''), coalesce(st.oauth_redirect_hosts, '{}'),
 			coalesce(st.survey_completed, false), st.survey_response,
@@ -37,7 +37,7 @@ func (s *Store) Settings(ctx context.Context, acct kernel.AccountID) (settings.S
 			(SELECT count(*) FROM accounts o WHERE o.organization_id = a.organization_id) = 1
 		FROM accounts a LEFT JOIN account_settings st ON st.account_id = a.id
 		WHERE a.id = $1`, acct).
-		Scan(&st.PersonalAPIKeys, &st.NonHumanKeyManagers, &st.NonAdminKeyManagers,
+		Scan(&st.AuthorizationScheme, &st.PersonalAPIKeys, &st.NonHumanKeyManagers, &st.NonAdminKeyManagers,
 			&st.SecurityEmail, &st.RedirectHosts, &st.Survey.Completed, &st.Survey.Response,
 			&marked, &reason, &described, &st.LastAccount)
 	if marked != nil {

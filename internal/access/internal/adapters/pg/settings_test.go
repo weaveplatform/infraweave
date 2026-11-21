@@ -59,6 +59,7 @@ func TestAccSettings(t *testing.T) {
 	}
 	got, err = x.s.Settings(ctx, x.acct)
 	want = settings.Settings{
+		AuthorizationScheme: accessapi.ManagedUsers,
 		NonHumanKeyManagers: true, NonAdminKeyManagers: true,
 		SecurityEmail: "sec@example.com",
 		RedirectHosts: []string{"b.example.com", "*.a.example.com"},

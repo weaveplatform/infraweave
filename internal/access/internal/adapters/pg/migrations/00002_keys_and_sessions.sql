@@ -91,6 +91,7 @@ CREATE TABLE sessions (
     revoked_at           timestamptz,
     -- The MCP resource an OAuth grant's access tokens name as their aud.
     oauth_resource       text,
+    UNIQUE (account_id, id),
     FOREIGN KEY (organization_id, account_id)
         REFERENCES accounts (organization_id, id) ON DELETE RESTRICT,
     FOREIGN KEY (organization_id, member_id)

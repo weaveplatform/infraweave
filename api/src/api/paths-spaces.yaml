@@ -1002,12 +1002,14 @@ components:
       enum:
         - ASSIGNED_ROLE
         - ACCESS_LEVEL
+        - SCHEME_SWITCH
       type: string
       x-enum-descriptions:
         ACCESS_LEVEL: |-
           From an access level: an access rule's binding, or the highest
           space_admin/space_write/space_read level a login policy grants.
         ASSIGNED_ROLE: From a role binding, or a login policy's roles rule.
+        SCHEME_SWITCH: Administration retained for the exact session that switches schemes.
       x-graphql-type: SessionGrantOrigin
     SessionSpaceAccessRoleGrant:
       description: |-

@@ -15,10 +15,19 @@ import (
 type Data struct {
 	Account  kernel.AccountID
 	Version  int64
+	Scheme   accessapi.AuthorizationScheme
+	Sessions []SessionGrant
 	Spaces   []Space
 	Roles    []Role
 	Bindings []binding.Binding
 	Groups   []Group
+}
+
+// SessionGrant is a role retained for one exact session. Binding carries its
+// immutable grant ID and provenance, rather than a saved IAM binding.
+type SessionGrant struct {
+	Session kernel.ULID
+	Binding binding.Binding
 }
 
 // Space is a node of the tree as the evaluator needs it. Parent is zero
@@ -64,6 +73,8 @@ type grantRole struct {
 type Snapshot struct {
 	account  kernel.AccountID
 	version  int64
+	scheme   accessapi.AuthorizationScheme
+	sessions map[kernel.ULID][]binding.Binding
 	top      kernel.ULID
 	order    []kernel.ULID
 	parent   map[kernel.ULID]kernel.ULID
@@ -88,6 +99,8 @@ func Build(d Data) *Snapshot {
 	s := &Snapshot{
 		account:  d.Account,
 		version:  d.Version,
+		scheme:   d.Scheme,
+		sessions: map[kernel.ULID][]binding.Binding{},
 		parent:   map[kernel.ULID]kernel.ULID{},
 		inherit:  map[kernel.ULID]bool{},
 		children: map[kernel.ULID][]kernel.ULID{},
@@ -131,6 +144,18 @@ func Build(d Data) *Snapshot {
 	for _, g := range d.Groups {
 		s.groups[g.Name] = g.ID
 		s.names[g.ID] = g.Name
+	}
+	for _, g := range d.Sessions {
+		if g.Binding.AccountID != d.Account {
+			continue
+		}
+		if _, ok := s.roles[g.Binding.RoleID]; !ok {
+			continue
+		}
+		if _, ok := s.parent[g.Binding.SpaceID]; !ok || g.Session.IsZero() || g.Binding.ID.IsZero() {
+			continue
+		}
+		s.sessions[g.Session] = append(s.sessions[g.Session], g.Binding)
 	}
 	return s
 }

@@ -1,6 +1,6 @@
 @postgres
 Feature: Live sessions follow changes of their grants
-  A session's grants are never stored with it: each request is decided on
+  Under MANAGED_USERS, ordinary sessions follow live bindings: each request is decided on
   the account's authorization snapshot, which every replica rebuilds when
   a change of the account's spaces, roles, bindings, groups or admissions
   commits. So a binding removed, a role's actions changed or a group

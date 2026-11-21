@@ -77,9 +77,7 @@ func (s *Service) ReviewMetadata(ctx context.Context, p kernel.Principal, space 
 		if !slices.ContainsFunc(data.Spaces, func(node authz.Space) bool { return node.ID == space }) {
 			return kernel.ErrUnavailable
 		}
-		who := authz.Who{
-			Account: actual.AccountID, Kind: actual.Kind, Actor: actual.ActorID, Member: actual.MemberID, Teams: actual.Teams,
-		}
+		who := authz.WhoOf(actual)
 		snapshot := authz.Build(data)
 		out.CanReview = snapshot.Authorize(who, accessapi.ActionRunReview, space)
 		grants := snapshot.Explain(who, space)

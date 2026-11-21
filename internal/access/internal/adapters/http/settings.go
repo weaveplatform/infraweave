@@ -43,6 +43,10 @@ func settingError(err error) error {
 		return problem.ValidationFailed.Error(err.Error())
 	case errors.Is(err, settings.ErrNotHuman):
 		return problem.Forbidden.Error(err.Error()) //nolint:wrapcheck // as above
+	case errors.Is(err, settings.ErrSessionEnded):
+		return problem.Unauthenticated.Error("The calling session has ended.") //nolint:wrapcheck // as above
+	case errors.Is(err, settings.ErrNotAdmin):
+		return problem.Forbidden.Error("Account administration is required.") //nolint:wrapcheck // as above
 	case errors.Is(err, settings.ErrInvalidState):
 		return problem.InvalidState.Error(err.Error()) //nolint:wrapcheck // as above
 	case errors.Is(err, port.ErrNotFound):

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -34,6 +35,11 @@ func (c *configs) fail() error {
 
 func (c *configs) Settings(context.Context, kernel.AccountID) (settings.Settings, error) {
 	return c.s, c.fail()
+}
+
+func (c *configs) SetAuthorizationScheme(_ context.Context, _ kernel.Principal, next accessapi.AuthorizationScheme, _ kernel.AuditEntry) ([]kernel.ULID, error) {
+	c.s.AuthorizationScheme = next
+	return nil, c.fail()
 }
 
 func (c *configs) SetPersonalAPIKeys(_ context.Context, _ kernel.AccountID, enabled, _ bool) ([]kernel.ULID, error) {
@@ -235,6 +241,8 @@ func TestUnitSettingsRefusals(t *testing.T) {
 	bearer := "Bearer " + w.exchange(t).Jwt
 	w.cfg.s.Mark = &settings.Mark{At: t0}
 	ops := []struct{ method, path, body string }{
+		{http.MethodGet, "/authorization-scheme", ""},
+		{http.MethodPost, "/account/update-authorization-scheme", `{"schema":"LOGIN_POLICIES"}`},
 		{http.MethodGet, "/personal-api-keys-enabled", ""},
 		{http.MethodGet, "/api-keys-manageable-by-non-humans", ""},
 		{http.MethodGet, "/api-keys-managed-by-non-admins", ""},
@@ -280,6 +288,14 @@ func TestUnitSettingsNoPrincipal(t *testing.T) {
 	s := Server{}
 	ctx := t.Context()
 	for name, call := range map[string]func() error{
+		"authorization scheme": func() error {
+			_, err := s.AuthorizationScheme(ctx, api.AuthorizationSchemeRequestObject{})
+			return err
+		},
+		"switch authorization scheme": func() error {
+			_, err := s.AccountUpdateAuthorizationScheme(ctx, api.AccountUpdateAuthorizationSchemeRequestObject{})
+			return err
+		},
 		"personal": func() error {
 			_, err := s.PersonalApiKeysEnabled(ctx, api.PersonalApiKeysEnabledRequestObject{})
 			return err

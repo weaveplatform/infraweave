@@ -54,6 +54,10 @@ func (UnimplementedStrict) AccountToggleDeletionMark(context.Context, AccountTog
 	return nil, &problem.NotImplementedError{OperationID: "accountToggleDeletionMark", Route: "POST /account/toggle-deletion-mark"}
 }
 
+func (UnimplementedStrict) AccountUpdateAuthorizationScheme(context.Context, AccountUpdateAuthorizationSchemeRequestObject) (AccountUpdateAuthorizationSchemeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountUpdateAuthorizationScheme", Route: "POST /account/update-authorization-scheme"}
+}
+
 func (UnimplementedStrict) AccountUpdateAwarenessSourceSurvey(context.Context, AccountUpdateAwarenessSourceSurveyRequestObject) (AccountUpdateAwarenessSourceSurveyResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountUpdateAwarenessSourceSurvey", Route: "POST /account/update-awareness-source-survey"}
 }
@@ -216,6 +220,10 @@ func (UnimplementedStrict) AuthSessionAccount(context.Context, AuthSessionAccoun
 
 func (UnimplementedStrict) ApiKeyUser(context.Context, ApiKeyUserRequestObject) (ApiKeyUserResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "apiKeyUser", Route: "POST /auth/token"}
+}
+
+func (UnimplementedStrict) AuthorizationScheme(context.Context, AuthorizationSchemeRequestObject) (AuthorizationSchemeResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "authorizationScheme", Route: "GET /authorization-scheme"}
 }
 
 func (UnimplementedStrict) AutoattachmentForLabels(context.Context, AutoattachmentForLabelsRequestObject) (AutoattachmentForLabelsResponseObject, error) {

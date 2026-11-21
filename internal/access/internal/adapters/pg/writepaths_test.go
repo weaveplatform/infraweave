@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -32,7 +33,7 @@ import (
 // authzWrite matches a statement that writes a table an authorization
 // snapshot reads, or an admission's account_users row.
 var authzWrite = regexp.MustCompile(`(?is)\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+` +
-	`(?:spaces|space_closure|roles|role_actions|role_bindings|managed_user_groups|account_users)\b`)
+	`(?:spaces|space_closure|roles|role_actions|role_bindings|managed_user_groups|account_users|session_grants)\b`)
 
 // writePath is one of the store's methods that writes what authzWrite
 // matches, and a call of it that reports the accounts whose
@@ -65,6 +66,15 @@ func writePaths(w *auditWorld) []writePath {
 		{"ClaimAccount", func(ctx context.Context) ([]kernel.AccountID, error) {
 			_, err := w.x.s.ClaimAccount(ctx, w.x.org, w.x.acct, w.x.member, spacesAt,
 				byAdmin(w.x, orgadmin.ActionAccountClaim))
+			return one(err)
+		}},
+		{"SetAuthorizationScheme", func(ctx context.Context) ([]kernel.AccountID, error) {
+			ss := w.x.webSession(time.Now().Add(time.Hour))
+			if err := w.x.s.CreateSession(ctx, ss); err != nil {
+				return nil, err
+			}
+			_, err := w.x.s.SetAuthorizationScheme(ctx, ss.Principal(), accessapi.LoginPolicies,
+				onTrail(w.x, settings.ActionAuthorizationScheme))
 			return one(err)
 		}},
 		{"CreateSpace", func(ctx context.Context) (_ []kernel.AccountID, err error) {

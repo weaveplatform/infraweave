@@ -3,8 +3,10 @@ package settings
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -17,12 +19,17 @@ const (
 	// as the account's own goes with it.
 	ActionDelete = "account.delete"
 	// ResourceAccount is the audit resource type of an account.
-	ResourceAccount = "ACCOUNT"
+	ResourceAccount           = "ACCOUNT"
+	ActionAuthorizationScheme = "account.update_authorization_scheme"
 )
 
 // Store keeps the settings. Every method is scoped to one account; an
 // account that does not exist is the store's not found error.
 type Store interface {
+	// SetAuthorizationScheme serializes the switch, verifies the caller is
+	// still live and administrative, and commits peer revocation, its retained
+	// grant, authorization invalidation and audit/outbox evidence together.
+	SetAuthorizationScheme(context.Context, kernel.Principal, accessapi.AuthorizationScheme, kernel.AuditEntry) ([]kernel.ULID, error)
 	// Settings reads the account's settings, Defaults where it changed
 	// none.
 	Settings(ctx context.Context, acct kernel.AccountID) (Settings, error)
@@ -65,6 +72,26 @@ type Service struct{ d Deps }
 
 // NewService returns the service on d.
 func NewService(d Deps) *Service { return &Service{d: d} }
+
+// SetAuthorizationScheme changes p's account's strategy, preserving p's current
+// administrative session without extending its lifetime or granting new ones.
+func (s *Service) SetAuthorizationScheme(ctx context.Context, p kernel.Principal, scheme accessapi.AuthorizationScheme, remoteIP string) (accessapi.AuthorizationScheme, error) {
+	if !scheme.Valid() {
+		return "", fmt.Errorf("%w: unknown authorization scheme %q", ErrInvalid, scheme)
+	}
+	ids, err := s.d.Store.SetAuthorizationScheme(ctx, p, scheme, kernel.AuditEntry{
+		AccountID: p.AccountID.ULID,
+		Actor:     kernel.AuditActor{Username: p.Login},
+		Action:    ActionAuthorizationScheme, EventType: "UPDATE",
+		AffectedResource: kernel.AuditResource{Type: ResourceAccount, ID: p.AccountID.String()},
+		RemoteIP:         remoteIP, CreatedAt: s.d.Now(),
+	})
+	if err != nil {
+		return "", err //nolint:wrapcheck // the store names the switch
+	}
+	s.drop(ids)
+	return scheme, nil
+}
 
 // Get reads the settings of p's account.
 func (s *Service) Get(ctx context.Context, p kernel.Principal) (Settings, error) {

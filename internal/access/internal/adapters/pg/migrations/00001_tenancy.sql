@@ -23,6 +23,8 @@ CREATE TABLE accounts (
     -- Bumped by every change to the account's authorization, so replicas
     -- know their cached snapshot is stale.
     authz_version                  bigint      NOT NULL DEFAULT 0,
+    authorization_scheme           text        NOT NULL DEFAULT 'MANAGED_USERS'
+        CHECK (authorization_scheme IN ('MANAGED_USERS', 'LOGIN_POLICIES')),
     -- Set once an organization admin names the first account admin; a
     -- claimed account never returns to unclaimed.
     claimed_at                     timestamptz,

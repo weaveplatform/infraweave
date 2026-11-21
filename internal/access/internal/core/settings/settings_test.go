@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -87,6 +88,11 @@ type mem struct {
 }
 
 func (m *mem) Settings(context.Context, kernel.AccountID) (Settings, error) { return m.s, m.err }
+
+func (m *mem) SetAuthorizationScheme(_ context.Context, _ kernel.Principal, next accessapi.AuthorizationScheme, _ kernel.AuditEntry) ([]kernel.ULID, error) {
+	m.s.AuthorizationScheme = next
+	return m.revoked, m.err
+}
 
 func (m *mem) SetPersonalAPIKeys(_ context.Context, _ kernel.AccountID, enabled, disable bool) ([]kernel.ULID, error) {
 	m.s.PersonalAPIKeys, m.disabled = enabled, disable
@@ -257,5 +263,20 @@ func TestUnitService(t *testing.T) {
 	}
 	if len(*dropped) != 0 {
 		t.Errorf("a failed change dropped sessions: %v", *dropped)
+	}
+}
+
+func TestUnitAuthorizationScheme(t *testing.T) {
+	m := &mem{s: Defaults(), revoked: []kernel.ULID{kernel.NewULID()}}
+	svc, dropped := newService(m, time.Now())
+	if got, err := svc.SetAuthorizationScheme(t.Context(), kernel.Principal{}, accessapi.LoginPolicies, ""); err != nil || got != accessapi.LoginPolicies || len(*dropped) != 1 {
+		t.Fatalf("switch = %s, %v; dropped %v", got, err, *dropped)
+	}
+	if _, err := svc.SetAuthorizationScheme(t.Context(), kernel.Principal{}, "UNKNOWN", ""); !errors.Is(err, ErrInvalid) || len(*dropped) != 1 {
+		t.Fatalf("unknown strategy = %v, dropped %v", err, *dropped)
+	}
+	m.err = errors.New("failed transaction")
+	if _, err := svc.SetAuthorizationScheme(t.Context(), kernel.Principal{}, accessapi.ManagedUsers, ""); !errors.Is(err, m.err) || len(*dropped) != 1 {
+		t.Fatalf("failed switch = %v, dropped %v", err, *dropped)
 	}
 }

@@ -88,8 +88,12 @@ const refreshEvery = 5 * time.Second
 // RegisterEvents adds the domain's event kinds to kinds, before the
 // scheduler starts.
 func RegisterEvents(kinds *outbox.Kinds) error {
+	if err := kinds.Register(accessapi.DeletedKind, accessapi.DeletedVersion, accessapi.DeletedSchema); err != nil {
+		return err //nolint:wrapcheck // names the kind
+	}
 	//nolint:wrapcheck // names the kind
-	return kinds.Register(accessapi.DeletedKind, accessapi.DeletedVersion, accessapi.DeletedSchema)
+	return kinds.Register(accessapi.SchemeChangedKind, accessapi.SchemeChangedVersion,
+		[]byte(accessapi.SchemeChangedSchema))
 }
 
 // Stream is the access domain's migration stream.

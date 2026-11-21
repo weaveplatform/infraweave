@@ -52,8 +52,8 @@ func (s *Store) AuthzData(ctx context.Context, acct kernel.AccountID) (authz.Dat
 	d := authz.Data{Account: acct}
 	err := tx.Do(ctx, s.db, tx.Options{Serializable: true}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
-		if err := q.QueryRow(ctx, `SELECT authz_version FROM accounts WHERE id = $1`, acct).
-			Scan(&d.Version); err != nil {
+		if err := q.QueryRow(ctx, `SELECT authz_version, authorization_scheme FROM accounts WHERE id = $1`, acct).
+			Scan(&d.Version, &d.Scheme); err != nil {
 			return read(err, "account", acct.ULID)
 		}
 		var err error
@@ -96,6 +96,18 @@ func (s *Store) AuthzData(ctx context.Context, acct kernel.AccountID) (authz.Dat
 					&b.CreatedAt,
 					&b.CreatedBy,
 				)
+			}); err != nil {
+			return err
+		}
+		if d.Sessions, err = collect(ctx, q, `SELECT g.session_id, g.account_id, g.id,
+			s.actor_kind, s.actor_id, g.role_id, g.space_id, g.origin
+			FROM session_grants g JOIN sessions s ON s.account_id = g.account_id AND s.id = g.session_id
+			WHERE g.account_id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
+			AND (s.idle_expires_at IS NULL OR s.idle_expires_at > now()) ORDER BY g.id`, acct,
+			func(r pgx.CollectableRow) (authz.SessionGrant, error) {
+				var g authz.SessionGrant
+				return g, r.Scan(&g.Session, &g.Binding.AccountID, &g.Binding.ID,
+					&g.Binding.ActorKind, &g.Binding.ActorID, &g.Binding.RoleID, &g.Binding.SpaceID, &g.Binding.Origin)
 			}); err != nil {
 			return err
 		}

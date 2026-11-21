@@ -47,12 +47,13 @@ var Fields = map[List][]search.Field{
 // latest sign-in reported, a key's its own, and a session's those it
 // signed in with. At is a session's start.
 type Candidate struct {
-	ID     kernel.ULID
-	Kind   kernel.PrincipalKind
-	Actor  kernel.ULID
-	Member kernel.MemberID
-	Teams  []string
-	At     time.Time
+	ID      kernel.ULID
+	Kind    kernel.PrincipalKind
+	Actor   kernel.ULID
+	Member  kernel.MemberID
+	Session kernel.ULID
+	Teams   []string
+	At      time.Time
 }
 
 // Row is a list's row: a managed user by login, name and email, a group
@@ -186,7 +187,7 @@ func (s *Service) holders(ctx context.Context, acct kernel.AccountID, space kern
 	}
 	whos := make([]authz.Who, len(cands))
 	for i, c := range cands {
-		whos[i] = authz.Who{Kind: c.Kind, Actor: c.Actor, Member: c.Member, Teams: c.Teams}
+		whos[i] = authz.Who{Kind: c.Kind, Actor: c.Actor, Member: c.Member, Teams: c.Teams, Session: c.Session}
 	}
 	grants, err := s.authz.ExplainEach(ctx, acct, space, whos)
 	if err != nil {
