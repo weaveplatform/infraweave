@@ -14,7 +14,12 @@
 // Find lists a worker's containers by label after a restart and follows
 // what the newest one writes from then on, from the daemon's end of its
 // output, so no difference between the daemon's clock and the launcher's
-// drops a line. A container's Wait answers its exit code with
+// drops a line.
+//
+// If the listed container disappears or reaches removal before log following,
+// Find retains its run identity so Wait can report its exit or missing result.
+// A conflict for a live container or an unconfirmed state remains an error.
+// A container's Wait answers its exit code with
 // killed after Kill, out-of-memory when the kernel ended it, and missing
 // when it is gone; Stop sends SIGINT and Kill SIGKILL; HandBack runs the
 // binary as runner hand-back in a container of the ended one's image,

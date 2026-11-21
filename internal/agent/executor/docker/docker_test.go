@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -38,6 +39,24 @@ func (o *output) String() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.b.String()
+}
+
+// removeAfterList delegates to the real daemon, removing an owned run only
+// after its list snapshot has been returned and before Find follows its logs.
+type removeAfterList struct {
+	docker.API
+	remove func(context.Context) error
+}
+
+func (d removeAfterList) ContainerList(ctx context.Context, options client.ContainerListOptions) (client.ContainerListResult, error) {
+	listed, err := d.API.ContainerList(ctx, options)
+	if err != nil {
+		return listed, fmt.Errorf("list before removal: %w", err)
+	}
+	if err := d.remove(ctx); err != nil {
+		return listed, fmt.Errorf("remove after list: %w", err)
+	}
+	return listed, nil
 }
 
 // TestAccDockerExecutor checks the run container on a real Docker daemon,
@@ -154,6 +173,18 @@ func TestAccDockerExecutor(t *testing.T) {
 		}
 		if _, ok, err := e.Find(ctx, kernel.NewULID().String(), nil); ok || err != nil {
 			t.Errorf("Find of another worker = %v, %v", ok, err)
+		}
+	})
+
+	t.Run("removed between listing and following", func(t *testing.T) {
+		c := start(t, "wait", nil)
+		recovery := docker.NewWith(removeAfterList{API: cli, remove: c.Remove}, "unused", docker.Config{})
+		found, ok, err := recovery.Find(ctx, worker, nil)
+		if err != nil || !ok || found.Run() != c.Run() {
+			t.Fatalf("Find after real removal = %v, %v, %v", found, ok, err)
+		}
+		if exit, err := found.Wait(ctx); err != nil || exit != (executor.Exit{Code: executor.MissingCode, Reason: wire.Missing}) {
+			t.Fatalf("Wait after real removal = %+v, %v", exit, err)
 		}
 	})
 

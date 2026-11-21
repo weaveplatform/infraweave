@@ -244,10 +244,39 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 		ShowStdout: true, ShowStderr: true, Follow: true, Tail: "0",
 	})
 	if err != nil {
+		if e.endedBeforeFollow(ctx, c.id, err) {
+			// The list already identified the run. Retain it so Wait
+			// reports its exit or disappearance, with no future output.
+			copied := make(chan struct{})
+			close(copied)
+			c.copied = copied
+			return c, true, nil
+		}
 		return nil, false, fmt.Errorf("docker: follow run %s's output: %w", c.run, err)
 	}
 	c.copied = copyOutput(out, logs, func() { _ = logs.Close() })
 	return c, true, nil
+}
+
+// endedBeforeFollow checks the list/log-follow race. A conflict alone is
+// insufficient: an inspect must confirm an ended or removing container.
+func (e *Executor) endedBeforeFollow(ctx context.Context, id string, followErr error) bool {
+	if cerrdefs.IsNotFound(followErr) {
+		return true
+	}
+	if !cerrdefs.IsConflict(followErr) {
+		return false
+	}
+	in, err := e.cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
+	if cerrdefs.IsNotFound(err) {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+	state := in.Container.State
+	return state != nil && (state.Dead || state.Status == container.StateDead ||
+		state.Status == container.StateRemoving || state.Status == container.StateExited)
 }
 
 // copyOutput copies the multiplexed stream src to out until it ends,
