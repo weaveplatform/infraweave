@@ -30,6 +30,8 @@
 // feature stands in for until it is recorded runs as a skipped subtest.
 // TestAccRunnerImages pulls the released runner images by digest and holds
 // a container of each to the runner image contract.
+// TestAccRuntimeCryptoMode checks the executed application's crypto mode
+// and module against the test process and records the verified result for CI.
 //
 // ref: decision 0016, report 30
 //
@@ -38,9 +40,10 @@
 // It reads features/, test/fixtures/captures, the open-questions register
 // in docs/data/open-questions.json, the committed reference and bundle,
 // and the runner image definitions in deploy/images; builds and runs
-// infraweave, builds images and starts containers through the Docker
+// infraweave and starts containers from pinned images through the Docker
 // daemon; and writes godog's cucumber report and the subprocesses'
-// coverage to make accept's -test.gocoverdir, cover/accept.
+// coverage to make accept's -test.gocoverdir, cover/accept. The runtime
+// check writes runtime-crypto-mode.txt beside that coverage.
 //
 // # Dependencies
 //

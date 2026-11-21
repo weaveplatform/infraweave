@@ -203,8 +203,14 @@ jobs:
 
       - name: Report the mode
         run: |
-          GOFIPS140=certified go build -o /tmp/infraweave ./cmd/infraweave
-          line="fips-only ran every suite under $(GODEBUG=fips140=only /tmp/infraweave version | tail -n 1)."
+          # Acceptance executes the current application and verifies its
+          # runtime before removing it. Read that proof without another build.
+          mode=$(cat cover/accept/runtime-crypto-mode.txt)
+          case "$mode" in
+            'FIPS 140-3 mode only, Go Cryptographic Module v'*) ;;
+            *) echo "Unexpected tested crypto mode: $mode" >&2; exit 1 ;;
+          esac
+          line="fips-only ran every suite under $mode."
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
 
