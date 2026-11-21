@@ -2,10 +2,13 @@
 
 import argparse
 import base64
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -14,7 +17,62 @@ lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 
 
+@contextmanager
+def startup_service(responses):
+    """A real HTTP listener may close requests before its application is ready."""
+    attempts = {}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            attempt = attempts.get(self.path, 0)
+            attempts[self.path] = attempt + 1
+            response = responses[min(attempt, len(responses) - 1)]
+            self.close_connection = True
+            if response == "disconnect":
+                return
+            self.send_response(response)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *_args):
+            pass
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            yield "http://127.0.0.1:" + str(server.server_port), attempts
+        finally:
+            server.shutdown()
+            worker.join(timeout=2)
+            if worker.is_alive():
+                raise RuntimeError("readiness test HTTP server did not stop")
+
+
 class BatchTests(unittest.TestCase):
+    def test_http_readiness_survives_actual_startup_disconnects(self):
+        # Both HTTP probes must observe 200 before PostgreSQL/bootstrap starts.
+        # Only the unrelated Docker commands are replaced in this socket test.
+        with tempfile.TemporaryDirectory() as root, startup_service(["disconnect", 503, 200]) as (url, attempts):
+            manifest = {"objectstore": {"endpoint": url}, "gitea": {"url": url, "caFile": None, "container": "gitea"},
+                        "postgres": {"container": "postgres"}}
+            with patch.object(lab.subprocess, "run") as command:
+                command.return_value.returncode = 0
+                lab.ready(Path(root), manifest)
+                self.assertEqual(command.call_count, 2)
+            self.assertEqual(attempts, {"/health/ready": 3, "/api/healthz": 3})
+
+    def test_http_readiness_disconnect_still_fails_at_original_deadline(self):
+        with tempfile.TemporaryDirectory() as root, startup_service(["disconnect"]) as (url, attempts):
+            manifest = {"objectstore": {"endpoint": url}, "gitea": {"url": url, "caFile": None}}
+            # Advance the clock across the existing 90s budget without making
+            # the regression wait 90 real seconds. The service never answers.
+            with patch.object(lab.time, "monotonic", side_effect=[0, 91]), patch.object(lab.subprocess, "run") as command:
+                with self.assertRaisesRegex(RuntimeError, "services did not become ready"):
+                    lab.ready(Path(root), manifest)
+                command.assert_not_called()
+            self.assertEqual(attempts, {"/health/ready": 1})
+
     def test_report_must_execute_all_steps(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"

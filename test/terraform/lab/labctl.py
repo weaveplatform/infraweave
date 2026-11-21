@@ -98,7 +98,9 @@ def ready(directory, manifest):
                 with urllib.request.urlopen(url, context=context, timeout=2) as response:
                     if response.status == 200:
                         break
-            except (urllib.error.URLError, TimeoutError):
+            except urllib.error.HTTPError as error:
+                error.close()
+            except (urllib.error.URLError, TimeoutError, ConnectionError):
                 pass
             if time.monotonic() >= deadline:
                 raise RuntimeError("Terraform lab services did not become ready")
