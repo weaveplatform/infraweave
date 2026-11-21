@@ -6,6 +6,8 @@ import (
 	"net/mail"
 	"strings"
 	"time"
+
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 )
 
 var (
@@ -17,11 +19,16 @@ var (
 	// ErrNotHuman reports a key or a run changing a setting only a person
 	// may change.
 	ErrNotHuman = errors.New("only a person may change this setting")
+	// ErrSessionEnded refuses a switch by a caller revoked while waiting for
+	// the account's serialization lock.
+	ErrSessionEnded = errors.New("the calling session has ended")
+	ErrNotAdmin     = errors.New("the calling session no longer administers the account")
 )
 
 // Settings are an account's settings that no other domain owns. An account
 // that never changed one reads Defaults.
 type Settings struct {
+	AuthorizationScheme accessapi.AuthorizationScheme
 	// PersonalAPIKeys is whether the account's members may create personal
 	// API keys.
 	PersonalAPIKeys bool
@@ -42,7 +49,7 @@ type Settings struct {
 
 // Defaults are the settings of an account that never changed one.
 func Defaults() Settings {
-	return Settings{PersonalAPIKeys: true, RedirectHosts: []string{}}
+	return Settings{AuthorizationScheme: accessapi.ManagedUsers, PersonalAPIKeys: true, RedirectHosts: []string{}}
 }
 
 // Deletable reports whether accountConfirmDelete would delete the account

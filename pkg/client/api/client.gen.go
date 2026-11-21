@@ -594,6 +594,24 @@ func (e ApiKeyRoleBindingKind) Valid() bool {
 	}
 }
 
+// Defines values for AuthorizationScheme.
+const (
+	LOGINPOLICIES AuthorizationScheme = "LOGIN_POLICIES"
+	MANAGEDUSERS  AuthorizationScheme = "MANAGED_USERS"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizationScheme enum.
+func (e AuthorizationScheme) Valid() bool {
+	switch e {
+	case LOGINPOLICIES:
+		return true
+	case MANAGEDUSERS:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AwsIntegrationKind.
 const (
 	AwsIntegrationKindAwsIntegration AwsIntegrationKind = "AwsIntegration"
@@ -2152,6 +2170,7 @@ func (e SessionChannel) Valid() bool {
 const (
 	ACCESSLEVEL  SessionGrantOrigin = "ACCESS_LEVEL"
 	ASSIGNEDROLE SessionGrantOrigin = "ASSIGNED_ROLE"
+	SCHEMESWITCH SessionGrantOrigin = "SCHEME_SWITCH"
 )
 
 // Valid indicates whether the value is a known member of the SessionGrantOrigin enum.
@@ -2160,6 +2179,8 @@ func (e SessionGrantOrigin) Valid() bool {
 	case ACCESSLEVEL:
 		return true
 	case ASSIGNEDROLE:
+		return true
+	case SCHEMESWITCH:
 		return true
 	default:
 		return false
@@ -2987,6 +3008,11 @@ type AccountToggleDeletionMarkRequest struct {
 // AccountType The type of the account's owner, as the reference enumerates GitHub account types. An infraweave account belongs to an organization, so it is always ORG.
 type AccountType string
 
+// AccountUpdateAuthorizationSchemeRequest defines model for AccountUpdateAuthorizationSchemeRequest.
+type AccountUpdateAuthorizationSchemeRequest struct {
+	Schema AuthorizationScheme `json:"schema"`
+}
+
 // AccountUpdateAwarenessSourceSurveyRequest The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
 type AccountUpdateAwarenessSourceSurveyRequest struct {
 	Completed bool    `json:"completed"`
@@ -3349,6 +3375,9 @@ type AuthSessionAccountRequest struct {
 	// Account The ID of an account that admits the caller's member.
 	Account string `json:"account"`
 }
+
+// AuthorizationScheme defines model for AuthorizationScheme.
+type AuthorizationScheme string
 
 // AutoattachmentTarget AutoattachmentTarget is a stack or module that is autoattached to an
 // entity that supports autoattachment.
@@ -10679,6 +10708,12 @@ type AccountToggleDeletionMarkParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AccountUpdateAuthorizationSchemeParams defines parameters for AccountUpdateAuthorizationScheme.
+type AccountUpdateAuthorizationSchemeParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // AccountUpdateAwarenessSourceSurveyParams defines parameters for AccountUpdateAwarenessSourceSurvey.
 type AccountUpdateAwarenessSourceSurveyParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -12570,6 +12605,9 @@ type AccountSetPersonalApiKeysEnabledJSONRequestBody = AccountSetPersonalApiKeys
 
 // AccountToggleDeletionMarkJSONRequestBody defines body for AccountToggleDeletionMark for application/json ContentType.
 type AccountToggleDeletionMarkJSONRequestBody = AccountToggleDeletionMarkRequest
+
+// AccountUpdateAuthorizationSchemeJSONRequestBody defines body for AccountUpdateAuthorizationScheme for application/json ContentType.
+type AccountUpdateAuthorizationSchemeJSONRequestBody = AccountUpdateAuthorizationSchemeRequest
 
 // AccountUpdateAwarenessSourceSurveyJSONRequestBody defines body for AccountUpdateAwarenessSourceSurvey for application/json ContentType.
 type AccountUpdateAwarenessSourceSurveyJSONRequestBody = AccountUpdateAwarenessSourceSurveyRequest
@@ -15018,6 +15056,24 @@ type ClientInterface interface {
 	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
 	AccountToggleDeletionMark(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AccountUpdateAuthorizationSchemeWithBody Account Update Authorization Scheme
+	//
+	// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+	AccountUpdateAuthorizationSchemeWithBody(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountUpdateAuthorizationScheme Account Update Authorization Scheme
+	//
+	// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+	AccountUpdateAuthorizationScheme(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, body AccountUpdateAuthorizationSchemeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AccountUpdateAwarenessSourceSurveyWithBody Account Update Awareness Source Survey
 	//
 	// Record the account's answer to the survey of how it heard of the product, and answer it.
@@ -15480,6 +15536,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthorizationScheme Authorization Scheme
+	//
+	// Read the active authorization strategy of the authenticated caller's account. New accounts use MANAGED_USERS.
+	//
+	// Corresponds with GET /authorization-scheme (the `AuthorizationScheme` operationId).
+	AuthorizationScheme(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AutoattachmentForLabels Autoattachment for Labels
 	//
@@ -19719,6 +19782,44 @@ func (c *Client) AccountToggleDeletionMark(ctx context.Context, params *AccountT
 	return c.Client.Do(req)
 }
 
+// AccountUpdateAuthorizationSchemeWithBody Account Update Authorization Scheme
+//
+// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+func (c *Client) AccountUpdateAuthorizationSchemeWithBody(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateAuthorizationSchemeRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountUpdateAuthorizationScheme Account Update Authorization Scheme
+//
+// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+func (c *Client) AccountUpdateAuthorizationScheme(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, body AccountUpdateAuthorizationSchemeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountUpdateAuthorizationSchemeRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AccountUpdateAwarenessSourceSurveyWithBody Account Update Awareness Source Survey
 //
 // Record the account's answer to the survey of how it heard of the product, and answer it.
@@ -20732,6 +20833,23 @@ func (c *Client) ApiKeyUserWithBody(ctx context.Context, params *ApiKeyUserParam
 // Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 func (c *Client) ApiKeyUser(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApiKeyUserRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthorizationScheme Authorization Scheme
+//
+// Read the active authorization strategy of the authenticated caller's account. New accounts use MANAGED_USERS.
+//
+// Corresponds with GET /authorization-scheme (the `AuthorizationScheme` operationId).
+func (c *Client) AuthorizationScheme(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthorizationSchemeRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -29936,6 +30054,61 @@ func NewAccountToggleDeletionMarkRequestWithBody(server string, params *AccountT
 	return req, nil
 }
 
+// NewAccountUpdateAuthorizationSchemeRequest calls the generic AccountUpdateAuthorizationScheme builder with application/json body
+func NewAccountUpdateAuthorizationSchemeRequest(server string, params *AccountUpdateAuthorizationSchemeParams, body AccountUpdateAuthorizationSchemeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountUpdateAuthorizationSchemeRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountUpdateAuthorizationSchemeRequestWithBody constructs an http.Request for the AccountUpdateAuthorizationScheme method, with any body, and a specified content type
+func NewAccountUpdateAuthorizationSchemeRequestWithBody(server string, params *AccountUpdateAuthorizationSchemeParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/update-authorization-scheme")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewAccountUpdateAwarenessSourceSurveyRequest calls the generic AccountUpdateAwarenessSourceSurvey builder with application/json body
 func NewAccountUpdateAwarenessSourceSurveyRequest(server string, params *AccountUpdateAwarenessSourceSurveyParams, body AccountUpdateAwarenessSourceSurveyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -32138,6 +32311,33 @@ func NewApiKeyUserRequestWithBody(server string, params *ApiKeyUserParams, conte
 			req.Header.Set("Idempotency-Key", headerParam0)
 		}
 
+	}
+
+	return req, nil
+}
+
+// NewAuthorizationSchemeRequest constructs an http.Request for the AuthorizationScheme method
+func NewAuthorizationSchemeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/authorization-scheme")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
@@ -50536,6 +50736,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /account/toggle-deletion-mark (the `AccountToggleDeletionMark` operationId).
 	AccountToggleDeletionMarkWithResponse(ctx context.Context, params *AccountToggleDeletionMarkParams, body AccountToggleDeletionMarkJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountToggleDeletionMarkResponse, error)
 
+	// AccountUpdateAuthorizationSchemeWithBodyWithResponse Account Update Authorization Scheme
+	//
+	// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+	AccountUpdateAuthorizationSchemeWithBodyWithResponse(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateAuthorizationSchemeResponse, error)
+
+	// AccountUpdateAuthorizationSchemeWithResponse Account Update Authorization Scheme
+	//
+	// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+	AccountUpdateAuthorizationSchemeWithResponse(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, body AccountUpdateAuthorizationSchemeJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateAuthorizationSchemeResponse, error)
+
 	// AccountUpdateAwarenessSourceSurveyWithBodyWithResponse Account Update Awareness Source Survey
 	//
 	// Record the account's answer to the survey of how it heard of the product, and answer it.
@@ -51050,6 +51268,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /auth/token (the `ApiKeyUser` operationId).
 	ApiKeyUserWithResponse(ctx context.Context, params *ApiKeyUserParams, body ApiKeyUserJSONRequestBody, reqEditors ...RequestEditorFn) (*ApiKeyUserResponse, error)
+
+	// AuthorizationSchemeWithResponse Authorization Scheme
+	//
+	// Read the active authorization strategy of the authenticated caller's account. New accounts use MANAGED_USERS.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /authorization-scheme (the `AuthorizationScheme` operationId).
+	AuthorizationSchemeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthorizationSchemeResponse, error)
 
 	// AutoattachmentForLabelsWithResponse Autoattachment for Labels
 	//
@@ -56405,6 +56632,108 @@ func (r AccountToggleDeletionMarkResponse) ContentType() string {
 	return ""
 }
 
+// AccountUpdateAuthorizationSchemeResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateAuthorizationScheme
+type AccountUpdateAuthorizationSchemeResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateAuthorizationSchemeResponse429Headers the declared response headers of an HTTP 429 response for AccountUpdateAuthorizationScheme
+type AccountUpdateAuthorizationSchemeResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountUpdateAuthorizationSchemeResponse503Headers the declared response headers of an HTTP 503 response for AccountUpdateAuthorizationScheme
+type AccountUpdateAuthorizationSchemeResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountUpdateAuthorizationSchemeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthorizationScheme
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountUpdateAuthorizationSchemeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountUpdateAuthorizationSchemeResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountUpdateAuthorizationSchemeResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetJSON200() *AuthorizationScheme {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountUpdateAuthorizationSchemeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountUpdateAuthorizationSchemeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountUpdateAuthorizationSchemeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountUpdateAuthorizationSchemeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountUpdateAuthorizationSchemeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AccountUpdateAwarenessSourceSurveyResponse200Headers the declared response headers of an HTTP 200 response for AccountUpdateAwarenessSourceSurvey
 type AccountUpdateAwarenessSourceSurveyResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -60442,6 +60771,94 @@ func (r ApiKeyUserResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ApiKeyUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthorizationSchemeResponse200Headers the declared response headers of an HTTP 200 response for AuthorizationScheme
+type AuthorizationSchemeResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthorizationSchemeResponse429Headers the declared response headers of an HTTP 429 response for AuthorizationScheme
+type AuthorizationSchemeResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AuthorizationSchemeResponse503Headers the declared response headers of an HTTP 503 response for AuthorizationScheme
+type AuthorizationSchemeResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AuthorizationSchemeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthorizationScheme
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AuthorizationSchemeResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthorizationSchemeResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AuthorizationSchemeResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthorizationSchemeResponse) GetJSON200() *AuthorizationScheme {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AuthorizationSchemeResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AuthorizationSchemeResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AuthorizationSchemeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthorizationSchemeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthorizationSchemeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthorizationSchemeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthorizationSchemeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -94720,6 +95137,36 @@ func (c *ClientWithResponses) AccountToggleDeletionMarkWithResponse(ctx context.
 	return ParseAccountToggleDeletionMarkResponse(rsp)
 }
 
+// AccountUpdateAuthorizationSchemeWithBodyWithResponse Account Update Authorization Scheme
+//
+// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+func (c *ClientWithResponses) AccountUpdateAuthorizationSchemeWithBodyWithResponse(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountUpdateAuthorizationSchemeResponse, error) {
+	rsp, err := c.AccountUpdateAuthorizationSchemeWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateAuthorizationSchemeResponse(rsp)
+}
+
+// AccountUpdateAuthorizationSchemeWithResponse Account Update Authorization Scheme
+//
+// Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/update-authorization-scheme (the `AccountUpdateAuthorizationScheme` operationId).
+func (c *ClientWithResponses) AccountUpdateAuthorizationSchemeWithResponse(ctx context.Context, params *AccountUpdateAuthorizationSchemeParams, body AccountUpdateAuthorizationSchemeJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountUpdateAuthorizationSchemeResponse, error) {
+	rsp, err := c.AccountUpdateAuthorizationScheme(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountUpdateAuthorizationSchemeResponse(rsp)
+}
+
 // AccountUpdateAwarenessSourceSurveyWithBodyWithResponse Account Update Awareness Source Survey
 //
 // Record the account's answer to the survey of how it heard of the product, and answer it.
@@ -95569,6 +96016,21 @@ func (c *ClientWithResponses) ApiKeyUserWithResponse(ctx context.Context, params
 		return nil, err
 	}
 	return ParseApiKeyUserResponse(rsp)
+}
+
+// AuthorizationSchemeWithResponse Authorization Scheme
+//
+// Read the active authorization strategy of the authenticated caller's account. New accounts use MANAGED_USERS.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /authorization-scheme (the `AuthorizationScheme` operationId).
+func (c *ClientWithResponses) AuthorizationSchemeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthorizationSchemeResponse, error) {
+	rsp, err := c.AuthorizationScheme(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthorizationSchemeResponse(rsp)
 }
 
 // AutoattachmentForLabelsWithResponse Autoattachment for Labels
@@ -104068,6 +104530,135 @@ func ParseAccountToggleDeletionMarkResponse(rsp *http.Response) (*AccountToggleD
 	return response, nil
 }
 
+// ParseAccountUpdateAuthorizationSchemeResponse parses an HTTP response from a AccountUpdateAuthorizationSchemeWithResponse call
+func ParseAccountUpdateAuthorizationSchemeResponse(rsp *http.Response) (*AccountUpdateAuthorizationSchemeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountUpdateAuthorizationSchemeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthorizationScheme
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountUpdateAuthorizationSchemeResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountUpdateAuthorizationSchemeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountUpdateAuthorizationSchemeResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAccountUpdateAwarenessSourceSurveyResponse parses an HTTP response from a AccountUpdateAwarenessSourceSurveyWithResponse call
 func ParseAccountUpdateAwarenessSourceSurveyResponse(rsp *http.Response) (*AccountUpdateAwarenessSourceSurveyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -109253,6 +109844,121 @@ func ParseApiKeyUserResponse(rsp *http.Response) (*ApiKeyUserResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ApiKeyUserResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthorizationSchemeResponse parses an HTTP response from a AuthorizationSchemeWithResponse call
+func ParseAuthorizationSchemeResponse(rsp *http.Response) (*AuthorizationSchemeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthorizationSchemeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthorizationScheme
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AuthorizationSchemeResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AuthorizationSchemeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AuthorizationSchemeResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

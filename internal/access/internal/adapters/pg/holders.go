@@ -24,13 +24,13 @@ const liveSession = `revoked_at IS NULL AND expires_at > now()
 // the list names, the principal's kind, actor and member, its teams and
 // a session's start.
 var candidateQuery = map[holder.List]string{
-	holder.Users: `SELECT member_id, 'user', member_id, member_id, latest_groups, created_at
+	holder.Users: `SELECT member_id, 'user', member_id, member_id, latest_groups, created_at, NULL::uuid
 		FROM account_users WHERE account_id = $1`,
-	holder.Keys: `SELECT id, 'api_key', id, NULL::uuid, teams, created_at
+	holder.Keys: `SELECT id, 'api_key', id, NULL::uuid, teams, created_at, NULL::uuid
 		FROM api_keys WHERE account_id = $1 AND deleted_at IS NULL AND NOT is_personal`,
-	holder.UserSessions: `SELECT member_id, actor_kind, actor_id, member_id, teams, created_at
+	holder.UserSessions: `SELECT member_id, actor_kind, actor_id, member_id, teams, created_at, id
 		FROM sessions WHERE account_id = $1 AND actor_kind = 'user' AND ` + liveSession,
-	holder.KeySessions: `SELECT actor_id, actor_kind, actor_id, member_id, teams, created_at
+	holder.KeySessions: `SELECT actor_id, actor_kind, actor_id, member_id, teams, created_at, id
 		FROM sessions WHERE account_id = $1 AND actor_kind = 'api_key' AND ` + liveSession,
 }
 
@@ -46,7 +46,7 @@ func (s *Store) Candidates(ctx context.Context, acct kernel.AccountID, list hold
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (holder.Candidate, error) {
 		var c holder.Candidate
-		err := r.Scan(&c.ID, &c.Kind, &c.Actor, &c.Member, &c.Teams, &c.At)
+		err := r.Scan(&c.ID, &c.Kind, &c.Actor, &c.Member, &c.Teams, &c.At, &c.Session)
 		return c, err //nolint:wrapcheck // named below
 	})
 	if err != nil {

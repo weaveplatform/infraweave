@@ -52,6 +52,12 @@ func (s *Store) CreateSession(ctx context.Context, ss session.Session) error {
 // insertSession inserts ss in the caller's transaction, preserving the
 // issuance time used to calculate its lifetime. An unset time uses now().
 func insertSession(ctx context.Context, q tx.Querier, ss session.Session) error {
+	if !ss.AccountID.IsZero() {
+		var id kernel.AccountID
+		if err := q.QueryRow(ctx, `SELECT id FROM accounts WHERE id = $1 FOR SHARE`, ss.AccountID).Scan(&id); err != nil {
+			return read(err, "account", ss.AccountID.ULID)
+		}
+	}
 	var idle, created *time.Time
 	if !ss.CreatedAt.IsZero() {
 		created = &ss.CreatedAt

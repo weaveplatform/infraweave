@@ -9,6 +9,7 @@ import (
 // Register registers the authz area's steps on sc, each step group sharing
 // the scenario's World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
+	(&schemeSteps{w: w}).register(sc)
 	(&spaceSteps{w: w}).register(sc)
 	(&roleSteps{w: w}).register(sc)
 	(&bindingSteps{w: w}).register(sc)

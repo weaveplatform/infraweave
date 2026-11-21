@@ -17,13 +17,16 @@ const (
 	ActorFlowsProject ActorKind = "flows_project"
 )
 
-// Origin is how a binding was made: a role binding, or a legacy
-// SpaceAccessRule input stored as one.
+// Origin records an IAM binding's provenance or the distinct provenance of a
+// session grant normalized for the evaluator.
 type Origin string
 
 const (
 	OriginBinding    Origin = "binding"
 	OriginAccessRule Origin = "access_rule"
+	// OriginSchemeSwitch is a session grant, normalized for the evaluator;
+	// it is never stored in role_bindings or attributed to an IAM binding.
+	OriginSchemeSwitch Origin = "SCHEME_SWITCH"
 )
 
 // Binding grants Role's actions to one actor in Space and, by

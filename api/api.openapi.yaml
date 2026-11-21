@@ -558,6 +558,59 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /account/update-authorization-scheme:
+    post:
+      description: >-
+        Select the account's authorization strategy while retaining inactive configuration. The switch, caller-session grant, peer-session revocation and audit/outbox evidence commit together. The caller retains account administration only for its current session, without extending its lifetime. Setting the current strategy again is a no-op.
+      operationId: accountUpdateAuthorizationScheme
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateAuthorizationSchemeRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationScheme'
+          description: The accountUpdateAuthorizationScheme result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update Authorization Scheme
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update Authorization Scheme.bru
+      x-graphql:
+        field: accountUpdateAuthorizationScheme
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
   /account/update-awareness-source-survey:
     post:
       description: >-
@@ -2705,6 +2758,46 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: override
+  /authorization-scheme:
+    get:
+      description: >-
+        Read the active authorization strategy of the authenticated caller's account. New accounts use MANAGED_USERS.
+      operationId: authorizationScheme
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationScheme'
+          description: The authorizationScheme result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Authorization Scheme
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Authorization Scheme.bru
+      x-graphql:
+        field: authorizationScheme
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton
   /autoattachment-for-labels:
     get:
       description: |-
@@ -21723,6 +21816,14 @@ components:
         UNKNOWN: Invalid "zero value" for the account type.
         USER: Individual user account.
       x-graphql-type: AccountType
+    AccountUpdateAuthorizationSchemeRequest:
+      type: object
+      additionalProperties: false
+      required: [schema]
+      properties:
+        schema:
+          $ref: '#/components/schemas/AuthorizationScheme'
+      x-graphql-args-of: accountUpdateAuthorizationScheme
     AccountUpdateAwarenessSourceSurveyRequest:
       additionalProperties: false
       description: The arguments of accountUpdateAwarenessSourceSurvey not carried in the path.
@@ -22530,6 +22631,12 @@ components:
       required:
         - account
       type: object
+    AuthorizationScheme:
+      type: string
+      enum:
+        - MANAGED_USERS
+        - LOGIN_POLICIES
+      x-graphql-type: AuthorizationScheme
     AutoattachmentTarget:
       description: |-
         AutoattachmentTarget is a stack or module that is autoattached to an
@@ -30652,12 +30759,14 @@ components:
       enum:
         - ASSIGNED_ROLE
         - ACCESS_LEVEL
+        - SCHEME_SWITCH
       type: string
       x-enum-descriptions:
         ACCESS_LEVEL: |-
           From an access level: an access rule's binding, or the highest
           space_admin/space_write/space_read level a login policy grants.
         ASSIGNED_ROLE: From a role binding, or a login policy's roles rule.
+        SCHEME_SWITCH: Administration retained for the exact session that switches schemes.
       x-graphql-type: SessionGrantOrigin
     SessionPage:
       description: One page of a cursor-paginated list.

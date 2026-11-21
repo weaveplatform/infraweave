@@ -67,13 +67,14 @@ func (s *Service) Snapshot(ctx context.Context, acct kernel.AccountID) (*Snapsho
 	return snap, nil
 }
 
-// whoOf is p as the evaluator sees it.
-func whoOf(p kernel.Principal) Who {
+// WhoOf is p as the evaluator sees it, including its exact session identity.
+func WhoOf(p kernel.Principal) Who {
 	return Who{
 		Account: p.AccountID,
 		Kind:    p.Kind,
 		Actor:   p.ActorID,
 		Member:  p.MemberID,
+		Session: p.SessionID,
 		Teams:   p.Teams,
 		// A run acts as its stack, from the space the stack lives in.
 		Stack:     p.StackID,
@@ -92,7 +93,7 @@ func decide[T any](ctx context.Context, s *Service, p kernel.Principal, f func(*
 	if err != nil {
 		return zero, err
 	}
-	return f(snap, whoOf(p)), nil
+	return f(snap, WhoOf(p)), nil
 }
 
 // decideIn is decide for a view of space. A snapshot that does not hold
@@ -115,7 +116,7 @@ func decideIn[T any](ctx context.Context, s *Service, p kernel.Principal, space 
 			return zero, err
 		}
 	}
-	return f(snap, whoOf(p)), nil
+	return f(snap, WhoOf(p)), nil
 }
 
 // check is f, a decision, for p, false for a principal with no account. A
@@ -135,14 +136,14 @@ func check(ctx context.Context, s *Service, p kernel.Principal, f func(*Snapshot
 	if err != nil {
 		return false, err
 	}
-	if f(snap, whoOf(p)) {
+	if f(snap, WhoOf(p)) {
 		return true, nil
 	}
 	snap, moved, err := s.recheck(ctx, p.AccountID, snap)
 	if err != nil || !moved {
 		return false, err
 	}
-	return f(snap, whoOf(p)), nil
+	return f(snap, WhoOf(p)), nil
 }
 
 // recheck compares snap, acct's snapshot, with the account's

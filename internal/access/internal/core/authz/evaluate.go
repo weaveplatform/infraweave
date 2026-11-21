@@ -20,6 +20,7 @@ type Who struct {
 	Kind      kernel.PrincipalKind
 	Actor     kernel.ULID
 	Member    kernel.MemberID
+	Session   kernel.ULID
 	Teams     []string
 	Stack     kernel.ULID
 	StackHome kernel.ULID
@@ -121,7 +122,15 @@ func (s *Snapshot) actors(w Who) []actor {
 func (s *Snapshot) bound(w Who) []binding.Binding {
 	var out []binding.Binding
 	for _, a := range s.actors(w) {
-		out = append(out, s.bindings[a]...)
+		if s.scheme == "" || s.scheme == accessapi.ManagedUsers || a.kind == binding.ActorStack {
+			out = append(out, s.bindings[a]...)
+		}
+	}
+	for _, b := range s.sessions[w.Session] {
+		if b.Origin == binding.OriginSchemeSwitch &&
+			string(b.ActorKind) == string(w.Kind) && b.ActorID == w.Actor {
+			out = append(out, b)
+		}
 	}
 	if w.Kind == kernel.PrincipalRun && !w.Stack.IsZero() {
 		if _, ok := s.parent[w.StackHome]; ok {
@@ -214,6 +223,9 @@ func (s *Snapshot) Holders(space kernel.ULID, kinds ...binding.ActorKind) []Hold
 	}
 	var out []Holder
 	for _, kind := range kinds {
+		if s.scheme != "" && s.scheme != accessapi.ManagedUsers && kind != binding.ActorStack {
+			continue
+		}
 		var held []Holder
 		for a, bs := range s.bindings {
 			if a.kind != kind {

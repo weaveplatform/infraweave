@@ -2,6 +2,20 @@
 # This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
 components:
   schemas:
+    AuthorizationScheme:
+      type: string
+      enum:
+        - MANAGED_USERS
+        - LOGIN_POLICIES
+      x-graphql-type: AuthorizationScheme
+    AccountUpdateAuthorizationSchemeRequest:
+      type: object
+      additionalProperties: false
+      required: [schema]
+      properties:
+        schema:
+          $ref: '#/components/schemas/AuthorizationScheme'
+      x-graphql-args-of: accountUpdateAuthorizationScheme
     AccountSetOAuthRedirectAllowlistRequest:
       additionalProperties: false
       description: The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
@@ -1124,3 +1138,101 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /account/update-authorization-scheme:
+    post:
+      description: >-
+        Select the account's authorization strategy while retaining inactive
+        configuration. The switch, caller-session grant, peer-session revocation
+        and audit/outbox evidence commit together. The caller retains account
+        administration only for its current session, without extending its
+        lifetime. Setting the current strategy again is a no-op.
+      operationId: accountUpdateAuthorizationScheme
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateAuthorizationSchemeRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationScheme'
+          description: The accountUpdateAuthorizationScheme result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Update Authorization Scheme
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Update Authorization Scheme.bru
+      x-graphql:
+        field: accountUpdateAuthorizationScheme
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /authorization-scheme:
+    get:
+      description: >-
+        Read the active authorization strategy of the authenticated caller's
+        account. New accounts use MANAGED_USERS.
+      operationId: authorizationScheme
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationScheme'
+          description: The authorizationScheme result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Authorization Scheme
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Authorization Scheme.bru
+      x-graphql:
+        field: authorizationScheme
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: singleton

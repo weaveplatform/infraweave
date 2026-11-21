@@ -411,6 +411,20 @@ so that member sees an empty list.
   joined with `;` and cut at 1,024 characters with `...`.
 - `accountUpdateAuthorizationScheme` revokes every session but the caller's;
   changing any login policy revokes every session but the editor's.
+- A scheme switch preserves the caller's usable administration through a
+  `SCHEME_SWITCH` grant of the system `space-admin` role on the account's top
+  space, tied to that exact account and session. It applies under either
+  strategy and appears with that origin in session grant views. This is an
+  explicit exception to managed sessions following binding removal immediately:
+  the retained caller keeps administration until its session ends, even if its
+  saved IAM binding is subsequently removed. The grant does not extend session
+  lifetime or transfer to a new, child or exchanged session. Revocation, expiry
+  and account deletion end its use; repeated switches do not duplicate it.
+  Root-key admission examines the actual root IAM binding, never another
+  session's retained grant. A write of the already-active strategy is a no-op;
+  it revokes no sessions and emits no change event. Real changes serialize on
+  the account row and recheck the caller's live session and administration
+  inside the transaction before preserving it.
 - API keys under `LOGIN_POLICIES` need a policy that admits them, except keys
   with `space-admin` on the account's top space. Personal keys behave as
   ordinary keys there.
