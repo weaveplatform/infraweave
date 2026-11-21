@@ -70,6 +70,7 @@ type Objects interface {
 	runsassembly.Objects
 	stateassembly.Objects
 	vcsassembly.Objects
+	policiesassembly.Objects
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
@@ -163,6 +164,8 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 			Events:       events,
 			Stacks:       stacks.Stacks(),
 			Targets:      stacks.AttachmentTargets(),
+			Keys:         keys,
+			Objects:      objects,
 		},
 	)
 	access.BindLoginEvaluator(policies.LoginEvaluator())
@@ -174,6 +177,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	runs := runsassembly.New(runsassembly.Deps{
 		PolicyTaskInputs: policies.TaskInputBuilder(),
 		PolicyIdentities: policies.Identities(),
+		PolicySamples:    policies.SampleRetentions(),
 		PolicyEvaluator:  policies.Evaluator(),
 		PolicySelection:  policies.Selection(),
 		PolicyInputs:     policies.RunInputBuilder(),

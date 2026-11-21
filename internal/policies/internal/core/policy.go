@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -86,6 +87,7 @@ type Deps struct {
 	Queue        *queue.Queue
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
+	Sampling     *sampling.Service
 }
 
 // Events appends policy changes in the transaction carried by the context.

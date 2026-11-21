@@ -58,7 +58,7 @@ func Streams() []migrate.Stream {
 func SealedColumns() []crypt.Column {
 	return slices.Concat(crypt.Registry(), accessassembly.SealedColumns(),
 		configurationassembly.SealedColumns(), vcsassembly.SealedColumns(),
-		workersassembly.SealedColumns(), runsassembly.SealedColumns())
+		workersassembly.SealedColumns(), runsassembly.SealedColumns(), policiesassembly.SealedColumns())
 }
 
 // openDatabase opens PostgreSQL and brings its schema to this binary's:

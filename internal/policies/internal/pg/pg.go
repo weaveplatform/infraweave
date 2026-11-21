@@ -42,7 +42,10 @@ type DB interface {
 }
 
 // Store joins the transaction carried by its context.
-type Store struct{ db DB }
+type Store struct {
+	db   DB
+	seal SampleSealer
+}
 
 // New constructs the policy store over db.
 func New(db DB) *Store { return &Store{db: db} }

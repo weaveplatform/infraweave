@@ -121,6 +121,7 @@ type Objects interface {
 // objectstore.retention.run-logs.
 type Deps struct {
 	PolicyIdentities policiesapi.PolicyIdentities
+	PolicySamples    policiesapi.SampleRetentions
 	PolicyEvaluator  policiesapi.Evaluator
 	PolicySelection  policiesapi.Selection
 	PolicyInputs     policiesapi.RunInputBuilder
@@ -189,7 +190,7 @@ func New(d Deps) *Domain {
 	views := read.New(
 		read.Deps{
 			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz,
-			Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store, Plans: store,
+			Evidence: store, Policies: d.PolicyIdentities, Samples: d.PolicySamples, Reviews: store, Approvals: store, Plans: store,
 		},
 	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})

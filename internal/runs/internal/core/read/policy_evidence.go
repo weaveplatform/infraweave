@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 )
 
@@ -23,9 +24,12 @@ func (s *Service) policyEvidence(ctx context.Context, account kernel.AccountID, 
 			return nil, err //nolint:wrapcheck // the evidence store names the read
 		}
 	}
-	var policies []kernel.ULID
+	var policies, samples []kernel.ULID
 	for _, snapshot := range snapshots {
 		for _, receipt := range snapshot.Receipts {
+			if receipt.SampleEvaluation != nil {
+				samples = append(samples, *receipt.SampleEvaluation)
+			}
 			if !slices.Contains(policies, receipt.Policy) {
 				policies = append(policies, receipt.Policy)
 			}
@@ -44,6 +48,17 @@ func (s *Service) policyEvidence(ctx context.Context, account kernel.AccountID, 
 			exists[id] = true
 		}
 	}
+	statuses := map[kernel.ULID]policyapi.SampleStatus{}
+	if len(samples) > 0 {
+		if s.d.Samples == nil {
+			return nil, fmt.Errorf("runs: sample owner is unbound: %w", kernel.ErrUnavailable)
+		}
+		var err error
+		statuses, err = s.d.Samples.SampleStatuses(ctx, account, samples)
+		if err != nil {
+			return nil, fmt.Errorf("runs: read policy sample status: %w", err)
+		}
+	}
 	out := make(map[kernel.ULID]policyProjection, len(runs))
 	for _, run := range runs {
 		snapshot, ok := snapshots[run]
@@ -52,7 +67,14 @@ func (s *Service) policyEvidence(ctx context.Context, account kernel.AccountID, 
 		}
 		projection := policyProjection{receipts: []PolicyReceipt{}, flags: snapshot.Flags}
 		for _, receipt := range snapshot.Receipts {
-			projection.receipts = append(projection.receipts, PolicyReceipt{Receipt: receipt, Deleted: !exists[receipt.Policy]})
+			status := policyapi.SampleStatus{}
+			if receipt.SampleEvaluation != nil {
+				status = statuses[*receipt.SampleEvaluation]
+			}
+			projection.receipts = append(
+				projection.receipts,
+				PolicyReceipt{Receipt: receipt, Deleted: !exists[receipt.Policy], Sampled: status.Sampled, SampleExpired: status.Expired},
+			)
 		}
 		out[run] = projection
 	}

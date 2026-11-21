@@ -66,11 +66,11 @@ func (s *Store) recordPolicyReceipt(ctx context.Context, account kernel.AccountI
 	}
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO run_policy_receipts
 		(account_id,run_id,id,state_version,ordinal,policy_id,policy_name,policy_version,policy_type,engine_type,
-		outcome,decision,flags,reset_flags,sample_requested,error_code,error_message,created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+		outcome,decision,flags,reset_flags,sample_requested,error_code,error_message,created_at,sample_evaluation_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
 		account, run, receipt.ID, version, ordinal, receipt.Policy, receipt.PolicyName, receipt.PolicyVersion,
 		string(receipt.Type), receipt.Engine, string(receipt.Outcome), []byte(decision),
-		stringsOrEmpty(receipt.Flags), stringsOrEmpty(receipt.ResetFlags), receipt.Sample, code, message, receipt.CreatedAt)
+		stringsOrEmpty(receipt.Flags), stringsOrEmpty(receipt.ResetFlags), receipt.Sample, code, message, receipt.CreatedAt, receipt.SampleEvaluation)
 	if err != nil {
 		return fmt.Errorf("runs: record policy evidence: %w", sql.Unavailable(err))
 	}

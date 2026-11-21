@@ -372,6 +372,39 @@ func (o *Objects) Commit(ctx context.Context, store objectstore.Name, key string
 	return nil
 }
 
+// CommitUntil publishes an uploaded object with an absolute retention ceiling.
+// Delayed background upload must not extend a domain's evaluation-time expiry.
+func (o *Objects) CommitUntil(ctx context.Context, store objectstore.Name, key string, until time.Time) error {
+	if !tx.In(ctx) {
+		return queue.ErrNoTransaction
+	}
+	if !store.Expires() {
+		return fmt.Errorf("%w: %s has no expiring objects", objectstore.ErrStore, store)
+	}
+	tag, err := tx.Q(ctx, o.db).Exec(ctx, `UPDATE blob_objects SET state='live',
+		expires_at=CASE WHEN expires_at IS NULL THEN $3 ELSE least(expires_at,$3) END
+		WHERE store=$1 AND key=$2 AND state='pending' AND sha256 IS NOT NULL`, store, key, until)
+	if err != nil {
+		return fmt.Errorf("blobs: publish retained %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %s/%s", ErrNotUploaded, store, key)
+	}
+	return nil
+}
+
+// Uploaded reports a completed immutable Put that still awaits publication.
+// Recovery uses this durable completion marker instead of uploading the key again.
+func (o *Objects) Uploaded(ctx context.Context, store objectstore.Name, key string) (bool, error) {
+	var complete bool
+	err := tx.Q(ctx, o.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM blob_objects
+		WHERE store=$1 AND key=$2 AND state='pending' AND sha256 IS NOT NULL)`, store, key).Scan(&complete)
+	if err != nil {
+		return false, fmt.Errorf("blobs: recover upload %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	return complete, nil
+}
+
 const pending = `
 SELECT size, sha256 FROM blob_objects
 WHERE store = $1 AND key = $2 AND state = 'pending'
@@ -477,6 +510,18 @@ func (o *Objects) Live(ctx context.Context, store objectstore.Name, key string) 
 		return false, fmt.Errorf("blobs: read %s/%s: %w", store, key, sql.Unavailable(err))
 	}
 	return true, nil
+}
+
+// Available reports publication and elapsed expiry for safe status projections.
+// Content reads that require a deletion fence still use LockLiveAt.
+func (o *Objects) Available(ctx context.Context, store objectstore.Name, key string, at time.Time) (bool, error) {
+	var available bool
+	err := tx.Q(ctx, o.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM blob_objects
+		WHERE store=$1 AND key=$2 AND state='live' AND (expires_at IS NULL OR expires_at>$3))`, store, key, at).Scan(&available)
+	if err != nil {
+		return false, fmt.Errorf("blobs: read retained status %s/%s: %w", store, key, sql.Unavailable(err))
+	}
+	return available, nil
 }
 
 const lockLive = `SELECT size, sha256 FROM blob_objects
