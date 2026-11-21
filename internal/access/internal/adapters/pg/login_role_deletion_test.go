@@ -13,8 +13,10 @@ import (
 func TestAccLoginRoleDeletionRemovesOnlyItsSessionGrants(t *testing.T) {
 	x := seed(t, pool(t), "login-role-deletion")
 	ctx := t.Context()
-	custom := role.Role{AccountID: x.acct, ID: kernel.NewULID(), Slug: "temporary-reader", Name: "Temporary reader",
-		Version: 1, Actions: []accessapi.Action{accessapi.ActionSpaceRead}}
+	custom := role.Role{
+		AccountID: x.acct, ID: kernel.NewULID(), Slug: "temporary-reader", Name: "Temporary reader",
+		Version: 1, Actions: []accessapi.Action{accessapi.ActionSpaceRead},
+	}
 	if err := x.s.CreateRole(ctx, custom); err != nil {
 		t.Fatal(err)
 	}

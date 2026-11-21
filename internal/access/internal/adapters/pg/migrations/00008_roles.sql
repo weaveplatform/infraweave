@@ -62,7 +62,7 @@ CREATE TABLE session_grants (
     origin     text NOT NULL CHECK (origin IN ('SCHEME_SWITCH', 'ASSIGNED_ROLE', 'ACCESS_LEVEL')),
     UNIQUE (session_id, role_id, space_id, origin),
     FOREIGN KEY (account_id, session_id) REFERENCES sessions (account_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE RESTRICT,
+    FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE CASCADE,
     FOREIGN KEY (account_id, space_id) REFERENCES spaces (account_id, id) ON DELETE CASCADE
 );
 CREATE INDEX session_grants_session ON session_grants (account_id, session_id);

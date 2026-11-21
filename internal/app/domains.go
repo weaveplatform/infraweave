@@ -155,13 +155,14 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	}
 	policies := policiesassembly.New(
 		policiesassembly.Deps{
-			DB:      db.Primary(),
-			Spaces:  access.Spaces(),
-			Authz:   access.Authorizer(),
-			Runtime: policyRuntime,
-			Events:  events,
-			Stacks:  stacks.Stacks(),
-			Targets: stacks.AttachmentTargets(),
+			LoginChanges: access.LoginPolicyChanges(),
+			DB:           db.Primary(),
+			Spaces:       access.Spaces(),
+			Authz:        access.Authorizer(),
+			Runtime:      policyRuntime,
+			Events:       events,
+			Stacks:       stacks.Stacks(),
+			Targets:      stacks.AttachmentTargets(),
 		},
 	)
 	access.BindLoginEvaluator(policies.LoginEvaluator())

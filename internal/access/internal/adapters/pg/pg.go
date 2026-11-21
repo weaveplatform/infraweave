@@ -74,8 +74,16 @@ type Store struct {
 	// forget drops this replica's authorization snapshot of an account
 	// once a transaction that changes its authorization commits; nil
 	// leaves the snapshot to the account's authz:<account> message.
-	forget func(kernel.AccountID)
-	login  accessapi.LoginEvaluator
+	forget      func(kernel.AccountID)
+	login       accessapi.LoginEvaluator
+	dropSession func(kernel.ULID)
+}
+
+// WithSessionInvalidations drops this replica's affected sessions after a
+// policy mutation commits. Other replicas receive transactional notifications.
+func (s *Store) WithSessionInvalidations(drop func(kernel.ULID)) *Store {
+	s.dropSession = drop
+	return s
 }
 
 // WithLoginEvaluator installs the policy-owned implementation after domain
