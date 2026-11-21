@@ -88,6 +88,23 @@ func (p *Provider) Set(ctx context.Context, repo port.Repository, sha string, re
 func checkMarker(r port.CheckReport) string { return "<!-- " + r.RecoveryID + " -->" }
 
 func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha string, r port.CheckReport, appID int64) (*github.CheckRun, error) {
+	// Once acknowledged, the native identity is stronger than a collection
+	// read that can temporarily omit it. A failed lookup must not create a
+	// replacement resource, including when the original has been deleted.
+	if r.NativeID != "" {
+		id, err := strconv.ParseInt(r.NativeID, 10, 64)
+		if err != nil || id <= 0 {
+			return nil, port.ErrCheckInput
+		}
+		found, _, err := c.Checks.GetCheckRun(ctx, repo.Namespace, repo.Name, id)
+		if err != nil {
+			return nil, classify(err, "read known commit check")
+		}
+		if found == nil || found.GetID() != id || !matchesCheck(found, sha, r, appID) {
+			return nil, port.ErrCheckInput
+		}
+		return found, nil
+	}
 	opts := &github.ListCheckRunsOptions{CheckName: new(r.Name), Filter: new("all"), AppID: new(appID), ListOptions: github.ListOptions{PerPage: 100}}
 	var found *github.CheckRun
 	for {
@@ -99,8 +116,7 @@ func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha 
 			return nil, port.ErrCheckInput
 		}
 		for _, v := range list.CheckRuns {
-			if v != nil && v.GetID() > 0 && v.GetApp().GetID() == appID && v.GetHeadSHA() == sha && v.GetName() == r.Name && v.GetExternalID() == r.ExternalID &&
-				strings.Contains(v.GetOutput().GetText(), checkMarker(r)) &&
+			if matchesCheck(v, sha, r, appID) &&
 				(found == nil || v.GetID() > found.GetID()) {
 				found = v
 			}
@@ -110,6 +126,11 @@ func findCheck(ctx context.Context, c *github.Client, repo port.Repository, sha 
 		}
 		opts.Page = resp.NextPage
 	}
+}
+
+func matchesCheck(v *github.CheckRun, sha string, r port.CheckReport, appID int64) bool {
+	return v != nil && v.GetID() > 0 && v.GetApp().GetID() == appID && v.GetHeadSHA() == sha && v.GetName() == r.Name && v.GetExternalID() == r.ExternalID &&
+		strings.Contains(v.GetOutput().GetText(), checkMarker(r))
 }
 
 func writeCheck(ctx context.Context, c *github.Client, method, path string, body checkBody) (*github.CheckRun, error) {
