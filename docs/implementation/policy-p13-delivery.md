@@ -147,9 +147,11 @@ below keep those distinctions and the original capture provenance intact.
 The maintainer's dated [ADR 0009 decisions](../research/decisions/0009-policy-engine-opa.md#maintainer-approved-inferences-for-the-remaining-captures)
 permit C46/C48/C51 implementation choices without claiming new upstream facts.
 The 2026-11-20 P13b inference approval likewise preserves C47/C50/C52/C53's open
-observations. There is no equivalent waiver for #675's missing native deferred
-action document. No authored response or current owner closure resolves a
-capture or substitutes for its replay.
+observations. On 2026-11-21 the maintainer separately approved #675's documented
+source-pinned experimental producer. Its unchanged actual CLI output now has
+positive compatibility proof; unmodified official-release production remains
+unproven. This approval does not turn authored controls into upstream captures.
+No authored response or owner closure substitutes for an executed replay.
 
 ## Real-provider lab and independent delivery gates
 
@@ -187,7 +189,7 @@ mandatory; licence-less DC is the documented conditional peer.
 | Embedded OPA, supported dialects, typed schema and recorded fixtures | Merged source gate above; actual linked runtime, contract schema and all checked-in input/decision round trips. `rego.v2` remains released but intentionally unsupported. |
 | Public review/report language, flags, rollback, isolation and runtime limits | [POL-17 matrix](policy-phase-verification.md), merged PR #706, and own merged-source run 44808423418 passed. Representative corpus is additional proof; full catalogue remains #664. |
 | DEFAULT/SMART/NONE and real vendor artifacts | Native Terraform/OpenTofu/Terragrunt mode, selected-unit, decrypted upload, replan, sealing and worker-capability fence tests passed in the source gate. Modern positive action/deferred-resource fixtures retain exact vendor provenance. |
-| Full native `deferred_action_invocations` and positive masked/decrypted upload | #675 remains OPEN. Partial #680 was externally merged. Rejected/unmerged #708 provides no accepted completion proof. The mandatory positive fixture and real masked/decrypted upload remain missing; the fail-closed guard stays in place. |
+| Approved experimental `deferred_action_invocations` compatibility and positive decrypted upload | #675's source-pinned patched-development capture and strict wrapper transform now pass the complete local certified-FIPS matrix: 48 scenarios / 1,075 steps. Actual upload, selected units, masks/copies, sealing, projection, replan/resume and worker fences pass. [Proof record](policy-plan-payload-verification.json) preserves the approved evidence class; unmodified official-release production remains unproven. Final exact-head CI remains required. Rejected #708 supplies no completion proof. |
 | Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #715 still needs the new real-provider union case. |
 | Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Exact-head CI 44867207346 passed normally and under certified FIPS after one scoped retry of the external registry quota failure; PR #716 is merged. Issue reconciliation remains outstanding. |
 | Capture replay/assertion handoffs | C291 now executes both captured review rejection states. C51 current-owner reset and C46 cleanup execute as strict subsets; sample/upstream handoffs remain explicit. C48 checks complete source equality with C291 and executes that real worker rejection workflow in its own retained report, alongside its management subset. |

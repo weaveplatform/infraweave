@@ -1893,7 +1893,10 @@
     },
     {
       "issue": 675,
-      "state": "native-deferred-action-positive-proof-outstanding"
+      "state": "approved-development-compatibility-passed-local-final-ci-outstanding",
+      "pr": 717,
+      "proof": "docs/implementation/policy-plan-payload-verification.json",
+      "officialReleaseProduction": "unproven"
     },
     {
       "issue": 703,
@@ -2530,5 +2533,12 @@
     "labCorrectionsPR": 717,
     "runnerProofCI": 44867207346,
     "runnerProofStatus": "passed-and-merged"
+  },
+  "modernPlanCandidateProof": {
+    "proof": "docs/implementation/policy-plan-payload-verification.json",
+    "scenarios": 48,
+    "steps": 1075,
+    "fips": "certified/only",
+    "producer": "source-pinned patched-development; no experimental runner execution"
   }
 }
