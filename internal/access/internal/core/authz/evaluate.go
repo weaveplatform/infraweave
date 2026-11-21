@@ -126,6 +126,16 @@ func (s *Snapshot) bound(w Who) []binding.Binding {
 			out = append(out, s.bindings[a]...)
 		}
 	}
+	if s.scheme == accessapi.LoginPolicies && w.Kind == kernel.PrincipalAPIKey {
+		// The LOGIN escape belongs to the key's own live root binding,
+		// including a personal key; owner/group and retained-session grants
+		// cannot turn a different key into a root key.
+		for _, b := range s.bindings[actor{binding.ActorAPIKey, w.Actor}] {
+			if r := s.roleOf(b); b.SpaceID == s.top && r.system && r.slug == role.SpaceAdmin {
+				out = append(out, b)
+			}
+		}
+	}
 	for _, b := range s.sessions[w.Session] {
 		if b.Origin == binding.OriginSchemeSwitch &&
 			string(b.ActorKind) == string(w.Kind) && b.ActorID == w.Actor {

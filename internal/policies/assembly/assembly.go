@@ -115,6 +115,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // Evaluator supplies transactional decision evidence without owning run state.
 func (d *Domain) Evaluator() policyapi.Evaluator { return d.svc }
 
+// LoginEvaluator supplies the access-owned account-entry policy boundary.
+func (d *Domain) LoginEvaluator() accessapi.LoginEvaluator { return d.svc }
+
 // RunInputBuilder supplies the typed projection for run workflow callers.
 func (d *Domain) RunInputBuilder() policyapi.RunInputBuilder { return d.svc }
 
