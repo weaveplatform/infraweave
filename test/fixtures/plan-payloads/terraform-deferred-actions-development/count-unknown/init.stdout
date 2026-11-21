@@ -1,0 +1,6 @@
+Initializing provider plugins...
+- terraform.io/builtin/terraform is built in to Terraform
+- Reusing version 2.9.1 of hashicorp/local from the dependency lock file
+- Using previously-installed hashicorp/local v2.9.1
+
+Terraform has been successfully initialized!

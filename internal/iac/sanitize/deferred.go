@@ -5,6 +5,23 @@ import (
 	"fmt"
 )
 
+// The experimental producer emits the action wrapper with identity/trigger
+// metadata and no value members. If values are present, the same validated
+// action contract owns them; the wrapper never bypasses its masks.
+func deferredAction(d map[string]any, op *operation) error {
+	if err := knownFields(d, []string{"reason", "action_invocation"}); err != nil {
+		return err
+	}
+	if _, ok := d["reason"].(string); !ok {
+		return fmt.Errorf("%w: deferred reason must be a string", ErrMalformed)
+	}
+	a, err := mapping(d["action_invocation"])
+	if err != nil || a == nil {
+		return fmt.Errorf("%w: deferred action must be an object", ErrMalformed)
+	}
+	return action(a, op)
+}
+
 // Deferred changes use the same value and marker paths as ordinary changes.
 // Their reason and wildcard instance identity remain structural. Supporting
 // this artifact shape does not enable experimental CLI versions or execution.

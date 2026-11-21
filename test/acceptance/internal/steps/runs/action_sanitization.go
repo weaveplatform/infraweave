@@ -19,6 +19,7 @@ import (
 )
 
 func registerActionSanitization(sc *godog.ScenarioContext, w *harness.World) {
+	registerDevelopmentDeferredActions(sc, w)
 	sc.Step(
 		`^the opened action plan of the run "(\w+)" uses "(DEFAULT|SMART|NONE)" and stays artifact-only$`,
 		func(ctx context.Context, run, mode string) error {

@@ -67,6 +67,12 @@
       "source": "real CLI show -json output; unchanged bytes",
       "project": "main.tf",
       "provenance": "provenance.json"
+    },
+    "terraform-deferred-actions-development": {
+      "sha256": "c510d3711226737d9eee484993098c6cfd7547370ad6c887689e3d8f388527ad",
+      "source": "real CLI show -json output; unchanged bytes; locally patched experimental producer, not official release evidence",
+      "project": "main.tf",
+      "provenance": "provenance.json"
     }
   }
 }
