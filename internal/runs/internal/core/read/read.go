@@ -10,6 +10,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
@@ -515,5 +516,5 @@ func snapshot[T any](ctx context.Context, db tx.Beginner, read func(context.Cont
 		out, err = read(ctx)
 		return err
 	})
-	return out, err //nolint:wrapcheck // the transaction or the owning reader names the failure
+	return out, sql.Unavailable(err) //nolint:wrapcheck // preserve owner errors and classify transaction outages
 }
