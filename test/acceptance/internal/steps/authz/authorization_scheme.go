@@ -24,7 +24,7 @@ type schemeSteps struct {
 func (s *schemeSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the inactive authorization configuration is recorded$`, s.record)
 	sc.Step(`^the saved authorization configuration is unchanged$`, s.unchanged)
-	sc.Step(`^the session view names the SCHEME_SWITCH origin$`, s.origin)
+	sc.Step(`^the session view names exactly the space-admin origins "([A-Z_,]+)"$`, s.origins)
 	sc.Step(`^the home account has exactly (\d+) live sessions and (\d+) retained scheme grants$`, s.sessions)
 	sc.Step(`^the account records exactly (\d+) credential-free scheme audit and outbox events$`, s.events)
 	sc.Step(`^tokens "(\w+)" and "(\w+)" concurrently select LOGIN_POLICIES through A and B$`, s.concurrent)
@@ -39,19 +39,34 @@ func (s *schemeSteps) register(sc *godog.ScenarioContext) {
 	})
 }
 
-func (s *schemeSteps) origin() error {
+func (s *schemeSteps) origins(want string) error {
 	var body struct {
 		Edges []struct {
 			Node struct {
 				Roles []struct {
 					Origin string `json:"origin"`
+					Role   struct {
+						ID string `json:"id"`
+					} `json:"role"`
 				} `json:"roles"`
 			} `json:"node"`
 		} `json:"edges"`
 	}
-	if s.w.Last().Status != http.StatusOK || json.Unmarshal(s.w.Last().Body, &body) != nil || len(body.Edges) != 1 ||
-		len(body.Edges[0].Node.Roles) != 1 || body.Edges[0].Node.Roles[0].Origin != "SCHEME_SWITCH" {
+	if s.w.Last().Status != http.StatusOK || json.Unmarshal(s.w.Last().Body, &body) != nil || len(body.Edges) != 1 {
 		return fmt.Errorf("%w: session view lost scheme-switch provenance: %s", harness.ErrStep, s.w.Last().Body)
+	}
+	origins := []string{}
+	for _, grant := range body.Edges[0].Node.Roles {
+		if grant.Role.ID != "space-admin" {
+			return fmt.Errorf("%w: session view granted an unexpected role: %s", harness.ErrStep, s.w.Last().Body)
+		}
+		origins = append(origins, grant.Origin)
+	}
+	expected := strings.Split(want, ",")
+	slices.Sort(origins)
+	slices.Sort(expected)
+	if !slices.Equal(origins, expected) {
+		return fmt.Errorf("%w: session view origins = %v, want %v: %s", harness.ErrStep, origins, expected, s.w.Last().Body)
 	}
 	return nil
 }

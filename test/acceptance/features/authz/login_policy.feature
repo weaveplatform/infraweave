@@ -37,6 +37,24 @@ Feature: Account entry evaluates LOGIN policies before issuing authorization
     And it answers 200
     When the existing home key is exchanged without reseeding through A for token "root"
     Then token "root"'s read of the space "acme" through B allows exactly the role "space-admin"'s actions
+    When token "h" lists the API keys with access to the space "acme" through A
+    Then the answer lists 1 holder
+    And the holder "01KACME0000000000000000003" holds the role "space-admin" on the space "acme" as RESIDENT
+    When token "h" sends "GET /api/v1/api-keys/01KACME0000000000000000003/api-key-role-bindings" through A
+    Then the answer's binding of the role "space-admin" names "rootBinding"
+    When token "h" sends "DELETE /api/v1/api-key-role-bindings/{rootBinding}" through B
+    Then it answers 200
+    And token "root"'s read of the space "acme" through A is not found
+    And token "root"'s read of the space "acme" through B is not found
+    And token "h"'s read of the space "acme" through A allows exactly the role "space-admin"'s actions
+    And token "h"'s read of the space "acme" through B allows exactly the role "space-admin"'s actions
+    When token "h" lists the API keys with access to the space "acme" through A
+    Then the answer lists 0 holders
+    When token "h" lists the API keys with access to the space "acme" through B
+    Then the answer lists 0 holders
+    When token "h" lists the API key sessions with access to the space "acme" through B
+    Then the answer lists 1 holder
+    And the session view names exactly the space-admin origins "SCHEME_SWITCH"
 
   @policy-login-change @op:policyUpdatev2 @case:success
   Scenario: Updating an active LOGIN policy revokes peer sessions across replicas and preserves the editor and another account

@@ -20,6 +20,13 @@ LOGIN grants or SCHEME_SWITCH exception. The root API-key exception requires
 that key's own live root IAM admin binding. It does not make an ended session
 usable again.
 
+The access-holder views use that same exception. Under LOGIN, the key with its
+own root IAM admin binding remains visible; an ordinary IAM reader does not.
+The switching key's session exposes both `ASSIGNED_ROLE` and `SCHEME_SWITCH`
+while its root binding exists. Removing that binding removes the key from
+both replicas' key-holder views and ends a separately exchanged session's
+administration. Only the exact switching session retains `SCHEME_SWITCH`.
+
 Accepted LOGIN policy creation, update and deletion revoke peer sessions in the
 same transaction, retain the exact editor's existing grants, bump authorization
 version and invalidate caches after commit. Inactive configuration and failed
