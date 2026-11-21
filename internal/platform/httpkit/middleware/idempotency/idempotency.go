@@ -133,6 +133,12 @@ func answer(w http.ResponseWriter, rec Record, fp string) {
 		if rec.Response.Location != "" {
 			h.Set("Location", rec.Response.Location)
 		}
+		if rec.Response.Deprecation != "" {
+			h.Set("Deprecation", rec.Response.Deprecation)
+		}
+		if rec.Response.Link != "" {
+			h.Set("Link", rec.Response.Link)
+		}
 		h.Set(ReplayedHeader, "true")
 		w.WriteHeader(rec.Response.Status)
 		_, _ = w.Write(rec.Response.Body)
@@ -172,6 +178,8 @@ func (g guard) run(w http.ResponseWriter, r *http.Request, next http.Handler, ke
 		Status:      status,
 		ContentType: w.Header().Get("Content-Type"),
 		Location:    w.Header().Get("Location"),
+		Deprecation: w.Header().Get("Deprecation"),
+		Link:        w.Header().Get("Link"),
 		Body:        cw.body.Bytes(),
 	})
 	if err != nil {

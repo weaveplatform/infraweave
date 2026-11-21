@@ -12,6 +12,8 @@ CREATE TABLE idempotency_keys (
     status       integer,
     content_type text,
     location     text,
+    deprecation  text,
+    link         text,
     created_at   timestamptz NOT NULL,
     expires_at   timestamptz NOT NULL,
     -- The response body sealed under the keyring, since it can hold

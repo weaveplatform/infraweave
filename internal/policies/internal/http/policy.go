@@ -7,9 +7,11 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/strict"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 )
 
@@ -28,6 +30,7 @@ func (s Server) PolicyCreatev2(ctx context.Context, req api.PolicyCreatev2Reques
 		return nil, err
 	}
 	in := req.Body
+	markDeprecated(ctx, rego.Type(in.Type))
 	input := core.Input{Name: in.Name, Body: in.Body, Description: in.Description, Type: rego.Type(in.Type), Template: in.PolicyTemplateULID}
 	if in.Space != nil {
 		input.Space = *in.Space
@@ -59,6 +62,7 @@ func (s Server) Policy(ctx context.Context, req api.PolicyRequestObject) (api.Po
 	if err != nil {
 		return nil, policyError(err)
 	}
+	markDeprecated(ctx, row.Type)
 	v, err := s.view(ctx, p, row)
 	if err != nil {
 		return nil, err
@@ -78,6 +82,7 @@ func (s Server) PolicyUpdatev2(ctx context.Context, req api.PolicyUpdatev2Reques
 	if err != nil {
 		return nil, policyError(err)
 	}
+	markDeprecated(ctx, row.Type)
 	view, err := s.view(ctx, p, row)
 	if err != nil {
 		return nil, err
@@ -97,6 +102,7 @@ func (s Server) PolicyDelete(ctx context.Context, req api.PolicyDeleteRequestObj
 	if err != nil {
 		return nil, policyError(err)
 	}
+	markDeprecated(ctx, row.Type)
 	v, err := s.view(ctx, p, row)
 	if err != nil {
 		return nil, err
@@ -120,6 +126,7 @@ func (s Server) PolicyUpdatev2Patch(ctx context.Context, req api.PolicyUpdatev2P
 		if err != nil {
 			return api.PolicyUpdateInput{}, 0, err //nolint:wrapcheck // policyError maps the lookup
 		}
+		markDeprecated(ctx, row.Type)
 		names, err := s.spaces.Slugs(ctx, p.AccountID)
 		if err != nil {
 			return api.PolicyUpdateInput{}, 0, fmt.Errorf("policies: name patch space: %w", err)
@@ -140,6 +147,12 @@ func (s Server) PolicyUpdatev2Patch(ctx context.Context, req api.PolicyUpdatev2P
 	}
 	tag := strict.ETag(row.Version)
 	return api.PolicyUpdatev2Patch200JSONResponse{Body: v, Headers: api.PolicyUpdatev2Patch200ResponseHeaders{ETag: &tag}}, nil
+}
+
+func markDeprecated(ctx context.Context, kind rego.Type) {
+	if kind == rego.Task {
+		middleware.Deprecate(ctx, policyapi.TaskDeprecatedSince, policyapi.TaskDeprecationInfo)
+	}
 }
 
 func updateInput(in api.PolicyUpdateInput) core.Input {

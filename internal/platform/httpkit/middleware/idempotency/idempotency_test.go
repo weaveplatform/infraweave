@@ -38,6 +38,8 @@ func (c *counting) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Location", "/things/1")
+	w.Header().Set("Deprecation", "@1795219200")
+	w.Header().Set("Link", `<https://example.test/migration>; rel="deprecation"`)
 	w.Header().Set("X-Other", "not replayed")
 	w.WriteHeader(c.status)
 	_ = json.NewEncoder(w).Encode(map[string]any{"run": n, "got": string(body)})
@@ -103,6 +105,8 @@ func TestUnitReplay(t *testing.T) {
 		second.Header().Get(ReplayedHeader) != "true" ||
 		second.Header().Get("Content-Type") != "application/json" ||
 		second.Header().Get("Location") != "/things/1" ||
+		second.Header().Get("Deprecation") != "@1795219200" ||
+		second.Header().Get("Link") != `<https://example.test/migration>; rel="deprecation"` ||
 		second.Header().Get("X-Other") != "" {
 		t.Errorf("replay: %d %v %s", second.Code, second.Header(), second.Body)
 	}

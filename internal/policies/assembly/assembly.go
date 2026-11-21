@@ -118,6 +118,9 @@ func (d *Domain) Evaluator() policyapi.Evaluator { return d.svc }
 // RunInputBuilder supplies the typed projection for run workflow callers.
 func (d *Domain) RunInputBuilder() policyapi.RunInputBuilder { return d.svc }
 
+// TaskInputBuilder supplies the typed pre-creation command/session projection.
+func (d *Domain) TaskInputBuilder() policyapi.TaskInputBuilder { return d.svc }
+
 // PushInputBuilder supplies the typed projection for stored provider events.
 func (d *Domain) PushInputBuilder() policyapi.PushInputBuilder { return d.svc }
 

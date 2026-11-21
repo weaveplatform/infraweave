@@ -79,11 +79,15 @@ func TestAccPostgresSharedByReplicas(t *testing.T) {
 	if rec, ok, err := b.Claim(t.Context(), k, "fp"); ok || err != nil || rec.Response != nil {
 		t.Errorf("claim on b while a holds it: %+v %v %v", rec, ok, err)
 	}
-	if err := a.Complete(t.Context(), k, Response{Status: 201, Body: []byte("x")}); err != nil {
+	if err := a.Complete(t.Context(), k, Response{
+		Status: 201, Body: []byte("x"),
+		Deprecation: "@1795219200", Link: `<https://example.test/migration>; rel="deprecation"`,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if rec, ok, err := b.Claim(t.Context(), k, "fp"); ok || err != nil ||
-		rec.Response == nil || string(rec.Response.Body) != "x" {
+		rec.Response == nil || string(rec.Response.Body) != "x" || rec.Response.Deprecation != "@1795219200" ||
+		rec.Response.Link != `<https://example.test/migration>; rel="deprecation"` {
 		t.Errorf("claim on b after a completed: %+v %v %v", rec, ok, err)
 	}
 }

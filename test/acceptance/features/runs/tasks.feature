@@ -41,6 +41,7 @@ Feature: A task runs a command in its stack's workspace
     Given the launcher "l" registers with the key of "csr" and the certificate "cert" through A
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json","skipInitialization":true}' through A
     Then it answers 201
+    And the task answer does not deprecate ordinary tasks
     And the answer drew on the expensive budget
     And the answer's type is '"TASK"'
     And the answer's state is '"QUEUED"'
@@ -118,10 +119,10 @@ Feature: A task runs a command in its stack's workspace
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json","skipInitialization":true}' through A
     Then it answers a 403 problem "forbidden"
     And the answer's detail is '"Command refused by TASK policy"'
-    And the TASK answer carries its deprecation notice
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json"}' through B
     Then it answers a 403 problem "forbidden"
     And policy "guard" has 2 committed TASK refusals and no task creation effects
+    And the TASK answer carries its deprecation notice
 
   @policy-task @op:taskCreate @case:failure
   Scenario: A stored V0 policy with an invalid TASK decision fails closed without creating a run
@@ -132,8 +133,8 @@ Feature: A task runs a command in its stack's workspace
     And it answers 200
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json"}' through B
     Then it answers a 403 problem "forbidden"
-    And the TASK answer carries its deprecation notice
     And policy "guard" has 1 committed TASK refusals and no task creation effects
+    And the TASK answer carries its deprecation notice
 
   @policy-task @op:taskCreate @case:success
   Scenario: A real V0 TASK policy permits the existing task lifecycle while its deprecated API remains explicit
@@ -142,7 +143,7 @@ Feature: A task runs a command in its stack's workspace
     And the answer's id names "guard"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through A
     And it answers 200
-    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json"}' through A
+    When token "h" creates and replays one policy-admitted task through both replicas
     Then it answers 201
     And the answer's type is '"TASK"'
     And the answer's command is '"terraform output -json"'

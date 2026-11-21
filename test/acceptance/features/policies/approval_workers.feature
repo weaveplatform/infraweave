@@ -80,7 +80,7 @@ Feature: Approval policies gate real Terraform family workers
       | vendor   |
       | opentofu |
 
-  @terraform @op:runReview @op:taskCreate @case:success
+  @terraform @policy-task @op:runReview @op:taskCreate @case:success
   Scenario: A task needs its own review before an actual worker performs its command
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
     And it answers 201
@@ -90,8 +90,14 @@ Feature: Approval policies gate real Terraform family workers
     And the answer's id names "policy"
     And token "h" sends "PUT /api/v1/stacks/infra/policies/{policy}" through B
     And it answers 200
+    And token "h" sends "POST /api/v1/policies" with '{"name":"Inspect before task creation","type":"TASK","space":"legacy","body":"package infraweave\ndeny contains \"Unexpected task command\" if { input.request.command != \"terraform version\" }\n"}' through B
+    And it answers 201
+    And the answer's id names "taskguard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{taskguard}" through A
+    And it answers 200
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform version","skipInitialization":true}' through A
     Then it answers 201
+    And the TASK answer carries its deprecation notice
     And the answer's id names "run"
     When token "h" sends "GET /api/v1/runs/{run}" through B
     Then it answers 200
@@ -101,6 +107,7 @@ Feature: Approval policies gate real Terraform family workers
     And token "h" eventually reads the run "run" in the state "FINISHED" through B
     And the answer's flags is '["task-reviewed"]'
     And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
+    And token "h" reads the run "run"'s PERFORMING log through A, which holds "Terraform v{terraform.newest}" and not "Error"
 
   @op:runReview @case:failure
   Scenario Outline: A real plan report commits approval rejection with the captured failure note

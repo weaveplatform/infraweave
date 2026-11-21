@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	operatorapi "github.com/weaveplatform/infraweave/internal/platform/gen/operator"
 	workerapi "github.com/weaveplatform/infraweave/internal/platform/gen/worker"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
 	"github.com/weaveplatform/infraweave/internal/platform/objectstore/blobs"
 	policiesassembly "github.com/weaveplatform/infraweave/internal/policies/assembly"
@@ -144,7 +146,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			queues:           p.Queues,
 			blobs:            b.Objects,
 		},
-		nil,
+		[]api.StrictMiddlewareFunc{responseHeaders},
 		api.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  problem.RequestError,
 			ResponseErrorHandlerFunc: problem.ResponseError,
@@ -186,6 +188,12 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 		ErrorHandlerFunc: problem.RequestError,
 	})
 	return r
+}
+
+func responseHeaders(next api.StrictHandlerFunc, _ string) api.StrictHandlerFunc {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return next(middleware.WithResponseHeaders(ctx, w.Header()), w, r, request) //nolint:wrapcheck // strict handler error classification is unchanged
+	}
 }
 
 // withPollHold is ops with the worker poll's Hold, poll: a poll answers when a

@@ -170,6 +170,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.GuardStacks(policies.StackGuard())
 	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
+		PolicyTaskInputs: policies.TaskInputBuilder(),
 		PolicyIdentities: policies.Identities(),
 		PolicyEvaluator:  policies.Evaluator(),
 		PolicySelection:  policies.Selection(),

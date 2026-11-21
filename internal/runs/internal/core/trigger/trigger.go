@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/runtimeconfig"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -33,13 +36,19 @@ func (e *RuntimeConfigDenied) Error() string {
 // workspaces are uploaded to. Spaces holds the owner of an internal creation
 // until its caller's transaction ends.
 type Deps struct {
-	DB        tx.Beginner
-	Stacks    stacksapi.Stacks
-	Spaces    accessapi.Spaces
-	Authz     accessapi.Authorizer
-	Lifecycle *lifecycle.Lifecycle
-	Views     *read.Service
-	Objects   Objects
+	DB         tx.Beginner
+	Stacks     stacksapi.Stacks
+	Spaces     accessapi.Spaces
+	Authz      accessapi.Authorizer
+	Lifecycle  *lifecycle.Lifecycle
+	Views      *read.Service
+	Objects    Objects
+	Policies   policyapi.Evaluator
+	TaskInputs policyapi.TaskInputBuilder
+	Sessions   accessapi.ReviewMetadataReader
+	Snapshots  stacksapi.PolicySnapshots
+	Metadata   policyinput.Metadata
+	Now        func() time.Time
 }
 
 // Service triggers runs on a stack.
@@ -120,7 +129,7 @@ func (s *Service) Trigger(ctx context.Context, p kernel.Principal, slug string, 
 
 // Task creates p's TASK run of t on its account's stack slug in one
 // transaction, on the stack's tracked commit, else its branch head, else
-// ErrNoCommit. Every task creates a run. A command t.Check refuses is a
+// ErrNoCommit. Every admitted task creates a run. A command t.Check refuses is a
 // *kernel.Invalid at /command; the lifecycle refuses a disabled stack and
 // one another caller locked.
 //
@@ -136,7 +145,15 @@ func (s *Service) Task(ctx context.Context, p kernel.Principal, slug string, t k
 // sha, in one transaction, and answers its view.
 func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha string, original lifecycle.NewRun) (read.View, error) {
 	var v read.View
+	var denied *TaskDenied
+	var taskPolicy bool
+	at := time.Now()
+	if s.d.Now != nil {
+		at = s.d.Now()
+	}
 	err := tx.Do(ctx, s.d.DB, tx.Options{}, func(ctx context.Context) error {
+		v, denied = read.View{}, nil
+		taskPolicy = false
 		// A serialization retry must parse the original API form and seal its
 		// original values, rather than reparsing a previous attempt's record.
 		n := original
@@ -172,13 +189,30 @@ func (s *Service) create(ctx context.Context, p kernel.Principal, slug, sha stri
 		}
 		n.Commit.Branch = settings.Branch
 		n.Account, n.Stack, n.Actor = p.AccountID, st.ID, lifecycle.ActorOf(p)
+		if n.Type == kernel.RunTypeTask && s.d.Policies != nil {
+			n.BeforeCreate = func(ctx context.Context) error {
+				var err error
+				taskPolicy, err = s.admitTask(ctx, p, st.ID, n.Task.Command, at)
+				return err
+			}
+		}
 		run, _, err := s.d.Lifecycle.Create(ctx, n)
+		if refusal, ok := errors.AsType[*TaskDenied](err); ok {
+			denied = refusal
+			// The evaluator's evidence commits, but Create stopped before
+			// inserting the run or scheduling any worker consequence.
+			return nil
+		}
 		if err != nil {
 			return err //nolint:wrapcheck // the lifecycle names the refusal
 		}
 		v, err = s.d.Views.One(ctx, p, run)
+		v.TaskPolicy = taskPolicy
 		return err //nolint:wrapcheck // the read names itself
 	})
+	if err == nil && denied != nil {
+		return read.View{}, denied
+	}
 	return v, err //nolint:wrapcheck // each step names itself
 }
 

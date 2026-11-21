@@ -166,7 +166,7 @@ ref: [0012, intake and replay](0012-vcs-integration-model.md#webhook-intake-stor
 
   | The earlier request with this key | Response |
   |---|---|
-  | finished with the same fingerprint | The stored response (status, `Content-Type`, `Location`, body) is replayed with `Idempotency-Replayed: true` |
+  | finished with the same fingerprint | The stored response (status, `Content-Type`, `Location`, `Deprecation`, `Link`, body) is replayed with `Idempotency-Replayed: true` |
   | finished with a different fingerprint | `422`, problem `idempotency-key-reuse` |
   | is still in flight | `409`, problem `idempotency-key-in-flight`; the client retries later |
 
