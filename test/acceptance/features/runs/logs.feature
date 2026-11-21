@@ -159,7 +159,7 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"SPACE_READ"'
 
-  @op:runLogs @op:runLogsDownloadURL @op:run @case:denial
+  @op:runLogs @op:runLogsDownloadURL @op:run @op:runStack @policy-projection-denial @case:denial
   Scenario: The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs
     When token "it" sends "GET /api/v1/stacks/infra" through A
     Then it answers 200
@@ -170,6 +170,12 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"SPACE_READ"'
     When token "it" sends "GET /api/v1/runs/{run}" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/runs/{run}/stack" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/runs/{run}/stack" through B
     Then it answers a 403 problem "forbidden"
     And the answer's action is '"SPACE_READ"'
 

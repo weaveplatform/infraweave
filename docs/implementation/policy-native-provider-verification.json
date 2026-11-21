@@ -1,0 +1,372 @@
+{
+  "run": 44934050424,
+  "url": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424",
+  "revision": "3ff32129c22db94166780230d3c637f829655401",
+  "attempt": 1,
+  "conclusion": "success",
+  "providers": {
+    "github": {
+      "jobID": 136936718851,
+      "jobURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/job/136936718851",
+      "artifactID": 14718578272,
+      "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/artifacts/14718578272",
+      "reportSHA256": "ced8f2d2d67c326a0a4645daea79a5480a1bb77a2f535be0817178f19930b0a0",
+      "scenarios": 6,
+      "steps": 192,
+      "allStepsPassed": true,
+      "sourceContractPassed": true,
+      "cleanup": {
+        "revision": "3ff32129c22db94166780230d3c637f829655401",
+        "provider": "github",
+        "attempt": "1",
+        "run": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424",
+        "restoreApp": "success",
+        "detachHooks": "skipped",
+        "destroy": "success",
+        "absence": "success",
+        "stopTunnel": "success",
+        "stopProvider": "skipped",
+        "destroyPlatform": "success"
+      },
+      "batches": {
+        "sources": {
+          "scenarios": 1,
+          "steps": 21,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "webhooks": {
+          "scenarios": 1,
+          "steps": 24,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "feedback": {
+          "scenarios": 4,
+          "steps": 147,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        }
+      }
+    },
+    "gitlab": {
+      "jobID": 136936718489,
+      "jobURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/job/136936718489",
+      "artifactID": 14718943740,
+      "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/artifacts/14718943740",
+      "reportSHA256": "bd8b97e99712ea604e61b41e666f5b4070fe0c09a295dfc65f49635c8905ff98",
+      "scenarios": 6,
+      "steps": 193,
+      "allStepsPassed": true,
+      "sourceContractPassed": true,
+      "cleanup": {
+        "revision": "3ff32129c22db94166780230d3c637f829655401",
+        "provider": "gitlab",
+        "attempt": "1",
+        "run": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424",
+        "restoreApp": "skipped",
+        "detachHooks": "success",
+        "destroy": "success",
+        "absence": "success",
+        "stopTunnel": "skipped",
+        "stopProvider": "success",
+        "destroyPlatform": "success"
+      },
+      "batches": {
+        "sources": {
+          "scenarios": 1,
+          "steps": 22,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "webhooks": {
+          "scenarios": 1,
+          "steps": 24,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "feedback": {
+          "scenarios": 4,
+          "steps": 147,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        }
+      }
+    },
+    "bitbucket-cloud": {
+      "jobID": 136936718846,
+      "jobURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/job/136936718846",
+      "artifactID": 14719650620,
+      "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/artifacts/14719650620",
+      "reportSHA256": "ae1460ccc2a6934fceafcf7be8e2581e921f31f59d1453aaf2be71ef94267d31",
+      "scenarios": 6,
+      "steps": 193,
+      "allStepsPassed": true,
+      "sourceContractPassed": true,
+      "cleanup": {
+        "revision": "3ff32129c22db94166780230d3c637f829655401",
+        "provider": "bitbucket-cloud",
+        "attempt": "1",
+        "run": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424",
+        "restoreApp": "skipped",
+        "detachHooks": "success",
+        "destroy": "success",
+        "absence": "success",
+        "stopTunnel": "success",
+        "stopProvider": "skipped",
+        "destroyPlatform": "success"
+      },
+      "batches": {
+        "sources": {
+          "scenarios": 1,
+          "steps": 22,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "webhooks": {
+          "scenarios": 1,
+          "steps": 24,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "feedback": {
+          "scenarios": 4,
+          "steps": 147,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        }
+      }
+    },
+    "azure-devops": {
+      "jobID": 136936718717,
+      "jobURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/job/136936718717",
+      "artifactID": 14719735307,
+      "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424/artifacts/14719735307",
+      "reportSHA256": "5963959eb7b817b7cd743fdb63d44edcbfc85eda350afa973886b5358b89a16f",
+      "scenarios": 6,
+      "steps": 193,
+      "allStepsPassed": true,
+      "sourceContractPassed": true,
+      "cleanup": {
+        "revision": "3ff32129c22db94166780230d3c637f829655401",
+        "provider": "azure-devops",
+        "attempt": "1",
+        "run": "https://github.com/weaveplatform/infraweave/actions/runs/44934050424",
+        "restoreApp": "skipped",
+        "detachHooks": "success",
+        "destroy": "success",
+        "absence": "success",
+        "stopTunnel": "success",
+        "stopProvider": "skipped",
+        "destroyPlatform": "success"
+      },
+      "batches": {
+        "sources": {
+          "scenarios": 1,
+          "steps": 22,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "webhooks": {
+          "scenarios": 1,
+          "steps": 24,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        },
+        "feedback": {
+          "scenarios": 4,
+          "steps": 147,
+          "passed": true,
+          "readinessPassed": true,
+          "emptyState": true,
+          "after": {
+            "containers": [],
+            "volumes": [],
+            "networks": []
+          },
+          "privateInputsRemoved": true,
+          "fips": false,
+          "workspaceDirty": true,
+          "serviceImages": {
+            "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+            "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+            "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+          },
+          "terraformVersion": "1.17.2"
+        }
+      }
+    }
+  },
+  "dataCenter": {
+    "executed": false,
+    "reason": "VCS_BITBUCKET_DC_LICENSE unconfigured; job success is not native-provider proof"
+  },
+  "scenarios": 24,
+  "steps": 771,
+  "workspaceDirtyContext": "Raw batch metadata records dirty=true: the workflow creates untracked cloud.log and lab-results before invoking the wrapper. Revision is preserved; no clean-worktree claim is made."
+}

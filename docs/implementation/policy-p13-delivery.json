@@ -1,85 +1,88 @@
 {
   "schemaVersion": 1,
   "auditedOn": "2026-11-21",
-  "status": "incomplete",
+  "status": "source-delivery-evidence-verified; audit-PR-full-CI-required-before-merge",
   "issue": 656,
-  "sourceRevision": "1120bb8aa7e4c09e5c3468cd876567db13e9e3b9",
+  "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
   "sourceCI": {
-    "run": 44808423418,
-    "url": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418",
+    "run": 44898323446,
+    "url": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446",
     "event": "push",
     "conclusion": "SUCCESS",
     "totalCoverage": {
-      "percent": 95.5,
-      "covered": 49560,
-      "statements": 51922
+      "percent": 95.4,
+      "covered": 49704,
+      "statements": 52084
     },
     "minimumPackageCoverage": 90,
-    "allRequiredChecksPassed": true
+    "allRequiredChecksPassed": true,
+    "fipsJob": 136828648770,
+    "coverageJob": 136831949610,
+    "qualityJob": 136835015267
   },
   "acceptance": {
-    "scenarios": 1040,
-    "steps": 25407,
+    "scenarios": 1066,
+    "steps": 25830,
     "partitions": [
       {
         "partition": "core",
-        "scenarios": 382,
-        "steps": 5810,
+        "scenarios": 399,
+        "steps": 6007,
         "passed": true,
-        "artifactID": 14667220055,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14667220055",
+        "artifactID": 14704903801,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14704903801",
         "reportPath": "cover-accept-core/cucumber.json",
-        "sha256": "1250c62c963566c37d48c78acee2e0d2b17cc99c36f3d60a849729a24fbd8fe6"
+        "sha256": "7249da04a0107ae0fb0ae264787efc9f7778ab5454219a38f9ec1c6bbdbd9117"
       },
       {
         "partition": "integrations",
-        "scenarios": 356,
-        "steps": 9419,
+        "scenarios": 357,
+        "steps": 9476,
         "passed": true,
-        "artifactID": 14665140870,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665140870",
+        "artifactID": 14705625489,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14705625489",
         "reportPath": "cover-accept-integrations/cucumber.json",
-        "sha256": "02012fe63c917977c340c3663caba11182a55830610f64beb63240c338b66e07"
+        "sha256": "77f0cab6f2178056789e4c1c8f31f86dbea0758208c949706d4195e5edec785e"
       },
       {
         "partition": "runs",
         "scenarios": 82,
         "steps": 3062,
         "passed": true,
-        "artifactID": 14665700087,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665700087",
+        "artifactID": 14704719806,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14704719806",
         "reportPath": "cover-accept-runs/cucumber.json",
-        "sha256": "a798ad1527a3f7c55cce760e4327527edf5bfa92d26cd34d63ca3358b7e89e78"
+        "sha256": "ad31a06f4ef78d802c8cbc5ffda339e6bc2457c9907544f270d0958381f7b6d7"
       },
       {
         "partition": "terraform",
         "scenarios": 117,
         "steps": 3704,
         "passed": true,
-        "artifactID": 14665520117,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665520117",
+        "artifactID": 14705415853,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14705415853",
         "reportPath": "cover-accept-terraform/cucumber.json",
-        "sha256": "d6f60cd2ece0187e1b730f9ebbe6180e943b7825267d40e9de197b152081c155"
+        "sha256": "65ecb130a9a6cfe35accf6330a5684434b54cddd2d1918c79552b74c624c63f1"
       },
       {
         "partition": "terraform-plans",
-        "scenarios": 41,
-        "steps": 1173,
+        "scenarios": 49,
+        "steps": 1342,
         "passed": true,
-        "artifactID": 14663573650,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14663573650",
+        "artifactID": 14704379054,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14704379054",
         "reportPath": "cover-accept-terraform-plans/cucumber.json",
-        "sha256": "85cc449120711294155da7cb8e73eeeb50fd7d7458260eb9bc54af6fd11be386"
+        "sha256": "0e06485706647b8e614727fa1836d99ee63814fb00f52a359865a9c7c7a755b2"
       },
       {
         "partition": "terraform-vcs",
         "scenarios": 62,
         "steps": 2239,
         "passed": true,
-        "artifactID": 14665085875,
-        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665085875",
+        "artifactID": 14705022083,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14705022083",
         "reportPath": "cover-accept-terraform-vcs/cucumber.json",
-        "sha256": "79c6ea2eaf4e81070b5ec86c5e6a4256c9faf1972c28422df2b448ea4c5b5c58"
+        "sha256": "0cce639543628f032f080314d62ea580963341da446497047218678d87d57e8b"
       }
     ]
   },
@@ -374,8 +377,8 @@
   "cases": {
     "S1": {
       "feature": "policies/management.feature",
-      "line": 221,
       "name": "A compiled policy persists across replicas with the intentional V1 default",
+      "line": 221,
       "partition": "core",
       "stepCount": 13,
       "tags": [
@@ -386,12 +389,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L221"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/management.feature#L221"
     },
     "S2": {
       "feature": "policies/management.feature",
-      "line": 125,
       "name": "Revoking the policy entitlement refuses known policies on both replicas",
+      "line": 125,
       "partition": "core",
       "stepCount": 29,
       "tags": [
@@ -410,12 +413,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L125"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/management.feature#L125"
     },
     "S3": {
       "feature": "policies/search.feature",
-      "line": 9,
       "name": "A sibling account cannot read or change a known policy ID",
+      "line": 9,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -431,12 +434,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L9"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/search.feature#L9"
     },
     "S4": {
       "feature": "policies/management.feature",
-      "line": 54,
       "name": "Conditional updates and deletion refuse stale policy versions across replicas",
+      "line": 54,
       "partition": "core",
       "stepCount": 24,
       "tags": [
@@ -448,12 +451,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L54"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/management.feature#L54"
     },
     "S5": {
       "feature": "policies/management.feature",
-      "line": 26,
       "name": "Merge patch keeps source and dialect while resetting nullable settings",
+      "line": 26,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -464,12 +467,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L26"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/management.feature#L26"
     },
     "S6": {
       "feature": "policies/search.feature",
-      "line": 35,
       "name": "Both list and search cursors resume on another replica without skipped policies",
+      "line": 35,
       "partition": "core",
       "stepCount": 19,
       "tags": [
@@ -480,12 +483,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L35"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/search.feature#L35"
     },
     "S7": {
       "feature": "policies/search.feature",
-      "line": 55,
       "name": "Invalid policy search requests and unknown spaces have public failures",
+      "line": 55,
       "partition": "core",
       "stepCount": 12,
       "tags": [
@@ -499,12 +502,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L55"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/search.feature#L55"
     },
     "S8": {
       "feature": "policies/search.feature",
-      "line": 96,
       "name": "Account and inherited space searches use persistent policy projections",
+      "line": 96,
       "partition": "core",
       "stepCount": 29,
       "tags": [
@@ -518,12 +521,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L96"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/search.feature#L96"
     },
     "S9": {
       "feature": "policies/attachments.feature",
-      "line": 17,
       "name": "Account-qualified attachments, candidates and preview never cross accounts",
+      "line": 17,
       "partition": "core",
       "stepCount": 39,
       "tags": [
@@ -540,12 +543,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L17"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L17"
     },
     "S10": {
       "feature": "policies/attachments.feature",
-      "line": 111,
       "name": "Revoking the policy entitlement refuses every attachment operation",
+      "line": 111,
       "partition": "core",
       "stepCount": 26,
       "tags": [
@@ -561,12 +564,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L111"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L111"
     },
     "S11": {
       "feature": "policies/attachments.feature",
-      "line": 133,
       "name": "Missing, malformed and mismatched attachment parents are refused",
+      "line": 133,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -581,12 +584,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L133"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L133"
     },
     "S12": {
       "feature": "policies/attachments.feature",
-      "line": 237,
       "name": "Preview counts all matching targets and returns current target labels",
+      "line": 237,
       "partition": "core",
       "stepCount": 17,
       "tags": [
@@ -597,12 +600,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L237"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L237"
     },
     "S13": {
       "feature": "policies/attachments.feature",
-      "line": 294,
       "name": "Explicit attachment persists once with distinct policy and attachment IDs",
+      "line": 294,
       "partition": "core",
       "stepCount": 44,
       "tags": [
@@ -616,12 +619,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L294"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L294"
     },
     "S14": {
       "feature": "policies/check.feature",
-      "line": 25,
       "name": "Both replicas compile the default V1 and explicit V0 policy dialects",
+      "line": 25,
       "partition": "core",
       "stepCount": 10,
       "tags": [
@@ -631,12 +634,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L25"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/check.feature#L25"
     },
     "S15": {
       "feature": "policies/check.feature",
-      "line": 45,
       "name": "Switching off expressions refuses policy checking",
+      "line": 45,
       "partition": "core",
       "stepCount": 5,
       "tags": [
@@ -646,12 +649,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L45"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/check.feature#L45"
     },
     "S16": {
       "feature": "policies/check.feature",
-      "line": 53,
       "name": "Missing credentials and unknown dialects refuse checks",
+      "line": 53,
       "partition": "core",
       "stepCount": 6,
       "tags": [
@@ -661,12 +664,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L53"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/check.feature#L53"
     },
     "S17": {
       "feature": "policies/contract.feature",
-      "line": 10,
       "name": "Both replicas publish a complete schema through the ordinary account controls",
+      "line": 10,
       "partition": "core",
       "stepCount": 11,
       "tags": [
@@ -675,12 +678,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L10"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/contract.feature#L10"
     },
     "S18": {
       "feature": "policies/contract.feature",
-      "line": 24,
       "name": "The installation's policies switch refuses contract reads",
+      "line": 24,
       "partition": "core",
       "stepCount": 7,
       "tags": [
@@ -689,12 +692,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L24"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/contract.feature#L24"
     },
     "S19": {
       "feature": "policies/contract.feature",
-      "line": 34,
       "name": "Missing credentials and the database-backed caller switch refuse schema reads",
+      "line": 34,
       "partition": "core",
       "stepCount": 8,
       "tags": [
@@ -703,12 +706,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L34"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/contract.feature#L34"
     },
     "S20": {
       "feature": "policies/runtime.feature",
-      "line": 8,
       "name": "Both replicas report the OPA version actually linked from this build",
+      "line": 8,
       "partition": "core",
       "stepCount": 10,
       "tags": [
@@ -717,12 +720,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L8"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/runtime.feature#L8"
     },
     "S21": {
       "feature": "policies/runtime.feature",
-      "line": 21,
       "name": "Switching off policies refuses runtime metadata reads",
+      "line": 21,
       "partition": "core",
       "stepCount": 7,
       "tags": [
@@ -731,12 +734,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L21"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/runtime.feature#L21"
     },
     "S22": {
       "feature": "policies/runtime.feature",
-      "line": 31,
       "name": "Missing credentials and a disabled caller refuse runtime metadata",
+      "line": 31,
       "partition": "core",
       "stepCount": 7,
       "tags": [
@@ -745,12 +748,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L31"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/runtime.feature#L31"
     },
     "S23": {
       "feature": "policies/approval.feature",
-      "line": 30,
       "name": "An authorized queued review evaluates the real policy and releases the run",
+      "line": 30,
       "partition": "integrations",
       "stepCount": 24,
       "tags": [
@@ -761,12 +764,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L30"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/approval.feature#L30"
     },
     "S24": {
       "feature": "policies/approval.feature",
-      "line": 41,
       "name": "A stack reader cannot supply a review",
+      "line": 41,
       "partition": "integrations",
       "stepCount": 21,
       "tags": [
@@ -777,12 +780,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L41"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/approval.feature#L41"
     },
     "S25": {
       "feature": "policies/approval.feature",
-      "line": 49,
       "name": "Unknown runs and runs outside review states refuse a review",
+      "line": 49,
       "partition": "integrations",
       "stepCount": 22,
       "tags": [
@@ -793,12 +796,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L49"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/approval.feature#L49"
     },
     "S26": {
       "feature": "expressions/editor.feature",
-      "line": 17,
       "name": "A template is checked, completed and evaluated against a stack's environment, its secret masked",
+      "line": 17,
       "partition": "core",
       "stepCount": 27,
       "tags": [
@@ -809,12 +812,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L17"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/expressions/editor.feature#L17"
     },
     "S27": {
       "feature": "expressions/editor.feature",
-      "line": 88,
       "name": "With expressions switched off for the installation, each operation answers 403",
+      "line": 88,
       "partition": "core",
       "stepCount": 9,
       "tags": [
@@ -825,12 +828,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L88"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/expressions/editor.feature#L88"
     },
     "S28": {
       "feature": "expressions/editor.feature",
-      "line": 100,
       "name": "A misspelt variable is flagged with its range, and a source, cursor or surface the endpoints cannot use is refused",
+      "line": 100,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -841,12 +844,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L100"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/expressions/editor.feature#L100"
     },
     "S29": {
       "feature": "runs/policy_evidence.feature",
-      "line": 8,
       "name": "Two servers expose historical evidence without leaking raw decisions or deleted policy source",
+      "line": 8,
       "partition": "integrations",
       "stepCount": 35,
       "tags": [
@@ -858,12 +861,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/policy_evidence.feature#L8"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/policy_evidence.feature#L8"
     },
     "S30": {
       "feature": "runs/logs.feature",
-      "line": 128,
       "name": "The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs",
+      "line": 163,
       "partition": "integrations",
       "stepCount": 36,
       "tags": [
@@ -876,12 +879,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L128"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/logs.feature#L163"
     },
     "S31": {
       "feature": "runs/queue.feature",
-      "line": 136,
       "name": "A run's priority is read back, its stack answers, and a stack's lists page newest first",
+      "line": 136,
       "partition": "integrations",
       "stepCount": 39,
       "tags": [
@@ -896,12 +899,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L136"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/queue.feature#L136"
     },
     "S32": {
       "feature": "runs/queue.feature",
-      "line": 219,
       "name": "An unknown run, a cancel of a run that ended, a run named on another stack and a malformed search are refused",
+      "line": 219,
       "partition": "integrations",
       "stepCount": 39,
       "tags": [
@@ -918,12 +921,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L219"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/queue.feature#L219"
     },
     "S33": {
       "feature": "stacks/stacks.feature",
-      "line": 223,
       "name": "The runs and tasks of a stack the caller cannot read answer as a stack that does not exist",
+      "line": 223,
       "partition": "core",
       "stepCount": 19,
       "tags": [
@@ -936,12 +939,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L223"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L223"
     },
     "S34": {
       "feature": "stacks/stacks.feature",
-      "line": 198,
       "name": "A stack with no runs lists empty pages of runs and tasks, and finds no run by ID",
+      "line": 198,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -955,12 +958,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L198"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L198"
     },
     "S35": {
       "feature": "stacks/stacks.feature",
-      "line": 242,
       "name": "An altered cursor on a stack's runs or tasks answers 400",
+      "line": 242,
       "partition": "core",
       "stepCount": 12,
       "tags": [
@@ -972,12 +975,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L242"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L242"
     },
     "S36": {
       "feature": "policies/attachments.feature",
-      "line": 334,
       "name": "C9 forced deletion removes the policy and both attachment projections",
+      "line": 334,
       "partition": "core",
       "stepCount": 28,
       "tags": [
@@ -992,12 +995,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L334"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/attachments.feature#L334"
     },
     "S37": {
       "feature": "policies/management.feature",
-      "line": 174,
       "name": "Compilation refusals preserve the stored body and engine",
+      "line": 174,
       "partition": "core",
       "stepCount": 22,
       "tags": [
@@ -1008,12 +1011,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L174"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/policies/management.feature#L174"
     },
     "P1": {
       "feature": "runs/changes.feature",
-      "line": 55,
       "name": "Once the run plans, both reads answer the plan's changes, and the run and its stack its delta",
+      "line": 55,
       "partition": "integrations",
       "stepCount": 68,
       "tags": [
@@ -1028,12 +1031,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/changes.feature#L55"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/changes.feature#L55"
     },
     "P2": {
       "feature": "runs/schedule.feature",
-      "line": 14,
       "name": "A burst of runs on one stack is scheduled by one evaluation, and the stack's state follows its tracked run",
+      "line": 14,
       "partition": "integrations",
       "stepCount": 25,
       "tags": [
@@ -1044,12 +1047,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/schedule.feature#L14"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/schedule.feature#L14"
     },
     "P3": {
       "feature": "runs/queue.feature",
-      "line": 80,
       "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "line": 80,
       "partition": "integrations",
       "stepCount": 22,
       "tags": [
@@ -1059,12 +1062,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L80"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/queue.feature#L80"
     },
     "P4": {
       "feature": "runs/queue.feature",
-      "line": 95,
       "name": "An unknown commit, a disabled stack, a stack with no commit and an unknown field are refused",
+      "line": 95,
       "partition": "integrations",
       "stepCount": 24,
       "tags": [
@@ -1074,12 +1077,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L95"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/queue.feature#L95"
     },
     "P5": {
       "feature": "runs/local_preview.feature",
-      "line": 49,
       "name": "A proposal on an uploaded workspace previews it on the tracked commit, and its worker fetches the archive",
+      "line": 49,
       "partition": "integrations",
       "stepCount": 48,
       "tags": [
@@ -1091,12 +1094,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L49"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/local_preview.feature#L49"
     },
     "P6": {
       "feature": "runs/local_preview.feature",
-      "line": 84,
       "name": "A space reader is refused both calls, and a stack that does not allow local previews refuses everyone",
+      "line": 84,
       "partition": "integrations",
       "stepCount": 33,
       "tags": [
@@ -1108,12 +1111,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L84"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/local_preview.feature#L84"
     },
     "P7": {
       "feature": "runs/local_preview.feature",
-      "line": 104,
       "name": "A declaration outside the bounds, an upload that is not the stack's, was never put or does not exist, and an override of a variable infraweave sets are refused",
+      "line": 104,
       "partition": "integrations",
       "stepCount": 52,
       "tags": [
@@ -1125,12 +1128,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L104"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/local_preview.feature#L104"
     },
     "P8": {
       "feature": "runs/propose_overrides.feature",
-      "line": 46,
       "name": "A proposal's overrides reach its run's specification, sealed where the stack's variable is, and each proposal creates a run",
+      "line": 46,
       "partition": "integrations",
       "stepCount": 52,
       "tags": [
@@ -1140,12 +1143,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L46"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/propose_overrides.feature#L46"
     },
     "P9": {
       "feature": "runs/propose_overrides.feature",
-      "line": 83,
       "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "line": 83,
       "partition": "integrations",
       "stepCount": 31,
       "tags": [
@@ -1155,12 +1158,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L83"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/propose_overrides.feature#L83"
     },
     "P10": {
       "feature": "runs/propose_overrides.feature",
-      "line": 99,
       "name": "An override of a variable infraweave sets, with no name, with = or given twice, an unknown commit and a value left out are refused",
+      "line": 99,
       "partition": "integrations",
       "stepCount": 49,
       "tags": [
@@ -1170,12 +1173,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L99"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/propose_overrides.feature#L99"
     },
     "P11": {
       "feature": "runs/tasks.feature",
-      "line": 40,
       "name": "A task runs on the tracked commit, carries its command to its specification, and each task is a run of its own",
+      "line": 40,
       "partition": "integrations",
       "stepCount": 41,
       "tags": [
@@ -1185,12 +1188,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L40"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/tasks.feature#L40"
     },
     "P12": {
       "feature": "runs/tasks.feature",
-      "line": 67,
       "name": "A space reader is refused, a stack the caller cannot read does not exist, and a tier without tasks refuses them",
+      "line": 67,
       "partition": "integrations",
       "stepCount": 40,
       "tags": [
@@ -1200,12 +1203,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L67"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/tasks.feature#L67"
     },
     "P13": {
       "feature": "runs/tasks.feature",
-      "line": 93,
       "name": "A blank command, an empty one, one holding a NUL byte, a body without a command and a disabled stack are refused",
+      "line": 93,
       "partition": "integrations",
       "stepCount": 33,
       "tags": [
@@ -1215,12 +1218,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L93"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/tasks.feature#L93"
     },
     "P14": {
       "feature": "runs/actions.feature",
-      "line": 33,
       "name": "Retrying an ended run queues a run of its type on its commit, which names the run retried",
+      "line": 33,
       "partition": "integrations",
       "stepCount": 23,
       "tags": [
@@ -1231,12 +1234,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L33"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L33"
     },
     "P15": {
       "feature": "runs/actions.feature",
-      "line": 52,
       "name": "A tracked run's retry needs RUN_RETRY_BLOCKING, which a space reader lacks",
+      "line": 52,
       "partition": "integrations",
       "stepCount": 21,
       "tags": [
@@ -1246,12 +1249,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L52"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L52"
     },
     "P16": {
       "feature": "runs/actions.feature",
-      "line": 69,
       "name": "A run that has not ended, and one that does not exist, are not retried",
+      "line": 69,
       "partition": "integrations",
       "stepCount": 13,
       "tags": [
@@ -1261,12 +1264,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L69"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L69"
     },
     "P17": {
       "feature": "runs/actions.feature",
-      "line": 108,
       "name": "Promoting a proposed run on a newer commit tracks the commit and queues a tracked run on it",
+      "line": 108,
       "partition": "integrations",
       "stepCount": 26,
       "tags": [
@@ -1276,12 +1279,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L108"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L108"
     },
     "P18": {
       "feature": "runs/actions.feature",
-      "line": 130,
       "name": "Promoting needs RUN_PROMOTE, which a space reader lacks",
+      "line": 130,
       "partition": "integrations",
       "stepCount": 20,
       "tags": [
@@ -1291,12 +1294,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L130"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L130"
     },
     "P19": {
       "feature": "runs/actions.feature",
-      "line": 146,
       "name": "A stack that does not allow promotion, and a tracked run, are not promoted",
+      "line": 146,
       "partition": "integrations",
       "stepCount": 22,
       "tags": [
@@ -1306,12 +1309,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L146"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/actions.feature#L146"
     },
     "P20": {
       "feature": "runs/logs.feature",
-      "line": 168,
       "name": "Deleting an ended run's logs answers each state's log as deleted, and a second deletion as done",
+      "line": 203,
       "partition": "integrations",
       "stepCount": 41,
       "tags": [
@@ -1323,12 +1326,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L168"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/logs.feature#L203"
     },
     "P21": {
       "feature": "runs/logs.feature",
-      "line": 187,
       "name": "Deleting a run's logs needs SPACE_ADMIN on the account, which a space admin below it lacks",
+      "line": 222,
       "partition": "integrations",
       "stepCount": 32,
       "tags": [
@@ -1339,12 +1342,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L187"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/logs.feature#L222"
     },
     "P22": {
       "feature": "runs/logs.feature",
-      "line": 197,
       "name": "A run that has not ended keeps its logs, and an unknown run's are not deleted",
+      "line": 232,
       "partition": "integrations",
       "stepCount": 32,
       "tags": [
@@ -1355,12 +1358,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L197"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/logs.feature#L232"
     },
     "P23": {
       "feature": "runs/queue.feature",
-      "line": 191,
       "name": "A run the caller cannot read does not exist, and a reader neither cancels a blocking run nor sets a priority",
+      "line": 191,
       "partition": "integrations",
       "stepCount": 35,
       "tags": [
@@ -1375,12 +1378,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L191"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/queue.feature#L191"
     },
     "P24": {
       "feature": "runs/lifecycle.feature",
-      "line": 185,
       "name": "A stop ends a plan a hook holds, and the run becomes STOPPED",
+      "line": 185,
       "partition": "terraform",
       "stepCount": 21,
       "tags": [
@@ -1393,12 +1396,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/lifecycle.feature#L185"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/lifecycle.feature#L185"
     },
     "P25": {
       "feature": "runs/stop.feature",
-      "line": 77,
       "name": "A space reader stops and kills no run that holds its stack's lock",
+      "line": 77,
       "partition": "terraform",
       "stepCount": 28,
       "tags": [
@@ -1412,12 +1415,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/stop.feature#L77"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/stop.feature#L77"
     },
     "P26": {
       "feature": "runs/stop.feature",
-      "line": 96,
       "name": "A run whose state takes neither, a state the run has left and an unknown run are refused",
+      "line": 96,
       "partition": "terraform",
       "stepCount": 29,
       "tags": [
@@ -1431,12 +1434,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/stop.feature#L96"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/stop.feature#L96"
     },
     "P27": {
       "feature": "runs/lifecycle.feature",
-      "line": 198,
       "name": "A kill ends a plan whose hook ignores the stop, and the run fails with the note \"killed\"",
+      "line": 198,
       "partition": "terraform",
       "stepCount": 23,
       "tags": [
@@ -1449,12 +1452,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/lifecycle.feature#L198"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/lifecycle.feature#L198"
     },
     "P28": {
       "feature": "runs/confirm.feature",
-      "line": 52,
       "name": "Confirming the run that holds the lock assigns it to a worker to apply",
+      "line": 52,
       "partition": "integrations",
       "stepCount": 42,
       "tags": [
@@ -1465,12 +1468,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L52"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/confirm.feature#L52"
     },
     "P29": {
       "feature": "runs/confirm.feature",
-      "line": 103,
       "name": "A space reader neither confirms nor discards the run",
+      "line": 103,
       "partition": "integrations",
       "stepCount": 37,
       "tags": [
@@ -1481,12 +1484,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L103"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/confirm.feature#L103"
     },
     "P30": {
       "feature": "runs/confirm.feature",
-      "line": 132,
       "name": "A run that does not wait for confirmation, a run of another stack, an unknown run and a stack with no blocking run are refused",
+      "line": 132,
       "partition": "integrations",
       "stepCount": 41,
       "tags": [
@@ -1497,12 +1500,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L132"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/confirm.feature#L132"
     },
     "P31": {
       "feature": "runs/replan.feature",
-      "line": 52,
       "name": "A replanned run is claimed with its targets, plans again and waits for confirmation again",
+      "line": 52,
       "partition": "integrations",
       "stepCount": 46,
       "tags": [
@@ -1512,12 +1515,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L52"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/replan.feature#L52"
     },
     "P32": {
       "feature": "runs/replan.feature",
-      "line": 77,
       "name": "A space reader and the run's in-run API token are refused, and a tier without targeted-replan refuses every replan",
+      "line": 77,
       "partition": "integrations",
       "stepCount": 40,
       "tags": [
@@ -1527,12 +1530,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L77"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/replan.feature#L77"
     },
     "P33": {
       "feature": "runs/replan.feature",
-      "line": 96,
       "name": "A run that does not wait, no address, an address that is not one and an unknown run are refused, and a restore that fails fails the run",
+      "line": 96,
       "partition": "integrations",
       "stepCount": 48,
       "tags": [
@@ -1542,12 +1545,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L96"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/replan.feature#L96"
     },
     "P34": {
       "feature": "configuration/stack_elements.feature",
-      "line": 237,
       "name": "Direct, list and search reads share the winning sources and computed run metadata",
+      "line": 237,
       "partition": "core",
       "stepCount": 33,
       "tags": [
@@ -1558,12 +1561,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/configuration/stack_elements.feature#L237"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/configuration/stack_elements.feature#L237"
     },
     "P35": {
       "feature": "configuration/stack_elements.feature",
-      "line": 274,
       "name": "A reader sees the same source view without secrets, changes none and sees no hidden stack",
+      "line": 274,
       "partition": "core",
       "stepCount": 36,
       "tags": [
@@ -1575,12 +1578,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/configuration/stack_elements.feature#L274"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/configuration/stack_elements.feature#L274"
     },
     "P36": {
       "feature": "stacks/stacks.feature",
-      "line": 56,
       "name": "A stack needs a name, a repository, a branch, a free slug and a space the account holds",
+      "line": 56,
       "partition": "core",
       "stepCount": 27,
       "tags": [
@@ -1597,12 +1600,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L56"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L56"
     },
     "P37": {
       "feature": "stacks/search.feature",
-      "line": 77,
       "name": "A search of a field stacks lack, a constraint its field does not take, or an altered cursor is refused",
+      "line": 77,
       "partition": "core",
       "stepCount": 27,
       "tags": [
@@ -1612,12 +1615,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/search.feature#L77"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/search.feature#L77"
     },
     "P38": {
       "feature": "api/updates.feature",
-      "line": 61,
       "name": "On a stack, an If-Match of a version since changed answers 412",
+      "line": 61,
       "partition": "core",
       "stepCount": 18,
       "tags": [
@@ -1630,12 +1633,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/updates.feature#L61"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/api/updates.feature#L61"
     },
     "P39": {
       "feature": "api/updates.feature",
-      "line": 18,
       "name": "On a stack, a PATCH keeps what it leaves out and a PUT resets it",
+      "line": 18,
       "partition": "core",
       "stepCount": 20,
       "tags": [
@@ -1646,12 +1649,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/updates.feature#L18"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/api/updates.feature#L18"
     },
     "P40": {
       "feature": "tiers/features.feature",
-      "line": 28,
       "name": "A switched-off option refuses the requests that set it",
+      "line": 28,
       "partition": "core",
       "stepCount": 4,
       "tags": [
@@ -1660,12 +1663,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/tiers/features.feature#L28"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/tiers/features.feature#L28"
     },
     "P41": {
       "feature": "api/bodies.feature",
-      "line": 16,
       "name": "A body over the bound answers 413 on every surface, and one at the bound is read",
+      "line": 16,
       "partition": "core",
       "stepCount": 11,
       "tags": [
@@ -1674,12 +1677,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/bodies.feature#L16"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/api/bodies.feature#L16"
     },
     "P42": {
       "feature": "stacks/stacks.feature",
-      "line": 99,
       "name": "A space reader reads the stacks of its spaces alone and changes none",
+      "line": 99,
       "partition": "core",
       "stepCount": 40,
       "tags": [
@@ -1697,12 +1700,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L99"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L99"
     },
     "P43": {
       "feature": "vendors/terragrunt.feature",
-      "line": 99,
       "name": "With vendor-terragrunt switched off, every request that sets the Terragrunt member answers 403 naming it",
+      "line": 99,
       "partition": "core",
       "stepCount": 17,
       "tags": [
@@ -1714,12 +1717,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vendors/terragrunt.feature#L99"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/vendors/terragrunt.feature#L99"
     },
     "P44": {
       "feature": "authz/tenancy.feature",
-      "line": 60,
       "name": "Another account's stack answers 404, and each account's slugs are its own",
+      "line": 60,
       "partition": "core",
       "stepCount": 25,
       "tags": [
@@ -1734,12 +1737,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/authz/tenancy.feature#L60"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/authz/tenancy.feature#L60"
     },
     "P45": {
       "feature": "stacks/stacks.feature",
-      "line": 23,
       "name": "An account admin creates, reads, changes, moves, reslugs and deletes a stack",
+      "line": 23,
       "partition": "core",
       "stepCount": 33,
       "tags": [
@@ -1753,12 +1756,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L23"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L23"
     },
     "P46": {
       "feature": "stacks/stacks.feature",
-      "line": 161,
       "name": "Each caller's stars are its own, and an admin disables and enables a stack",
+      "line": 161,
       "partition": "core",
       "stepCount": 17,
       "tags": [
@@ -1770,12 +1773,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L161"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L161"
     },
     "P47": {
       "feature": "authz/live_sessions.feature",
-      "line": 59,
       "name": "A grant committed with no message reaches the member's next request on either replica",
+      "line": 59,
       "partition": "core",
       "stepCount": 24,
       "tags": [
@@ -1785,12 +1788,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/authz/live_sessions.feature#L59"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/authz/live_sessions.feature#L59"
     },
     "P48": {
       "feature": "stacks/stacks.feature",
-      "line": 139,
       "name": "A lock is lifted by its holder or forced by an admin, and refuses every other lock",
+      "line": 139,
       "partition": "core",
       "stepCount": 22,
       "tags": [
@@ -1802,12 +1805,12 @@
         "@postgres"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L139"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L139"
     },
     "P49": {
       "feature": "vcs/sources.feature",
-      "line": 35,
       "name": "A new stack tracks its branch's head, a sync follows a push, and a set pins an earlier commit",
+      "line": 35,
       "partition": "integrations",
       "stepCount": 23,
       "tags": [
@@ -1820,12 +1823,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L35"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/vcs/sources.feature#L35"
     },
     "P50": {
       "feature": "vcs/sources.feature",
-      "line": 52,
       "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "line": 52,
       "partition": "integrations",
       "stepCount": 23,
       "tags": [
@@ -1836,12 +1839,12 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L52"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/vcs/sources.feature#L52"
     },
     "P51": {
       "feature": "vcs/sources.feature",
-      "line": 69,
       "name": "A commit the repository lacks is refused, and a host that does not answer is unavailable",
+      "line": 69,
       "partition": "integrations",
       "stepCount": 17,
       "tags": [
@@ -1852,60 +1855,148 @@
         "@vcs"
       ],
       "result": "passed",
-      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L69"
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/vcs/sources.feature#L69"
     },
     "L1": {
       "feature": "runs/logs.feature",
-      "line": 128,
       "name": "An in-run token cannot read the stack's full run or task projections",
+      "line": 128,
       "partition": "integrations",
       "stepCount": 57,
       "tags": [
-        "@postgres",
+        "@case:denial",
         "@objectstore",
-        "@vcs",
-        "@policy-projection-denial",
+        "@op:stackProposedRuns",
         "@op:stackRun",
         "@op:stackRuns",
-        "@op:stackProposedRuns",
-        "@op:stackTasks",
         "@op:stackRunsInRange",
-        "@case:denial"
+        "@op:stackTasks",
+        "@policy-projection-denial",
+        "@postgres",
+        "@vcs"
       ],
-      "result": "passed-locally-final-CI-outstanding",
-      "source": "test/acceptance/features/runs/logs.feature",
-      "mode": "certified-FIPS-only",
-      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/logs.feature#L128"
+    },
+    "E1": {
+      "feature": "runs/confirm.feature",
+      "name": "Discarding the run named ends it and releases the stack's lock",
+      "line": 71,
+      "partition": "integrations",
+      "stepCount": 36,
+      "tags": [
+        "@case:success",
+        "@op:runDiscard",
+        "@op:runTrigger",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/runs/confirm.feature#L71"
+    },
+    "E2": {
+      "feature": "tiers/features.feature",
+      "name": "With nothing switched off the operation runs",
+      "line": 23,
+      "partition": "core",
+      "stepCount": 2,
+      "tags": [
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/tiers/features.feature#L23"
+    },
+    "E3": {
+      "feature": "tiers/features.feature",
+      "name": "A switched-off capability refuses its operations alone",
+      "line": 15,
+      "partition": "core",
+      "stepCount": 6,
+      "tags": [
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/tiers/features.feature#L15"
+    },
+    "E4": {
+      "feature": "configuration/stack_elements.feature",
+      "name": "The contexts a stack may attach answer no write-only value",
+      "line": 120,
+      "partition": "core",
+      "stepCount": 16,
+      "tags": [
+        "@case:success",
+        "@op:stack",
+        "@op:stackAttachableContexts",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/configuration/stack_elements.feature#L120"
+    },
+    "E5": {
+      "feature": "configuration/stack_elements.feature",
+      "name": "A stack's elements are added, replaced, read and deleted, and go with the stack",
+      "line": 34,
+      "partition": "core",
+      "stepCount": 35,
+      "tags": [
+        "@case:success",
+        "@op:stack",
+        "@op:stackConfigAdd",
+        "@op:stackConfigDelete",
+        "@op:stackConfigElement",
+        "@op:stackConfigSet",
+        "@op:stackDelete",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/configuration/stack_elements.feature#L34"
+    },
+    "L3": {
+      "feature": "runs/logs.feature",
+      "name": "The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs",
+      "line": 163,
+      "partition": "integrations",
+      "stepCount": 42,
+      "tags": [
+        "@case:denial",
+        "@objectstore",
+        "@op:run",
+        "@op:runLogs",
+        "@op:runLogsDownloadURL",
+        "@op:runStack",
+        "@policy-projection-denial",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "real-service-FIPS-passed",
+      "source": "../../test/acceptance/features/runs/logs.feature#L163",
+      "scope": "candidate",
+      "sourceParent": "3ff32129c22db94166780230d3c637f829655401"
+    },
+    "L2": {
+      "feature": "stacks/policy_projection_controls.feature",
+      "name": "Revoking stacks refuses a known projection and preserves its caller's star",
+      "line": 6,
+      "partition": "core",
+      "stepCount": 23,
+      "tags": [
+        "@case:denial",
+        "@op:stack",
+        "@op:starSet",
+        "@policy-projection-denial",
+        "@postgres"
+      ],
+      "result": "real-service-FIPS-passed",
+      "source": "../../test/acceptance/features/stacks/policy_projection_controls.feature#L6",
+      "scope": "candidate",
+      "sourceParent": "3ff32129c22db94166780230d3c637f829655401"
     }
   },
   "requiredOpenEvidence": [
     {
-      "issue": 655,
-      "pr": 717,
-      "state": "corrected-live-lab-rerun-outstanding",
-      "head": "202e61f5f591c5cef0c2ccbcce4a4f5733106f90",
-      "failedLab": 44869808030,
-      "cleanup": "all-required-providers-verified"
-    },
-    {
       "issue": 656,
-      "state": "audit-and-final-head-gates-outstanding"
-    },
-    {
-      "issue": 675,
-      "state": "approved-development-compatibility-passed-local-final-ci-outstanding",
-      "pr": 717,
-      "proof": "docs/implementation/policy-plan-payload-verification.json",
-      "officialReleaseProduction": "unproven"
-    },
-    {
-      "issue": 703,
-      "pr": 716,
-      "state": "prior-proof-ci-passed-and-merged-controlled-negative-passed-locally-final-ci-and-issue-reconciliation-outstanding",
-      "ci": 44867207346,
-      "head": "0d5a50f8b9cc7695229c4979e260b066534c2ff6",
-      "controlledBaselinePR": 717,
-      "controlledBaselineProof": "docs/implementation/runner-isolation-controlled-proof.json"
+      "state": "audit-PR-full-CI-required-before-merge"
     }
   ],
   "projectionOperations": [
@@ -1915,11 +2006,12 @@
       "method": "GET",
       "path": "/api/v1/runs/{runId}",
       "cases": {
-        "success": "P1",
+        "success": "S29",
         "denial": "S30",
         "failure": "S29"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
+      "semanticEvidence": "S29 checks populated historical receipts, flag union, deleted-policy metadata and redaction. Actual gates and owner reset are covered separately by workflow_approval_flags/workflow_plan_flags."
     },
     {
       "operation": "stackRun",
@@ -1927,12 +2019,11 @@
       "method": "GET",
       "path": "/api/v1/stacks/{stackId}/run",
       "cases": {
-        "success": "S34",
+        "success": "S31",
         "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
-      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
       "additionalIsolationCase": "S33"
     },
     {
@@ -1943,10 +2034,9 @@
       "cases": {
         "success": "S34",
         "denial": "L1",
-        "failure": "S34"
+        "failure": "S33"
       },
-      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
-      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
       "additionalIsolationCase": "S33"
     },
     {
@@ -1957,10 +2047,9 @@
       "cases": {
         "success": "S34",
         "denial": "L1",
-        "failure": "S34"
+        "failure": "S33"
       },
-      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
-      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
       "additionalIsolationCase": "S33"
     },
     {
@@ -1971,10 +2060,9 @@
       "cases": {
         "success": "S34",
         "denial": "L1",
-        "failure": "S34"
+        "failure": "S33"
       },
-      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
-      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
       "additionalIsolationCase": "S33"
     },
     {
@@ -1987,8 +2075,7 @@
         "denial": "L1",
         "failure": "S34"
       },
-      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
-      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence.",
       "additionalIsolationCase": "S33"
     },
     {
@@ -1997,11 +2084,11 @@
       "method": "POST",
       "path": "/api/v1/stacks/{stackId}/runs",
       "cases": {
-        "success": "P2",
+        "success": "P5",
         "denial": "P3",
         "failure": "P4"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runProposeLocalWorkspace",
@@ -2013,7 +2100,7 @@
         "denial": "P6",
         "failure": "P7"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "proposeWithOverrides",
@@ -2025,7 +2112,7 @@
         "denial": "P9",
         "failure": "P10"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "taskCreate",
@@ -2037,7 +2124,7 @@
         "denial": "P12",
         "failure": "P13"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runRetry",
@@ -2049,7 +2136,7 @@
         "denial": "P15",
         "failure": "P16"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runPromote",
@@ -2061,7 +2148,7 @@
         "denial": "P18",
         "failure": "P19"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runLogsDelete",
@@ -2073,7 +2160,7 @@
         "denial": "P21",
         "failure": "P22"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runCancel",
@@ -2085,7 +2172,7 @@
         "denial": "P23",
         "failure": "S32"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runStop",
@@ -2097,7 +2184,7 @@
         "denial": "P25",
         "failure": "P26"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runKill",
@@ -2109,7 +2196,7 @@
         "denial": "P25",
         "failure": "P26"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runConfirm",
@@ -2121,7 +2208,7 @@
         "denial": "P29",
         "failure": "P30"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runDiscard",
@@ -2129,11 +2216,11 @@
       "method": "POST",
       "path": "/api/v1/stacks/{stackId}/runs/discard",
       "cases": {
-        "success": "P20",
+        "success": "E1",
         "denial": "P29",
         "failure": "P30"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runTargetedReplan",
@@ -2145,7 +2232,7 @@
         "denial": "P32",
         "failure": "P33"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "runPrioritySet",
@@ -2157,7 +2244,7 @@
         "denial": "P23",
         "failure": "S32"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stacks",
@@ -2165,11 +2252,11 @@
       "method": "GET",
       "path": "/api/v1/stacks",
       "cases": {
-        "success": "P34",
-        "denial": "P35",
+        "success": "E2",
+        "denial": "E3",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "searchStacks",
@@ -2178,10 +2265,10 @@
       "path": "/api/v1/stacks/search",
       "cases": {
         "success": "P34",
-        "denial": "P35",
+        "denial": "E3",
         "failure": "P37"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stack",
@@ -2189,11 +2276,11 @@
       "method": "GET",
       "path": "/api/v1/stacks/{stackId}",
       "cases": {
-        "success": "P38",
-        "denial": "P35",
-        "failure": "P38"
+        "success": "E4",
+        "denial": "L2",
+        "failure": "P35"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Added literal 403 assertion passed with real PostgreSQL/two replicas under certified FIPS; audit PR CI must execute this change before merge."
     },
     {
       "operation": "runStack",
@@ -2202,10 +2289,10 @@
       "path": "/api/v1/runs/{runId}/stack",
       "cases": {
         "success": "P1",
-        "denial": "P23",
+        "denial": "L3",
         "failure": "S32"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Added literal 403 assertion passed with real PostgreSQL/two replicas under certified FIPS; audit PR CI must execute this change before merge."
     },
     {
       "operation": "stackCreate",
@@ -2213,11 +2300,11 @@
       "method": "POST",
       "path": "/api/v1/stacks",
       "cases": {
-        "success": "P39",
+        "success": "E5",
         "denial": "P40",
         "failure": "P41"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackUpdate",
@@ -2229,7 +2316,7 @@
         "denial": "P42",
         "failure": "P38"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackPatch",
@@ -2241,7 +2328,7 @@
         "denial": "P43",
         "failure": "P38"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackDelete",
@@ -2250,10 +2337,10 @@
       "path": "/api/v1/stacks/{stackId}",
       "cases": {
         "success": "P38",
-        "denial": "P44",
+        "denial": "P42",
         "failure": "P38"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackReslug",
@@ -2265,7 +2352,7 @@
         "denial": "P42",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackDisable",
@@ -2277,7 +2364,7 @@
         "denial": "P42",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackEnable",
@@ -2289,7 +2376,7 @@
         "denial": "P42",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackLock",
@@ -2298,10 +2385,10 @@
       "path": "/api/v1/stacks/{stackId}/lock",
       "cases": {
         "success": "P47",
-        "denial": "P44",
+        "denial": "P47",
         "failure": "P48"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackSyncCommit",
@@ -2313,7 +2400,7 @@
         "denial": "P50",
         "failure": "P51"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackSetCurrentCommit",
@@ -2325,7 +2412,7 @@
         "denial": "P50",
         "failure": "P51"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "stackUnlock",
@@ -2337,7 +2424,7 @@
         "denial": "P48",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Executed response assertion paired to this method/path; hidden-object 404 is separate isolation evidence."
     },
     {
       "operation": "starSet",
@@ -2346,10 +2433,10 @@
       "path": "/api/v1/stacks/{stackId}/star",
       "cases": {
         "success": "P46",
-        "denial": "P42",
+        "denial": "L2",
         "failure": "P36"
       },
-      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+      "denialEvidence": "Added literal 403 assertion passed with real PostgreSQL/two replicas under certified FIPS; audit PR CI must execute this change before merge."
     }
   ],
   "typedFixtureInventory": [
@@ -2449,19 +2536,21 @@
   "candidateEvidence": [
     {
       "selector": "@policy-projection-denial",
-      "feature": "test/acceptance/features/runs/logs.feature",
-      "scenario": "An in-run token cannot read the stack's full run or task projections",
-      "status": "local-FIPS-passed-final-CI-outstanding",
-      "literal403Operations": [
-        "stackRun",
-        "stackRuns",
-        "stackProposedRuns",
-        "stackTasks",
-        "stackRunsInRange"
+      "scenarios": 3,
+      "steps": 122,
+      "allStepsPassed": true,
+      "fipsModule": "v1.0.0",
+      "fipsMode": "only",
+      "applicationRuntimeTest": "TestAccRuntimeCryptoMode passed",
+      "sourceParent": "3ff32129c22db94166780230d3c637f829655401",
+      "applicationSourceChanged": false,
+      "reportSHA256": "a99dcff6f3ead7c76117c36b3bcf16983a969d4eb6adc5f2f12e3f75c5416430",
+      "operationsAdded": [
+        "stack",
+        "starSet",
+        "runStack"
       ],
-      "scenarios": 1,
-      "steps": 57,
-      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
+      "existingFiveProjectionDenialsRetained": true
     }
   ],
   "typedFixtureProvenance": [
@@ -2471,8 +2560,8 @@
     }
   ],
   "computedCapabilityStates": {
-    "sourceCI": 44808423418,
-    "cucumberScenarios": 1040,
+    "sourceCI": 44898323446,
+    "cucumberScenarios": 1066,
     "command": "specref parity --product deploy --states --check --list --cucumber <merged-main-reports>",
     "result": "passed",
     "states": {
@@ -2481,68 +2570,43 @@
       "tag:Runs": "partial",
       "tag:Stacks": "partial"
     },
-    "correction": "tag:Infrastructure recorded missing becomes its computed partial state; no tag becomes implemented"
+    "correction": "No state changes: recorded partial equals computed partial; P13b/later owners remain separate."
   },
   "captureReconciliation": {
-    "status": "local-real-worker-FIPS-passed-final-CI-outstanding",
+    "status": "passed-in-exact-main-CI; evidence-class boundaries retained",
     "C291": "full rejection replay in both captured review states",
     "C51": "current-owner flag reset/rejection/cleanup REST subset; sampled input deferred to 662; legacy comparison remains inferred",
     "C46": "cleanup REST subset; historical billing/native SHA assertions retained upstream; reason/label behavior remains inferred",
-    "C48": "management and equivalent captured approval workflow; historical tier/entitled-account assertions retained upstream"
+    "C48": "management and equivalent captured approval workflow; historical tier/entitled-account assertions retained upstream",
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "sourceCI": 44898323446
   },
-  "localCaptureProof": [
-    {
-      "capture": "C291",
-      "scenarios": 2,
-      "steps": 116,
-      "reportSHA256": "33dfea7f02efe391e7c412577e188dfb7baa0ee54afc0f4e697749dfba997e15",
-      "mode": "certified-FIPS-only",
-      "status": "passed-locally-final-CI-outstanding"
-    },
-    {
-      "capture": "C46",
-      "scenarios": 1,
-      "steps": 29,
-      "reportSHA256": "11e1f27fa393931f9db32ef129481c7368dc0833bf2c173e23be2da8a600b283",
-      "mode": "certified-FIPS-only",
-      "status": "passed-locally-final-CI-outstanding"
-    },
-    {
-      "capture": "C48",
-      "scenarios": 2,
-      "steps": 116,
-      "reportSHA256": "bc0224f8a7f8f802ddf0c38d1eecc039e20643e9cedacbb6d887cd5f0ddbb0de",
-      "mode": "certified-FIPS-only",
-      "status": "passed-locally-final-CI-outstanding"
-    },
-    {
-      "capture": "C51",
-      "scenarios": 1,
-      "steps": 39,
-      "reportSHA256": "29d4852698093c49fd20ed4630aae507867bb3239581fde0e0814041ed95197b",
-      "mode": "certified-FIPS-only",
-      "status": "passed-locally-final-CI-outstanding"
-    }
-  ],
   "currentIntegrationBase": {
-    "revision": "f47f54bf2e77b85307c261c42996972ffd8d8479",
-    "policyPR": 715,
-    "policyCI": 44867086361,
-    "liveLab": 44869808030,
-    "liveStatus": "failed",
-    "runnerProofPR": 716,
-    "liveCleanup": "all-required-providers-verified",
-    "labCorrectionsPR": 717,
-    "runnerProofCI": 44867207346,
-    "runnerProofStatus": "passed-and-merged",
-    "liveLabRevision": "e909e739b50646d32aeb754a310272d9648d514a"
+    "revision": "3ff32129c22db94166780230d3c637f829655401",
+    "sourceCI": 44898323446,
+    "realLab": 44934050424,
+    "liveStatus": "success",
+    "previousPassingLab": 44888864345,
+    "previousPassingRevision": "e97dcb191a696b51249b4d2084ecea4a35de4f9e",
+    "priorFailedLabs": [
+      44869808030,
+      44884968027
+    ],
+    "mergedRepairPRs": [
+      717,
+      722,
+      723
+    ]
   },
   "modernPlanCandidateProof": {
     "proof": "docs/implementation/policy-plan-payload-verification.json",
     "scenarios": 48,
     "steps": 1075,
     "fips": "certified/only",
-    "producer": "source-pinned patched-development; no experimental runner execution"
+    "producer": "source-pinned patched-development; no experimental runner execution",
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "sourceCI": 44898323446,
+    "status": "passed-in-exact-main-CI; evidence-class boundaries retained"
   },
   "terraformLabCandidateProof": {
     "proof": "docs/implementation/infraweave-lab-verification.json",
@@ -2551,7 +2615,9 @@
     "fips": "certified/only",
     "ownership": "two independent real Terraform deployments; A cleanup preserves B and shared pins",
     "emptySelection": "fails with verified cleanup",
-    "status": "passed-locally-final-ci-and-native-provider-lab-required"
+    "status": "passed-in-exact-main-CI; evidence-class boundaries retained",
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "sourceCI": 44898323446
   },
   "runReadSnapshotCandidateProof": {
     "proof": "docs/implementation/run-read-snapshot-verification.json",
@@ -2559,6 +2625,1799 @@
     "regression": "30 certified-FIPS/race/shuffle interleavings passed",
     "nativeScenarios": 2,
     "nativeSteps": 170,
-    "status": "passed-locally-final-ci-required"
-  }
+    "status": "passed-in-exact-main-CI; evidence-class boundaries retained",
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "sourceCI": 44898323446
+  },
+  "historicalBaseline": {
+    "sourceRevision": "1120bb8aa7e4c09e5c3468cd876567db13e9e3b9",
+    "sourceCI": {
+      "run": 44808423418,
+      "url": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418",
+      "event": "push",
+      "conclusion": "SUCCESS",
+      "totalCoverage": {
+        "percent": 95.5,
+        "covered": 49560,
+        "statements": 51922
+      },
+      "minimumPackageCoverage": 90,
+      "allRequiredChecksPassed": true
+    },
+    "acceptance": {
+      "scenarios": 1040,
+      "steps": 25407,
+      "partitions": [
+        {
+          "partition": "core",
+          "scenarios": 382,
+          "steps": 5810,
+          "passed": true,
+          "artifactID": 14667220055,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14667220055",
+          "reportPath": "cover-accept-core/cucumber.json",
+          "sha256": "1250c62c963566c37d48c78acee2e0d2b17cc99c36f3d60a849729a24fbd8fe6"
+        },
+        {
+          "partition": "integrations",
+          "scenarios": 356,
+          "steps": 9419,
+          "passed": true,
+          "artifactID": 14665140870,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665140870",
+          "reportPath": "cover-accept-integrations/cucumber.json",
+          "sha256": "02012fe63c917977c340c3663caba11182a55830610f64beb63240c338b66e07"
+        },
+        {
+          "partition": "runs",
+          "scenarios": 82,
+          "steps": 3062,
+          "passed": true,
+          "artifactID": 14665700087,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665700087",
+          "reportPath": "cover-accept-runs/cucumber.json",
+          "sha256": "a798ad1527a3f7c55cce760e4327527edf5bfa92d26cd34d63ca3358b7e89e78"
+        },
+        {
+          "partition": "terraform",
+          "scenarios": 117,
+          "steps": 3704,
+          "passed": true,
+          "artifactID": 14665520117,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665520117",
+          "reportPath": "cover-accept-terraform/cucumber.json",
+          "sha256": "d6f60cd2ece0187e1b730f9ebbe6180e943b7825267d40e9de197b152081c155"
+        },
+        {
+          "partition": "terraform-plans",
+          "scenarios": 41,
+          "steps": 1173,
+          "passed": true,
+          "artifactID": 14663573650,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14663573650",
+          "reportPath": "cover-accept-terraform-plans/cucumber.json",
+          "sha256": "85cc449120711294155da7cb8e73eeeb50fd7d7458260eb9bc54af6fd11be386"
+        },
+        {
+          "partition": "terraform-vcs",
+          "scenarios": 62,
+          "steps": 2239,
+          "passed": true,
+          "artifactID": 14665085875,
+          "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665085875",
+          "reportPath": "cover-accept-terraform-vcs/cucumber.json",
+          "sha256": "79c6ea2eaf4e81070b5ec86c5e6a4256c9faf1972c28422df2b448ea4c5b5c58"
+        }
+      ]
+    }
+  },
+  "operationExecutionProof": [
+    {
+      "operation": "policies",
+      "method": "GET",
+      "path": "/api/v1/policies",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S6",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case. The policy page helper also explicitly requires HTTP 200.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S7",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies?cursor=nope\" through A",
+          "assertionStep": "it answers a 400 problem \"invalid-cursor\"",
+          "status": 400,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyCreatev2",
+      "method": "POST",
+      "path": "/api/v1/policies",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S1",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies\" with '{\"name\":\"Plan guard\",\"type\":\"PLAN\",\"space\":\"acme\",\"labels\":[\"prod\",\"eu\"],\"body\":\"package infraweave\\nwarn contains \\\"review\\\" if { true }\\n\"}' through A",
+          "assertionStep": "it answers 201",
+          "status": 201,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies\" with '{\"name\":\"Must not persist\",\"type\":\"PLAN\",\"body\":\"package infraweave\\n\"}' through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S37",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies\" with '{\"name\":\"Invalid package\",\"type\":\"PLAN\",\"body\":\"package elsewhere\\n\"}' through B",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policy",
+      "method": "GET",
+      "path": "/api/v1/policies/{policyId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S1",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies/{policy}\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "\"GET /api/v1/policies/{policy}\" through A with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "assertionStep": "\"GET /api/v1/policies/{policy}\" through A with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S3",
+          "requestStep": "token \"s\" sends \"GET /api/v1/policies/{policy}\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyUpdatev2",
+      "method": "PUT",
+      "path": "/api/v1/policies/{policyId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S4",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/policies/{policy}\" with '{\"name\":\"Changed\",\"body\":\"package infraweave\\n\"}' if matching the ETag \"first\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/policies/{policy}\" with '{\"name\":\"Must not change\",\"body\":\"package infraweave\\n\"}' through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S4",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/policies/{policy}\" with '{\"name\":\"Stale\",\"body\":\"package infraweave\\n\"}' if matching the ETag \"first\" through B",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyUpdatev2Patch",
+      "method": "PATCH",
+      "path": "/api/v1/policies/{policyId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S5",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/policies/{policy}\" with '{\"name\":\"Patched guard\",\"description\":null,\"labels\":null}' if matching the ETag \"first\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/policies/{policy}\" with '{\"name\":\"Must not change\"}' through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S5",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/policies/{policy}\" with '{\"name\":\"Lost write\"}' if matching the ETag \"first\" through B",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyDelete",
+      "method": "DELETE",
+      "path": "/api/v1/policies/{policyId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S4",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policies/{policy}\" if matching the ETag \"second\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policies/{policy}?force=true\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S4",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policies/{policy}\" if matching the ETag \"first\" through B",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "searchPolicies",
+      "method": "POST",
+      "path": "/api/v1/policies/search",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S6",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case. The policy page helper also explicitly requires HTTP 200.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/search\" with '{}' through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S7",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/search\" with '{\"after\":\"nope\"}' through B",
+          "assertionStep": "it answers a 400 problem \"invalid-cursor\"",
+          "status": 400,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "searchPoliciesSuggestions",
+      "method": "POST",
+      "path": "/api/v1/policies/search/suggestions",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S8",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/search/suggestions\" with '{\"fields\":[\"label\"]}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/search/suggestions\" with '{}' through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S7",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/search/suggestions\" with '{\"predicates\":[{\"field\":\"missing\",\"constraint\":{\"stringEquals\":[\"no\"]}}]}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "searchSpacePolicies",
+      "method": "POST",
+      "path": "/api/v1/space-policies/search",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S8",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case. The policy page helper also explicitly requires HTTP 200.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"POST /api/v1/space-policies/search\" with '{\"space\":\"acme\",\"input\":{}}' through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S7",
+          "requestStep": "token \"h\" sends \"POST /api/v1/space-policies/search\" with '{\"space\":\"nowhere\",\"input\":{}}' through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "searchSpacePoliciesSuggestions",
+      "method": "POST",
+      "path": "/api/v1/space-policies/search/suggestions",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S8",
+          "requestStep": "token \"h\" sends \"POST /api/v1/space-policies/search/suggestions\" with '{\"space\":\"{team}\",\"input\":{\"fields\":[\"label\"]}}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S2",
+          "requestStep": "token \"h\" sends \"POST /api/v1/space-policies/search/suggestions\" with '{\"space\":\"acme\",\"input\":{}}' through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S7",
+          "requestStep": "token \"h\" sends \"POST /api/v1/space-policies/search/suggestions\" with '{\"space\":\"nowhere\",\"input\":{}}' through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "attachablePoliciesInSpace",
+      "method": "GET",
+      "path": "/api/v1/attachable-policies-in-space",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S9",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case. The policy page helper also explicitly requires HTTP 200.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "\"GET /api/v1/attachable-policies-in-space?id=acme\" through A with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "assertionStep": "\"GET /api/v1/attachable-policies-in-space?id=acme\" through A with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"GET /api/v1/attachable-policies-in-space?id=missing\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "autoattachmentForLabels",
+      "method": "GET",
+      "path": "/api/v1/autoattachment-for-labels",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S12",
+          "requestStep": "token \"h\" sends \"GET /api/v1/autoattachment-for-labels?space=acme&labels=ordinary\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "\"GET /api/v1/autoattachment-for-labels?space=acme&labels=autoattach:*\" through B with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "assertionStep": "\"GET /api/v1/autoattachment-for-labels?space=acme&labels=autoattach:*\" through B with token \"h\" eventually answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S12",
+          "requestStep": "token \"h\" sends \"GET /api/v1/autoattachment-for-labels?space=missing&labels=autoattach:*\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyAttachedStack",
+      "method": "GET",
+      "path": "/api/v1/policies/{policyId}/attached-stack",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S13",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies/{policy}/attached-stack?id={attachment}\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies/{policy}/attached-stack?id={attachment}\" through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policies/{policy}/attached-stack?id=invalid\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyDetach",
+      "method": "DELETE",
+      "path": "/api/v1/policy-attachments/{attachmentId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S13",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policy-attachments/{attachment}\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policy-attachments/{attachment}\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/policy-attachments/invalid\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyAttach",
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}/policies/{policyId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S13",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/infra/policies/{policy}\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/infra/policies/{policy}\" through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/missing/policies/{policy}\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackAttachablePolicies",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/attachable-policies",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S9",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case. The policy page helper also explicitly requires HTTP 200.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/attachable-policies\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/missing/attachable-policies\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackPolicyAttachment",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/policy-attachment",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S13",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/policy-attachment?id={attachment}\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S10",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/policy-attachment?id={attachment}\" through B",
+          "assertionStep": "it answers a 403 problem \"feature-not-in-tier\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S11",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/policy-attachment?id=invalid\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyCheck",
+      "method": "POST",
+      "path": "/api/v1/policies/check",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S14",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/check\" with '{\"type\":\"PLAN\",\"body\":\"package infraweave\\nwarn contains \\\"review\\\" if { true }\\n\"}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S15",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/check\" with '{\"type\":\"PLAN\",\"body\":\"package infraweave\\n\"}' through A",
+          "assertionStep": "it answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S16",
+          "requestStep": "token \"h\" sends \"POST /api/v1/policies/check\" with '{\"type\":\"PLAN\",\"engineType\":\"REGO_V2\",\"body\":\"package infraweave\\n\"}' through B",
+          "assertionStep": "it answers a 400 problem \"invalid-request\"",
+          "status": 400,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyContract",
+      "method": "GET",
+      "path": "/.well-known/policy-contract.json",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S17",
+          "requestStep": "token \"h\" sends \"GET /.well-known/policy-contract.json\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S18",
+          "requestStep": "token \"h\" sends \"GET /.well-known/policy-contract.json\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S19",
+          "requestStep": "\"GET /.well-known/policy-contract.json\" through A eventually answers a 503 problem \"api-disabled\"",
+          "assertionStep": "\"GET /.well-known/policy-contract.json\" through A eventually answers a 503 problem \"api-disabled\"",
+          "status": 503,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "policyRuntime",
+      "method": "GET",
+      "path": "/api/v1/policy-runtime",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S20",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policy-runtime\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S21",
+          "requestStep": "token \"h\" sends \"GET /api/v1/policy-runtime\" through A",
+          "assertionStep": "it answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S22",
+          "requestStep": "\"GET /api/v1/policy-runtime\" through A eventually answers a 503 problem \"api-disabled\"",
+          "assertionStep": "\"GET /api/v1/policy-runtime\" through A eventually answers a 503 problem \"api-disabled\"",
+          "status": 503,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runReview",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/review",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S23",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/review\" with '{\"run\":\"{run}\",\"decision\":\"APPROVE\",\"note\":\"Queued review\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S24",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/review\" with '{\"run\":\"{run}\",\"decision\":\"APPROVE\"}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S25",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/review\" with '{\"run\":\"01ARZ3NDEKTSV4RRFFQ69G5FAV\",\"decision\":\"APPROVE\"}' through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "expressionCheck",
+      "method": "POST",
+      "path": "/api/v1/expressions/check",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S26",
+          "requestStep": "token \"h\" sends \"POST /api/v1/expressions/check\" with '{\"surface\":\"environment\",\"ref\":\"infra\",\"form\":\"template\",\"source\":\"https://${{ env.REGION }}/${{ stack.id }}\"}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S27",
+          "requestStep": "token \"h\" sends \"POST /api/v1/expressions/check\" with '{\"surface\":\"environment\",\"ref\":\"infra\",\"form\":\"expression\",\"source\":\"1\"}' through A",
+          "assertionStep": "it answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S28",
+          "requestStep": "token \"h\" sends \"POST /api/v1/expressions/check\" with '{\"surface\":\"nowhere\",\"ref\":\"infra\",\"form\":\"template\",\"source\":\"x\"}' through B",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "run",
+      "method": "GET",
+      "path": "/api/v1/runs/{runId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P1",
+          "requestStep": "token \"h\" sends \"GET /api/v1/runs/{run}\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "S30",
+          "requestStep": "token \"it\" sends \"GET /api/v1/runs/{run}\" through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S29",
+          "requestStep": "token \"m\" sends \"GET /api/v1/runs/{run}\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackRun",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/run",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S31",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/run?id={first}\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L1",
+          "requestStep": "token \"it\" sends \"GET /api/v1/stacks/infra/run?id={run}\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/infra/run?id=01JBQ6Q4V2ZK5Y3W8N7M6P5R4T\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackRuns",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/runs",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/infra/runs\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L1",
+          "requestStep": "token \"it\" sends \"GET /api/v1/stacks/infra/runs\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S33",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/other/runs\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackProposedRuns",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/proposed-runs",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/infra/proposed-runs?limit=5\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L1",
+          "requestStep": "token \"it\" sends \"GET /api/v1/stacks/infra/proposed-runs\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S33",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/other/proposed-runs\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackTasks",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/tasks",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/infra/tasks\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L1",
+          "requestStep": "token \"it\" sends \"GET /api/v1/stacks/infra/tasks\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S33",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/other/tasks\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackRunsInRange",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/runs-in-range",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700691200\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L1",
+          "requestStep": "token \"it\" sends \"GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700000001\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S34",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/infra/runs-in-range?start=yesterday&end=1700691200\" through B",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runTrigger",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P5",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs\" with '{\"runType\":\"PROPOSED\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P3",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs\" with '{}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P4",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs\" with '{\"commitSha\":\"0123456789abcdef0123456789abcdef01234567\"}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runProposeLocalWorkspace",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/propose-local-workspace",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P5",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/propose-local-workspace\" with '{\"workspace\":\"{upload}\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P6",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/propose-local-workspace\" with '{\"workspace\":\"{upload}\"}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P7",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/propose-local-workspace\" with '{\"environmentVarsOverrides\":[{\"key\":\"TF_VAR_infraweave_api_endpoint\",\"value\":\"forged\"}],\"workspace\":\"01HZX4Y9Q2W8E5R7T3V6K1M0PA\"}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "proposeWithOverrides",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/proposed-runs",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P8",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/proposed-runs\" with '{\"environmentVarsOverrides\":[{\"key\":\"REGION\",\"value\":\"us\"},{\"key\":\"TOKEN\",\"value\":\"t0psecret\"},{\"key\":\"EXTRA\",\"value\":\"pl41n-extra\"}]}' through A",
+          "assertionStep": "it answers 201",
+          "status": 201,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P9",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/proposed-runs\" with '{\"environmentVarsOverrides\":[{\"key\":\"REGION\",\"value\":\"us\"}]}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P10",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/proposed-runs\" with '{\"environmentVarsOverrides\":[{\"key\":\"TF_VAR_infraweave_api_endpoint\",\"value\":\"forged\"}]}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "taskCreate",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/tasks",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P11",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/tasks\" with '{\"command\":\"terraform output -json\",\"skipInitialization\":true}' through A",
+          "assertionStep": "it answers 201",
+          "status": 201,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P12",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/tasks\" with '{\"command\":\"terraform output\"}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P13",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/tasks\" with '{\"command\":\"   \"}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runRetry",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/retry",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P14",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/retry\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P15",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{tracked}/retry\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P16",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/retry\" through B",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runPromote",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/promote",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P17",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/promote\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P18",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/promote\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P19",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/promote\" through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runLogsDelete",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/logs-delete",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P20",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/logs-delete\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P21",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{run}/logs-delete\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P22",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/logs-delete\" through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runCancel",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/cancel",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P14",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{proposal}/cancel\" with '{}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P23",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{run}/cancel\" with '{}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S32",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/hidden/runs/{run}/cancel\" with '{}' through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runStop",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/stop",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P24",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/stop\" with '{\"note\":\"Stopping run\"}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P25",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{run}/stop\" with '{}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P26",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/parked/runs/{run}/stop\" with '{}' through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runKill",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/kill",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P27",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/kill\" with '{\"state\":\"PLANNING\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P25",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{run}/kill\" with '{}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P26",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/parked/runs/{run}/kill\" with '{}' through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runConfirm",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/confirm",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P28",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/confirm\" with '{\"note\":\"Looks good\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P29",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/confirm\" with '{}' through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P30",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/confirm\" with '{}' through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runDiscard",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/discard",
+      "assertions": {
+        "success": {
+          "scenarioKey": "E1",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/discard\" with '{\"run\":\"{run}\",\"note\":\"Not this one\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P29",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/discard\" with '{\"run\":\"{run}\"}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P30",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/discard\" with '{\"run\":\"{run}\"}' through B",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runTargetedReplan",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/targeted-replan",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P31",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/targeted-replan\" with '{\"targets\":[\"terraform_data.this\",\"module.app[\\\"a\\\"].aws_instance.web[0]\"]}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P32",
+          "requestStep": "token \"it\" sends \"POST /api/v1/stacks/infra/runs/{run}/targeted-replan\" with '{\"targets\":[\"terraform_data.this\"]}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P33",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/targeted-replan\" with '{\"targets\":[\"terraform_data.this\"]}' through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runPrioritySet",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/priority-set",
+      "assertions": {
+        "success": {
+          "scenarioKey": "S31",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{second}/priority-set\" with '{\"preset\":\"high\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P23",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/runs/{run}/priority-set\" with '{\"preset\":\"low\"}' through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "S32",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/runs/{run}/priority-set\" with '{\"preset\":\"high\"}' through A",
+          "assertionStep": "it answers a 409 problem \"invalid-state\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stacks",
+      "method": "GET",
+      "path": "/api/v1/stacks",
+      "assertions": {
+        "success": {
+          "scenarioKey": "E2",
+          "requestStep": "\"GET /api/v1/stacks\" on the API listener answers 200",
+          "assertionStep": "\"GET /api/v1/stacks\" on the API listener answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "E3",
+          "requestStep": "\"GET /api/v1/stacks\" on the API listener answers a 403 problem \"feature-disabled\"",
+          "assertionStep": "\"GET /api/v1/stacks\" on the API listener answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks?cursor=nope\" through B",
+          "assertionStep": "it answers a 400 problem \"invalid-cursor\"",
+          "status": 400,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "searchStacks",
+      "method": "POST",
+      "path": "/api/v1/stacks/search",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P34",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "E3",
+          "requestStep": "\"POST /api/v1/stacks/search\" on the API listener answers a 403 problem \"feature-disabled\"",
+          "assertionStep": "\"POST /api/v1/stacks/search\" on the API listener answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P37",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/search\" with '{\"predicates\":[{\"field\":\"owner\",\"constraint\":{\"stringEquals\":[\"x\"]}}]}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stack",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "E4",
+          "requestStep": "token \"h\" sends \"GET /api/v1/stacks/hidden\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L2",
+          "status": 403,
+          "classification": "local real-service FIPS; added test assertions, application source identical to tested main"
+        },
+        "failure": {
+          "scenarioKey": "P35",
+          "requestStep": "token \"m\" sends \"GET /api/v1/stacks/hidden\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "runStack",
+      "method": "GET",
+      "path": "/api/v1/runs/{runId}/stack",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P1",
+          "requestStep": "token \"h\" sends \"GET /api/v1/runs/{run}/stack\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L3",
+          "status": 403,
+          "classification": "local real-service FIPS; added test assertions, application source identical to tested main"
+        },
+        "failure": {
+          "scenarioKey": "S32",
+          "requestStep": "token \"h\" sends \"GET /api/v1/runs/nope/stack\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackCreate",
+      "method": "POST",
+      "path": "/api/v1/stacks",
+      "assertions": {
+        "success": {
+          "scenarioKey": "E5",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks\" with '{\"input\":{\"provider\":\"GIT\",\"name\":\"Infra\",\"repository\":\"infra\",\"branch\":\"main\",\"space\":\"legacy\"},\"manageState\":false}' through B",
+          "assertionStep": "it answers 201",
+          "status": 201,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P40",
+          "requestStep": "\"POST /api/v1/stacks\" with '{\"input\":{\"name\":\"Tofu\",\"repository\":\"infra\",\"branch\":\"main\",\"space\":\"legacy\",\"vendorConfig\":{\"opentofu\":{}}},\"manageState\":false}' on the API listener answers a 403 problem \"feature-disabled\"",
+          "assertionStep": "\"POST /api/v1/stacks\" with '{\"input\":{\"name\":\"Tofu\",\"repository\":\"infra\",\"branch\":\"main\",\"space\":\"legacy\",\"vendorConfig\":{\"opentofu\":{}}},\"manageState\":false}' on the API listener answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P41",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks\" with a body of 1048577 bytes through A",
+          "assertionStep": "it answers a 413 problem \"payload-too-large\"",
+          "status": 413,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackUpdate",
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P39",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/infra\" with '{\"provider\":\"GIT\",\"name\":\"Infra\",\"repository\":\"infra\",\"branch\":\"main\",\"space\":\"legacy\",\"description\":null}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P42",
+          "requestStep": "token \"m\" sends \"PUT /api/v1/stacks/infra\" with '{\"provider\":\"GIT\",\"name\":\"Infra\",\"repository\":\"infra\",\"branch\":\"dev\",\"space\":\"legacy\"}' through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P38",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/infra\" with '{\"provider\":\"GIT\",\"name\":\"Infra\",\"repository\":\"infra\",\"branch\":\"main\",\"space\":\"legacy\"}' if matching the ETag \"first\" through B",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackPatch",
+      "method": "PATCH",
+      "path": "/api/v1/stacks/{stackId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P39",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/stacks/infra\" with '{\"branch\":\"dev\"}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P43",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/stacks/infra\" with '{\"vendorConfig\":{\"terraform\":null,\"terragrunt\":{\"useRunAll\":true,\"useSmartSanitization\":false}}}' through B",
+          "assertionStep": "it answers a 403 problem \"feature-disabled\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P38",
+          "requestStep": "token \"h\" sends \"PATCH /api/v1/stacks/infra\" with '{\"branch\":\"main\"}' if matching the ETag \"first\" through A",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackDelete",
+      "method": "DELETE",
+      "path": "/api/v1/stacks/{stackId}",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P38",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/stacks/infra\" if matching the ETag \"second\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P42",
+          "requestStep": "token \"m\" sends \"DELETE /api/v1/stacks/infra\" through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P38",
+          "requestStep": "token \"h\" sends \"DELETE /api/v1/stacks/infra\" if matching the ETag \"first\" through B",
+          "assertionStep": "it answers a 412 problem \"precondition-failed\"",
+          "status": 412,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackReslug",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/reslug",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P45",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/reslug\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P42",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/reslug\" through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/gone/reslug\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackDisable",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/disable",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P46",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/disable\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P42",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/disable\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/gone/disable\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackEnable",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/enable",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P46",
+          "proof": "Passing endpoint-specific response projection assertions in the linked case.",
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P42",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/enable\" through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/gone/enable\" through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackLock",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/lock",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P47",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/lock\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P47",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/lock\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P48",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/lock\" through A",
+          "assertionStep": "it answers a 409 problem \"resource-locked\"",
+          "status": 409,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackSyncCommit",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/sync-commit",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P49",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/sync-commit\" through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P50",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/sync-commit\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P51",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/gone/sync-commit\" through A",
+          "assertionStep": "it answers a 503 problem \"service-unavailable\"",
+          "status": 503,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackSetCurrentCommit",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/set-current-commit",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P49",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/set-current-commit\" with '{\"sha\":\"{seed}\"}' through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P50",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/set-current-commit\" with '{\"sha\":\"{seed}\"}' through B",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P51",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/infra/set-current-commit\" with '{\"sha\":\"0123456789abcdef0123456789abcdef01234567\"}' through A",
+          "assertionStep": "it answers a 422 problem \"validation-failed\"",
+          "status": 422,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "stackUnlock",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/unlock",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P48",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/unlock\" through A",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "P48",
+          "requestStep": "token \"m\" sends \"POST /api/v1/stacks/infra/unlock\" through A",
+          "assertionStep": "it answers a 403 problem \"forbidden\"",
+          "status": 403,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"POST /api/v1/stacks/gone/unlock\" through A",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    },
+    {
+      "operation": "starSet",
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}/star",
+      "assertions": {
+        "success": {
+          "scenarioKey": "P46",
+          "requestStep": "token \"m\" sends \"PUT /api/v1/stacks/infra/star\" with '{\"star\":true}' through B",
+          "assertionStep": "it answers 200",
+          "status": 200,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        },
+        "denial403": {
+          "scenarioKey": "L2",
+          "status": 403,
+          "classification": "local real-service FIPS; added test assertions, application source identical to tested main"
+        },
+        "failure": {
+          "scenarioKey": "P36",
+          "requestStep": "token \"h\" sends \"PUT /api/v1/stacks/gone/star\" with '{\"star\":true}' through B",
+          "assertionStep": "it answers a 404 problem \"not-found\"",
+          "status": 404,
+          "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+        }
+      }
+    }
+  ],
+  "captureExecutionProof": [
+    {
+      "capture": "C291",
+      "scenarios": 2,
+      "steps": 116,
+      "allStepsPassed": true,
+      "reportPath": "cover-accept-core/capture-replays/C291.json",
+      "sha256": "662ebca99459dd3394e849f0607a03a3c28f30c398df2f2c6dbe1e5b8dee963b",
+      "artifactID": 14704903801,
+      "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+    },
+    {
+      "capture": "C46",
+      "scenarios": 1,
+      "steps": 29,
+      "allStepsPassed": true,
+      "reportPath": "cover-accept-core/capture-replays/C46.json",
+      "sha256": "3fb1c782ef1ceb720bbd1fee06590ca22cede0fd2aca9a1cc0135cd92d03773b",
+      "artifactID": 14704903801,
+      "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+    },
+    {
+      "capture": "C48",
+      "scenarios": 2,
+      "steps": 116,
+      "allStepsPassed": true,
+      "reportPath": "cover-accept-core/capture-replays/C48.json",
+      "sha256": "0fe260eac2160f0079bc682a7b5b92a41a7aca190472895e2c08cc32436beb58",
+      "artifactID": 14704903801,
+      "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+    },
+    {
+      "capture": "C51",
+      "scenarios": 1,
+      "steps": 39,
+      "allStepsPassed": true,
+      "reportPath": "cover-accept-core/capture-replays/C51.json",
+      "sha256": "5f9d3a788681cf1f55d5bfa56469ab69faa9b514df9f95aba2d4255fd39b5e0b",
+      "artifactID": 14704903801,
+      "sourceRevision": "3ff32129c22db94166780230d3c637f829655401"
+    }
+  ],
+  "auditChangeScope": "Documentation and explicit response assertions only. Application source equals the exact tested main revision; this audit PR must pass the full unchanged quality gate before merge.",
+  "nativeProviderProof": {
+    "proof": "docs/implementation/policy-native-provider-verification.json",
+    "run": 44934050424,
+    "revision": "3ff32129c22db94166780230d3c637f829655401",
+    "scenarios": 24,
+    "steps": 771,
+    "allFourProvidersPassed": true,
+    "allApplicableCleanupPassed": true,
+    "dataCenterExecuted": false,
+    "attempt": 1
+  },
+  "projectionSemanticEvidence": {
+    "run": "S29 historical fixture explicitly labelled; actual review/report execution in policies/workflow_approval_flags.feature and workflow_plan_flags.feature",
+    "stack": "policies/attachments.feature checks public effective/explicit policy relations and their account/space boundaries",
+    "sharedSnapshot": "TestAccPublicRunReadKeepsOneCommittedSnapshot plus real public Terraform/OpenTofu reports; sourceCI 44898323446",
+    "protocol": "workerRunReport uses worker/run identity, ownership and version fences, not invented account-role 403 checks",
+    "notFullRunProjection": [
+      "searchRuns",
+      "searchRunsSuggestions",
+      "searchStacksSuggestions"
+    ]
+  },
+  "historicalLocalCaptureProof": [
+    {
+      "capture": "C291",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "33dfea7f02efe391e7c412577e188dfb7baa0ee54afc0f4e697749dfba997e15",
+      "mode": "certified-FIPS-only",
+      "historicalStatus": "passed-locally-final-CI-outstanding",
+      "classification": "historical local proof; current exact-main captureExecutionProof is authoritative"
+    },
+    {
+      "capture": "C46",
+      "scenarios": 1,
+      "steps": 29,
+      "reportSHA256": "11e1f27fa393931f9db32ef129481c7368dc0833bf2c173e23be2da8a600b283",
+      "mode": "certified-FIPS-only",
+      "historicalStatus": "passed-locally-final-CI-outstanding",
+      "classification": "historical local proof; current exact-main captureExecutionProof is authoritative"
+    },
+    {
+      "capture": "C48",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "bc0224f8a7f8f802ddf0c38d1eecc039e20643e9cedacbb6d887cd5f0ddbb0de",
+      "mode": "certified-FIPS-only",
+      "historicalStatus": "passed-locally-final-CI-outstanding",
+      "classification": "historical local proof; current exact-main captureExecutionProof is authoritative"
+    },
+    {
+      "capture": "C51",
+      "scenarios": 1,
+      "steps": 39,
+      "reportSHA256": "29d4852698093c49fd20ed4630aae507867bb3239581fde0e0814041ed95197b",
+      "mode": "certified-FIPS-only",
+      "historicalStatus": "passed-locally-final-CI-outstanding",
+      "classification": "historical local proof; current exact-main captureExecutionProof is authoritative"
+    }
+  ]
 }

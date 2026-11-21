@@ -681,7 +681,7 @@
         "phase": "P13",
         "also": "P13b, P25b (Intent project attachments)",
         "state": "partial",
-        "notes": "POL-05/06 serve persisted policy CRUD and merge patch, account and inherited-space searches, explicit/automatic stack attachments and readable projections. P13 also serves the Rego compiler/runtime/typed contract, run review and workflow policy evaluation with committed receipts/flags. The P13 delivery audit retains the real-provider and capture gates. Sampling, simulation, catalogue and page APIs remain P13b; notification routing and Intent integration retain their later phases. The complete tag remains partial."
+        "notes": "POL-05/06 serve persisted policy CRUD and merge patch, account and inherited-space searches, explicit/automatic stack attachments and readable projections. P13 also serves the Rego compiler/runtime/typed contract, run review and workflow policy evaluation with committed receipts/flags. The P13 delivery audit links passing exact-source API/capture/workflow evidence and all four required real providers, with cleanup. Sampling, simulation, catalogue and page APIs remain P13b; notification routing and Intent integration retain their later phases. The complete tag remains partial."
       }
     },
     {

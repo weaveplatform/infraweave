@@ -82,7 +82,7 @@ in the exact snapshot rather than repeated as open work here.
 | #664 | #656 and #663's public simulation operation | Pinned MIT catalogue, all 68 templates/62 upstream test files, six LOGIN exclusions from serving, source digests/notices, public import→create→simulate and searches | #665/#666 |
 | #665 | #658/#662/#663/#664 and existing management/attachments | Ordinary HTTP/SDK page projections after writes, deletion/expiry, counters and authorization; C273 operation mapping | #666 |
 | #666 | #659/#660/#665 | Full P13b operation and isolation matrix, real OPA/Rego/API/worker/blob behavior, generated parity and exact CI; lab rerun when shared execution changes | P13b exit |
-| #675 | #642; verified modern vendor payload shapes | Required real `deferred_action_invocations` JSON plus decrypted upload/mask/exclusion proof remains unresolved; preserve the documented fail-closed guard and accepted earlier projection scope | Separate follow-up completion; its merged partial PR is insufficient |
+| #675 | #642; verified modern vendor payload shapes | The maintainer-approved source-pinned experimental producer and all 48 sanitization cases now pass exact-main CI; actual decrypted uploads/masks/copies retain the explicit provenance in the [delivery audit](policy-p13-delivery.md) | Official-release deferred-action production remains unproven; no experimental runner CLI or new typed policy block |
 | #683 | #646; authentic C48 partial capture and approved inference | Assertion-level observed/deviation/owner mapping and actual implemented REST replay subset, including NOTIFICATION attachment refusal | #656 |
 | #685 | Current bodies, source inventory and native relationships | This ownership/prerequisite audit, exact snapshot, acyclic graph and preserved requirements; documentation checks and required CI | #656 |
 | #687 | CI/test partition capacity; no runtime prerequisite | Split the near-deadline Terraform partition under 0016 while preserving every scenario, coverage artifact and parity input | Required CI and #654's complete matrix |
@@ -163,9 +163,11 @@ Compilation-only or canned evaluator results cannot complete this phase matrix.
   the accepted LOGIN flag, TASK denial and sample/capture retention/privacy
   implementations. C47 legacy comparison and C50/C52/C53's missing upstream
   observations remain evidence questions. Authentic responses stay unchanged.
-- #675 remains open after partial PR #680 merged. Its real deferred-action JSON
-  and positive value/mask/upload acceptance have not passed. Preserve that gap
-  without treating a source declaration or authored document as vendor output.
+- #675's historical partial PR #680 did not complete the producer requirement.
+  The maintainer subsequently approved the source-pinned experimental producer;
+  its actual CLI output and positive decrypted-upload/mask/copy acceptance now
+  pass exact-main CI. [The delivery audit](policy-p13-delivery.md) preserves the
+  official-release limitation, authored negative controls and final quality gate.
 - P14 owns launcher-side initialization/exec; P16 dependency execution; P17
   module-version triggers; P18 notification routing; P25 Intent execution.
   Typed schemas and pure decision tests do not deliver those workflows.
@@ -180,3 +182,7 @@ rules and preserve human additions, completed work and every accepted test.
 Run `make docs-check` and `make sig-check` for this report's changes. The PR must
 pass its required CI. Runtime acceptance remains with the implementation and
 phase-gate owners in the table; this document does not replace those executions.
+
+## Current delivery refresh — 2026-11-21
+
+The dated native-dependency snapshot above remains historical. The [delivery audit](policy-p13-delivery.md) now records main `3ff32129c22db94166780230d3c637f829655401`, full quality run 44898323446 and the successful four-provider lab 44934050424, with exact report hashes and cleanup. Sampling, simulation, catalogue, LOGIN/TASK/server INITIALIZATION and page projections remain with their P13b owners. No historical capture or issue-body hash is rewritten.
