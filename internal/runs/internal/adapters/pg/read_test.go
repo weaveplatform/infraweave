@@ -81,7 +81,7 @@ func (w *world) access() *fakeAccess {
 
 // reader is a read service of w's over a.
 func (w *world) reader(a *fakeAccess) *read.Service {
-	return read.New(read.Deps{Store: w.store, Stacks: w.stacks, Spaces: a, Authz: a})
+	return read.New(read.Deps{DB: w.db, Store: w.store, Stacks: w.stacks, Spaces: a, Authz: a})
 }
 
 // controller is a control service of w's over a.
