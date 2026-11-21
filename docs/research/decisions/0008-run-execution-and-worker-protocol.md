@@ -41,7 +41,8 @@ facts shape the design.
   [run-transitions register](../../data/run-transitions.json) as data: report
   08's T1 to T43
   ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
-  and T44 and T45 below, each with the register's source state, target state and run
+  and T44, T45 and the C52 assignment refusal T46, each with the register's
+  source state, target state and run
   types, and the driver allowed to take it. A pair not in the table is
   refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
   absent from the served enum (decision 0021).
@@ -112,6 +113,7 @@ facts shape the design.
 | Creation | T1 | Every route in [08 section 1](../reference/08-run-lifecycle.md#1-run-types) inserts the run in `QUEUED` in the transaction that creates it |
 | Scheduler | T2, T5 and T6 for dependencies; for a push policy `cancel`, T4 on a queued run, T9 on a ready one and T27 on one awaiting confirmation | The `run.schedule` job, below |
 | Approval policy | T5, T23, T24, T29, and the gates on T2 and T26 | Evaluated on entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW` and on each review ([09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)) |
+| Server INITIALIZATION policy | T46 | The worker claim evaluates the READY run before assignment; C52 fixes the refusal boundary |
 | Worker claim | T7, T30, T33 | The poll claims the run (below) |
 | Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |
 | Server decision after planning | T17, T18 for a plan policy `deny`, T20, T21, T22 | The server evaluates plan policies on the reported plan ([0009](0009-policy-engine-opa.md)) and picks the edge |
@@ -1574,7 +1576,7 @@ Terraform-family opt-out and still seals artifacts. Pool-sealed binary plans
 and workspaces remain usable for apply and are not rewritten by JSON sanitization.
 The 512 MiB artifact upload bound and 0009's 64 MiB policy input bound remain
 separate. A sanitization failure never falls back to uploading raw plan JSON.
-Server INITIALIZATION is P13b before scheduling; launcher initialization and
+Server INITIALIZATION is P13b at READY before worker assignment (C52, T46); launcher initialization and
 its exec capability are P14.
 
 ## Rationale

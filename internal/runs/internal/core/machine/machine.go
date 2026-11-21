@@ -22,6 +22,8 @@ const (
 	DriverScheduler Driver = "scheduler"
 	// DriverApproval is an approval policy's decision.
 	DriverApproval Driver = "approval"
+	// DriverInitialization refuses READY before any worker preparation.
+	DriverInitialization Driver = "initialization"
 	// DriverWorkerClaim is a worker's poll claiming the run.
 	DriverWorkerClaim Driver = "worker-claim"
 	// DriverWorkerReport is a runner's or launcher's report.
@@ -42,7 +44,7 @@ const (
 func Drivers() []Driver {
 	return []Driver{
 		DriverAPI, DriverCreation, DriverScheduler, DriverApproval, DriverWorkerClaim,
-		DriverWorkerReport, DriverDecision, DriverTimers, DriverLiveness,
+		DriverWorkerReport, DriverDecision, DriverTimers, DriverLiveness, DriverInitialization,
 	}
 }
 
@@ -189,7 +191,7 @@ func types(t ...kernel.RunType) []kernel.RunType { return t }
 
 func by(d ...Driver) []Driver { return d }
 
-// edges is the register's T1 to T44, each with its drivers: liveness
+// edges is the register's transitions, each with its drivers: liveness
 // fails a run out of each state a worker holds it in, and a stop is an
 // API action the worker then reports.
 //
@@ -357,4 +359,5 @@ var edges = []Edge{
 	// A test case's own failed apply moves on to its destroy (T39); only
 	// liveness fails it in APPLYING, when no worker is left to destroy.
 	{ID: "T45", From: applying, To: failed, Types: types(test), Drivers: by(DriverLiveness)},
+	{ID: "T46", From: ready, To: failed, Types: all, Drivers: by(DriverInitialization)},
 }

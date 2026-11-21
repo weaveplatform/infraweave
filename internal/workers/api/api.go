@@ -50,6 +50,9 @@ type Claim struct {
 // PREPARING, PREPARING_APPLY or PREPARING_REPLAN, and its state version
 // after the claim.
 type Assignment struct {
+	// Retry requests fresh selection after committing a terminal refusal.
+	// No run was assigned; the current transaction must end first.
+	Retry        bool
 	Run          kernel.ULID
 	State        kernel.RunState
 	StateVersion int64

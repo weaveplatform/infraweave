@@ -44,10 +44,14 @@ func registerTask(sc *godog.ScenarioContext, w *harness.World) {
 		}
 		return nil
 	})
-	sc.Step(`^the TASK answer carries its deprecation notice$`, func() error {
+	sc.Step(`^the (TASK|INITIALIZATION) answer carries its deprecation notice$`, func(kind string) error {
+		document := "task-policy-verification.md"
+		if kind == "INITIALIZATION" {
+			document = "initialization-policy-verification.md"
+		}
 		if w.Last().Header.Get("Deprecation") != "@1795219200" ||
-			!strings.Contains(w.Last().Header.Get("Link"), `task-policy-verification.md#deprecation-notice>; rel="deprecation"`) || w.Last().Header.Get("Sunset") != "" {
-			return fmt.Errorf("%w: TASK answer lacks its dated notice/migration link or invents a shutdown deadline", harness.ErrStep)
+			!strings.Contains(w.Last().Header.Get("Link"), document+`#deprecation-notice>; rel="deprecation"`) || w.Last().Header.Get("Sunset") != "" {
+			return fmt.Errorf("%w: %s answer lacks its dated notice/migration link or invents a shutdown deadline", harness.ErrStep, kind)
 		}
 		return nil
 	})

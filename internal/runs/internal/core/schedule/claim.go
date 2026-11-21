@@ -2,9 +2,13 @@ package schedule
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/machine"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
@@ -22,16 +26,35 @@ type ClaimStore interface {
 	// TakeDrift waits for acct's pool's drift lock and holds it until the
 	// transaction ends.
 	TakeDrift(ctx context.Context, acct kernel.AccountID, pool kernel.ULID) error
-	// Next reads acct's pool's run in one of states with a priority tier
-	// at most last that comes first by tier, then creation, then ID,
-	// among the rows no other transaction locks, and locks its row FOR
-	// UPDATE; false when there is none.
-	Next(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error)
+	// ProbeCandidate reads the next candidate without locking its run. Owner
+	// fences must precede the exact row lock, including after a skipped target.
+	ProbeCandidate(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int, after *ClaimCursor) (lifecycle.Run, bool, error)
+	LockCandidate(ctx context.Context, candidate lifecycle.Run, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error)
+	// CandidateAttempt rolls back all candidate locks when fn answers false
+	// or fails. It retains them on true. fn must make no writes or callbacks.
+	CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error)
 	// Assign writes worker as run's worker.
 	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
 	// Waiting counts the runs in one of states of each private pool, of
 	// every account; a pool with none is absent.
 	Waiting(ctx context.Context, states []kernel.RunState) (map[kernel.ULID]int, error)
+}
+
+// ClaimCursor follows the queue's stable priority/creation/ID ordering.
+type ClaimCursor struct {
+	Tier      int
+	CreatedAt time.Time
+	ID        kernel.ULID
+}
+
+// ClaimFence holds the candidate's space then stack before its run row.
+type ClaimFence interface {
+	HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, error)
+}
+
+// InitializationPolicies records a READY run's decision before assignment.
+type InitializationPolicies interface {
+	Evaluate(context.Context, lifecycle.Run) (policyapi.Evaluation, error)
 }
 
 // The tiers a claim reads, as kernel.RunTier gives them: lastTier is the
@@ -48,13 +71,21 @@ var (
 //
 // ref: decision 0008 § "Claiming runs"
 type Claims struct {
-	store     ClaimStore
-	lifecycle *lifecycle.Lifecycle
+	store          ClaimStore
+	lifecycle      *lifecycle.Lifecycle
+	fence          ClaimFence
+	initialization InitializationPolicies
 }
 
 // NewClaims returns the claims over store and l.
-func NewClaims(store ClaimStore, l *lifecycle.Lifecycle) *Claims {
-	return &Claims{store: store, lifecycle: l}
+func NewClaims(store ClaimStore, l *lifecycle.Lifecycle, fence ClaimFence) *Claims {
+	return &Claims{store: store, lifecycle: l, fence: fence}
+}
+
+// WithInitialization binds the policy owner during domain assembly.
+func (s *Claims) WithInitialization(gate InitializationPolicies) *Claims {
+	s.initialization = gate
+	return s
 }
 
 // Claim moves c's pool's next run to its preparing state for c's worker,
@@ -69,13 +100,20 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	if err != nil || holding {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the read
 	}
-	run, ok, err := s.store.Next(ctx, c.Account, c.Pool, machine.Claimable(), lastTier)
+	last, err := s.allowedTier(ctx, c)
+	if err != nil {
+		return workersapi.Assignment{}, false, err
+	}
+	run, ok, err := s.candidate(ctx, c, last)
 	if err != nil || !ok {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the read
 	}
-	if s.limited(c) && kernel.RunTier(run.Priority, run.Type, run.DriftDetection) >= driftTier {
-		if run, ok, err = s.drift(ctx, c, run); err != nil || !ok {
-			return workersapi.Assignment{}, false, err
+	if run.State == kernel.RunStateReady && s.initialization != nil {
+		refused, err := s.initialize(ctx, run)
+		if err != nil || refused {
+			// A refusal must commit before selecting another stack. The worker
+			// repeats selection in a fresh transaction without becoming busy.
+			return workersapi.Assignment{Retry: refused && err == nil}, false, err
 		}
 	}
 	// Every claimable state has a claim edge for each type the machine
@@ -95,29 +133,85 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 		true, nil
 }
 
+func (s *Claims) initialize(ctx context.Context, run lifecycle.Run) (bool, error) {
+	result, err := s.initialization.Evaluate(ctx, run)
+	if err != nil {
+		return false, err //nolint:wrapcheck // the evaluator names the operational failure
+	}
+	if result.Type != policyapi.Initialization {
+		return false, evidence.ErrReceipt
+	}
+	if !result.HasPolicies && result.Outcome == policyapi.NoPolicies || result.HasPolicies && result.Outcome == policyapi.Allow {
+		return false, nil
+	}
+	denied := 0
+	for _, receipt := range result.Receipts {
+		if receipt.Outcome == policyapi.Deny {
+			denied++
+		}
+	}
+	if !result.HasPolicies || result.Outcome != policyapi.Deny || denied == 0 {
+		return false, evidence.ErrReceipt
+	}
+	noun := "policy"
+	if denied != 1 {
+		noun = "policies"
+	}
+	_, err = s.lifecycle.Transition(ctx, lifecycle.Request{
+		Account: run.Account, Run: run.ID, Version: run.Version, To: kernel.RunStateFailed,
+		Driver: machine.DriverInitialization,
+		Note:   fmt.Sprintf("job assignment failed: denied by %d initialization %s", denied, noun),
+	})
+	return err == nil, err //nolint:wrapcheck // the lifecycle names the refusal transition
+}
+
 // limited reports whether c's pool bounds its drift detection runs.
 func (s *Claims) limited(c workersapi.Claim) bool {
 	return c.DriftLimit != nil && *c.DriftLimit >= 0
 }
 
-// drift is the run c claims when the next is a drift run: run itself while
-// the pool's drift runs on workers are fewer than its limit, otherwise
-// the next run of an earlier tier. The pool's drift claims take turns
-// under its drift lock, so each counts the ones committed before it and
-// two cannot pass a limit of one together.
-func (s *Claims) drift(ctx context.Context, c workersapi.Claim, run lifecycle.Run) (lifecycle.Run, bool, error) {
+// allowedTier takes the pool drift fence before any candidate owner/run lock.
+// High-priority drift remains eligible even when the bounded tiers are full.
+func (s *Claims) allowedTier(ctx context.Context, c workersapi.Claim) (int, error) {
+	if !s.limited(c) {
+		return lastTier, nil
+	}
 	if err := s.store.TakeDrift(ctx, c.Account, c.Pool); err != nil {
-		return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the lock
+		return 0, err //nolint:wrapcheck // the store names the lock
 	}
 	n, err := s.store.Drifting(ctx, c.Account, c.Pool)
 	switch {
 	case err != nil:
-		return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the read
+		return 0, err //nolint:wrapcheck // the store names the read
 	case n < *c.DriftLimit:
-		return run, true, nil
+		return lastTier, nil
 	}
-	//nolint:wrapcheck // the store names the read
-	return s.store.Next(ctx, c.Account, c.Pool, machine.Claimable(), driftTier-1)
+	return driftTier - 1, nil
+}
+
+func (s *Claims) candidate(ctx context.Context, c workersapi.Claim, last int) (lifecycle.Run, bool, error) {
+	var after *ClaimCursor
+	for {
+		probe, found, err := s.store.ProbeCandidate(ctx, c.Account, c.Pool, machine.Claimable(), last, after)
+		if err != nil || !found {
+			return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the read
+		}
+		var run lifecycle.Run
+		held, err := s.store.CandidateAttempt(ctx, func(ctx context.Context) (bool, error) {
+			ok, err := s.fence.HoldClaim(ctx, probe.Account, probe.Stack)
+			if err != nil || !ok {
+				return false, err //nolint:wrapcheck // the owner names the fence
+			}
+			run, ok, err = s.store.LockCandidate(ctx, probe, c.Pool, machine.Claimable(), last)
+			return ok, err //nolint:wrapcheck // the store names revalidation
+		})
+		if err != nil || held {
+			return run, held, err //nolint:wrapcheck // the attempt names rollback/release failures
+		}
+		// The unsuccessful attempt released every owner/run lock. Advancing
+		// cannot introduce a cross-stack lock order or retry a contended row.
+		after = &ClaimCursor{Tier: kernel.RunTier(probe.Priority, probe.Type, probe.DriftDetection), CreatedAt: probe.CreatedAt, ID: probe.ID}
+	}
 }
 
 // Queued counts the runs waiting for a worker of each private pool, as

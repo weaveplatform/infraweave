@@ -43,6 +43,7 @@ type PollResult struct {
 // it to, the run's state version after it, and the run token its launcher
 // and runner carry.
 type Assignment struct {
+	Retry        bool
 	Run          kernel.ULID
 	State        kernel.RunState
 	StateVersion int64
@@ -119,6 +120,17 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		if err != nil {
 			return PollResult{}, err
 		}
+		if a.Retry {
+			if out.Token != nil || len(out.Signals) > 0 || cur.Drained != in.Drained || s.hub.stopped() {
+				return out, nil
+			}
+			select {
+			case <-timer.C:
+				return out, nil
+			default:
+				continue
+			}
+		}
 		if ok {
 			out.Assignment = &a
 		}
@@ -159,8 +171,10 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		return Assignment{}, false, nil
 	}
 	var out *Assignment
+	var retry bool
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		out = nil
+		retry = false
 		cur, _, err := s.store.Worker(ctx, w.ID, true)
 		if err != nil || !cur.idle() {
 			return err //nolint:wrapcheck // the store names the read
@@ -176,6 +190,7 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		}
 		a, ok, err := s.scheduler.Claim(ctx, c)
 		if err != nil || !ok {
+			retry = a.Retry && err == nil
 			return err //nolint:wrapcheck // the runs domain names the claim
 		}
 		if err := s.store.Claimed(ctx, cur.ID); err != nil {
@@ -188,6 +203,9 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		out = &Assignment{Run: a.Run, State: a.State, StateVersion: a.StateVersion, Token: t}
 		return nil
 	})
+	if err == nil && retry {
+		return Assignment{Retry: true}, false, nil
+	}
 	if err != nil || out == nil {
 		return Assignment{}, false, s.unauthenticated(err)
 	}

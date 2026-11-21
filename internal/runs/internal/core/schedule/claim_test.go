@@ -57,11 +57,21 @@ func (s *store) Drifting(_ context.Context, acct kernel.AccountID, pool kernel.U
 
 func (*store) TakeDrift(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
-func (s *store) Next(_ context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
+func (s *store) ProbeCandidate(
+	_ context.Context,
+	acct kernel.AccountID,
+	pool kernel.ULID,
+	states []kernel.RunState,
+	last int,
+	after *schedule.ClaimCursor,
+) (lifecycle.Run, bool, error) {
 	var out []lifecycle.Run
 	for _, r := range s.runs {
+		if after != nil && cmp.Or(cmp.Compare(tier(r), after.Tier), r.CreatedAt.Compare(after.CreatedAt), bytes.Compare(r.ID[:], after.ID[:])) <= 0 {
+			continue
+		}
 		if r.Account == acct && *r.WorkerPool == pool && slices.Contains(states, r.State) &&
-			tier(r) <= last && !s.locked[r.ID] {
+			tier(r) <= last {
 			out = append(out, r)
 		}
 	}
@@ -72,6 +82,18 @@ func (s *store) Next(_ context.Context, acct kernel.AccountID, pool kernel.ULID,
 		return cmp.Or(cmp.Compare(tier(a), tier(b)), a.CreatedAt.Compare(b.CreatedAt),
 			bytes.Compare(a.ID[:], b.ID[:]))
 	}), true, nil
+}
+
+func (s *store) LockCandidate(_ context.Context, r lifecycle.Run, _ kernel.ULID, _ []kernel.RunState, _ int) (lifecycle.Run, bool, error) {
+	return r, !s.locked[r.ID], nil
+}
+
+func (*store) CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error) {
+	return fn(ctx)
+}
+
+func (*store) HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
+	return true, nil
 }
 
 func (s *store) Waiting(_ context.Context, states []kernel.RunState) (map[kernel.ULID]int, error) {
@@ -161,7 +183,7 @@ func TestUnitClaimOrder(t *testing.T) {
 	lowRun := run(proposed, low, false, 0)
 
 	l := lifecycle.New(lifecycle.Deps{Store: s, Stacks: stacks{}, Events: events{}})
-	c := schedule.NewClaims(s, l)
+	c := schedule.NewClaims(s, l, s)
 	one, unlimited := 1, -1
 	claim := func(worker kernel.ULID, limit *int) (kernel.ULID, bool) {
 		t.Helper()

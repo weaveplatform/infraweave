@@ -88,14 +88,27 @@ func (s *Store) TakeDrift(ctx context.Context, acct kernel.AccountID, pool kerne
 	return nil
 }
 
-// Next reads and locks the run of acct's pool a worker takes next. The
-// partial index runs_claimable serves its order.
-func (s *Store) Next(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
+// ProbeCandidate uses runs_claimable's order without acquiring the run lock.
+func (s *Store) ProbeCandidate(
+	ctx context.Context,
+	acct kernel.AccountID,
+	pool kernel.ULID,
+	states []kernel.RunState,
+	last int,
+	after *schedule.ClaimCursor,
+) (lifecycle.Run, bool, error) {
+	var tier *int
+	var at *time.Time
+	var id *kernel.ULID
+	if after != nil {
+		tier, at, id = &after.Tier, &after.CreatedAt, &after.ID
+	}
 	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE account_id = $1 AND worker_pool_id = $2 AND state = ANY($3)
 			AND priority_tier <= $4
+			AND ($5::int IS NULL OR (priority_tier,created_at,id)>($5,$6::timestamptz,$7::uuid))
 		ORDER BY priority_tier, created_at, id
-		LIMIT 1 FOR UPDATE SKIP LOCKED`, acct, pool, names(states), last))
+		LIMIT 1`, acct, pool, names(states), last, tier, at, id))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return lifecycle.Run{}, false, nil
@@ -104,6 +117,53 @@ func (s *Store) Next(ctx context.Context, acct kernel.AccountID, pool kernel.ULI
 			sql.Unavailable(err))
 	}
 	return r, true, nil
+}
+
+// LockCandidate revalidates the exact probed queue entry after owner fencing.
+func (s *Store) LockCandidate(ctx context.Context, candidate lifecycle.Run, pool kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
+	tier := kernel.RunTier(candidate.Priority, candidate.Type, candidate.DriftDetection)
+	r, err := scanRun(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+runColumns+` FROM runs
+		WHERE account_id=$1 AND id=$2 AND stack_id=$3 AND worker_pool_id=$4
+		AND state_version=$5 AND state=$6 AND state=ANY($7) AND priority_tier=$8 AND priority_tier<=$9
+		FOR UPDATE SKIP LOCKED`, candidate.Account, candidate.ID, candidate.Stack, pool,
+		candidate.Version, string(candidate.State), names(states), tier, last))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return lifecycle.Run{}, false, nil
+	}
+	if err != nil {
+		return lifecycle.Run{}, false, fmt.Errorf("runs: lock claim candidate %s: %w", candidate.ID, sql.Unavailable(err))
+	}
+	return r, true, nil
+}
+
+// CandidateAttempt scopes only nonblocking owner locks and row revalidation.
+// A missed candidate must release those locks before trying another stack.
+func (s *Store) CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error) {
+	if !tx.In(ctx) {
+		return false, lifecycle.ErrNoTransaction
+	}
+	q := tx.Q(ctx, s.db)
+	if _, err := q.Exec(ctx, `SAVEPOINT runs_claim_candidate`); err != nil {
+		return false, fmt.Errorf("runs: begin claim candidate: %w", sql.Unavailable(err))
+	}
+	finished := false
+	defer func() {
+		if !finished {
+			_, _ = q.Exec(context.WithoutCancel(ctx), `ROLLBACK TO SAVEPOINT runs_claim_candidate`)
+			_, _ = q.Exec(context.WithoutCancel(ctx), `RELEASE SAVEPOINT runs_claim_candidate`)
+		}
+	}()
+	held, err := fn(ctx)
+	if err != nil || !held {
+		if _, rollback := q.Exec(context.WithoutCancel(ctx), `ROLLBACK TO SAVEPOINT runs_claim_candidate`); rollback != nil {
+			return false, fmt.Errorf("runs: release missed claim candidate: %w", errors.Join(err, sql.Unavailable(rollback)))
+		}
+	}
+	if _, release := q.Exec(context.WithoutCancel(ctx), `RELEASE SAVEPOINT runs_claim_candidate`); release != nil {
+		return false, fmt.Errorf("runs: finish claim candidate: %w", errors.Join(err, sql.Unavailable(release)))
+	}
+	finished = true
+	return held, err
 }
 
 // Assign writes worker as run's worker.

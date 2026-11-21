@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -91,6 +92,17 @@ func (s *Store) HoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM spaces
 		WHERE account_id = $1 AND id = $2 FOR KEY SHARE`, acct, id).Scan(&got)
 	return read(err, "space", id)
+}
+
+// TryHoldSpace skips a space a mutation already owns, in the caller's transaction.
+func (s *Store) TryHoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (bool, error) {
+	var got kernel.ULID
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT id FROM spaces
+		WHERE account_id=$1 AND id=$2 FOR KEY SHARE SKIP LOCKED`, acct, id).Scan(&got)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, read(err, "claim space", id)
 }
 
 // lockSpaces locks acct's spaces ids FOR UPDATE, after the tree, so a

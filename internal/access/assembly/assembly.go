@@ -461,6 +461,9 @@ func (d *Domain) GuardSpaces(g accessapi.SpaceGuard) { d.spaces.Guard(g) }
 // space in its own transaction.
 func (d *Domain) Spaces() accessapi.Spaces { return d.spaces }
 
+// ClaimSpaces supplies nonblocking owner fences for worker assignment.
+func (d *Domain) ClaimSpaces() accessapi.ClaimSpaces { return d.spaces }
+
 // Accounts names each account by its slug to a domain that keeps only its
 // ID.
 func (d *Domain) Accounts() accessapi.Accounts { return accountSlugs{d.store} }
