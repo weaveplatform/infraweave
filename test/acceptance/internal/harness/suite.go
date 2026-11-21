@@ -265,7 +265,7 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			Tags:        tags,
 			Strict:      true,
 			Randomize:   seed,
-			Concurrency: runtime.GOMAXPROCS(0),
+			Concurrency: featureConcurrency(os.Getenv(EnvPartition)),
 		},
 	}.Run()
 	if s.Stress.store() {
@@ -300,6 +300,15 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 	if status != 0 {
 		t.Fatal("acceptance features failed")
 	}
+}
+
+func featureConcurrency(partition string) int {
+	// A provider's scenarios share its ingress port, test repositories and
+	// hook routing. Their teardown must finish before the next owner starts.
+	if partition == "vcs-lab" {
+		return 1
+	}
+	return runtime.GOMAXPROCS(0)
 }
 
 func (s *Suite) initScenario(sc *godog.ScenarioContext) {

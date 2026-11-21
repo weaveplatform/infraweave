@@ -566,7 +566,7 @@ Feature: Repository runs report native checks and deployments
   @vcs-lab @tofu @case:policy-live-exit
   Scenario Outline: Real upstream replacements discard an OpenTofu plan and trigger an isolated target
     Given a live "<provider>" lab integration and stack with plan comments "disabled"
-    And token "h" sends "PATCH /api/v1/stacks/lab" with '{"vendorConfig":{"opentofu":{}}}' through B
+    And token "h" sends "PATCH /api/v1/stacks/lab" with '{"vendorConfig":{"terraform":null,"opentofu":{}}}' through B
     And it answers 200
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Lab target","namespace":"{liveNamespace}","repository":"{liveOther}","branch":"main","provider":"{liveProvider}","space":"acme","vcsIntegrationId":"{liveIntegration}","workerPool":"{pool}","autodeploy":true,"labels":["ghenv:-","glenv:-"],"vendorConfig":{"opentofu":{}}},"manageState":true}' through A
     And it answers 201
