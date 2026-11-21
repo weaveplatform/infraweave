@@ -3,6 +3,7 @@ package harness
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,6 +71,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	}
 	startForward(&a, prefix+"-a")
 	startForward(&b, prefix+"-b")
+	sharedOwnerFailureCleanup(t, &a, &b, root, prefix)
 	if err := pullRunnerImage(ctx, b.cli, previous.Reference); err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +132,85 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 			t.Fatalf("owned container cleanup readback: %v, %v", list.Items, err)
 		}
 	}
+}
+
+func sharedOwnerFailureCleanup(t *testing.T, a, b *Launchers, root, prefix string) {
+	t.Helper()
+	ctx := t.Context()
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	var partial Launchers
+	t.Cleanup(func() { _ = partial.Close(context.WithoutCancel(ctx)) })
+	if err := partial.prepare(canceled, root, t.TempDir()); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled preparation: %v", err)
+	}
+	if err := partial.Close(ctx); err != nil {
+		t.Fatalf("partial preparation cleanup: %v", err)
+	}
+
+	broken := filepath.Join(t.TempDir(), "invalid-executable")
+	if err := os.WriteFile(broken, []byte("invalid executable\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	scenario := prefix + "-failed-start"
+	t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
+	failedTool, startErr := a.RunTool(ctx, ToolRun{Scenario: scenario, Bin: broken, Dir: t.TempDir()})
+	diagnostic := ""
+	if startErr != nil {
+		diagnostic = startErr.Error()
+	} else {
+		// Some runtimes acknowledge start before reporting the exec failure.
+		code, stdout, stderr, err := failedTool.Wait(ctx)
+		if err != nil || code == 0 {
+			t.Fatalf("invalid executable: code=%d stdout=%q stderr=%q err=%v", code, stdout, stderr, err)
+		}
+		diagnostic = stdout + stderr
+	}
+	failed, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+		All: true, Filters: client.Filters{}.Add("label", LabelScenario+"="+scenario),
+	})
+	if err != nil || len(failed.Items) != 1 {
+		t.Fatalf("failed startup must retain one labelled container for teardown: %v, %v", failed.Items, err)
+	}
+	inspect, err := b.cli.ContainerInspect(ctx, failed.Items[0].ID, client.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inspect.Container.State == nil || diagnostic == "" && inspect.Container.State.Error == "" {
+		t.Fatalf("failed startup lost Docker's diagnostic: %v", inspect.Container.State)
+	}
+	if err := a.Remove(context.WithoutCancel(canceled), LabelScenario, scenario); err != nil {
+		t.Fatalf("failed scenario cleanup: %v", err)
+	}
+
+	live, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+		Filters: client.Filters{}.Add("label", LabelScenario+"="+prefix+"-a"),
+	})
+	if err != nil || len(live.Items) != 1 {
+		t.Fatalf("cancellation control needs A's running tool: %v, %v", live.Items, err)
+	}
+	tool := &Tool{cli: a.cli, id: live.Items[0].ID}
+	if _, _, _, err := tool.Wait(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled wait: %v", err)
+	}
+	if err := a.Remove(context.WithoutCancel(canceled), LabelScenario, prefix+"-a"); err != nil {
+		t.Fatalf("canceled scenario cleanup: %v", err)
+	}
+	for _, label := range []string{scenario, prefix + "-a"} {
+		remaining, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+			All: true, Filters: client.Filters{}.Add("label", LabelScenario+"="+label),
+		})
+		if err != nil || len(remaining.Items) != 0 {
+			t.Fatalf("failed/canceled scenario cleanup readback: %v, %v", remaining.Items, err)
+		}
+	}
+	remaining, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+		Filters: client.Filters{}.Add("label", LabelScenario+"="+prefix+"-b"),
+	})
+	if err != nil || len(remaining.Items) != 1 {
+		t.Fatalf("failure cleanup removed B's running tool: %v, %v", remaining.Items, err)
+	}
+	t.Log("Canceled preparation, failed startup and canceled wait cleaned up; B's running container survived.")
 }
 
 func sharedOwnerPlan(t *testing.T, owner *Launchers, scenario string) {
