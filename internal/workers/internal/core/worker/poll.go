@@ -44,6 +44,7 @@ type PollResult struct {
 // and runner carry.
 type Assignment struct {
 	Retry        bool
+	RetryAfter   time.Duration
 	Run          kernel.ULID
 	State        kernel.RunState
 	StateVersion int64
@@ -121,15 +122,17 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 			return PollResult{}, err
 		}
 		if a.Retry {
-			if out.Token != nil || len(out.Signals) > 0 || cur.Drained != in.Drained || s.hub.stopped() {
+			if s.shouldAnswer(out, in) {
 				return out, nil
 			}
-			select {
-			case <-timer.C:
-				return out, nil
-			default:
-				continue
+			again, err := retryPoll(ctx, a.RetryAfter, wake, ended, timer.C)
+			if err != nil {
+				return PollResult{}, err
 			}
+			if !again || s.hub.stopped() {
+				return out, nil
+			}
+			continue
 		}
 		if ok {
 			out.Assignment = &a
@@ -141,8 +144,7 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		if sig != "" {
 			out.Signals = append(out.Signals, string(sig))
 		}
-		if out.Assignment != nil || out.Token != nil || len(out.Signals) > 0 ||
-			cur.Drained != in.Drained || s.hub.stopped() {
+		if s.shouldAnswer(out, in) {
 			return out, nil
 		}
 		select {
@@ -154,6 +156,42 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		case <-ctx.Done():
 			return PollResult{}, ctx.Err() //nolint:wrapcheck // the request ended
 		}
+	}
+}
+
+// shouldAnswer applies the same delivery rules before normal holds and before
+// contention backoff, so a retry cannot hide a renewal, signal or drain change.
+func (s *Service) shouldAnswer(out PollResult, in PollInput) bool {
+	return out.Assignment != nil || out.Token != nil || len(out.Signals) > 0 || out.Drained != in.Drained || s.hub.stopped()
+}
+
+// retryPoll waits outside the claim transaction. The original poll deadline
+// bounds contention retries; a wake may retry sooner, and a superseding poll,
+// cancellation or shutdown can end the wait without selecting another run.
+func retryPoll(ctx context.Context, delay time.Duration, wake, ended <-chan struct{}, hold <-chan time.Time) (bool, error) {
+	next := time.NewTimer(max(0, delay))
+	defer next.Stop()
+	select {
+	case <-next.C:
+	case <-wake:
+	case <-ended:
+		return false, nil
+	case <-hold:
+		return false, nil
+	case <-ctx.Done():
+		return false, ctx.Err() //nolint:wrapcheck // the request ended
+	}
+	// A wake and the deadline may become ready together. An ended poll
+	// takes precedence over another database claim in that case.
+	select {
+	case <-ended:
+		return false, nil
+	case <-hold:
+		return false, nil
+	case <-ctx.Done():
+		return false, ctx.Err() //nolint:wrapcheck // the request ended
+	default:
+		return true, nil
 	}
 }
 
@@ -172,9 +210,11 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 	}
 	var out *Assignment
 	var retry bool
+	var retryAfter time.Duration
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		out = nil
 		retry = false
+		retryAfter = 0
 		cur, _, err := s.store.Worker(ctx, w.ID, true)
 		if err != nil || !cur.idle() {
 			return err //nolint:wrapcheck // the store names the read
@@ -191,6 +231,7 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		a, ok, err := s.scheduler.Claim(ctx, c)
 		if err != nil || !ok {
 			retry = a.Retry && err == nil
+			retryAfter = a.RetryAfter
 			return err //nolint:wrapcheck // the runs domain names the claim
 		}
 		if err := s.store.Claimed(ctx, cur.ID); err != nil {
@@ -204,7 +245,7 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		return nil
 	})
 	if err == nil && retry {
-		return Assignment{Retry: true}, false, nil
+		return Assignment{Retry: true, RetryAfter: retryAfter}, false, nil
 	}
 	if err != nil || out == nil {
 		return Assignment{}, false, s.unauthenticated(err)

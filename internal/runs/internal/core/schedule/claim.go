@@ -76,6 +76,10 @@ var (
 	driftTier = kernel.RunTier(kernel.RunPriorityNormal, kernel.RunTypeTracked, true)
 )
 
+// A skipped owner can be released by a transaction that emits no run event.
+// Only actual contention retries on this bound, outside a pooled connection.
+const contentionRetryDelay = 50 * time.Millisecond
+
 // Claims is the claim of the runs domain's workersapi.Scheduler: a
 // worker's poll claims its pool's next run through it.
 //
@@ -114,9 +118,15 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	if err != nil {
 		return workersapi.Assignment{}, false, err
 	}
-	run, ok, err := s.candidate(ctx, c, last)
-	if err != nil || !ok {
-		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the read
+	run, ok, contended, err := s.candidate(ctx, c, last)
+	if err != nil {
+		return workersapi.Assignment{}, false, err
+	}
+	if !ok {
+		if contended {
+			return workersapi.Assignment{Retry: true, RetryAfter: contentionRetryDelay}, false, nil
+		}
+		return workersapi.Assignment{}, false, nil
 	}
 	if run.State == kernel.RunStateReady && s.initialization != nil {
 		refused, err := s.initialize(ctx, run)
@@ -205,13 +215,14 @@ func (s *Claims) allowedTier(ctx context.Context, c workersapi.Claim) (int, erro
 	return driftTier - 1, nil
 }
 
-func (s *Claims) candidate(ctx context.Context, c workersapi.Claim, last int) (lifecycle.Run, bool, error) {
+func (s *Claims) candidate(ctx context.Context, c workersapi.Claim, last int) (lifecycle.Run, bool, bool, error) {
+	var contended bool
 	var after *ClaimCursor
 	var excluded []kernel.ULID
 	for {
 		probe, found, err := s.store.ProbeCandidate(ctx, c.Account, c.Pool, machine.Claimable(), last, after, excluded)
 		if err != nil || !found {
-			return lifecycle.Run{}, false, err //nolint:wrapcheck // the store names the read
+			return lifecycle.Run{}, false, contended, err //nolint:wrapcheck // the store names the read
 		}
 		var run lifecycle.Run
 		var fenced bool
@@ -226,8 +237,9 @@ func (s *Claims) candidate(ctx context.Context, c workersapi.Claim, last int) (l
 			return ok, err //nolint:wrapcheck // the store names revalidation
 		})
 		if err != nil || held {
-			return run, held, err //nolint:wrapcheck // the attempt names rollback/release failures
+			return run, held, contended, err //nolint:wrapcheck // the attempt names rollback/release failures
 		}
+		contended = true
 		if !fenced {
 			// Never revisit this owner midway through the same selection: its
 			// fence freeing must not let a lower-priority sibling overtake it.
