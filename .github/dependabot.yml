@@ -33,7 +33,7 @@ updates:
   # The cloud labs' Terraform roots, one directory per job and cloud or
   # provider; each PR moves versions.tf and the lock file together.
   - package-ecosystem: "terraform"
-    directories: ["/test/terraform/cloud/*/*", "/test/terraform/vcs/*"]
+    directories: ["/test/terraform/cloud/*/*", "/test/terraform/vcs/*", "/test/terraform/lab/platform"]
     schedule:
       interval: "daily"
     groups:

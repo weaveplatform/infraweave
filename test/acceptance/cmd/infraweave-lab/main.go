@@ -1,4 +1,4 @@
-// Command vcs-lab manages only the scheduled verification lab's resources.
+// Command infraweave-lab manages only the scheduled verification lab's resources.
 package main
 
 import (
@@ -33,7 +33,7 @@ func run() int {
 }
 
 func command() *cobra.Command {
-	root := &cobra.Command{Use: "vcs-lab", Short: "Manage verification-only VCS lab resources", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "infraweave-lab", Short: "Manage verification-only acceptance lab resources", SilenceUsage: true, SilenceErrors: true}
 	var secretFile string
 	setup := &cobra.Command{
 		Use:   "app-setup",
@@ -160,6 +160,14 @@ func command() *cobra.Command {
 		RunE:  func(cmd *cobra.Command, _ []string) error { return vcslab.StopTunnel(cmd.Context(), session) },
 	}
 	stopCommand.Flags().StringVar(&session, "session-directory", "", "Current private tunnel session")
-	root.AddCommand(setup, readiness, restore, install, tunnel, urlCommand, stopCommand)
+	var pkiDirectory string
+	pki := &cobra.Command{Use: "pki", Short: "Create an isolated FIPS-compatible lab TLS fixture", Args: cobra.NoArgs, RunE: func(_ *cobra.Command, _ []string) error {
+		if pkiDirectory == "" {
+			return fmt.Errorf("%w: --directory is required", deps.ErrLab)
+		}
+		return deps.WriteLabPKI(pkiDirectory)
+	}}
+	pki.Flags().StringVar(&pkiDirectory, "directory", "", "New private batch PKI directory")
+	root.AddCommand(setup, readiness, restore, install, tunnel, urlCommand, stopCommand, pki)
 	return root
 }

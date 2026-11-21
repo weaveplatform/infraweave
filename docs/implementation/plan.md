@@ -2044,7 +2044,7 @@ a source credential for its repository.
 8. The VCS lab: Terraform roots under `test/terraform/vcs/` that create
    a repository per run on GitHub, GitLab, Bitbucket Cloud and Azure DevOps,
    a Bitbucket Data Center container the job starts with a licence from its
-   secrets, and the scheduled `vcs-lab.yml` that applies them, runs
+   secrets, and the scheduled `infraweave-lab.yml` that applies them, runs
    `sourcetest` and the `@vcs-lab` scenarios against them, and destroys
    them.
 

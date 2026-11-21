@@ -246,3 +246,23 @@ PR #717 serializes only the real-provider partition and explicitly clears that
 Terraform member. Local race/FIPS regressions and an actual API/OpenTofu worker
 probe pass; the corrected real-provider rerun remains required. P13 remains
 In progress until its delivery gates pass.
+
+
+## Terraform platform batches
+
+The renamed `infraweave-lab` provisions backing services through
+`test/terraform/lab/platform` and runs the existing harness against a verified
+manifest. A local certified-FIPS OPA/worker batch passed 15 scenarios / 561
+steps. Two real Terraform owners overlapped: A's destroy left all three B
+services and shared image references intact; B completed its policy matrix and
+verified cleanup. An actual zero-selection run failed and still destroyed its
+resources. All successful cleanup readbacks found empty Terraform state and no
+owned containers, volumes or networks. Private input files were removed only
+after successful absence verification.
+
+The [proof record](infraweave-lab-verification.json) identifies this as local
+candidate evidence. The added blocking CI job and corrected native-provider
+walkthrough remain required. Application/launcher process lifecycle and the
+GitLab/DC fixture startup helpers retain their existing ownership during the
+remaining migration; the target diagram does not assert completed deployment
+of those parts. P13 stays In progress.

@@ -93,6 +93,11 @@ func newSuite(t *testing.T) *Suite {
 	if s.Stress, err = ParseStress(os.Getenv(EnvStress)); err != nil {
 		t.Fatal(err)
 	}
+	if file := os.Getenv(deps.EnvLabManifest); file != "" {
+		if err := s.Deps.UseLab(t.Context(), file); err != nil {
+			t.Fatal(err)
+		}
+	}
 	s.Deps.Migrate = func(ctx context.Context, dsn string) error {
 		bin, err := Binary(ctx)
 		if err != nil {

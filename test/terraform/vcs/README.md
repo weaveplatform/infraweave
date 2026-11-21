@@ -1,10 +1,12 @@
 # VCS test labs
 
 The repositories that decision 0016's scheduled `vcs-lab` job
-(`.github/workflows/vcs-lab.yml`) runs against, as one Terraform root per
+(`.github/workflows/infraweave-lab.yml`) runs against, as one Terraform root per
 VCS provider. Each run applies its provider's root, runs that provider's
 `TestAcc<Provider>Lab`, then its `@vcs-lab` source, webhook and feedback
-scenarios in that order, and destroys the root, pass or fail. Nothing here
+scenarios in that order, and destroys the root, pass or fail. Each source,
+webhook and feedback batch also provisions and destroys its backing services
+through [the shared Terraform platform root](../lab/README.md). Nothing here
 is part of infraweave or its reference deployments.
 
 | Root | Creates |
@@ -97,7 +99,7 @@ On a trusted local machine, put the existing App ID and PEM key into
 then run:
 
 ```sh
-GOWORK=off go run ./test/acceptance/cmd/vcs-lab app-setup --secret-file /private/local/lab-hook-secret
+GOWORK=off go run ./test/acceptance/cmd/infraweave-lab app-setup --secret-file /private/local/lab-hook-secret
 ```
 
 The requested file must not exist: files and symlinks are refused. It is created

@@ -2540,5 +2540,14 @@
     "steps": 1075,
     "fips": "certified/only",
     "producer": "source-pinned patched-development; no experimental runner execution"
+  },
+  "terraformLabCandidateProof": {
+    "proof": "docs/implementation/infraweave-lab-verification.json",
+    "scenarios": 15,
+    "steps": 561,
+    "fips": "certified/only",
+    "ownership": "two independent real Terraform deployments; A cleanup preserves B and shared pins",
+    "emptySelection": "fails with verified cleanup",
+    "status": "passed-locally-final-ci-and-native-provider-lab-required"
   }
 }

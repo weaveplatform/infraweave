@@ -1,8 +1,8 @@
-// Package main provides the verification-only vcs-lab command.
+// Package main provides the verification-only infraweave-lab command.
 //
 // # Input and output
 //
-// Subcommands validate the dedicated App's setup attestation, write a new
+// Subcommands write batch TLS fixtures, validate the dedicated App's setup attestation, write a new
 // owner-only setup file, restore owned hook journals, and supervise a pinned
 // short-lived tunnel. Operational errors contain no credential values.
 //
