@@ -236,7 +236,7 @@ infraweave/
 │   │   ├── features/              <area>/<topic>.feature, tagged with dependencies and @op:<operationId>
 │   │   ├── internal/harness/      runs the scenarios: World, servers, requests, tenants, partitions, captures
 │   │   ├── internal/vcslab/       verification-only live-provider hook leases, ingress and setup helpers
-│   │   ├── cmd/vcs-lab/           thin lab setup/cleanup command; never linked into product binaries
+│   │   ├── cmd/infraweave-lab/           thin lab setup/cleanup command; never linked into product binaries
 │   │   ├── internal/steps/<area>/ the area's steps; Register adds them to every scenario
 │   │   └── out/<scenario>/        logs and database dump of a failed scenario; CI artefact, not committed
 │   ├── deps/                      the Docker dependencies of every TestAcc test; images.go pins each by digest

@@ -93,6 +93,11 @@ func newSuite(t *testing.T) *Suite {
 	if s.Stress, err = ParseStress(os.Getenv(EnvStress)); err != nil {
 		t.Fatal(err)
 	}
+	if file := os.Getenv(deps.EnvLabManifest); file != "" {
+		if err := s.Deps.UseLab(t.Context(), file); err != nil {
+			t.Fatal(err)
+		}
+	}
 	s.Deps.Migrate = func(ctx context.Context, dsn string) error {
 		bin, err := Binary(ctx)
 		if err != nil {
@@ -265,7 +270,7 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			Tags:        tags,
 			Strict:      true,
 			Randomize:   seed,
-			Concurrency: runtime.GOMAXPROCS(0),
+			Concurrency: featureConcurrency(os.Getenv(EnvPartition)),
 		},
 	}.Run()
 	if s.Stress.store() {
@@ -300,6 +305,15 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 	if status != 0 {
 		t.Fatal("acceptance features failed")
 	}
+}
+
+func featureConcurrency(partition string) int {
+	// A provider's scenarios share its ingress port, test repositories and
+	// hook routing. Their teardown must finish before the next owner starts.
+	if partition == "vcs-lab" {
+		return 1
+	}
+	return runtime.GOMAXPROCS(0)
 }
 
 func (s *Suite) initScenario(sc *godog.ScenarioContext) {

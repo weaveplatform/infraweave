@@ -12,16 +12,19 @@
 // space for the route's decision, StackOf a run's stack, and RunAccess a
 // run's stack, space and whether it plans, applies or performs, for its
 // in-run API token's authentication. Store is its storage port.
+// Standalone run projections read their base rows, related evidence and
+// guards in one serializable transaction; transactional callers retain
+// their existing transaction.
 //
 // # Input and output
 //
-// None of its own: it reaches storage through Store, the stacks domain
-// through stacksapi.Stacks and the access domain through
-// accessapi.Spaces and accessapi.Authorizer.
+// It starts transactions through tx.Beginner, reaches storage through
+// Store, the stacks domain through stacksapi.Stacks and the access domain
+// through accessapi.Spaces and accessapi.Authorizer.
 //
 // # Dependencies
 //
 // It imports accessapi, stacksapi, the domain's lifecycle and machine,
-// internal/kernel and kernel/search. The runs domain's assembly
-// constructs it.
+// internal/kernel, kernel/search, internal/platform/sql and
+// internal/platform/tx. The runs domain's assembly constructs it.
 package read

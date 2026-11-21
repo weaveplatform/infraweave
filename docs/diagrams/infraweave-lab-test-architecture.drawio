@@ -1,0 +1,249 @@
+<mxfile host="localhost">
+  <diagram id="infraweave-lab" name="infraweave-lab test architecture">
+    <mxGraphModel dx="1560" dy="1380" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1560" pageHeight="1380" background="#161823" adaptiveColors="none">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="infraweave-lab · target acceptance test architecture" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=25;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="35" y="20" width="1450" height="40" />
+        </mxCell>
+        <mxCell id="subtitle" value="Terraform deploys the test platform. Acceptance clients exercise real APIs, workers and provider services. Target design · implementation in progress." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="35" y="68" width="1450" height="30" />
+        </mxCell>
+        <mxCell id="inputs-panel" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="25" y="120" width="385" height="1110" />
+        </mxCell>
+        <mxCell id="workflow-panel" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="450" y="120" width="440" height="1110" />
+        </mxCell>
+        <mxCell id="deployment-panel" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="930" y="120" width="605" height="1110" />
+        </mxCell>
+        <mxCell id="inputs-title" value="VERSIONED INPUTS" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=15;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="140" width="340" height="25" />
+        </mxCell>
+        <mxCell id="workflow-title" value="INFRAWEAVE-LAB · BATCH LIFECYCLE" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=15;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="470" y="140" width="400" height="25" />
+        </mxCell>
+        <mxCell id="deployment-title" value="ISOLATED TERRAFORM DEPLOYMENT" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=15;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="950" y="140" width="560" height="25" />
+        </mxCell>
+        <mxCell id="releases" value="&lt;b&gt;Official stable tool releases&lt;/b&gt;&lt;br&gt;Versions and checksums pinned in source" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#252a35;strokeColor=#94a3b8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="200" width="340" height="75" />
+        </mxCell>
+        <mxCell id="image-build" value="&lt;b&gt;Runner image pipeline&lt;/b&gt;&lt;br&gt;Build → execute tool contracts → sign" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="320" width="340" height="75" />
+        </mxCell>
+        <mxCell id="ghcr" value="&lt;b&gt;Public GHCR runner images&lt;/b&gt;&lt;br&gt;Terraform CLI installed&lt;br&gt;OpenTofu, Pulumi and Ansible tools installed&lt;br&gt;Version tags + immutable digest pins" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="440" width="340" height="125" />
+        </mxCell>
+        <mxCell id="application" value="&lt;b&gt;Current infraweave application build&lt;/b&gt;&lt;br&gt;Exact source SHA; covered server,&lt;br&gt;launcher and worker executables" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="660" width="340" height="100" />
+        </mxCell>
+        <mxCell id="secrets" value="&lt;b&gt;Run-owned configuration&lt;/b&gt;&lt;br&gt;Batch identity, credentials and test keys&lt;br&gt;Protected provider secrets where required" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="860" width="340" height="100" />
+        </mxCell>
+        <mxCell id="input-note" value="Tools are baked into the runner images.&lt;br&gt;The application revision under test is a separate build artifact." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="1050" width="340" height="90" />
+        </mxCell>
+        <mxCell id="select" value="&lt;b&gt;1 · Select batch and scenarios&lt;/b&gt;&lt;br&gt;core / policies / vendors / runs / VCS" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="200" width="360" height="75" />
+        </mxCell>
+        <mxCell id="apply" value="&lt;b&gt;2 · Lab Terraform: plan + apply&lt;/b&gt;&lt;br&gt;Reusable modules + batch roots / tfvars&lt;br&gt;Unique state and resource prefix" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="320" width="360" height="95" />
+        </mxCell>
+        <mxCell id="ready" value="&lt;b&gt;3 · Readiness gate&lt;/b&gt;&lt;br&gt;API, database, storage and worker registration" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="460" width="360" height="75" />
+        </mxCell>
+        <mxCell id="tests" value="&lt;b&gt;4 · Run acceptance partition&lt;/b&gt;&lt;br&gt;Public API + native provider events&lt;br&gt;Real OPA / Rego and actual workers" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="580" width="360" height="95" />
+        </mxCell>
+        <mxCell id="collect" value="&lt;b&gt;5 · Collect evidence · always&lt;/b&gt;&lt;br&gt;Executed scenarios, decisions, receipts,&lt;br&gt;logs, revision, image pins and coverage" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="720" width="360" height="95" />
+        </mxCell>
+        <mxCell id="destroy" value="&lt;b&gt;6 · Terraform destroy · always&lt;/b&gt;&lt;br&gt;Same root and state; restore hooks&lt;br&gt;Stop temporary tunnels and processes" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#352b1b;strokeColor=#fbbf24;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="860" width="360" height="95" />
+        </mxCell>
+        <mxCell id="absence" value="&lt;b&gt;7 · Verify absence&lt;/b&gt;&lt;br&gt;No run-owned infrastructure, repositories,&lt;br&gt;hooks, workers or temporary resources" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#352b1b;strokeColor=#fbbf24;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="1000" width="360" height="95" />
+        </mxCell>
+        <mxCell id="gate" value="&lt;b&gt;8 · Acceptance gate&lt;/b&gt;&lt;br&gt;Required cases ran; tests, providers&lt;br&gt;and verified cleanup all passed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#17332b;strokeColor=#34d399;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="490" y="1130" width="360" height="75" />
+        </mxCell>
+        <mxCell id="batch" value="&lt;b&gt;Terraform batch roots&lt;/b&gt;&lt;br&gt;Platform module + scenario/provider fixtures&lt;br&gt;One isolated deployment and state per batch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="965" y="200" width="535" height="95" />
+        </mxCell>
+        <mxCell id="platform-box" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;dashed=0;strokeColor=#475569;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="955" y="335" width="555" height="490" />
+        </mxCell>
+        <mxCell id="platform-title" value="REAL PLATFORM SERVICES" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#cbd5e1;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="980" y="350" width="510" height="25" />
+        </mxCell>
+        <mxCell id="database" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;Actual persistence" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;shape=cylinder3;size=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="980" y="395" width="235" height="75" />
+        </mxCell>
+        <mxCell id="objects" value="&lt;b&gt;Object storage&lt;/b&gt;&lt;br&gt;Sealed state, plans and samples" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;shape=cylinder3;size=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1240" y="395" width="245" height="75" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;infraweave API replicas A / B&lt;/b&gt;&lt;br&gt;Scheduler + persistent work queue&lt;br&gt;Application build from the tested SHA" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="980" y="515" width="505" height="95" />
+        </mxCell>
+        <mxCell id="workers" value="&lt;b&gt;Launchers and worker pools&lt;/b&gt;&lt;br&gt;Use pinned GHCR runner images&lt;br&gt;Terraform CLI already installed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="980" y="655" width="505" height="95" />
+        </mxCell>
+        <mxCell id="worker-note" value="Stack Terraform runs the scenario workload:&lt;br&gt;real plan / apply / state operations and policy decisions." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="980" y="765" width="500" height="45" />
+        </mxCell>
+        <mxCell id="providers" value="&lt;b&gt;Real VCS fixture batches&lt;/b&gt;&lt;br&gt;GitHub · GitLab · Bitbucket Cloud · Azure DevOps&lt;br&gt;Repositories, hooks, checks and comments&lt;br&gt;Bitbucket DC when licensed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#252a35;strokeColor=#94a3b8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="965" y="875" width="535" height="130" />
+        </mxCell>
+        <mxCell id="artifacts" value="&lt;b&gt;Retained evidence artifacts&lt;/b&gt;&lt;br&gt;Nonempty scenario reports + exact revision / pins&lt;br&gt;OPA results, receipts and provider results&lt;br&gt;95% total / 90% package coverage + cleanup readback" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="965" y="1065" width="535" height="140" />
+        </mxCell>
+        <mxCell id="e1" value="" edge="1" parent="1" source="releases" target="image-build" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e2" value="" edge="1" parent="1" source="image-build" target="ghcr" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e3" value="" edge="1" parent="1" source="ghcr" target="apply" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="438" y="503" />
+              <mxPoint x="438" y="368" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="" edge="1" parent="1" source="application" target="apply" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="452" y="710" />
+              <mxPoint x="452" y="368" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="" edge="1" parent="1" source="secrets" target="select" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="424" y="910" />
+              <mxPoint x="424" y="238" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" edge="1" parent="1" source="select" target="apply" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e7" value="" edge="1" parent="1" source="apply" target="ready" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e8" value="" edge="1" parent="1" source="ready" target="tests" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e9" value="" edge="1" parent="1" source="tests" target="collect" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e10" value="" edge="1" parent="1" source="collect" target="destroy" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e11" value="" edge="1" parent="1" source="destroy" target="absence" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e12" value="" edge="1" parent="1" source="absence" target="gate" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e13" value="provision" edge="1" parent="1" source="apply" target="batch" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="902" y="368" />
+              <mxPoint x="902" y="248" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="deploy services" edge="1" parent="1" source="batch" target="platform-box" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="330" />
+              <mxPoint x="1231" y="330" />
+              <mxPoint x="1231" y="486" />
+              <mxPoint x="1233" y="486" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="" edge="1" parent="1" source="batch" target="providers" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="316" />
+              <mxPoint x="950" y="316" />
+              <mxPoint x="950" y="853" />
+              <mxPoint x="1233" y="853" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="" edge="1" parent="1" source="api" target="database" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="499" />
+              <mxPoint x="1098" y="499" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="" edge="1" parent="1" source="api" target="objects" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="493" />
+              <mxPoint x="1363" y="493" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e18" value="worker protocol" edge="1" parent="1" source="workers" target="api" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e19" value="API assertions" edge="1" parent="1" source="tests" target="api" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="563" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" value="native events" edge="1" parent="1" source="tests" target="providers" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="909" y="628" />
+              <mxPoint x="909" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" value="signed webhooks" edge="1" parent="1" source="providers" target="api" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=1;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="839" />
+              <mxPoint x="964" y="839" />
+              <mxPoint x="964" y="563" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e22" value="test evidence" edge="1" parent="1" source="collect" target="artifacts" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="895" y="768" />
+              <mxPoint x="895" y="1135" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e23" value="cleanup proof" edge="1" parent="1" source="absence" target="artifacts" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="1048" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend" value="Solid arrows: workflow, provisioning and artifact flow.    Dashed arrows: network traffic against real services." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="35" y="1270" width="1480" height="25" />
+        </mxCell>
+        <mxCell id="ownership" value="Terraform owns infrastructure lifecycle. Tests own assertions. Every batch uses its own state and resources; cleanup also runs after failures." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="35" y="1305" width="1480" height="25" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

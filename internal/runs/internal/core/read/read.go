@@ -10,6 +10,8 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/sql"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policiesapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/evidence"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -114,6 +116,7 @@ type Store interface {
 
 // Deps are what the reads read through.
 type Deps struct {
+	DB        tx.Beginner
 	Store     Store
 	Stacks    stacksapi.Stacks
 	Spaces    accessapi.Spaces
@@ -177,29 +180,33 @@ type Hit struct {
 // Run reads p's run raw. The route has decided SPACE_READ on its stack's
 // space.
 func (s *Service) Run(ctx context.Context, p kernel.Principal, raw string) (View, error) {
-	r, err := s.get(ctx, p.AccountID, raw)
-	if err != nil {
-		return View{}, err
-	}
-	return s.One(ctx, p, r)
+	return snapshot(ctx, s.d.DB, func(ctx context.Context) (View, error) {
+		r, err := s.get(ctx, p.AccountID, raw)
+		if err != nil {
+			return View{}, err
+		}
+		return s.One(ctx, p, r)
+	})
 }
 
 // StackRun reads p's run raw of stack slug; ErrNotFound when it is
 // another stack's. The route has decided SPACE_READ on the stack's
 // space.
 func (s *Service) StackRun(ctx context.Context, p kernel.Principal, slug, raw string) (View, error) {
-	st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
-	if err != nil {
-		return View{}, err //nolint:wrapcheck // the stacks domain names the read
-	}
-	r, err := s.get(ctx, p.AccountID, raw)
-	if err != nil {
-		return View{}, err
-	}
-	if r.Stack != st.ID {
-		return View{}, fmt.Errorf("%w: %s on %s", ErrNotFound, raw, slug)
-	}
-	return s.One(ctx, p, r)
+	return snapshot(ctx, s.d.DB, func(ctx context.Context) (View, error) {
+		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
+		if err != nil {
+			return View{}, err //nolint:wrapcheck // the stacks domain names the read
+		}
+		r, err := s.get(ctx, p.AccountID, raw)
+		if err != nil {
+			return View{}, err
+		}
+		if r.Stack != st.ID {
+			return View{}, fmt.Errorf("%w: %s on %s", ErrNotFound, raw, slug)
+		}
+		return s.One(ctx, p, r)
+	})
 }
 
 // get reads acct's run raw; ErrNotFound when raw is no run ID.
@@ -269,17 +276,19 @@ func (s *Service) StackOf(ctx context.Context, acct kernel.AccountID, id kernel.
 // StackRuns reads a page of p's stack slug's list l. The route has
 // decided SPACE_READ on the stack's space.
 func (s *Service) StackRuns(ctx context.Context, p kernel.Principal, slug string, l List, q Query) (Page, error) {
-	st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
-	if err != nil {
-		return Page{}, err //nolint:wrapcheck // the stacks domain names the read
-	}
-	runs, err := s.d.Store.List(ctx, p.AccountID, st.ID, l.Types(), q)
-	if err != nil {
-		return Page{}, err //nolint:wrapcheck // the store names the read
-	}
-	more := len(runs) > int(q.Limit)
-	views, err := s.Views(ctx, p, runs[:min(len(runs), int(q.Limit))]...)
-	return Page{Views: views, More: more}, err
+	return snapshot(ctx, s.d.DB, func(ctx context.Context) (Page, error) {
+		st, err := s.d.Stacks.BySlug(ctx, p.AccountID, slug)
+		if err != nil {
+			return Page{}, err //nolint:wrapcheck // the stacks domain names the read
+		}
+		runs, err := s.d.Store.List(ctx, p.AccountID, st.ID, l.Types(), q)
+		if err != nil {
+			return Page{}, err //nolint:wrapcheck // the store names the read
+		}
+		more := len(runs) > int(q.Limit)
+		views, err := s.Views(ctx, p, runs[:min(len(runs), int(q.Limit))]...)
+		return Page{Views: views, More: more}, err
+	})
 }
 
 // Search reads a page of the runs of p's account's stacks in the spaces
@@ -495,4 +504,17 @@ func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action, g Guards) 
 	}
 	add(accessapi.ActionRunComment)
 	return out
+}
+
+// snapshot keeps the base run, its history, policy effects and action guards on
+// one committed database snapshot while workers may finish a report. Joining an
+// existing transaction preserves the caller's own writes for action responses.
+func snapshot[T any](ctx context.Context, db tx.Beginner, read func(context.Context) (T, error)) (T, error) {
+	var out T
+	err := tx.Do(ctx, db, tx.Options{Serializable: true}, func(ctx context.Context) error {
+		var err error
+		out, err = read(ctx)
+		return err
+	})
+	return out, sql.Unavailable(err) //nolint:wrapcheck // preserve owner errors and classify transaction outages
 }

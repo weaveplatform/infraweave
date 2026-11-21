@@ -17,6 +17,7 @@ references and their deletion are superseded by this public-image design.
 
 | Requirement | Executable proof |
 |---|---|
+| Force the old failure at a controlled boundary | A unique private image alias recreates the old shared-tag deletion. Both owners start real tools with it; A removes its container and alias, B's existing tool stays running, and B's next create must return Docker's `No such image`. The same test then repeats the teardown boundary with retained immutable references and requires B's next tool and Terraform plan to succeed. No published/shared reference is removed. |
 | Independent owners overlap against real Docker | `TestAccSharedImageLifecycle` starts A and B with separate clients and running containers, sharing the committed immutable image. |
 | A finishes before B starts its next tool | A's scenario removal and repeated close precede B's next forwarder and actual provider-free Terraform init/plan. Container inspection checks the committed image and read-only tool mount. |
 | Failed and canceled work preserves B | The same test cancels preparation, starts an invalid executable to retain a real failed container and its Docker diagnostic, cancels a wait on A's running tool, and removes A's labelled resources using a live cleanup context. B's running container survives. |
@@ -57,3 +58,12 @@ runtime can acknowledge start before reporting the executable failure. The
 assertion now accepts either start refusal or a nonzero process result, requires
 a retained diagnostic, and verifies teardown against actual Docker state.
 Full CI on the committed final head remains required.
+
+The controlled legacy baseline and repaired comparison subsequently passed
+together in **13.93 seconds** under certified FIPS on the same native ARM64
+daemon. The baseline returned Docker's actual `No such image` at B's next create;
+the repaired path completed Terraform init/plan and verified container cleanup
+and retained shared images. The private baseline alias was absent after removal.
+The [machine-readable candidate proof](runner-isolation-controlled-proof.json)
+records the command, source context and log checksum. This closes the local
+negative-control requirement; final exact-head CI remains required.

@@ -1,0 +1,112 @@
+{
+  "pr": 717,
+  "original_run": "https://github.com/weaveplatform/infraweave/actions/runs/44878879668",
+  "original_job": 136769566535,
+  "original_head": "9f2489e62fac7f36a3ad8f030be8d93dfbc2adaa",
+  "cause": "A standalone public run projection executes its base-row, history and policy-evidence reads under separate READ COMMITTED statements; one worker report commit can therefore produce an old PLANNING state with new UNCONFIRMED history and flags in one response.",
+  "original_evidence": {
+    "run": "01M7YF894GXCJ7KFMM7V5Z7S1D",
+    "old_state": "PLANNING/13",
+    "old_updated_at": "2026-11-21T07:13:48.632120Z",
+    "committed_state": "UNCONFIRMED/14",
+    "committed_at": "2026-11-21T07:13:49.080360Z",
+    "flags_poll_completed_at": "2026-11-21T07:13:49.139160636Z",
+    "state_assertion_seconds": 0.000335675,
+    "directory": "/private/tmp/infraweave-717-plan-failure-evidence-44878879668"
+  },
+  "baseline": {
+    "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off go test -count=1 -run '^TestAccPublicRunReadKeepsOneCommittedSnapshot$' ./internal/runs/internal/adapters/pg",
+    "exit_code": 1,
+    "seconds": 3.033,
+    "failed_interleavings": 6,
+    "log": "/private/tmp/infraweave-717-read-snapshot-before.log",
+    "logSHA256": "8776c8abbe527f7b2ffbff4e390a417e002e8e55c1eeee7385469030f2b1e852"
+  },
+  "certified_regression": {
+    "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -race -count=5 -shuffle=on -run '^TestAcc(PublicRunReadKeepsOneCommittedSnapshot|Read|ReadFailures|Search|Cancel)$' ./internal/runs/internal/adapters/pg",
+    "exit_code": 0,
+    "seconds": 7.418,
+    "controlled_interleavings": 30,
+    "existing_suites_repetitions": 5,
+    "log": "/private/tmp/infraweave-717-read-snapshot-certified.log",
+    "logSHA256": "48e88c790b2a2dda9647a0f10d1c3b54b40eb084a7dbd255e9d7eaa54b70e077"
+  },
+  "lint": {
+    "command": "GOWORK=off golangci-lint run --config .golangci.yml --new=false --fix=false ./internal/runs/internal/core/read ./internal/runs/internal/adapters/pg ./internal/runs/assembly",
+    "exit_code": 0,
+    "issues": 0,
+    "log": "/private/tmp/infraweave-717-read-snapshot-lint.log"
+  },
+  "native_feature": {
+    "status": "passed",
+    "log": "/private/tmp/infraweave-717-read-snapshot-native.log",
+    "progress": "/private/tmp/infraweave-717-read-snapshot-native-evidence/progress.jsonl",
+    "cucumber": "/private/tmp/infraweave-717-read-snapshot-native-cucumber.json",
+    "exit_code": 0,
+    "seconds": 58.231,
+    "scenarios": 2,
+    "steps": 170,
+    "step_results": {
+      "passed": 170
+    },
+    "certified_fips": true,
+    "actual_services": [
+      "PostgreSQL18.7",
+      "objectstore",
+      "Gitea",
+      "Docker",
+      "Terraform",
+      "OpenTofu"
+    ],
+    "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 INFRAWEAVE_ACCEPT_FEATURES=features/policies/workflow_plan_flags.feature INFRAWEAVE_ACCEPT_OUT=/private/tmp/infraweave-717-read-snapshot-native-evidence INFRAWEAVE_ACCEPT_CUCUMBER=/private/tmp/infraweave-717-read-snapshot-native-cucumber.json INFRAWEAVE_ACCEPT_PROGRESS=1 GOFIPS140=certified GODEBUG=fips140=only GOWORK=off go test -count=1 -timeout=10m -run '^TestAccFeatures$' ./test/acceptance",
+    "logSHA256": "0e741423f72541236c7aed5474d3330e763c44c74a98a57dea94ee2b8bcc34a6",
+    "reportSHA256": "81f9098989b1220b6d98ff494371cb26d551f3c7b162c87e41c3536ffffe9472"
+  },
+  "scope": "Run, StackRun and StackRuns use existing Serializable transaction snapshots; nested calls continue to join their caller transaction. No policy assertion, test budget, CI gate or coverage threshold is changed.",
+  "schema": 1,
+  "date": "2026-11-21",
+  "classification": "local candidate; final exact-head CI required",
+  "candidateCommit": "9073177f",
+  "transactionOutage": {
+    "pr": 717,
+    "base": "7363b14c24ee58f20679fff5e2658b8a19f0e83f",
+    "cause": "Public run snapshot added raw BeginTx/Commit error boundaries. A real PostgreSQL backend termination (57P01) bypassed the store classifier and was rendered500 instead of retryable503.",
+    "repair": "Apply existing platform/sql.Unavailable only to the local snapshot result, preserving successfulnil, domain errors and the original outage cause. Sharedplatform/tx is unchanged.",
+    "before": {
+      "log": "/private/tmp/infraweave-717-snapshot-outage-before.log",
+      "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -count=1 -run '^TestAccPublicRunSnapshot(OutageKeepsRetryableHTTPContract|PreservesOtherErrors)$' ./internal/runs/internal/adapters/pg",
+      "exit_code": 1,
+      "seconds": 4.189,
+      "outage_cases_failed": 6,
+      "actual_cause": "SQLSTATE57P01 administrator shutdown on realPostgreSQL18.7",
+      "http_status": 500,
+      "retry_after": null,
+      "logSHA256": "acbebff261d49ef1150a04b183423fbc49873b6c30d843e9fa7b95500fcbf118"
+    },
+    "after": {
+      "log": "/private/tmp/infraweave-717-snapshot-outage-after.log",
+      "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -race -shuffle=on -count=5 -run '^TestAcc(PublicRunSnapshot(OutageKeepsRetryableHTTPContract|PreservesOtherErrors)|PublicRunReadKeepsOneCommittedSnapshot|Read|ReadFailures)$' ./internal/runs/internal/adapters/pg",
+      "exit_code": 0,
+      "seconds": 12.538,
+      "outage_cases_passed": 30,
+      "snapshot_interleavings_passed": 30,
+      "other_errors_preserved": [
+        "injectedapplicationfailure",
+        "read.ErrNotFound"
+      ],
+      "http_status": 503,
+      "retry_after": "2",
+      "underlying_cause_retained": true,
+      "logSHA256": "b45f2220594e0b7075f825215ae23c1741c7eacaeffffb29f688d07624fbc2d7"
+    },
+    "lint": {
+      "status": "passed",
+      "log": "/private/tmp/infraweave-717-snapshot-outage-lint.log",
+      "exit_code": 0,
+      "issues": 0,
+      "command": "GOWORK=off golangci-lint run --config .golangci.yml --new=false --fix=false ./internal/runs/internal/core/read ./internal/runs/internal/adapters/pg"
+    },
+    "ci": "44880876138 left untouched; no rerun requested",
+    "candidateCommit": "9772de022000ac90172d2e6b863b6beed56ebbef"
+  }
+}

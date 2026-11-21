@@ -124,6 +124,41 @@ Feature: A run's log is read by state, and downloaded whole once the run leaves 
     When token "h" eventually reads a download URL of the run "run"'s PLANNING log through B
     Then the answer's url downloads "Plan: 1 to add\ninfraweave: part of this log could not be stored.\ndone\ninfraweave: part of this log could not be stored.\n"
 
+  @policy-projection-denial @op:stackRun @op:stackRuns @op:stackProposedRuns @op:stackTasks @op:stackRunsInRange @case:denial
+  Scenario: An in-run token cannot read the stack's full run or task projections
+    When token "it" sends "GET /api/v1/stacks/infra" through A
+    Then it answers 200
+    When token "it" sends "GET /api/v1/stacks/infra/run?id={run}" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/run?id={run}" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/runs" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/runs" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/proposed-runs" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/proposed-runs" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/tasks" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/tasks" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700000001" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+    When token "it" sends "GET /api/v1/stacks/infra/runs-in-range?start=1700000000&end=1700000001" through B
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"SPACE_READ"'
+
   @op:runLogs @op:runLogsDownloadURL @op:run @case:denial
   Scenario: The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs
     When token "it" sends "GET /api/v1/stacks/infra" through A

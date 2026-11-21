@@ -1,4 +1,4 @@
-// Package deps starts the Docker dependencies of the TestAcc tests: the
+// Package deps starts or borrows the real dependencies of the TestAcc tests: the
 // acceptance suite's and those beside the code. Dependencies starts each
 // one the first time a test asks for it and shares it with every later
 // test of the test binary: PostgreSQL, a fresh database per caller copied
@@ -29,6 +29,11 @@
 // directory, calls Vault's and Gitea's APIs, and downloads the tools'
 // archives, SHA256SUMS and signatures over HTTPS into the user's cache
 // directory. It logs nothing.
+//
+// UseLab verifies a private Terraform deployment manifest and borrows its
+// PostgreSQL, object storage and TLS Gitea without starting replacements.
+// Each borrowing process owns its database template and fixture namespace;
+// Terraform owns and verifies infrastructure destruction.
 //
 // # Dependencies
 //

@@ -438,7 +438,7 @@ Storage, as `serve`'s writer identity, whose delete the cloud must refuse,
 and as the `scheduler`'s deleter, through GitHub's OIDC token with no
 stored key; the issue is per cloud.
 [`test/terraform/cloud`](test/terraform/cloud/README.md) provisions the
-buckets and the trust. `vcs-lab.yml` makes private repositories on
+buckets and the trust. `infraweave-lab.yml` makes private repositories on
 GitHub, GitLab, Bitbucket Cloud, Azure DevOps and a Bitbucket Data Center
 container each night, runs every provider's source contract and a stack
 through `infraweave` against them, and destroys them; the issue is per

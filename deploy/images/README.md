@@ -2,8 +2,8 @@
 
 | Kind | GHCR package | Immutable release tag |
 |---|---|---|
-| Terraform / Terragrunt | `ghcr.io/weaveplatform/infraweave-runner-terraform` | `tested-<terraform-version>-r<N>` |
-| OpenTofu | `ghcr.io/weaveplatform/infraweave-runner-opentofu` | `tested-<tofu-version>-r<N>` |
+| Terraform / Terragrunt | `ghcr.io/weaveplatform/infraweave-runner-terraform` | `<terraform-version>-r<N>` |
+| OpenTofu | `ghcr.io/weaveplatform/infraweave-runner-opentofu` | `<tofu-version>-r<N>` |
 | Pulumi | `ghcr.io/weaveplatform/infraweave-runner-pulumi` | `<pulumi-version>-r<N>` |
 | Ansible | `ghcr.io/weaveplatform/infraweave-runner-ansible` | `<ansible-core-version>-r<N>` |
 | Acceptance test support | `ghcr.io/weaveplatform/infraweave-runner-test-support` | `r<N>` |
@@ -14,9 +14,13 @@ the index digests in `images.lock.json`, also generated into
 `internal/platform/runnerimages/images.gen.go`. A readable tag identifies
 the cohort and image revision; the digest identifies its exact content.
 
-Terraform and OpenTofu images contain the shell environment. The current
-launcher downloads, verifies and mounts the run's requested executable
-read-only. Terragrunt uses the Terraform image with its requested tools.
+Terraform and OpenTofu images include their pinned official stable CLI at
+`/bin/terraform` or `/bin/tofu`, verified against the architecture's source-pinned
+SHA-256 during the build. Their release tag names the installed CLI version.
+The installed binaries run with `skipVendorBinaryDownload: true`; no launcher
+download or tool mount is needed. Runs that request a different version retain
+the signed-download and read-only mount path, which overrides that same binary
+path. Terragrunt uses the Terraform image with its requested tools.
 Pulumi includes its CLI/language hosts, Node/npm and Python/pip. Go/.NET
 programs can use derived images. Ansible includes hash-pinned ansible-core
 and dependencies, and the `infraweave` aggregate callback. The runner
@@ -108,7 +112,8 @@ account and launcher image overrides keep their precedence and run-spec
 resume semantics. Released digests/evidence are retained; no registry
 garbage collection is enabled.
 
-The image contracts cover current/older Terraform and OpenTofu plan/apply,
+The image contracts cover offline installed Terraform/OpenTofu plan/apply/destroy,
+older mounted-version compatibility,
 Terragrunt plans, real Node/Python Pulumi provider programs with local
 state, and local Ansible check/apply/failure/no_log/rescue/recap. The
 application acceptance suite additionally proves the launcher's signed

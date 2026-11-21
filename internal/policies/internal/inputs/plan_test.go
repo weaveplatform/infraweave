@@ -187,7 +187,7 @@ func TestUnitProjectTerragruntPlans(t *testing.T) {
 // Every recorded plan still retains all three published sections and JSON types.
 func TestUnitProjectPayloadFixtures(t *testing.T) {
 	files, err := filepath.Glob("../../../../test/fixtures/plan-payloads/*/plan.json")
-	if err != nil || len(files) != 4 {
+	if err != nil || len(files) != 5 {
 		t.Fatalf("modern plan fixture inventory: %d, %v", len(files), err)
 	}
 	for _, file := range files {

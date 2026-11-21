@@ -1,0 +1,2564 @@
+{
+  "schemaVersion": 1,
+  "auditedOn": "2026-11-21",
+  "status": "incomplete",
+  "issue": 656,
+  "sourceRevision": "1120bb8aa7e4c09e5c3468cd876567db13e9e3b9",
+  "sourceCI": {
+    "run": 44808423418,
+    "url": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418",
+    "event": "push",
+    "conclusion": "SUCCESS",
+    "totalCoverage": {
+      "percent": 95.5,
+      "covered": 49560,
+      "statements": 51922
+    },
+    "minimumPackageCoverage": 90,
+    "allRequiredChecksPassed": true
+  },
+  "acceptance": {
+    "scenarios": 1040,
+    "steps": 25407,
+    "partitions": [
+      {
+        "partition": "core",
+        "scenarios": 382,
+        "steps": 5810,
+        "passed": true,
+        "artifactID": 14667220055,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14667220055",
+        "reportPath": "cover-accept-core/cucumber.json",
+        "sha256": "1250c62c963566c37d48c78acee2e0d2b17cc99c36f3d60a849729a24fbd8fe6"
+      },
+      {
+        "partition": "integrations",
+        "scenarios": 356,
+        "steps": 9419,
+        "passed": true,
+        "artifactID": 14665140870,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665140870",
+        "reportPath": "cover-accept-integrations/cucumber.json",
+        "sha256": "02012fe63c917977c340c3663caba11182a55830610f64beb63240c338b66e07"
+      },
+      {
+        "partition": "runs",
+        "scenarios": 82,
+        "steps": 3062,
+        "passed": true,
+        "artifactID": 14665700087,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665700087",
+        "reportPath": "cover-accept-runs/cucumber.json",
+        "sha256": "a798ad1527a3f7c55cce760e4327527edf5bfa92d26cd34d63ca3358b7e89e78"
+      },
+      {
+        "partition": "terraform",
+        "scenarios": 117,
+        "steps": 3704,
+        "passed": true,
+        "artifactID": 14665520117,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665520117",
+        "reportPath": "cover-accept-terraform/cucumber.json",
+        "sha256": "d6f60cd2ece0187e1b730f9ebbe6180e943b7825267d40e9de197b152081c155"
+      },
+      {
+        "partition": "terraform-plans",
+        "scenarios": 41,
+        "steps": 1173,
+        "passed": true,
+        "artifactID": 14663573650,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14663573650",
+        "reportPath": "cover-accept-terraform-plans/cucumber.json",
+        "sha256": "85cc449120711294155da7cb8e73eeeb50fd7d7458260eb9bc54af6fd11be386"
+      },
+      {
+        "partition": "terraform-vcs",
+        "scenarios": 62,
+        "steps": 2239,
+        "passed": true,
+        "artifactID": 14665085875,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44808423418/artifacts/14665085875",
+        "reportPath": "cover-accept-terraform-vcs/cucumber.json",
+        "sha256": "79c6ea2eaf4e81070b5ec86c5e6a4256c9faf1972c28422df2b448ea4c5b5c58"
+      }
+    ]
+  },
+  "operations": [
+    {
+      "operation": "policies",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/policies",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S6",
+      "denial403": "S2",
+      "failure": "S7"
+    },
+    {
+      "operation": "policyCreatev2",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/policies",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_ADMIN",
+      "success": "S1",
+      "denial403": "S2",
+      "failure": "S37"
+    },
+    {
+      "operation": "policy",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/policies/{policyId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S1",
+      "denial403": "S2",
+      "failure": "S3"
+    },
+    {
+      "operation": "policyUpdatev2",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "PUT",
+      "path": "/api/v1/policies/{policyId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_ADMIN",
+      "success": "S4",
+      "denial403": "S2",
+      "failure": "S4"
+    },
+    {
+      "operation": "policyUpdatev2Patch",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "PATCH",
+      "path": "/api/v1/policies/{policyId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_ADMIN",
+      "success": "S5",
+      "denial403": "S2",
+      "failure": "S5"
+    },
+    {
+      "operation": "policyDelete",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "DELETE",
+      "path": "/api/v1/policies/{policyId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_ADMIN",
+      "success": "S4",
+      "denial403": "S2",
+      "failure": "S4"
+    },
+    {
+      "operation": "searchPolicies",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/policies/search",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S6",
+      "denial403": "S2",
+      "failure": "S7"
+    },
+    {
+      "operation": "searchPoliciesSuggestions",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/policies/search/suggestions",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S8",
+      "denial403": "S2",
+      "failure": "S7"
+    },
+    {
+      "operation": "searchSpacePolicies",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/space-policies/search",
+      "source": "api/src/api/paths-spaces.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S8",
+      "denial403": "S2",
+      "failure": "S7"
+    },
+    {
+      "operation": "searchSpacePoliciesSuggestions",
+      "owner": 645,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/space-policies/search/suggestions",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S8",
+      "denial403": "S2",
+      "failure": "S7"
+    },
+    {
+      "operation": "attachablePoliciesInSpace",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/attachable-policies-in-space",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S9",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "autoattachmentForLabels",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/autoattachment-for-labels",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S12",
+      "denial403": "S10",
+      "failure": "S12"
+    },
+    {
+      "operation": "policyAttachedStack",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/policies/{policyId}/attached-stack",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S13",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "policyDetach",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "DELETE",
+      "path": "/api/v1/policy-attachments/{attachmentId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "STACK_POLICY_DETACH",
+      "success": "S13",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "policyAttach",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}/policies/{policyId}",
+      "source": "api/src/api/paths-policies.yaml",
+      "feature": "policies",
+      "action": "STACK_POLICY_ATTACH",
+      "success": "S13",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "stackAttachablePolicies",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/attachable-policies",
+      "source": "api/src/api/paths-stacks.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S9",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "stackPolicyAttachment",
+      "owner": 646,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/policy-attachment",
+      "source": "api/src/api/paths-stacks.yaml",
+      "feature": "policies",
+      "action": "SPACE_READ",
+      "success": "S13",
+      "denial403": "S10",
+      "failure": "S11"
+    },
+    {
+      "operation": "policyCheck",
+      "owner": 648,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/policies/check",
+      "source": "api/src/api/paths-policy-check.yaml",
+      "feature": "expressions",
+      "action": "AUTHENTICATED",
+      "success": "S14",
+      "denial403": "S15",
+      "failure": "S16"
+    },
+    {
+      "operation": "policyContract",
+      "owner": 641,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/.well-known/policy-contract.json",
+      "source": "api/src/api/paths-policy-contract.yaml",
+      "feature": "policies",
+      "action": "AUTHENTICATED",
+      "success": "S17",
+      "denial403": "S18",
+      "failure": "S19"
+    },
+    {
+      "operation": "policyRuntime",
+      "owner": 640,
+      "baselineRegression": false,
+      "method": "GET",
+      "path": "/api/v1/policy-runtime",
+      "source": "api/src/api/paths-policy-runtime.yaml",
+      "feature": "policies",
+      "action": "AUTHENTICATED",
+      "success": "S20",
+      "denial403": "S21",
+      "failure": "S22"
+    },
+    {
+      "operation": "runReview",
+      "owner": 650,
+      "baselineRegression": false,
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/review",
+      "source": "api/src/api/paths-runs.yaml",
+      "feature": "runs",
+      "action": "RUN_REVIEW",
+      "success": "S23",
+      "denial403": "S24",
+      "failure": "S25"
+    },
+    {
+      "operation": "expressionCheck",
+      "owner": 648,
+      "baselineRegression": true,
+      "method": "POST",
+      "path": "/api/v1/expressions/check",
+      "source": "api/src/api/paths-expressions.yaml",
+      "feature": "expressions",
+      "action": "AUTHENTICATED",
+      "success": "S26",
+      "denial403": "S27",
+      "failure": "S28"
+    }
+  ],
+  "cases": {
+    "S1": {
+      "feature": "policies/management.feature",
+      "line": 221,
+      "name": "A compiled policy persists across replicas with the intentional V1 default",
+      "partition": "core",
+      "stepCount": 13,
+      "tags": [
+        "@case:success",
+        "@op:policy",
+        "@op:policyCreatev2",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L221"
+    },
+    "S2": {
+      "feature": "policies/management.feature",
+      "line": 125,
+      "name": "Revoking the policy entitlement refuses known policies on both replicas",
+      "partition": "core",
+      "stepCount": 29,
+      "tags": [
+        "@case:denial",
+        "@op:policies",
+        "@op:policy",
+        "@op:policyCreatev2",
+        "@op:policyDelete",
+        "@op:policyUpdatev2",
+        "@op:policyUpdatev2Patch",
+        "@op:searchPolicies",
+        "@op:searchPoliciesSuggestions",
+        "@op:searchSpacePolicies",
+        "@op:searchSpacePoliciesSuggestions",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L125"
+    },
+    "S3": {
+      "feature": "policies/search.feature",
+      "line": 9,
+      "name": "A sibling account cannot read or change a known policy ID",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:failure",
+        "@op:policies",
+        "@op:policy",
+        "@op:policyDelete",
+        "@op:policyUpdatev2",
+        "@op:policyUpdatev2Patch",
+        "@op:searchPolicies",
+        "@op:searchPoliciesSuggestions",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L9"
+    },
+    "S4": {
+      "feature": "policies/management.feature",
+      "line": 54,
+      "name": "Conditional updates and deletion refuse stale policy versions across replicas",
+      "partition": "core",
+      "stepCount": 24,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:policyDelete",
+        "@op:policyUpdatev2",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L54"
+    },
+    "S5": {
+      "feature": "policies/management.feature",
+      "line": 26,
+      "name": "Merge patch keeps source and dialect while resetting nullable settings",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:policyUpdatev2Patch",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L26"
+    },
+    "S6": {
+      "feature": "policies/search.feature",
+      "line": 35,
+      "name": "Both list and search cursors resume on another replica without skipped policies",
+      "partition": "core",
+      "stepCount": 19,
+      "tags": [
+        "@case:success",
+        "@op:policies",
+        "@op:searchPolicies",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L35"
+    },
+    "S7": {
+      "feature": "policies/search.feature",
+      "line": 55,
+      "name": "Invalid policy search requests and unknown spaces have public failures",
+      "partition": "core",
+      "stepCount": 12,
+      "tags": [
+        "@case:failure",
+        "@op:policies",
+        "@op:searchPolicies",
+        "@op:searchPoliciesSuggestions",
+        "@op:searchSpacePolicies",
+        "@op:searchSpacePoliciesSuggestions",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L55"
+    },
+    "S8": {
+      "feature": "policies/search.feature",
+      "line": 96,
+      "name": "Account and inherited space searches use persistent policy projections",
+      "partition": "core",
+      "stepCount": 29,
+      "tags": [
+        "@case:success",
+        "@op:policies",
+        "@op:searchPolicies",
+        "@op:searchPoliciesSuggestions",
+        "@op:searchSpacePolicies",
+        "@op:searchSpacePoliciesSuggestions",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/search.feature#L96"
+    },
+    "S9": {
+      "feature": "policies/attachments.feature",
+      "line": 17,
+      "name": "Account-qualified attachments, candidates and preview never cross accounts",
+      "partition": "core",
+      "stepCount": 39,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:attachablePoliciesInSpace",
+        "@op:autoattachmentForLabels",
+        "@op:policyAttach",
+        "@op:policyAttachedStack",
+        "@op:policyDetach",
+        "@op:stackAttachablePolicies",
+        "@op:stackPolicyAttachment",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L17"
+    },
+    "S10": {
+      "feature": "policies/attachments.feature",
+      "line": 111,
+      "name": "Revoking the policy entitlement refuses every attachment operation",
+      "partition": "core",
+      "stepCount": 26,
+      "tags": [
+        "@case:denial",
+        "@op:attachablePoliciesInSpace",
+        "@op:autoattachmentForLabels",
+        "@op:policyAttach",
+        "@op:policyAttachedStack",
+        "@op:policyDetach",
+        "@op:stackAttachablePolicies",
+        "@op:stackPolicyAttachment",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L111"
+    },
+    "S11": {
+      "feature": "policies/attachments.feature",
+      "line": 133,
+      "name": "Missing, malformed and mismatched attachment parents are refused",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:failure",
+        "@op:attachablePoliciesInSpace",
+        "@op:policyAttach",
+        "@op:policyAttachedStack",
+        "@op:policyDetach",
+        "@op:stackAttachablePolicies",
+        "@op:stackPolicyAttachment",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L133"
+    },
+    "S12": {
+      "feature": "policies/attachments.feature",
+      "line": 237,
+      "name": "Preview counts all matching targets and returns current target labels",
+      "partition": "core",
+      "stepCount": 17,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:autoattachmentForLabels",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L237"
+    },
+    "S13": {
+      "feature": "policies/attachments.feature",
+      "line": 294,
+      "name": "Explicit attachment persists once with distinct policy and attachment IDs",
+      "partition": "core",
+      "stepCount": 44,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:policyAttach",
+        "@op:policyAttachedStack",
+        "@op:policyDetach",
+        "@op:stackPolicyAttachment",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L294"
+    },
+    "S14": {
+      "feature": "policies/check.feature",
+      "line": 25,
+      "name": "Both replicas compile the default V1 and explicit V0 policy dialects",
+      "partition": "core",
+      "stepCount": 10,
+      "tags": [
+        "@case:success",
+        "@op:policyCheck",
+        "@policy-check",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L25"
+    },
+    "S15": {
+      "feature": "policies/check.feature",
+      "line": 45,
+      "name": "Switching off expressions refuses policy checking",
+      "partition": "core",
+      "stepCount": 5,
+      "tags": [
+        "@case:denial",
+        "@op:policyCheck",
+        "@policy-check",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L45"
+    },
+    "S16": {
+      "feature": "policies/check.feature",
+      "line": 53,
+      "name": "Missing credentials and unknown dialects refuse checks",
+      "partition": "core",
+      "stepCount": 6,
+      "tags": [
+        "@case:failure",
+        "@op:policyCheck",
+        "@policy-check",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/check.feature#L53"
+    },
+    "S17": {
+      "feature": "policies/contract.feature",
+      "line": 10,
+      "name": "Both replicas publish a complete schema through the ordinary account controls",
+      "partition": "core",
+      "stepCount": 11,
+      "tags": [
+        "@case:success",
+        "@op:policyContract",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L10"
+    },
+    "S18": {
+      "feature": "policies/contract.feature",
+      "line": 24,
+      "name": "The installation's policies switch refuses contract reads",
+      "partition": "core",
+      "stepCount": 7,
+      "tags": [
+        "@case:denial",
+        "@op:policyContract",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L24"
+    },
+    "S19": {
+      "feature": "policies/contract.feature",
+      "line": 34,
+      "name": "Missing credentials and the database-backed caller switch refuse schema reads",
+      "partition": "core",
+      "stepCount": 8,
+      "tags": [
+        "@case:failure",
+        "@op:policyContract",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/contract.feature#L34"
+    },
+    "S20": {
+      "feature": "policies/runtime.feature",
+      "line": 8,
+      "name": "Both replicas report the OPA version actually linked from this build",
+      "partition": "core",
+      "stepCount": 10,
+      "tags": [
+        "@case:success",
+        "@op:policyRuntime",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L8"
+    },
+    "S21": {
+      "feature": "policies/runtime.feature",
+      "line": 21,
+      "name": "Switching off policies refuses runtime metadata reads",
+      "partition": "core",
+      "stepCount": 7,
+      "tags": [
+        "@case:denial",
+        "@op:policyRuntime",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L21"
+    },
+    "S22": {
+      "feature": "policies/runtime.feature",
+      "line": 31,
+      "name": "Missing credentials and a disabled caller refuse runtime metadata",
+      "partition": "core",
+      "stepCount": 7,
+      "tags": [
+        "@case:failure",
+        "@op:policyRuntime",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/runtime.feature#L31"
+    },
+    "S23": {
+      "feature": "policies/approval.feature",
+      "line": 30,
+      "name": "An authorized queued review evaluates the real policy and releases the run",
+      "partition": "integrations",
+      "stepCount": 24,
+      "tags": [
+        "@case:success",
+        "@op:runReview",
+        "@policy-approval",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L30"
+    },
+    "S24": {
+      "feature": "policies/approval.feature",
+      "line": 41,
+      "name": "A stack reader cannot supply a review",
+      "partition": "integrations",
+      "stepCount": 21,
+      "tags": [
+        "@case:denial",
+        "@op:runReview",
+        "@policy-approval",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L41"
+    },
+    "S25": {
+      "feature": "policies/approval.feature",
+      "line": 49,
+      "name": "Unknown runs and runs outside review states refuse a review",
+      "partition": "integrations",
+      "stepCount": 22,
+      "tags": [
+        "@case:failure",
+        "@op:runReview",
+        "@policy-approval",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/approval.feature#L49"
+    },
+    "S26": {
+      "feature": "expressions/editor.feature",
+      "line": 17,
+      "name": "A template is checked, completed and evaluated against a stack's environment, its secret masked",
+      "partition": "core",
+      "stepCount": 27,
+      "tags": [
+        "@case:success",
+        "@op:expressionCheck",
+        "@op:expressionComplete",
+        "@op:expressionEvaluate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L17"
+    },
+    "S27": {
+      "feature": "expressions/editor.feature",
+      "line": 88,
+      "name": "With expressions switched off for the installation, each operation answers 403",
+      "partition": "core",
+      "stepCount": 9,
+      "tags": [
+        "@case:denial",
+        "@op:expressionCheck",
+        "@op:expressionComplete",
+        "@op:expressionEvaluate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L88"
+    },
+    "S28": {
+      "feature": "expressions/editor.feature",
+      "line": 100,
+      "name": "A misspelt variable is flagged with its range, and a source, cursor or surface the endpoints cannot use is refused",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:failure",
+        "@op:expressionCheck",
+        "@op:expressionComplete",
+        "@op:expressionEvaluate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/expressions/editor.feature#L100"
+    },
+    "S29": {
+      "feature": "runs/policy_evidence.feature",
+      "line": 8,
+      "name": "Two servers expose historical evidence without leaking raw decisions or deleted policy source",
+      "partition": "integrations",
+      "stepCount": 35,
+      "tags": [
+        "@case:denial",
+        "@case:failure",
+        "@case:success",
+        "@op:run",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/policy_evidence.feature#L8"
+    },
+    "S30": {
+      "feature": "runs/logs.feature",
+      "line": 128,
+      "name": "The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs",
+      "partition": "integrations",
+      "stepCount": 36,
+      "tags": [
+        "@case:denial",
+        "@objectstore",
+        "@op:run",
+        "@op:runLogs",
+        "@op:runLogsDownloadURL",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L128"
+    },
+    "S31": {
+      "feature": "runs/queue.feature",
+      "line": 136,
+      "name": "A run's priority is read back, its stack answers, and a stack's lists page newest first",
+      "partition": "integrations",
+      "stepCount": 39,
+      "tags": [
+        "@case:success",
+        "@op:run",
+        "@op:runPrioritySet",
+        "@op:runStack",
+        "@op:stackProposedRuns",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L136"
+    },
+    "S32": {
+      "feature": "runs/queue.feature",
+      "line": 219,
+      "name": "An unknown run, a cancel of a run that ended, a run named on another stack and a malformed search are refused",
+      "partition": "integrations",
+      "stepCount": 39,
+      "tags": [
+        "@case:failure",
+        "@op:run",
+        "@op:runCancel",
+        "@op:runPrioritySet",
+        "@op:runStack",
+        "@op:searchRuns",
+        "@op:searchRunsSuggestions",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L219"
+    },
+    "S33": {
+      "feature": "stacks/stacks.feature",
+      "line": 223,
+      "name": "The runs and tasks of a stack the caller cannot read answer as a stack that does not exist",
+      "partition": "core",
+      "stepCount": 19,
+      "tags": [
+        "@case:denial",
+        "@op:stackProposedRuns",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@op:stackRunsInRange",
+        "@op:stackTasks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L223"
+    },
+    "S34": {
+      "feature": "stacks/stacks.feature",
+      "line": 198,
+      "name": "A stack with no runs lists empty pages of runs and tasks, and finds no run by ID",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:stackProposedRuns",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@op:stackRunsInRange",
+        "@op:stackTasks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L198"
+    },
+    "S35": {
+      "feature": "stacks/stacks.feature",
+      "line": 242,
+      "name": "An altered cursor on a stack's runs or tasks answers 400",
+      "partition": "core",
+      "stepCount": 12,
+      "tags": [
+        "@case:failure",
+        "@op:stackProposedRuns",
+        "@op:stackRuns",
+        "@op:stackRunsInRange",
+        "@op:stackTasks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L242"
+    },
+    "S36": {
+      "feature": "policies/attachments.feature",
+      "line": 334,
+      "name": "C9 forced deletion removes the policy and both attachment projections",
+      "partition": "core",
+      "stepCount": 28,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:policyAttach",
+        "@op:policyAttachedStack",
+        "@op:policyDelete",
+        "@op:policyDetach",
+        "@op:stackPolicyAttachment",
+        "@policy-attachments",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/attachments.feature#L334"
+    },
+    "S37": {
+      "feature": "policies/management.feature",
+      "line": 174,
+      "name": "Compilation refusals preserve the stored body and engine",
+      "partition": "core",
+      "stepCount": 22,
+      "tags": [
+        "@case:failure",
+        "@op:policyCreatev2",
+        "@op:policyUpdatev2",
+        "@policy-management",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/policies/management.feature#L174"
+    },
+    "P1": {
+      "feature": "runs/changes.feature",
+      "line": 55,
+      "name": "Once the run plans, both reads answer the plan's changes, and the run and its stack its delta",
+      "partition": "integrations",
+      "stepCount": 68,
+      "tags": [
+        "@case:success",
+        "@objectstore",
+        "@op:run",
+        "@op:runChangesV2",
+        "@op:runChangesV3",
+        "@op:runStack",
+        "@op:stack",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/changes.feature#L55"
+    },
+    "P2": {
+      "feature": "runs/schedule.feature",
+      "line": 14,
+      "name": "A burst of runs on one stack is scheduled by one evaluation, and the stack's state follows its tracked run",
+      "partition": "integrations",
+      "stepCount": 25,
+      "tags": [
+        "@case:success",
+        "@op:runTrigger",
+        "@op:searchStacks",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/schedule.feature#L14"
+    },
+    "P3": {
+      "feature": "runs/queue.feature",
+      "line": 80,
+      "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "partition": "integrations",
+      "stepCount": 22,
+      "tags": [
+        "@case:denial",
+        "@op:runTrigger",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L80"
+    },
+    "P4": {
+      "feature": "runs/queue.feature",
+      "line": 95,
+      "name": "An unknown commit, a disabled stack, a stack with no commit and an unknown field are refused",
+      "partition": "integrations",
+      "stepCount": 24,
+      "tags": [
+        "@case:failure",
+        "@op:runTrigger",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L95"
+    },
+    "P5": {
+      "feature": "runs/local_preview.feature",
+      "line": 49,
+      "name": "A proposal on an uploaded workspace previews it on the tracked commit, and its worker fetches the archive",
+      "partition": "integrations",
+      "stepCount": 48,
+      "tags": [
+        "@case:success",
+        "@objectstore",
+        "@op:runProposeLocalWorkspace",
+        "@op:uploadLocalWorkspace",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L49"
+    },
+    "P6": {
+      "feature": "runs/local_preview.feature",
+      "line": 84,
+      "name": "A space reader is refused both calls, and a stack that does not allow local previews refuses everyone",
+      "partition": "integrations",
+      "stepCount": 33,
+      "tags": [
+        "@case:denial",
+        "@objectstore",
+        "@op:runProposeLocalWorkspace",
+        "@op:uploadLocalWorkspace",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L84"
+    },
+    "P7": {
+      "feature": "runs/local_preview.feature",
+      "line": 104,
+      "name": "A declaration outside the bounds, an upload that is not the stack's, was never put or does not exist, and an override of a variable infraweave sets are refused",
+      "partition": "integrations",
+      "stepCount": 52,
+      "tags": [
+        "@case:failure",
+        "@objectstore",
+        "@op:runProposeLocalWorkspace",
+        "@op:uploadLocalWorkspace",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/local_preview.feature#L104"
+    },
+    "P8": {
+      "feature": "runs/propose_overrides.feature",
+      "line": 46,
+      "name": "A proposal's overrides reach its run's specification, sealed where the stack's variable is, and each proposal creates a run",
+      "partition": "integrations",
+      "stepCount": 52,
+      "tags": [
+        "@case:success",
+        "@op:proposeWithOverrides",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L46"
+    },
+    "P9": {
+      "feature": "runs/propose_overrides.feature",
+      "line": 83,
+      "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "partition": "integrations",
+      "stepCount": 31,
+      "tags": [
+        "@case:denial",
+        "@op:proposeWithOverrides",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L83"
+    },
+    "P10": {
+      "feature": "runs/propose_overrides.feature",
+      "line": 99,
+      "name": "An override of a variable infraweave sets, with no name, with = or given twice, an unknown commit and a value left out are refused",
+      "partition": "integrations",
+      "stepCount": 49,
+      "tags": [
+        "@case:failure",
+        "@op:proposeWithOverrides",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/propose_overrides.feature#L99"
+    },
+    "P11": {
+      "feature": "runs/tasks.feature",
+      "line": 40,
+      "name": "A task runs on the tracked commit, carries its command to its specification, and each task is a run of its own",
+      "partition": "integrations",
+      "stepCount": 41,
+      "tags": [
+        "@case:success",
+        "@op:taskCreate",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L40"
+    },
+    "P12": {
+      "feature": "runs/tasks.feature",
+      "line": 67,
+      "name": "A space reader is refused, a stack the caller cannot read does not exist, and a tier without tasks refuses them",
+      "partition": "integrations",
+      "stepCount": 40,
+      "tags": [
+        "@case:denial",
+        "@op:taskCreate",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L67"
+    },
+    "P13": {
+      "feature": "runs/tasks.feature",
+      "line": 93,
+      "name": "A blank command, an empty one, one holding a NUL byte, a body without a command and a disabled stack are refused",
+      "partition": "integrations",
+      "stepCount": 33,
+      "tags": [
+        "@case:failure",
+        "@op:taskCreate",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/tasks.feature#L93"
+    },
+    "P14": {
+      "feature": "runs/actions.feature",
+      "line": 33,
+      "name": "Retrying an ended run queues a run of its type on its commit, which names the run retried",
+      "partition": "integrations",
+      "stepCount": 23,
+      "tags": [
+        "@case:success",
+        "@op:runCancel",
+        "@op:runRetry",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L33"
+    },
+    "P15": {
+      "feature": "runs/actions.feature",
+      "line": 52,
+      "name": "A tracked run's retry needs RUN_RETRY_BLOCKING, which a space reader lacks",
+      "partition": "integrations",
+      "stepCount": 21,
+      "tags": [
+        "@case:denial",
+        "@op:runRetry",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L52"
+    },
+    "P16": {
+      "feature": "runs/actions.feature",
+      "line": 69,
+      "name": "A run that has not ended, and one that does not exist, are not retried",
+      "partition": "integrations",
+      "stepCount": 13,
+      "tags": [
+        "@case:failure",
+        "@op:runRetry",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L69"
+    },
+    "P17": {
+      "feature": "runs/actions.feature",
+      "line": 108,
+      "name": "Promoting a proposed run on a newer commit tracks the commit and queues a tracked run on it",
+      "partition": "integrations",
+      "stepCount": 26,
+      "tags": [
+        "@case:success",
+        "@op:runPromote",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L108"
+    },
+    "P18": {
+      "feature": "runs/actions.feature",
+      "line": 130,
+      "name": "Promoting needs RUN_PROMOTE, which a space reader lacks",
+      "partition": "integrations",
+      "stepCount": 20,
+      "tags": [
+        "@case:denial",
+        "@op:runPromote",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L130"
+    },
+    "P19": {
+      "feature": "runs/actions.feature",
+      "line": 146,
+      "name": "A stack that does not allow promotion, and a tracked run, are not promoted",
+      "partition": "integrations",
+      "stepCount": 22,
+      "tags": [
+        "@case:failure",
+        "@op:runPromote",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/actions.feature#L146"
+    },
+    "P20": {
+      "feature": "runs/logs.feature",
+      "line": 168,
+      "name": "Deleting an ended run's logs answers each state's log as deleted, and a second deletion as done",
+      "partition": "integrations",
+      "stepCount": 41,
+      "tags": [
+        "@case:success",
+        "@objectstore",
+        "@op:runDiscard",
+        "@op:runLogsDelete",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L168"
+    },
+    "P21": {
+      "feature": "runs/logs.feature",
+      "line": 187,
+      "name": "Deleting a run's logs needs SPACE_ADMIN on the account, which a space admin below it lacks",
+      "partition": "integrations",
+      "stepCount": 32,
+      "tags": [
+        "@case:denial",
+        "@objectstore",
+        "@op:runLogsDelete",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L187"
+    },
+    "P22": {
+      "feature": "runs/logs.feature",
+      "line": 197,
+      "name": "A run that has not ended keeps its logs, and an unknown run's are not deleted",
+      "partition": "integrations",
+      "stepCount": 32,
+      "tags": [
+        "@case:failure",
+        "@objectstore",
+        "@op:runLogsDelete",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/logs.feature#L197"
+    },
+    "P23": {
+      "feature": "runs/queue.feature",
+      "line": 191,
+      "name": "A run the caller cannot read does not exist, and a reader neither cancels a blocking run nor sets a priority",
+      "partition": "integrations",
+      "stepCount": 35,
+      "tags": [
+        "@case:denial",
+        "@op:run",
+        "@op:runCancel",
+        "@op:runPrioritySet",
+        "@op:runStack",
+        "@op:searchRuns",
+        "@op:searchRunsSuggestions",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/queue.feature#L191"
+    },
+    "P24": {
+      "feature": "runs/lifecycle.feature",
+      "line": 185,
+      "name": "A stop ends a plan a hook holds, and the run becomes STOPPED",
+      "partition": "terraform",
+      "stepCount": 21,
+      "tags": [
+        "@case:success",
+        "@docker",
+        "@objectstore",
+        "@op:runStop",
+        "@postgres",
+        "@terraform",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/lifecycle.feature#L185"
+    },
+    "P25": {
+      "feature": "runs/stop.feature",
+      "line": 77,
+      "name": "A space reader stops and kills no run that holds its stack's lock",
+      "partition": "terraform",
+      "stepCount": 28,
+      "tags": [
+        "@case:denial",
+        "@docker",
+        "@objectstore",
+        "@op:runKill",
+        "@op:runStop",
+        "@postgres",
+        "@terraform",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/stop.feature#L77"
+    },
+    "P26": {
+      "feature": "runs/stop.feature",
+      "line": 96,
+      "name": "A run whose state takes neither, a state the run has left and an unknown run are refused",
+      "partition": "terraform",
+      "stepCount": 29,
+      "tags": [
+        "@case:failure",
+        "@docker",
+        "@objectstore",
+        "@op:runKill",
+        "@op:runStop",
+        "@postgres",
+        "@terraform",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/stop.feature#L96"
+    },
+    "P27": {
+      "feature": "runs/lifecycle.feature",
+      "line": 198,
+      "name": "A kill ends a plan whose hook ignores the stop, and the run fails with the note \"killed\"",
+      "partition": "terraform",
+      "stepCount": 23,
+      "tags": [
+        "@case:success",
+        "@docker",
+        "@objectstore",
+        "@op:runKill",
+        "@postgres",
+        "@terraform",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/lifecycle.feature#L198"
+    },
+    "P28": {
+      "feature": "runs/confirm.feature",
+      "line": 52,
+      "name": "Confirming the run that holds the lock assigns it to a worker to apply",
+      "partition": "integrations",
+      "stepCount": 42,
+      "tags": [
+        "@case:success",
+        "@op:run",
+        "@op:runConfirm",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L52"
+    },
+    "P29": {
+      "feature": "runs/confirm.feature",
+      "line": 103,
+      "name": "A space reader neither confirms nor discards the run",
+      "partition": "integrations",
+      "stepCount": 37,
+      "tags": [
+        "@case:denial",
+        "@op:runConfirm",
+        "@op:runDiscard",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L103"
+    },
+    "P30": {
+      "feature": "runs/confirm.feature",
+      "line": 132,
+      "name": "A run that does not wait for confirmation, a run of another stack, an unknown run and a stack with no blocking run are refused",
+      "partition": "integrations",
+      "stepCount": 41,
+      "tags": [
+        "@case:failure",
+        "@op:runConfirm",
+        "@op:runDiscard",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/confirm.feature#L132"
+    },
+    "P31": {
+      "feature": "runs/replan.feature",
+      "line": 52,
+      "name": "A replanned run is claimed with its targets, plans again and waits for confirmation again",
+      "partition": "integrations",
+      "stepCount": 46,
+      "tags": [
+        "@case:success",
+        "@op:runTargetedReplan",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L52"
+    },
+    "P32": {
+      "feature": "runs/replan.feature",
+      "line": 77,
+      "name": "A space reader and the run's in-run API token are refused, and a tier without targeted-replan refuses every replan",
+      "partition": "integrations",
+      "stepCount": 40,
+      "tags": [
+        "@case:denial",
+        "@op:runTargetedReplan",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L77"
+    },
+    "P33": {
+      "feature": "runs/replan.feature",
+      "line": 96,
+      "name": "A run that does not wait, no address, an address that is not one and an unknown run are refused, and a restore that fails fails the run",
+      "partition": "integrations",
+      "stepCount": 48,
+      "tags": [
+        "@case:failure",
+        "@op:runTargetedReplan",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/runs/replan.feature#L96"
+    },
+    "P34": {
+      "feature": "configuration/stack_elements.feature",
+      "line": 237,
+      "name": "Direct, list and search reads share the winning sources and computed run metadata",
+      "partition": "core",
+      "stepCount": 33,
+      "tags": [
+        "@case:success",
+        "@op:searchStacks",
+        "@op:stack",
+        "@op:stacks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/configuration/stack_elements.feature#L237"
+    },
+    "P35": {
+      "feature": "configuration/stack_elements.feature",
+      "line": 274,
+      "name": "A reader sees the same source view without secrets, changes none and sees no hidden stack",
+      "partition": "core",
+      "stepCount": 36,
+      "tags": [
+        "@case:denial",
+        "@op:searchStacks",
+        "@op:stack",
+        "@op:stackConfigAdd",
+        "@op:stacks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/configuration/stack_elements.feature#L274"
+    },
+    "P36": {
+      "feature": "stacks/stacks.feature",
+      "line": 56,
+      "name": "A stack needs a name, a repository, a branch, a free slug and a space the account holds",
+      "partition": "core",
+      "stepCount": 27,
+      "tags": [
+        "@case:failure",
+        "@op:stack",
+        "@op:stackCreate",
+        "@op:stackDisable",
+        "@op:stackEnable",
+        "@op:stackReslug",
+        "@op:stackUnlock",
+        "@op:stackUpdate",
+        "@op:stacks",
+        "@op:starSet",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L56"
+    },
+    "P37": {
+      "feature": "stacks/search.feature",
+      "line": 77,
+      "name": "A search of a field stacks lack, a constraint its field does not take, or an altered cursor is refused",
+      "partition": "core",
+      "stepCount": 27,
+      "tags": [
+        "@case:failure",
+        "@op:searchStacks",
+        "@op:searchStacksSuggestions",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/search.feature#L77"
+    },
+    "P38": {
+      "feature": "api/updates.feature",
+      "line": 61,
+      "name": "On a stack, an If-Match of a version since changed answers 412",
+      "partition": "core",
+      "stepCount": 18,
+      "tags": [
+        "@case:failure",
+        "@case:success",
+        "@op:stack",
+        "@op:stackDelete",
+        "@op:stackPatch",
+        "@op:stackUpdate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/updates.feature#L61"
+    },
+    "P39": {
+      "feature": "api/updates.feature",
+      "line": 18,
+      "name": "On a stack, a PATCH keeps what it leaves out and a PUT resets it",
+      "partition": "core",
+      "stepCount": 20,
+      "tags": [
+        "@case:success",
+        "@op:stackCreate",
+        "@op:stackPatch",
+        "@op:stackUpdate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/updates.feature#L18"
+    },
+    "P40": {
+      "feature": "tiers/features.feature",
+      "line": 28,
+      "name": "A switched-off option refuses the requests that set it",
+      "partition": "core",
+      "stepCount": 4,
+      "tags": [
+        "@case:denial",
+        "@op:stackCreate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/tiers/features.feature#L28"
+    },
+    "P41": {
+      "feature": "api/bodies.feature",
+      "line": 16,
+      "name": "A body over the bound answers 413 on every surface, and one at the bound is read",
+      "partition": "core",
+      "stepCount": 11,
+      "tags": [
+        "@case:failure",
+        "@op:stackCreate",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/api/bodies.feature#L16"
+    },
+    "P42": {
+      "feature": "stacks/stacks.feature",
+      "line": 99,
+      "name": "A space reader reads the stacks of its spaces alone and changes none",
+      "partition": "core",
+      "stepCount": 40,
+      "tags": [
+        "@case:denial",
+        "@op:stack",
+        "@op:stackCreate",
+        "@op:stackDelete",
+        "@op:stackDisable",
+        "@op:stackEnable",
+        "@op:stackLock",
+        "@op:stackReslug",
+        "@op:stackUpdate",
+        "@op:stacks",
+        "@op:starSet",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L99"
+    },
+    "P43": {
+      "feature": "vendors/terragrunt.feature",
+      "line": 99,
+      "name": "With vendor-terragrunt switched off, every request that sets the Terragrunt member answers 403 naming it",
+      "partition": "core",
+      "stepCount": 17,
+      "tags": [
+        "@case:denial",
+        "@op:stackCreate",
+        "@op:stackPatch",
+        "@op:stackUpdate",
+        "@plan-sanitization",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vendors/terragrunt.feature#L99"
+    },
+    "P44": {
+      "feature": "authz/tenancy.feature",
+      "line": 60,
+      "name": "Another account's stack answers 404, and each account's slugs are its own",
+      "partition": "core",
+      "stepCount": 25,
+      "tags": [
+        "@case:denial",
+        "@op:searchStacks",
+        "@op:searchStacksSuggestions",
+        "@op:stack",
+        "@op:stackCreate",
+        "@op:stackDelete",
+        "@op:stackLock",
+        "@op:stacks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/authz/tenancy.feature#L60"
+    },
+    "P45": {
+      "feature": "stacks/stacks.feature",
+      "line": 23,
+      "name": "An account admin creates, reads, changes, moves, reslugs and deletes a stack",
+      "partition": "core",
+      "stepCount": 33,
+      "tags": [
+        "@case:success",
+        "@op:stack",
+        "@op:stackCreate",
+        "@op:stackDelete",
+        "@op:stackReslug",
+        "@op:stackUpdate",
+        "@op:stacks",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L23"
+    },
+    "P46": {
+      "feature": "stacks/stacks.feature",
+      "line": 161,
+      "name": "Each caller's stars are its own, and an admin disables and enables a stack",
+      "partition": "core",
+      "stepCount": 17,
+      "tags": [
+        "@case:success",
+        "@op:stack",
+        "@op:stackDisable",
+        "@op:stackEnable",
+        "@op:starSet",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L161"
+    },
+    "P47": {
+      "feature": "authz/live_sessions.feature",
+      "line": 59,
+      "name": "A grant committed with no message reaches the member's next request on either replica",
+      "partition": "core",
+      "stepCount": 24,
+      "tags": [
+        "@case:success",
+        "@op:space",
+        "@op:stackLock",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/authz/live_sessions.feature#L59"
+    },
+    "P48": {
+      "feature": "stacks/stacks.feature",
+      "line": 139,
+      "name": "A lock is lifted by its holder or forced by an admin, and refuses every other lock",
+      "partition": "core",
+      "stepCount": 22,
+      "tags": [
+        "@case:denial",
+        "@case:failure",
+        "@case:success",
+        "@op:stackLock",
+        "@op:stackUnlock",
+        "@postgres"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/stacks/stacks.feature#L139"
+    },
+    "P49": {
+      "feature": "vcs/sources.feature",
+      "line": 35,
+      "name": "A new stack tracks its branch's head, a sync follows a push, and a set pins an earlier commit",
+      "partition": "integrations",
+      "stepCount": 23,
+      "tags": [
+        "@case:success",
+        "@op:stack",
+        "@op:stackCreate",
+        "@op:stackSetCurrentCommit",
+        "@op:stackSyncCommit",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L35"
+    },
+    "P50": {
+      "feature": "vcs/sources.feature",
+      "line": 52,
+      "name": "A space reader is refused, and a stack the caller cannot read does not exist",
+      "partition": "integrations",
+      "stepCount": 23,
+      "tags": [
+        "@case:denial",
+        "@op:stackSetCurrentCommit",
+        "@op:stackSyncCommit",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L52"
+    },
+    "P51": {
+      "feature": "vcs/sources.feature",
+      "line": 69,
+      "name": "A commit the repository lacks is refused, and a host that does not answer is unavailable",
+      "partition": "integrations",
+      "stepCount": 17,
+      "tags": [
+        "@case:failure",
+        "@op:stackSetCurrentCommit",
+        "@op:stackSyncCommit",
+        "@postgres",
+        "@vcs"
+      ],
+      "result": "passed",
+      "source": "https://github.com/weaveplatform/infraweave/blob/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9/test/acceptance/features/vcs/sources.feature#L69"
+    },
+    "L1": {
+      "feature": "runs/logs.feature",
+      "line": 128,
+      "name": "An in-run token cannot read the stack's full run or task projections",
+      "partition": "integrations",
+      "stepCount": 57,
+      "tags": [
+        "@postgres",
+        "@objectstore",
+        "@vcs",
+        "@policy-projection-denial",
+        "@op:stackRun",
+        "@op:stackRuns",
+        "@op:stackProposedRuns",
+        "@op:stackTasks",
+        "@op:stackRunsInRange",
+        "@case:denial"
+      ],
+      "result": "passed-locally-final-CI-outstanding",
+      "source": "test/acceptance/features/runs/logs.feature",
+      "mode": "certified-FIPS-only",
+      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
+    }
+  },
+  "requiredOpenEvidence": [
+    {
+      "issue": 655,
+      "pr": 717,
+      "state": "corrected-live-lab-rerun-outstanding",
+      "head": "202e61f5f591c5cef0c2ccbcce4a4f5733106f90",
+      "failedLab": 44869808030,
+      "cleanup": "all-required-providers-verified"
+    },
+    {
+      "issue": 656,
+      "state": "audit-and-final-head-gates-outstanding"
+    },
+    {
+      "issue": 675,
+      "state": "approved-development-compatibility-passed-local-final-ci-outstanding",
+      "pr": 717,
+      "proof": "docs/implementation/policy-plan-payload-verification.json",
+      "officialReleaseProduction": "unproven"
+    },
+    {
+      "issue": 703,
+      "pr": 716,
+      "state": "prior-proof-ci-passed-and-merged-controlled-negative-passed-locally-final-ci-and-issue-reconciliation-outstanding",
+      "ci": 44867207346,
+      "head": "0d5a50f8b9cc7695229c4979e260b066534c2ff6",
+      "controlledBaselinePR": 717,
+      "controlledBaselineProof": "docs/implementation/runner-isolation-controlled-proof.json"
+    }
+  ],
+  "projectionOperations": [
+    {
+      "operation": "run",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/runs/{runId}",
+      "cases": {
+        "success": "P1",
+        "denial": "S30",
+        "failure": "S29"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackRun",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/run",
+      "cases": {
+        "success": "S34",
+        "denial": "L1",
+        "failure": "S34"
+      },
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
+    },
+    {
+      "operation": "stackRuns",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/runs",
+      "cases": {
+        "success": "S34",
+        "denial": "L1",
+        "failure": "S34"
+      },
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
+    },
+    {
+      "operation": "stackProposedRuns",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/proposed-runs",
+      "cases": {
+        "success": "S34",
+        "denial": "L1",
+        "failure": "S34"
+      },
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
+    },
+    {
+      "operation": "stackTasks",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/tasks",
+      "cases": {
+        "success": "S34",
+        "denial": "L1",
+        "failure": "S34"
+      },
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
+    },
+    {
+      "operation": "stackRunsInRange",
+      "representation": "Run",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/runs-in-range",
+      "cases": {
+        "success": "S34",
+        "denial": "L1",
+        "failure": "S34"
+      },
+      "denialEvidence": "Protocol-issued in-run token receives SPACE_READ 403 through both replicas; normal stack read still succeeds. Historical S33 separately verifies hidden 404.",
+      "literal403": "local-FIPS-passed-final-CI-outstanding",
+      "additionalIsolationCase": "S33"
+    },
+    {
+      "operation": "runTrigger",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs",
+      "cases": {
+        "success": "P2",
+        "denial": "P3",
+        "failure": "P4"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runProposeLocalWorkspace",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/propose-local-workspace",
+      "cases": {
+        "success": "P5",
+        "denial": "P6",
+        "failure": "P7"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "proposeWithOverrides",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/proposed-runs",
+      "cases": {
+        "success": "P8",
+        "denial": "P9",
+        "failure": "P10"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "taskCreate",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/tasks",
+      "cases": {
+        "success": "P11",
+        "denial": "P12",
+        "failure": "P13"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runRetry",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/retry",
+      "cases": {
+        "success": "P14",
+        "denial": "P15",
+        "failure": "P16"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runPromote",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/promote",
+      "cases": {
+        "success": "P17",
+        "denial": "P18",
+        "failure": "P19"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runLogsDelete",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/logs-delete",
+      "cases": {
+        "success": "P20",
+        "denial": "P21",
+        "failure": "P22"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runCancel",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/cancel",
+      "cases": {
+        "success": "P14",
+        "denial": "P23",
+        "failure": "S32"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runStop",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/stop",
+      "cases": {
+        "success": "P24",
+        "denial": "P25",
+        "failure": "P26"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runKill",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/kill",
+      "cases": {
+        "success": "P27",
+        "denial": "P25",
+        "failure": "P26"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runConfirm",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/confirm",
+      "cases": {
+        "success": "P28",
+        "denial": "P29",
+        "failure": "P30"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runDiscard",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/discard",
+      "cases": {
+        "success": "P20",
+        "denial": "P29",
+        "failure": "P30"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runTargetedReplan",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/targeted-replan",
+      "cases": {
+        "success": "P31",
+        "denial": "P32",
+        "failure": "P33"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runPrioritySet",
+      "representation": "Run",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/runs/{runId}/priority-set",
+      "cases": {
+        "success": "S31",
+        "denial": "P23",
+        "failure": "S32"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stacks",
+      "representation": "Stack",
+      "method": "GET",
+      "path": "/api/v1/stacks",
+      "cases": {
+        "success": "P34",
+        "denial": "P35",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "searchStacks",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/search",
+      "cases": {
+        "success": "P34",
+        "denial": "P35",
+        "failure": "P37"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stack",
+      "representation": "Stack",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}",
+      "cases": {
+        "success": "P38",
+        "denial": "P35",
+        "failure": "P38"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "runStack",
+      "representation": "Stack",
+      "method": "GET",
+      "path": "/api/v1/runs/{runId}/stack",
+      "cases": {
+        "success": "P1",
+        "denial": "P23",
+        "failure": "S32"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackCreate",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks",
+      "cases": {
+        "success": "P39",
+        "denial": "P40",
+        "failure": "P41"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackUpdate",
+      "representation": "Stack",
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}",
+      "cases": {
+        "success": "P39",
+        "denial": "P42",
+        "failure": "P38"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackPatch",
+      "representation": "Stack",
+      "method": "PATCH",
+      "path": "/api/v1/stacks/{stackId}",
+      "cases": {
+        "success": "P39",
+        "denial": "P43",
+        "failure": "P38"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackDelete",
+      "representation": "Stack",
+      "method": "DELETE",
+      "path": "/api/v1/stacks/{stackId}",
+      "cases": {
+        "success": "P38",
+        "denial": "P44",
+        "failure": "P38"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackReslug",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/reslug",
+      "cases": {
+        "success": "P45",
+        "denial": "P42",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackDisable",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/disable",
+      "cases": {
+        "success": "P46",
+        "denial": "P42",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackEnable",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/enable",
+      "cases": {
+        "success": "P46",
+        "denial": "P42",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackLock",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/lock",
+      "cases": {
+        "success": "P47",
+        "denial": "P44",
+        "failure": "P48"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackSyncCommit",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/sync-commit",
+      "cases": {
+        "success": "P49",
+        "denial": "P50",
+        "failure": "P51"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackSetCurrentCommit",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/set-current-commit",
+      "cases": {
+        "success": "P49",
+        "denial": "P50",
+        "failure": "P51"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "stackUnlock",
+      "representation": "Stack",
+      "method": "POST",
+      "path": "/api/v1/stacks/{stackId}/unlock",
+      "cases": {
+        "success": "P48",
+        "denial": "P48",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    },
+    {
+      "operation": "starSet",
+      "representation": "Stack",
+      "method": "PUT",
+      "path": "/api/v1/stacks/{stackId}/star",
+      "cases": {
+        "success": "P46",
+        "denial": "P42",
+        "failure": "P36"
+      },
+      "denialEvidence": "tagged scenario; literal403 is not inferred from the tag"
+    }
+  ],
+  "typedFixtureInventory": [
+    {
+      "path": "test/fixtures/policy-inputs/approval-c51-queued.json",
+      "sha256": "6cc651577d0cd8f93d562cf5eca83248c6ef433889fda828afdf058c6317d9a8"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-c51-reset-after.json",
+      "sha256": "fdb52ef884e1505e86ed6d79c9204f5fff5e117afdb973668a7f2e400864ed49"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-c51-unconfirmed.json",
+      "sha256": "f934b5b8c2cb24baf64711b39a035a89e522397c1b8a7b665d03f3da6bd4b347"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-queued-approve.json",
+      "sha256": "0b792378f3d3efa60c10678cb2b7a0de8bae0034e3f5ed3675c961c13cf2deab"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-queued-reject.json",
+      "sha256": "ce9ecca909f18dfaed821426b50656472d1f23d4fa2b879e00c751cf99ae2cdd"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-queued-undecided.json",
+      "sha256": "fbf06fba161e792c0b818db42d5c425ace6af3732041b551ad647aaa82f701c2"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/approval-unconfirmed-undecided.json",
+      "sha256": "344ab7eabebe711ceba2cdf13959d0b2539e96134ea5663d0b6ca33112e8cbb2"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/notification-finished.json",
+      "sha256": "752000cf57d12244bd2e0094332b0741b803c15842b1278d3a18cfbc13bb69ca"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-ansible.json",
+      "sha256": "40a54770490b2ee5885989b397f73d538ad6b65e3ad7133b8db982874abf9d57"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-c53-capture.json",
+      "sha256": "d0821986ba7a5a6a764d0bbebb3f12a236994c88b3c8261974a43b536f9d586f"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-dependency-run.json",
+      "sha256": "8bcce9ab3ca9ce33eaab371adb3f4ffba1383c54d0072f483e29100268d01ffd"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-proposed-deny.decision.json",
+      "sha256": "a8bd27b615f3ce0ccd5dcdd6d72e292e4d2836e0f17bfc2ee6ac5f7232b0ce98"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-pulumi.json",
+      "sha256": "59072512233c9648dc1e03f6d16d8a442f37b01fc4c1873bf8341d5bd475c697"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-tracked-warn.decision.json",
+      "sha256": "f01c99cdd5612d6bd096fb5e67341ba8d02cac7859f95c4481986fe48f958e9c"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-tracked-warn.json",
+      "sha256": "4d18990bee3d8329a2c65bda6bdc75979c53e1b9dee4ee7be4b98cb581f4f9b0"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/plan-trigger-policy-run.json",
+      "sha256": "3d77110c72f41a87001934b2e225f6cd19532d9d75c7cd202c6f464a671fdaf5"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/push-cancel.decision.json",
+      "sha256": "ead446e0c00d2f2e1d6939c86c7390eb03af8996c33dad5f5756f53ec05fe364"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/push-cancel.json",
+      "sha256": "1d554815d10ce40d6655e92c6530c8d49b751eb7f8111f53be56dd14987ca4c2"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/push-pull-request-opened.json",
+      "sha256": "881e1ac0bad59763e475b23c8b3d837903914405259617b06eafc9cdaccb7250"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/push-track.json",
+      "sha256": "21bc3a11aa44595417d01c72c62c3ff12fc5ee962d577b4a22a2cdf423f9ed72"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/trigger-discarded.json",
+      "sha256": "4eb6f3eb0813e3d5051518d40d449d8ccefc2a586677dd016578122cac81cec2"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/trigger-empty.decision.json",
+      "sha256": "5af2afe5c6422f4fb04314c9823d9f60eed10b713cd8cecf564f1d6a5f6527de"
+    },
+    {
+      "path": "test/fixtures/policy-inputs/trigger-finished.json",
+      "sha256": "347040c3abd631a45ab28338a9572c4a5462fccf978146cf76920dfdb5dac721"
+    }
+  ],
+  "candidateEvidence": [
+    {
+      "selector": "@policy-projection-denial",
+      "feature": "test/acceptance/features/runs/logs.feature",
+      "scenario": "An in-run token cannot read the stack's full run or task projections",
+      "status": "local-FIPS-passed-final-CI-outstanding",
+      "literal403Operations": [
+        "stackRun",
+        "stackRuns",
+        "stackProposedRuns",
+        "stackTasks",
+        "stackRunsInRange"
+      ],
+      "scenarios": 1,
+      "steps": 57,
+      "reportSHA256": "3b47d2a3bab15e9bd2841d7f343dc4ad470987e91479ae7206fb1a365ef407af"
+    }
+  ],
+  "typedFixtureProvenance": [
+    {
+      "path": "test/fixtures/policy-inputs/provenance/trigger-defaults.json",
+      "sha256": "643293386cae2a5d29acc49bc4a5032003b3784169e5eb9e235229c496e048ef"
+    }
+  ],
+  "computedCapabilityStates": {
+    "sourceCI": 44808423418,
+    "cucumberScenarios": 1040,
+    "command": "specref parity --product deploy --states --check --list --cucumber <merged-main-reports>",
+    "result": "passed",
+    "states": {
+      "tag:Infrastructure": "partial",
+      "tag:Policies": "partial",
+      "tag:Runs": "partial",
+      "tag:Stacks": "partial"
+    },
+    "correction": "tag:Infrastructure recorded missing becomes its computed partial state; no tag becomes implemented"
+  },
+  "captureReconciliation": {
+    "status": "local-real-worker-FIPS-passed-final-CI-outstanding",
+    "C291": "full rejection replay in both captured review states",
+    "C51": "current-owner flag reset/rejection/cleanup REST subset; sampled input deferred to 662; legacy comparison remains inferred",
+    "C46": "cleanup REST subset; historical billing/native SHA assertions retained upstream; reason/label behavior remains inferred",
+    "C48": "management and equivalent captured approval workflow; historical tier/entitled-account assertions retained upstream"
+  },
+  "localCaptureProof": [
+    {
+      "capture": "C291",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "33dfea7f02efe391e7c412577e188dfb7baa0ee54afc0f4e697749dfba997e15",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C46",
+      "scenarios": 1,
+      "steps": 29,
+      "reportSHA256": "11e1f27fa393931f9db32ef129481c7368dc0833bf2c173e23be2da8a600b283",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C48",
+      "scenarios": 2,
+      "steps": 116,
+      "reportSHA256": "bc0224f8a7f8f802ddf0c38d1eecc039e20643e9cedacbb6d887cd5f0ddbb0de",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    },
+    {
+      "capture": "C51",
+      "scenarios": 1,
+      "steps": 39,
+      "reportSHA256": "29d4852698093c49fd20ed4630aae507867bb3239581fde0e0814041ed95197b",
+      "mode": "certified-FIPS-only",
+      "status": "passed-locally-final-CI-outstanding"
+    }
+  ],
+  "currentIntegrationBase": {
+    "revision": "f47f54bf2e77b85307c261c42996972ffd8d8479",
+    "policyPR": 715,
+    "policyCI": 44867086361,
+    "liveLab": 44869808030,
+    "liveStatus": "failed",
+    "runnerProofPR": 716,
+    "liveCleanup": "all-required-providers-verified",
+    "labCorrectionsPR": 717,
+    "runnerProofCI": 44867207346,
+    "runnerProofStatus": "passed-and-merged",
+    "liveLabRevision": "e909e739b50646d32aeb754a310272d9648d514a"
+  },
+  "modernPlanCandidateProof": {
+    "proof": "docs/implementation/policy-plan-payload-verification.json",
+    "scenarios": 48,
+    "steps": 1075,
+    "fips": "certified/only",
+    "producer": "source-pinned patched-development; no experimental runner execution"
+  },
+  "terraformLabCandidateProof": {
+    "proof": "docs/implementation/infraweave-lab-verification.json",
+    "scenarios": 15,
+    "steps": 561,
+    "fips": "certified/only",
+    "ownership": "two independent real Terraform deployments; A cleanup preserves B and shared pins",
+    "emptySelection": "fails with verified cleanup",
+    "status": "passed-locally-final-ci-and-native-provider-lab-required"
+  },
+  "runReadSnapshotCandidateProof": {
+    "proof": "docs/implementation/run-read-snapshot-verification.json",
+    "baseline": "all six real PostgreSQL interleavings failed",
+    "regression": "30 certified-FIPS/race/shuffle interleavings passed",
+    "nativeScenarios": 2,
+    "nativeSteps": 170,
+    "status": "passed-locally-final-ci-required"
+  }
+}

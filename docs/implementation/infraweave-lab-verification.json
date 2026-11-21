@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "date": "2026-11-21",
+  "classification": "local and prior-candidate CI proof; final exact-head CI and native-provider walkthrough remain required",
+  "baseRevision": "3d8143cfcee831409d2900da9b24cc072c0956b7",
+  "dirtyWorktree": true,
+  "terraform": {
+    "version": "1.17.2",
+    "producer": "official stable release; separate from the experimental fixture producer"
+  },
+  "docker": {
+    "version": "29.6.1",
+    "api": "1.55",
+    "host": "native ARM64 Docker Desktop"
+  },
+  "opa": "v1.22.4",
+  "fips": {
+    "GOFIPS140": "certified",
+    "GODEBUG": "fips140=only"
+  },
+  "policyBatch": {
+    "scenarios": 15,
+    "steps": 561,
+    "allStepsPassed": true,
+    "reportSHA256": "272550aa967c7222dea053fefeee76c17579296d1ae3a7338b309b493fd29bcc",
+    "images": {
+      "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+      "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+      "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+    }
+  },
+  "ownership": {
+    "independentOwners": true,
+    "distinctContainers": true,
+    "aDestroyedBeforeBSucceeded": true,
+    "bServicesSurvivedACleanup": 3,
+    "sharedImageReferencesRetained": true,
+    "aEmptyState": true,
+    "aAbsent": {
+      "containers": [],
+      "volumes": [],
+      "networks": []
+    },
+    "bEmptyState": true,
+    "bAbsent": {
+      "containers": [],
+      "volumes": [],
+      "networks": []
+    },
+    "privateInputsRemoved": true
+  },
+  "emptySelectionControl": {
+    "expectedFailure": true,
+    "error": "RuntimeError: Acceptance must execute nonempty scenarios with every step passed",
+    "cleanupPassed": true,
+    "emptyState": true,
+    "absent": {
+      "containers": [],
+      "volumes": [],
+      "networks": []
+    }
+  },
+  "retainedLocalArtifacts": [
+    "/private/tmp/infraweave-lab-ownership-proof",
+    "/private/tmp/infraweave-lab-empty-selection-proof"
+  ],
+  "ci": {
+    "requiredJob": "Terraform policy acceptance batch",
+    "pr": 717,
+    "previousPassingCandidate": {
+      "run": 44880876138,
+      "url": "https://github.com/weaveplatform/infraweave/actions/runs/44880876138",
+      "job": 136775750967,
+      "headRevision": "7363b14c24ee58f20679fff5e2658b8a19f0e83f",
+      "checkoutRevision": "776a042e7ed15cc68d30f5f82974289502c7af26",
+      "dirty": false,
+      "artifactID": 14697678468,
+      "coverageArtifactID": 14698371781,
+      "passed": true,
+      "scenarios": 15,
+      "steps": 561,
+      "fips": true,
+      "opa": "v1.22.4",
+      "terraformVersion": "1.17.2",
+      "images": {
+        "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+        "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+        "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+      },
+      "reportSHA256": "b172428b2cde52b4fe9ee718bb5d48a62f4e2bc2e019fc5d8218694d61ec9d6d",
+      "cleanup": {
+        "owner": "iw-lab-6efb44a89d2642b8b512b66f960a322c",
+        "before": {
+          "containers": [],
+          "volumes": [],
+          "networks": []
+        },
+        "after": {
+          "containers": [],
+          "volumes": [],
+          "networks": []
+        },
+        "emptyState": true,
+        "passed": true,
+        "privateInputsRemoved": true
+      }
+    }
+  },
+  "remainingMigration": [
+    "application and launcher process lifecycle uses the existing harness",
+    "GitLab/DC fixture servers use their existing startup helpers"
+  ],
+  "providerInstallerFipsScope": {
+    "ciFailureRun": 44878879668,
+    "ciFailureJob": 136769566166,
+    "error": "official Terraform OpenPGP signing-key parsing panics when the provisioning process inherits GODEBUG=fips140=only",
+    "scope": "FIPS settings apply to infraweave helper build and --fips acceptance/application processes; provisioning Terraform retains standard upstream signature and locked checksum verification",
+    "pairedRealInstallations": [
+      {
+        "name": "inherited-only",
+        "exitCode": 11,
+        "sha1FipsPanic": true,
+        "initialized": false
+      },
+      {
+        "name": "provisioning-default",
+        "exitCode": 0,
+        "sha1FipsPanic": false,
+        "initialized": true
+      }
+    ],
+    "localArtifacts": "/private/tmp/infraweave-lab-provider-fips-scope-proof",
+    "classification": "local regression; corrected CI required"
+  }
+}

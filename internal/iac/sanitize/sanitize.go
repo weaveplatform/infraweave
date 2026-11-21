@@ -241,18 +241,8 @@ func terraform(doc map[string]any, op *operation) error {
 }
 
 func modernFamilies(doc map[string]any, op *operation) error {
-	// Deferred actions have no verified full-JSON artifact contract. Refuse
-	// their value trees until a real fixture settles the masks and metadata;
-	// NONE remains the explicit, still-sealed opt-out.
-	for _, key := range []string{"deferred_action_invocations"} {
-		if err := objects(doc[key], func(map[string]any) error {
-			if op.mode != None {
-				return fmt.Errorf("%w: %s", ErrUnsupported, key)
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
+	if err := objects(doc["deferred_action_invocations"], func(d map[string]any) error { return deferredAction(d, op) }); err != nil {
+		return err
 	}
 	if err := objects(doc["deferred_changes"], func(d map[string]any) error { return deferredResource(d, op) }); err != nil {
 		return err

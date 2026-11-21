@@ -1,0 +1,34 @@
+diff --git a/internal/terraform/node_resource_abstract_instance.go b/internal/terraform/node_resource_abstract_instance.go
+index f2914b9..438bb00 100644
+--- a/internal/terraform/node_resource_abstract_instance.go
++++ b/internal/terraform/node_resource_abstract_instance.go
+@@ -3176,15 +3176,20 @@ func (n *NodeAbstractResourceInstance) reportDeferredActionTriggers(ctx EvalCont
+ 
+ 	for blockIdx, trigger := range n.actionTriggers {
+ 		for listIdx, action := range trigger.actionRefs {
+-			deferrals.ReportActionInvocationDeferred(plans.ActionInvocationInstance{
+-				Addr: action.actionNode.Addr.Absolute(n.Addr.Module).Instance(addrs.NoKey),
+-				ActionTrigger: &plans.ResourceActionTrigger{
+-					TriggeringResourceAddr:  n.Addr,
+-					ActionTriggerBlockIndex: blockIdx,
+-					ActionsListIndex:        listIdx,
+-				},
+-				Caller: n.Addr.Resource,
+-			}, reason)
++			for _, event := range trigger.config.Events {
++				deferrals.ReportActionInvocationDeferred(plans.ActionInvocationInstance{
++					Addr: action.actionNode.Addr.Absolute(n.Addr.Module).Instance(addrs.NoKey),
++					ActionTrigger: &plans.ResourceActionTrigger{
++						TriggeringResourceAddr:  n.Addr,
++						ActionTriggerBlockIndex: blockIdx,
++						ActionsListIndex:        listIdx,
++						ActionTriggerEvent:      event,
++						ActionOnFailure:         trigger.config.OnFailure,
++					},
++					ProviderAddr: action.actionNode.ResolvedProvider,
++					Caller:       n.Addr.Resource,
++				}, reason)
++			}
+ 		}
+ 	}
+ }

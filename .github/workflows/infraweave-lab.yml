@@ -1,6 +1,7 @@
-name: go | VCS provider labs
+name: go | infraweave labs
 
-# Each night on main, every VCS provider against its real service: the
+# Each night on main, every VCS provider against its real service. Fresh
+# Terraform platform batches supply PostgreSQL, object storage and TLS Gitea. The
 # Terraform root in test/terraform/vcs/<root> makes two private repositories
 # for the run and pushes seed.sh's history to each, then the provider's
 # TestAcc<Provider>Cloud runs the source contract and checks a run
@@ -26,6 +27,7 @@ permissions:
   contents: read
 
 concurrency:
+  # Shared with the preceding workflow name during migration.
   group: vcs-lab
   cancel-in-progress: false
 
@@ -34,7 +36,7 @@ env:
 
 jobs:
   provider:
-    name: 'vcs-lab ${{ matrix.provider }}'
+    name: 'infraweave-lab VCS ${{ matrix.provider }}'
     # The environment's branch rule admits only main.
     if: ${{ github.ref == 'refs/heads/main' }}
     strategy:
@@ -251,11 +253,11 @@ jobs:
       - name: Build the verification-only lab helper
         id: helper
         if: ${{ steps.config.outputs.configured == 'true' }}
-        run: go build -o "$RUNNER_TEMP/vcs-lab" ./test/acceptance/cmd/vcs-lab
+        run: go build -o "$RUNNER_TEMP/infraweave-lab" ./test/acceptance/cmd/infraweave-lab
 
       - name: Validate the dedicated App setup attestation
         if: ${{ steps.config.outputs.configured == 'true' && matrix.provider == 'github' }}
-        run: '"$RUNNER_TEMP/vcs-lab" app-readiness'
+        run: '"$RUNNER_TEMP/infraweave-lab" app-readiness'
 
       - name: Open the run's webhook delivery path
         id: delivery
@@ -281,18 +283,18 @@ jobs:
               echo 'available=true' >> "$GITHUB_OUTPUT"
               ;;
             *)
-              "$RUNNER_TEMP/vcs-lab" install-tunnel --destination "$lab/cloudflared"
-              "$RUNNER_TEMP/vcs-lab" tunnel --binary "$lab/cloudflared" \
+              "$RUNNER_TEMP/infraweave-lab" install-tunnel --destination "$lab/cloudflared"
+              "$RUNNER_TEMP/infraweave-lab" tunnel --binary "$lab/cloudflared" \
                 --origin http://127.0.0.1:8765 --session-directory "$lab" > "$lab/process.log" 2>&1 &
               tunnel_job=$!
               ready=false
               for _ in $(seq 120); do
-                if public=$("$RUNNER_TEMP/vcs-lab" tunnel-url --session-directory "$lab" 2>/dev/null); then ready=true; break; fi
+                if public=$("$RUNNER_TEMP/infraweave-lab" tunnel-url --session-directory "$lab" 2>/dev/null); then ready=true; break; fi
                 [ ! -f "$lab/result.json" ] || break
                 sleep 0.5
               done
               if [ "$ready" != true ]; then
-                "$RUNNER_TEMP/vcs-lab" stop-tunnel --session-directory "$lab"
+                "$RUNNER_TEMP/infraweave-lab" stop-tunnel --session-directory "$lab"
                 wait "$tunnel_job" 2>/dev/null || true
                 echo 'available=false' >> "$GITHUB_OUTPUT"
                 line="vcs-lab $PROVIDER is skipped: its account-free quick tunnel did not open."
@@ -391,15 +393,21 @@ jobs:
             '{revision:$revision,provider:$provider,attempt:$attempt,opa:$opa,run:$run}' > "$results/run.json"
           run_feature() {
             local suite_name="$1" feature_path="$2" outcome=0
-            rm -f out/progress.jsonl cover/accept/cucumber.json
-            INFRAWEAVE_ACCEPT_FEATURES="$feature_path" make accept PARTITION=vcs-lab 2>&1 | tee -a cloud.log || outcome=$?
+            local deployment="$RUNNER_TEMP/infraweave-lab-platform/$PROVIDER/$suite_name"
+            python3 test/terraform/lab/labctl.py run --batch vcs --directory "$deployment" \
+              --helper "$RUNNER_TEMP/infraweave-lab" --features "$feature_path" \
+              --tags "$INFRAWEAVE_ACCEPT_TAGS" 2>&1 | tee -a cloud.log || outcome=$?
             mkdir -p "$results/$suite_name"
-            if [ -f cover/accept/cucumber.json ]; then
-              cp cover/accept/cucumber.json "$results/$suite_name/cucumber.json"
-            fi
-            if [ -f out/progress.jsonl ]; then
-              cp out/progress.jsonl "$results/$suite_name/progress.jsonl"
-            fi
+            for report in cucumber.json progress.jsonl acceptance.log terraform.log; do
+              if [ -f "$deployment/evidence/$report" ]; then
+                cp "$deployment/evidence/$report" "$results/$suite_name/$report"
+              fi
+            done
+            for report in result.json readiness.json cleanup.json; do
+              if [ -f "$deployment/$report" ]; then
+                cp "$deployment/$report" "$results/$suite_name/platform-$report"
+              fi
+            done
             return "$outcome"
           }
           # Keep immutable source history checks ahead of the real pushes.
@@ -407,10 +415,20 @@ jobs:
           run_feature webhooks features/vcs/webhooks.feature
           run_feature feedback features/vcs/feedback.feature
 
+      - name: Destroy remaining Terraform platform batches
+        id: destroy_platform
+        if: ${{ always() && steps.helper.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for journal in "$RUNNER_TEMP/infraweave-lab-platform/$PROVIDER"/*/deployment.json; do
+            python3 test/terraform/lab/labctl.py down --directory "$(dirname "$journal")"
+          done
+
       - name: Restore the dedicated App's parked webhook
         id: restore_app
         if: ${{ always() && matrix.provider == 'github' && steps.helper.outcome == 'success' }}
-        run: '"$RUNNER_TEMP/vcs-lab" restore-app --journal-directory "$RUNNER_TEMP/vcs-lab-hooks"'
+        run: '"$RUNNER_TEMP/infraweave-lab" restore-app --journal-directory "$RUNNER_TEMP/vcs-lab-hooks"'
 
       - name: Detach run-owned repository hooks
         id: detach_hooks
@@ -440,7 +458,7 @@ jobs:
         if: ${{ always() && steps.helper.outcome == 'success' && matrix.provider != 'gitlab' && matrix.provider != 'bitbucket-dc' }}
         run: |
           if [ -n "${INFRAWEAVE_LAB_TUNNEL_SESSION:-}" ]; then
-            "$RUNNER_TEMP/vcs-lab" stop-tunnel --session-directory "$INFRAWEAVE_LAB_TUNNEL_SESSION"
+            "$RUNNER_TEMP/infraweave-lab" stop-tunnel --session-directory "$INFRAWEAVE_LAB_TUNNEL_SESSION"
           fi
 
       - name: Stop the run's local VCS container
@@ -460,6 +478,7 @@ jobs:
           ABSENCE: ${{ steps.absence.outcome }}
           STOP_TUNNEL: ${{ steps.stop_tunnel.outcome }}
           STOP_PROVIDER: ${{ steps.stop_provider.outcome }}
+          DESTROY_PLATFORM: ${{ steps.destroy_platform.outcome }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -475,8 +494,8 @@ jobs:
             --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --arg restoreApp "$RESTORE_APP" --arg detachHooks "$DETACH_HOOKS" \
             --arg destroy "$DESTROY" --arg absence "$ABSENCE" --arg stopTunnel "$STOP_TUNNEL" \
-            --arg stopProvider "$STOP_PROVIDER" \
-            '{revision:$revision,provider:$provider,attempt:$attempt,run:$run,restoreApp:$restoreApp,detachHooks:$detachHooks,destroy:$destroy,absence:$absence,stopTunnel:$stopTunnel,stopProvider:$stopProvider}' \
+            --arg stopProvider "$STOP_PROVIDER" --arg destroyPlatform "$DESTROY_PLATFORM" \
+            '{revision:$revision,provider:$provider,attempt:$attempt,run:$run,restoreApp:$restoreApp,detachHooks:$detachHooks,destroy:$destroy,absence:$absence,stopTunnel:$stopTunnel,stopProvider:$stopProvider,destroyPlatform:$destroyPlatform}' \
             > "$results/cleanup.json"
 
       - name: Upload lab results

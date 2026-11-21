@@ -186,7 +186,10 @@ func New(d Deps) *Domain {
 		Approvals: approvals,
 	})
 	views := read.New(
-		read.Deps{Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store, Plans: store},
+		read.Deps{
+			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz,
+			Evidence: store, Policies: d.PolicyIdentities, Reviews: store, Approvals: store, Plans: store,
+		},
 	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
 	creator := trigger.New(trigger.Deps{

@@ -66,3 +66,11 @@ refusal and cleanup evidence. Complete workflow behavior still needs #650/#651
 and the varied real OPA/Rego public-path acceptance matrix in #654. The entitled
 upstream comparison stays visibly unresolved. A green subset, recorded-value
 check or approved inference establishes none of those missing observations.
+
+
+Workflow handoff reconciliation, 2026-11-21: the REST subset now checks that
+the complete captured approval, warning and always-approve inputs match C291,
+then executes those programs with real Terraform workers and public reviews.
+It requires FAILED after PENDING_REVIEW and preserves a separate C48 report.
+The historical tier inventory and missing entitled-account comparison remain
+upstream evidence; successful policy management does not establish them.

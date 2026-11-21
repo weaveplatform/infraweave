@@ -67,6 +67,9 @@ func (d *Dependencies) Gitea(ctx context.Context) (*Gitea, error) {
 // startGitea keeps the CA and the key pair in a directory of their own,
 // which outlives every scenario and goes with the container.
 func (d *Dependencies) startGitea(ctx context.Context) (*Gitea, error) {
+	if d.lab != nil {
+		return d.labGitea()
+	}
 	dir, err := os.MkdirTemp("", "infraweave-gitea-")
 	if err != nil {
 		return nil, fmt.Errorf("pki dir: %w", err)

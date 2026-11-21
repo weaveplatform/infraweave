@@ -207,6 +207,11 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 		//nolint:wrapcheck // a problem, answered as it is
 		return p, problem.Unauthenticated.Error("The request carries no valid credential.")
 	}
+	// Stack subjects grant visibility without changing the in-run ban on
+	// reading their run/task projections. Apply it before loading a view.
+	if p.Kind == kernel.PrincipalRun {
+		return p, forbidden(accessapi.ActionSpaceRead, "In-run API tokens cannot read runs, tasks or their logs.")
+	}
 	return p, nil
 }
 

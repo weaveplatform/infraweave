@@ -100,10 +100,11 @@ func TestAccCaptures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCaptureReplayers(captures, statefulCaptureReplayers); err != nil {
+	replayers, subsetReplayers := captureReplayRegistry(t)
+	if err := validateCaptureReplayers(captures, replayers); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateCaptureSubsetReplayers(captures, captureSubsetReplayers); err != nil {
+	if err := validateCaptureSubsetReplayers(captures, subsetReplayers); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range captures {
@@ -163,7 +164,7 @@ func TestAccCaptures(t *testing.T) {
 		}
 		t.Run(c.ID, func(t *testing.T) {
 			if c.ReplaySubset != "" {
-				executed := captureSubsetReplayers[c.ReplaySubset](t, api)
+				executed := subsetReplayers[c.ReplaySubset](t, api)
 				if err := c.CheckSubset(executed); err != nil {
 					t.Fatal(err)
 				}
@@ -179,7 +180,7 @@ func TestAccCaptures(t *testing.T) {
 				return
 			}
 			if c.ReplayWith != "" {
-				run, ok := statefulCaptureReplayers[c.ReplayWith]
+				run, ok := replayers[c.ReplayWith]
 				if !ok {
 					t.Fatalf("capture %s names unknown REST replayer %q", c.ID, c.ReplayWith)
 				}

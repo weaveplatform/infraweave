@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-21",
+  "baseRevision": "888bf8c47de20d4a54bb7be53f676b66fd0ffc80",
+  "dirtyWorktree": true,
+  "classification": "local candidate; exact final CI remains required",
+  "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -count=1 -timeout 10m -v -run '^TestAccSharedImageLifecycle$' ./test/acceptance/internal/harness",
+  "test": "TestAccSharedImageLifecycle",
+  "passed": true,
+  "testDurationSeconds": 13.93,
+  "forcedLegacyBaseline": "next create returned actual Docker No such image after A removed a private alias while B remained running",
+  "repairedLifecycle": "B next forwarder and official Terraform init/plan passed, failed/canceled cleanup preserved B, shared images retained, owned containers absent",
+  "logSHA256": "f708602f15fcfc4c07cd12cf4fc4cbd8300e4cc572aa4d17d333580eb3ac036f"
+}

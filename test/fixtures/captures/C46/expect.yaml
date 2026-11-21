@@ -1,4 +1,34 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/652
+replaySubset: policy-ignored-history-cleanup
+handoffs:
+  "/exchanges/3/response/errors/0/message":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical V5_FREE billing response, retained unchanged. infraweave uses its own feature and space-administration controls; the approved ignored-reason inference is distinct from this unobserved entitled-account comparison.
+  "/exchanges/3/response/data/stack/searchRunIgnoredTriggers":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical V5_FREE billing response, retained unchanged. infraweave uses its own feature and space-administration controls; the approved ignored-reason inference is distinct from this unobserved entitled-account comparison.
+  "/exchanges/3/response/data/stack/runs/0/commit/hash":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical native delivery commit, retained as upstream provenance. The real-provider policy walkthrough belongs to 655; this local cleanup does not replay the historical GitHub event.
+  "/exchanges/7/response/errors/0/message":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical V5_FREE billing response, retained unchanged. infraweave uses its own feature and space-administration controls; the approved ignored-reason inference is distinct from this unobserved entitled-account comparison.
+
+  "/exchanges/7/response/data/stack/runs/0/commit/hash":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Historical native delivery commit, retained as upstream provenance. The real-provider policy walkthrough belongs to 655; this local cleanup does not replay the historical GitHub event.
+  "/exchanges/9/response/data/stacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Delete the run-owned local stacks, verify 404 and restore the initial public inventory.
+  "/exchanges/9/response/data/policies":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/656
+    detail: Delete the run-owned local policies, verify 404 and restore the initial public inventory.
 observed:
   "/exchanges/3/response/errors/0/message": "Your billing tier does not support listing ignored runs."
   "/exchanges/3/response/data/stack/searchRunIgnoredTriggers": null

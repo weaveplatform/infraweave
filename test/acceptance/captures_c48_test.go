@@ -28,12 +28,13 @@ func c48Handoff(t *testing.T) harness.Capture {
 	return harness.Capture{}
 }
 
-func TestUnitC48ReplayNoLongerWaitsForClosedManagementTicket(t *testing.T) {
+func TestUnitC48ReplayNoLongerWaitsForClosedWorkflowTickets(t *testing.T) {
 	capture := c48Handoff(t)
 	if capture.ReplayAfter != "" || capture.ReplayWith != "" || capture.ReplaySubset != "policy-free-tier-management" {
-		t.Fatalf("C48 must execute its management subset without claiming full workflow replay: %+v", capture)
+		t.Fatalf("C48 must execute its REST subset with explicit upstream handoffs: %+v", capture)
 	}
-	if err := validateCaptureSubsetReplayers([]harness.Capture{capture}, captureSubsetReplayers); err != nil {
+	_, subsets := captureReplayRegistry(t)
+	if err := validateCaptureSubsetReplayers([]harness.Capture{capture}, subsets); err != nil {
 		t.Fatal(err)
 	}
 	for _, ptr := range []string{c48Notification, c48Stacks, c48Policies} {
@@ -41,9 +42,9 @@ func TestUnitC48ReplayNoLongerWaitsForClosedManagementTicket(t *testing.T) {
 			t.Fatalf("C48 %s lost its executable REST assertion", ptr)
 		}
 	}
-	state := capture.Handoffs["/exchanges/20/response/data/stack/run/state"]
-	if state.Classification != "deferred" || state.Owner != "https://github.com/weaveplatform/infraweave/issues/650" {
-		t.Fatalf("C48 FAILED run lost its approval workflow owner: %+v", state)
+	state := capture.Handoffs[c48Workflow]
+	if state.Classification != "rest" || state.Owner != "https://github.com/weaveplatform/infraweave/issues/656" {
+		t.Fatalf("C48 FAILED run lacks its executed workflow handoff: %+v", state)
 	}
 }
 
@@ -61,9 +62,9 @@ func TestUnitCaptureSubsetRegistryAndExecutionRefusals(t *testing.T) {
 	for name, executed := range map[string][]string{
 		"empty":     nil,
 		"partial":   {c48Stacks},
-		"unknown":   {c48Stacks, c48Policies, "/unknown"},
-		"deferred":  {c48Stacks, c48Policies, "/exchanges/20/response/data/stack/run/state"},
-		"duplicate": {c48Stacks, c48Policies, c48Notification, c48Notification},
+		"unknown":   {c48Stacks, c48Policies, c48Notification, c48Workflow, "/unknown"},
+		"upstream":  {c48Stacks, c48Policies, c48Notification, c48Workflow, "/exchanges/0/response/data/tier"},
+		"duplicate": {c48Stacks, c48Policies, c48Notification, c48Workflow, c48Notification},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := capture.CheckSubset(executed); !errors.Is(err, harness.ErrParity) {
@@ -71,11 +72,11 @@ func TestUnitCaptureSubsetRegistryAndExecutionRefusals(t *testing.T) {
 			}
 		})
 	}
-	if err := capture.CheckSubset([]string{c48Policies, c48Stacks, c48Notification}); err != nil {
+	if err := capture.CheckSubset([]string{c48Policies, c48Stacks, c48Notification, c48Workflow}); err != nil {
 		t.Fatal(err)
 	}
 	capture.ReplaySubset = ""
-	if err := capture.CheckSubset([]string{c48Policies, c48Stacks, c48Notification}); !errors.Is(err, harness.ErrParity) {
+	if err := capture.CheckSubset([]string{c48Policies, c48Stacks, c48Notification, c48Workflow}); !errors.Is(err, harness.ErrParity) {
 		t.Fatalf("full replay counted as subset: %v", err)
 	}
 }

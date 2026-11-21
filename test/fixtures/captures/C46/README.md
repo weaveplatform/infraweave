@@ -12,7 +12,12 @@ is needed to finish these cases, including discovery/verification of the label.
 No label was guessed, no paid plan was purchased and no support message was sent.
 The temporary source branch was deleted after the test; the CLI verified404.
 
-The final exchange verifies cleanup. REST replay remains deferred to #652.
+The final exchange verifies cleanup. The `policy-ignored-history-cleanup`
+subset creates the captured policy, attaches it to a real local stack, deletes
+both resources and verifies 404 plus restored public inventories. Historical
+billing errors and native commit hashes remain explicit upstream handoffs; no
+local response stands in for those observations. The authored policy reason
+and disable-label contracts remain accepted inferences, tested by #652/#654.
 
 Maintainer decision, 2026-11-19: use labelled inference for the missing case,
 as specified in ADR 0009. Implementation is unblocked; the absent upstream

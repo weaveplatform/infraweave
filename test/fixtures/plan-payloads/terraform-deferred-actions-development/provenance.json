@@ -1,0 +1,98 @@
+{
+  "classification": "locally-patched-experimental-producer; NOT official release evidence",
+  "source_commit": "ae094fc0ee6d4f3d2a990b40ac48a6d2dbaeb53e",
+  "patch_sha256": "fedd06c0b5a83d97d65e8f89632b38de58d577c9c2802faddf0b7bc972126c7c",
+  "binary_sha256": "b465a53a68e4f6eba9666889e56962ae82e1db485dd9e1e04a303b6e072be926",
+  "commands": [
+    {
+      "probe": "count-unknown",
+      "step": "init",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "probe": "count-unknown",
+      "step": "plan",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "probe": "count-unknown",
+      "step": "show",
+      "exit_code": 0,
+      "stderr": "",
+      "deferred_actions": [
+        {
+          "reason": "deferred_prereq",
+          "action_invocation": {
+            "address": "action.local_command.capture",
+            "type": "local_command",
+            "name": "capture",
+            "provider_name": "registry.terraform.io/hashicorp/local",
+            "lifecycle_action_trigger": {
+              "triggering_resource_address": "terraform_data.trigger",
+              "action_trigger_event": "AfterCreate",
+              "action_trigger_block_index": 0,
+              "actions_list_index": 0,
+              "on_failure": "ActionOnFailureHalt"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "probe": "resource-prerequisite",
+      "step": "init",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "probe": "resource-prerequisite",
+      "step": "plan",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "probe": "resource-prerequisite",
+      "step": "show",
+      "exit_code": 0,
+      "stderr": "",
+      "deferred_actions": [
+        {
+          "reason": "deferred_prereq",
+          "action_invocation": {
+            "address": "action.local_command.capture",
+            "type": "local_command",
+            "name": "capture",
+            "provider_name": "registry.terraform.io/hashicorp/local",
+            "lifecycle_action_trigger": {
+              "triggering_resource_address": "terraform_data.trigger",
+              "action_trigger_event": "AfterCreate",
+              "action_trigger_block_index": 0,
+              "actions_list_index": 0,
+              "on_failure": "ActionOnFailureHalt"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "captured": "2026-11-21",
+  "platform": "darwin_arm64",
+  "go": "go1.27.4",
+  "sourceTag": "v1.17.2",
+  "buildCommand": "GOWORK=off GOTOOLCHAIN=go1.27.4 CGO_ENABLED=0 go build -ldflags '-X main.experimentsAllowed=yes' -o terraform .",
+  "jsonSerializerPatched": false,
+  "maintainerDecision": "2026-11-21: use the documented experimental producer; official-release support remains unproven",
+  "applyExecution": false,
+  "actionExecution": false,
+  "files": {
+    "plan.json": "c510d3711226737d9eee484993098c6cfd7547370ad6c887689e3d8f388527ad",
+    "main.tf": "f2be6c125ac27331dff00ff52e2e105620583ea49386b74759a3059c658ed2e1",
+    ".terraform.lock.hcl": "e18750d267c597ae656e1c46249eccf0ad6865f56ee0886cf20a5063a6b3517b",
+    "producer.patch": "fedd06c0b5a83d97d65e8f89632b38de58d577c9c2802faddf0b7bc972126c7c",
+    "count-unknown/plan.json": "260ea8c04bd8f7a87a9817ce83fa64aa74b5b46e2704bda75078af3064185f85",
+    "count-unknown/main.tf": "ea235ce4fb2893eae1615e3c4b7797c432a86a8bb0e16448122cbd3925055b80",
+    "count-unknown/.terraform.lock.hcl": "e18750d267c597ae656e1c46249eccf0ad6865f56ee0886cf20a5063a6b3517b"
+  }
+}

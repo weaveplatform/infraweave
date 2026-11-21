@@ -478,11 +478,24 @@ receipt fences remain in force.
 [Report 35](../reference/35-modern-plan-payloads.md) distinguishes real stable
 action production from an actual public-alpha resource fixture transported
 through the stable worker for compatibility. The public alpha's deferred-action
-plan cannot be read as JSON in the recorded probes. Nonempty
-`deferred_action_invocations` therefore remain refused under DEFAULT/SMART;
-NONE is the explicit sealed opt-out. #675's required real deferred-action
-fixture and value/mask acceptance stay open. Source declarations or the
-maintainer's separate workflow-capture inference approval do not settle them.
+plan cannot be read as JSON in the recorded probes. On 2026-11-21 the maintainer
+approved a source-pinned, locally patched experimental producer for this missing
+compatibility proof; unmodified official-release production remains unproven.
+The patch supplies omitted trigger/provider metadata without changing JSON
+serialization. Both actual captures are checked in unchanged with source, patch,
+compiler and binary provenance.
+
+`deferred_action_invocations[*]` validates `reason` and the required
+`action_invocation` object, then applies the existing strict action contract.
+The captured nested invocation omits values/masks, so its identity and trigger
+metadata remain unchanged. If known action value members are present, the same
+`config_values` / `config_sensitive` / `config_unknown` rules apply. Authored
+compositions exercise those masks separately; they are not presented as producer
+captures. Unknown future wrapper/action fields and malformed masks fail in all
+modes without upload fallback. The unchanged full fixture carries actual
+sensitivity, copies and unknowns in its deferred-resource sections. All three
+families stay artifact-only. Stable runner images and the tool execution
+catalogue do not incorporate the experimental producer.
 
 
 ### Policy phase ownership and capture gates

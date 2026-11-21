@@ -2,7 +2,7 @@
 
 Checked against: Terraform v1.17.2 and OpenTofu v1.13.9 release APIs and source, official Terraform JSON/action documentation, local provider v2.9.1 at `95ad8e4b1c13f74be02143846e13cc8f588bc096`, and the public Terraform release index read 2026-11-20. Actual local CLI probes use checksum-verified darwin_arm64 binaries; actual worker acceptance uses the existing signed Linux tool mirror pins.
 
-Research baseline: **2026-11-20**.
+Research baseline: **2026-11-20**. Experimental compatibility extension: **2026-11-21**, explicitly approved by the maintainer.
 
 ## 1. Full documents are wider than policy input
 
@@ -33,6 +33,8 @@ checksums and source manifests are in
 | Same public alpha | Unknown action count or an action's deferred resource prerequisite | Both plan commands succeed, but `show -json` fails with `invalid action trigger event INVALID_EVENT`; no full JSON capture is claimed |
 | Terraform 1.17.2 reading the alpha's saved plan | `show -json` | Refuses the different producer version; no cross-version workaround is claimed |
 | OpenTofu 1.13.9, latest stable | Same action project; experimental flag | Rejects `action`/`action_trigger` blocks and the unknown flag; an ordinary builtin plan emits none of the three families |
+| Official v1.17.2 source built with experiments enabled | Both deferred-action projects | Plans, but unchanged reader fails with `INVALID_EVENT` |
+| Same exact source with the recorded graph-node metadata patch | Both projects | Plans and reads full JSON with a real `deferred_action_invocations` envelope; serializer unchanged. Patched-development compatibility only, not official-release evidence |
 
 The public index identifies the recorded alpha as the newest published alpha at
 this research baseline. It remains distinct from the latest stable release.
@@ -54,7 +56,7 @@ missing full document either. [S9]
 | --- | --- | --- | --- |
 | `action_invocations[*]` | `config_values` | `config_sensitive`; `config_unknown` stays a boolean mask | Supported through real stable producer, shared transform and actual uploads |
 | `deferred_changes[*]` | `resource_change.change.before`, `after`, resource identity/import values and generated configuration | Ordinary `before_sensitive`, `after_sensitive`, `after_unknown` paths inside `change` | Supported artifact compatibility against the actual experimental resource fixture; no experimental execution admission |
-| `deferred_action_invocations[*]` | Source declares an `action_invocation` envelope | Complete real JSON and mask behavior remain required | Nonempty DEFAULT/SMART documents fail closed pending #675's missing proof; NONE remains the explicit sealed opt-out |
+| `deferred_action_invocations[*]` | `action_invocation.config_values` when present; captured invocation has identity/trigger metadata only | Known nested action masks follow the existing action contract; the actual producer omits them | Supported artifact compatibility using approved patched-development full JSON; official-release production remains unproven |
 
 DEFAULT hashes value strings; SMART first collects marked strings, then hashes
 all identical copies in value payloads, including across selected units and
@@ -72,9 +74,11 @@ Generated HCL is an opaque value blob and is hashed in both sanitizing modes.
 Known supported family fields and marker shapes are validated before any write.
 Unknown future payload fields or malformed metadata fail explicitly, including
 under NONE for supported families; errors do not echo values or unknown keys.
-For the unsupported deferred-action family, all modes require an array of
-objects, and only explicit NONE preserves its raw payload without a claim about
-its masks. No error falls back to uploading original bytes. [S1][S2][S3]
+Deferred-action wrappers require a string reason and an action object. Known
+action members share the action validation and mask rules; future fields fail
+all modes. The actual capture has no nested action values/masks, and authored
+mask controls remain a separate evidence class. No error falls back to uploading
+original bytes. [S1][S2][S3]
 
 ## 4. Actual artifact and projection evidence
 
@@ -112,20 +116,31 @@ GOWORK=off INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 INFRAWEAVE_ACCEPT_TAGS=@plan-sanit
   go test -v ./test/acceptance -run '^TestAccFeatures$' -count=1 -timeout=15m
 ```
 
-## 5. Required remaining proof
+## 5. Approved experimental compatibility and remaining release limitation
 
-[#675](https://github.com/weaveplatform/infraweave/issues/675) remains open for
-its mandatory real `deferred_action_invocations` full JSON fixture and the
-corresponding value/mask and actual upload compatibility assertions (the
-remaining portions of acceptance criteria 2 and 3). The recorded alpha plans
-successfully but its JSON reader fails; the stable and release candidate refuse
-experimental planning. An authored wrapper or source-derived mask is not a
-replacement for that missing real result.
+The maintainer approved the documented experimental producer on 2026-11-21.
+The fixture directory `terraform-deferred-actions-development` contains the
+unchanged prerequisite and unknown-cardinality outputs, exact source commit,
+minimal patch, compiler/binary/document hashes, provider lock and reproduction
+script. The patch sets the event, failure mode and provider identity omitted by
+`reportDeferredActionTriggers`; it does not modify the full-JSON serializer.
+The unpatched official source with experiments enabled reproduces the same
+`INVALID_EVENT` failure as the alpha. The observed failures remain recorded.
 
-The open implementation PR stays draft and uses `Refs #675` while this proof is
-missing. The inference approval for unrelated Spacelift workflow captures does
-not apply here. Real supported-family acceptance does not close this gap, and
-passing CI alone does not complete the ticket.
+This accepted proof is bounded to full-artifact compatibility. Its invocation
+contains metadata only; sensitivity and unknown masks occur in other sections
+of the same real document. Stable-action mask compositions test the nested
+contract separately and are labelled authored. The real-service compatibility matrix passed under certified FIPS:
+**48 scenarios / 1,075 steps**, all passed with no skipped/undefined steps,
+seed `1795241531880240000`. This includes seven new single-document/selected-unit
+cases, repeated targeted uploads, all three modes, malformed future-field
+refusals (including NONE), existing registration/receipt fencing and resumed raw
+apply workspaces. The plan partition separately passed 38 scenarios / 841 steps;
+the four selected-unit cases passed 76 steps. Sanitization, typed input and
+acceptance/harness tests passed with race/shuffle/FIPS; configured lint, docs and
+signature checks passed. These local candidate results are separate from the
+mandatory final exact-head CI and the phase's native-provider lab. Unmodified official-release deferred-action production and experimental
+action execution are explicitly unproven and are not enabled by this change.
 
 ## Sources
 

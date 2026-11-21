@@ -62,8 +62,9 @@ func DockerReachable(ctx context.Context) error {
 
 // Database is one database in the shared @postgres container.
 type Database struct {
-	c    *postgres.PostgresContainer
-	name string
+	c     *postgres.PostgresContainer
+	labID string
+	name  string
 	// DSN reaches the database from the host.
 	DSN string
 }
@@ -93,6 +94,14 @@ func (d *Database) Drop(ctx context.Context) error {
 var ErrExec = errors.New("container command failed")
 
 func (d *Database) exec(ctx context.Context, cmd ...string) (string, error) {
+	if d.labID != "" {
+		output, err := dockerLab(ctx, append([]string{"exec", d.labID}, cmd...)...)
+		if err != nil {
+			return string(output), fmt.Errorf("%w: %w", ErrExec, err)
+		}
+		return string(output), nil
+	}
+
 	code, out, err := d.c.Exec(ctx, cmd, tcexec.Multiplexed())
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", cmd[0], err)
@@ -206,6 +215,9 @@ type Dependencies struct {
 	// outlives the test binary.
 	ToolCache string
 
+	lab          *labManifest
+	labNamespace string
+
 	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
 	tools                                             tools
 
@@ -234,14 +246,19 @@ func (d *Dependencies) Postgres(ctx context.Context) (*Database, error) {
 	if d.pgErr != nil {
 		return nil, d.pgErr
 	}
-	name := fmt.Sprintf("iw_scenario_%d", d.pgCount.Add(1))
-	if _, err := d.pg.Query(ctx, "CREATE DATABASE "+name+" TEMPLATE "+pgTemplate); err != nil {
+	name := fmt.Sprintf("iw_scenario_%s%d", d.labNamespace, d.pgCount.Add(1))
+	template := pgTemplate
+	if d.lab != nil {
+		template += "_" + d.labNamespace
+	}
+	if _, err := d.pg.Query(ctx, "CREATE DATABASE "+name+" TEMPLATE "+template); err != nil {
 		return nil, fmt.Errorf("@postgres: %w", err)
 	}
 	return &Database{
-		c:    d.pg.c,
-		name: name,
-		DSN:  strings.Replace(d.pg.DSN, "/"+pgDatabase+"?", "/"+name+"?", 1),
+		c:     d.pg.c,
+		labID: d.pg.labID,
+		name:  name,
+		DSN:   strings.Replace(d.pg.DSN, "/"+pgDatabase+"?", "/"+name+"?", 1),
 	}, nil
 }
 
@@ -256,21 +273,33 @@ func pgMaxConnections() string {
 
 // startPostgres starts the container and creates and migrates the template.
 func (d *Dependencies) startPostgres(ctx context.Context) (*Database, error) {
-	c, dsn, err := runPostgres(ctx,
-		testcontainers.WithCmdArgs("-c", "max_connections="+pgMaxConnections()))
-	if c != nil {
-		d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+	var db *Database
+	template := pgTemplate
+	if d.lab != nil {
+		db = &Database{labID: d.lab.Postgres.Container, name: pgDatabase, DSN: d.lab.Postgres.DSN}
+		template += "_" + d.labNamespace
+	} else {
+		c, dsn, err := runPostgres(ctx, testcontainers.WithCmdArgs("-c", "max_connections="+pgMaxConnections()))
+		if c != nil {
+			d.OnClose(func(ctx context.Context) error { return c.Terminate(ctx) })
+		}
+		if err != nil {
+			return nil, err
+		}
+		db = &Database{c: c, name: pgDatabase, DSN: dsn}
 	}
-	if err != nil {
-		return nil, err
-	}
-	db := &Database{c: c, name: pgDatabase, DSN: dsn}
-	if _, err := db.Query(ctx, "CREATE DATABASE "+pgTemplate); err != nil {
+	if _, err := db.Query(ctx, "CREATE DATABASE "+template); err != nil {
 		return nil, fmt.Errorf("@postgres: %w", err)
 	}
+	if d.lab != nil {
+		d.OnClose(func(ctx context.Context) error {
+			_, err := db.Query(ctx, "DROP DATABASE "+template+" WITH (FORCE)")
+			return err
+		})
+	}
 	if d.Migrate != nil {
-		template := strings.Replace(dsn, "/"+pgDatabase+"?", "/"+pgTemplate+"?", 1)
-		if err := d.Migrate(ctx, template); err != nil {
+		templateDSN := strings.Replace(db.DSN, "/"+pgDatabase+"?", "/"+template+"?", 1)
+		if err := d.Migrate(ctx, templateDSN); err != nil {
 			return nil, fmt.Errorf("@postgres: migrate %s: %w", pgTemplate, err)
 		}
 	}
@@ -435,6 +464,10 @@ func (p *OwnPostgres) docker(ctx context.Context, f func(*testcontainers.DockerC
 // ObjectStore returns the shared object store, starting it on first use.
 func (d *Dependencies) ObjectStore(ctx context.Context) (*ObjectStore, error) {
 	d.storeOnce.Do(func() {
+		if d.lab != nil {
+			d.store = &ObjectStore{Endpoint: d.lab.ObjectStore.Endpoint, AccessKey: storeAccessKey, SecretKey: storeSecretKey}
+			return
+		}
 		c, err := testcontainers.Run(ctx, ImageObjectStore,
 			testcontainers.WithExposedPorts("9000/tcp"),
 			testcontainers.WithEnv(map[string]string{

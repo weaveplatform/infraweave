@@ -148,6 +148,28 @@ func TestUnitRunsRefusals(t *testing.T) {
 	}
 }
 
+func TestUnitInRunTokenCannotReadRunProjections(t *testing.T) {
+	s := New(nil, nil, nil, nil, nil)
+	ctx := kernel.WithPrincipal(t.Context(), kernel.Principal{Kind: kernel.PrincipalRun})
+	for name, err := range map[string]error{
+		"run":         second(s.Run(ctx, api.RunRequestObject{})),
+		"stack run":   second(s.StackRun(ctx, api.StackRunRequestObject{})),
+		"runs":        second(s.StackRuns(ctx, api.StackRunsRequestObject{})),
+		"proposals":   second(s.StackProposedRuns(ctx, api.StackProposedRunsRequestObject{})),
+		"tasks":       second(s.StackTasks(ctx, api.StackTasksRequestObject{})),
+		"dated runs":  second(s.StackRunsInRange(ctx, api.StackRunsInRangeRequestObject{Params: api.StackRunsInRangeParams{Start: "1700000000", End: "1700000001"}})),
+		"run search":  second(s.SearchRuns(ctx, api.SearchRunsRequestObject{Body: &api.SearchRunsRequest{}})),
+		"suggestions": second(s.SearchRunsSuggestions(ctx, api.SearchRunsSuggestionsRequestObject{Body: &api.SearchSuggestionsInput{}})),
+	} {
+		t.Run(name, func(t *testing.T) {
+			p, ok := errors.AsType[*problem.Error](err)
+			if !ok || p.Problem.Status != 403 || p.Problem.Action != "SPACE_READ" {
+				t.Fatalf("in-run projection read: %v", err)
+			}
+		})
+	}
+}
+
 // TestUnitUnder puts each pointer of a refused search under the input
 // that holds it, and passes any other error through.
 func TestUnitUnder(t *testing.T) {

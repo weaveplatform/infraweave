@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/errdefs"
 	"github.com/moby/moby/client"
 
 	"github.com/weaveplatform/infraweave/test/deps"
@@ -58,6 +59,7 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sharedOwnerBaseline(t, &a, &b, prefix)
 	startForward := func(owner *Launchers, scenario string) {
 		t.Helper()
 		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
@@ -130,6 +132,75 @@ func TestAccSharedImageLifecycle(t *testing.T) {
 		})
 		if err != nil || len(list.Items) != 0 {
 			t.Fatalf("owned container cleanup readback: %v, %v", list.Items, err)
+		}
+	}
+}
+
+func sharedOwnerBaseline(t *testing.T, a, b *Launchers, prefix string) {
+	t.Helper()
+	ctx := t.Context()
+	// A private alias recreates the rejected shared-tag teardown without
+	// removing any committed reference another suite may be using.
+	alias := "infraweave-ownership-control:" + strings.ToLower(prefix)
+	if _, err := b.cli.ImageInspect(ctx, alias); !errdefs.IsNotFound(err) {
+		t.Fatalf("baseline alias must be absent before ownership: %v", err)
+	}
+	if _, err := a.cli.ImageTag(ctx, client.ImageTagOptions{Source: RunnerImage, Target: alias}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := b.cli.ImageRemove(context.WithoutCancel(ctx), alias, client.ImageRemoveOptions{Force: true}); err != nil && !errdefs.IsNotFound(err) {
+			t.Errorf("baseline alias cleanup: %v", err)
+		}
+	})
+	var surviving *Tool
+	for _, owner := range []struct {
+		launcher *Launchers
+		scenario string
+	}{{a, prefix + "-baseline-a"}, {b, prefix + "-baseline-b"}} {
+		t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, owner.scenario) })
+		tool, err := owner.launcher.RunTool(ctx, ToolRun{
+			Scenario: owner.scenario, Image: alias, Bin: owner.launcher.Forward, Dir: t.TempDir(),
+			Args: []string{"127.0.0.1:0", "127.0.0.1:1"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		surviving = tool
+	}
+	if err := a.Remove(ctx, LabelScenario, prefix+"-baseline-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.cli.ImageRemove(ctx, alias, client.ImageRemoveOptions{Force: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.cli.ImageInspect(ctx, alias); !errdefs.IsNotFound(err) {
+		t.Fatalf("baseline teardown retained the shared alias: %v", err)
+	}
+	live, err := b.cli.ContainerInspect(ctx, surviving.id, client.ContainerInspectOptions{})
+	if err != nil || live.Container.State == nil || !live.Container.State.Running {
+		t.Fatalf("the barrier must leave B's first tool running: %v, %v", live.Container, err)
+	}
+	scenario := prefix + "-baseline-next"
+	t.Cleanup(func() { _ = b.Remove(context.WithoutCancel(ctx), LabelScenario, scenario) })
+	if _, err := b.RunTool(ctx, ToolRun{
+		Scenario: scenario, Image: alias, Bin: b.Forward, Dir: t.TempDir(),
+		Args: []string{"127.0.0.1:0", "127.0.0.1:1"},
+	}); !errdefs.IsNotFound(err) {
+		t.Fatalf("shared-tag baseline must fail at B's next create: %v", err)
+	} else {
+		t.Logf("Controlled shared-tag baseline refused B's next tool after A removed its alias: %v", err)
+	}
+	for _, suffix := range []string{"-baseline-a", "-baseline-b", "-baseline-next"} {
+		scenario := prefix + suffix
+		if err := b.Remove(ctx, LabelScenario, scenario); err != nil {
+			t.Fatal(err)
+		}
+		remaining, err := b.cli.ContainerList(ctx, client.ContainerListOptions{
+			All: true, Filters: client.Filters{}.Add("label", LabelScenario+"="+scenario),
+		})
+		if err != nil || len(remaining.Items) != 0 {
+			t.Fatalf("baseline container cleanup readback: %v, %v", remaining.Items, err)
 		}
 	}
 }

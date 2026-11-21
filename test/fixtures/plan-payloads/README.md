@@ -13,6 +13,7 @@ remote resource was created.
 | `terraform-deferred` | Public experimental Terraform 1.17.0-alpha20260827 with `-allow-deferral=true`; one actual deferred resource with wildcard address, unknown index, reason and sensitivity/unknown masks |
 | `opentofu` | OpenTofu 1.13.9; ordinary builtin plan; no action/deferred family is emitted |
 | `terraform-deferred-action-unavailable` | The public alpha plans successfully, but its `show -json` fails with `invalid action trigger event INVALID_EVENT`; no JSON fixture exists here |
+| `terraform-deferred-actions-development` | Approved source-pinned, locally patched v1.17.2 development producer; unchanged full JSON for deferred prerequisites and unknown action count. Official-release support remains unproven; see its provenance and reproduction script |
 
 Each `plan.json` is unchanged CLI `show -json` output. Its adjacent project,
 provider lockfile where applicable, provenance and manifest checksum preserve the

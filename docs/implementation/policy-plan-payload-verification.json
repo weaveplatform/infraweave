@@ -1,0 +1,33 @@
+{
+  "classification": "local candidate acceptance; final exact-head CI remains required",
+  "baseRevision": "3e9e33a3",
+  "evidenceClass": "source-pinned patched-development producer; official-release deferred-action production remains unproven",
+  "producerSource": "ae094fc0ee6d4f3d2a990b40ac48a6d2dbaeb53e",
+  "fips": {
+    "GOFIPS140": "certified",
+    "GODEBUG": "fips140=only"
+  },
+  "command": "GOWORK=off GOFIPS140=certified GODEBUG=fips140=only INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 INFRAWEAVE_ACCEPT_TAGS=@plan-sanitization go test -v -count=1 -run '^TestAccFeatures$' -timeout=10m ./test/acceptance",
+  "scenarios": 48,
+  "steps": 1075,
+  "statuses": [
+    "passed"
+  ],
+  "seed": "1795241531880240000",
+  "cucumberSHA256": "9ed202db3374c17d3b3c402dad12af4d05294a2ec7b2a1ca421b664afa0e959b",
+  "additionalProof": {
+    "planPartition": {
+      "scenarios": 38,
+      "steps": 841
+    },
+    "selectedUnits": {
+      "scenarios": 4,
+      "steps": 76
+    }
+  },
+  "publication": {
+    "runnerCLIs": "official stable only",
+    "experimentalProducerInRunner": false
+  },
+  "pr": 717
+}

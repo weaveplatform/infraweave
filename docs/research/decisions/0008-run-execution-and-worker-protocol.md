@@ -1348,13 +1348,21 @@ has failed":
   `-pulumi`, `-ansible`) that meet the contract, defined under
   `deploy/images/` on one Alpine base. They hold the tools a phase's shell
   needs (`bash`, `ca-certificates`, `curl`, `git`, `jq`, `openssh-client`,
-  `ps` and `tzdata`) and no Terraform or OpenTofu binary, which the
-  launcher mounts, as Spacelift's images do
-  ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
+  `ps` and `tzdata`). Terraform and OpenTofu images also include their pinned
+  official stable CLI at `/bin/terraform` or `/bin/tofu`. Each architecture's
+  release archive is checked against the SHA-256 pinned in `versions.json` at
+  build time. A network-disabled plan/apply/destroy contract proves that the
+  image works without launcher downloads or tool mounts. This follows the
+  maintainer's 2026-11-21 image decision; retained revision 1/2 images are the
+  earlier shell-only environments.
   Built-in references are immutable digest pins shared by the application and
   acceptance harness. Runner environment releases have their own cadence
-  (decision 0020); Terraform/OpenTofu tags identify the tested mounted-tool
-  cohort, and the run's requested tool version remains authoritative.
+  (decision 0020); version tags identify the installed CLI. With
+  `skipVendorBinaryDownload`, the image's CLI runs. Otherwise the run's requested
+  tool version remains authoritative and its read-only mount overrides the
+  installed executable. This preserves explicit image overrides and saved-run
+  specifications. Experimental fixture producers are never baked into the
+  released images.
   - **`-pulumi`** adds the Pulumi CLI and its language hosts from Pulumi's
     release archive, checked against the SHA-256 its Dockerfile pins, with
     Node.js and npm, and Python and pip, from Alpine; Go and .NET programs

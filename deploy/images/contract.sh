@@ -4,8 +4,8 @@
 # on each image and platform, and the acceptance suite's TestAccRunnerImages
 # on each image it builds. It checks UID and GID 1983, a ps that lists the
 # container's processes, a workspace that user writes, the tools a phase's
-# shell needs, and no Terraform or OpenTofu binary, which the launcher
-# mounts for each run.
+# shell needs. Baked-tool contracts are checked separately so retained
+# images and custom images remain usable with per-run read-only mounts.
 # ref: decision 0008 § "Runner images"
 set -eu
 
@@ -25,9 +25,4 @@ for tool in bash curl git jq ssh; do
 done
 [ -s /etc/ssl/certs/ca-certificates.crt ] || fail "lacks the CA certificates"
 [ -e /usr/share/zoneinfo/UTC ] || fail "lacks the time zone database"
-for tool in terraform tofu; do
-	if command -v "$tool" >/dev/null; then
-		fail "holds $tool at $(command -v "$tool"), which the launcher mounts"
-	fi
-done
 echo "runner image contract: met by $(. /etc/os-release && echo "$PRETTY_NAME") on $(uname -m)"

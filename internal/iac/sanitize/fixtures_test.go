@@ -28,7 +28,7 @@ func TestUnitModernPlanFixtures(t *testing.T) {
 		t.Fatal(err)
 	}
 	files, err := filepath.Glob(filepath.Join(root, "*", "plan.json"))
-	if err != nil || len(files) != 4 || len(manifest.Plans) != len(files) {
+	if err != nil || len(files) != 5 || len(manifest.Plans) != len(files) {
 		t.Fatalf("modern fixture inventory: %d, %v", len(files), err)
 	}
 	for _, file := range files {

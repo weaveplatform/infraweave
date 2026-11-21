@@ -15,7 +15,7 @@ import (
 func TestUnitUnsupportedPlanFamilies(t *testing.T) {
 	const secret = "dummy-unsupported-642"
 	families := map[string]string{
-		"deferred_action_invocations": `[{"reason":"resource_config_unknown","action_invocation":{"address":"action.example.send","config_values":{"token":"` + secret + `"},"config_sensitive":{"token":true}}}]`,
+		"deferred_action_invocations": `[{"reason":"resource_config_unknown","future_values":{"token":"` + secret + `"},"action_invocation":{"address":"action.example.send","config_values":{"token":"` + secret + `"},"config_sensitive":{"token":true}}}]`,
 	}
 	for name, payload := range families {
 		for _, envelope := range []bool{false, true} {
@@ -26,11 +26,7 @@ func TestUnitUnsupportedPlanFamilies(t *testing.T) {
 			for _, mode := range []sanitize.Mode{sanitize.Default, sanitize.Smart, sanitize.None} {
 				var out bytes.Buffer
 				err := sanitize.Plan(&out, strings.NewReader(raw), mode)
-				if mode == sanitize.None {
-					if err != nil || out.String() != raw {
-						t.Fatalf("NONE changed explicit opt-out %s: %v", name, err)
-					}
-				} else if !errors.Is(err, sanitize.ErrUnsupported) || out.Len() != 0 || strings.Contains(err.Error(), secret) || !strings.Contains(err.Error(), name) {
+				if !errors.Is(err, sanitize.ErrUnsupported) || out.Len() != 0 || strings.Contains(err.Error(), secret) {
 					t.Fatalf("%s/%s did not fail closed without values: %v, %d bytes", name, mode, err, out.Len())
 				}
 			}

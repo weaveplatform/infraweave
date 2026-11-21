@@ -155,6 +155,75 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  lab-batch:
+    name: Terraform policy acceptance batch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+      - name: Read the pinned Terraform release
+        id: pins
+        run: |
+          version=$(sed -n '/^var Terraform = /,/^}/ s/.*Version: *"\([^"]*\)".*/\1/p' test/deps/tools.go)
+          test -n "$version"
+          echo "terraform=$version" >> "$GITHUB_OUTPUT"
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+          terraform_version: ${{ steps.pins.outputs.terraform }}
+      - name: Verify batch lifecycle controls
+        run: python3 -m unittest discover -s test/terraform/lab -p 'test_*.py'
+      - name: Build the verification-only lab helper
+        # Scope FIPS to infraweave. The provisioning CLI authenticates provider
+        # releases with OpenPGP, whose key IDs require legacy SHA-1 hashing.
+        env:
+          GOFIPS140: certified
+          GODEBUG: fips140=only
+        run: go build -o "$RUNNER_TEMP/infraweave-lab" ./test/acceptance/cmd/infraweave-lab
+      - name: Run real OPA and worker scenarios on Terraform infrastructure
+        id: batch
+        run: |
+          python3 test/terraform/lab/labctl.py run --batch policies --fips \
+            --directory "$RUNNER_TEMP/infraweave-lab-policies" --helper "$RUNNER_TEMP/infraweave-lab"
+      - name: Verify Terraform cleanup even after interruption
+        if: always()
+        run: |
+          directory="$RUNNER_TEMP/infraweave-lab-policies"
+          if [ -f "$directory/deployment.json" ]; then
+            python3 test/terraform/lab/labctl.py down --directory "$directory"
+          fi
+      - name: Retain executed scenarios and cleanup proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: terraform-policy-lab-evidence
+          path: |
+            ${{ runner.temp }}/infraweave-lab-policies/evidence
+            ${{ runner.temp }}/infraweave-lab-policies/result.json
+            ${{ runner.temp }}/infraweave-lab-policies/readiness.json
+            ${{ runner.temp }}/infraweave-lab-policies/cleanup.json
+          retention-days: 7
+      - name: Upload Terraform lab coverage
+        if: steps.batch.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cover-lab
+          path: ${{ runner.temp }}/infraweave-lab-policies/coverage
+          include-hidden-files: true
+          retention-days: 7
+
   # The unit tests and every acceptance partition again, with every binary
   # built with the certified FIPS 140-3 module and every process in
   # fips140=only mode (make's FIPS=1), so a call to MD5, SHA-1 or another
@@ -182,8 +251,39 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      # setup-go keeps the module cache. Its immutable, workload-shared key
+      # cannot refresh this job's compiler artifacts as the source changes.
+      - name: Name the certified FIPS build cache
+        id: fips_cache
+        env:
+          DEPS_HASH: ${{ hashFiles('go.mod', 'go.sum') }}
+        run: |
+          echo "path=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "prefix=fips-go-build-v1-${RUNNER_OS}-${RUNNER_ARCH}-${DEPS_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore incremental certified FIPS builds
+        continue-on-error: true
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.fips_cache.outputs.path }}
+          key: ${{ steps.fips_cache.outputs.prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-accept
+          restore-keys: |
+            ${{ steps.fips_cache.outputs.prefix }}-
+
+      - name: Check bounded progress reporting
+        run: python3 -m unittest discover -s .github -p test_accept_progress.py
+
       - name: Unit tests in fips140=only mode
         run: make test FIPS=1
+
+      # A later job timeout must not discard successful unit compilation.
+      # Cache entries contain build artifacts; every test still runs count=1.
+      - name: Save passing certified FIPS unit builds
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.fips_cache.outputs.path }}
+          key: ${{ steps.fips_cache.outputs.prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-unit
 
       # With no PARTITION, make accept runs every TestAcc and every
       # partition's scenarios.
@@ -191,7 +291,12 @@ jobs:
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
           INFRAWEAVE_ACCEPT_PROGRESS: '1'
-        run: make accept FIPS=1
+        run: |
+          set -euo pipefail
+          python3 .github/accept_progress.py test/acceptance/out &
+          progress=$!
+          trap 'kill "$progress" 2>/dev/null || true; wait "$progress" 2>/dev/null || true' EXIT
+          make accept FIPS=1
 
       - name: Upload failed-scenario evidence
         if: failure()
@@ -213,6 +318,13 @@ jobs:
           line="fips-only ran every suite under $mode."
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save passing certified FIPS acceptance builds
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.fips_cache.outputs.path }}
+          key: ${{ steps.fips_cache.outputs.prefix }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-accept
 
   # The sqltest suites and accept-core on the next PostgreSQL major, its
   # beta or release candidate until it is generally available. It reports
@@ -449,7 +561,7 @@ jobs:
 
   coverage:
     name: 'Coverage gate (≥95% total, ≥90% per package)'
-    needs: [unit, accept]
+    needs: [unit, accept, lab-batch]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -577,7 +689,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, fips-only, parity, reference, generated, lint, vuln, build, coverage, changes, images]
+    needs: [unit, accept, lab-batch, fips-only, parity, reference, generated, lint, vuln, build, coverage, changes, images]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed

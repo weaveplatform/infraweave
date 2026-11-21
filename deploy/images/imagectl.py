@@ -76,8 +76,7 @@ def tag(kind, version=None):
     revision = f"r{data['revision']}"
     if kind == "test-support":
         return revision
-    prefix = "tested-" if kind in ("terraform", "opentofu") else ""
-    return f"{prefix}{version or data['tools'][kind]['version']}-{revision}"
+    return f"{version or data['tools'][kind]['version']}-{revision}"
 
 
 def matrix():
@@ -97,6 +96,18 @@ def render(kind, before, data, tool):
     after = before
     if kind != "test-support":
         after = re.sub(r"(?m)^FROM alpine:[^\n]+", "FROM " + data["base"], after)
+    if kind in ("terraform", "opentofu"):
+        binary = "terraform" if kind == "terraform" else "tofu"
+        after = re.sub(r'(?<=image.version=")[0-9.]+', tool["version"], after)
+        after = re.sub(rf"{binary}_[0-9.]+_linux_", f"{binary}_{tool['version']}_linux_", after)
+        if kind == "terraform":
+            after = re.sub(r"releases.hashicorp.com/terraform/[0-9.]+/",
+                           f"releases.hashicorp.com/terraform/{tool['version']}/", after)
+        else:
+            after = re.sub(r"/download/v[0-9.]+/", f"/download/v{tool['version']}/", after)
+        for arch in ("amd64", "arm64"):
+            checksum = tool["sha256"][f"{binary}_{tool['version']}_linux_{arch}.zip"]
+            after = re.sub(rf"({arch}\) sum=)[a-f0-9]+", rf"\g<1>{checksum}", after)
     if kind == "pulumi":
         after = re.sub(r"pulumi-v[0-9.]+-linux", f"pulumi-v{tool['version']}-linux", after)
         after = re.sub(r"/download/v[0-9.]+/", f"/download/v{tool['version']}/", after)
@@ -133,8 +144,8 @@ def generate(check=False):
             ref = entry["reference"]
             if not re.fullmatch(re.escape(REGISTRY + kind) + r"@sha256:[0-9a-f]{64}", ref):
                 raise ValueError(f"invalid locked reference: {ref}")
-            pattern = {"terraform": r"tested-[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
-                       "opentofu": r"tested-[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
+            pattern = {"terraform": r"(?:tested-)?[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
+                       "opentofu": r"(?:tested-)?[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*",
                        "test-support": r"r[1-9][0-9]*"}.get(kind, r"[0-9]+\.[0-9]+\.[0-9]+-r[1-9][0-9]*")
             if not re.fullmatch(pattern, entry["tag"]) or set(entry["platforms"]) != set(PLATFORMS):
                 raise ValueError(f"invalid release tag/platforms for {kind}")
@@ -249,6 +260,13 @@ def smoke(args):
         if result.returncode == 0 or "no such file" not in result.stderr.lower():
             raise ValueError("test-support must have no shell: " + result.stderr)
         return
+    if args.kind in ("terraform", "opentofu"):
+        # The installed CLI must plan/apply without a mount or network access.
+        run("docker", "run", "--rm", "--network", "none", "--platform", args.platform,
+            "--mount", f"type=bind,src={HERE},dst=/opt/image-tests,readonly",
+            "--env", "RUNNER_KIND=" + args.kind,
+            "--env", "RUNNER_TOOL_VERSION=" + (args.version or inputs()["tools"][args.kind]["version"]),
+            args.reference, "sh", "/opt/image-tests/tests/baked-tools.sh")
     run("docker", "run", "--rm", "--platform", args.platform,
         "--mount", f"type=bind,src={HERE},dst=/opt/image-tests,readonly",
         "--env", "RUNNER_KIND=" + args.kind,

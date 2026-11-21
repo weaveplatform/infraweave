@@ -2,7 +2,9 @@
 
 Audit for [#685](https://github.com/weaveplatform/infraweave/issues/685), dated
 2026-11-20. This records verification ownership and readiness; the phase gates
-retain responsibility for executing the full acceptance matrix.
+retain responsibility for executing the full acceptance matrix. This is the frozen
+#685 snapshot; the [P13 delivery audit](policy-p13-delivery.md) records current
+executed evidence and outstanding delivery gates without rewriting this history.
 
 ## Sources and audit boundary
 

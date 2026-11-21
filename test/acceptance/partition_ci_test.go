@@ -101,7 +101,9 @@ func TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload(t *testing.T) {
 	}
 	fipsAll := false
 	for _, step := range quality.Jobs["fips-only"].Steps {
-		fipsAll = fipsAll || strings.TrimSpace(step.Run) == "make accept FIPS=1"
+		lines := strings.Split(strings.TrimSpace(step.Run), "\n")
+		fipsAll = fipsAll || lines[len(lines)-1] == "make accept FIPS=1" &&
+			step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1"
 	}
 	if !fipsAll {
 		t.Error("FIPS job does not run the complete acceptance workload")

@@ -18,6 +18,7 @@ const (
 	c48Notification = "/exchanges/18/response/errors/0/message"
 	c48Stacks       = "/exchanges/23/response/data/stacks"
 	c48Policies     = "/exchanges/23/response/data/policies"
+	c48Workflow     = "/exchanges/20/response/data/stack/run/state"
 )
 
 var captureSubsetReplayers = map[string]func(*testing.T, *sdk.Client) []string{
@@ -224,4 +225,35 @@ func replayFreeTierManagement(t *testing.T, client *sdk.Client) []string {
 		"C48 REST subset:10 captured policy sources persisted across8 types;8 attachments across6 supported stack types; NOTIFICATION refused; stack and all policies deleted with404 and restored inventories. Workflow/evidence handoffs remain.",
 	)
 	return []string{c48Notification, c48Stacks, c48Policies}
+}
+
+// C291 isolates the same approval/warning programs recorded in C48. Compare
+// their complete captured inputs before using that real workflow as C48 proof.
+func verifyApprovalCapturePrograms(t *testing.T) {
+	t.Helper()
+	programs := map[string]map[string]c48PolicyInput{}
+	for _, id := range []string{"C48", "C291"} {
+		var capture struct {
+			Exchanges []struct {
+				Request struct {
+					Variables struct {
+						Input *c48PolicyInput `json:"input"`
+					} `json:"variables"`
+				} `json:"request"`
+			} `json:"exchanges"`
+		}
+		captureJSON(t, id, harness.ResponseFile, &capture)
+		programs[id] = map[string]c48PolicyInput{}
+		for _, exchange := range capture.Exchanges {
+			if input := exchange.Request.Variables.Input; input != nil {
+				programs[id][input.Name] = *input
+			}
+		}
+	}
+	for _, name := range []string{"policy-approval", "policy-plan-warn", "policy-always"} {
+		input, ok := programs["C48"][name]
+		if !ok || input != programs["C291"][name] {
+			t.Fatalf("C48 and C291 no longer share the captured %s program", name)
+		}
+	}
 }
