@@ -245,7 +245,6 @@ func New(d Deps) (*Domain, error) {
 	grants := oauth.NewService(oauth.Deps{
 		Store:      store,
 		Tokens:     tokens,
-		Admission:  store,
 		Drop:       auth.Cache().Drop,
 		PublicURL:  d.PublicURL,
 		AccessTTL:  d.Settings.Tokens.OAuthAccess.TTL,

@@ -30,7 +30,6 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		entered = candidate
 		denied = nil
-		q := tx.Q(ctx, s.db)
 		grants, refused, err := s.prepareEntry(ctx, &entered, verified, source)
 		denied = refused
 		if err != nil || denied != nil {
@@ -41,18 +40,7 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 		if err := s.CreateSession(ctx, entered); err != nil {
 			return err
 		}
-		for _, grant := range grants {
-			if _, err := q.Exec(ctx, `INSERT INTO session_grants
-				(account_id, id, session_id, role_id, space_id, origin)
-				VALUES ($1, $2, $3, $4, $5, $6)`, entered.AccountID, kernel.NewULID(), entered.ID,
-				grant.RoleID, grant.SpaceID, grant.Origin); err != nil {
-				return fmt.Errorf("access: store LOGIN grant: %w", sql.Unavailable(err))
-			}
-		}
-		if len(grants) > 0 {
-			return s.bumpAuthz(ctx, q, entered.AccountID)
-		}
-		return nil
+		return s.installLoginGrants(ctx, entered, grants)
 	})
 	if err != nil {
 		return session.Session{}, fmt.Errorf("enter account %s: %w", candidate.AccountID, sql.Unavailable(err))
@@ -61,6 +49,22 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 		return session.Session{}, denied
 	}
 	return entered, nil
+}
+
+func (s *Store) installLoginGrants(ctx context.Context, ss session.Session, grants []binding.Binding) error {
+	q := tx.Q(ctx, s.db)
+	for _, grant := range grants {
+		if _, err := q.Exec(ctx, `INSERT INTO session_grants
+			(account_id, id, session_id, role_id, space_id, origin)
+			VALUES ($1, $2, $3, $4, $5, $6)`, ss.AccountID, kernel.NewULID(), ss.ID,
+			grant.RoleID, grant.SpaceID, grant.Origin); err != nil {
+			return fmt.Errorf("access: store LOGIN grant: %w", sql.Unavailable(err))
+		}
+	}
+	if len(grants) > 0 {
+		return s.bumpAuthz(ctx, q, ss.AccountID)
+	}
+	return nil
 }
 
 func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apikey.Key, source kernel.ULID) ([]binding.Binding, *session.LoginDenied, error) {

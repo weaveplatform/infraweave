@@ -105,6 +105,13 @@ type Request struct {
 	MemberID       kernel.MemberID
 	CodeHash       []byte
 	CodeExpiresAt  time.Time
+	// Authentication facts come from the exact consenting session, before
+	// account policy output. They survive that browser's logout or expiry.
+	OriginalMember     *bool
+	OriginalTeamsKnown bool
+	OriginalTeams      []string
+	IdentityProviderID kernel.ULID
+	IDPSubject         *string
 }
 
 // Owner is the member a grant acts as, read from their admission to the

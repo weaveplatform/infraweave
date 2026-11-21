@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
@@ -106,6 +107,33 @@ func writePaths(w *auditWorld) []writePath {
 			ss.ID, ss.Channel, ss.ParentID = kernel.NewULID(), session.ChannelCLI, w.source
 			ss.CreatedAt = time.Now()
 			_, err = w.x.s.WithLoginEvaluator(grantAuditEvaluator{}).Enter(ctx, ss, nil, w.source)
+			return one(err)
+		}},
+		{"Redeem", func(ctx context.Context) ([]kernel.AccountID, error) {
+			now := time.Now()
+			client := oauth.Client{ID: kernel.NewULID(), Name: "Audit", RedirectURIs: []string{"http://localhost/cb"}, CreatedAt: now}
+			if err := w.x.s.CreateClient(ctx, client); err != nil {
+				return nil, err
+			}
+			code, hash := session.NewSecret()
+			r := oauth.Request{
+				ID: kernel.NewULID(), Client: client, RedirectURI: "http://localhost/cb", Resource: "https://iw.example.com/mcp",
+				Scopes: []string{"mcp:read"}, Challenge: oauth.Challenge("audit"), CreatedAt: now, ExpiresAt: now.Add(time.Minute),
+				OrganizationID: w.x.org, AccountID: w.x.acct, MemberID: w.x.member, CodeHash: hash, CodeExpiresAt: now.Add(time.Minute),
+			}
+			if err := w.x.s.CreateRequest(ctx, r); err != nil {
+				return nil, err
+			}
+			if err := w.x.s.Decide(ctx, r, now); err != nil {
+				return nil, err
+			}
+			_, refresh := session.NewSecret()
+			_, err := w.x.s.WithLoginEvaluator(grantAuditEvaluator{}).Redeem(ctx, session.HashSecret(code),
+				func(request oauth.Request, owner oauth.Owner) (session.Session, error) {
+					ss := grantOf(request, owner, refresh)
+					ss.CreatedAt = now
+					return ss, nil
+				})
 			return one(err)
 		}},
 		{"CreateSpace", func(ctx context.Context) (_ []kernel.AccountID, err error) {

@@ -433,6 +433,20 @@ server.
   loopback or match that account's `oauthRedirectAllowedHosts`, or the
   approval answers `403`; a request already decided, or expired, answers
   `404`.
+- **Account admission and identity facts.** Consent and code redemption use the
+  account's active authorization scheme under the account admission fence.
+  LOGIN_POLICIES admits active organization members without requiring a managed
+  membership row. Consent atomically records the exact browser's original
+  membership, teams and IdP facts with its code, preserving unknown versus known
+  empty values. Redemption reevaluates current LOGIN policies and creates its
+  own account-qualified session grants; it copies no browser grants or scheme
+  transition exception. A refused evaluation commits its evidence without
+  spending the code. The snapshot outlives the browser's logout or expiry.
+  Refresh rotates the same grant session, retaining its frozen LOGIN grants,
+  original facts and effective teams. Managed-user refresh still reads current
+  managed groups. Account policy/scheme changes revoke affected grants through
+  the existing session controls. An expired request or code cannot be approved
+  after waiting on a transaction lock; the final write checks wall-clock expiry.
 - **Redirect allowlist.** `oauthRedirectAllowedHosts` is an account setting,
   a list that account admins maintain, of entries a bare host or one
   leading `*.`, for `https` only, as Spacelift's OAuth redirect allowlist is

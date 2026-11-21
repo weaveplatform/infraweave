@@ -23,11 +23,14 @@ Feature: OAuth consent and grants follow the account's LOGIN admission
   Scenario: LOGIN admits an unmanaged organization member through consent, redemption and refresh
     When the browser approves the request for the home account through A
     Then the browser is sent to "http://127.0.0.1/callback" with a code and the client's state
+    When the browser logs out through B
     When the client redeems the code through B
-    Then it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token
+    Then it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token for member "bob"
+    And the OAuth grant retains original LOGIN facts and its own account-scoped permissions
     When the client refreshes through A
     Then it holds a new refresh token and a new access token
-    And it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token
+    And it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token for member "bob"
+    And the OAuth grant retains original LOGIN facts and its own account-scoped permissions
 
   @op:authOAuthRequestApprove @case:denial
   Scenario: A policy changed after consent refuses redemption without consuming the code
@@ -37,7 +40,8 @@ Feature: OAuth consent and grants follow the account's LOGIN admission
     Then it answers 200
     When the client redeems the code through B
     Then the token endpoint answers "invalid_grant"
+    And the OAuth refusal leaves the code unspent and no grant exists
     When token "h" sends "PUT /api/v1/policies/{guard}" with '{"name":"OAuth allowed again","body":"package infraweave\nallow if { not input.session.member; input.session.teams == [\"upstream\"] }\nroles[\"legacy\"][\"space-reader\"] if { true }\n"}' through B
     Then it answers 200
     When the client redeems the code through A
-    Then it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token
+    Then it holds an access token for "/mcp" with the scope "mcp:read" for an hour, and a refresh token for member "bob"
