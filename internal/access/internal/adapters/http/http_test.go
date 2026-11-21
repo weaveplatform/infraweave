@@ -365,8 +365,9 @@ func newWorld(t *testing.T) *world {
 		Store: w.cfg, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
 	w.grants = newGrants()
+	w.grants.admission = st
 	grants := oauth.NewService(oauth.Deps{
-		Store: w.grants, Tokens: st, Admission: st, Drop: auth.Cache().Drop,
+		Store: w.grants, Tokens: st, Drop: auth.Cache().Drop,
 		PublicURL: publicURL, AccessTTL: time.Hour, RefreshTTL: 30 * 24 * time.Hour,
 		CodeTTL: time.Minute, Now: func() time.Time { return t0 },
 	})

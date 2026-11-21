@@ -74,8 +74,10 @@ type Store interface {
 	// fields and code hash, or none for a denial, unless it is decided
 	// already or ended before now, which is port.ErrNotFound.
 	Decide(ctx context.Context, d Request, now time.Time) error
-	// RedirectHosts are the account's oauthRedirectAllowedHosts.
-	RedirectHosts(ctx context.Context, acct kernel.AccountID) ([]string, error)
+	// Approve checks the exact live consenting session and current account
+	// admission, then records the code and original authentication facts
+	// atomically. Refused admission leaves the request undecided.
+	Approve(ctx context.Context, p kernel.Principal, d Request, now time.Time) error
 	// Redeem spends the code whose SHA-256 is hash and records the grant
 	// session grant builds from its request and the owner its account
 	// admits, in one transaction that holds the member's admission
@@ -105,9 +107,8 @@ type Issuer interface {
 
 // Deps are what the service needs.
 type Deps struct {
-	Store     Store
-	Tokens    Issuer
-	Admission session.Admission
+	Store  Store
+	Tokens Issuer
 	// Drop forgets a revoked grant's session in this replica's cache.
 	Drop func(kernel.ULID)
 	// PublicURL is server.public_url: the issuer, the endpoints' base and
@@ -361,23 +362,9 @@ func (s *Service) Approve(ctx context.Context, p kernel.Principal, id kernel.ULI
 	if err != nil {
 		return "", err
 	}
-	_, ok, err := s.d.Admission.Admits(ctx, p.OrganizationID, p.MemberID, acct)
-	if err != nil {
-		return "", err //nolint:wrapcheck // the store names the read
-	}
-	if !ok {
-		return "", ErrNotAdmitted
-	}
-	hosts, err := s.d.Store.RedirectHosts(ctx, acct)
-	if err != nil {
-		return "", err //nolint:wrapcheck // the store names the read
-	}
-	if !AllowedRedirect(r.RedirectURI, hosts) {
-		return "", ErrRedirectHost
-	}
 	now := s.d.Now()
 	code, hash := session.NewSecret()
-	if err := s.d.Store.Decide(ctx, Request{
+	if err := s.d.Store.Approve(ctx, p, Request{
 		ID:             id,
 		OrganizationID: p.OrganizationID,
 		AccountID:      acct,
@@ -581,6 +568,9 @@ func (s *Service) issue(ctx context.Context, ss session.Session, scopes []string
 // spent, is invalid_grant, and a grant the store revoked leaves this
 // replica's cache at once.
 func (s *Service) refused(ss session.Session, err error) error {
+	if _, denied := errors.AsType[*session.LoginDenied](err); denied {
+		return invalidGrant
+	}
 	if !errors.Is(err, ErrReused) && !errors.Is(err, port.ErrNotFound) {
 		return err
 	}

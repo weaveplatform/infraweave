@@ -36,14 +36,15 @@ type Domain struct {
 
 // Deps supplies persistence, space ownership, authorization and the bounded runtime.
 type Deps struct {
-	DB      pg.DB
-	Spaces  accessapi.Spaces
-	Authz   accessapi.Authorizer
-	Runtime *rego.Engine
-	Events  *outbox.Outbox
-	Stacks  stacksapi.Stacks
-	Targets stacksapi.AttachmentTargets
-	Now     func() time.Time
+	DB           pg.DB
+	Spaces       accessapi.Spaces
+	Authz        accessapi.Authorizer
+	Runtime      *rego.Engine
+	Events       *outbox.Outbox
+	Stacks       stacksapi.Stacks
+	Targets      stacksapi.AttachmentTargets
+	Now          func() time.Time
+	LoginChanges accessapi.LoginPolicyChanges
 }
 
 // Entity identifies policy IDs to the shared subject resolver.
@@ -66,16 +67,17 @@ func New(d Deps) *Domain {
 	store := pg.New(d.DB)
 	svc := core.New(
 		core.Deps{
-			Store:   store,
-			DB:      d.DB,
-			Spaces:  d.Spaces,
-			Authz:   d.Authz,
-			Runtime: d.Runtime,
-			Events:  d.Events,
-			Stacks:  d.Stacks,
-			Targets: d.Targets,
-			Queue:   queue.New(d.DB),
-			Now:     d.Now,
+			Store:        store,
+			DB:           d.DB,
+			Spaces:       d.Spaces,
+			Authz:        d.Authz,
+			Runtime:      d.Runtime,
+			Events:       d.Events,
+			Stacks:       d.Stacks,
+			Targets:      d.Targets,
+			Queue:        queue.New(d.DB),
+			Now:          d.Now,
+			LoginChanges: d.LoginChanges,
 		},
 	)
 	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store}
@@ -114,6 +116,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 
 // Evaluator supplies transactional decision evidence without owning run state.
 func (d *Domain) Evaluator() policyapi.Evaluator { return d.svc }
+
+// LoginEvaluator supplies the access-owned account-entry policy boundary.
+func (d *Domain) LoginEvaluator() accessapi.LoginEvaluator { return d.svc }
 
 // RunInputBuilder supplies the typed projection for run workflow callers.
 func (d *Domain) RunInputBuilder() policyapi.RunInputBuilder { return d.svc }

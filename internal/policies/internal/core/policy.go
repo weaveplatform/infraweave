@@ -75,16 +75,17 @@ var ErrNotFound = errors.New("policy not found")
 
 // Deps are the policy service's domain ports and bounded compiler.
 type Deps struct {
-	Store   Store
-	DB      tx.Beginner
-	Spaces  accessapi.Spaces
-	Authz   accessapi.Authorizer
-	Runtime *rego.Engine
-	Events  Events
-	Stacks  stacksapi.Stacks
-	Targets stacksapi.AttachmentTargets
-	Queue   *queue.Queue
-	Now     func() time.Time
+	Store        Store
+	DB           tx.Beginner
+	Spaces       accessapi.Spaces
+	Authz        accessapi.Authorizer
+	Runtime      *rego.Engine
+	Events       Events
+	Stacks       stacksapi.Stacks
+	Targets      stacksapi.AttachmentTargets
+	Queue        *queue.Queue
+	Now          func() time.Time
+	LoginChanges accessapi.LoginPolicyChanges
 }
 
 // Events appends policy changes in the transaction carried by the context.
@@ -121,6 +122,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 	}
 	var out Policy
 	err := tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.holdAccount(ctx, p.AccountID); err != nil {
+			return err
+		}
 		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
 			return err //nolint:wrapcheck // the store names the lock
 		}
@@ -151,6 +155,9 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Pol
 			return err //nolint:wrapcheck // the transaction adds the create operation
 		}
 		if _, err := s.autoattach(ctx, out); err != nil {
+			return err
+		}
+		if err := s.loginChanged(ctx, p, out.Type); err != nil {
 			return err
 		}
 		return s.changed(ctx, out, policyapi.ChangeCreated)
@@ -234,6 +241,9 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 	}
 	var out Policy
 	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.holdAccount(ctx, p.AccountID); err != nil {
+			return err
+		}
 		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
 			return err //nolint:wrapcheck // the store names the lock
 		}
@@ -283,6 +293,9 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		if _, err := s.autoattach(ctx, out); err != nil {
 			return err
 		}
+		if err := s.loginChanged(ctx, p, out.Type); err != nil {
+			return err
+		}
 		return s.changed(ctx, out, policyapi.ChangeUpdated)
 	})
 	if err != nil {
@@ -330,6 +343,9 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 	}
 	var out Policy
 	err = tx.Do(ctx, s.deps.DB, tx.Options{}, func(ctx context.Context) error {
+		if err := s.holdAccount(ctx, p.AccountID); err != nil {
+			return err
+		}
 		if err := s.deps.Store.LockAutoattach(ctx, p.AccountID); err != nil {
 			return err //nolint:wrapcheck // the store names the lock
 		}
@@ -356,6 +372,9 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 		if err := s.deps.Store.Delete(ctx, p.AccountID, parsed); err != nil {
 			return err //nolint:wrapcheck // the transaction adds the delete operation
 		}
+		if err := s.loginChanged(ctx, p, out.Type); err != nil {
+			return err
+		}
 		deleted := out
 		deleted.Version++
 		return s.changed(ctx, deleted, policyapi.ChangeDeleted)
@@ -364,6 +383,29 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 		return Policy{}, fmt.Errorf("policies: delete: %w", err)
 	}
 	return out, nil
+}
+
+func (s *Service) holdAccount(ctx context.Context, account kernel.AccountID) error {
+	if s.deps.LoginChanges != nil {
+		if err := s.deps.LoginChanges.HoldAccount(ctx, account); err != nil {
+			return fmt.Errorf("policies: hold account authorization fence: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) loginChanged(ctx context.Context, p kernel.Principal, kind rego.Type) error {
+	if kind != rego.Login || s.deps.LoginChanges == nil {
+		return nil
+	}
+	err := s.deps.LoginChanges.LoginPolicyChanged(ctx, p)
+	if errors.Is(err, accessapi.ErrLoginPolicyEditor) {
+		return &Denied{Action: accessapi.ActionSpaceAdmin}
+	}
+	if err != nil {
+		return fmt.Errorf("policies: commit LOGIN security effects: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) changed(ctx context.Context, p Policy, change string) error {

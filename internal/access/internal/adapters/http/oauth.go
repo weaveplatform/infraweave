@@ -11,6 +11,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware/ratelimit"
@@ -187,6 +188,9 @@ func consenter(ctx context.Context) (kernel.Principal, error) {
 
 // consentError maps a consent's refusal to its problem.
 func consentError(err error, id string) error {
+	if denied, ok := errors.AsType[*session.LoginDenied](err); ok {
+		return problem.Forbidden.Error(denied.Message) //nolint:wrapcheck // the committed policy refusal
+	}
 	switch {
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // a problem, answered as it is

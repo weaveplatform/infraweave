@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
@@ -50,7 +51,8 @@ func (s *Service) ReviewMetadata(ctx context.Context, p kernel.Principal, space 
 			return fmt.Errorf("read reviewer session: %w", err)
 		}
 		actual := ss.Principal()
-		if actual.AccountID != p.AccountID || actual.OrganizationID != p.OrganizationID || actual.ActorID != p.ActorID || actual.Kind != p.Kind || actual.MemberID != p.MemberID {
+		if !ss.Live(time.Now()) || actual.AccountID != p.AccountID || actual.OrganizationID != p.OrganizationID || actual.ActorID != p.ActorID || actual.Kind != p.Kind ||
+			actual.MemberID != p.MemberID {
 			return kernel.ErrUnavailable
 		}
 		out.Session = actual

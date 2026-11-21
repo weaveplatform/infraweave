@@ -76,6 +76,8 @@ Feature: An account changes its authorization strategy without losing saved conf
   @op:accountUpdateAuthorizationScheme @case:success
   Scenario: Switching in both directions preserves saved policy and managed authorization rows
     Given the home account's member has a browser session, admitted to home alone
+    And the member key is exchanged through B for token "ordinary"
+    And the member key is space-reader on the space "acme"
     And token "h" sends "POST /api/v1/managed-user-groups" with '{"groupName":"acceptance","roleBindings":[]}' through B
     And it answers 201
     And the answer's id names "team"
@@ -90,10 +92,11 @@ Feature: An account changes its authorization strategy without losing saved conf
     Then it answers 200
     And the saved authorization configuration is unchanged
     When token "h" lists the API keys with access to the space "acme" through B
-    Then the answer lists 0 holders
+    Then the answer lists 1 holder
+    And the holder "01KACME0000000000000000003" holds the role "space-admin" on the space "acme" as RESIDENT
     When token "h" lists the API key sessions with access to the space "acme" through B
     Then the answer lists 1 holder
-    And the session view names the SCHEME_SWITCH origin
+    And the session view names exactly the space-admin origins "ASSIGNED_ROLE,SCHEME_SWITCH"
     When token "h" sends "POST /api/v1/account/update-authorization-scheme" with '{"schema":"MANAGED_USERS"}' through B
     Then it answers 200
     And the saved authorization configuration is unchanged

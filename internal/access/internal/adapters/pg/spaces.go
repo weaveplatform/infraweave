@@ -74,6 +74,9 @@ func insertSpace(ctx context.Context, q tx.Querier, s space.Space) error {
 // lockTree locks acct's tree through its top space's row, so changes of
 // one tree run one at a time. An account with no tree is not found.
 func lockTree(ctx context.Context, q tx.Querier, acct kernel.AccountID) error {
+	if _, err := lockAccount(ctx, q, acct); err != nil {
+		return err
+	}
 	var id kernel.ULID
 	err := q.QueryRow(ctx, `SELECT id FROM spaces
 		WHERE account_id = $1 AND parent_id IS NULL FOR UPDATE`, acct).Scan(&id)

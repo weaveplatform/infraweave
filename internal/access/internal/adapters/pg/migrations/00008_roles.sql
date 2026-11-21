@@ -51,18 +51,18 @@ CREATE TABLE role_bindings (
 
 CREATE INDEX role_bindings_role ON role_bindings (account_id, role_id);
 
--- A scheme switch retains administration only for the exact calling session.
--- New sessions, including children and exchanges, do not inherit this grant.
+-- Account-entry grants and retained scheme-switch administration belong to
+-- one exact session. New sessions must evaluate their own account entry.
 CREATE TABLE session_grants (
     account_id uuid NOT NULL,
     id         uuid PRIMARY KEY,
     session_id uuid NOT NULL,
     role_id    uuid NOT NULL,
     space_id   uuid NOT NULL,
-    origin     text NOT NULL CHECK (origin IN ('SCHEME_SWITCH')),
+    origin     text NOT NULL CHECK (origin IN ('SCHEME_SWITCH', 'ASSIGNED_ROLE', 'ACCESS_LEVEL')),
     UNIQUE (session_id, role_id, space_id, origin),
     FOREIGN KEY (account_id, session_id) REFERENCES sessions (account_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE RESTRICT,
+    FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE CASCADE,
     FOREIGN KEY (account_id, space_id) REFERENCES spaces (account_id, id) ON DELETE CASCADE
 );
 CREATE INDEX session_grants_session ON session_grants (account_id, session_id);

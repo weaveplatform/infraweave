@@ -20,6 +20,18 @@ var ErrNotFound = errors.New("not found")
 // any organization, already holds; the error names which.
 var ErrSlugTaken = errors.New("slug taken")
 
+// ErrCredentialChanged refuses credentials changed after their proof was
+// verified. No session may be installed from that earlier credential version.
+var ErrCredentialChanged = errors.New("credential changed")
+
+// AccountEntry fences the active strategy and credential while evaluating and
+// storing a new account session. The returned session contains its effective
+// identity; credential is nil for an organization-authenticated member.
+type AccountEntry interface {
+	Enter(ctx context.Context, s session.Session, credential *apikey.Key, source kernel.ULID) (session.Session, error)
+	AdmittedAccounts(ctx context.Context, identity session.Session) ([]session.Admitted, error)
+}
+
 // Tenancy reads organizations and accounts; operator.Store writes them.
 type Tenancy interface {
 	Organization(ctx context.Context, id kernel.OrganizationID) (organization.Organization, error)

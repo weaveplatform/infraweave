@@ -48,6 +48,22 @@ func TestAccReviewMetadataRetainsExactSwitchingSession(t *testing.T) {
 	}
 }
 
+func TestAccReviewMetadataRefusesEndedExactSession(t *testing.T) {
+	x, caller, _ := schemeFixture(t)
+	service := reviewmeta.New(reviewmeta.Deps{DB: x.db, Store: x.s})
+	before, err := service.ReviewMetadata(t.Context(), caller, x.acct.ULID)
+	if err != nil || !before.CanReview {
+		t.Fatalf("live root session cannot review: %+v, %v", before, err)
+	}
+	if _, err := x.s.EndSession(t.Context(), caller.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := service.ReviewMetadata(t.Context(), caller, x.acct.ULID)
+	if !errors.Is(err, kernel.ErrUnavailable) || got.AuthorKey != "" || got.CanReview || len(got.Roles) != 0 {
+		t.Fatalf("ended exact session retained review facts/permission: %+v, %v", got, err)
+	}
+}
+
 func TestAccReviewMetadataFromRealAccessOwners(t *testing.T) {
 	x := seed(t, pool(t), "review-metadata-key")
 	ctx := t.Context()
