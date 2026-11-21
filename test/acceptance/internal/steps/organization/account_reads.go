@@ -27,6 +27,7 @@ func (s *accountSteps) register(sc *godog.ScenarioContext) {
 // reads checks each Account read against the tenant's seeded account,
 // whose name is its slug.
 func (s *accountSteps) reads(ctx context.Context, replica, tok, who, typ, image string) error {
+	image = s.w.Resolve(image)
 	t := harness.Tenants[who]
 	for path, want := range map[string]string{
 		"/api/v1/id":   t.Account,

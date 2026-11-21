@@ -15,8 +15,8 @@ Feature: The runner executes a run's phases and their hooks in one shell session
   Here the scenario is the launcher: it registers with the pool's key,
   claims a run, opens its sealed specification, checks out its commit
   from Gitea and starts this build's runner in a container of the tool's
-  runner image, infraweave-runner-terraform:acceptance or
-  infraweave-runner-opentofu:acceptance, with the pinned terraform or
+  runner image, {runner.terraform} or
+  {runner.opentofu}, with the pinned terraform or
   tofu at /bin. The container reaches the server through the scenario's
   relay. Stack infra keeps its state in infraweave, runs on the pool and
   has hooks before initialization, after planning and after the run; its

@@ -14,7 +14,7 @@
 // could not start with, Flags declares the launcher's flags, and Load
 // decodes them. The default runner image is unset: when neither
 // the specification nor the launcher names one, VendorRunnerImage selects
-// OpenTofu's image for OpenTofu and Terraform's for every other vendor.
+// the immutable image for OpenTofu, Pulumi or Ansible, otherwise Terraform's.
 // Key reads the private key, given as a path, as PEM or as base64 of PEM.
 //
 // Settings come from flags, INFRAWEAVE_LAUNCHER_* environment variables

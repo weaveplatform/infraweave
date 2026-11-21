@@ -10,8 +10,8 @@ import (
 	"github.com/weaveplatform/infraweave/test/deps"
 )
 
-// TestAccRunnerImages builds each runner image the @terraform and @tofu
-// scenarios run in from its definition under deploy/images, and holds a
+// TestAccRunnerImages pulls each released runner image the @terraform and @tofu
+// scenarios run in by its committed digest, and holds a
 // container of each to the runner image contract: as the image's own
 // user, UID 1983, it runs ps and writes to its workspace, and finds no
 // Terraform or OpenTofu binary.

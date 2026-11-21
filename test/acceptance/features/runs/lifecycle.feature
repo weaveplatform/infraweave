@@ -2,7 +2,7 @@
 Feature: Every run type, action and timer through the run lifecycle
   Each run type takes its path through the lifecycle end to end, on a real
   launcher of a private pool that runs each run in a container of
-  infraweave-runner-terraform:acceptance with the newest Terraform the
+  {runner.terraform} with the newest Terraform the
   version catalogue lists. Each scenario reads the run's history and the
   run_updated events the outbox holds of it, which follow the path the
   run's type takes, or the choice made where the reference leaves a gap

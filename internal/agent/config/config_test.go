@@ -21,6 +21,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
 const keyPEM = "-----BEGIN EC PRIVATE KEY-----\nMHcC\n-----END EC PRIVATE KEY-----\n"
@@ -65,14 +66,19 @@ func TestUnitLoadDefaults(t *testing.T) {
 }
 
 func TestUnitVendorRunnerImage(t *testing.T) {
-	for _, vendor := range []string{"terraform", "opentofu", "terragrunt", "pulumi", ""} {
-		want := "ghcr.io/weaveplatform/infraweave-runner-terraform"
-		if vendor == "opentofu" {
-			want = "ghcr.io/weaveplatform/infraweave-runner-opentofu"
-		}
-		if got := config.VendorRunnerImage(vendor); got != want {
-			t.Errorf("VendorRunnerImage(%q) = %q, want %q", vendor, got, want)
-		}
+	for _, tt := range []struct{ vendor, want string }{
+		{"terraform", runnerimages.Terraform},
+		{"terragrunt", runnerimages.Terraform},
+		{"opentofu", runnerimages.OpenTofu},
+		{"pulumi", runnerimages.Pulumi},
+		{"ansible", runnerimages.Ansible},
+		{"", runnerimages.Terraform},
+	} {
+		t.Run(tt.vendor, func(t *testing.T) {
+			if got := config.VendorRunnerImage(tt.vendor); got != tt.want {
+				t.Errorf("VendorRunnerImage(%q) = %q, want %q", tt.vendor, got, tt.want)
+			}
+		})
 	}
 }
 

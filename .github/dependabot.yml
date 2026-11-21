@@ -44,16 +44,6 @@ updates:
       prefix: "chore"
       include: "scope"
 
-  # The runner images' Alpine base, pinned by digest in each Dockerfile;
-  # one PR moves both, so they stay on the same base.
-  - package-ecosystem: "docker"
-    directories: ["/deploy/images/runner-terraform", "/deploy/images/runner-opentofu"]
-    schedule:
-      interval: "daily"
-    groups:
-      runner-images:
-        patterns: ["*"]
-        update-types: ["major", "minor", "patch"]
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+  # Runner bases, packages and tool cohorts are refreshed together by
+  # runner-images-upstream.yml, from deploy/images/versions.json. Independent
+  # Dockerfile updates would break that single source and revision contract.

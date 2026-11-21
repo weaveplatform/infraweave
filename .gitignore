@@ -26,3 +26,7 @@ go.work.sum
 
 # The Terraform plugin cache make labs-cloud and labs-vcs share
 /.terraform.d/
+
+# Runner-image tooling
+__pycache__/
+*.pyc

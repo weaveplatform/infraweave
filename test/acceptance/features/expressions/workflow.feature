@@ -6,7 +6,7 @@ Feature: Workflow command templates rendered by the runner
   every key before any command runs, and renders each phase's commands
   with the run's parameters when the phase runs, every value it embeds
   one shell word. A real launcher of a private pool runs each run in a
-  container of infraweave-runner-opentofu:acceptance with the newest
+  container of {runner.opentofu} with the newest
   OpenTofu the version catalogue lists. The release indexes serve the
   recorded fixtures; the home key is space-admin on the account's top
   space. Stack infra lives in legacy, keeps its state in its workspace and

@@ -28,7 +28,7 @@
 // parity bug named by its capture. TestUnitCaptureRedaction fails on a
 // fixture that Leaks a credential or a real e-mail address. A capture a
 // feature stands in for until it is recorded runs as a skipped subtest.
-// TestAccRunnerImages builds the runner images of deploy/images and holds
+// TestAccRunnerImages pulls the released runner images by digest and holds
 // a container of each to the runner image contract.
 //
 // ref: decision 0016, report 30

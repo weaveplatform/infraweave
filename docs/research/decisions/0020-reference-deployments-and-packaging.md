@@ -101,12 +101,20 @@ Listeners:
 | Compose file | `deploy/compose/compose.yaml` | Release asset |
 
 - **Signing.** Every image and archive is signed with keyless Sigstore
-  signatures from the release workflow's GitHub OIDC identity. Every image
+  signatures from the owning release workflow's GitHub OIDC identity. Every image
   carries SLSA provenance and an SPDX SBOM as attestations. Verification
   pins the certificate identity to `release-please.yml` on `main` and the
-  issuer to `https://token.actions.githubusercontent.com`.
+  issuer to `https://token.actions.githubusercontent.com`. Runner environments use
+  `runner-images.yml` on `main`; their bootstrap previews have a separately
+  recorded feature-branch identity and are signed again by main before promotion.
 - **Versioning.** release-please produces one version for the binary, the
-  images, both charts, the modules and the compose file. A chart's
+  application image, both charts, the modules and the compose file. Runner
+  environments release independently when their upstream tools, base or packages
+  change: `tested-<tool-version>-r<N>` for the tool-free Terraform/OpenTofu
+  environments, `<baked-tool-version>-r<N>` for Pulumi/Ansible and `r<N>`
+  for the minimal test-support fixture. Build inputs and resolved digest outputs
+  are separate. The application and acceptance harness consume the same committed
+  digest pins; retained released digests support rollback. A chart's
   `version` equals its `appVersion`. Modules take the version through
   their Git `ref`, so no separate compatibility table between module and
   application versions exists.

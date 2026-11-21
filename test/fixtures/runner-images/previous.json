@@ -1,0 +1,7 @@
+{
+  "reference": "ghcr.io/weaveplatform/infraweave-runner-terraform@sha256:39a833d769b06f75bdebbd7145f3bb9c01a6774c2d04d5debe50a2e521cd9876",
+  "source": "c6491ea8134715f54031f2819d3f44f98f56ab19",
+  "verificationRun": "https://github.com/weaveplatform/infraweave/actions/runs/44831488158",
+  "verificationIdentity": "https://github.com/weaveplatform/infraweave/.github/workflows/runner-images.yml@refs/heads/feat/runner-images",
+  "status": "verified-bootstrap-preview"
+}

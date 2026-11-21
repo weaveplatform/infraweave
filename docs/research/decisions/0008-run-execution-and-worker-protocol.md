@@ -1340,8 +1340,9 @@ has failed":
   do. For the shipped vendors, OpenTofu uses
   `ghcr.io/weaveplatform/infraweave-runner-opentofu`; every other vendor,
   Terragrunt included and whatever tool it drives, uses
-  `ghcr.io/weaveplatform/infraweave-runner-terraform`. P20 adds Pulumi's image,
-  and P20b adds Ansible's image and its separate default setting.
+  `ghcr.io/weaveplatform/infraweave-runner-terraform`. Pulumi and Ansible's
+  environments are published alongside them; P20/P20b retain those vendors'
+  backend work and Ansible's separate default setting.
 - **Defaults.** infraweave publishes its own multi-arch images
   (`ghcr.io/weaveplatform/infraweave-runner-terraform`, `-opentofu`,
   `-pulumi`, `-ansible`) that meet the contract, defined under
@@ -1350,6 +1351,10 @@ has failed":
   `ps` and `tzdata`) and no Terraform or OpenTofu binary, which the
   launcher mounts, as Spacelift's images do
   ([10 section 6.1](../reference/10-workers-and-execution.md#61-defaults-and-selection)).
+  Built-in references are immutable digest pins shared by the application and
+  acceptance harness. Runner environment releases have their own cadence
+  (decision 0020); Terraform/OpenTofu tags identify the tested mounted-tool
+  cohort, and the run's requested tool version remains authoritative.
   - **`-pulumi`** adds the Pulumi CLI and its language hosts from Pulumi's
     release archive, checked against the SHA-256 its Dockerfile pins, with
     Node.js and npm, and Python and pip, from Alpine; Go and .NET programs

@@ -1,0 +1,50 @@
+- name: Image contract
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Write sensitive content
+      ansible.builtin.copy:
+        content: sentinel-private-module-value-84931
+        dest: /tmp/infraweave-ansible-contract.txt
+        mode: '0600'
+      no_log: true
+    - name: Visible status
+      ansible.builtin.debug:
+        msg: harmless
+    - name: Skipped status
+      ansible.builtin.debug:
+        msg: skipped
+      when: false
+    - name: Ignored failure
+      ansible.builtin.command:
+        argv:
+          - sh
+          - -c
+          - "printf sentinel-private-ignored-value-84931; exit 1"
+      check_mode: false
+      no_log: true
+      ignore_errors: true
+    - name: Rescue path
+      block:
+        - name: Rescued failure
+          ansible.builtin.command:
+            argv:
+              - sh
+              - -c
+              - "printf sentinel-private-rescued-value-84931; exit 1"
+          check_mode: false
+          no_log: true
+      rescue:
+        - name: Rescue status
+          ansible.builtin.debug:
+            msg: rescued
+    - name: Terminal failure
+      ansible.builtin.command:
+        argv:
+          - sh
+          - -c
+          - "printf sentinel-private-failed-value-84931; exit 1"
+      check_mode: false
+      no_log: true
+      when: terminal_failure | default(false) | bool

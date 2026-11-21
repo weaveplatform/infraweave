@@ -146,21 +146,19 @@ everywhere, and the reason names where the contract checks it instead.
 | `@vcs` | Gitea container as the raw Git host, with a repository seeded per scenario; each provider's chi fake sends signed deliveries over HTTP and records received checks, statuses and comments | provider-shaped intake and feedback through the real server; raw Git stays under `sourcetest` (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
 | `@ai` | an in-process chi server replaying recorded model responses | AI integrations and Intent ([0019](0019-ai-provider-boundary.md)) |
-| `@docker` | the host's Docker daemon; the harness builds the runner images of `deploy/images/` as `infraweave-runner-terraform:acceptance` and `infraweave-runner-opentofu:acceptance`, also tags each under its untagged published `ghcr.io/weaveplatform/infraweave-runner-<vendor>` name for vendor-default scenarios, imports `infraweave-runner:acceptance`, a minimal image with UID 1983 and no base that carries the relay's forwarder, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
+| `@docker` | the host's Docker daemon; the harness pulls the committed public Terraform/OpenTofu and minimal test-support digest pins, retains the shared cache, and mounts the current relay forwarder into the shell-free test-support environment with UID 1983, builds infraweave statically for Linux as the launchers' `launcher.docker.runner_binary`, and starts `infraweave launcher` as a subprocess, waiting on its admin `/startupz`; the launcher and its run containers reach the server through a relay on the host's loopback that records each call and can hold the runners' reports | the worker protocol: a claim, a sealed specification, a container that reports, an offline worker, a lost run and a restarted launcher that keeps its run, with `worker.offline_after` and `run.lost_after` set to seconds (decision 0008); real runs with `@terraform` or `@tofu` |
 | `@kubernetes` | a k3s container, testcontainers-go `k3s` module, privileged, with its bundled components disabled so that it pulls no image, joined to the run containers' Docker network; the scenario's kubeconfig names it by its network alias | Kubernetes stacks' runs, and Kubernetes workers (decision 0008) |
-| `@pulumi` | with `@docker`, the runner image `infraweave-runner-pulumi:acceptance` built from `deploy/images/`, and a host directory per scenario that `launcher.docker.extra_mounts` mounts for a `file://` Pulumi backend | Pulumi stacks' runs: a Pulumi YAML program with no provider, whose configuration and outputs, one of them secret, need no plugin download; `PULUMI_CONFIG_PASSPHRASE` is a write-only stack variable |
+| `@pulumi` | with `@docker`, the published Pulumi runner environment at its committed digest, and a host directory per scenario that `launcher.docker.extra_mounts` mounts for a `file://` Pulumi backend | Pulumi stacks' runs: a Pulumi YAML program with no provider, whose configuration and outputs, one of them secret, need no plugin download; `PULUMI_CONFIG_PASSPHRASE` is a write-only stack variable |
 | `@aws` | moto's server, serving S3 and CloudFormation, which run containers reach through `AWS_ENDPOINT_URL` with dummy credentials | CloudFormation stacks' runs: a template of an `AWS::SSM::Parameter` and an `AWS::S3::Bucket`, a template with a nested stack, and a `before_init` hook that writes the entry template, as `sam package` would |
-| `@ansible` | with `@docker`, the runner image `infraweave-runner-ansible:acceptance` built from `deploy/images/` | Ansible stacks' runs: a playbook against `localhost` with a local connection |
+| `@ansible` | with `@docker`, the published Ansible runner environment at its committed digest | Ansible stacks' runs: a playbook against `localhost` with a local connection |
 | `@flows-agent` | a test app built on `pkg/flows/appsdk` as a local OCI image, and an `infraweave flows-agent` subprocess that runs it in Docker | Flows engine, app and agent scenarios ([0018](0018-flows-runtime.md)) |
 
 - **A real run.** `@terraform` and `@tofu` scenarios exercise the full
   path: the server, a private worker pool, `infraweave launcher` as a host
-  subprocess talking to the Docker daemon, and the runner image built by
-  the harness from the repository's image definitions
-  ([0020](0020-reference-deployments-and-packaging.md)), tagged
-  `infraweave-runner-terraform:acceptance` and
-  `infraweave-runner-opentofu:acceptance`, also under their published untagged
-  names. Most scenarios configure their vendor's acceptance image as the
+  subprocess talking to the Docker daemon, and the published runner image
+  at its committed digest
+  ([0020](0020-reference-deployments-and-packaging.md)). Most scenarios
+  configure their vendor's pinned environment as the
   launcher's default; vendor-default scenarios leave all image settings
   absent and read the actual run container's image through Docker while the
   relay holds its report, then release it and assert the run finishes. The launcher downloads and verifies the stack's tool release
@@ -181,8 +179,8 @@ everywhere, and the reason names where the contract checks it instead.
   harness acts as the worker over `/worker/v1`, claims the run, opens its
   sealed specification with the pool key, checks out the run's commit from
   Gitea and reports each phase, and runs the pinned `terraform` or `tofu`
-  binary in its vendor's runner image, `infraweave-runner-terraform:acceptance`
-  or `infraweave-runner-opentofu:acceptance`, with the backend file and
+  binary in its vendor's published runner image at its committed digest,
+  with the backend file and
   credentials the agent writes ([0010](0010-state-backend.md)). The relay
   can hold the backend's `UNLOCK` calls, so a lock stays held while a
   second process asks for it.
@@ -198,11 +196,13 @@ everywhere, and the reason names where the contract checks it instead.
   `deps-refresh.yml` reads from k3s's releases, since the image's `latest`
   tag trails them by more than a year
   ([33 section 1](../reference/33-vendor-tool-documents.md#1-versions)).
-  The runner images the suite builds pin their Alpine base by digest in
-  their Dockerfiles under `deploy/images/`, which Dependabot moves, and
-  `-pulumi`'s Pulumi CLI and `-ansible`'s ansible-core by version and
-  SHA-256, which `deps-refresh.yml` moves, so CI, the suite and a release
-  build from one pin. An archive is downloaded once into
+  The runner environments use the same committed immutable GHCR digest pins
+  as product launchers. Their build inputs live in `deploy/images/versions.json`;
+  `runner-images-upstream.yml` discovers stable tool releases daily and refreshes
+  the base/packages weekly, through required-CI input PRs. A successful signed
+  publication opens a separate consumer-pin PR. Candidate image jobs build once
+  per platform and run real tool contracts; ordinary suites reuse released
+  images and remove only owned containers. An archive is downloaded once into
   the user's cache directory and checked against its pin each time a test
   binary uses it.
 - **The newest releases everywhere.** A scenario's stack sets no version,

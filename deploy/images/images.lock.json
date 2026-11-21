@@ -1,0 +1,66 @@
+{
+  "images": {
+    "ansible": {
+      "kind": "ansible",
+      "platforms": {
+        "linux/amd64": "sha256:90d4952d41ac9decb34e1087fa9c6f49a14d11566612272fe3ebecad8376da43",
+        "linux/arm64": "sha256:782c97083d2a7a2f682d5f07faa671aa741f15b1ac45b8d5ced23b817fd30443"
+      },
+      "recipe": "a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba",
+      "reference": "ghcr.io/weaveplatform/infraweave-runner-ansible@sha256:414bef76d1e578b71cf5bb05e9f8015cc53a74fb01538ad784d4d05ec7ecaf39",
+      "source": "ef54999966467d9c94e1f272cf8df34d48e2c9d3",
+      "tag": "2.22.0-r1",
+      "version": "2.22.0"
+    },
+    "opentofu": {
+      "kind": "opentofu",
+      "platforms": {
+        "linux/amd64": "sha256:2e660a67187886c212438a3a5be83205806087d5fe7e8347dad4b304465152c7",
+        "linux/arm64": "sha256:ed8cedf0b7e5d3e7eb6acdc587481a07ce026765b73b94e5d43ec632aec331d5"
+      },
+      "recipe": "a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba",
+      "reference": "ghcr.io/weaveplatform/infraweave-runner-opentofu@sha256:330582d62d4515f2ee34983befe3003966da64829343e496ff0df3b4e4ab22e3",
+      "source": "ef54999966467d9c94e1f272cf8df34d48e2c9d3",
+      "tag": "tested-1.13.9-r1",
+      "version": "1.13.9"
+    },
+    "pulumi": {
+      "kind": "pulumi",
+      "platforms": {
+        "linux/amd64": "sha256:56eb200d9d452233913f3eb2ee31566eede0cdcb57c641ee8687fc8733c4a332",
+        "linux/arm64": "sha256:8bf634d577053968fcba2d2b5bb9ffcffdce8ba4dda89eb43cfa12da8976a7e1"
+      },
+      "recipe": "a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba",
+      "reference": "ghcr.io/weaveplatform/infraweave-runner-pulumi@sha256:9a49d0e1eba86b84a7fc354952367d95b0f55243f72e0245d700f73e03b7b298",
+      "source": "ef54999966467d9c94e1f272cf8df34d48e2c9d3",
+      "tag": "3.277.0-r1",
+      "version": "3.277.0"
+    },
+    "terraform": {
+      "kind": "terraform",
+      "platforms": {
+        "linux/amd64": "sha256:ebf4e7fc96e1fcd4823fc180aa1cd14e921ee3a159169c5172caa42abd84529a",
+        "linux/arm64": "sha256:36528a1ee829b2f1831646ca2a6479eec559271f40c21540afa8390252553099"
+      },
+      "recipe": "a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba",
+      "reference": "ghcr.io/weaveplatform/infraweave-runner-terraform@sha256:73377ff7adbd6d69be0454d1fad564a26c744edffbe39ac955c09a8d43ffe78c",
+      "source": "ef54999966467d9c94e1f272cf8df34d48e2c9d3",
+      "tag": "tested-1.17.2-r1",
+      "version": "1.17.2"
+    },
+    "test-support": {
+      "kind": "test-support",
+      "platforms": {
+        "linux/amd64": "sha256:ea82a9d2d7f4e902948677b60a26796822c3b757fa15a04c5fb895d8d653f439",
+        "linux/arm64": "sha256:9cda38e05225181c9e48c31f852c6dfa9763d0cf2b31b806202805565f672ae8"
+      },
+      "recipe": "a849048650d825b8758dbac14ca4c3a9f6886bf0e4988b206befc3b81f37e9ba",
+      "reference": "ghcr.io/weaveplatform/infraweave-runner-test-support@sha256:2c52a286b66b00516ce776ddc01025976f4e75973d2a7410612053ef2178d05a",
+      "source": "ef54999966467d9c94e1f272cf8df34d48e2c9d3",
+      "tag": "r1",
+      "version": ""
+    }
+  },
+  "releases": [],
+  "schema": 1
+}

@@ -327,7 +327,7 @@ func (b *backendSteps) tool(ctx context.Context, name, command, run string) (*pr
 	if err != nil {
 		return nil, err //nolint:wrapcheck // names the tool
 	}
-	if err := b.host.Build(ctx, pinned.image); err != nil {
+	if err := b.host.EnsureRunnerImage(ctx, pinned.image); err != nil {
 		return nil, err //nolint:wrapcheck // names the image
 	}
 	t, err := b.host.RunTool(ctx, harness.ToolRun{

@@ -6,17 +6,12 @@ import (
 	"unicode"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
-// DefaultPrivate is the account read's fallback and the built-in image for
-// Terraform and Terragrunt runs. With no account default, an OpenTofu run
-// uses its own vendor image; a launcher's configured default overrides both.
-// It is untagged, so it resolves to the latest release. This reference must
-// match config.VendorRunnerImage in internal/agent/config; neither imports
-// the other.
-//
-// ref: decision 0008 § "Runner images"
-const DefaultPrivate = "ghcr.io/weaveplatform/infraweave-runner-terraform"
+// DefaultPrivate is the account read's fallback and Terraform/Terragrunt
+// environment. Launchers and acceptance use the same generated digest pin.
+const DefaultPrivate = runnerimages.Terraform
 
 // maxLength bounds an image reference, as Docker's own references are.
 const maxLength = 255

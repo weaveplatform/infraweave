@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "since": "2026-11-20T00:00:00Z",
+  "seen": {
+    "terraform": ["1.17.2"],
+    "opentofu": ["1.13.9"],
+    "terragrunt": ["1.2.2"],
+    "pulumi": ["3.277.0"],
+    "ansible": ["2.22.0"]
+  }
+}

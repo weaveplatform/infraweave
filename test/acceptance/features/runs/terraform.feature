@@ -1,7 +1,7 @@
 @postgres @objectstore @vcs @docker @terraform
 Feature: Runs of a Terraform stack end to end
   A real launcher of a private pool runs each run in a container of
-  infraweave-runner-terraform:acceptance, with the newest Terraform the
+  {runner.terraform}, with the newest Terraform the
   version catalogue lists, which it downloads from the suite's tool mirror
   and verifies against HashiCorp's signing key. A tracked run on a stack
   without autodeploy is triggered on a Gitea commit, initializes and

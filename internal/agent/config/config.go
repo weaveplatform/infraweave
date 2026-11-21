@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
 // Config is the launcher's configuration, every key under launcher.
@@ -149,15 +150,20 @@ func Defaults() Config {
 	}}
 }
 
-// VendorRunnerImage is the image used when neither a run's specification
-// nor its launcher names one. Terragrunt uses Terraform's image even when
-// it drives OpenTofu. The Terraform reference must match images.DefaultPrivate
-// in internal/workers; the agent and that domain do not import each other.
+// VendorRunnerImage is the immutable environment used when neither the
+// run specification nor launcher names an image. Terragrunt uses Terraform's
+// environment even when it drives OpenTofu.
 func VendorRunnerImage(vendor string) string {
-	if vendor == "opentofu" {
-		return "ghcr.io/weaveplatform/infraweave-runner-opentofu"
+	switch vendor {
+	case "opentofu":
+		return runnerimages.OpenTofu
+	case "pulumi":
+		return runnerimages.Pulumi
+	case "ansible":
+		return runnerimages.Ansible
+	default:
+		return runnerimages.Terraform
 	}
-	return "ghcr.io/weaveplatform/infraweave-runner-terraform"
 }
 
 // ErrConfig marks an invalid setting.
