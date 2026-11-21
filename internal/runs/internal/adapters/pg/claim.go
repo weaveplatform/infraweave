@@ -45,15 +45,6 @@ func (s *Store) Announce(ctx context.Context, run lifecycle.Run) error {
 	return nil
 }
 
-// WakeClaims is delivered only after the claim transaction commits and
-// releases owner fences that may have made another idle poll skip its work.
-func (s *Store) WakeClaims(ctx context.Context, pool kernel.ULID) error {
-	if err := notify.Notify(ctx, tx.Q(ctx, s.db), notify.Runs, pool.String()); err != nil {
-		return fmt.Errorf("runs: wake contended claims: %w", sql.Unavailable(err))
-	}
-	return nil
-}
-
 // Holding reports whether acct's worker holds a run: one it claimed last
 // that is in a state on a worker.
 func (s *Store) Holding(ctx context.Context, acct kernel.AccountID, worker kernel.ULID) (bool, error) {

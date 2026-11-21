@@ -23,12 +23,12 @@ locking the run, then takes nonblocking space→stack→run fences and revalidat
 account, pool, state and version. A savepoint releases partial candidate locks
 before another target is tried. A contended stack stays excluded for the whole
 queue walk, so its lock freeing mid-walk cannot let a lower-priority sibling
-run overtake the head. Assignment and refusal commit a pool wake-up when their
-owner fences are released; sleeping polls then restart from the queue head.
-If a contended owner is released by an ordinary metadata transaction with no
-notification, a bounded 50ms retry outside any transaction reselects from the
-head. This delay is distinct from the immediate committed-denial retry and
-never extends the original poll hold or suppresses renewal/cancellation.
+run overtake the head. If a contended owner is released by an ordinary
+metadata transaction with no notification, a randomized 50–100ms retry outside
+any transaction reselects from the head. Jitter spreads competing workers' queue
+walks, while existing pool wakes may retry sooner. This delay is distinct from
+immediate committed-denial retry and never extends the original poll hold or
+suppresses renewal/cancellation.
 The finite drift-limit fence precedes candidate locks. A denied run commits its policy evidence and FAILED transition before the
 same poll retries selection in a fresh transaction; it never marks the worker
 busy or mints a token for that run. Repeated scheduling jobs cannot reevaluate
@@ -73,14 +73,11 @@ Real PostgreSQL claim tests check contended candidate skipping, two competing
 claimants, account-qualified owner reads and savepoint lock release before the
 outer transaction commits. The full application test also races fifty workers
 through two replicas over sixty real READY runs on one stack and preserves
-the first-fifty ordering, single assignment, drift limits and isolation. A real
-LISTEN control verifies claim wake-ups commit and disappear on rollback.
+the first-fifty ordering, single assignment, drift limits and isolation.
 A deterministic assembled test holds the real stack owner until an actual
 claim misses, releases it without a notification, and requires that same poll
-to assign the READY run. Unit timer controls separately check no busy polling,
-no connection during backoff, and deadline/cancellation/supersession/shutdown
-and renewal behavior. These ports are not presented as real OPA evidence.
-Unit tests separately exercise operational port
-failures; they are not presented as real OPA acceptance evidence. The complete
+to assign the READY run. Unit controls cover operational failures, connection
+release during backoff, and deadline/cancellation/supersession/shutdown and
+renewal behavior. OPA evidence comes from the real worker feature above. The complete
 coverage, FIPS and acceptance checks must pass at the PR's final head before
 this ticket is closed.

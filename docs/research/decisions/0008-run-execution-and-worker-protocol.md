@@ -200,13 +200,11 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   wakes one held poll for that pool, the one from the most recently registered
   idle worker, which approximates Spacelift's newest-first
   assignment ([10 section 5.3](../reference/10-workers-and-execution.md#53-scheduling-inside-a-pool)).
-  An assignment or server initialization refusal also notifies the plain pool
-  ID on commit, waking its held polls after shared owner fences are released.
-  Each starts a fresh queue walk from the head. A rolled-back claim sends no
-  wake-up. A queue walk that encounters contention but finds no assignable run
-  retries after a bounded 50ms wait, without a transaction or pooled connection.
-  A normal metadata transaction can release an owner without emitting a run
-  event, so this retry does not depend on another assignment. Pool wakes can
+  A queue walk that encounters contention but finds no assignable run retries
+  after a randomized 50–100ms wait, without a transaction or pooled connection.
+  Jitter keeps workers sharing a stack from retrying in lockstep. A normal
+  metadata transaction can release an owner without emitting a run event, so
+  this retry does not depend on another assignment. Existing pool wakes can
   end the wait earlier. The original hold deadline, cancellation, superseding
   poll, shutdown and token-renewal behavior still bound it; idle pools with no
   candidates keep their ordinary notification hold. A poll always tries one

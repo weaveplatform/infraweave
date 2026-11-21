@@ -3,6 +3,7 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -41,8 +42,6 @@ type ClaimStore interface {
 	// CandidateAttempt rolls back all candidate locks when fn answers false
 	// or fails. It retains them on true. fn must make no writes or callbacks.
 	CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error)
-	// WakeClaims wakes contended polls when commit releases candidate owner locks.
-	WakeClaims(context.Context, kernel.ULID) error
 	// Assign writes worker as run's worker.
 	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
 	// Waiting counts the runs in one of states of each private pool, of
@@ -77,7 +76,8 @@ var (
 )
 
 // A skipped owner can be released by a transaction that emits no run event.
-// Only actual contention retries on this bound, outside a pooled connection.
+// Only actual contention retries outside a pooled connection; jitter keeps
+// workers sharing one owner from retrying in lockstep.
 const contentionRetryDelay = 50 * time.Millisecond
 
 // Claims is the claim of the runs domain's workersapi.Scheduler: a
@@ -124,19 +124,17 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	}
 	if !ok {
 		if contended {
-			return workersapi.Assignment{Retry: true, RetryAfter: contentionRetryDelay}, false, nil
+			delay := contentionRetryDelay + rand.N(contentionRetryDelay) //nolint:gosec // contention jitter, not a secret
+			return workersapi.Assignment{Retry: true, RetryAfter: delay}, false, nil
 		}
 		return workersapi.Assignment{}, false, nil
 	}
 	if run.State == kernel.RunStateReady && s.initialization != nil {
 		refused, err := s.initialize(ctx, run)
-		if err == nil && refused {
-			err = s.store.WakeClaims(ctx, c.Pool)
-		}
 		if err != nil || refused {
 			// A refusal must commit before selecting another stack. The worker
 			// repeats selection in a fresh transaction without becoming busy.
-			return workersapi.Assignment{Retry: refused && err == nil}, false, err //nolint:wrapcheck // the gate/store names the failed evaluation or wake
+			return workersapi.Assignment{Retry: refused && err == nil}, false, err
 		}
 	}
 	// Every claimable state has a claim edge for each type the machine
@@ -151,9 +149,6 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	}
 	if err := s.store.Assign(ctx, moved, c.Worker); err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the write
-	}
-	if err := s.store.WakeClaims(ctx, c.Pool); err != nil {
-		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the notification
 	}
 	return workersapi.Assignment{Run: moved.ID, State: moved.State, StateVersion: moved.Version},
 		true, nil

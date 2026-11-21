@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/app/config"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
@@ -28,6 +29,13 @@ func (s *claimMiss) Claim(ctx context.Context, c workersapi.Claim) (workersapi.A
 
 func TestAccRunClaimRetriesAfterOwnerTransactionReleasesWithoutNotification(t *testing.T) {
 	w := newClaimWorld(t)
+	// This real replica has no WatchPolls subscription: an unrelated or
+	// initial resync notification cannot disguise a missing contention timer.
+	silent, err := newDomains(config.Defaults(), w.db, w.keys, w.blobs.Objects, nil, testEvents(t, w.q), discard())
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.replicas[0] = silent
 	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	t.Cleanup(func() { cancel(); wg.Wait() })

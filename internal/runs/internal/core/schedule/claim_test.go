@@ -100,8 +100,6 @@ func (*store) HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, e
 	return true, nil
 }
 
-func (*store) WakeClaims(context.Context, kernel.ULID) error { return nil }
-
 func (s *store) Waiting(_ context.Context, states []kernel.RunState) (map[kernel.ULID]int, error) {
 	out := map[kernel.ULID]int{}
 	for _, r := range s.runs {
