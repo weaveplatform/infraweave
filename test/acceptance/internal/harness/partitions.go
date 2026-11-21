@@ -79,7 +79,7 @@ var Partitions = []Partition{
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 var exemptTags = []string{
-	"@policy-phase",
+	"@policy-phase", "@policy-initialization",
 	"@policy-projection-denial",
 	"@policy-approval-worker", "@policy-plan-worker", "@policy-trigger-worker",
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",
