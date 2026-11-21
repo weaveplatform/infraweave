@@ -25,6 +25,6 @@
 // # Dependencies
 //
 // It imports accessapi, stacksapi, the domain's lifecycle and machine,
-// internal/kernel, kernel/search and internal/platform/tx. The runs domain's assembly
-// constructs it.
+// internal/kernel, kernel/search, internal/platform/sql and
+// internal/platform/tx. The runs domain's assembly constructs it.
 package read

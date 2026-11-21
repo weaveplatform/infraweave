@@ -49,6 +49,15 @@ two scenarios / 170 steps, with actual workers and all steps passed in
 The [proof record](run-read-snapshot-verification.json) retains commands,
 controlled interleaving counts, original timestamps and artifact checksums.
 
+The transaction entry and commit paths also preserve the existing outage
+contract. Terminating actual PostgreSQL backends at both boundaries initially
+returned raw `57P01` errors and HTTP 500 in all six route/boundary combinations.
+Applying the existing `sql.Unavailable` classification at this reader boundary
+restored HTTP 503 with `Retry-After: 2`, preserving the original cause and leaving
+application and missing-run errors unchanged. Thirty outage cases plus thirty
+snapshot interleavings passed together under certified FIPS, race detection and
+shuffle. The shared transaction implementation was unchanged.
+
 ## FIPS job exhausted its unchanged execution budget
 
 [Run 44874854659](https://github.com/weaveplatform/infraweave/actions/runs/44874854659)

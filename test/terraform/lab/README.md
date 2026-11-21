@@ -98,6 +98,13 @@ it is a negative control, not a passing application scenario. The
 records the report hash and scope. These are local candidate
 results; the final exact-head CI and real-provider walkthrough remain required.
 
+The required Terraform policy job also passed on Linux in
+[CI run 44880876138](https://github.com/weaveplatform/infraweave/actions/runs/44880876138)
+for candidate `7363b14c`: 15 scenarios / 561 steps with certified FIPS and verified
+cleanup. Its retained report records the actual checkout revision, image pins,
+OPA version and empty-state/absence results. This is passing evidence for that
+candidate; subsequent changes still require their own final-head gate.
+
 Controller unit tests separately prove empty/skipped/undefined reports fail,
 failed test commands still clean up, cleanup failure cannot report success, and
 another invocation's deployment directory is left untouched. Go race/FIPS

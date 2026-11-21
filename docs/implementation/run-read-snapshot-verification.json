@@ -66,5 +66,47 @@
   "schema": 1,
   "date": "2026-11-21",
   "classification": "local candidate; final exact-head CI required",
-  "candidateCommit": "9073177f"
+  "candidateCommit": "9073177f",
+  "transactionOutage": {
+    "pr": 717,
+    "base": "7363b14c24ee58f20679fff5e2658b8a19f0e83f",
+    "cause": "Public run snapshot added raw BeginTx/Commit error boundaries. A real PostgreSQL backend termination (57P01) bypassed the store classifier and was rendered500 instead of retryable503.",
+    "repair": "Apply existing platform/sql.Unavailable only to the local snapshot result, preserving successfulnil, domain errors and the original outage cause. Sharedplatform/tx is unchanged.",
+    "before": {
+      "log": "/private/tmp/infraweave-717-snapshot-outage-before.log",
+      "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -count=1 -run '^TestAccPublicRunSnapshot(OutageKeepsRetryableHTTPContract|PreservesOtherErrors)$' ./internal/runs/internal/adapters/pg",
+      "exit_code": 1,
+      "seconds": 4.189,
+      "outage_cases_failed": 6,
+      "actual_cause": "SQLSTATE57P01 administrator shutdown on realPostgreSQL18.7",
+      "http_status": 500,
+      "retry_after": null,
+      "logSHA256": "acbebff261d49ef1150a04b183423fbc49873b6c30d843e9fa7b95500fcbf118"
+    },
+    "after": {
+      "log": "/private/tmp/infraweave-717-snapshot-outage-after.log",
+      "command": "INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 GOWORK=off GOFIPS140=certified GODEBUG=fips140=only go test -race -shuffle=on -count=5 -run '^TestAcc(PublicRunSnapshot(OutageKeepsRetryableHTTPContract|PreservesOtherErrors)|PublicRunReadKeepsOneCommittedSnapshot|Read|ReadFailures)$' ./internal/runs/internal/adapters/pg",
+      "exit_code": 0,
+      "seconds": 12.538,
+      "outage_cases_passed": 30,
+      "snapshot_interleavings_passed": 30,
+      "other_errors_preserved": [
+        "injectedapplicationfailure",
+        "read.ErrNotFound"
+      ],
+      "http_status": 503,
+      "retry_after": "2",
+      "underlying_cause_retained": true,
+      "logSHA256": "b45f2220594e0b7075f825215ae23c1741c7eacaeffffb29f688d07624fbc2d7"
+    },
+    "lint": {
+      "status": "passed",
+      "log": "/private/tmp/infraweave-717-snapshot-outage-lint.log",
+      "exit_code": 0,
+      "issues": 0,
+      "command": "GOWORK=off golangci-lint run --config .golangci.yml --new=false --fix=false ./internal/runs/internal/core/read ./internal/runs/internal/adapters/pg"
+    },
+    "ci": "44880876138 left untouched; no rerun requested",
+    "candidateCommit": "9772de022000ac90172d2e6b863b6beed56ebbef"
+  }
 }
