@@ -2,6 +2,10 @@
 
 Audit for [POL-19 (#656)](https://github.com/weaveplatform/infraweave/issues/656), dated 2026-11-21. **P13 remains In progress.** This audit records the passing local-service contracts and the evidence still required for delivery; it does not close the phase, epic #635, or its outstanding follow-ups.
 
+The [CI diagnosis](policy-ci-diagnosis.md) records the observed provisioning,
+public-read consistency and FIPS budget failures, their targeted regressions,
+and the corrected verification still required.
+
 ## Revision and executed results
 
 The retained historical execution baseline is [`1120bb8a`](https://github.com/weaveplatform/infraweave/commit/1120bb8aa7e4c09e5c3468cd876567db13e9e3b9). Its own [push quality gate](https://github.com/weaveplatform/infraweave/actions/runs/44808423418) passed, independently of [PR #706](https://github.com/weaveplatform/infraweave/pull/706)'s tested head `fcd3ab623de01a71d611a7a8603476a59beefb03`. The gate passed normal acceptance, certified FIPS, PostgreSQL-next, all three OS unit suites, race checks, generation, parity, lint, vulnerability checks, cross-compilation and aggregate Quality. Coverage was **95.5% (49,560/51,922)**; every package met 90%.

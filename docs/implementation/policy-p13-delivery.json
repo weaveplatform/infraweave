@@ -2552,5 +2552,13 @@
     "ownership": "two independent real Terraform deployments; A cleanup preserves B and shared pins",
     "emptySelection": "fails with verified cleanup",
     "status": "passed-locally-final-ci-and-native-provider-lab-required"
+  },
+  "runReadSnapshotCandidateProof": {
+    "proof": "docs/implementation/run-read-snapshot-verification.json",
+    "baseline": "all six real PostgreSQL interleavings failed",
+    "regression": "30 certified-FIPS/race/shuffle interleavings passed",
+    "nativeScenarios": 2,
+    "nativeSteps": 170,
+    "status": "passed-locally-final-ci-required"
   }
 }
