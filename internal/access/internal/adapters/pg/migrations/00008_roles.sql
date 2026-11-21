@@ -65,6 +65,7 @@ CREATE TABLE session_grants (
     FOREIGN KEY (account_id, role_id) REFERENCES roles (account_id, id) ON DELETE RESTRICT,
     FOREIGN KEY (account_id, space_id) REFERENCES spaces (account_id, id) ON DELETE CASCADE
 );
+CREATE INDEX session_grants_session ON session_grants (account_id, session_id);
 CREATE INDEX session_grants_role ON session_grants (account_id, role_id);
 CREATE INDEX session_grants_space ON session_grants (account_id, space_id);
 CREATE INDEX role_bindings_space ON role_bindings (account_id, space_id);
