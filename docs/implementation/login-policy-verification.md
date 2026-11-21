@@ -73,6 +73,14 @@ after verification, consent expiring while an account lock is held, and refusal
 of ended-session review metadata. A timing evaluator used only by the storage
 write audit is explicitly identified; it is not OPA acceptance evidence.
 
+Storage-boundary controls also refuse mismatched or ended identity sources,
+preserve consent codes on replay/refusal, and verify a legitimate account switch
+within the organization. Real PostgreSQL backend termination at ten LOGIN
+mutation boundaries must roll back peer revocation, grant/version changes and
+cache invalidations. Entry, account discovery and consent retain unavailable
+error classification without partial results. The missing-runtime check proves
+safe storage wiring failure; it does not substitute for the public OPA matrix.
+
 ## Evidence limits and final gate
 
 These are authored infraweave acceptance programs. The identity-session harness

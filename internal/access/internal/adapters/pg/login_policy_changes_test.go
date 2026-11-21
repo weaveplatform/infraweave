@@ -3,17 +3,98 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
+
+// terminateLoginQuery makes a selected production query encounter a real
+// connection failure. It never substitutes a query result or injected error.
+type terminateLoginQuery struct {
+	db      *pgxpool.Pool
+	query   string
+	payload string
+	fired   atomic.Bool
+	err     error
+}
+
+func (f *terminateLoginQuery) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	if !strings.Contains(data.SQL, f.query) || f.payload != "" && !slices.ContainsFunc(data.Args, func(arg any) bool {
+		value, ok := arg.(string)
+		return ok && strings.HasPrefix(value, f.payload)
+	}) || !f.fired.CompareAndSwap(false, true) {
+		return ctx
+	}
+	_, f.err = f.db.Exec(ctx, `SELECT pg_terminate_backend($1)`, conn.PgConn().PID())
+	return ctx
+}
+
+func (*terminateLoginQuery) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func TestAccLoginPolicyChangesRollBackAtPostgresFailureBoundaries(t *testing.T) {
+	for _, stage := range []struct{ name, query, payload string }{
+		{"editor", "FROM sessions", ""},
+		{"spaces", "inherit_entities FROM spaces", ""},
+		{"roles", "FROM roles r LEFT JOIN role_actions", ""},
+		{"bindings", "FROM role_bindings WHERE", ""},
+		{"grants", "FROM session_grants g", ""},
+		{"groups", "FROM managed_user_groups", ""},
+		{"revocation", "WITH revoked AS", ""},
+		{"session invalidation", "SELECT pg_notify", "session:"},
+		{"version", "UPDATE accounts SET authz_version", ""},
+		{"snapshot invalidation", "SELECT pg_notify", "authz:"},
+	} {
+		t.Run(stage.name, func(t *testing.T) {
+			x, editor, peer := loginChangeFixture(t)
+			before, err := x.s.AuthzData(t.Context(), x.acct)
+			if err != nil {
+				t.Fatal(err)
+			}
+			listener := listen(t, x.db)
+			failure := &terminateLoginQuery{db: x.db, query: stage.query, payload: stage.payload}
+			config := x.db.Config()
+			config.ConnConfig.Tracer = failure
+			traced, err := pgxpool.NewWithConfig(t.Context(), config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(traced.Close)
+			var sessionDrops, snapshotDrops int
+			store := pg.New(traced).
+				WithSessionInvalidations(func(kernel.ULID) { sessionDrops++ }).
+				WithSnapshots(func(kernel.AccountID) { snapshotDrops++ })
+			err = store.LoginPolicyChanged(t.Context(), editor)
+			if !failure.fired.Load() || failure.err != nil || !errors.Is(err, kernel.ErrUnavailable) {
+				t.Fatalf("controlled query failure not observed: fired=%t terminate=%v operation=%v", failure.fired.Load(), failure.err, err)
+			}
+			after, err := x.s.AuthzData(t.Context(), x.acct)
+			currentPeer, peerErr := x.s.Session(t.Context(), peer.SessionID)
+			currentEditor, editorErr := x.s.Session(t.Context(), editor.SessionID)
+			if err != nil || peerErr != nil || editorErr != nil || !currentPeer.Live(time.Now()) || !currentEditor.Live(time.Now()) ||
+				after.Version != before.Version || !reflect.DeepEqual(after.Sessions, before.Sessions) || sessionDrops != 0 || snapshotDrops != 0 {
+				t.Fatalf("failed LOGIN change leaked security effects: version=%d/%d drops=%d/%d errors=%v/%v/%v",
+					after.Version, before.Version, sessionDrops, snapshotDrops, err, peerErr, editorErr)
+			}
+			if got := messages(t, listener); len(got) != 0 {
+				t.Fatalf("failed LOGIN change emitted invalidations: %v", got)
+			}
+		})
+	}
+}
 
 func loginChangeFixture(t *testing.T) (seeded, kernel.Principal, kernel.Principal) {
 	t.Helper()
