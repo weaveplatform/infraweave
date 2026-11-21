@@ -189,7 +189,7 @@ mandatory; licence-less DC is the documented conditional peer.
 | DEFAULT/SMART/NONE and real vendor artifacts | Native Terraform/OpenTofu/Terragrunt mode, selected-unit, decrypted upload, replan, sealing and worker-capability fence tests passed in the source gate. Modern positive action/deferred-resource fixtures retain exact vendor provenance. |
 | Full native `deferred_action_invocations` and positive masked/decrypted upload | #675 remains OPEN. Partial #680 was externally merged. Rejected/unmerged #708 provides no accepted completion proof. The mandatory positive fixture and real masked/decrypted upload remain missing; the fail-closed guard stays in place. |
 | Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #715 still needs the new real-provider union case. |
-| Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Final CI remains required, including the unchanged external Spacelift-image check after its registry-quota failure. |
+| Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Exact-head CI 44867207346 passed normally and under certified FIPS after one scoped retry of the external registry quota failure; PR #716 is merged. Issue reconciliation remains outstanding. |
 | Capture replay/assertion handoffs | C291 now executes both captured review rejection states. C51 current-owner reset and C46 cleanup execute as strict subsets; sample/upstream handoffs remain explicit. C48 checks complete source equality with C291 and executes that real worker rejection workflow in its own retained report, alongside its management subset. |
 | Real-provider workflow | #655 / #715 pending, all new live rows outstanding. Baseline failure is retained. |
 | Final audit head and generated evidence | Required CI for this audit, `make gate`, `make verify-parity verify-generate`, and `specref parity --product deploy --states --check` remain final gates. Current main's success does not attest to future edits. |
@@ -236,4 +236,11 @@ mapping; it does not attest to the audit's final revision. The exact final PR
 and merged main still require their complete CI, generated checks and live lab.
 Main's current policy-lab revision is e909e739b50646d32aeb754a310272d9648d514a;
 [lab 44869808030](https://github.com/weaveplatform/infraweave/actions/runs/44869808030)
-is in progress. P13 remains In progress until its delivery gates pass.
+failed on all four required providers. Every provider verified cleanup: hook
+restoration/detachment, Terraform destroy and empty-state readback, stopped tunnels
+and GitLab shutdown. The failure exposed concurrent scenarios competing for the
+same native webhook port and an OpenTofu merge-patch retaining Terraform settings.
+PR #717 serializes only the real-provider partition and explicitly clears that
+Terraform member. Local race/FIPS regressions and an actual API/OpenTofu worker
+probe pass; the corrected real-provider rerun remains required. P13 remains
+In progress until its delivery gates pass.

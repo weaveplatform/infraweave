@@ -1881,9 +1881,11 @@
   "requiredOpenEvidence": [
     {
       "issue": 655,
-      "pr": 715,
-      "state": "live-run-outstanding",
-      "head": "202e61f5f591c5cef0c2ccbcce4a4f5733106f90"
+      "pr": 717,
+      "state": "corrected-live-lab-rerun-outstanding",
+      "head": "202e61f5f591c5cef0c2ccbcce4a4f5733106f90",
+      "failedLab": 44869808030,
+      "cleanup": "all-required-providers-verified"
     },
     {
       "issue": 656,
@@ -1896,7 +1898,9 @@
     {
       "issue": 703,
       "pr": 716,
-      "state": "public-image-isolation-final-ci-outstanding"
+      "state": "ci-passed-merged-awaiting-issue-reconciliation",
+      "ci": 44867207346,
+      "head": "0d5a50f8b9cc7695229c4979e260b066534c2ff6"
     }
   ],
   "projectionOperations": [
@@ -2520,7 +2524,11 @@
     "policyPR": 715,
     "policyCI": 44867086361,
     "liveLab": 44869808030,
-    "liveStatus": "in-progress",
-    "runnerProofPR": 716
+    "liveStatus": "failed",
+    "runnerProofPR": 716,
+    "liveCleanup": "all-required-providers-verified",
+    "labCorrectionsPR": 717,
+    "runnerProofCI": 44867207346,
+    "runnerProofStatus": "passed-and-merged"
   }
 }

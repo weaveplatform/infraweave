@@ -1,6 +1,6 @@
 #!/bin/sh
-# Standalone compatibility proof; launcher acceptance separately proves its
-# signed download and read-only mount path with the current application.
+# Older-version compatibility proof; the offline contract separately proves
+# the installed CLI. Launcher acceptance proves actual read-only mounts.
 set -eu
 arch=$(uname -m)
 case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; *) exit 1 ;; esac
@@ -17,16 +17,20 @@ for cohort in current previous; do
  fi
  [ "$cohort" = current ] || selector="$selector.previous"
  version=$(jq -r "$selector.version" "$inputs")
- file="${tool}_${version}_linux_${arch}.zip"
- sum=$(jq -r "$selector.sha256[\"$file\"]" "$inputs")
- case "$tool" in
-  terraform) url="https://releases.hashicorp.com/terraform/$version/$file" ;;
-  tofu) url="https://github.com/opentofu/opentofu/releases/download/v$version/$file" ;;
- esac
- curl -fsSL --retry 3 "$url" -o "$work/tool.zip"
- echo "$sum  $work/tool.zip" | sha256sum -c -
- unzip -oq "$work/tool.zip" "$tool" -d "$work/bin"
- chmod 755 "$work/bin/$tool"
+ if [ "$cohort" = previous ]; then
+  file="${tool}_${version}_linux_${arch}.zip"
+  sum=$(jq -r "$selector.sha256[\"$file\"]" "$inputs")
+  case "$tool" in
+   terraform) url="https://releases.hashicorp.com/terraform/$version/$file" ;;
+   tofu) url="https://github.com/opentofu/opentofu/releases/download/v$version/$file" ;;
+  esac
+  curl -fsSL --retry 3 "$url" -o "$work/tool.zip"
+  echo "$sum  $work/tool.zip" | sha256sum -c -
+  unzip -oq "$work/tool.zip" "$tool" -d "$work/bin"
+  chmod 755 "$work/bin/$tool"
+  hash -r
+ fi
+ [ "$("$tool" version -json | jq -r .terraform_version)" = "$version" ]
  "$tool" version
  mkdir "$work/$cohort"
  cd "$work/$cohort"

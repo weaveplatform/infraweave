@@ -14,6 +14,21 @@ spec.loader.exec_module(ctl)
 
 
 class CatalogTests(unittest.TestCase):
+    def test_terraform_family_cohort_replaces_baked_version_and_both_checksums(self):
+        for kind, binary in (("terraform", "terraform"), ("opentofu", "tofu")):
+            with self.subTest(kind=kind):
+                current = (ctl.HERE / f"runner-{kind}/Dockerfile").read_text()
+                previous = ctl.inputs()["tools"][kind]["previous"]
+                rendered = ctl.render(kind, current, ctl.inputs(), previous)
+                self.assertIn(f'image.version="{previous["version"]}"', rendered)
+                for arch in ("amd64", "arm64"):
+                    checksum = previous["sha256"][f"{binary}_{previous['version']}_linux_{arch}.zip"]
+                    self.assertIn(f"{arch}) sum={checksum}", rendered)
+                self.assertNotIn(ctl.inputs()["tools"][kind]["version"], rendered)
+                self.assertEqual(ctl.render(kind, rendered, ctl.inputs(), previous), rendered)
+                self.assertEqual(ctl.tag(kind, previous["version"]),
+                                 f"{previous['version']}-r{ctl.inputs()['revision']}")
+
     def test_recipe_identity_survives_worktree_location_and_output_pin_changes(self):
         expected = ctl.recipe()
         with tempfile.TemporaryDirectory(prefix="infraweave-recipe-test-") as directory:
