@@ -103,6 +103,24 @@ func (s *store) Decide(_ context.Context, d oauth.Request, now time.Time) error 
 	return nil
 }
 
+func (s *store) Approve(ctx context.Context, p kernel.Principal, d oauth.Request, now time.Time) error {
+	s.mu.Lock()
+	_, allowed := s.owner(d.AccountID, p.MemberID)
+	hosts := slices.Clone(s.hosts[d.AccountID])
+	s.mu.Unlock()
+	if !allowed {
+		return oauth.ErrNotAdmitted
+	}
+	r, err := s.Request(ctx, d.ID)
+	if err != nil {
+		return err
+	}
+	if !oauth.AllowedRedirect(r.RedirectURI, hosts) {
+		return oauth.ErrRedirectHost
+	}
+	return s.Decide(ctx, d, now)
+}
+
 func (s *store) RedirectHosts(_ context.Context, acct kernel.AccountID) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -201,20 +219,6 @@ func (i issuer) Issue(_ context.Context, r token.Request) (string, token.Claims,
 	}, nil
 }
 
-// admission admits by the store's owners.
-type admission struct{ s *store }
-
-func (a admission) Accounts(context.Context, kernel.OrganizationID, kernel.MemberID) ([]session.Admitted, error) {
-	return nil, nil
-}
-
-func (a admission) Admits(_ context.Context, _ kernel.OrganizationID, m kernel.MemberID, acct kernel.AccountID) (session.Admitted, bool, error) {
-	a.s.mu.Lock()
-	defer a.s.mu.Unlock()
-	_, ok := a.s.owner(acct, m)
-	return session.Admitted{ID: acct}, ok, nil
-}
-
 // fixture is a service over a store holding one member admitted to one
 // account, and a client registered with a loopback and an https redirect.
 type fixture struct {
@@ -239,7 +243,7 @@ func newFixture(t *testing.T) *fixture {
 		f.p.MemberID: {Login: "alice", Name: "Alice", Teams: []string{"dev"}},
 	}
 	f.svc = oauth.NewService(oauth.Deps{
-		Store: f.st, Tokens: issuer{}, Admission: admission{f.st},
+		Store: f.st, Tokens: issuer{},
 		Drop:      func(id kernel.ULID) { f.dropped = append(f.dropped, id) },
 		PublicURL: public + "/", AccessTTL: time.Hour, RefreshTTL: 30 * 24 * time.Hour,
 		CodeTTL: time.Minute, Now: time.Now,
@@ -685,7 +689,7 @@ func TestUnitOAuthFailures(t *testing.T) {
 	}
 	f.st.fail = nil
 	f.svc = oauth.NewService(oauth.Deps{
-		Store: f.st, Tokens: issuer{fail: broken}, Admission: admission{f.st},
+		Store: f.st, Tokens: issuer{fail: broken},
 		Drop: func(kernel.ULID) {}, PublicURL: public, AccessTTL: time.Hour,
 		RefreshTTL: time.Hour, CodeTTL: time.Minute, Now: time.Now,
 	})

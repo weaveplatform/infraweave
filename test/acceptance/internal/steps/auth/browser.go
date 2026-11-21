@@ -39,6 +39,7 @@ type browserSteps struct {
 }
 
 func (b *browserSteps) register(sc *godog.ScenarioContext) {
+	b.registerLoginIdentity(sc)
 	sc.Step(
 		`^two infraweave servers, A and B, on one database, with an operator key and an expensive budget of (\d+)$`,
 		b.serversWithBudget,

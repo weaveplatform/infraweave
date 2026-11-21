@@ -58,6 +58,8 @@ func (s Server) CliConfirmationToken(ctx context.Context, req api.CliConfirmatio
 	}
 	sealed, err := s.auth.CLIToken(ctx, p, req.Body.PubKey)
 	switch {
+	case errors.Is(err, authn.ErrNotAdmitted):
+		return nil, problem.Forbidden.Error("Account entry was refused for the new CLI session.") //nolint:wrapcheck // safe public refusal
 	case errors.Is(err, authn.ErrNotBrowser):
 		//nolint:wrapcheck // a problem, answered as it is
 		return nil, problem.Forbidden.Error("Only a member's browser session issues a CLI token.")
@@ -80,6 +82,9 @@ func (s Server) AuthAccounts(ctx context.Context, _ api.AuthAccountsRequestObjec
 		return nil, err
 	}
 	as, err := s.auth.Accounts(ctx, p)
+	if errors.Is(err, authn.ErrUnauthenticated) {
+		return nil, problem.Unauthenticated.Error(refused) //nolint:wrapcheck // a session ended while listing
+	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}

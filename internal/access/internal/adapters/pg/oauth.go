@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
@@ -71,7 +74,8 @@ func touchClient(ctx context.Context, q tx.Querier, id kernel.ULID) error {
 const requestColumns = `r.id, c.id, c.name, c.redirect_uris, c.created_at, r.redirect_uri,
 	r.resource, r.scopes, r.state, r.code_challenge, r.created_at, r.expires_at,
 	r.decided_at IS NOT NULL, r.organization_id, r.account_id, r.member_id, r.code_hash,
-	r.code_expires_at`
+	r.code_expires_at, r.original_member, r.original_teams_known,
+	r.original_teams, r.identity_provider_id, r.idp_subject`
 
 // requestFrom is requestColumns' FROM clause.
 const requestFrom = ` FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id`
@@ -89,7 +93,8 @@ func scanRequest(row pgx.Row, extra ...any) (oauth.Request, error) {
 		&r.ID, &r.Client.ID, &r.Client.Name, &r.Client.RedirectURIs,
 		&r.Client.CreatedAt, &r.RedirectURI, &r.Resource, &r.Scopes, &r.State, &r.Challenge,
 		&r.CreatedAt, &r.ExpiresAt, &r.Decided, &org, &acct, &member, &r.CodeHash,
-		&codeEnd,
+		&codeEnd, &r.OriginalMember, &r.OriginalTeamsKnown, &r.OriginalTeams,
+		&r.IdentityProviderID, &r.IDPSubject,
 	}, extra...)...)
 	if err != nil {
 		return oauth.Request{}, err //nolint:wrapcheck // the callers name the read
@@ -125,9 +130,14 @@ func (s *Store) Decide(ctx context.Context, d oauth.Request, now time.Time) erro
 	}
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE oauth_requests
 		SET decided_at = $2, organization_id = $3, account_id = $4, member_id = $5,
-			code_hash = $6, code_expires_at = $7
-		WHERE id = $1 AND decided_at IS NULL AND expires_at > $2`,
-		d.ID, now, org, acct, member, d.CodeHash, codeEnd)
+			code_hash = $6, code_expires_at = $7, original_member = $8,
+			original_teams_known = $9, original_teams = $10, identity_provider_id = $11,
+			idp_subject = $12
+		WHERE id = $1 AND decided_at IS NULL AND expires_at > $2
+			AND expires_at > clock_timestamp()
+			AND ($7::timestamptz IS NULL OR $7 > clock_timestamp())`,
+		d.ID, now, org, acct, member, d.CodeHash, codeEnd, d.OriginalMember,
+		d.OriginalTeamsKnown, d.OriginalTeams, d.IdentityProviderID, d.IDPSubject)
 	if err != nil {
 		return fmt.Errorf("access: decide authorization request %s: %w", d.ID,
 			sql.Unavailable(err))
@@ -154,13 +164,20 @@ func (s *Store) RedirectHosts(ctx context.Context, acct kernel.AccountID) ([]str
 // updates the member before each revokes the member's sessions, so a
 // grant written under these locks is one they revoke, and one they
 // precede is refused here.
-func grantOwner(ctx context.Context, q tx.Querier, acct kernel.AccountID, member kernel.MemberID) (oauth.Owner, error) {
+func grantOwner(ctx context.Context, q tx.Querier, acct kernel.AccountID, member kernel.MemberID, scheme accessapi.AuthorizationScheme) (oauth.Owner, error) {
 	var o oauth.Owner
-	err := q.QueryRow(ctx, `SELECT m.login, m.name, u.latest_groups
-		FROM account_users u JOIN members m ON m.id = u.member_id
-		WHERE u.account_id = $1 AND u.member_id = $2 AND m.status = 'active'
-		FOR SHARE OF u, m`, acct, member).Scan(&o.Login, &o.Name, &o.Teams)
-	return o, read(err, "admitted member", member.ULID)
+	err := q.QueryRow(ctx, `SELECT m.login, m.name
+		FROM members m JOIN accounts a ON a.organization_id=m.organization_id
+		WHERE a.id=$1 AND m.id=$2 AND m.status='active' FOR SHARE OF m`,
+		acct, member).Scan(&o.Login, &o.Name)
+	if err != nil {
+		return o, read(err, "active grant member", member.ULID)
+	}
+	if scheme == accessapi.ManagedUsers {
+		err = q.QueryRow(ctx, `SELECT latest_groups FROM account_users
+			WHERE account_id=$1 AND member_id=$2 FOR SHARE`, acct, member).Scan(&o.Teams)
+	}
+	return o, read(err, "admitted grant member", member.ULID)
 }
 
 // Redeem spends the code whose SHA-256 is hash for the grant session
@@ -169,9 +186,19 @@ func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Reques
 	var (
 		out    session.Session
 		reused bool
+		denied *session.LoginDenied
 	)
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
+		out, reused, denied = session.Session{}, false, nil
+		var account kernel.AccountID
+		if err := q.QueryRow(ctx, `SELECT account_id FROM oauth_requests WHERE code_hash=$1`, hash).Scan(&account); err != nil {
+			return read(err, "authorization code account", "by its hash")
+		}
+		scheme, err := lockAccount(ctx, q, account)
+		if err != nil {
+			return err
+		}
 		var (
 			redeemed bool
 			sid      *kernel.ULID
@@ -181,6 +208,9 @@ func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Reques
 			WHERE r.code_hash = $1 FOR UPDATE OF r`, hash), &redeemed, &sid)
 		if err != nil {
 			return read(err, "authorization code", "by its hash")
+		}
+		if r.AccountID != account {
+			return port.ErrNotFound
 		}
 		if redeemed {
 			reused = true
@@ -193,7 +223,7 @@ func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Reques
 			}
 			return err
 		}
-		o, err := grantOwner(ctx, q, r.AccountID, r.MemberID)
+		o, err := grantOwner(ctx, q, r.AccountID, r.MemberID, scheme)
 		if err != nil {
 			return err
 		}
@@ -201,7 +231,22 @@ func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Reques
 		if err != nil {
 			return err
 		}
+		ss.OriginalMember, ss.OriginalTeamsKnown = r.OriginalMember, r.OriginalTeamsKnown
+		ss.OriginalTeams = slices.Clone(r.OriginalTeams)
+		ss.IdentityProviderID, ss.IDPSubject = r.IdentityProviderID, r.IDPSubject
+		var grants []binding.Binding
+		if scheme == accessapi.LoginPolicies {
+			var refused *session.LoginDenied
+			grants, refused, err = s.loginEntry(ctx, &ss, nil)
+			denied = refused
+			if err != nil || denied != nil {
+				return err
+			}
+		}
 		if err := insertSession(ctx, q, ss); err != nil {
+			return err
+		}
+		if err := s.installLoginGrants(ctx, ss, grants); err != nil {
 			return err
 		}
 		if _, err := q.Exec(ctx, `UPDATE oauth_requests SET redeemed_at = now(), session_id = $2
@@ -217,6 +262,8 @@ func (s *Store) Redeem(ctx context.Context, hash []byte, grant func(oauth.Reques
 			sql.Unavailable(err))
 	case reused:
 		return out, oauth.ErrReused
+	case denied != nil:
+		return session.Session{}, denied
 	}
 	return out, nil
 }
@@ -230,7 +277,22 @@ func (s *Store) Refresh(ctx context.Context, hash []byte, rotate func(session.Se
 	)
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
-		outcome = nil
+		out, outcome = session.Session{}, nil
+		var account kernel.AccountID
+		var member kernel.MemberID
+		if err := q.QueryRow(ctx, `SELECT account_id,member_id FROM sessions
+			WHERE secret_hash=$1 AND oauth_client_id IS NOT NULL
+			UNION ALL SELECT s.account_id,s.member_id FROM oauth_spent_refresh_tokens t
+			JOIN sessions s ON s.id=t.session_id WHERE t.hash=$1 LIMIT 1`, hash).Scan(&account, &member); err != nil {
+			return read(err, "OAuth refresh account", "by its hash")
+		}
+		scheme, err := lockAccount(ctx, q, account)
+		if err != nil {
+			return err
+		}
+		// Account and member locks precede the grant row, as policy changes,
+		// admission removal and member deactivation take them in this order.
+		o, ownerErr := grantOwner(ctx, q, account, member, scheme)
 		cur, err := scanSession(q.QueryRow(ctx, `SELECT `+sessionColumns+` FROM sessions
 			WHERE secret_hash = $1 AND oauth_client_id IS NOT NULL AND revoked_at IS NULL
 			FOR UPDATE`, hash))
@@ -240,8 +302,10 @@ func (s *Store) Refresh(ctx context.Context, hash []byte, rotate func(session.Se
 		if err != nil {
 			return read(err, "OAuth grant", "by its refresh token")
 		}
-		o, err := grantOwner(ctx, q, cur.AccountID, cur.MemberID)
-		if errors.Is(err, port.ErrNotFound) {
+		if cur.AccountID != account || cur.MemberID != member {
+			return port.ErrNotFound
+		}
+		if errors.Is(ownerErr, port.ErrNotFound) {
 			revoked, err := revoke(ctx, q, `id = $1`, cur.ID)
 			out, outcome = cur, fmt.Errorf("%w: the grant's member", port.ErrNotFound)
 			if len(revoked) > 0 {
@@ -249,8 +313,13 @@ func (s *Store) Refresh(ctx context.Context, hash []byte, rotate func(session.Se
 			}
 			return err
 		}
-		if err != nil {
-			return err
+		if ownerErr != nil {
+			return ownerErr
+		}
+		if scheme == accessapi.LoginPolicies {
+			// A refresh rotates this same SID. Its frozen grants and effective
+			// teams survive; only a new account entry evaluates LOGIN again.
+			o.Teams = slices.Clone(cur.Teams)
 		}
 		next, err := rotate(cur, o)
 		if err != nil {

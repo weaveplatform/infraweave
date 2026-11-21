@@ -162,6 +162,12 @@ type Domain struct {
 	publicURL string
 }
 
+// BindLoginEvaluator supplies account-entry evaluation after policies exists.
+func (d *Domain) BindLoginEvaluator(e accessapi.LoginEvaluator) { d.store.WithLoginEvaluator(e) }
+
+// LoginPolicyChanges supplies the synchronous security effects of LOGIN CRUD.
+func (d *Domain) LoginPolicyChanges() accessapi.LoginPolicyChanges { return d.store }
+
 // New constructs the domain on d. It fails only when
 // auth.oidc_api_keys.ca_file cannot be read or holds no certificate.
 func New(d Deps) (*Domain, error) {
@@ -221,11 +227,13 @@ func New(d Deps) (*Domain, error) {
 		Accounts:         store,
 		BreakGlass:       store,
 		Admission:        store,
+		Entry:            store,
 		AccountAdmin:     decide.Admin,
 		Idle:             d.Settings.Session.IdleTimeout,
 		MaxAge:           d.Settings.Session.MaxAge,
 		Now:              now,
 	})
+	store.WithSessionInvalidations(auth.Cache().Drop)
 	keys := apikey.NewService(apikey.Deps{
 		Store:          store,
 		Authz:          decide,
@@ -237,7 +245,6 @@ func New(d Deps) (*Domain, error) {
 	grants := oauth.NewService(oauth.Deps{
 		Store:      store,
 		Tokens:     tokens,
-		Admission:  store,
 		Drop:       auth.Cache().Drop,
 		PublicURL:  d.PublicURL,
 		AccessTTL:  d.Settings.Tokens.OAuthAccess.TTL,

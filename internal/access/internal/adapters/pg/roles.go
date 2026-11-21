@@ -196,6 +196,9 @@ func (s *Store) RoleBindings(ctx context.Context, acct kernel.AccountID, id kern
 
 // lockRole reads acct's role slug and locks its row.
 func lockRole(ctx context.Context, q tx.Querier, acct kernel.AccountID, slug string) (role.Role, error) {
+	if _, err := lockAccount(ctx, q, acct); err != nil {
+		return role.Role{}, err
+	}
 	r, err := scanRole(q.QueryRow(ctx, `SELECT `+roleColumns+` FROM roles r
 		WHERE r.account_id = $1 AND r.slug = $2 FOR UPDATE`, acct, slug))
 	return r, read(err, "role", slug)

@@ -81,7 +81,7 @@ func (s *oauthSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the client redeems the code through ([AB])$`, s.redeem)
 	sc.Step(`^the client redeems the code again through ([AB])$`, s.redeem)
 	sc.Step(
-		`^it holds an access token for "([^"]+)" with the scope "([^"]+)" for an hour, and a refresh token$`,
+		`^it holds an access token for "([^"]+)" with the scope "([^"]+)" for an hour, and a refresh token(?: for member "([^"]+)")?$`,
 		s.holds,
 	)
 	sc.Step(`^the client refreshes through ([AB])$`, s.refreshWith(func(s *oauthSteps) string {
@@ -95,6 +95,8 @@ func (s *oauthSteps) register(sc *godog.ScenarioContext) {
 		`^the home account's sessions through ([AB]) with token "(\w+)" (list|leave out) the grant$`,
 		s.sessionsList,
 	)
+	sc.Step(`^the OAuth grant retains original LOGIN facts and its own account-scoped permissions$`, s.loginGrant)
+	sc.Step(`^the OAuth refusal leaves the code unspent and no grant exists$`, s.unspentLoginCode)
 }
 
 // base is the named replica's URL.
@@ -383,7 +385,10 @@ func (s *oauthSteps) claims() (map[string]any, error) {
 	return c, nil
 }
 
-func (s *oauthSteps) holds(resource, scope string) error {
+func (s *oauthSteps) holds(resource, scope, member string) error {
+	if member == "" {
+		member = "alice"
+	}
 	if s.status != http.StatusOK || s.refresh == "" || s.body["token_type"] != "Bearer" ||
 		s.expires != 3600 || s.scope != scope {
 		return fmt.Errorf(
@@ -398,7 +403,7 @@ func (s *oauthSteps) holds(resource, scope string) error {
 		return err
 	}
 	if c["aud"] != harness.PublicURL+resource || c["iw_kind"] != "oauth" || c["scope"] != scope ||
-		c["sub"] != "alice" || c["exp"].(float64)-c["iat"].(float64) != 3600 {
+		c["sub"] != member || c["exp"].(float64)-c["iat"].(float64) != 3600 {
 		return fmt.Errorf("%w: the access token's claims are %v", harness.ErrStep, c)
 	}
 	return nil

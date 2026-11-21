@@ -74,7 +74,7 @@ func (a *authSteps) register(sc *godog.ScenarioContext) {
 		a.answersProblem,
 	)
 	sc.Step(
-		`^exchanging the home key through ([AB]) answers a (\d+) problem "([a-z-]+)"$`,
+		`^exchanging the (home|member) key through ([AB]) answers a (\d+) problem "([a-z-]+)"$`,
 		a.exchangeProblem,
 	)
 	sc.Step(
@@ -423,19 +423,23 @@ func (a *authSteps) answersProblem(ctx context.Context, method, path, replica, n
 	return harness.IsProblem(r, method+" "+path, code, slug)
 }
 
-func (a *authSteps) exchangeProblem(ctx context.Context, replica, code, slug string) error {
+func (a *authSteps) exchangeProblem(ctx context.Context, who, replica, code, slug string) error {
 	c, err := a.w.Client(replica, "")
 	if err != nil {
 		return err
 	}
+	tenant := harness.Tenants[who]
 	resp, err := c.Do(ctx, http.MethodPost, "/api/v1/auth/token",
-		map[string]string{"id": harness.Home.Key, "secret": harness.Home.Secret()})
+		map[string]string{"id": tenant.Key, "secret": tenant.Secret()})
 	if resp == nil {
 		return err
 	}
+	if resp.Status == http.StatusOK {
+		return fmt.Errorf("%w: exchanging the %s key unexpectedly issued a token", harness.ErrStep, who)
+	}
 	r := harness.Response{Status: resp.Status, Header: resp.Header, Body: resp.Body, Err: err}
 	a.w.Sent = append(a.w.Sent, r)
-	return harness.IsProblem(r, "exchanging the home key", code, slug)
+	return harness.IsProblem(r, "exchanging the "+who+" key", code, slug)
 }
 
 // viewerRevoked waits at most revocationWithin for the replica to refuse

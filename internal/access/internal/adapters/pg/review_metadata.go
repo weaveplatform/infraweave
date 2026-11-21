@@ -24,10 +24,11 @@ func (s *Store) ReviewSubject(ctx context.Context, id kernel.ULID) (*string, err
 func (s *Store) ReviewIdentity(ctx context.Context, p kernel.Principal) (accessapi.ReviewIdentity, error) {
 	var out accessapi.ReviewIdentity
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT m.id
-  FROM account_users u JOIN members m ON m.id=u.member_id
-  JOIN accounts a ON a.id=u.account_id
-  WHERE u.account_id=$1 AND m.organization_id=$2 AND a.organization_id=$2
-  AND m.id=$3 AND m.status='active'`, p.AccountID, p.OrganizationID, p.MemberID).Scan(&out.Member)
+  FROM members m JOIN accounts a ON a.organization_id=m.organization_id
+  WHERE a.id=$1 AND m.organization_id=$2 AND m.id=$3 AND m.status='active'
+  AND (a.authorization_scheme='LOGIN_POLICIES' OR EXISTS
+    (SELECT 1 FROM account_users u WHERE u.account_id=a.id AND u.member_id=m.id))`,
+		p.AccountID, p.OrganizationID, p.MemberID).Scan(&out.Member)
 	if err != nil {
 		return out, read(err, "review member", p.MemberID.ULID)
 	}

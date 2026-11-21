@@ -104,6 +104,9 @@ const sessionsList = "sessions"
 //nolint:revive // the generated interface names it
 func (s Server) ApiKeyUser(ctx context.Context, req api.ApiKeyUserRequestObject) (api.ApiKeyUserResponseObject, error) {
 	g, err := s.auth.Exchange(ctx, req.Body.Id, req.Body.Secret, from(ctx).addr)
+	if denied, ok := errors.AsType[*session.LoginDenied](err); ok {
+		return nil, problem.Forbidden.Error(denied.Message) //nolint:wrapcheck // the evaluated public refusal
+	}
 	if errors.Is(err, authn.ErrUnauthenticated) {
 		//nolint:wrapcheck // a problem, answered as it is
 		return nil, problem.Unauthenticated.Error(refused)

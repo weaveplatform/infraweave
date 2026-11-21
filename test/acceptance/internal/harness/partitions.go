@@ -79,14 +79,14 @@ var Partitions = []Partition{
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 var exemptTags = []string{
-	"@policy-phase", "@policy-initialization",
+	"@policy-phase", "@policy-initialization", "@policy-login-oauth", "@policy-login-review", "@policy-login-failures",
 	"@policy-projection-denial",
 	"@policy-approval-worker", "@policy-plan-worker", "@policy-trigger-worker",
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",
 	"@policy-management", "@policy-attachments", "@policy-check", "@policy-approval",
 	"@policy-push", "@policy-push-workers", "@policy-push-preparation", "@policy-push-forks",
 	"@policy-push-recovery", "@policy-push-failures", "@policy-push-commits", "@policy-push-locks",
-	"@policy-push-range", "@authorization-scheme", "@policy-task",
+	"@policy-push-range", "@authorization-scheme", "@policy-task", "@policy-login", "@policy-login-member", "@policy-login-change",
 }
 
 // placing is every partition in the order Place tries them: the labs,

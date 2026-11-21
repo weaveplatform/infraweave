@@ -19,11 +19,12 @@ import (
 // grants is oauth.Store in memory: one grant per code, no rotation
 // history beyond the current token.
 type grants struct {
-	clients  map[kernel.ULID]oauth.Client
-	requests map[kernel.ULID]*oauth.Request
-	sessions map[string]session.Session
-	hosts    map[kernel.AccountID][]string
-	down     bool
+	clients   map[kernel.ULID]oauth.Client
+	requests  map[kernel.ULID]*oauth.Request
+	sessions  map[string]session.Session
+	hosts     map[kernel.AccountID][]string
+	down      bool
+	admission session.Admission
 }
 
 func newGrants() *grants {
@@ -76,6 +77,24 @@ func (g *grants) Decide(_ context.Context, d oauth.Request, _ time.Time) error {
 		d.MemberID
 	r.CodeHash, r.CodeExpiresAt = d.CodeHash, d.CodeExpiresAt
 	return nil
+}
+
+func (g *grants) Approve(ctx context.Context, p kernel.Principal, d oauth.Request, now time.Time) error {
+	_, allowed, err := g.admission.Admits(ctx, p.OrganizationID, p.MemberID, d.AccountID)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return oauth.ErrNotAdmitted
+	}
+	r, err := g.Request(ctx, d.ID)
+	if err != nil {
+		return err
+	}
+	if !oauth.AllowedRedirect(r.RedirectURI, g.hosts[d.AccountID]) {
+		return oauth.ErrRedirectHost
+	}
+	return g.Decide(ctx, d, now)
 }
 
 func (g *grants) RedirectHosts(_ context.Context, acct kernel.AccountID) ([]string, error) {

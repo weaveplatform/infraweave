@@ -40,7 +40,7 @@ var (
 	ErrNotBrowser = errors.New("not a browser session")
 	// ErrNotAdmitted reports a switch to an account that does not admit
 	// the caller, or by a caller who is not a member.
-	ErrNotAdmitted = errors.New("not admitted")
+	ErrNotAdmitted = session.ErrNotAdmitted
 )
 
 // Browser is a browser session and the cookie value that names it, which
@@ -245,8 +245,16 @@ func (s *Service) CLIToken(ctx context.Context, p kernel.Principal, pubKey strin
 	if err != nil {
 		return "", err //nolint:wrapcheck // names the key's fault
 	}
-	if err := s.d.Sessions.CreateSession(ctx, child); err != nil {
-		return "", err //nolint:wrapcheck // the store names the write
+	if s.d.Entry != nil && !child.AccountID.IsZero() {
+		_, err = s.d.Entry.Enter(ctx, child, nil, parent.ID)
+	} else {
+		err = s.d.Sessions.CreateSession(ctx, child)
+	}
+	if errors.Is(err, port.ErrCredentialChanged) {
+		return "", ErrUnauthenticated
+	}
+	if err != nil {
+		return "", err //nolint:wrapcheck // the entry/store names the write
 	}
 	return sealed, nil
 }
@@ -256,6 +264,17 @@ func (s *Service) CLIToken(ctx context.Context, p kernel.Principal, pubKey strin
 func (s *Service) Accounts(ctx context.Context, p kernel.Principal) ([]session.Admitted, error) {
 	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
 		return nil, nil
+	}
+	if s.d.Entry != nil {
+		ss, err := s.d.Sessions.Session(ctx, p.SessionID)
+		if err != nil {
+			return nil, err //nolint:wrapcheck // the store names the read
+		}
+		accounts, err := s.d.Entry.AdmittedAccounts(ctx, ss)
+		if errors.Is(err, port.ErrCredentialChanged) {
+			return nil, ErrUnauthenticated
+		}
+		return accounts, err //nolint:wrapcheck // the entry names the read
 	}
 	return s.d.Admission.Accounts(ctx, p.OrganizationID, p.MemberID) //nolint:wrapcheck // as above
 }
@@ -278,12 +297,17 @@ func (s *Service) SwitchAccount(ctx context.Context, p kernel.Principal, acct ke
 	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
 		return Switched{}, ErrNotAdmitted
 	}
-	a, ok, err := s.d.Admission.Admits(ctx, p.OrganizationID, p.MemberID, acct)
-	if err != nil {
-		return Switched{}, err //nolint:wrapcheck // the store names the read
-	}
-	if !ok {
-		return Switched{}, ErrNotAdmitted
+	a := session.Admitted{ID: acct}
+	if s.d.Entry == nil {
+		var ok bool
+		var err error
+		a, ok, err = s.d.Admission.Admits(ctx, p.OrganizationID, p.MemberID, acct)
+		if err != nil {
+			return Switched{}, err //nolint:wrapcheck // the store names the read
+		}
+		if !ok {
+			return Switched{}, ErrNotAdmitted
+		}
 	}
 	cur, err := s.cache.Get(ctx, p.SessionID)
 	if err != nil {
@@ -312,8 +336,16 @@ func (s *Service) SwitchAccount(ctx context.Context, p kernel.Principal, acct ke
 	}
 	// CreateSession ends the member's live sessions in the channel, the
 	// current one among them, in the same transaction.
-	if err := s.d.Sessions.CreateSession(ctx, next); err != nil {
-		return Switched{}, err //nolint:wrapcheck // the store names the write
+	if s.d.Entry != nil {
+		next, err = s.d.Entry.Enter(ctx, next, nil, cur.ID)
+	} else {
+		err = s.d.Sessions.CreateSession(ctx, next)
+	}
+	if errors.Is(err, port.ErrCredentialChanged) {
+		return Switched{}, ErrUnauthenticated
+	}
+	if err != nil {
+		return Switched{}, err //nolint:wrapcheck // the entry/store names the write
 	}
 	s.cache.Drop(cur.ID)
 	out.Session = next

@@ -27,6 +27,9 @@ const (
 	// OriginSchemeSwitch is a session grant, normalized for the evaluator;
 	// it is never stored in role_bindings or attributed to an IAM binding.
 	OriginSchemeSwitch Origin = "SCHEME_SWITCH"
+	// LOGIN grants belong to an exact session, never to role_bindings.
+	OriginAssignedRole Origin = "ASSIGNED_ROLE"
+	OriginAccessLevel  Origin = "ACCESS_LEVEL"
 )
 
 // Binding grants Role's actions to one actor in Space and, by

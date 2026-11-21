@@ -73,7 +73,7 @@ func sessionRoles(grants []authz.Grant) []api.SessionSpaceAccessRoleGrant {
 			Origin: api.ASSIGNEDROLE,
 			Role:   api.RoleRef{Id: g.Role},
 		}
-		if g.Origin == binding.OriginAccessRule {
+		if g.Origin == binding.OriginAccessRule || g.Origin == binding.OriginAccessLevel {
 			r.Origin = api.ACCESSLEVEL
 		}
 		if g.Origin == binding.OriginSchemeSwitch {
