@@ -3,6 +3,7 @@
 set -eu
 case "$RUNNER_KIND" in terraform) tool=terraform ;; opentofu) tool=tofu ;; *) exit 1 ;; esac
 [ "$(command -v "$tool")" = "/bin/$tool" ]
+[ -s "/usr/share/licenses/$RUNNER_KIND/LICENSE" ]
 [ "$("$tool" version -json | jq -r .terraform_version)" = "$RUNNER_TOOL_VERSION" ]
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

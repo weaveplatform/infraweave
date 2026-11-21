@@ -19,6 +19,8 @@ RUN case "$TARGETARCH" in \
  && echo "$sum  /tmp/tool.zip" | sha256sum -c - \
  && unzip -q /tmp/tool.zip tofu -d /bin \
  && chmod 0755 /bin/tofu \
+ && install -d /usr/share/licenses/opentofu \
+ && unzip -p /tmp/tool.zip LICENSE > /usr/share/licenses/opentofu/LICENSE \
  && rm /tmp/tool.zip
 USER 1983:1983
 WORKDIR /mnt/workspace

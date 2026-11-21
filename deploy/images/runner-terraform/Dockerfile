@@ -19,6 +19,8 @@ RUN case "$TARGETARCH" in \
  && echo "$sum  /tmp/tool.zip" | sha256sum -c - \
  && unzip -q /tmp/tool.zip terraform -d /bin \
  && chmod 0755 /bin/terraform \
+ && install -d /usr/share/licenses/terraform \
+ && unzip -p /tmp/tool.zip LICENSE.txt > /usr/share/licenses/terraform/LICENSE \
  && rm /tmp/tool.zip
 USER 1983:1983
 WORKDIR /mnt/workspace
