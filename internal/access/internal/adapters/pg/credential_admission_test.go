@@ -58,6 +58,7 @@ func TestAccCredentialMutationRefusesAnAlreadyVerifiedExchange(t *testing.T) {
 	service := authn.New(authn.Deps{
 		Keys:     credentialAdmissionBarrier{APIKeys: x.s, verified: verified, proceed: proceed},
 		Sessions: x.s, Tokens: tokens, Audience: audience, TTL: time.Hour, Now: time.Now,
+		Entry: x.s,
 	})
 	type result struct {
 		grant authn.Grant

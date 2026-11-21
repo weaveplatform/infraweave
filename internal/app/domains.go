@@ -164,6 +164,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 			Targets: stacks.AttachmentTargets(),
 		},
 	)
+	access.BindLoginEvaluator(policies.LoginEvaluator())
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
 	access.ResolveSubjects(policiesassembly.AttachmentEntity, policies.AttachmentSpaceOf())
 	stacks.BindPolicies(policies.StackPolicies())

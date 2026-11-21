@@ -40,7 +40,7 @@ var (
 	ErrNotBrowser = errors.New("not a browser session")
 	// ErrNotAdmitted reports a switch to an account that does not admit
 	// the caller, or by a caller who is not a member.
-	ErrNotAdmitted = errors.New("not admitted")
+	ErrNotAdmitted = session.ErrNotAdmitted
 )
 
 // Browser is a browser session and the cookie value that names it, which

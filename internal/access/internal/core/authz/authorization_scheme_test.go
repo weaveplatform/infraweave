@@ -113,3 +113,42 @@ func TestUnitAuthorizationSchemeSources(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitLoginSessionGrantsAreScopedAndInactiveInManagedUsers(t *testing.T) {
+	for _, origin := range []binding.Origin{"ASSIGNED_ROLE", "ACCESS_LEVEL"} {
+		t.Run(string(origin), func(t *testing.T) {
+			x := newAccount()
+			x.data.Scheme = accessapi.LoginPolicies
+			who := authz.Who{Account: x.id, Kind: kernel.PrincipalUser, Actor: kernel.NewULID(), Session: kernel.NewULID()}
+			id := kernel.NewULID()
+			x.data.Sessions = []authz.SessionGrant{{Session: who.Session, Binding: binding.Binding{
+				AccountID: x.id, ID: id, ActorKind: binding.ActorUser, ActorID: who.Actor,
+				RoleID: x.roles[role.SpaceReader], SpaceID: x.spaces["legacy"], Origin: origin,
+			}}}
+			snapshot := authz.Build(x.data)
+			if !snapshot.Authorize(who, accessapi.ActionSpaceRead, x.spaces["legacy"]) {
+				t.Fatal("the admitted session lost its LOGIN grant")
+			}
+			grants := snapshot.Explain(who, x.spaces["legacy"])
+			if len(grants) != 1 || grants[0].Binding != id || grants[0].Origin != origin {
+				t.Fatalf("LOGIN grant lost its immutable identity or provenance: %+v", grants)
+			}
+			for _, alter := range []func(*authz.Who){
+				func(w *authz.Who) { w.Account = kernel.NewAccountID() },
+				func(w *authz.Who) { w.Actor = kernel.NewULID() },
+				func(w *authz.Who) { w.Session = kernel.NewULID() },
+				func(w *authz.Who) { w.Kind = kernel.PrincipalAPIKey },
+			} {
+				other := who
+				alter(&other)
+				if snapshot.Authorize(other, accessapi.ActionSpaceRead, x.spaces["legacy"]) {
+					t.Fatal("LOGIN grant crossed its account, actor or exact-session boundary")
+				}
+			}
+			x.data.Scheme = accessapi.ManagedUsers
+			if authz.Build(x.data).Authorize(who, accessapi.ActionSpaceRead, x.spaces["legacy"]) {
+				t.Fatal("an inactive LOGIN grant authorized a managed-user session")
+			}
+		})
+	}
+}

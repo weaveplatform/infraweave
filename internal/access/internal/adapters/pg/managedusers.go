@@ -268,6 +268,9 @@ func (s *Store) Resend(ctx context.Context, acct kernel.AccountID, id kernel.Mem
 func (s *Store) Remove(ctx context.Context, acct kernel.AccountID, id kernel.MemberID, expect kernel.Expect, e kernel.AuditEntry) ([]kernel.ULID, error) {
 	var ids []kernel.ULID
 	err := s.recordAccount(ctx, e, func(ctx context.Context, q tx.Querier) error {
+		if _, err := lockAccount(ctx, q, acct); err != nil {
+			return err
+		}
 		// A personal key's creation holds a share lock on the admission, so
 		// locking it first lets the key commit before the keys are
 		// disabled below, or find no admission.

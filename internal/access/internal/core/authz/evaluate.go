@@ -137,7 +137,9 @@ func (s *Snapshot) bound(w Who) []binding.Binding {
 		}
 	}
 	for _, b := range s.sessions[w.Session] {
-		if b.Origin == binding.OriginSchemeSwitch &&
+		active := b.Origin == binding.OriginSchemeSwitch || s.scheme == accessapi.LoginPolicies &&
+			(b.Origin == binding.OriginAssignedRole || b.Origin == binding.OriginAccessLevel)
+		if active &&
 			string(b.ActorKind) == string(w.Kind) && b.ActorID == w.Actor {
 			out = append(out, b)
 		}

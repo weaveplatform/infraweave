@@ -162,6 +162,9 @@ type Domain struct {
 	publicURL string
 }
 
+// BindLoginEvaluator supplies account-entry evaluation after policies exists.
+func (d *Domain) BindLoginEvaluator(e accessapi.LoginEvaluator) { d.store.WithLoginEvaluator(e) }
+
 // New constructs the domain on d. It fails only when
 // auth.oidc_api_keys.ca_file cannot be read or holds no certificate.
 func New(d Deps) (*Domain, error) {
@@ -221,6 +224,7 @@ func New(d Deps) (*Domain, error) {
 		Accounts:         store,
 		BreakGlass:       store,
 		Admission:        store,
+		Entry:            store,
 		AccountAdmin:     decide.Admin,
 		Idle:             d.Settings.Session.IdleTimeout,
 		MaxAge:           d.Settings.Session.MaxAge,

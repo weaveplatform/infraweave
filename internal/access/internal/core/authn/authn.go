@@ -84,6 +84,8 @@ type Deps struct {
 	BreakGlass port.BreakGlass
 	// Admission decides which accounts admit a member.
 	Admission session.Admission
+	// Entry installs account sessions under the strategy/credential fence.
+	Entry port.AccountEntry
 	// AccountAdmin decides whether an account session's actor is an
 	// account admin, which the account's bindings say and no session
 	// stores; nil keeps the session's stored Admin.
@@ -180,7 +182,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	if k.Type == apikey.TypeOIDC {
 		login = subject
 	}
-	if k.Personal() {
+	if k.Personal() && s.d.Entry == nil {
 		o, err := s.d.Keys.KeyOwner(ctx, k.AccountID, k.Owner)
 		if errors.Is(err, port.ErrNotFound) {
 			return Grant{}, ErrUnauthenticated
@@ -228,8 +230,16 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	}
 	// The token is unusable until its session exists, so a failure here
 	// leaves nothing that authenticates.
-	if err := s.d.Sessions.CreateSession(ctx, ss); err != nil {
-		return Grant{}, err //nolint:wrapcheck // the store names the write
+	if s.d.Entry != nil {
+		ss, err = s.d.Entry.Enter(ctx, ss, &k)
+		if errors.Is(err, port.ErrCredentialChanged) {
+			return Grant{}, ErrUnauthenticated
+		}
+	} else {
+		err = s.d.Sessions.CreateSession(ctx, ss)
+	}
+	if err != nil {
+		return Grant{}, err //nolint:wrapcheck // the entry/store names the write
 	}
 	return Grant{Token: raw, Claims: claims, Session: ss}, nil
 }
