@@ -61,6 +61,10 @@ func TestUnitExchangeOIDC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if g.Session.IDPSubject == nil || *g.Session.IDPSubject != "repo:main" || g.Session.OriginalMember == nil || *g.Session.OriginalMember ||
+		!g.Session.OriginalTeamsKnown || !slices.Equal(g.Session.OriginalTeams, []string{"ci", "deployers"}) || g.Session.Login != g.Claims.Subject {
+		t.Fatalf("OIDC authentication facts were discarded or replaced: %+v", g.Session)
+	}
 	if g.Claims.Subject != "api::oidc::infraweave::"+id.String() ||
 		!slices.Equal(g.Session.Teams, []string{"ci", "deployers"}) ||
 		idp.issuer != "https://idp.test" || idp.audience != "infraweave" {

@@ -41,10 +41,20 @@ type Session struct {
 	Email     string
 	Admin     bool
 	Teams     []string
-	Scopes    []string
-	IPAddress string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	// OriginalMember and OriginalTeams retain authentication facts before
+	// account LOGIN policies rewrite effective Teams. Unknown upstream
+	// membership stays nil; a known null team list has OriginalTeamsKnown.
+	OriginalMember     *bool
+	OriginalTeamsKnown bool
+	OriginalTeams      []string
+	// The authenticating provider/subject belong to this exact session,
+	// independently of the member's other linked identities.
+	IdentityProviderID kernel.ULID
+	IDPSubject         *string
+	Scopes             []string
+	IPAddress          string
+	CreatedAt          time.Time
+	ExpiresAt          time.Time
 	// IdleExpiresAt ends a browser session that goes unused; zero for
 	// sessions that have no idle limit.
 	IdleExpiresAt time.Time

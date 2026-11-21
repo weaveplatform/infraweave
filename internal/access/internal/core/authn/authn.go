@@ -158,10 +158,11 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	}
 	now := s.d.Now()
 	subject, teams := APIKeySubject+k.ID.String(), k.Teams
+	idpSubject := ""
 	switch {
 	case k.Type == apikey.TypeOIDC:
 		var ok bool
-		if teams, ok = s.oidc(ctx, k, secret); !ok {
+		if teams, idpSubject, ok = s.oidc(ctx, k, secret); !ok {
 			return Grant{}, ErrUnauthenticated
 		}
 		subject = OIDCKeySubject + k.OIDC.ClientID + "::" + k.ID.String()
@@ -171,7 +172,14 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	if !k.Usable(now) {
 		return Grant{}, ErrUnauthenticated
 	}
+	originalTeams := slices.Clone(teams)
+	if originalTeams == nil {
+		originalTeams = []string{}
+	}
 	login, name := k.ID.String(), k.Name
+	if k.Type == apikey.TypeOIDC {
+		login = subject
+	}
 	if k.Personal() {
 		o, err := s.d.Keys.KeyOwner(ctx, k.AccountID, k.Owner)
 		if errors.Is(err, port.ErrNotFound) {
@@ -200,6 +208,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	if err != nil {
 		return Grant{}, fmt.Errorf("exchange API key %s: %w", k.ID, err)
 	}
+	member := false
 	ss := session.Session{
 		ID:             sid,
 		OrganizationID: k.OrganizationID,
@@ -211,9 +220,11 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 		Login:          login,
 		Name:           name,
 		Teams:          teams,
-		IPAddress:      ip,
-		CreatedAt:      now,
-		ExpiresAt:      claims.Expiry,
+		OriginalMember: &member, OriginalTeamsKnown: true, OriginalTeams: originalTeams,
+		IDPSubject: &idpSubject,
+		IPAddress:  ip,
+		CreatedAt:  now,
+		ExpiresAt:  claims.Expiry,
 	}
 	// The token is unusable until its session exists, so a failure here
 	// leaves nothing that authenticates.
@@ -328,24 +339,24 @@ func (s *Service) exchangeOperator(ctx context.Context, id kernel.ULID, digest [
 	return Grant{Token: raw, Claims: claims, Session: ss}, nil
 }
 
-// oidc verifies raw for the OIDC key k and returns the session's teams:
+// oidc verifies raw for the OIDC key k and retains its teams and upstream subject:
 // the issuer must still be allowed, the token must verify for the key's
 // client ID, and its sub must match the key's anchored subject
 // expression.
-func (s *Service) oidc(ctx context.Context, k apikey.Key, raw string) ([]string, bool) {
+func (s *Service) oidc(ctx context.Context, k apikey.Key, raw string) ([]string, string, bool) {
 	if s.d.OIDC == nil || s.d.IssuerAllowed == nil || !s.d.IssuerAllowed(k.OIDC.Issuer) {
-		return nil, false
+		return nil, "", false
 	}
 	claims, err := s.d.OIDC.Verify(ctx, k.OIDC.Issuer, k.OIDC.ClientID, raw)
 	if err != nil {
-		return nil, false
+		return nil, "", false
 	}
 	sub, _ := claims["sub"].(string)
 	re, err := apikey.CompileSubject(k.OIDC.SubjectExpression)
 	if err != nil || sub == "" || !re.MatchString(sub) {
-		return nil, false
+		return nil, "", false
 	}
-	return k.OIDC.Teams(k.Teams, claims), true
+	return k.OIDC.Teams(k.Teams, claims), sub, true
 }
 
 // actors are the principal kind each token kind's session must have.
