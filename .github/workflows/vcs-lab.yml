@@ -35,9 +35,8 @@ env:
 jobs:
   provider:
     name: 'vcs-lab ${{ matrix.provider }}'
-    # The protected environment admits main. A manual candidate run also needs
-    # an explicitly authorized, temporary exception in that environment's rules.
-    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+    # The environment's branch rule admits only main.
+    if: ${{ github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:

@@ -53,14 +53,13 @@ duplicate/owner refusals and reports only bounded diagnostic facts.
 
 ## Execution, reports and cleanup
 
-The protected `vcs-lab` environment remains the authority for permitted source
-branches. Scheduled runs use main. The workflow can dispatch a candidate only
-after a maintainer explicitly authorizes a temporary exception for that branch;
-this change does not create or broaden an environment rule. Candidate testing
-must use the exact CI-green PR revision, keep related fixes in the same open
-PR, and restore and verify the environment's main-only rule after testing,
-including after failure. A candidate result is labelled with its actual source
-SHA; final phase evidence also records the merged main revision.
+The protected `vcs-lab` environment and the workflow admit only main. After
+required CI passes and the implementation merges, dispatch the existing lab
+against that merged revision. The harness uses the committed public runner
+image digests and builds the application from the tested source. Record the
+source SHA, image pins and actual workflow results before claiming delivery.
+Keep related corrections together in the implementation PR while it is open;
+the main-only environment requires post-merge live verification as well.
 
 Each provider's `vcs-lab-results-<provider>` artifact retains all three feature
 reports, the merged Cucumber report, safe progress traces, source revision/run
