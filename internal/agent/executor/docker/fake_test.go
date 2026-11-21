@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
@@ -30,6 +31,7 @@ type daemon struct {
 	errs     map[string]error
 	missing  bool
 	oom      bool
+	state    *container.State
 	wait     container.WaitResponse
 	waitErr  error
 	logs     io.ReadCloser
@@ -131,9 +133,78 @@ func (d *daemon) ContainerWait(context.Context, string, client.ContainerWaitOpti
 }
 
 func (d *daemon) ContainerInspect(context.Context, string, client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	state := d.state
+	if state == nil {
+		state = &container.State{OOMKilled: d.oom}
+	}
 	return client.ContainerInspectResult{Container: container.InspectResponse{
-		Image: "sha256:img", State: &container.State{OOMKilled: d.oom},
+		Image: "sha256:img", State: state,
 	}}, d.err("inspect")
+}
+
+// TestUnitDockerExecutorFindRemoval exercises the list/follow race observed
+// during launcher recovery, retaining terminal exits without hiding a live
+// container's log failure or an inspection failure.
+func TestUnitDockerExecutorFindRemoval(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		logs, inspect, wait error
+		state               *container.State
+		exit                executor.Exit
+		fail                bool
+	}{
+		{
+			name: "gone before follow", logs: cerrdefs.ErrNotFound, wait: cerrdefs.ErrNotFound,
+			exit: executor.Exit{Code: executor.MissingCode, Reason: wire.Missing},
+		},
+		{
+			name: "gone before inspect", logs: cerrdefs.ErrConflict, inspect: cerrdefs.ErrNotFound,
+			wait: cerrdefs.ErrNotFound, exit: executor.Exit{Code: executor.MissingCode, Reason: wire.Missing},
+		},
+		{
+			name: "being removed", logs: cerrdefs.ErrConflict, state: &container.State{Status: container.StateRemoving},
+			wait: cerrdefs.ErrNotFound, exit: executor.Exit{Code: executor.MissingCode, Reason: wire.Missing},
+		},
+		{
+			name: "dead", logs: cerrdefs.ErrConflict, state: &container.State{Dead: true},
+			exit: executor.Exit{Code: 7, Reason: wire.Exited},
+		},
+		{
+			name: "dead status", logs: cerrdefs.ErrConflict, state: &container.State{Status: container.StateDead},
+			exit: executor.Exit{Code: 9, Reason: wire.Exited},
+		},
+		{
+			name: "exited out of memory", logs: cerrdefs.ErrConflict,
+			state: &container.State{Status: container.StateExited, OOMKilled: true},
+			exit:  executor.Exit{Code: 137, Reason: wire.OutOfMemory},
+		},
+		{name: "running", logs: cerrdefs.ErrConflict, state: &container.State{Status: container.StateRunning, Running: true}, fail: true},
+		{name: "unknown state", logs: cerrdefs.ErrConflict, fail: true},
+		{name: "inspect failed", logs: cerrdefs.ErrConflict, inspect: errDaemon, fail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &daemon{
+				items: []container.Summary{{ID: "c", Labels: map[string]string{docker.LabelRun: "r"}}},
+				errs:  map[string]error{"logs": tc.logs, "inspect": tc.inspect}, state: tc.state,
+				wait: container.WaitResponse{StatusCode: int64(tc.exit.Code)}, waitErr: tc.wait,
+			}
+			c, ok, err := docker.NewWith(d, "bin", docker.Config{}).Find(t.Context(), "w", nil)
+			if tc.fail {
+				if !errors.Is(err, tc.logs) {
+					t.Fatalf("Find = %v, %v; want the log error", ok, err)
+				}
+				return
+			}
+			if err != nil || !ok || c.Run() != "r" {
+				t.Fatalf("Find = %v, %v, %v", c, ok, err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			if exit, err := c.Wait(ctx); err != nil || exit != tc.exit {
+				t.Fatalf("Wait = %+v, %v; want %+v", exit, err, tc.exit)
+			}
+		})
+	}
 }
 
 func (d *daemon) ContainerKill(context.Context, string, client.ContainerKillOptions) (client.ContainerKillResult, error) {
