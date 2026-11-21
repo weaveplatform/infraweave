@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/role"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
@@ -56,6 +57,23 @@ type auditWorld struct {
 	marked  account.Account
 	org     organization.Organization
 	first   account.Account
+	source  kernel.ULID
+}
+
+// grantAuditEvaluator drives only the authorization-write audit. Public LOGIN
+// acceptance separately executes the real policy owner and OPA runtime.
+type grantAuditEvaluator struct{}
+
+func (grantAuditEvaluator) EvaluateLogin(_ context.Context, request accessapi.LoginRequest) (accessapi.LoginEvaluation, error) {
+	for _, space := range request.Spaces {
+		if space.ID == request.Account.ULID {
+			return accessapi.LoginEvaluation{
+				HasPolicies: true, Allow: true,
+				Roles: map[string][]string{space.Slug: {"space-reader"}},
+			}, nil
+		}
+	}
+	return accessapi.LoginEvaluation{}, kernel.ErrUnavailable
 }
 
 // writePaths are every write path of the store, in an order in which each
@@ -70,11 +88,24 @@ func writePaths(w *auditWorld) []writePath {
 		}},
 		{"SetAuthorizationScheme", func(ctx context.Context) ([]kernel.AccountID, error) {
 			ss := w.x.webSession(time.Now().Add(time.Hour))
+			ss.OriginalMember = new(true)
+			ss.OriginalTeamsKnown, ss.OriginalTeams = true, []string{}
+			w.source = ss.ID
 			if err := w.x.s.CreateSession(ctx, ss); err != nil {
 				return nil, err
 			}
 			_, err := w.x.s.SetAuthorizationScheme(ctx, ss.Principal(), accessapi.LoginPolicies,
 				onTrail(w.x, settings.ActionAuthorizationScheme))
+			return one(err)
+		}},
+		{"Enter", func(ctx context.Context) ([]kernel.AccountID, error) {
+			ss, err := w.x.s.Session(ctx, w.source)
+			if err != nil {
+				return nil, err
+			}
+			ss.ID, ss.Channel, ss.ParentID = kernel.NewULID(), session.ChannelCLI, w.source
+			ss.CreatedAt = time.Now()
+			_, err = w.x.s.WithLoginEvaluator(grantAuditEvaluator{}).Enter(ctx, ss, nil, w.source)
 			return one(err)
 		}},
 		{"CreateSpace", func(ctx context.Context) (_ []kernel.AccountID, err error) {

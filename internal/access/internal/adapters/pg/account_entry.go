@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -23,31 +24,19 @@ var _ port.AccountEntry = (*Store)(nil)
 // Enter commits an account session only while the verified credential remains
 // usable. The account fence also orders policy/scheme changes and revocations
 // before the session and its account-qualified grants become visible.
-func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *apikey.Key) (session.Session, error) {
+func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *apikey.Key, source kernel.ULID) (session.Session, error) {
 	var entered session.Session
 	var denied *session.LoginDenied
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		entered = candidate
 		denied = nil
 		q := tx.Q(ctx, s.db)
-		scheme, err := lockAccount(ctx, q, candidate.AccountID)
-		if err != nil {
+		grants, refused, err := s.prepareEntry(ctx, &entered, verified, source)
+		denied = refused
+		if err != nil || denied != nil {
+			// A policy refusal commits its evaluation events; it never
+			// reaches session insertion or revokes another live session.
 			return err
-		}
-		if verified != nil {
-			if err := s.entryCredential(ctx, q, &entered, *verified, scheme); err != nil {
-				return err
-			}
-		}
-		var grants []binding.Binding
-		if scheme == accessapi.LoginPolicies {
-			var err error
-			grants, denied, err = s.loginEntry(ctx, &entered, verified)
-			if err != nil || denied != nil {
-				// A policy refusal commits its evaluation events; it never
-				// reaches session insertion or revokes another live session.
-				return err
-			}
 		}
 		if err := s.CreateSession(ctx, entered); err != nil {
 			return err
@@ -72,6 +61,127 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 		return session.Session{}, denied
 	}
 	return entered, nil
+}
+
+func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apikey.Key, source kernel.ULID) ([]binding.Binding, *session.LoginDenied, error) {
+	q := tx.Q(ctx, s.db)
+	scheme, err := lockAccount(ctx, q, ss.AccountID)
+	if errors.Is(err, port.ErrNotFound) {
+		return nil, nil, session.ErrNotAdmitted
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if key != nil {
+		if err := s.entryCredential(ctx, q, ss, *key, scheme); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		if err := entryMember(ctx, q, ss, scheme); err != nil {
+			return nil, nil, err
+		}
+		if err := entrySource(ctx, q, ss, source); err != nil {
+			return nil, nil, err
+		}
+	}
+	if scheme == accessapi.LoginPolicies {
+		return s.loginEntry(ctx, ss, key)
+	}
+	return nil, nil, nil
+}
+
+func entryMember(ctx context.Context, q tx.Querier, ss *session.Session, scheme accessapi.AuthorizationScheme) error {
+	if ss.ActorKind != kernel.PrincipalUser || ss.MemberID.IsZero() || ss.ActorID != ss.MemberID.ULID {
+		return session.ErrNotAdmitted
+	}
+	var active bool
+	err := q.QueryRow(ctx, `SELECT m.status='active' FROM members m JOIN accounts a ON a.organization_id=m.organization_id
+		WHERE a.id=$1 AND m.organization_id=$2 AND m.id=$3 FOR SHARE OF m`,
+		ss.AccountID, ss.OrganizationID, ss.MemberID).Scan(&active)
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && !active {
+		return session.ErrNotAdmitted
+	}
+	if err != nil {
+		return fmt.Errorf("access: fence entering member: %w", sql.Unavailable(err))
+	}
+	if scheme == accessapi.ManagedUsers {
+		var member kernel.MemberID
+		err := q.QueryRow(ctx, `SELECT member_id FROM account_users WHERE account_id=$1 AND member_id=$2 FOR SHARE`,
+			ss.AccountID, ss.MemberID).Scan(&member)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return session.ErrNotAdmitted
+		}
+		if err != nil {
+			return fmt.Errorf("access: fence managed admission: %w", sql.Unavailable(err))
+		}
+	}
+	return nil
+}
+
+func entrySource(ctx context.Context, q tx.Querier, next *session.Session, id kernel.ULID) error {
+	if id.IsZero() {
+		return port.ErrCredentialChanged
+	}
+	cur, err := scanSession(q.QueryRow(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE id=$1 FOR SHARE`, id))
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && (!cur.Live(time.Now()) ||
+		cur.OrganizationID != next.OrganizationID || cur.MemberID != next.MemberID ||
+		cur.ActorKind != next.ActorKind || cur.ActorID != next.ActorID || next.ExpiresAt.After(cur.ExpiresAt)) {
+		return port.ErrCredentialChanged
+	}
+	if err != nil {
+		return read(err, "entering source session", id)
+	}
+	next.Login, next.Name, next.Email = cur.Login, cur.Name, cur.Email
+	next.OriginalMember, next.OriginalTeamsKnown = cur.OriginalMember, cur.OriginalTeamsKnown
+	next.OriginalTeams = slices.Clone(cur.OriginalTeams)
+	next.IdentityProviderID, next.IDPSubject = cur.IdentityProviderID, cur.IDPSubject
+	next.Admin, next.Teams = false, slices.Clone(cur.Teams)
+	if cur.OriginalTeamsKnown {
+		next.Teams = slices.Clone(cur.OriginalTeams)
+	}
+	return nil
+}
+
+// AdmittedAccounts reevaluates admission without installing a session or
+// grants. Each target has its own transaction, so a refusal's evidence commits
+// without retaining locks across the organization or exposing its detail.
+func (s *Store) AdmittedAccounts(ctx context.Context, identity session.Session) ([]session.Admitted, error) {
+	if !identity.Live(time.Now()) {
+		return nil, port.ErrCredentialChanged
+	}
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, slug, name FROM accounts WHERE organization_id=$1 ORDER BY slug`, identity.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("access: list organization account entries: %w", sql.Unavailable(err))
+	}
+	accounts, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (session.Admitted, error) {
+		var a session.Admitted
+		err := row.Scan(&a.ID, &a.Slug, &a.Name)
+		return a, err //nolint:wrapcheck // the collecting caller names the scan
+	})
+	if err != nil {
+		return nil, fmt.Errorf("access: scan organization account entries: %w", sql.Unavailable(err))
+	}
+	admitted := []session.Admitted{}
+	for _, account := range accounts {
+		var denied *session.LoginDenied
+		err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+			candidate := identity
+			candidate.AccountID, candidate.CreatedAt = account.ID, time.Now()
+			_, refused, err := s.prepareEntry(ctx, &candidate, nil, identity.ID)
+			denied = refused
+			return err
+		})
+		if errors.Is(err, session.ErrNotAdmitted) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("access: evaluate admission to account %s: %w", account.ID, sql.Unavailable(err))
+		}
+		if denied == nil {
+			admitted = append(admitted, account)
+		}
+	}
+	return admitted, nil
 }
 
 func (s *Store) entryCredential(ctx context.Context, q tx.Querier, ss *session.Session, verified apikey.Key, scheme accessapi.AuthorizationScheme) error {

@@ -9,6 +9,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -147,8 +148,20 @@ func TestAccAuthorizationSchemeConcurrentFence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if authz.Build(d).Admin(authz.WhoOf(p)) != ss.Live(time.Now()) {
-			t.Fatal("revoked caller retained administration")
+		retained := false
+		for _, grant := range authz.Build(d).Explain(authz.WhoOf(p), x.acct.ULID) {
+			retained = retained || grant.Origin == binding.OriginSchemeSwitch
+		}
+		if retained != ss.Live(time.Now()) {
+			t.Fatal("scheme-switch administration outlived its exact session")
+		}
+		if !ss.Live(time.Now()) {
+			// The key's own root IAM exception cannot make an ended
+			// credential usable for another scheme mutation.
+			if _, err := x.s.SetAuthorizationScheme(ctx, p, accessapi.ManagedUsers,
+				onTrail(x, settings.ActionAuthorizationScheme)); !errors.Is(err, settings.ErrSessionEnded) {
+				t.Fatalf("revoked root-key caller could change strategy: %v", err)
+			}
 		}
 	}
 }

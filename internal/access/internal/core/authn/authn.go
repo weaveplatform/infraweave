@@ -231,7 +231,7 @@ func (s *Service) Exchange(ctx context.Context, id, secret, ip string) (Grant, e
 	// The token is unusable until its session exists, so a failure here
 	// leaves nothing that authenticates.
 	if s.d.Entry != nil {
-		ss, err = s.d.Entry.Enter(ctx, ss, &k)
+		ss, err = s.d.Entry.Enter(ctx, ss, &k, kernel.ULID{})
 		if errors.Is(err, port.ErrCredentialChanged) {
 			return Grant{}, ErrUnauthenticated
 		}

@@ -28,7 +28,8 @@ var ErrCredentialChanged = errors.New("credential changed")
 // storing a new account session. The returned session contains its effective
 // identity; credential is nil for an organization-authenticated member.
 type AccountEntry interface {
-	Enter(ctx context.Context, s session.Session, credential *apikey.Key) (session.Session, error)
+	Enter(ctx context.Context, s session.Session, credential *apikey.Key, source kernel.ULID) (session.Session, error)
+	AdmittedAccounts(ctx context.Context, identity session.Session) ([]session.Admitted, error)
 }
 
 // Tenancy reads organizations and accounts; operator.Store writes them.
