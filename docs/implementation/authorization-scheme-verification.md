@@ -48,6 +48,9 @@ remain labelled; this change makes no new claim of upstream observation.
   stale administration, mismatched session identity, revocation, expiry,
   collection and database unavailability. The authorization write-path audit
   includes the new session-grant writes and commit/rollback invalidations.
+  Review metadata retains the same exact session identity for its fresh
+  authorization check, so the switching caller can review under either scheme
+  while another session cannot inherit that grant.
 - [Evaluator checks](../../internal/access/internal/core/authz/authorization_scheme_test.go)
   distinguish active IAM grants, exact retained-session grants, account/actor
   isolation and stack bindings under both schemes. Live IAM binding tests remain
