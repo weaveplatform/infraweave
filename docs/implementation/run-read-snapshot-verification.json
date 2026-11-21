@@ -65,7 +65,7 @@
   "scope": "Run, StackRun and StackRuns use existing Serializable transaction snapshots; nested calls continue to join their caller transaction. No policy assertion, test budget, CI gate or coverage threshold is changed.",
   "schema": 1,
   "date": "2026-11-21",
-  "classification": "local candidate; final exact-head CI required",
+  "classification": "historical local regression plus passing exact-main full CI; provenance retained",
   "candidateCommit": "9073177f",
   "transactionOutage": {
     "pr": 717,
@@ -108,5 +108,13 @@
     },
     "ci": "44880876138 left untouched; no rerun requested",
     "candidateCommit": "9772de022000ac90172d2e6b863b6beed56ebbef"
+  },
+  "historicalClassification": "local candidate; final exact-head CI required",
+  "currentMainCI": {
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "qualityRun": 44898323446,
+    "qualityURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446",
+    "passed": true,
+    "requiredAcceptanceSelection": "every TestAcc suite and every feature partition; repeated in full certified FIPS"
   }
 }

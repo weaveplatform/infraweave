@@ -47,8 +47,9 @@ create recovery and the existing explicit reopen-refusal behavior remain
 separate paths.
 
 The deterministic regression and its refusal controls passing are evidence for
-that defect. The link to the observed upstream failure remains a hypothesis
-until the repaired revision passes the actual lab. The verifier retains its
+that defect. The repaired revision now passes the actual lab as recorded below. The
+original upstream failure remains preserved; the deterministic stale-listing
+regression identifies the specific adapter defect independently. The verifier retains its
 duplicate/owner refusals and reports only bounded diagnostic facts.
 
 ## Execution, reports and cleanup
@@ -77,3 +78,9 @@ database and its owned processes/containers at suite teardown.
 The exact implemented revision, all four provider results, attempts and cleanup
 outcomes must pass before #655 is complete. Provider configuration skips and
 infrastructure failures stay visible. #656 owns the subsequent phase audit.
+
+## Verified current main — 2026-11-21
+
+[Native run 44934050424](https://github.com/weaveplatform/infraweave/actions/runs/44934050424) passes at `3ff32129c22db94166780230d3c637f829655401`, in one attempt. GitHub executes six scenarios / 192 steps; GitLab, Bitbucket Cloud and Azure DevOps each execute six / 193. All 24 scenarios / 771 steps pass, including the source credential contract and actual provider delivery. All twelve Terraform platform batches verify readiness, empty state, no owned resources and private-input removal. Applicable repository/hook/App/tunnel/GitLab cleanup passes. Data Center is unconfigured because its licence is absent.
+
+The [provider proof](policy-native-provider-verification.json) retains artifact IDs, report hashes, source, attempt and raw cleanup outcomes. The [full source gate](https://github.com/weaveplatform/infraweave/actions/runs/44898323446) passes at 95.4% total coverage with every package meeting 90%, including complete certified FIPS. Historical failed lab attempts remain separate in the [delivery audit](policy-p13-delivery.md). No direct webhook POST or provider model is counted as native delivery.

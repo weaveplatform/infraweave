@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "date": "2026-11-21",
-  "classification": "local and prior-candidate CI proof; final exact-head CI and native-provider walkthrough remain required",
+  "classification": "historical local ownership controls plus verified exact-main CI and native provider execution",
   "baseRevision": "3d8143cfcee831409d2900da9b24cc072c0956b7",
   "dirtyWorktree": true,
   "terraform": {
@@ -131,5 +131,53 @@
     ],
     "localArtifacts": "/private/tmp/infraweave-lab-provider-fips-scope-proof",
     "classification": "local regression; corrected CI required"
+  },
+  "historicalClassification": "local and prior-candidate CI proof; final exact-head CI and native-provider walkthrough remain required",
+  "currentMainCI": {
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "qualityRun": 44898323446,
+    "qualityURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446",
+    "passed": true,
+    "artifactID": 14705515378,
+    "job": 136828648785,
+    "scenarios": 15,
+    "steps": 561,
+    "opa": "v1.22.4",
+    "terraformVersion": "1.17.2",
+    "fips": true,
+    "dirty": false,
+    "images": {
+      "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+      "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+      "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+    },
+    "reportSHA256": "09c0617f7e4f6762a938e56ffad9c280fed1563ca29f2d6e8555ccd3d175d9d4",
+    "cleanup": {
+      "owner": "iw-lab-8cb3d893f6074351a036945a87a1e883",
+      "before": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "after": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "emptyState": true,
+      "passed": true,
+      "privateInputsRemoved": true
+    }
+  },
+  "nativeProviders": {
+    "run": 44934050424,
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "proof": "docs/implementation/policy-native-provider-verification.json",
+    "requiredProviders": 4,
+    "scenarios": 24,
+    "steps": 771,
+    "allStepsPassed": true,
+    "allApplicableCleanupPassed": true,
+    "dataCenterExecuted": false
   }
 }

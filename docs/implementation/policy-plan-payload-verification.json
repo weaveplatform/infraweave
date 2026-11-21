@@ -1,5 +1,5 @@
 {
-  "classification": "local candidate acceptance; final exact-head CI remains required",
+  "classification": "historical local regression plus passing exact-main full CI; provenance retained",
   "baseRevision": "3e9e33a3",
   "evidenceClass": "source-pinned patched-development producer; official-release deferred-action production remains unproven",
   "producerSource": "ae094fc0ee6d4f3d2a990b40ac48a6d2dbaeb53e",
@@ -29,5 +29,47 @@
     "runnerCLIs": "official stable only",
     "experimentalProducerInRunner": false
   },
-  "pr": 717
+  "pr": 717,
+  "historicalClassification": "local candidate acceptance; final exact-head CI remains required",
+  "currentMainCI": {
+    "sourceRevision": "3ff32129c22db94166780230d3c637f829655401",
+    "qualityRun": 44898323446,
+    "qualityURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446",
+    "passed": true,
+    "requiredAcceptanceSelection": "every TestAcc suite and every feature partition; repeated in full certified FIPS",
+    "scenarios": 48,
+    "steps": 1075,
+    "reports": [
+      {
+        "partition": "core",
+        "scenarios": 399,
+        "steps": 6007,
+        "passed": true,
+        "artifactID": 14704903801,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14704903801",
+        "reportPath": "cover-accept-core/cucumber.json",
+        "sha256": "7249da04a0107ae0fb0ae264787efc9f7778ab5454219a38f9ec1c6bbdbd9117"
+      },
+      {
+        "partition": "integrations",
+        "scenarios": 357,
+        "steps": 9476,
+        "passed": true,
+        "artifactID": 14705625489,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14705625489",
+        "reportPath": "cover-accept-integrations/cucumber.json",
+        "sha256": "77f0cab6f2178056789e4c1c8f31f86dbea0758208c949706d4195e5edec785e"
+      },
+      {
+        "partition": "terraform-plans",
+        "scenarios": 49,
+        "steps": 1342,
+        "passed": true,
+        "artifactID": 14704379054,
+        "artifactURL": "https://github.com/weaveplatform/infraweave/actions/runs/44898323446/artifacts/14704379054",
+        "reportPath": "cover-accept-terraform-plans/cucumber.json",
+        "sha256": "0e06485706647b8e614727fa1836d99ee63814fb00f52a359865a9c7c7a755b2"
+      }
+    ]
+  }
 }
