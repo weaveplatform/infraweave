@@ -155,11 +155,15 @@ No authored response or owner closure substitutes for an executed replay.
 
 ## Real-provider lab and independent delivery gates
 
-[POL-18 PR #715](https://github.com/weaveplatform/infraweave/pull/715) is open at
-`202e61f5f591c5cef0c2ccbcce4a4f5733106f90`. Its new real-provider policy matrix
-has **not executed**. Its local compiler/helper checks and pending required CI
-are implementation evidence, not live-service acceptance. The `vcs-lab`
-environment is restricted to main; this audit grants no branch-rule exception.
+[POL-18 PR #715](https://github.com/weaveplatform/infraweave/pull/715) passed
+[quality gate 44867086361](https://github.com/weaveplatform/infraweave/actions/runs/44867086361)
+at `202e61f5f591c5cef0c2ccbcce4a4f5733106f90` and merged as
+`e909e739b50646d32aeb754a310272d9648d514a`. Its native
+[lab 44869808030](https://github.com/weaveplatform/infraweave/actions/runs/44869808030)
+**failed on all four required providers**, with cleanup verified for each.
+The related serialization and OpenTofu configuration repairs are in #717;
+its corrected native walkthrough remains required. The protected `vcs-lab`
+environment remains restricted to main.
 
 The earlier real [baseline run 44803036616](https://github.com/weaveplatform/infraweave/actions/runs/44803036616)
 at `db2b8e58028970f350ff3eaa6b8ac93f73e8ed47` failed GitHub's native check
@@ -171,10 +175,10 @@ DC evidence. Recorded cleanup completed. The GitHub known-check-ID repair in
 
 | Provider | Prior baseline | New policy matrix and cleanup |
 |---|---|---|
-| GitHub | Failed native check assertion | Outstanding |
-| GitLab | Passed prior workflow | Outstanding |
-| Bitbucket Cloud | Passed prior workflow | Outstanding |
-| Azure DevOps | Passed prior workflow | Outstanding |
+| GitHub | Failed native check assertion | P13 attempt failed; cleanup verified; corrected rerun required |
+| GitLab | Passed prior workflow | P13 attempt failed; cleanup verified; corrected rerun required |
+| Bitbucket Cloud | Passed prior workflow | P13 attempt failed; cleanup verified; corrected rerun required |
+| Azure DevOps | Passed prior workflow | P13 attempt failed; cleanup verified; corrected rerun required |
 | Bitbucket Data Center | Unconfigured | Conditional on configured licence; no pass claimed |
 
 The new live rows require both dialects' PLAN warning and one native check/one
@@ -190,10 +194,10 @@ mandatory; licence-less DC is the documented conditional peer.
 | Public review/report language, flags, rollback, isolation and runtime limits | [POL-17 matrix](policy-phase-verification.md), merged PR #706, and own merged-source run 44808423418 passed. Representative corpus is additional proof; full catalogue remains #664. |
 | DEFAULT/SMART/NONE and real vendor artifacts | Native Terraform/OpenTofu/Terragrunt mode, selected-unit, decrypted upload, replan, sealing and worker-capability fence tests passed in the source gate. Modern positive action/deferred-resource fixtures retain exact vendor provenance. |
 | Approved experimental `deferred_action_invocations` compatibility and positive decrypted upload | #675's source-pinned patched-development capture and strict wrapper transform now pass the complete local certified-FIPS matrix: 48 scenarios / 1,075 steps. Actual upload, selected units, masks/copies, sealing, projection, replan/resume and worker fences pass. [Proof record](policy-plan-payload-verification.json) preserves the approved evidence class; unmodified official-release production remains unproven. Final exact-head CI remains required. Rejected #708 supplies no completion proof. |
-| Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #715 still needs the new real-provider union case. |
-| Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Exact-head CI 44867207346 passed normally and under certified FIPS after one scoped retry of the external registry quota failure; PR #716 is merged. Issue reconciliation remains outstanding. |
+| Recovered pushed-path union | #696 / merged PR #701's real edit/revert, identity, pagination, incomplete-range and failure behavior passed. #717 still needs the corrected real-provider union case. |
+| Runner image ownership/publication follow-up | #710/#711/#714 implement the accepted public shared-image design. #703 / PR #716 adds actual failed/canceled-work isolation, a surviving second owner and real plan/rollback/cleanup proof; native ARM64 FIPS passed. Exact-head CI 44867207346 passed normally and under certified FIPS after one scoped retry of the external registry quota failure; PR #716 is merged. The controlled private-alias baseline and repaired comparison also passed locally under FIPS; [proof](runner-isolation-controlled-proof.json) retains the source context and log hash. Final CI for that additional control and issue reconciliation remain outstanding. |
 | Capture replay/assertion handoffs | C291 now executes both captured review rejection states. C51 current-owner reset and C46 cleanup execute as strict subsets; sample/upstream handoffs remain explicit. C48 checks complete source equality with C291 and executes that real worker rejection workflow in its own retained report, alongside its management subset. |
-| Real-provider workflow | #655 / #715 pending, all new live rows outstanding. Baseline failure is retained. |
+| Real-provider workflow | #655 / #717 corrected rerun pending. PR #715's failed P13 attempt and verified cleanup are retained separately from the earlier baseline. |
 | Final audit head and generated evidence | Required CI for this audit, `make gate`, `make verify-parity verify-generate`, and `specref parity --product deploy --states --check` remain final gates. Current main's success does not attest to future edits. |
 | Phase/capability status | P13 stays In progress. The actual merged-report parity command computes Infrastructure, Policies, Runs and Stacks as partial. Only Infrastructure's stale missing state is corrected to partial; no tag becomes implemented. #656 scoped proof does not close #675/#703 or all of epic #635. |
 
@@ -236,7 +240,7 @@ Local parity passes with the six complete reports from successful PR #715 CI
 projection regression. This mixed-source local check verifies the evidence
 mapping; it does not attest to the audit's final revision. The exact final PR
 and merged main still require their complete CI, generated checks and live lab.
-Main's current policy-lab revision is e909e739b50646d32aeb754a310272d9648d514a;
+The failed policy-lab revision was e909e739b50646d32aeb754a310272d9648d514a;
 [lab 44869808030](https://github.com/weaveplatform/infraweave/actions/runs/44869808030)
 failed on all four required providers. Every provider verified cleanup: hook
 restoration/detachment, Terraform destroy and empty-state readback, stopped tunnels

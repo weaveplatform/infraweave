@@ -1901,9 +1901,11 @@
     {
       "issue": 703,
       "pr": 716,
-      "state": "ci-passed-merged-awaiting-issue-reconciliation",
+      "state": "prior-proof-ci-passed-and-merged-controlled-negative-passed-locally-final-ci-and-issue-reconciliation-outstanding",
       "ci": 44867207346,
-      "head": "0d5a50f8b9cc7695229c4979e260b066534c2ff6"
+      "head": "0d5a50f8b9cc7695229c4979e260b066534c2ff6",
+      "controlledBaselinePR": 717,
+      "controlledBaselineProof": "docs/implementation/runner-isolation-controlled-proof.json"
     }
   ],
   "projectionOperations": [
@@ -2523,7 +2525,7 @@
     }
   ],
   "currentIntegrationBase": {
-    "revision": "e909e739b50646d32aeb754a310272d9648d514a",
+    "revision": "f47f54bf2e77b85307c261c42996972ffd8d8479",
     "policyPR": 715,
     "policyCI": 44867086361,
     "liveLab": 44869808030,
@@ -2532,7 +2534,8 @@
     "liveCleanup": "all-required-providers-verified",
     "labCorrectionsPR": 717,
     "runnerProofCI": 44867207346,
-    "runnerProofStatus": "passed-and-merged"
+    "runnerProofStatus": "passed-and-merged",
+    "liveLabRevision": "e909e739b50646d32aeb754a310272d9648d514a"
   },
   "modernPlanCandidateProof": {
     "proof": "docs/implementation/policy-plan-payload-verification.json",
