@@ -41,6 +41,7 @@ Feature: A task runs a command in its stack's workspace
     Given the launcher "l" registers with the key of "csr" and the certificate "cert" through A
     When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json","skipInitialization":true}' through A
     Then it answers 201
+    And the task answer does not deprecate ordinary tasks
     And the answer drew on the expensive budget
     And the answer's type is '"TASK"'
     And the answer's state is '"QUEUED"'
@@ -107,3 +108,46 @@ Feature: A task runs a command in its stack's workspace
     Then it answers a 409 problem "invalid-state"
     When token "h" sends "GET /api/v1/stacks/infra/tasks" through A
     Then the answer's items are the runs ""
+
+  @policy-task @op:taskCreate @case:denial
+  Scenario: Real V1 TASK decisions refuse the command before any run or scheduling effect on either replica
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Command guard","type":"TASK","space":"legacy","body":"package infraweave\ndeny contains \"Command refused by TASK policy\" if { input.request.command == \"terraform output -json\" }\nflag contains \"no-run-flag\" if { true }\n"}' through A
+    And it answers 201
+    And the answer's id names "guard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through B
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json","skipInitialization":true}' through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's detail is '"Command refused by TASK policy"'
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json"}' through B
+    Then it answers a 403 problem "forbidden"
+    And policy "guard" has 2 committed TASK refusals and no task creation effects
+    And the TASK answer carries its deprecation notice
+
+  @policy-task @op:taskCreate @case:failure
+  Scenario: A stored V0 policy with an invalid TASK decision fails closed without creating a run
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Invalid TASK output","type":"TASK","engineType":"REGO_V0","space":"legacy","body":"package infraweave\ndeny[17] { true }\n"}' through A
+    And it answers 201
+    And the answer's id names "guard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through A
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform output -json"}' through B
+    Then it answers a 403 problem "forbidden"
+    And policy "guard" has 1 committed TASK refusals and no task creation effects
+    And the TASK answer carries its deprecation notice
+
+  @policy-task @op:taskCreate @case:success
+  Scenario: A real V0 TASK policy permits the existing task lifecycle while its deprecated API remains explicit
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Permit inspected command","type":"TASK","engineType":"REGO_V0","space":"legacy","body":"package infraweave\ndeny[msg] { input.request.command != \"terraform output -json\"; msg := \"Unexpected command\" }\n"}' through B
+    And it answers 201
+    And the answer's id names "guard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through A
+    And it answers 200
+    When token "h" creates and replays one policy-admitted task through both replicas
+    Then it answers 201
+    And the answer's type is '"TASK"'
+    And the answer's command is '"terraform output -json"'
+    And the TASK answer carries its deprecation notice
+    When token "h" sends "GET /api/v1/policies/{guard}" through B
+    Then it answers 200
+    And the TASK answer carries its deprecation notice

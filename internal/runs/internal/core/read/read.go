@@ -149,6 +149,9 @@ type View struct {
 	Flags          []string
 	Reviews        []review.Record
 	NeedsApproval  bool
+	// TaskPolicy is creation-only metadata for an executed deprecated gate;
+	// ordinary tasks and subsequent stored run reads do not set this notice.
+	TaskPolicy bool
 }
 
 // PolicyReceipt retains the evaluation's metadata snapshot after deletion while

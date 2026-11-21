@@ -69,6 +69,8 @@ func contract(t *testing.T, store Store, lapse func(key Key, d deadline)) {
 		Status:      201,
 		ContentType: "application/json",
 		Location:    "/things/1",
+		Deprecation: "@1795219200",
+		Link:        `<https://example.test/migration>; rel="deprecation"`,
 		Body:        []byte(`{"id":1}`),
 	}
 	if err := store.Complete(ctx, k, want); err != nil {
@@ -85,7 +87,7 @@ func contract(t *testing.T, store Store, lapse func(key Key, d deadline)) {
 		t.Fatalf("a completed key after Release: %+v %v", rec, ok)
 	}
 	if got := *rec.Response; got.Status != want.Status || got.ContentType != want.ContentType ||
-		got.Location != want.Location || !bytes.Equal(got.Body, want.Body) {
+		got.Location != want.Location || got.Deprecation != want.Deprecation || got.Link != want.Link || !bytes.Equal(got.Body, want.Body) {
 		t.Errorf("stored response %+v, want %+v", got, want)
 	}
 	lapse(k, lockLapses)

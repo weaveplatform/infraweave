@@ -1368,6 +1368,15 @@
       "why": "Checkout preference belongs to the integration",
       "impact": "Changing the old label does not change checkout; additional source providers and private-source reach stay with P19b",
       "source": "[0012 Rationale](../research/decisions/0012-vcs-integration-model.md#rationale)"
+    },
+    {
+      "id": "DV-136",
+      "group": "Runs, workers and policies: decisions 0008 and 0009",
+      "spacelift": "TASK policy documentation marks the type deprecated and recommends approval policies, but supplies no deprecation start date.",
+      "infraweave": "TASK enforcement is deprecated from its infraweave introduction on 2026-11-21 UTC. Known TASK policy responses use RFC 9745 Deprecation: @1795219200 and link to the scope/migration note; this timestamp is not presented as an upstream date.",
+      "why": "A standards-compliant dated notice is required by the API contract; unavailable upstream chronology must not be fabricated.",
+      "impact": "Clients receive an explicit project-owned deprecation date. No Sunset or removal deadline is announced; ordinary tasks without TASK policies stay supported.",
+      "source": "[#659 implementation and deprecation notice](../implementation/task-policy-verification.md#deprecation-notice); [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745.html#section-2.1); [upstream TASK documentation](https://docs.spacelift.io/concepts/policy/deprecated/task-run-policy)"
     }
   ]
 }

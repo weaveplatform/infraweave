@@ -701,6 +701,14 @@ own feature gates; typed policy inputs do not advertise those workflows early.
   deprecated-but-live operation, such as creating an `INITIALIZATION`
   policy, carries `Deprecation`; a superseded value, such as policy type
   `ACCESS`, fails validation with the replacement named.
+
+  TASK's notice uses the explicit infraweave deprecation date 2026-11-21 UTC
+  (`Deprecation: @1795219200`), when its gate was implemented as deprecated
+  functionality. The upstream TASK documentation supplies no start date; this
+  project date is not an upstream compatibility claim (DV-136). Known TASK
+  policy responses and task requests that evaluate that policy carry the
+  notice and a migration-document link. Ordinary policy-free tasks remain
+  supported. No unannounced removal date is encoded in `Sunset`.
 - **The availability-state check.** `specref parity --states --check`
   ([0016](0016-testing-and-acceptance.md)) fails when a record of
   [capabilities.json](../../data/capabilities.json) claims a state the tests

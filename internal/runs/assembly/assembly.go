@@ -124,6 +124,7 @@ type Deps struct {
 	PolicyEvaluator  policiesapi.Evaluator
 	PolicySelection  policiesapi.Selection
 	PolicyInputs     policiesapi.RunInputBuilder
+	PolicyTaskInputs policiesapi.TaskInputBuilder
 	ReviewMetadata   accessapi.ReviewMetadataReader
 	PolicyStacks     stacksapi.PolicySnapshots
 	PolicyPools      workersapi.PoolMetadataReader
@@ -194,7 +195,13 @@ func New(d Deps) *Domain {
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
 	creator := trigger.New(trigger.Deps{
 		DB: d.DB, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc, Views: views,
-		Objects: d.Objects,
+		Objects:  d.Objects,
+		Policies: d.PolicyEvaluator, TaskInputs: d.PolicyTaskInputs, Sessions: d.ReviewMetadata,
+		Snapshots: d.PolicyStacks, Now: d.Now,
+		Metadata: policyinput.Metadata{
+			Store: store, Objects: d.Objects, Pools: d.PolicyPools, Roles: d.PolicyRoles,
+			SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts,
+		},
 	})
 	return &Domain{
 		policyTrigger: policytrigger.New(policytrigger.Deps{

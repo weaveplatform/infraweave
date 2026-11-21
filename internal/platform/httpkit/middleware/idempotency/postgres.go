@@ -55,13 +55,14 @@ VALUES ($1, $2, $3, 'in_flight',
 ON CONFLICT (caller, key) DO UPDATE SET
     fingerprint = excluded.fingerprint, state = 'in_flight',
     locked_until = excluded.locked_until, status = NULL, content_type = NULL,
-    location = NULL, body_sealed = NULL, created_at = excluded.created_at,
+    location = NULL, deprecation = NULL, link = NULL, body_sealed = NULL, created_at = excluded.created_at,
     expires_at = excluded.expires_at
 WHERE k.expires_at <= now() OR (k.state = 'in_flight' AND k.locked_until <= now())
 RETURNING true`
 
 const readKey = `
-SELECT fingerprint, status, coalesce(content_type, ''), coalesce(location, ''), body_sealed
+SELECT fingerprint, status, coalesce(content_type, ''), coalesce(location, ''),
+       coalesce(deprecation, ''), coalesce(link, ''), body_sealed
 FROM idempotency_keys
 WHERE caller = $1 AND key = $2 AND expires_at > now()`
 
@@ -92,7 +93,7 @@ func (p *Postgres) Claim(ctx context.Context, key Key, fingerprint string) (Reco
 			sealed []byte
 		)
 		err = db.QueryRow(ctx, readKey, key.Caller, key.Value).
-			Scan(&rec.Fingerprint, &status, &resp.ContentType, &resp.Location, &sealed)
+			Scan(&rec.Fingerprint, &status, &resp.ContentType, &resp.Location, &resp.Deprecation, &resp.Link, &sealed)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
@@ -128,9 +129,9 @@ func (p *Postgres) Complete(ctx context.Context, key Key, resp Response) error {
 	tag, err := tx.Q(ctx, p.db).Exec(ctx, `
 UPDATE idempotency_keys
 SET state = 'done', status = $3, content_type = $4, location = $5, body_sealed = $6,
-    expires_at = now() + $7 * interval '1 second'
+    deprecation = $7, link = $8, expires_at = now() + $9 * interval '1 second'
 WHERE caller = $1 AND key = $2 AND state = 'in_flight' AND expires_at > now()`,
-		key.Caller, key.Value, resp.Status, resp.ContentType, resp.Location, sealed, p.ttl)
+		key.Caller, key.Value, resp.Status, resp.ContentType, resp.Location, sealed, resp.Deprecation, resp.Link, p.ttl)
 	if err != nil {
 		return fmt.Errorf("complete idempotency key: %w", sql.Unavailable(err))
 	}

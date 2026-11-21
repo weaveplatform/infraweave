@@ -13,7 +13,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apidelta"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
@@ -182,6 +184,9 @@ func (s Server) TaskCreate(ctx context.Context, req api.TaskCreateRequestObject)
 		}
 	}
 	v, err := s.trigger.Task(ctx, p, req.StackId, t)
+	if _, denied := errors.AsType[*trigger.TaskDenied](err); denied || v.TaskPolicy {
+		middleware.Deprecate(ctx, policyapi.TaskDeprecatedSince, policyapi.TaskDeprecationInfo)
+	}
 	if err != nil {
 		return nil, runError(err, req.StackId, "")
 	}
@@ -259,6 +264,9 @@ func input(body *api.RunTriggerRequest) (trigger.Input, error) {
 //
 // ref: decision 0003 § "Problem types"
 func runError(err error, slug, run string) error {
+	if denied, ok := errors.AsType[*trigger.TaskDenied](err); ok {
+		return problem.Forbidden.Error(denied.Message) //nolint:wrapcheck // the committed policy refusal
+	}
 	if denied, ok := errors.AsType[*trigger.RuntimeConfigDenied](err); ok {
 		return forbidden(denied.Action, denied.Error())
 	}
