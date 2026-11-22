@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: API tokens and sessions
   A secret API key exchanges at POST /auth/token for an API token, which
   stands for a session row whose ID is the token's jti. Every refused

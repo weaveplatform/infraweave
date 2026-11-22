@@ -1,4 +1,4 @@
-@postgres @authorization-scheme
+@identity @postgres @authorization-scheme
 Feature: Authorization scheme reads and writes retain shared API controls
 
   @op:authorizationScheme @op:accountUpdateAuthorizationScheme @case:denial

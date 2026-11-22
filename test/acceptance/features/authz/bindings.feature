@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Role bindings
   A role binding grants a role's actions to a managed user, a managed user
   group or an API key in a space and every space below it. A group's

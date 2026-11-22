@@ -117,3 +117,83 @@ func TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitCINativeAcceptanceIsRequired(t *testing.T) {
+	quality := partitionWorkflowAt(t, "quality-gate.yml")
+	nightly := partitionWorkflowAt(t, "nightly.yml")
+	for name, workflow := range map[string]partitionWorkflow{"required": quality, "nightly": nightly} {
+		native, ok := workflow.Jobs["native"]
+		if !ok {
+			t.Errorf("%s omits native acceptance and capture replays", name)
+			continue
+		}
+		if !slices.ContainsFunc(native.Steps, func(step partitionStep) bool {
+			return step.Run == "make accept-native" && step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1"
+		}) {
+			t.Errorf("%s native acceptance must run every non-feature TestAcc and require Docker", name)
+		}
+	}
+	for _, name := range []string{"gate", "coverage"} {
+		if !slices.Contains(quality.Jobs[name].Needs, "native") {
+			t.Errorf("%s can pass without native acceptance", name)
+		}
+	}
+	for _, required := range []struct{ key, value string }{
+		{"name", "cover-native"},
+		{"path", "cover/native"},
+	} {
+		if !slices.ContainsFunc(quality.Jobs["native"].Steps, func(step partitionStep) bool {
+			return step.With[required.key] == required.value
+		}) {
+			t.Errorf("native coverage and capture reports are not retained via %s=%s", required.key, required.value)
+		}
+	}
+	raw, err := os.ReadFile("../../Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, recipe, ok := strings.Cut(string(raw), "\naccept-native:\n")
+	if !ok {
+		t.Fatal("missing native acceptance target")
+	}
+	recipe, _, _ = strings.Cut(recipe, "\n\n")
+	for _, required := range []string{"-run '^TestAcc'", "-skip '^TestAccFeatures$$'", "./...", "-timeout 10m", "/native"} {
+		if !strings.Contains(recipe, required) {
+			t.Errorf("native target omits %s", required)
+		}
+	}
+}
+
+func TestUnitNextPostgresPreservesNativeAndIdentityCoverage(t *testing.T) {
+	workflow := partitionWorkflowAt(t, "quality-gate.yml")
+	samePartitions(t, "next PostgreSQL", workflow.Jobs["postgres-next"].Strategy.Matrix.Partition, []string{"core", "identity", "native"})
+	next := workflow.Jobs["postgres-next"]
+	if !slices.ContainsFunc(next.Steps, func(step partitionStep) bool {
+		return step.Env["INFRAWEAVE_POSTGRES"] == "next" && step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1" &&
+			strings.Contains(step.Run, "make accept-native") && strings.Contains(step.Run, "make accept PARTITION=")
+	}) {
+		t.Error("next PostgreSQL omits an acceptance workload")
+	}
+	nightly := partitionWorkflowAt(t, "nightly.yml")
+	if !slices.Contains(nightly.Jobs["report"].Needs, "native") {
+		t.Error("nightly native failures cannot reach the issue reporter")
+	}
+}
+
+func TestUnitCIRecordsActualTestedRevision(t *testing.T) {
+	workflow := partitionWorkflowAt(t, "quality-gate.yml")
+	for _, name := range []string{"unit", "accept", "native", "fips-only", "postgres-next"} {
+		job := workflow.Jobs[name]
+		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
+			return strings.Contains(step.Run, "git rev-parse HEAD") && strings.Contains(step.Run, "HEAD^{tree}") &&
+				step.Env["PR_HEAD"] != "" && step.Env["PR_BASE"] != ""
+		}) {
+			t.Errorf("%s omits the source head, base or actual tested checkout/tree", name)
+		}
+		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
+			return strings.HasPrefix(step.With["name"], "validation-") && strings.HasSuffix(step.With["path"], "/validation/revision.json")
+		}) {
+			t.Errorf("%s does not retain tested-revision provenance", name)
+		}
+	}
+}

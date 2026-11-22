@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: API keys while PostgreSQL is down
   Every API key operation answers 503 service-unavailable while PostgreSQL
   is unreachable. The caller's token authenticates from the replica's

@@ -78,3 +78,26 @@ storage verification is labelled a contract fixture, not a live module capture.
 `GOFIPS140=certified GODEBUG=fips140=only`, race detection and shuffled order are
 used for focused storage/owner proofs. Final generated/reference, configured lint,
 all required CI coverage and full certified-FIPS acceptance remain merge gates.
+
+
+## Shared CI validation
+
+The feature jobs run only their assigned Gherkin scenarios. Identity scenarios
+use the identity partition after the vendor and integration partitions; the
+routing tag does not provision an extra service. The native job independently
+executes every non-feature TestAcc, including PostgreSQL contracts, capture
+replays, runner-image contracts and the application's runtime-mode check.
+Its coverage and capture reports are retained in cover-native and are required
+by the coverage and quality gates. Nightly and PostgreSQL-next preserve these
+workloads as well.
+
+The parser-based guards compare the core/identity union with the previous core
+selection, including every outline example, and require exactly one owner per
+scenario. Native selection excludes only the exact TestAccFeatures function.
+The existing unpartitioned acceptance run and complete certified-FIPS run remain
+available with their original deadlines.
+
+Each test-producing CI job retains a validation artifact with the PR head,
+base, actual checkout commit, tree, run and attempt. A passing descendant PR
+therefore identifies which dependency revision it tested; a newer parent change
+requires integration and fresh validation before it is included in that claim.
