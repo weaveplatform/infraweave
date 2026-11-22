@@ -104,22 +104,27 @@ build:
 		done; \
 	done
 
-## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|terraform-plans|terraform-vcs|terraform|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
+## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|identity|terraform-plans|terraform-vcs|terraform|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
-# accept-core also runs the TestAcc suites beside the code; the other
-# partitions hold Gherkin scenarios alone. With no PARTITION, every
+# Feature partitions run Gherkin alone; accept-native runs captures and the
+# TestAcc suites beside the code. With no PARTITION, every
 # scenario runs but vcs-lab's, which need the scheduled job's labs.
 # Every partition at once, as fips-only runs it, takes about go test's
 # default ten minutes, so it gets 30m: under fips-only's 45-minute job, so
 # a hang still ends in a goroutine dump rather than the job's kill. One
 # partition keeps the default, under its own job's timeout.
 # ref: decision 0016
-ACCEPT_FEATURES_ONLY = $(filter terraform-plans terraform-vcs terraform runs integrations vcs-lab,$(PARTITION))
+ACCEPT_FEATURES_ONLY = $(filter core identity terraform-plans terraform-vcs terraform runs integrations vcs-lab,$(PARTITION))
 ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
 	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -timeout $(ACCEPT_TIMEOUT) -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
+
+## accept-native: every non-feature TestAcc, including captures and real PostgreSQL contracts
+accept-native:
+	@rm -rf $(COVER_DIR)/native && mkdir -p $(COVER_DIR)/native
+	INFRAWEAVE_ACCEPT_PARTITION= $(GO) test -count=1 -timeout 10m -run '^TestAcc' -skip '^TestAccFeatures$$' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/native
 
 ## accept-stress: make accept under the stress INFRAWEAVE_ACCEPT_STRESS names, by default a fifth of the signed uploads refused, 500ms on each object store request and half a CPU for each run container (make accept-stress PARTITION=runs)
 # The default applies only here: a variable this file sets is not exported,
@@ -246,4 +251,4 @@ docs-check:
 ## gate: everything CI runs, in order
 gate: docs-check vet lint lint-fixtures labs-cloud labs-vcs test accept verify-parity verify-reference verify-generate cover vuln build
 
-.PHONY: help init docs-check fmt lint sig-check sig-join lint-fixtures labs-cloud labs-vcs vet test accept accept-stress reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate
+.PHONY: help init docs-check fmt lint sig-check sig-join lint-fixtures labs-cloud labs-vcs vet test accept accept-native accept-stress reference-fetch scaffold vendors-fixtures iac-fixtures bundle generate verify-generate reference reference-inventory verify-reference parity verify-parity parity-baseline cover vuln build gate

@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Spaces and their stacks stay within their account
   Each account has its own tree of spaces, and a space of another account
   answers as one that does not exist, whether that account is of the same

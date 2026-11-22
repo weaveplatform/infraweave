@@ -1,4 +1,4 @@
-@postgres @authorization-scheme
+@identity @postgres @authorization-scheme
 Feature: An account changes its authorization strategy without losing saved configuration
   The account starts with managed users. Changing its strategy preserves both
   configurations, the caller's current administrative session and no other

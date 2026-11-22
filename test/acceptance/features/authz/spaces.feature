@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Spaces
   An account's spaces form a tree under its top space, whose slug is the
   account's. Account admins, space-admin on the top space, create, change,

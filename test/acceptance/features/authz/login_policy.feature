@@ -1,4 +1,4 @@
-@postgres @policy-login
+@identity @postgres @policy-login
 Feature: Account entry evaluates LOGIN policies before issuing authorization
   Organization authentication and managed-user configuration remain independent
   from the account's active strategy. LOGIN uses real OPA decisions, resolves

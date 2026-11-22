@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: API tokens and sessions while PostgreSQL is down
   The exchange and every session operation answer 503 service-unavailable
   while PostgreSQL is unreachable. A token whose session a replica holds in

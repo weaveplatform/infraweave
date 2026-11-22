@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Who holds a space
   A space admin sees who can act in their space and the grant behind each:
   the managed users, the managed user groups and the API keys whose

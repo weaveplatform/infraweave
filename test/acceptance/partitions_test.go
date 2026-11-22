@@ -83,6 +83,10 @@ func TestUnitPlace(t *testing.T) {
 		want string
 	}{
 		{nil, "core"},
+		{[]string{"@identity", "@postgres"}, "identity"},
+		{[]string{"@identity", "@oidc"}, "identity"},
+		{[]string{"@identity", "@terraform"}, "terraform"},
+		{[]string{"@identity", "@vcs"}, "integrations"},
 		{[]string{"@terraform-plans", "@plan-sanitization", "@terraform", "@docker"}, "terraform-plans"},
 		{[]string{"@terraform-vcs", "@terraform", "@github", "@docker"}, "terraform-vcs"},
 		{[]string{"@plan-sanitization", "@postgres"}, "core"},
@@ -126,6 +130,7 @@ func TestUnitPlace(t *testing.T) {
 func TestUnitTagExpression(t *testing.T) {
 	runPrefix := "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
+	corePrefix := integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai"
 	for name, want := range map[string]string{
 		"":                "~@vcs-lab",
 		"vcs-lab":         "@vcs-lab",
@@ -134,7 +139,8 @@ func TestUnitTagExpression(t *testing.T) {
 		"terraform":       "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && @terraform",
 		"runs":            strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
 		"integrations":    strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
-		"core":            integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"identity":        corePrefix + " && @identity",
+		"core":            corePrefix + " && ~@identity",
 	} {
 		got, err := harness.TagExpression(name)
 		if err != nil || got != want {
@@ -160,7 +166,7 @@ func TestUnitTagExpression(t *testing.T) {
 
 func TestUnitDockerTags(t *testing.T) {
 	got := harness.DockerTags([]string{
-		"@postgres", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
+		"@postgres", "@identity", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
 	})
 	if !slices.Equal(got, []string{"@postgres", "@vcs"}) {
 		t.Errorf("dockerTags = %q", got)
@@ -301,4 +307,44 @@ func pickleTags(scenario *messages.Pickle) []string {
 		tags = append(tags, tag.Name)
 	}
 	return tags
+}
+
+// The two jobs must preserve the previous core workload, including outline
+// examples, while earlier dependency partitions retain their ownership.
+func TestUnitCoreIdentitySplitCoverage(t *testing.T) {
+	legacy := godogScenarios(
+		t,
+		"~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && ~@terraform && ~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+	)
+	union := map[string]string{}
+	for _, name := range []string{"core", "identity"} {
+		expr, err := harness.TagExpression(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		selected := godogScenarios(t, expr)
+		if len(selected) == 0 {
+			t.Fatalf("required partition %s has no scenarios", name)
+		}
+		for id, scenario := range selected {
+			if _, ok := legacy[id]; !ok {
+				t.Errorf("%s: %s moved from an earlier dependency partition", scenario.Uri, scenario.Name)
+			}
+			if prior, ok := union[id]; ok {
+				t.Errorf("%s: %s belongs to both %s and %s", scenario.Uri, scenario.Name, prior, name)
+			}
+			identity := strings.HasPrefix(scenario.Uri, "features/auth/") || strings.HasPrefix(scenario.Uri, "features/authz/")
+			if (name == "identity") != identity {
+				t.Errorf("%s: %s has incorrect identity ownership %s", scenario.Uri, scenario.Name, name)
+			}
+			union[id] = name
+		}
+		t.Logf("%s: %d expanded scenarios", name, len(selected))
+	}
+	for id, scenario := range legacy {
+		if _, ok := union[id]; !ok {
+			t.Errorf("%s: %s disappeared from core acceptance", scenario.Uri, scenario.Name)
+		}
+	}
+	t.Logf("preserved core union: %d expanded scenarios", len(legacy))
 }

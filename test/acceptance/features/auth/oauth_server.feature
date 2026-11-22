@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: The OAuth server for MCP clients
   An MCP client authorizes through infraweave's built-in OAuth server:
   it registers itself (RFC 7591), sends the member to authorize with an

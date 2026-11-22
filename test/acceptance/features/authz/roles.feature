@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Roles
   Every account holds five system roles, which never change, and the
   custom roles its account admins define from the action catalogue. A

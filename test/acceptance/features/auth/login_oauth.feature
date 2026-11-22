@@ -1,4 +1,4 @@
-@postgres @policy-login @policy-login-oauth
+@identity @postgres @policy-login @policy-login-oauth
 Feature: OAuth consent and grants follow the account's LOGIN admission
   An active organization member needs no managed-user row under LOGIN_POLICIES.
   Consent records original authenticated facts, redemption reevaluates current

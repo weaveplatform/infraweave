@@ -1,4 +1,4 @@
-@postgres @oidc
+@identity @postgres @oidc
 Feature: API keys
   An account manages its API keys through the API. Create and reset answer
   the secret once; only its SHA-256 is stored. Reset, disable and delete
