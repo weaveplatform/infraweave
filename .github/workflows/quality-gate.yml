@@ -267,9 +267,20 @@ jobs:
           retention-days: 7
 
   lab-batch:
-    name: Terraform policy acceptance batch
+    name: Terraform ${{ matrix.label }} acceptance batch
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: policies
+            label: policy
+          - batch: kubernetes
+            label: Kubernetes
+    env:
+      GOFLAGS: '-p=1'
+      GOMAXPROCS: '2'
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
@@ -303,35 +314,48 @@ jobs:
           GOFIPS140: certified
           GODEBUG: fips140=only
         run: go build -o "$RUNNER_TEMP/infraweave-lab" ./test/acceptance/cmd/infraweave-lab
+      - name: Prove real Kubernetes ownership and readiness failure controls
+        if: matrix.batch == 'kubernetes'
+        run: |
+          python3 test/terraform/lab/verify_kubernetes.py \
+            --directory "$RUNNER_TEMP/infraweave-kubernetes-controls" --helper "$RUNNER_TEMP/infraweave-lab"
       - name: Run real OPA and worker scenarios on Terraform infrastructure
         id: batch
         run: |
-          python3 test/terraform/lab/labctl.py run --batch policies --fips \
-            --directory "$RUNNER_TEMP/infraweave-lab-policies" --helper "$RUNNER_TEMP/infraweave-lab"
+          python3 test/terraform/lab/labctl.py run --batch "${{ matrix.batch }}" --fips \
+            --directory "$RUNNER_TEMP/infraweave-lab-${{ matrix.batch }}" --helper "$RUNNER_TEMP/infraweave-lab"
       - name: Verify Terraform cleanup even after interruption
         if: always()
         run: |
-          directory="$RUNNER_TEMP/infraweave-lab-policies"
+          outcome=0
+          directory="$RUNNER_TEMP/infraweave-lab-${{ matrix.batch }}"
           if [ -f "$directory/deployment.json" ]; then
-            python3 test/terraform/lab/labctl.py down --directory "$directory"
+            python3 test/terraform/lab/labctl.py down --directory "$directory" || outcome=$?
           fi
+          for controls in "$RUNNER_TEMP/infraweave-kubernetes-controls"/a "$RUNNER_TEMP/infraweave-kubernetes-controls"/b; do
+            if [ -f "$controls/deployment.json" ]; then
+              python3 test/terraform/lab/labctl.py down --directory "$controls" || outcome=$?
+            fi
+          done
+          exit "$outcome"
       - name: Retain executed scenarios and cleanup proof
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: terraform-policy-lab-evidence
+          name: terraform-${{ matrix.batch }}-lab-evidence
           path: |
-            ${{ runner.temp }}/infraweave-lab-policies/evidence
-            ${{ runner.temp }}/infraweave-lab-policies/result.json
-            ${{ runner.temp }}/infraweave-lab-policies/readiness.json
-            ${{ runner.temp }}/infraweave-lab-policies/cleanup.json
+            ${{ runner.temp }}/infraweave-lab-${{ matrix.batch }}/evidence
+            ${{ runner.temp }}/infraweave-lab-${{ matrix.batch }}/result.json
+            ${{ runner.temp }}/infraweave-lab-${{ matrix.batch }}/readiness.json
+            ${{ runner.temp }}/infraweave-lab-${{ matrix.batch }}/cleanup.json
+            ${{ runner.temp }}/infraweave-kubernetes-controls/controls.json
           retention-days: 7
       - name: Upload Terraform lab coverage
         if: steps.batch.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: cover-lab
-          path: ${{ runner.temp }}/infraweave-lab-policies/coverage
+          name: cover-lab-${{ matrix.batch }}
+          path: ${{ runner.temp }}/infraweave-lab-${{ matrix.batch }}/coverage
           include-hidden-files: true
           retention-days: 7
 

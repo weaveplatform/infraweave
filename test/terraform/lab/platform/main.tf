@@ -24,6 +24,30 @@ variable "pki_directory" { type = string }
 variable "postgres_image" { type = string }
 variable "objectstore_image" { type = string }
 variable "gitea_image" { type = string }
+variable "kubernetes_enabled" {
+  type    = bool
+  default = false
+}
+variable "k3s_image" {
+  type    = string
+  default = ""
+}
+variable "k3s_memory" {
+  type    = number
+  default = 4096
+  validation {
+    condition     = var.k3s_memory >= 2048 && var.k3s_memory <= 8192
+    error_message = "The isolated k3s fixture needs 2048 to 8192 MiB."
+  }
+}
+variable "k3s_cpus" {
+  type    = number
+  default = 2
+  validation {
+    condition     = var.k3s_cpus >= 1 && var.k3s_cpus <= 4
+    error_message = "The isolated k3s fixture permits one to four CPUs."
+  }
+}
 variable "postgres_connections" {
   type    = number
   default = 1000
@@ -35,6 +59,7 @@ locals {
     "io.infraweave.lab.batch"      = var.batch
     "io.infraweave.lab.managed-by" = "terraform"
   }
+  kubernetes_namespace = "iw-${substr(sha256(var.owner), 0, 32)}"
   services = {
     postgres = {
       image = var.postgres_image
@@ -141,8 +166,80 @@ resource "docker_container" "service" {
   }
 }
 
+resource "docker_volume" "kubernetes" {
+  count = var.kubernetes_enabled ? 1 : 0
+  name  = "${var.owner}-kubernetes"
+  dynamic "labels" {
+    for_each = local.labels
+    content {
+      label = labels.key
+      value = labels.value
+    }
+  }
+}
+
+resource "docker_image" "kubernetes" {
+  count        = var.kubernetes_enabled ? 1 : 0
+  name         = var.k3s_image
+  keep_locally = true
+  lifecycle {
+    precondition {
+      condition     = can(regex("@sha256:[0-9a-f]{64}$", var.k3s_image))
+      error_message = "The k3s fixture must use its committed immutable digest."
+    }
+  }
+}
+
+resource "docker_container" "kubernetes" {
+  count      = var.kubernetes_enabled ? 1 : 0
+  name       = "${var.owner}-kubernetes"
+  hostname   = "server"
+  image      = docker_image.kubernetes[0].image_id
+  privileged = true
+  memory     = var.k3s_memory
+  cpus       = var.k3s_cpus
+  command = [
+    "server", "--tls-san=127.0.0.1", "--disable=traefik,servicelb,metrics-server,local-storage,coredns",
+    "--disable-helm-controller", "--write-kubeconfig-mode=600", "--node-name=server",
+  ]
+  tmpfs        = { "/run" = "", "/var/run" = "" }
+  stop_timeout = 15
+  ports {
+    internal = 6443
+    external = 0
+    ip       = "127.0.0.1"
+  }
+  volumes {
+    volume_name    = docker_volume.kubernetes[0].name
+    container_path = "/var/lib/rancher/k3s"
+  }
+  networks_advanced {
+    name    = docker_network.batch.name
+    aliases = ["kubernetes"]
+  }
+  upload {
+    file = "/var/lib/rancher/k3s/server/manifests/infraweave-lab.yaml"
+    content = yamlencode({
+      apiVersion = "v1"
+      kind       = "Namespace"
+      metadata = {
+        name        = local.kubernetes_namespace
+        annotations = { "io.infraweave.lab.owner" = var.owner }
+      }
+    })
+    permissions = "0600"
+  }
+  dynamic "labels" {
+    for_each = merge(local.labels, { "io.infraweave.lab.service" = "kubernetes" })
+    content {
+      label = labels.key
+      value = labels.value
+    }
+  }
+}
+
 output "acceptance" {
-  value = {
+  value = merge({
     schema = 1
     owner  = var.owner
     batch  = var.batch
@@ -159,5 +256,12 @@ output "acceptance" {
       url       = "https://127.0.0.1:${docker_container.service["gitea"].ports[0].external}"
       caFile    = "${var.pki_directory}/gitea-ca.pem"
     }
-  }
+    }, var.kubernetes_enabled ? {
+    kubernetes = {
+      container  = docker_container.kubernetes[0].id
+      endpoint   = "https://127.0.0.1:${docker_container.kubernetes[0].ports[0].external}"
+      namespace  = local.kubernetes_namespace
+      kubeconfig = "${var.pki_directory}/kubernetes.json"
+    }
+  } : {})
 }

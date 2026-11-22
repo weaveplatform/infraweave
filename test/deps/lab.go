@@ -33,10 +33,11 @@ const EnvLabManifest = "INFRAWEAVE_LAB_MANIFEST"
 var ErrLab = errors.New("terraform lab deployment")
 
 type labManifest struct {
-	Schema   int    `json:"schema"`
-	Owner    string `json:"owner"`
-	Batch    string `json:"batch"`
-	Postgres struct {
+	Schema     int            `json:"schema"`
+	Owner      string         `json:"owner"`
+	Batch      string         `json:"batch"`
+	Kubernetes *labKubernetes `json:"kubernetes,omitempty"`
+	Postgres   struct {
 		Container string `json:"container"`
 		DSN       string `json:"dsn"`
 	} `json:"postgres"`
@@ -86,6 +87,16 @@ func readLab(data []byte) (*labManifest, error) {
 	if !filepath.IsAbs(manifest.Gitea.CAFile) {
 		return nil, fmt.Errorf("%w: absolute CA path required", ErrLab)
 	}
+	if cluster := manifest.Kubernetes; cluster != nil {
+		endpoint, err := url.Parse(cluster.Endpoint)
+		if !labContainer.MatchString(cluster.Container) || err != nil || endpoint.Scheme != "https" ||
+			endpoint.User != nil || endpoint.Port() == "" || net.ParseIP(endpoint.Hostname()) == nil ||
+			!net.ParseIP(endpoint.Hostname()).IsLoopback() || endpoint.Path != "" || endpoint.RawQuery != "" || endpoint.Fragment != "" ||
+			!filepath.IsAbs(cluster.Kubeconfig) || filepath.Dir(cluster.Kubeconfig) != filepath.Dir(manifest.Gitea.CAFile) ||
+			cluster.Namespace != labKubernetesNamespace(manifest.Owner) {
+			return nil, fmt.Errorf("%w: Kubernetes manifest identity", ErrLab)
+		}
+	}
 	return &manifest, nil
 }
 
@@ -100,7 +111,11 @@ func dockerLab(ctx context.Context, args ...string) ([]byte, error) {
 }
 
 func verifyLab(ctx context.Context, m *labManifest, run labCommand) error {
-	for service, id := range map[string]string{"postgres": m.Postgres.Container, "objectstore": m.ObjectStore.Container, "gitea": m.Gitea.Container} {
+	services := map[string]string{"postgres": m.Postgres.Container, "objectstore": m.ObjectStore.Container, "gitea": m.Gitea.Container}
+	if m.Kubernetes != nil {
+		services["kubernetes"] = m.Kubernetes.Container
+	}
+	for service, id := range services {
 		raw, err := run(ctx, "inspect", id)
 		if err != nil {
 			return err
@@ -113,8 +128,11 @@ func verifyLab(ctx context.Context, m *labManifest, run labCommand) error {
 		if c.State == nil || c.Config == nil || c.NetworkSettings == nil {
 			return fmt.Errorf("%w: incomplete Docker inspection", ErrLab)
 		}
-		port := map[string]string{"postgres": "5432/tcp", "objectstore": "9000/tcp", "gitea": "3000/tcp"}[service]
+		port := map[string]string{"postgres": "5432/tcp", "objectstore": "9000/tcp", "gitea": "3000/tcp", "kubernetes": "6443/tcp"}[service]
 		address := map[string]string{"postgres": m.Postgres.DSN, "objectstore": m.ObjectStore.Endpoint, "gitea": m.Gitea.URL}[service]
+		if service == "kubernetes" {
+			address = m.Kubernetes.Endpoint
+		}
 		endpoint, err := url.Parse(address)
 		if err != nil {
 			return fmt.Errorf("%w: invalid service endpoint", ErrLab)
@@ -151,6 +169,15 @@ func (d *Dependencies) useLab(ctx context.Context, file string, run labCommand) 
 	}
 	if err := verifyLab(ctx, m, run); err != nil {
 		return err
+	}
+	if m.Kubernetes != nil {
+		cluster, err := labKubernetesClient(m)
+		if err != nil {
+			return err
+		}
+		if err := cluster.Ready(ctx); err != nil {
+			return err
+		}
 	}
 	var random [8]byte
 	if _, err := rand.Read(random[:]); err != nil {

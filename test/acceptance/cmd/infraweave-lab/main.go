@@ -168,6 +168,20 @@ func command() *cobra.Command {
 		return deps.WriteLabPKI(pkiDirectory)
 	}}
 	pki.Flags().StringVar(&pkiDirectory, "directory", "", "New private batch PKI directory")
-	root.AddCommand(setup, readiness, restore, install, tunnel, urlCommand, stopCommand, pki)
+	var manifest string
+	verify := &cobra.Command{
+		Use:   "verify-lab",
+		Short: "Verify owned Terraform services and actual Kubernetes readiness without provisioning",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if manifest == "" {
+				return fmt.Errorf("%w: --manifest is required", deps.ErrLab)
+			}
+			d := &deps.Dependencies{}
+			return d.UseLab(cmd.Context(), manifest)
+		},
+	}
+	verify.Flags().StringVar(&manifest, "manifest", "", "Private Terraform acceptance manifest")
+	root.AddCommand(setup, readiness, restore, install, tunnel, urlCommand, stopCommand, pki, verify)
 	return root
 }

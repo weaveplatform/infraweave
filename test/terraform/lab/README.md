@@ -37,6 +37,7 @@ and fixture namespace, including nested capture replays.
 
 | Batch | Existing Gherkin selection |
 |---|---|
+| `kubernetes` | Required `kubernetes-lab` partition: real owned k3s API/node/namespace plus current worker-pool API success/denial/failure; controller/executor delivery remains separate |
 | `policies` | `@policies` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
 | `core`, `terraform-plans`, `terraform-vcs`, `terraform`, `runs`, `integrations` | The named existing Cucumber partition |
 | `vcs` | The existing real-provider partition, narrowed with `--tags '@lab:github'` and `--features features/vcs/feedback.feature` |
@@ -110,3 +111,67 @@ failed test commands still clean up, cleanup failure cannot report success, and
 another invocation's deployment directory is left untouched. Go race/FIPS
 controls reject malformed manifests, foreign/stopped containers, mismatched
 service ports and invalid CAs while preserving independent fixture namespaces.
+
+## Local Kubernetes batch
+
+The `kubernetes` batch adds a Terraform-owned privileged **control-plane fixture**
+using the committed multi-architecture `ImageK3s` digest. This infrastructure
+privilege is separate from the unprivileged run/controller contract; no DinD
+worker or controller-host mount is introduced. It uses the existing pinned Docker
+provider and committed lock, an owned network/volume, loopback-only dynamic API
+port, 2 CPUs and 4096 MiB limit (configurable within 1–4 CPUs/2048–8192 MiB).
+Bundled image-pulling add-ons are disabled. K3s applies the Terraform-supplied
+owner namespace. The [official server flags](https://docs.k3s.io/cli/server)
+describe the disabled components and kubeconfig behavior; the digest is the
+executed pin, not a floating latest tag.
+
+```sh
+python3 test/terraform/lab/labctl.py run --batch kubernetes --fips \
+  --helper /private/tmp/infraweave-lab --directory /private/tmp/new-kubernetes-batch
+```
+
+The private manifest includes cluster container ID, exact HTTPS loopback endpoint,
+owner namespace and private JSON kubeconfig path. The controller exports embedded
+CA/client certificate/key without printing them, waits at most 180 seconds for
+actual API/node/namespace readiness, and the normal Go harness independently
+validates Docker labels, exact published port, TLS identity and namespace owner.
+An absent, stopped, foreign or unreachable cluster fails before application
+scenarios. Neither attachment path provisions a replacement. The helper's
+`verify-lab --manifest /private/path/acceptance.json` performs the same live checks.
+TLS material, Terraform state/plans and kubeconfig stay private. Verified destroy
+removes private keys, saved plans and kubeconfig; the empty state and public
+certificates remain as readback evidence. Repeated cleanup needs no removed files.
+
+The required Linux lab matrix retains the existing policy batch and adds this
+partition, including certified-FIPS application builds and separate coverage.
+Ordinary/native acceptance partitions retain their scenarios; only the new
+`@kubernetes-lab` cases require this explicitly provisioned cluster. The three
+cases run actual current-source `infraweave` servers through normal API/SDK paths
+and prove existing worker-pool create/delete, authorization denial and malformed
+CSR refusal. They do not claim a Kubernetes worker controller/executor, managed
+cloud deployment or signed-run admission, which are not implemented by this lab.
+Empty, skipped and undefined scenario reports still fail the controller census.
+
+Before that CI batch, the real failure controls run:
+
+```sh
+python3 test/terraform/lab/verify_kubernetes.py \
+  --helper /private/tmp/infraweave-lab --directory /private/tmp/new-kubernetes-controls
+```
+
+They provision two independent owners, reject a foreign manifest and a mismatched
+Terraform cleanup journal before destroy, pause the real first cluster and require
+attachment failure, resume the same container and recheck readiness, then destroy
+and repeatedly clean the first owner while the second stays live. A final cleanup
+verifies both owners absent even after an earlier failure. `controls.json` retains
+only outcome/ownership/readback metadata, never kubeconfig. Terraform/Docker
+commands have bounded timeouts; shared cached images remain for other invocations.
+
+The [local Kubernetes proof](../../../docs/implementation/kubernetes-lab-verification.json)
+records the dirty candidate baseline, immutable image, report hashes and scope:
+3 Kubernetes scenarios / 33 steps and the existing policy batch's 51 scenarios /
+902 steps passed with certified FIPS. All six real ownership/readiness controls
+passed, and destroy verified empty state, absence and private-input removal for
+both owners. This is local candidate evidence; required Linux CI and the final
+exact-head coverage gate still apply. It proves infrastructure and existing pool
+API behavior, leaving controller/executor delivery to its implementation work.

@@ -44,6 +44,7 @@ type harnessSteps struct {
 
 func (h *harnessSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the scenario's PostgreSQL database$`, h.postgres)
+	sc.Step(`^the owned Terraform Kubernetes API and namespace are ready$`, h.kubernetes)
 	sc.Step(`^it answers "([^"]+)" with "([^"]*)"$`, h.query)
 	sc.Step(`^the shared object store$`, h.objectStore)
 	sc.Step(`^its health endpoint answers 200$`, h.storeHealthy)
@@ -263,4 +264,9 @@ func (h *harnessSteps) leftEvidence(file, scenario string) error {
 
 func (h *harnessSteps) failOnPurpose() error {
 	return fmt.Errorf("%w: this fixture scenario fails on purpose", harness.ErrStep)
+}
+
+func (h *harnessSteps) kubernetes(ctx context.Context) error {
+	_, err := h.w.Suite.Deps.Kubernetes(ctx)
+	return err
 }

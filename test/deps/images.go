@@ -14,6 +14,8 @@ import (
 // runner images the suite builds pin their base in their Dockerfiles under
 // deploy/images, which Dependabot moves.
 const (
+	// ImageK3s is the Terraform-owned local Kubernetes control-plane fixture.
+	ImageK3s = "rancher/k3s:v1.37.2-k3s1@sha256:21ea6e0fac4e3930c2ce8aa40ddd41a8b18cb3e9a0222c030dc005e7e88c4332"
 	// ImagePostgres serves @postgres: PostgreSQL 18, the version floor.
 	//
 	// ref: decision 0005

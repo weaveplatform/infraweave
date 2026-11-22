@@ -17,9 +17,9 @@ type Partition struct {
 	Tags []string
 }
 
-// Labs are the scheduled jobs' partitions, whose scenarios reach
-// infrastructure that only the job provisions from test/terraform: the
-// real VCS providers' repositories of test/terraform/vcs, for vcs-lab.
+// Labs are explicitly provisioned infrastructure partitions: scheduled VCS
+// providers' repositories of test/terraform/vcs and the required local
+// Kubernetes batch of test/terraform/lab.
 // A lab's scenario is placed there before any partition of Partitions
 // sees it, and every partition of Partitions, and a run of none, excludes
 // it.
@@ -27,6 +27,7 @@ type Partition struct {
 // ref: decision 0016
 var Labs = []Partition{
 	{Name: "vcs-lab", Tags: []string{"@vcs-lab"}},
+	{Name: "kubernetes-lab", Tags: []string{"@kubernetes-lab"}},
 }
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
