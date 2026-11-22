@@ -11,8 +11,10 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/apisearch"
+	"github.com/weaveplatform/infraweave/internal/platform/httpkit/middleware"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/page"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
+	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/read"
 )
 
@@ -30,6 +32,7 @@ func (s Server) Run(ctx context.Context, req api.RunRequestObject) (api.RunRespo
 	if err != nil {
 		return nil, runError(err, "", req.RunId)
 	}
+	markInitialization(ctx, v)
 	return api.Run200JSONResponse{Body: runOf(v)}, nil
 }
 
@@ -43,7 +46,17 @@ func (s Server) StackRun(ctx context.Context, req api.StackRunRequestObject) (ap
 	if err != nil {
 		return nil, runError(err, req.StackId, req.Params.Id)
 	}
+	markInitialization(ctx, v)
 	return api.StackRun200JSONResponse{Body: runOf(v)}, nil
+}
+
+func markInitialization(ctx context.Context, v read.View) {
+	for _, receipt := range v.PolicyReceipts {
+		if receipt.Type == policyapi.Initialization {
+			middleware.Deprecate(ctx, policyapi.InitializationDeprecatedSince, policyapi.InitializationDeprecationInfo)
+			return
+		}
+	}
 }
 
 // StackRuns lists the stack's tracked and destroy runs, newest first.

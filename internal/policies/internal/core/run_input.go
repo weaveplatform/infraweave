@@ -49,6 +49,12 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 			}
 		}
 		document = plan
+	case policyapi.Initialization:
+		initialization, err := initializationDocument(facts, run, stack)
+		if err != nil {
+			return nil, err
+		}
+		document = initialization
 	case policyapi.Trigger:
 		if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil || facts.Reviews.Known || facts.Reviews.Value != nil {
 			return nil, policyapi.ErrInput
@@ -72,6 +78,16 @@ func (*Service) BuildRunInput(ctx context.Context, facts policyapi.RunInputFacts
 		return nil, policyapi.ErrInput
 	}
 	return raw, nil
+}
+
+func initializationDocument(facts policyapi.RunInputFacts, run inputs.ApprovalRun, stack inputs.Stack) (inputs.InitializationInput, error) {
+	if facts.Plan != nil || facts.PreviousRun.Known || facts.PreviousRun.Value != nil || facts.Reviews.Known || facts.Reviews.Value != nil || facts.Trigger != nil {
+		return inputs.InitializationInput{}, policyapi.ErrInput
+	}
+	return inputs.InitializationInput{
+		Commit: run.Commit, Run: inputs.Value(toPlanRun(run)), Stack: inputs.Value(stack),
+		Request: inputs.Value(inputs.InitializationRequest{TimestampNS: inputs.Value(facts.At.UnixNano())}),
+	}, nil
 }
 
 type inputBuilder struct{ invalid bool }

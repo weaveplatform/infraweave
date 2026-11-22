@@ -99,6 +99,9 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 // Stacks is what other domains call of this one.
 func (d *Domain) Stacks() stacksapi.Stacks { return d.stacks }
 
+// ClaimTargets supplies nonblocking assignment fences in the caller transaction.
+func (d *Domain) ClaimTargets() stacksapi.ClaimTargets { return d.stacks }
+
 // PolicySnapshots supplies account-owned settings, labels and actual state.
 func (d *Domain) PolicySnapshots() stacksapi.PolicySnapshots { return d.stacks }
 

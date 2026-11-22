@@ -56,6 +56,7 @@ type Store interface {
 	// HoldSpace locks the account's space id FOR KEY SHARE in the
 	// context's transaction; port.ErrNotFound when the account lacks it.
 	HoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	TryHoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (bool, error)
 	// DeleteSpace deletes the account's space slug. check sees it first
 	// and may refuse; a space with children is a *Refusal.
 	DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(ctx context.Context, s Space) error) error
@@ -145,6 +146,11 @@ func (s *Service) Hold(ctx context.Context, acct kernel.AccountID, id kernel.ULI
 }
 
 var _ accessapi.Spaces = (*Service)(nil)
+
+// TryHold takes the owner fence only when immediately available.
+func (s *Service) TryHold(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (bool, error) {
+	return s.store.TryHoldSpace(ctx, acct, id) //nolint:wrapcheck // the owner names the read
+}
 
 // Find is the ID of acct's space slug; accessapi.ErrNoSpace when acct
 // lacks it.

@@ -195,6 +195,19 @@ func (s *Store) Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID,
 	return s.one(ctx, "s.id = $2", acct, id, lock)
 }
 
+// TryReadForRun locks only an immediately available assignment target.
+func (s *Store) TryReadForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (core.Stack, bool, error) {
+	st, err := scan(tx.Q(ctx, s.db).QueryRow(ctx, `SELECT `+columns+` FROM stacks s
+		WHERE s.account_id=$1 AND s.id=$2 FOR UPDATE OF s SKIP LOCKED`, acct, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.Stack{}, false, nil
+	}
+	if err != nil {
+		return core.Stack{}, false, fmt.Errorf("stacks: fence assignment target %s: %w", id, sql.Unavailable(err))
+	}
+	return st, true, nil
+}
+
 // BySlug reads acct's stack slug whole.
 func (s *Store) BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock bool) (core.Stack, error) {
 	return s.one(ctx, "s.slug = $2", acct, slug, lock)

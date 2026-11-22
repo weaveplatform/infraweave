@@ -57,7 +57,7 @@ func registerWorkflowRuntime(sc *godog.ScenarioContext, w *harness.World) {
 			"approval": fmt.Sprintf("%dms", each), "plan": fmt.Sprintf("%dms", each), "combined": fmt.Sprintf("%dms", combined),
 		}}
 	})
-	sc.Step(`^the answer contains a workflow "(APPROVAL|PLAN|GIT_PUSH|TRIGGER)" error "([A-Z_]+)"$`, func(kind, code string) error {
+	sc.Step(`^the answer contains a workflow "(APPROVAL|PLAN|GIT_PUSH|TRIGGER|INITIALIZATION)" error "([A-Z_]+)"$`, func(kind, code string) error {
 		var run api.Run
 		if err := json.Unmarshal(w.Last().Body, &run); err != nil {
 			return fmt.Errorf("decode workflow failure receipt: %w", err)
