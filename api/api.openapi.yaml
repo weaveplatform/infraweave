@@ -9875,6 +9875,161 @@ paths:
       x-infraweave-feature: policies
       x-infraweave-subject: path:policyId:policy
       x-rest-style: field
+  /policies/{policyId}/evaluation-sample:
+    get:
+      description: Returns one account- and policy-owned retained sample after a root-space administration check. The key is an opaque evaluation handle, never an arbitrary object-store path. Expired or unavailable samples return not-found.
+      operationId: policyEvaluationSample
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: key
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: key
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationSample'
+          description: The evaluationSample result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Policy evaluation sample
+      tags:
+        - Policies
+      x-graphql:
+        field: evaluationSample
+        operation: query
+        type: Policy
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /policies/{policyId}/search-evaluation-record-suggestions:
+    get:
+      operationId: policySearchEvaluationRecordSuggestions
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchEvaluationRecordSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Policy search evaluation record suggestions
+      tags:
+        - Policies
+      x-graphql:
+        field: searchEvaluationRecordSuggestions
+        operation: query
+        type: Policy
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /policies/{policyId}/search-evaluation-records:
+    get:
+      operationId: policySearchEvaluationRecords
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: policyId
+          required: true
+          schema:
+            type: string
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchPolicyEvaluationRecordOutput'
+          description: The searchEvaluationRecords result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Policy search evaluation records
+      tags:
+        - Policies
+      x-graphql:
+        field: searchEvaluationRecords
+        operation: query
+        type: Policy
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
   /policy-attachments/{attachmentId}:
     delete:
       description: Detach Policy from a Stack.
@@ -9923,6 +10078,108 @@ paths:
       x-infraweave-feature: policies
       x-infraweave-subject: path:attachmentId:policy_attachment
       x-rest-style: detach
+  /policy-input-captures:
+    get:
+      description: Policy inputs captured in the space for the policy type, newest first. Login inputs are listed under the root space.
+      operationId: policyInputCaptures
+      parameters:
+        - in: query
+          name: space
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: space
+        - in: query
+          name: type
+          required: true
+          schema:
+            $ref: '#/components/schemas/PolicyType'
+          x-graphql-arg: type
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyInputCaptureSummaryPage'
+          description: The policyInputCaptures result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Policy Input Captures
+      tags:
+        - Policies
+      x-bruno: Policies/List Policy Input Captures.bru
+      x-graphql:
+        field: policyInputCaptures
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-infraweave-subject: query:space
+      x-rest-style: list
+  /policy-input-captures/{policyInputCaptureId}:
+    get:
+      description: One account-owned captured input, protected by root-space administration after resolving its owner. A superseded capture returns its summary with null input; expired or missing captures return not-found.
+      operationId: policyInputCapture
+      parameters:
+        - in: path
+          name: policyInputCaptureId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyInputCapture'
+          description: The policyInputCapture result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Policy Input Capture
+      tags:
+        - Policies
+      x-bruno: Policies/Get Policy Input Capture.bru
+      x-graphql:
+        field: policyInputCapture
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
   /policy-runtime:
     get:
       operationId: policyRuntime
@@ -10986,6 +11243,58 @@ paths:
         type: Run
       x-infraweave-action: SPACE_READ
       x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: path:runId:run
+      x-rest-style: field
+  /runs/{runId}/policy-receipt-sample:
+    get:
+      description: A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+      operationId: runPolicyReceiptSample
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationSample'
+          description: The policyReceiptSample result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run policy receipt sample
+      tags:
+        - Runs
+      x-graphql:
+        field: policyReceiptSample
+        operation: query
+        type: Run
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: expensive
       x-infraweave-divergence:
         - rate-limit
       x-infraweave-subject: path:runId:run
@@ -27635,6 +27944,127 @@ components:
         - timestamp
       type: object
       x-graphql-type: PolicyEvaluationRecord
+    PolicyEvaluationRecordConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/PolicyEvaluationRecord'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: PolicyEvaluationRecordConnection
+    PolicyEvaluationSample:
+      description: A retained policy evaluation. Raw input, source, results and print require root-space administration after account and policy ownership checks. An expired or unavailable sample returns not-found.
+      properties:
+        body:
+          description: Body of the original policy.
+          type: string
+        error:
+          description: Error of the policy evaluation.
+          type: string
+        engineType:
+          $ref: '#/components/schemas/PolicyEngineType'
+        input:
+          description: Input to the original policy evaluation.
+          type: string
+        libraries:
+          description: List of libraries used while evaluating the policy.
+          items:
+            $ref: '#/components/schemas/SampledPolicyLibrary'
+          type: array
+        outcome:
+          description: Synthetic (single-word) representation of the policy outcome.
+          type: string
+        print:
+          description: Captured policy print output, protected by the same root-space administration check as input.
+          type: string
+        printTruncated:
+          description: Whether the configured print output limit truncated the captured output.
+          type: boolean
+        results:
+          description: String representation of Rego/OPA policy evaluation results.
+          type: string
+      required:
+        - body
+        - error
+        - engineType
+        - input
+        - libraries
+        - outcome
+        - print
+        - printTruncated
+        - results
+      type: object
+      x-graphql-type: PolicyEvaluationSample
+    PolicyInputCapture:
+      description: A real policy input stored for people writing policies, without the values the policy contract marks as sensitive.
+      properties:
+        capturedAt:
+          description: Unix timestamp of the capture.
+          format: int32
+          type: integer
+        id:
+          description: An opaque id to pass to policyInputCapture.
+          type: string
+        input:
+          description: The input as a JSON document. Null when a newer capture replaced it in the meantime.
+          nullable: true
+          type: string
+        kind:
+          $ref: '#/components/schemas/PolicyInputCaptureKind'
+      required:
+        - capturedAt
+        - id
+        - kind
+      type: object
+      x-graphql-type: PolicyInputCapture
+    PolicyInputCaptureKind:
+      description: The event that produced a captured policy input. Every policy type has one kind, except trigger, which has one per event.
+      enum:
+        - ACCESS
+        - APPROVAL
+        - GIT_PUSH
+        - LOGIN
+        - NOTIFICATION
+        - PLAN
+        - TASK
+        - TRIGGER_MODULE_VERSION
+        - TRIGGER_RUN_FINISH
+      type: string
+      x-graphql-type: PolicyInputCaptureKind
+    PolicyInputCaptureSummary:
+      description: A captured policy input as listed, without its content.
+      properties:
+        capturedAt:
+          description: Unix timestamp of the capture.
+          format: int32
+          type: integer
+        id:
+          description: An opaque id to pass to policyInputCapture.
+          type: string
+        kind:
+          $ref: '#/components/schemas/PolicyInputCaptureKind'
+      required:
+        - capturedAt
+        - id
+        - kind
+      type: object
+      x-graphql-type: PolicyInputCaptureSummary
+    PolicyInputCaptureSummaryPage:
+      description: One page of a cursor-paginated list.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PolicyInputCaptureSummary'
+          type: array
+        nextCursor:
+          description: Pass as cursor to fetch the next page. Absent on the last page.
+          type: string
+      required:
+        - items
+      type: object
     PolicyIntentProjectAttachment:
       properties:
         id:
@@ -29668,6 +30098,22 @@ components:
         - provisionedAt
       type: object
       x-graphql-type: SCIMUserMetadata
+    SampledPolicyLibrary:
+      description: |-
+        SampledPolicyLibrary represents a single policy library captured as part of a
+        policy evaluation sample.
+      properties:
+        Body:
+          description: Body of the sampled library.
+          type: string
+        Name:
+          description: Name of the sampled library.
+          type: string
+      required:
+        - Body
+        - Name
+      type: object
+      x-graphql-type: SampledPolicyLibrary
     ScheduledDelete:
       properties:
         cronSchedule:
@@ -30011,6 +30457,19 @@ components:
         - pageInfo
       type: object
       x-graphql-type: SearchPoliciesOutput
+    SearchPolicyEvaluationRecordOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/PolicyEvaluationRecordConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchPolicyEvaluationRecordOutput
     SearchQueryFieldConstraint:
       additionalProperties: false
       description: SearchQueryFieldConstraint constraints the values of a field.

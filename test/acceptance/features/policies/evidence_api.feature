@@ -13,4 +13,4 @@ Feature: Policy sample and capture APIs enforce evidence ownership
   Scenario: A root administrator can list an empty capture collection in an owned space
     When token "h" sends "GET /api/v1/policy-input-captures?space=legacy&type=PLAN" through B
     Then it answers 200
-    And the answer is '[]'
+    And the answer's items is '[]'

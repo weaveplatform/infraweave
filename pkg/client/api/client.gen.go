@@ -1614,6 +1614,45 @@ func (e PolicyEngineType) Valid() bool {
 	}
 }
 
+// Defines values for PolicyInputCaptureKind.
+const (
+	PolicyInputCaptureKindACCESS               PolicyInputCaptureKind = "ACCESS"
+	PolicyInputCaptureKindAPPROVAL             PolicyInputCaptureKind = "APPROVAL"
+	PolicyInputCaptureKindGITPUSH              PolicyInputCaptureKind = "GIT_PUSH"
+	PolicyInputCaptureKindLOGIN                PolicyInputCaptureKind = "LOGIN"
+	PolicyInputCaptureKindNOTIFICATION         PolicyInputCaptureKind = "NOTIFICATION"
+	PolicyInputCaptureKindPLAN                 PolicyInputCaptureKind = "PLAN"
+	PolicyInputCaptureKindTASK                 PolicyInputCaptureKind = "TASK"
+	PolicyInputCaptureKindTRIGGERMODULEVERSION PolicyInputCaptureKind = "TRIGGER_MODULE_VERSION"
+	PolicyInputCaptureKindTRIGGERRUNFINISH     PolicyInputCaptureKind = "TRIGGER_RUN_FINISH"
+)
+
+// Valid indicates whether the value is a known member of the PolicyInputCaptureKind enum.
+func (e PolicyInputCaptureKind) Valid() bool {
+	switch e {
+	case PolicyInputCaptureKindACCESS:
+		return true
+	case PolicyInputCaptureKindAPPROVAL:
+		return true
+	case PolicyInputCaptureKindGITPUSH:
+		return true
+	case PolicyInputCaptureKindLOGIN:
+		return true
+	case PolicyInputCaptureKindNOTIFICATION:
+		return true
+	case PolicyInputCaptureKindPLAN:
+		return true
+	case PolicyInputCaptureKindTASK:
+		return true
+	case PolicyInputCaptureKindTRIGGERMODULEVERSION:
+		return true
+	case PolicyInputCaptureKindTRIGGERRUNFINISH:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PolicyType.
 const (
 	PolicyTypeAPPROVAL       PolicyType = "APPROVAL"
@@ -6260,6 +6299,84 @@ type PolicyEvaluationRecord struct {
 	Timestamp int32 `json:"timestamp"`
 }
 
+// PolicyEvaluationRecordConnection defines model for PolicyEvaluationRecordConnection.
+type PolicyEvaluationRecordConnection struct {
+	Cursor string `json:"cursor"`
+
+	// Node PolicyEvaluationRecord is a record of policy evaluation. It contains a key,
+	// which can be separately used to retrieve the associated
+	// PolicyEvaluationSample.
+	Node PolicyEvaluationRecord `json:"node"`
+}
+
+// PolicyEvaluationSample A retained policy evaluation. Raw input, source, results and print require root-space administration after account and policy ownership checks. An expired or unavailable sample returns not-found.
+type PolicyEvaluationSample struct {
+	// Body Body of the original policy.
+	Body string `json:"body"`
+
+	// EngineType PolicyEngineType represents a type of policy engine that will be used to evaluate policy
+	EngineType PolicyEngineType `json:"engineType"`
+
+	// Error Error of the policy evaluation.
+	Error string `json:"error"`
+
+	// Input Input to the original policy evaluation.
+	Input string `json:"input"`
+
+	// Libraries List of libraries used while evaluating the policy.
+	Libraries []SampledPolicyLibrary `json:"libraries"`
+
+	// Outcome Synthetic (single-word) representation of the policy outcome.
+	Outcome string `json:"outcome"`
+
+	// Print Captured policy print output, protected by the same root-space administration check as input.
+	Print string `json:"print"`
+
+	// PrintTruncated Whether the configured print output limit truncated the captured output.
+	PrintTruncated bool `json:"printTruncated"`
+
+	// Results String representation of Rego/OPA policy evaluation results.
+	Results string `json:"results"`
+}
+
+// PolicyInputCapture A real policy input stored for people writing policies, without the values the policy contract marks as sensitive.
+type PolicyInputCapture struct {
+	// CapturedAt Unix timestamp of the capture.
+	CapturedAt int32 `json:"capturedAt"`
+
+	// Id An opaque id to pass to policyInputCapture.
+	Id string `json:"id"`
+
+	// Input The input as a JSON document. Null when a newer capture replaced it in the meantime.
+	Input *string `json:"input,omitempty"`
+
+	// Kind The event that produced a captured policy input. Every policy type has one kind, except trigger, which has one per event.
+	Kind PolicyInputCaptureKind `json:"kind"`
+}
+
+// PolicyInputCaptureKind The event that produced a captured policy input. Every policy type has one kind, except trigger, which has one per event.
+type PolicyInputCaptureKind string
+
+// PolicyInputCaptureSummary A captured policy input as listed, without its content.
+type PolicyInputCaptureSummary struct {
+	// CapturedAt Unix timestamp of the capture.
+	CapturedAt int32 `json:"capturedAt"`
+
+	// Id An opaque id to pass to policyInputCapture.
+	Id string `json:"id"`
+
+	// Kind The event that produced a captured policy input. Every policy type has one kind, except trigger, which has one per event.
+	Kind PolicyInputCaptureKind `json:"kind"`
+}
+
+// PolicyInputCaptureSummaryPage One page of a cursor-paginated list.
+type PolicyInputCaptureSummaryPage struct {
+	Items []PolicyInputCaptureSummary `json:"items"`
+
+	// NextCursor Pass as cursor to fetch the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
 // PolicyIntentProjectAttachment defines model for PolicyIntentProjectAttachment.
 type PolicyIntentProjectAttachment struct {
 	// Id Globally unique policy attachment identifier
@@ -7425,6 +7542,16 @@ type SCIMUserMetadata struct {
 	ProvisionedAt int32 `json:"provisionedAt"`
 }
 
+// SampledPolicyLibrary SampledPolicyLibrary represents a single policy library captured as part of a
+// policy evaluation sample.
+type SampledPolicyLibrary struct {
+	// Body Body of the sampled library.
+	Body string `json:"Body"`
+
+	// Name Name of the sampled library.
+	Name string `json:"Name"`
+}
+
 // ScheduledDelete defines model for ScheduledDelete.
 type ScheduledDelete struct {
 	// CronSchedule Apply will be scheduled according to this cron schedule expression if specified.
@@ -7617,6 +7744,12 @@ type SearchManagedEntitiesOutput struct {
 type SearchPoliciesOutput struct {
 	Edges    []PolicyConnection `json:"edges"`
 	PageInfo PageInfo           `json:"pageInfo"`
+}
+
+// SearchPolicyEvaluationRecordOutput defines model for SearchPolicyEvaluationRecordOutput.
+type SearchPolicyEvaluationRecordOutput struct {
+	Edges    []PolicyEvaluationRecordConnection `json:"edges"`
+	PageInfo PageInfo                           `json:"pageInfo"`
 }
 
 // SearchQueryFieldConstraint SearchQueryFieldConstraint constraints the values of a field.
@@ -11575,6 +11708,33 @@ type PolicyAttachedStackParams struct {
 	Id string `form:"id" json:"id"`
 }
 
+// PolicyEvaluationSampleParams defines parameters for PolicyEvaluationSample.
+type PolicyEvaluationSampleParams struct {
+	Key string `form:"key" json:"key"`
+}
+
+// PolicySearchEvaluationRecordSuggestionsParams defines parameters for PolicySearchEvaluationRecordSuggestions.
+type PolicySearchEvaluationRecordSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// PolicySearchEvaluationRecordsParams defines parameters for PolicySearchEvaluationRecords.
+type PolicySearchEvaluationRecordsParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// PolicyInputCapturesParams defines parameters for PolicyInputCaptures.
+type PolicyInputCapturesParams struct {
+	Space string     `form:"space" json:"space"`
+	Type  PolicyType `form:"type" json:"type"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // RepositoriesParams defines parameters for Repositories.
 type RepositoriesParams struct {
 	Provider         *VCSProvider `form:"provider,omitempty" json:"provider,omitempty"`
@@ -11668,6 +11828,11 @@ type RunLogsDownloadURLParams struct {
 
 	// StateVersion The state's execution, counted by the run's state version. Absent, the latest execution of the state.
 	StateVersion *int32 `form:"stateVersion,omitempty" json:"stateVersion,omitempty"`
+}
+
+// RunPolicyReceiptSampleParams defines parameters for RunPolicyReceiptSample.
+type RunPolicyReceiptSampleParams struct {
+	Id string `form:"id" json:"id"`
 }
 
 // SessionsParams defines parameters for Sessions.
@@ -17081,12 +17246,43 @@ type ClientInterface interface {
 	// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
 	PolicyAttachedStack(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PolicyEvaluationSample Policy evaluation sample
+	//
+	// Returns one account- and policy-owned retained sample after a root-space administration check. The key is an opaque evaluation handle, never an arbitrary object-store path. Expired or unavailable samples return not-found.
+	//
+	// Corresponds with GET /policies/{policyId}/evaluation-sample (the `PolicyEvaluationSample` operationId).
+	PolicyEvaluationSample(ctx context.Context, policyId string, params *PolicyEvaluationSampleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicySearchEvaluationRecordSuggestions Policy search evaluation record suggestions
+	//
+	// Corresponds with GET /policies/{policyId}/search-evaluation-record-suggestions (the `PolicySearchEvaluationRecordSuggestions` operationId).
+	PolicySearchEvaluationRecordSuggestions(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicySearchEvaluationRecords Policy search evaluation records
+	//
+	// Corresponds with GET /policies/{policyId}/search-evaluation-records (the `PolicySearchEvaluationRecords` operationId).
+	PolicySearchEvaluationRecords(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PolicyDetach Detach Policy
 	//
 	// Detach Policy from a Stack.
 	//
 	// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
 	PolicyDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyInputCaptures List Policy Input Captures
+	//
+	// Policy inputs captured in the space for the policy type, newest first. Login inputs are listed under the root space.
+	//
+	// Corresponds with GET /policy-input-captures (the `PolicyInputCaptures` operationId).
+	PolicyInputCaptures(ctx context.Context, params *PolicyInputCapturesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicyInputCapture Get Policy Input Capture
+	//
+	// One account-owned captured input, protected by root-space administration after resolving its owner. A superseded capture returns its summary with null input; expired or missing captures return not-found.
+	//
+	// Corresponds with GET /policy-input-captures/{policyInputCaptureId} (the `PolicyInputCapture` operationId).
+	PolicyInputCapture(ctx context.Context, policyInputCaptureId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PolicyRuntime Policy Runtime
 	//
@@ -17345,6 +17541,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
 	RunLogsDownloadURL(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunPolicyReceiptSample Run policy receipt sample
+	//
+	// A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+	//
+	// Corresponds with GET /runs/{runId}/policy-receipt-sample (the `RunPolicyReceiptSample` operationId).
+	RunPolicyReceiptSample(ctx context.Context, runId string, params *RunPolicyReceiptSampleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunStack Get Run Stack
 	//
@@ -24277,6 +24480,53 @@ func (c *Client) PolicyAttachedStack(ctx context.Context, policyId string, param
 	return c.Client.Do(req)
 }
 
+// PolicyEvaluationSample Policy evaluation sample
+//
+// Returns one account- and policy-owned retained sample after a root-space administration check. The key is an opaque evaluation handle, never an arbitrary object-store path. Expired or unavailable samples return not-found.
+//
+// Corresponds with GET /policies/{policyId}/evaluation-sample (the `PolicyEvaluationSample` operationId).
+func (c *Client) PolicyEvaluationSample(ctx context.Context, policyId string, params *PolicyEvaluationSampleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyEvaluationSampleRequest(c.Server, policyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicySearchEvaluationRecordSuggestions Policy search evaluation record suggestions
+//
+// Corresponds with GET /policies/{policyId}/search-evaluation-record-suggestions (the `PolicySearchEvaluationRecordSuggestions` operationId).
+func (c *Client) PolicySearchEvaluationRecordSuggestions(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicySearchEvaluationRecordSuggestionsRequest(c.Server, policyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicySearchEvaluationRecords Policy search evaluation records
+//
+// Corresponds with GET /policies/{policyId}/search-evaluation-records (the `PolicySearchEvaluationRecords` operationId).
+func (c *Client) PolicySearchEvaluationRecords(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicySearchEvaluationRecordsRequest(c.Server, policyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PolicyDetach Detach Policy
 //
 // Detach Policy from a Stack.
@@ -24284,6 +24534,40 @@ func (c *Client) PolicyAttachedStack(ctx context.Context, policyId string, param
 // Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
 func (c *Client) PolicyDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPolicyDetachRequest(c.Server, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyInputCaptures List Policy Input Captures
+//
+// Policy inputs captured in the space for the policy type, newest first. Login inputs are listed under the root space.
+//
+// Corresponds with GET /policy-input-captures (the `PolicyInputCaptures` operationId).
+func (c *Client) PolicyInputCaptures(ctx context.Context, params *PolicyInputCapturesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyInputCapturesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicyInputCapture Get Policy Input Capture
+//
+// One account-owned captured input, protected by root-space administration after resolving its owner. A superseded capture returns its summary with null input; expired or missing captures return not-found.
+//
+// Corresponds with GET /policy-input-captures/{policyInputCaptureId} (the `PolicyInputCapture` operationId).
+func (c *Client) PolicyInputCapture(ctx context.Context, policyInputCaptureId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicyInputCaptureRequest(c.Server, policyInputCaptureId)
 	if err != nil {
 		return nil, err
 	}
@@ -24792,6 +25076,23 @@ func (c *Client) RunLogs(ctx context.Context, runId string, params *RunLogsParam
 // Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
 func (c *Client) RunLogsDownloadURL(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRunLogsDownloadURLRequest(c.Server, runId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunPolicyReceiptSample Run policy receipt sample
+//
+// A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+//
+// Corresponds with GET /runs/{runId}/policy-receipt-sample (the `RunPolicyReceiptSample` operationId).
+func (c *Client) RunPolicyReceiptSample(ctx context.Context, runId string, params *RunPolicyReceiptSampleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunPolicyReceiptSampleRequest(c.Server, runId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -39288,6 +39589,173 @@ func NewPolicyAttachedStackRequest(server string, policyId string, params *Polic
 	return req, nil
 }
 
+// NewPolicyEvaluationSampleRequest constructs an http.Request for the PolicyEvaluationSample method
+func NewPolicyEvaluationSampleRequest(server string, policyId string, params *PolicyEvaluationSampleParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s/evaluation-sample", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicySearchEvaluationRecordSuggestionsRequest constructs an http.Request for the PolicySearchEvaluationRecordSuggestions method
+func NewPolicySearchEvaluationRecordSuggestionsRequest(server string, policyId string, params *PolicySearchEvaluationRecordSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s/search-evaluation-record-suggestions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicySearchEvaluationRecordsRequest constructs an http.Request for the PolicySearchEvaluationRecords method
+func NewPolicySearchEvaluationRecordsRequest(server string, policyId string, params *PolicySearchEvaluationRecordsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/%s/search-evaluation-records", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPolicyDetachRequest constructs an http.Request for the PolicyDetach method
 func NewPolicyDetachRequest(server string, attachmentId string) (*http.Request, error) {
 	var err error
@@ -39315,6 +39783,122 @@ func NewPolicyDetachRequest(server string, attachmentId string) (*http.Request, 
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicyInputCapturesRequest constructs an http.Request for the PolicyInputCaptures method
+func NewPolicyInputCapturesRequest(server string, params *PolicyInputCapturesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policy-input-captures")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "space", params.Space, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "type", params.Type, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPolicyInputCaptureRequest constructs an http.Request for the PolicyInputCapture method
+func NewPolicyInputCaptureRequest(server string, policyInputCaptureId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyInputCaptureId", policyInputCaptureId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policy-input-captures/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40326,6 +40910,63 @@ func NewRunLogsDownloadURLRequest(server string, runId string, params *RunLogsDo
 				}
 			}
 
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRunPolicyReceiptSampleRequest constructs an http.Request for the RunPolicyReceiptSample method
+func NewRunPolicyReceiptSampleRequest(server string, runId string, params *RunPolicyReceiptSampleParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/policy-receipt-sample", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
 		}
 
 		if encoded := queryValues.Encode(); encoded != "" {
@@ -52987,6 +53628,29 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /policies/{policyId}/attached-stack (the `PolicyAttachedStack` operationId).
 	PolicyAttachedStackWithResponse(ctx context.Context, policyId string, params *PolicyAttachedStackParams, reqEditors ...RequestEditorFn) (*PolicyAttachedStackResponse, error)
 
+	// PolicyEvaluationSampleWithResponse Policy evaluation sample
+	//
+	// Returns one account- and policy-owned retained sample after a root-space administration check. The key is an opaque evaluation handle, never an arbitrary object-store path. Expired or unavailable samples return not-found.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies/{policyId}/evaluation-sample (the `PolicyEvaluationSample` operationId).
+	PolicyEvaluationSampleWithResponse(ctx context.Context, policyId string, params *PolicyEvaluationSampleParams, reqEditors ...RequestEditorFn) (*PolicyEvaluationSampleResponse, error)
+
+	// PolicySearchEvaluationRecordSuggestionsWithResponse Policy search evaluation record suggestions
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies/{policyId}/search-evaluation-record-suggestions (the `PolicySearchEvaluationRecordSuggestions` operationId).
+	PolicySearchEvaluationRecordSuggestionsWithResponse(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordSuggestionsParams, reqEditors ...RequestEditorFn) (*PolicySearchEvaluationRecordSuggestionsResponse, error)
+
+	// PolicySearchEvaluationRecordsWithResponse Policy search evaluation records
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policies/{policyId}/search-evaluation-records (the `PolicySearchEvaluationRecords` operationId).
+	PolicySearchEvaluationRecordsWithResponse(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordsParams, reqEditors ...RequestEditorFn) (*PolicySearchEvaluationRecordsResponse, error)
+
 	// PolicyDetachWithResponse Detach Policy
 	//
 	// Detach Policy from a Stack.
@@ -52995,6 +53659,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with DELETE /policy-attachments/{attachmentId} (the `PolicyDetach` operationId).
 	PolicyDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*PolicyDetachResponse, error)
+
+	// PolicyInputCapturesWithResponse List Policy Input Captures
+	//
+	// Policy inputs captured in the space for the policy type, newest first. Login inputs are listed under the root space.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policy-input-captures (the `PolicyInputCaptures` operationId).
+	PolicyInputCapturesWithResponse(ctx context.Context, params *PolicyInputCapturesParams, reqEditors ...RequestEditorFn) (*PolicyInputCapturesResponse, error)
+
+	// PolicyInputCaptureWithResponse Get Policy Input Capture
+	//
+	// One account-owned captured input, protected by root-space administration after resolving its owner. A superseded capture returns its summary with null input; expired or missing captures return not-found.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /policy-input-captures/{policyInputCaptureId} (the `PolicyInputCapture` operationId).
+	PolicyInputCaptureWithResponse(ctx context.Context, policyInputCaptureId string, reqEditors ...RequestEditorFn) (*PolicyInputCaptureResponse, error)
 
 	// PolicyRuntimeWithResponse Policy Runtime
 	//
@@ -53279,6 +53961,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /runs/{runId}/logs-download-url (the `RunLogsDownloadURL` operationId).
 	RunLogsDownloadURLWithResponse(ctx context.Context, runId string, params *RunLogsDownloadURLParams, reqEditors ...RequestEditorFn) (*RunLogsDownloadURLResponse, error)
+
+	// RunPolicyReceiptSampleWithResponse Run policy receipt sample
+	//
+	// A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /runs/{runId}/policy-receipt-sample (the `RunPolicyReceiptSample` operationId).
+	RunPolicyReceiptSampleWithResponse(ctx context.Context, runId string, params *RunPolicyReceiptSampleParams, reqEditors ...RequestEditorFn) (*RunPolicyReceiptSampleResponse, error)
 
 	// RunStackWithResponse Get Run Stack
 	//
@@ -74751,6 +75442,291 @@ func (r PolicyAttachedStackResponse) ContentType() string {
 	return ""
 }
 
+// PolicyEvaluationSampleResponse200Headers the declared response headers of an HTTP 200 response for PolicyEvaluationSample
+type PolicyEvaluationSampleResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyEvaluationSampleResponse429Headers the declared response headers of an HTTP 429 response for PolicyEvaluationSample
+type PolicyEvaluationSampleResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyEvaluationSampleResponse503Headers the declared response headers of an HTTP 503 response for PolicyEvaluationSample
+type PolicyEvaluationSampleResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyEvaluationSampleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyEvaluationSample
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyEvaluationSampleResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyEvaluationSampleResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyEvaluationSampleResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyEvaluationSampleResponse) GetJSON200() *PolicyEvaluationSample {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyEvaluationSampleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyEvaluationSampleResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyEvaluationSampleResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyEvaluationSampleResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyEvaluationSampleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyEvaluationSampleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyEvaluationSampleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyEvaluationSampleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicySearchEvaluationRecordSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for PolicySearchEvaluationRecordSuggestions
+type PolicySearchEvaluationRecordSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySearchEvaluationRecordSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for PolicySearchEvaluationRecordSuggestions
+type PolicySearchEvaluationRecordSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySearchEvaluationRecordSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for PolicySearchEvaluationRecordSuggestions
+type PolicySearchEvaluationRecordSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicySearchEvaluationRecordSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicySearchEvaluationRecordSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicySearchEvaluationRecordSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicySearchEvaluationRecordSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicySearchEvaluationRecordSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicySearchEvaluationRecordSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicySearchEvaluationRecordSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicySearchEvaluationRecordSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicySearchEvaluationRecordsResponse200Headers the declared response headers of an HTTP 200 response for PolicySearchEvaluationRecords
+type PolicySearchEvaluationRecordsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySearchEvaluationRecordsResponse429Headers the declared response headers of an HTTP 429 response for PolicySearchEvaluationRecords
+type PolicySearchEvaluationRecordsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySearchEvaluationRecordsResponse503Headers the declared response headers of an HTTP 503 response for PolicySearchEvaluationRecords
+type PolicySearchEvaluationRecordsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicySearchEvaluationRecordsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchPolicyEvaluationRecordOutput
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicySearchEvaluationRecordsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicySearchEvaluationRecordsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicySearchEvaluationRecordsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicySearchEvaluationRecordsResponse) GetJSON200() *SearchPolicyEvaluationRecordOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicySearchEvaluationRecordsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicySearchEvaluationRecordsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicySearchEvaluationRecordsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicySearchEvaluationRecordsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicySearchEvaluationRecordsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicySearchEvaluationRecordsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicySearchEvaluationRecordsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicySearchEvaluationRecordsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // PolicyDetachResponse200Headers the declared response headers of an HTTP 200 response for PolicyDetach
 type PolicyDetachResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -74840,6 +75816,196 @@ func (r PolicyDetachResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PolicyDetachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyInputCapturesResponse200Headers the declared response headers of an HTTP 200 response for PolicyInputCaptures
+type PolicyInputCapturesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyInputCapturesResponse429Headers the declared response headers of an HTTP 429 response for PolicyInputCaptures
+type PolicyInputCapturesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyInputCapturesResponse503Headers the declared response headers of an HTTP 503 response for PolicyInputCaptures
+type PolicyInputCapturesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyInputCapturesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyInputCaptureSummaryPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyInputCapturesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyInputCapturesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyInputCapturesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyInputCapturesResponse) GetJSON200() *PolicyInputCaptureSummaryPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r PolicyInputCapturesResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyInputCapturesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyInputCapturesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyInputCapturesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyInputCapturesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyInputCapturesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyInputCapturesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyInputCapturesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicyInputCaptureResponse200Headers the declared response headers of an HTTP 200 response for PolicyInputCapture
+type PolicyInputCaptureResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyInputCaptureResponse429Headers the declared response headers of an HTTP 429 response for PolicyInputCapture
+type PolicyInputCaptureResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicyInputCaptureResponse503Headers the declared response headers of an HTTP 503 response for PolicyInputCapture
+type PolicyInputCaptureResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PolicyInputCaptureResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyInputCapture
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicyInputCaptureResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicyInputCaptureResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicyInputCaptureResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicyInputCaptureResponse) GetJSON200() *PolicyInputCapture {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PolicyInputCaptureResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicyInputCaptureResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicyInputCaptureResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicyInputCaptureResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicyInputCaptureResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicyInputCaptureResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicyInputCaptureResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicyInputCaptureResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -76690,6 +77856,101 @@ func (r RunLogsDownloadURLResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RunLogsDownloadURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// RunPolicyReceiptSampleResponse200Headers the declared response headers of an HTTP 200 response for RunPolicyReceiptSample
+type RunPolicyReceiptSampleResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunPolicyReceiptSampleResponse429Headers the declared response headers of an HTTP 429 response for RunPolicyReceiptSample
+type RunPolicyReceiptSampleResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunPolicyReceiptSampleResponse503Headers the declared response headers of an HTTP 503 response for RunPolicyReceiptSample
+type RunPolicyReceiptSampleResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunPolicyReceiptSampleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyEvaluationSample
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *RunPolicyReceiptSampleResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunPolicyReceiptSampleResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunPolicyReceiptSampleResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RunPolicyReceiptSampleResponse) GetJSON200() *PolicyEvaluationSample {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunPolicyReceiptSampleResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunPolicyReceiptSampleResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunPolicyReceiptSampleResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunPolicyReceiptSampleResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunPolicyReceiptSampleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunPolicyReceiptSampleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunPolicyReceiptSampleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunPolicyReceiptSampleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -98870,6 +100131,47 @@ func (c *ClientWithResponses) PolicyAttachedStackWithResponse(ctx context.Contex
 	return ParsePolicyAttachedStackResponse(rsp)
 }
 
+// PolicyEvaluationSampleWithResponse Policy evaluation sample
+//
+// Returns one account- and policy-owned retained sample after a root-space administration check. The key is an opaque evaluation handle, never an arbitrary object-store path. Expired or unavailable samples return not-found.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies/{policyId}/evaluation-sample (the `PolicyEvaluationSample` operationId).
+func (c *ClientWithResponses) PolicyEvaluationSampleWithResponse(ctx context.Context, policyId string, params *PolicyEvaluationSampleParams, reqEditors ...RequestEditorFn) (*PolicyEvaluationSampleResponse, error) {
+	rsp, err := c.PolicyEvaluationSample(ctx, policyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyEvaluationSampleResponse(rsp)
+}
+
+// PolicySearchEvaluationRecordSuggestionsWithResponse Policy search evaluation record suggestions
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies/{policyId}/search-evaluation-record-suggestions (the `PolicySearchEvaluationRecordSuggestions` operationId).
+func (c *ClientWithResponses) PolicySearchEvaluationRecordSuggestionsWithResponse(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordSuggestionsParams, reqEditors ...RequestEditorFn) (*PolicySearchEvaluationRecordSuggestionsResponse, error) {
+	rsp, err := c.PolicySearchEvaluationRecordSuggestions(ctx, policyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicySearchEvaluationRecordSuggestionsResponse(rsp)
+}
+
+// PolicySearchEvaluationRecordsWithResponse Policy search evaluation records
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policies/{policyId}/search-evaluation-records (the `PolicySearchEvaluationRecords` operationId).
+func (c *ClientWithResponses) PolicySearchEvaluationRecordsWithResponse(ctx context.Context, policyId string, params *PolicySearchEvaluationRecordsParams, reqEditors ...RequestEditorFn) (*PolicySearchEvaluationRecordsResponse, error) {
+	rsp, err := c.PolicySearchEvaluationRecords(ctx, policyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicySearchEvaluationRecordsResponse(rsp)
+}
+
 // PolicyDetachWithResponse Detach Policy
 //
 // Detach Policy from a Stack.
@@ -98883,6 +100185,36 @@ func (c *ClientWithResponses) PolicyDetachWithResponse(ctx context.Context, atta
 		return nil, err
 	}
 	return ParsePolicyDetachResponse(rsp)
+}
+
+// PolicyInputCapturesWithResponse List Policy Input Captures
+//
+// Policy inputs captured in the space for the policy type, newest first. Login inputs are listed under the root space.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policy-input-captures (the `PolicyInputCaptures` operationId).
+func (c *ClientWithResponses) PolicyInputCapturesWithResponse(ctx context.Context, params *PolicyInputCapturesParams, reqEditors ...RequestEditorFn) (*PolicyInputCapturesResponse, error) {
+	rsp, err := c.PolicyInputCaptures(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyInputCapturesResponse(rsp)
+}
+
+// PolicyInputCaptureWithResponse Get Policy Input Capture
+//
+// One account-owned captured input, protected by root-space administration after resolving its owner. A superseded capture returns its summary with null input; expired or missing captures return not-found.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /policy-input-captures/{policyInputCaptureId} (the `PolicyInputCapture` operationId).
+func (c *ClientWithResponses) PolicyInputCaptureWithResponse(ctx context.Context, policyInputCaptureId string, reqEditors ...RequestEditorFn) (*PolicyInputCaptureResponse, error) {
+	rsp, err := c.PolicyInputCapture(ctx, policyInputCaptureId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicyInputCaptureResponse(rsp)
 }
 
 // PolicyRuntimeWithResponse Policy Runtime
@@ -99317,6 +100649,21 @@ func (c *ClientWithResponses) RunLogsDownloadURLWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseRunLogsDownloadURLResponse(rsp)
+}
+
+// RunPolicyReceiptSampleWithResponse Run policy receipt sample
+//
+// A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /runs/{runId}/policy-receipt-sample (the `RunPolicyReceiptSample` operationId).
+func (c *ClientWithResponses) RunPolicyReceiptSampleWithResponse(ctx context.Context, runId string, params *RunPolicyReceiptSampleParams, reqEditors ...RequestEditorFn) (*RunPolicyReceiptSampleResponse, error) {
+	rsp, err := c.RunPolicyReceiptSample(ctx, runId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunPolicyReceiptSampleResponse(rsp)
 }
 
 // RunStackWithResponse Get Run Stack
@@ -127749,6 +129096,372 @@ func ParsePolicyAttachedStackResponse(rsp *http.Response) (*PolicyAttachedStackR
 	return response, nil
 }
 
+// ParsePolicyEvaluationSampleResponse parses an HTTP response from a PolicyEvaluationSampleWithResponse call
+func ParsePolicyEvaluationSampleResponse(rsp *http.Response) (*PolicyEvaluationSampleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyEvaluationSampleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyEvaluationSample
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyEvaluationSampleResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyEvaluationSampleResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyEvaluationSampleResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicySearchEvaluationRecordSuggestionsResponse parses an HTTP response from a PolicySearchEvaluationRecordSuggestionsWithResponse call
+func ParsePolicySearchEvaluationRecordSuggestionsResponse(rsp *http.Response) (*PolicySearchEvaluationRecordSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicySearchEvaluationRecordSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicySearchEvaluationRecordSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicySearchEvaluationRecordSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicySearchEvaluationRecordSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicySearchEvaluationRecordsResponse parses an HTTP response from a PolicySearchEvaluationRecordsWithResponse call
+func ParsePolicySearchEvaluationRecordsResponse(rsp *http.Response) (*PolicySearchEvaluationRecordsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicySearchEvaluationRecordsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchPolicyEvaluationRecordOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicySearchEvaluationRecordsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicySearchEvaluationRecordsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicySearchEvaluationRecordsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParsePolicyDetachResponse parses an HTTP response from a PolicyDetachWithResponse call
 func ParsePolicyDetachResponse(rsp *http.Response) (*PolicyDetachResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -127858,6 +129571,250 @@ func ParsePolicyDetachResponse(rsp *http.Response) (*PolicyDetachResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers PolicyDetachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyInputCapturesResponse parses an HTTP response from a PolicyInputCapturesWithResponse call
+func ParsePolicyInputCapturesResponse(rsp *http.Response) (*PolicyInputCapturesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyInputCapturesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyInputCaptureSummaryPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyInputCapturesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyInputCapturesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyInputCapturesResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicyInputCaptureResponse parses an HTTP response from a PolicyInputCaptureWithResponse call
+func ParsePolicyInputCaptureResponse(rsp *http.Response) (*PolicyInputCaptureResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicyInputCaptureResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyInputCapture
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicyInputCaptureResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicyInputCaptureResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicyInputCaptureResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -130239,6 +132196,128 @@ func ParseRunLogsDownloadURLResponse(rsp *http.Response) (*RunLogsDownloadURLRes
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers RunLogsDownloadURLResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunPolicyReceiptSampleResponse parses an HTTP response from a RunPolicyReceiptSampleWithResponse call
+func ParseRunPolicyReceiptSampleResponse(rsp *http.Response) (*RunPolicyReceiptSampleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunPolicyReceiptSampleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyEvaluationSample
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers RunPolicyReceiptSampleResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunPolicyReceiptSampleResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunPolicyReceiptSampleResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

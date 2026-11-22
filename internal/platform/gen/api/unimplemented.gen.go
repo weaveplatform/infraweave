@@ -774,8 +774,28 @@ func (UnimplementedStrict) PolicyAttachedStack(context.Context, PolicyAttachedSt
 	return nil, &problem.NotImplementedError{OperationID: "policyAttachedStack", Route: "GET /policies/{policyId}/attached-stack"}
 }
 
+func (UnimplementedStrict) PolicyEvaluationSample(context.Context, PolicyEvaluationSampleRequestObject) (PolicyEvaluationSampleResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyEvaluationSample", Route: "GET /policies/{policyId}/evaluation-sample"}
+}
+
+func (UnimplementedStrict) PolicySearchEvaluationRecordSuggestions(context.Context, PolicySearchEvaluationRecordSuggestionsRequestObject) (PolicySearchEvaluationRecordSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policySearchEvaluationRecordSuggestions", Route: "GET /policies/{policyId}/search-evaluation-record-suggestions"}
+}
+
+func (UnimplementedStrict) PolicySearchEvaluationRecords(context.Context, PolicySearchEvaluationRecordsRequestObject) (PolicySearchEvaluationRecordsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policySearchEvaluationRecords", Route: "GET /policies/{policyId}/search-evaluation-records"}
+}
+
 func (UnimplementedStrict) PolicyDetach(context.Context, PolicyDetachRequestObject) (PolicyDetachResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "policyDetach", Route: "DELETE /policy-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) PolicyInputCaptures(context.Context, PolicyInputCapturesRequestObject) (PolicyInputCapturesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyInputCaptures", Route: "GET /policy-input-captures"}
+}
+
+func (UnimplementedStrict) PolicyInputCapture(context.Context, PolicyInputCaptureRequestObject) (PolicyInputCaptureResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyInputCapture", Route: "GET /policy-input-captures/{policyInputCaptureId}"}
 }
 
 func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestObject) (PolicyRuntimeResponseObject, error) {
@@ -852,6 +872,10 @@ func (UnimplementedStrict) RunLogs(context.Context, RunLogsRequestObject) (RunLo
 
 func (UnimplementedStrict) RunLogsDownloadURL(context.Context, RunLogsDownloadURLRequestObject) (RunLogsDownloadURLResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "runLogsDownloadURL", Route: "GET /runs/{runId}/logs-download-url"}
+}
+
+func (UnimplementedStrict) RunPolicyReceiptSample(context.Context, RunPolicyReceiptSampleRequestObject) (RunPolicyReceiptSampleResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runPolicyReceiptSample", Route: "GET /runs/{runId}/policy-receipt-sample"}
 }
 
 func (UnimplementedStrict) RunStack(context.Context, RunStackRequestObject) (RunStackResponseObject, error) {
