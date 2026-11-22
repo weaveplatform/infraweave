@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +20,88 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/vcs/internal/deliveryfake"
 )
+
+func fixtureSender(secret []byte, srv *httptest.Server, config deliveryfake.Config) *deliveryfake.Sender {
+	client := *srv.Client()
+	client.Timeout = 10 * time.Second
+	return deliveryfake.New(secret, &client, config)
+}
+
+type observedDefaultTransport struct {
+	underlying http.RoundTripper
+	requests   atomic.Int32
+	closes     atomic.Int32
+}
+
+func (o *observedDefaultTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	o.requests.Add(1)
+	resp, err := o.underlying.RoundTrip(req)
+	if err != nil {
+		return resp, fmt.Errorf("observed default transport: %w", err)
+	}
+	return resp, nil
+}
+
+func (o *observedDefaultTransport) CloseIdleConnections() {
+	o.closes.Add(1)
+	if transport, ok := o.underlying.(interface{ CloseIdleConnections() }); ok {
+		transport.CloseIdleConnections()
+	}
+}
+
+func TestUnitWebhookSenderTransportOwnership(t *testing.T) {
+	// DefaultTransport is process-global; parallel fixture tests run after this
+	// test restores it. The observer forwards requests to actual loopback HTTP.
+	previous := http.DefaultTransport
+	observed := &observedDefaultTransport{underlying: previous}
+	http.DefaultTransport = observed
+	t.Cleanup(func() { http.DefaultTransport = previous })
+	var received atomic.Int32
+	body := []byte("transport ownership")
+	r := chi.NewRouter()
+	r.Post("/hook", func(w http.ResponseWriter, req *http.Request) {
+		received.Add(1)
+		raw, err := io.ReadAll(req.Body)
+		if err != nil || string(raw) != string(body) || req.Method != http.MethodPost ||
+			req.Header.Get("X-Request-Id") != "same-id" || req.Header.Get("X-Event-Key") != "repo:push" {
+			http.Error(w, "unexpected webhook request", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
+	srv := httptest.NewServer(r)
+	t.Cleanup(srv.Close)
+	config := deliveryfake.Config{DeliveryHeader: "X-Request-Id", Attempts: 1}
+	send := func(t *testing.T, sender *deliveryfake.Sender) {
+		t.Helper()
+		if status, err := sender.Send(t.Context(), srv.URL+"/hook", "same-id", "repo:push", body); err != nil || status != http.StatusAccepted {
+			t.Fatalf("actual webhook: status=%d err=%v", status, err)
+		}
+	}
+	t.Run("nil client uses the real default transport", func(t *testing.T) {
+		send(t, deliveryfake.New(nil, nil, config))
+		if observed.requests.Load() != 1 || received.Load() != 1 {
+			t.Fatal("nil-client control did not reach the default transport and actual server")
+		}
+	})
+	t.Run("fixture transport survives unrelated server cleanup", func(t *testing.T) {
+		before, closes, calls := observed.requests.Load(), observed.closes.Load(), received.Load()
+		sender := fixtureSender(nil, srv, config)
+		send(t, sender)
+		other := httptest.NewServer(chi.NewRouter())
+		other.Close()
+		if observed.closes.Load() <= closes {
+			t.Fatal("unrelated server cleanup did not close the global idle transport")
+		}
+		send(t, sender)
+		if observed.requests.Load() != before {
+			t.Fatal("fixture sender used the shared default transport")
+		}
+		if received.Load() != calls+2 || len(sender.Attempts()) != 2 {
+			t.Fatal("fixture sender did not complete both actual HTTP deliveries")
+		}
+	})
+}
 
 func TestUnitWebhookSenderRetries(t *testing.T) {
 	t.Parallel()
@@ -64,9 +148,9 @@ func TestUnitWebhookSenderRetries(t *testing.T) {
 			})
 			srv := httptest.NewServer(r)
 			t.Cleanup(srv.Close)
-			s := deliveryfake.New(
+			s := fixtureSender(
 				secret,
-				nil,
+				srv,
 				deliveryfake.Config{DeliveryHeader: "X-Request-UUID", AttemptHeader: "X-Attempt-Number", HookHeader: "X-Hook-UUID", Attempts: tc.limit},
 			)
 			status, err := s.Send(t.Context(), srv.URL+"/hook", "same-id", "repo:push", body)
@@ -173,7 +257,7 @@ func TestUnitWebhookSenderShortKey(t *testing.T) {
 	r.Post("/", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(202) })
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
-	s := deliveryfake.New([]byte("hook"), nil, deliveryfake.Config{DeliveryHeader: "X-Request-Id"})
+	s := fixtureSender([]byte("hook"), srv, deliveryfake.Config{DeliveryHeader: "X-Request-Id"})
 	status, err := s.Send(t.Context(), srv.URL, "id", "event", nil)
 	if fips140.Enforced() {
 		if status != 0 || !errors.Is(err, deliveryfake.ErrDelivery) || len(s.Attempts()) != 0 {

@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Break-glass sign-in and browser sessions
   An organization's break-glass admin signs in at /admin-login/<organization>
   with the login and password the operator set. The session

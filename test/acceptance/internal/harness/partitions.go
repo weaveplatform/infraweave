@@ -13,7 +13,7 @@ import (
 // ref: decision 0016
 type Partition struct {
 	Name string
-	// Tags are the dependency tags whose scenarios run in the partition.
+	// Tags select the partition; dependency tags also provision its services.
 	Tags []string
 }
 
@@ -64,6 +64,7 @@ var Partitions = []Partition{
 			"@ai",
 		},
 	},
+	{Name: "identity", Tags: []string{"@identity"}},
 	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc", "@vault"}},
 }
 

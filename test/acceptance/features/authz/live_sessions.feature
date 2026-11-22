@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Live sessions follow changes of their grants
   Under MANAGED_USERS, ordinary sessions follow live bindings: each request is decided on
   the account's authorization snapshot, which every replica rebuilds when

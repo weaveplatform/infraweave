@@ -1,4 +1,4 @@
-@postgres @policy-login @policy-login-failures
+@identity @postgres @policy-login @policy-login-failures
 Feature: LOGIN runtime failures deny entry without granting partial access
   Actual stored Rego programs run through the public API key exchange on both
   replicas. Failed evaluations retain metadata evidence without a session,
