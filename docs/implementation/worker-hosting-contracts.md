@@ -1,7 +1,8 @@
 # Managed Kubernetes worker hosting contract
 
-Status: specified; cloud modules, acceptance roots and live cloud evidence remain
-undelivered. This is the shared interface required by [#754](https://github.com/weaveplatform/infraweave/issues/754),
+Status: specified; the lab coordinator for the cloud roots is implemented and
+controller-tested, while cloud modules, acceptance roots and live cloud evidence
+remain undelivered. This is the shared interface required by [#754](https://github.com/weaveplatform/infraweave/issues/754),
 under [ADR 0020](../research/decisions/0020-reference-deployments-and-packaging.md#worker-hosting-subset)
 and the [worker protocol/chart contract](worker-pool-contracts.md). The
 [requirement matrix](worker-pool-contracts.json) keeps specification separate
@@ -309,6 +310,35 @@ resource or destroy an existing shared cluster/network. Helm does not
 CRD absence/retention is an explicit installation cleanup responsibility.
 The deployment phase must retain the controller until WorkerPool finalizers finish, using a
 separate cleanup phase rather than relying on unordered chart uninstall.
+
+## Lab coordinator interface
+
+[#758](https://github.com/weaveplatform/infraweave/issues/758) implements the
+lifecycle above in `test/terraform/lab/cloudlab.py`, selected through the
+`workers-aws`, `workers-azure`, `workers-google` and `workers-multicloud`
+batches; the [lab README](../../test/terraform/lab/README.md#managed-cloud-worker-batches)
+is its runnable reference. The cloud roots meet it as follows:
+
+- Each stage declares `backend "local" {}`; the coordinator supplies an
+  owner-private state path, `TF_DATA_DIR`, plan and log per stage, with
+  `init -lockfile=readonly`.
+- The coordinator adds `ownership`, `cloud` and, for `deployment/`, the
+  validated `cluster_stage` to the operator's stage variables, and refuses
+  inputs that set them or carry private key text.
+- `cluster/` outputs `cluster = {schema: 1, kind: "worker-cluster", owner,
+  batch, provider, id, name, endpoint, ca_certificate, owned, inventory}`. The
+  coordinator requires the explicit cluster's provider ID from the mapping
+  above and a verified TLS handshake with `endpoint` before `deployment/`.
+- `deployment/` outputs `hosting` exactly as specified above; its owner, TTL,
+  cloud identifiers and cluster ID must match before `workers.json` exists.
+- Owned resources carry `io.infraweave.lab.owner` as a tag; Google encodes the
+  key as the label `io_infraweave_lab_owner`. Cleanup searches by that key and
+  reads the exact owned cluster; a denied or failed readback is unknown.
+
+Preflight before the first apply verifies committed stages and locks, private
+inputs, credentials against the explicit IDs, regional vCPU and EKS cluster
+quota headroom, and any existing cluster's readiness. Every selected cloud is
+required; none is skipped.
 
 ## Required evidence and acceptance limits
 

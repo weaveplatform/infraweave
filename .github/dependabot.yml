@@ -31,9 +31,10 @@ updates:
       include: "scope"
 
   # The cloud labs' Terraform roots, one directory per job and cloud or
-  # provider; each PR moves versions.tf and the lock file together.
+  # provider, and each managed cloud worker stage; each PR moves versions.tf
+  # and the lock file together.
   - package-ecosystem: "terraform"
-    directories: ["/test/terraform/cloud/*/*", "/test/terraform/vcs/*", "/test/terraform/lab/platform"]
+    directories: ["/test/terraform/cloud/*/*", "/test/terraform/cloud/workers/*/*", "/test/terraform/vcs/*", "/test/terraform/lab/platform"]
     schedule:
       interval: "daily"
     groups:

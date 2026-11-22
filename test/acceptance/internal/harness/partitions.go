@@ -18,8 +18,9 @@ type Partition struct {
 }
 
 // Labs are explicitly provisioned infrastructure partitions: scheduled VCS
-// providers' repositories of test/terraform/vcs and the required local
-// Kubernetes batch of test/terraform/lab.
+// providers' repositories of test/terraform/vcs, the required local
+// Kubernetes batch of test/terraform/lab and its managed cloud worker
+// batches, which attach the test/terraform/cloud/workers roots.
 // A lab's scenario is placed there before any partition of Partitions
 // sees it, and every partition of Partitions, and a run of none, excludes
 // it.
@@ -28,6 +29,7 @@ type Partition struct {
 var Labs = []Partition{
 	{Name: "vcs-lab", Tags: []string{"@vcs-lab"}},
 	{Name: "kubernetes-lab", Tags: []string{"@kubernetes-lab"}},
+	{Name: "managed-cloud-workers", Tags: []string{"@managed-cloud-workers"}},
 }
 
 // Partitions are the pull request's CI jobs, in the order a scenario is

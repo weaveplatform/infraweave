@@ -90,3 +90,9 @@ worker inputs explicitly name the cloud account/subscription/project, tenant
 where applicable, region/location, network and cluster. The caller's short-lived
 identity must match those IDs before mutation. Live applies keep the protected
 environment and maintainer approval requirement from ADR 0020.
+
+The `workers-*` batches of [infraweave-lab](../lab/README.md#managed-cloud-worker-batches)
+apply these roots: each cloud's `cluster/` then `deployment/` stage under one
+owner, with private per-stage state, preflight of credentials and quota before
+any apply, and per-cloud cleanup with cloud readback. Until a cloud's root is
+committed here, its batch fails preflight rather than skipping.

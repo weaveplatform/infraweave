@@ -1,0 +1,170 @@
+name: go | infraweave managed cloud worker labs
+
+# A managed cloud worker batch of test/terraform/lab on main, dispatched by a
+# maintainer: one cloud, or all three under one owner. labctl.py preflights
+# every selected cloud (committed root stages, private inputs, credentials
+# that resolve to the inputs' accounts, quota and any existing cluster)
+# before anything is provisioned, then applies each cloud's
+# test/terraform/cloud/workers/<cloud> cluster and deployment stages beside
+# one local platform deployment, runs the @managed-cloud-workers scenarios,
+# and destroys every owned cloud, verifying absence by cloud readback. The
+# workers-cloud environment's required reviewers approve the billable run,
+# and its branch rule admits only main. GitHub's OIDC token is federated to
+# each cloud; no key is stored. Each cloud's inputs file is an environment
+# secret because it names the cloud's account; it holds no credential.
+# A selected cloud without its secrets fails preflight: no cloud is skipped.
+# ref: decisions 0016 and 0020
+on:
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Managed cloud worker batch'
+        type: choice
+        options: [workers-aws, workers-azure, workers-google, workers-multicloud]
+        default: workers-multicloud
+
+permissions:
+  contents: read
+
+concurrency:
+  group: managed-cloud-workers
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+
+jobs:
+  batch:
+    name: 'infraweave-lab ${{ inputs.batch }}'
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    # The batch bounds allow an hour to provision and an hour to clean up.
+    timeout-minutes: 240
+    environment: workers-cloud
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BATCH: ${{ inputs.batch }}
+      AWS_INPUTS: ${{ secrets.WORKERS_AWS_INPUTS }}
+      AWS_ROLE: ${{ secrets.WORKERS_AWS_ROLE }}
+      AZURE_INPUTS: ${{ secrets.WORKERS_AZURE_INPUTS }}
+      AZURE_CLIENT: ${{ secrets.WORKERS_AZURE_CLIENT_ID }}
+      GOOGLE_INPUTS: ${{ secrets.WORKERS_GOOGLE_INPUTS }}
+      GOOGLE_PROVIDER: ${{ secrets.WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Read the pinned Terraform release
+        id: pins
+        run: |
+          version=$(sed -n '/^var Terraform = /,/^}/ s/.*Version: *"\([^"]*\)".*/\1/p' test/deps/tools.go)
+          test -n "$version"
+          echo "terraform=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+          terraform_version: ${{ steps.pins.outputs.terraform }}
+
+      - name: Read the batch's clouds
+        id: clouds
+        run: |
+          set -euo pipefail
+          clouds=$(jq -r '.clouds | join(" ")' "test/terraform/lab/batches/${BATCH}.json")
+          test -n "$clouds"
+          echo "clouds=$clouds" >> "$GITHUB_OUTPUT"
+
+      # Each sign-in runs only when its secret is set, so a missing one
+      # reaches preflight, which names it and fails the batch.
+      - name: AWS credentials
+        if: ${{ contains(steps.clouds.outputs.clouds, 'aws') && env.AWS_ROLE != '' }}
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.WORKERS_AWS_ROLE }}
+          aws-region: ${{ secrets.WORKERS_AWS_REGION }}
+          role-duration-seconds: 14400
+          mask-aws-account-id: true
+
+      - name: Azure sign-in
+        if: ${{ contains(steps.clouds.outputs.clouds, 'azure') && env.AZURE_CLIENT != '' }}
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.WORKERS_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.WORKERS_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.WORKERS_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Google credentials
+        if: ${{ contains(steps.clouds.outputs.clouds, 'google') && env.GOOGLE_PROVIDER != '' }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.WORKERS_GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Write the private cloud inputs
+        env:
+          CLOUDS: ${{ steps.clouds.outputs.clouds }}
+        run: |
+          set -euo pipefail
+          umask 077
+          inputs="$RUNNER_TEMP/workers-inputs"
+          mkdir -p "$inputs"
+          : > "$inputs/arguments"
+          for cloud in $CLOUDS; do
+            variable="$(echo "$cloud" | tr '[:lower:]' '[:upper:]')_INPUTS"
+            if [ -n "${!variable}" ]; then
+              printf '%s' "${!variable}" > "$inputs/$cloud.json"
+              echo "--inputs=$cloud=$inputs/$cloud.json" >> "$inputs/arguments"
+            fi
+          done
+
+      - name: Build the verification-only lab helper
+        # Scope FIPS to infraweave. The provisioning CLI authenticates provider
+        # releases with OpenPGP, whose key IDs require legacy SHA-1 hashing.
+        env:
+          GOFIPS140: certified
+          GODEBUG: fips140=only
+        run: go build -o "$RUNNER_TEMP/infraweave-lab" ./test/acceptance/cmd/infraweave-lab
+
+      - name: Run the managed cloud worker batch
+        run: |
+          set -euo pipefail
+          mapfile -t inputs < "$RUNNER_TEMP/workers-inputs/arguments"
+          python3 test/terraform/lab/labctl.py run --batch "$BATCH" --fips \
+            --directory "$RUNNER_TEMP/infraweave-lab-workers" --helper "$RUNNER_TEMP/infraweave-lab" "${inputs[@]}"
+
+      # Cancellation or a failed run retries cleanup from the private journal.
+      - name: Verify every owned cloud's cleanup
+        if: always()
+        run: |
+          directory="$RUNNER_TEMP/infraweave-lab-workers"
+          if [ -f "$directory/deployment.json" ]; then
+            python3 test/terraform/lab/labctl.py down --directory "$directory"
+          fi
+
+      # Only the redacted evidence leaves the runner: journals, inputs, state
+      # and unredacted reports name the clouds' accounts.
+      - name: Retain redacted evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: managed-cloud-workers-${{ inputs.batch }}-evidence
+          path: |
+            ${{ runner.temp }}/infraweave-lab-workers/evidence
+            ${{ runner.temp }}/infraweave-lab-workers/platform/evidence
+          if-no-files-found: ignore
+          retention-days: 7

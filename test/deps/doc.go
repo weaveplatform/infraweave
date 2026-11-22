@@ -34,6 +34,9 @@
 // PostgreSQL, object storage and TLS Gitea without starting replacements.
 // Each borrowing process owns its database template and fixture namespace;
 // Terraform owns and verifies infrastructure destruction.
+// WorkerHosting reads a managed cloud batch's workers manifest, the
+// INFRAWEAVE_LAB_WORKERS file, and fails unless it belongs to the borrowed
+// deployment; it calls no cloud API.
 //
 // # Dependencies
 //
