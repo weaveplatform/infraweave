@@ -111,6 +111,9 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@ai"}, "integrations"},
 		{[]string{"@provider:resource:spacelift_stack", "@terraform"}, "terraform"},
 		{[]string{"@postgres", "@vcs", "@vcs-lab", "@lab:gitlab"}, "vcs-lab"},
+		{[]string{"@postgres", "@kubernetes", "@kubernetes-lab"}, "kubernetes-lab"},
+		{[]string{"@terraform", "@kubernetes-lab"}, "kubernetes-lab"},
+		{[]string{"@vcs-lab", "@kubernetes-lab"}, "vcs-lab"},
 	} {
 		got, err := harness.Place(tc.tags)
 		if err != nil || got != tc.want {
@@ -128,15 +131,17 @@ func TestUnitPlace(t *testing.T) {
 }
 
 func TestUnitTagExpression(t *testing.T) {
-	runPrefix := "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
+	ordinary := "~@vcs-lab && ~@kubernetes-lab"
+	runPrefix := ordinary + " && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	corePrefix := integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai"
 	for name, want := range map[string]string{
-		"":                "~@vcs-lab",
+		"":                ordinary,
 		"vcs-lab":         "@vcs-lab",
-		"terraform-plans": "~@vcs-lab && @terraform-plans",
-		"terraform-vcs":   "~@vcs-lab && ~@terraform-plans && @terraform-vcs",
-		"terraform":       "~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && @terraform",
+		"kubernetes-lab":  "~@vcs-lab && @kubernetes-lab",
+		"terraform-plans": ordinary + " && @terraform-plans",
+		"terraform-vcs":   ordinary + " && ~@terraform-plans && @terraform-vcs",
+		"terraform":       ordinary + " && ~@terraform-plans && ~@terraform-vcs && @terraform",
 		"runs":            strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
 		"integrations":    strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
 		"identity":        corePrefix + " && @identity",
@@ -236,7 +241,8 @@ func TestUnitPartitionSelections(t *testing.T) {
 	}
 	withoutLabs := godogScenarios(t, expr)
 	for id, scenario := range all {
-		want := !slices.Contains(pickleTags(scenario), "@vcs-lab")
+		tags := pickleTags(scenario)
+		want := !slices.Contains(tags, "@vcs-lab") && !slices.Contains(tags, "@kubernetes-lab")
 		if _, got := withoutLabs[id]; got != want {
 			t.Errorf("default selection of %s: %s = %t, want %t", scenario.Uri, scenario.Name, got, want)
 		}
@@ -246,7 +252,7 @@ func TestUnitPartitionSelections(t *testing.T) {
 // The split must preserve the actual parser's complete previous Terraform
 // selection, with no duplicated or misplaced scenario in any required job.
 func TestUnitTerraformSplitCoverage(t *testing.T) {
-	legacy := godogScenarios(t, "~@vcs-lab && @terraform")
+	legacy := godogScenarios(t, "~@vcs-lab && ~@kubernetes-lab && @terraform")
 	union := map[string]string{}
 	for _, name := range []string{"terraform", "terraform-plans", "terraform-vcs"} {
 		expr, err := harness.TagExpression(name)

@@ -186,6 +186,7 @@
     "terraformDescendantTimeoutAndCancellation": "passed against actual child processes, including TERM-resistant child KILL escalation",
     "exactEndpointRedirectRefusal": "passed in Go and Python; redirected targets received zero requests",
     "certifiedFipsRaceLabAndKubernetesTests": "passed",
+    "certifiedFipsRacePartitionSelections": "passed with shuffled order; complete Godog ownership, explicit lab precedence and ordinary-selection lab exclusion",
     "configuredGoLint": "passed; no issues",
     "terraformValidate": "passed",
     "docsCheck": "passed",
