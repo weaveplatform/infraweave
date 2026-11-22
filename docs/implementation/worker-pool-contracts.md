@@ -52,6 +52,11 @@ account/run; its secrets are sealed to this pool key. Public workers use the
 existing `/worker/v1` protocol and are admitted only with its installation pool
 certificate. The worker session has no tenant browsing authority.
 
+Worker sessions bind their signed certificate generation to registration and
+current pool state; private resume cannot revive a pre-reset token. The
+[session contract and verification](worker-session-verification.md) records
+the mutation fences and legacy-token re-registration behavior.
+
 The server configuration is strict `worker.public_pool`: `enabled` (false),
 `allowed_registries` (the existing ADR allowlist), `outgoing_ip_addresses` (empty
 array), and `preparing_timeout` (15 minutes). Chart `publicWorkerPool.enabled`

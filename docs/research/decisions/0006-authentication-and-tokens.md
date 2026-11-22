@@ -105,6 +105,23 @@ Nothing about access lives in the token: the session row, which names the
 organization and the account, and 0007's evaluator decide every request, so
 a binding change takes effect without a new token.
 
+Worker session JWTs remain stateless: their `jti` has no session row. They
+add the worker-only signed `iw_worker_serial` claim, a positive int64 JSON
+integer naming the pool certificate generation at registration. Verification
+requires it for `iw_kind: worker` and rejects its presence, including `null`,
+on every other kind. Signature, issuer, audience, kind and lifetime checks
+still apply. It is separate from OAuth `scope` and grants no API rights.
+The worker service compares this immutable claim with both the worker's
+registration serial and its pool's current serial before any worker effect;
+[0008](0008-run-execution-and-worker-protocol.md#the-worker-api) defines the
+transaction and renewal rules.
+
+An older worker JWT without the claim fails closed with `401`. The supported
+launcher responds by registering again with its pool key and persisted worker
+ID; a current certificate resumes a private worker, while a reset certificate
+must be replaced through the configured pool credential. There is no
+compatibility path that infers a missing generation from mutable worker state.
+
 ### Members and identity providers
 
 - **Tables.**

@@ -55,7 +55,8 @@ type fakes struct {
 	// active members.
 	owners map[kernel.MemberID]apikey.Owner
 	// subjects are each issued token's sub, by its session.
-	subjects map[kernel.ULID]string
+	subjects      map[kernel.ULID]string
+	workerSerials map[kernel.ULID]int64
 	// expiries are the tokens' expiries by session, as Issue set them.
 	expiries map[kernel.ULID]time.Time
 	// org is every account's organization.
@@ -292,12 +293,16 @@ func (f *fakes) Issue(_ context.Context, r token.Request) (string, token.Claims,
 	}
 	now := f.now.Truncate(time.Second)
 	f.subjects[r.Session] = r.Subject
+	if f.workerSerials == nil {
+		f.workerSerials = map[kernel.ULID]int64{}
+	}
+	f.workerSerials[r.Session] = r.WorkerSerial
 	if f.expiries == nil {
 		f.expiries = map[kernel.ULID]time.Time{}
 	}
 	f.expiries[r.Session] = now.Add(r.TTL)
 	return fmt.Sprintf("%s %s %s", r.Kind, r.Session, r.Audience), token.Claims{
-		Subject: r.Subject, Session: r.Session, Kind: r.Kind, Audience: r.Audience,
+		Subject: r.Subject, Session: r.Session, Kind: r.Kind, Audience: r.Audience, WorkerSerial: r.WorkerSerial,
 		IssuedAt: now, Expiry: now.Add(r.TTL),
 	}, nil
 }
@@ -317,7 +322,7 @@ func (f *fakes) Verify(_ context.Context, raw, aud string) (token.Claims, error)
 		return token.Claims{}, token.ErrToken
 	}
 	c := token.Claims{
-		Kind: token.Kind(parts[0]), Session: id, Subject: f.subjects[id], Expiry: f.expiries[id],
+		Kind: token.Kind(parts[0]), Session: id, Subject: f.subjects[id], Expiry: f.expiries[id], WorkerSerial: f.workerSerials[id],
 	}
 	if len(parts) == 4 {
 		c.Scope = strings.ReplaceAll(parts[3], ",", " ")

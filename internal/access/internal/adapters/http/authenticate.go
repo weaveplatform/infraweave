@@ -126,10 +126,11 @@ func Origin(u string) string {
 // client's address, and once it authenticates, the bearer token with its
 // expiry, or for a browser session none and the session's end.
 type request struct {
-	addr    string
-	token   string
-	expiry  time.Time
-	browser bool
+	addr         string
+	token        string
+	expiry       time.Time
+	workerSerial int64
+	browser      bool
 }
 
 type requestKey struct{}
@@ -178,7 +179,7 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 				} else {
 					p, c, err = a.token(r.Context(), raw, reach)
 				}
-				rec.token, rec.expiry = raw, c.Expiry
+				rec.token, rec.expiry, rec.workerSerial = raw, c.Expiry, c.WorkerSerial
 			} else if secret, ok := a.cookie(r); ok {
 				var ss session.Session
 				p, ss, err = a.browser(r.Context(), secret, reach)
@@ -198,7 +199,7 @@ func (a Authenticator) Middleware(access func(*http.Request) accessapi.Access) f
 			if a.worker {
 				ctx = accessapi.WithBearer(
 					ctx,
-					accessapi.Bearer{ID: p.ActorID, Expires: rec.expiry},
+					accessapi.Bearer{ID: p.ActorID, Expires: rec.expiry, WorkerSerial: rec.workerSerial},
 				)
 			}
 			next.ServeHTTP(w, r.WithContext(ctx))

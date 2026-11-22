@@ -19,10 +19,10 @@ import (
 func (s *Service) BindRuns(runs accessapi.Runs) { s.runs = runs }
 
 // WorkerToken is a worker session token for worker: aud infraweave-worker,
-// sub the worker, auth.tokens.worker.ttl, and no session row, so only its
-// expiry ends it.
-func (s *Service) WorkerToken(ctx context.Context, worker kernel.ULID) (accessapi.Token, error) {
-	return s.bare(ctx, token.KindWorker, accessapi.WorkerAudience, worker, s.d.WorkerTTL)
+// sub the worker and iw_worker_serial the certificate generation. It has no
+// session row; expiry and the worker protocol's generation fence bound it.
+func (s *Service) WorkerToken(ctx context.Context, worker kernel.ULID, serial int64) (accessapi.Token, error) {
+	return s.bare(ctx, token.KindWorker, accessapi.WorkerAudience, worker, s.d.WorkerTTL, serial)
 }
 
 // VerifyWorker is the worker a worker session token names.
@@ -44,7 +44,7 @@ func (s *Service) AuthenticateWorker(ctx context.Context, raw string) (kernel.Pr
 		return kernel.Principal{}, token.Claims{}, err
 	}
 	return kernel.Principal{Kind: kernel.PrincipalWorker, ActorID: b.ID},
-		token.Claims{Kind: token.KindWorker, Subject: b.ID.String(), Expiry: b.Expires}, nil
+		token.Claims{Kind: token.KindWorker, Subject: b.ID.String(), Expiry: b.Expires, WorkerSerial: b.WorkerSerial}, nil
 }
 
 // RunToken is a run token for run: aud infraweave-runner, sub the run,
@@ -52,7 +52,7 @@ func (s *Service) AuthenticateWorker(ctx context.Context, raw string) (kernel.Pr
 // only while the run is in a worker state, which bounds it more tightly
 // than its expiry.
 func (s *Service) RunToken(ctx context.Context, run kernel.ULID) (accessapi.Token, error) {
-	return s.bare(ctx, token.KindRunner, accessapi.RunnerAudience, run, s.d.RunTTL)
+	return s.bare(ctx, token.KindRunner, accessapi.RunnerAudience, run, s.d.RunTTL, 0)
 }
 
 // VerifyRun is the run a run token names.
@@ -80,18 +80,19 @@ func (s *Service) AuthenticateRunner(ctx context.Context, raw string) (kernel.Pr
 
 // bare issues a token of kind for audience naming id, with no session
 // row: its jti is a fresh ULID that nothing records.
-func (s *Service) bare(ctx context.Context, kind token.Kind, audience string, id kernel.ULID, ttl time.Duration) (accessapi.Token, error) {
+func (s *Service) bare(ctx context.Context, kind token.Kind, audience string, id kernel.ULID, ttl time.Duration, serial int64) (accessapi.Token, error) {
 	raw, c, err := s.d.Tokens.Issue(ctx, token.Request{
-		Kind:     kind,
-		Subject:  id.String(),
-		Session:  kernel.NewULID(),
-		Audience: audience,
-		TTL:      ttl,
+		Kind:         kind,
+		Subject:      id.String(),
+		Session:      kernel.NewULID(),
+		Audience:     audience,
+		TTL:          ttl,
+		WorkerSerial: serial,
 	})
 	if err != nil {
 		return accessapi.Token{}, fmt.Errorf("issue %s token for %s: %w", kind, id, err)
 	}
-	return accessapi.Token{Raw: raw, Expires: c.Expiry}, nil
+	return accessapi.Token{Raw: raw, Expires: c.Expiry, WorkerSerial: c.WorkerSerial}, nil
 }
 
 // verifyBare is the ID a bare token of kind for audience names and its
@@ -105,10 +106,11 @@ func (s *Service) verifyBare(ctx context.Context, raw string, kind token.Kind, a
 		return accessapi.Bearer{}, err //nolint:wrapcheck // the store names the read
 	}
 	id, err := kernel.ParseULID(c.Subject)
-	if c.Kind != kind || err != nil {
+	if c.Kind != kind || err != nil || kind == token.KindWorker && c.WorkerSerial <= 0 ||
+		kind != token.KindWorker && c.WorkerSerial != 0 {
 		return accessapi.Bearer{}, accessapi.ErrInvalidToken
 	}
-	return accessapi.Bearer{ID: id, Expires: c.Expiry}, nil
+	return accessapi.Bearer{ID: id, Expires: c.Expiry, WorkerSerial: c.WorkerSerial}, nil
 }
 
 // InRunToken is an in-run API token for r's run: an API token whose sub is

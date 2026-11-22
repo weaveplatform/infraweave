@@ -72,7 +72,7 @@ func TestUnitWorkerContentionWaitReleasesConnectionAndHonorsWake(t *testing.T) {
 				allowed := sch.wait()
 				out := f.poll(b, worker.PollInput{})
 				pending(t, out)
-				if db.active.Load() || db.commits.Load() != 1 || sch.attempts.Load() != 1 {
+				if db.active.Load() || db.commits.Load() != 2 || sch.attempts.Load() != 1 {
 					t.Fatalf("retry held connection or spun: active=%t commits=%d attempts=%d", db.active.Load(), db.commits.Load(), sch.attempts.Load())
 				}
 				<-time.After(250 * time.Millisecond)
@@ -86,7 +86,7 @@ func TestUnitWorkerContentionWaitReleasesConnectionAndHonorsWake(t *testing.T) {
 					want = 250 * time.Millisecond
 				}
 				got := <-out
-				if !claimed(got, allowed) || got.took != want || sch.attempts.Load() != 2 || db.active.Load() || db.commits.Load() != 2 {
+				if !claimed(got, allowed) || got.took != want || sch.attempts.Load() != 2 || db.active.Load() || db.commits.Load() != 3 {
 					t.Fatalf("retry result=%+v attempts=%d active=%t commits=%d", got, sch.attempts.Load(), db.active.Load(), db.commits.Load())
 				}
 			})

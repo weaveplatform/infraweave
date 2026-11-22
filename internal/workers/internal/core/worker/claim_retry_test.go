@@ -37,15 +37,24 @@ func (s *refusalScheduler) Claim(ctx context.Context, claim workersapi.Claim) (w
 	return s.scheduler.Claim(ctx, claim)
 }
 
-type refusalCommitDB struct{}
+type refusalCommitDB struct{ commits int }
 
-type refusalCommitTx struct{ fakeTx }
-
-func (refusalCommitDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
-	return refusalCommitTx{}, nil
+type refusalCommitTx struct {
+	fakeTx
+	db *refusalCommitDB
 }
 
-func (refusalCommitTx) Commit(context.Context) error { return errDown }
+func (d *refusalCommitDB) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
+	return refusalCommitTx{db: d}, nil
+}
+
+func (t refusalCommitTx) Commit(context.Context) error {
+	t.db.commits++
+	if t.db.commits == 2 {
+		return errDown
+	}
+	return nil
+}
 
 // Real run refusal and assignment are covered by the worker acceptance suite;
 // these fault-injected ports isolate commit ordering and commit failure.
@@ -55,7 +64,7 @@ func TestUnitWorkerPollCommitsRefusalBeforeRetryingClaim(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				d := worker.Deps{}
 				if fails {
-					d.DB = refusalCommitDB{}
+					d.DB = &refusalCommitDB{}
 				}
 				f := newFixture(t, d)
 				sch := &refusalScheduler{scheduler: &scheduler{}, t: t, f: f}

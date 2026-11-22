@@ -14,6 +14,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -85,8 +86,11 @@ func (s *store) Resume(_ context.Context, w worker.Worker) error {
 	return nil
 }
 
-func (s *store) Seen(ctx context.Context, id kernel.ULID, busy bool, _ time.Time) (worker.Worker, int64, error) {
+func (s *store) Seen(ctx context.Context, id kernel.ULID, generation int64, busy bool, _ time.Time) (worker.Worker, int64, error) {
 	w, serial, err := s.Worker(ctx, id, false)
+	if err == nil && (generation <= 0 || w.Serial != generation || serial != generation) {
+		return worker.Worker{}, 0, worker.ErrNotFound
+	}
 	w.Busy = busy
 	return w, serial, err
 }
@@ -130,10 +134,10 @@ type tokens struct {
 	expires map[string]time.Time
 }
 
-func (t *tokens) WorkerToken(_ context.Context, w kernel.ULID) (accessapi.Token, error) {
-	raw := "session." + w.String()
+func (t *tokens) WorkerToken(_ context.Context, w kernel.ULID, serial int64) (accessapi.Token, error) {
+	raw := "session." + w.String() + "." + strconv.FormatInt(serial, 10)
 	t.expires[raw] = time.Now().Add(time.Hour)
-	return accessapi.Token{Raw: raw, Expires: t.expires[raw]}, t.fail
+	return accessapi.Token{Raw: raw, Expires: t.expires[raw], WorkerSerial: serial}, t.fail
 }
 
 func (t *tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, error) {
@@ -145,11 +149,13 @@ func (t *tokens) VerifyWorker(_ context.Context, raw string) (accessapi.Bearer, 
 		return accessapi.Bearer{}, t.fail
 	}
 	id, ok := strings.CutPrefix(raw, "session.")
+	id, generation, _ := strings.Cut(id, ".")
+	serial, serialErr := strconv.ParseInt(generation, 10, 64)
 	u, err := kernel.ParseULID(id)
-	if !ok || err != nil {
+	if !ok || err != nil || serialErr != nil || serial <= 0 {
 		return accessapi.Bearer{}, accessapi.ErrInvalidToken
 	}
-	return accessapi.Bearer{ID: u, Expires: t.expires[raw]}, nil
+	return accessapi.Bearer{ID: u, Expires: t.expires[raw], WorkerSerial: serial}, nil
 }
 
 // limits allows max workers in all.
@@ -365,7 +371,7 @@ func TestUnitProtocolHold(t *testing.T) {
 		f := newFixture(t)
 		w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
 		f.store.workers[w.ID] = w
-		tok, err := f.tokens.WorkerToken(t.Context(), w.ID)
+		tok, err := f.tokens.WorkerToken(t.Context(), w.ID, w.Serial)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -413,7 +419,7 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	f.svc.BindScheduler(&scheduler{run: &a})
 	w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
 	f.store.workers[w.ID] = w
-	tok, err := f.tokens.WorkerToken(t.Context(), w.ID)
+	tok, err := f.tokens.WorkerToken(t.Context(), w.ID, w.Serial)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +456,7 @@ func TestUnitProtocolEnded(t *testing.T) {
 		f.svc.BindLiveness(e)
 		w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
 		f.store.workers[w.ID] = w
-		tok, err := f.tokens.WorkerToken(t.Context(), w.ID)
+		tok, err := f.tokens.WorkerToken(t.Context(), w.ID, w.Serial)
 		if err != nil {
 			t.Fatal(err)
 		}

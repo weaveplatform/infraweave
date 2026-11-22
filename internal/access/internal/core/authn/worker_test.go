@@ -35,7 +35,7 @@ func TestUnitWorkerTokens(t *testing.T) {
 	w := newWorld(t)
 	ctx := t.Context()
 	worker, run := kernel.NewULID(), kernel.NewULID()
-	wt, err := w.s.WorkerToken(ctx, worker)
+	wt, err := w.s.WorkerToken(ctx, worker, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestUnitWorkerTokens(t *testing.T) {
 		t.Errorf("expiries = %s, %s", wt.Expires, rt.Expires)
 	}
 	if got, err := w.s.VerifyWorker(ctx, wt.Raw); err != nil || got.ID != worker ||
-		!got.Expires.Equal(wt.Expires) {
+		!got.Expires.Equal(wt.Expires) || got.WorkerSerial != 7 {
 		t.Errorf("VerifyWorker = %+v, %v", got, err)
 	}
 	if got, err := w.s.VerifyRun(ctx, rt.Raw); err != nil || got.ID != run ||
@@ -86,7 +86,7 @@ func TestUnitWorkerTokens(t *testing.T) {
 	}
 	p, c, err := w.s.AuthenticateWorker(ctx, wt.Raw)
 	if err != nil || p.Kind != kernel.PrincipalWorker || p.ActorID != worker ||
-		!p.AccountID.IsZero() || !c.Expiry.Equal(wt.Expires) {
+		!p.AccountID.IsZero() || !c.Expiry.Equal(wt.Expires) || c.WorkerSerial != 7 {
 		t.Errorf("AuthenticateWorker = %+v, %+v, %v", p, c, err)
 	}
 	for name, raw := range map[string]string{"run": rt.Raw, "API": api, "garbage": "garbage"} {
@@ -127,7 +127,7 @@ func TestUnitWorkerTokens(t *testing.T) {
 		t.Errorf("AuthenticateRunner with Verify down = %v", err)
 	}
 	w.f.fail = "Issue"
-	if _, err := w.s.WorkerToken(ctx, worker); !errors.Is(err, errDown) {
+	if _, err := w.s.WorkerToken(ctx, worker, 7); !errors.Is(err, errDown) {
 		t.Errorf("Issue down = %v", err)
 	}
 }

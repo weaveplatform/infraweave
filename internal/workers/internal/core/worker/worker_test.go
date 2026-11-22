@@ -169,7 +169,7 @@ func (s *store) Resume(_ context.Context, w worker.Worker) error {
 	return nil
 }
 
-func (s *store) Seen(_ context.Context, id kernel.ULID, busy bool, now time.Time) (worker.Worker, int64, error) {
+func (s *store) Seen(_ context.Context, id kernel.ULID, serial int64, busy bool, now time.Time) (worker.Worker, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.down("Seen"); err != nil {
@@ -178,6 +178,9 @@ func (s *store) Seen(_ context.Context, id kernel.ULID, busy bool, now time.Time
 	w, ok := s.workers[id]
 	if !ok {
 		return w, 0, worker.ErrNotFound
+	}
+	if serial <= 0 || serial != w.Serial || serial != s.pools[w.Pool].Serial {
+		return worker.Worker{}, 0, worker.ErrNotFound
 	}
 	w.LastSeenAt, w.Busy, w.Offline = now, busy, false
 	s.workers[id] = w
@@ -322,11 +325,11 @@ func (s *store) OfPools(_ context.Context, _ kernel.AccountID, pools []kernel.UL
 // fail fails the session tokens and failRun the run tokens.
 type tokens struct{ fail, failRun bool }
 
-func (t tokens) WorkerToken(_ context.Context, w kernel.ULID) (accessapi.Token, error) {
+func (t tokens) WorkerToken(_ context.Context, w kernel.ULID, serial int64) (accessapi.Token, error) {
 	if t.fail {
 		return accessapi.Token{}, errDown
 	}
-	return accessapi.Token{Raw: "session " + w.String(), Expires: time.Now().Add(time.Hour)}, nil
+	return accessapi.Token{Raw: "session " + w.String(), Expires: time.Now().Add(time.Hour), WorkerSerial: serial}, nil
 }
 
 func (t tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, error) {

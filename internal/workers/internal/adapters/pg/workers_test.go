@@ -151,7 +151,7 @@ func TestAccWorkers(t *testing.T) {
 		{busy: false, after: 3 * time.Minute},
 	} {
 		now := at.Add(step.after)
-		got, _, err := f.store.Seen(ctx, w.ID, step.busy, now)
+		got, _, err := f.store.Seen(ctx, w.ID, w.Serial, step.busy, now)
 		if err != nil || got.Busy != step.busy || !got.LastSeenAt.Equal(now) {
 			t.Fatalf("Seen %d = %+v, %v", i, got, err)
 		}
@@ -165,6 +165,7 @@ func TestAccWorkers(t *testing.T) {
 	if _, _, err := f.store.Seen(
 		ctx,
 		kernel.NewULID(),
+		p.Serial,
 		false,
 		at,
 	); !errors.Is(
@@ -224,7 +225,7 @@ func TestAccWorkerSearch(t *testing.T) {
 	at := time.Unix(1_700_000_000, 0).UTC()
 	idle := f.newWorker(t, p, at)
 	busy := f.newWorker(t, p, at.Add(time.Second))
-	if _, _, err := f.store.Seen(ctx, busy.ID, true, at); err != nil {
+	if _, _, err := f.store.Seen(ctx, busy.ID, busy.Serial, true, at); err != nil {
 		t.Fatal(err)
 	}
 	drained := f.newWorker(t, p, at.Add(2*time.Second))
@@ -301,7 +302,7 @@ func TestAccWorkersUnavailable(t *testing.T) {
 		"Worker":       func() error { _, _, err := s.Worker(ctx, w.ID, false); return err }(),
 		"CreateWorker": s.CreateWorker(ctx, w),
 		"Resume":       s.Resume(ctx, w),
-		"Seen":         func() error { _, _, err := s.Seen(ctx, w.ID, false, time.Now()); return err }(),
+		"Seen":         func() error { _, _, err := s.Seen(ctx, w.ID, w.Serial, false, time.Now()); return err }(),
 		"Remove":       s.Remove(ctx, w.ID),
 		"Drain":        func() error { _, err := s.Drain(ctx, acct, p.ID, w.ID, true); return err }(),
 		"Cycle":        s.Cycle(ctx, acct, p.ID),
@@ -367,7 +368,7 @@ func TestAccWorkerReap(t *testing.T) {
 	if err != nil || len(offline.Edges) != 1 || offline.Edges[0].Node.ID != old.ID {
 		t.Errorf("status OFFLINE = %+v, %v", offline.Edges, err)
 	}
-	if got, _, err := f.store.Seen(ctx, old.ID, true, now); err != nil || got.Offline {
+	if got, _, err := f.store.Seen(ctx, old.ID, old.Serial, true, now); err != nil || got.Offline {
 		t.Errorf("a poll left the worker offline: %+v, %v", got, err)
 	}
 	if n, err := f.store.MarkOffline(ctx, now.Add(time.Minute)); err != nil || n != 2 {

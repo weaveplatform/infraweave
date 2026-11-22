@@ -19,17 +19,21 @@ import (
 // is "<kind> <subject> <audience>".
 type subjects struct{ *store }
 
-func (subjects) Issue(_ context.Context, r token.Request) (string, token.Claims, error) {
-	return string(r.Kind) + " " + r.Subject + " " + r.Audience,
-		token.Claims{Kind: r.Kind, Subject: r.Subject, Expiry: t0.Add(r.TTL)}, nil
+func (s subjects) Issue(_ context.Context, r token.Request) (string, token.Claims, error) {
+	raw := string(r.Kind) + " " + r.Subject + " " + r.Audience + " " + r.Session.String()
+	if s.workerSerials == nil {
+		s.workerSerials = map[string]int64{}
+	}
+	s.workerSerials[raw] = r.WorkerSerial
+	return raw, token.Claims{Kind: r.Kind, Subject: r.Subject, Expiry: t0.Add(r.TTL), WorkerSerial: r.WorkerSerial}, nil
 }
 
-func (subjects) Verify(_ context.Context, raw, aud string) (token.Claims, error) {
+func (s subjects) Verify(_ context.Context, raw, aud string) (token.Claims, error) {
 	parts := strings.Split(raw, " ")
-	if len(parts) != 3 || parts[2] != aud {
+	if len(parts) != 4 || parts[2] != aud {
 		return token.Claims{}, token.ErrToken
 	}
-	return token.Claims{Kind: token.Kind(parts[0]), Subject: parts[1], Expiry: t0.Add(time.Hour)},
+	return token.Claims{Kind: token.Kind(parts[0]), Subject: parts[1], Expiry: t0.Add(time.Hour), WorkerSerial: s.workerSerials[raw]},
 		nil
 }
 
@@ -62,7 +66,7 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 		Now: func() time.Time { return t0 },
 	})
 	worker, run := kernel.NewULID(), kernel.NewULID()
-	tok, err := auth.WorkerToken(t.Context(), worker)
+	tok, err := auth.WorkerToken(t.Context(), worker, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +100,7 @@ func TestUnitWorkerAuthenticator(t *testing.T) {
 	// carries without its port.
 	if code := send(workers, accessapi.Worker, tok.Raw); code != http.StatusNoContent ||
 		got.p.Kind != kernel.PrincipalWorker || got.p.ActorID != worker ||
-		got.b.ID != worker || !got.b.Expires.Equal(tok.Expires) || got.addr != "192.0.2.1" {
+		got.b.ID != worker || got.b.WorkerSerial != 7 || !got.b.Expires.Equal(tok.Expires) || got.addr != "192.0.2.1" {
 		t.Errorf("worker token = %d, %+v, %+v from %q", code, got.p, got.b, got.addr)
 	}
 	if code := send(workers, accessapi.Runner, runTok.Raw); code != http.StatusNoContent ||
@@ -151,7 +155,7 @@ func TestUnitStateAuthenticator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workerTok, err := auth.WorkerToken(t.Context(), kernel.NewULID())
+	workerTok, err := auth.WorkerToken(t.Context(), kernel.NewULID(), 7)
 	if err != nil {
 		t.Fatal(err)
 	}

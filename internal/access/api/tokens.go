@@ -20,17 +20,21 @@ const (
 // ErrInvalidToken is every token Tokens refuses, whichever part failed.
 var ErrInvalidToken = errors.New("invalid token")
 
-// Token is a minted bearer token and when it expires.
+// Token is a minted bearer token and when it expires. WorkerSerial is positive
+// only for worker sessions and remains unchanged on renewal.
 type Token struct {
-	Raw     string
-	Expires time.Time
+	Raw          string
+	Expires      time.Time
+	WorkerSerial int64
 }
 
 // Bearer is what a verified worker session token or run token names:
-// the worker or the run, and when the token expires.
+// the worker or the run, and when the token expires. WorkerSerial is the signed
+// worker-only certificate generation; runner bearers leave it zero.
 type Bearer struct {
-	ID      kernel.ULID
-	Expires time.Time
+	ID           kernel.ULID
+	Expires      time.Time
+	WorkerSerial int64
 }
 
 type bearerKey struct{}
@@ -59,7 +63,8 @@ type InRunRequest struct {
 }
 
 // Tokens mints and verifies the tokens the worker protocol hands out. A
-// worker session token names a worker and lives auth.tokens.worker.ttl; a
+// worker session token names a worker and positive certificate serial, and lives
+// auth.tokens.worker.ttl; a
 // run token names a run and lives auth.tokens.run.ttl, and its holder is
 // accepted only while the caller finds the run in a worker state. An
 // in-run API token is an API token of a session with actor kind run,
@@ -68,7 +73,7 @@ type InRunRequest struct {
 //
 // ref: decision 0006 § "Token kinds", § "In-run API token"
 type Tokens interface {
-	WorkerToken(ctx context.Context, worker kernel.ULID) (Token, error)
+	WorkerToken(ctx context.Context, worker kernel.ULID, serial int64) (Token, error)
 	// VerifyWorker is the worker a worker session token names; any other
 	// token is ErrInvalidToken.
 	VerifyWorker(ctx context.Context, raw string) (Bearer, error)

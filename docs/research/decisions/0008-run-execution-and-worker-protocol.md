@@ -235,7 +235,9 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
     private key never leaves the customer.
   - **Reset.** `workerPoolReset` signs a new certificate and records its serial on
     the pool. Registrations and sessions bound to an older serial are refused at
-    their next call, so old workers stop within one poll.
+    their next call. A held poll rechecks its generation before every successful
+    return, including timeout and supersession, so old workers stop within one
+    poll even if a replacement registration has already resumed the same ID.
   - **Registration.** `POST /worker/v1/register` carries a compact JWS signed with
     the pool private key, with the certificate in `x5c` and the payload
     `{pool, iat, jti, version, os, arch, metadata}`. The server checks the chain
@@ -251,6 +253,28 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
     still exists. A launcher that was offline and whose session token expired
     meanwhile resumes this way and keeps its run. A resumed worker is not
     counted against `private-workers` again.
+    A private worker resumed with a replacement certificate keeps that ID but
+    records the new serial: old session tokens remain revoked. An ordinary
+    same-certificate restart retains the ID and generation.
+  - **Session generation.** The stateless worker JWT carries the positive,
+    worker-only signed `iw_worker_serial` claim
+    ([0006](0006-authentication-and-tokens.md#token-kinds)). The bearer serial,
+    worker registration serial and current pool serial must all match before
+    liveness (`last_seen_at`, `busy`, `offline`, `available_at`), exited-run
+    handling, run claims, signal delivery, renewal or deregistration can change
+    state. A missing or stale generation answers `401` without those effects.
+    Renewal retains the presented generation; it does not adopt one from a
+    resumed worker row. Losing a renewal response leaves the old token usable
+    until its own expiry while that generation remains current.
+  - **Generation fence.** Registration takes the pool row `FOR SHARE` before
+    touching a worker, and consumes the registration nonce, creates or resumes
+    the worker, and signs its token in one transaction. A token issuance failure
+    rolls those writes back, allowing the same registration proof to retry.
+    Session mutations take the pool `FOR SHARE` before the worker `FOR UPDATE`,
+    recheck all three serials, and commit their effects together. Reset's pool
+    write lock serializes with those short transactions: an operation admitted
+    first may commit before reset, while one admitted after reset must use the
+    new generation. No lock or transaction spans a held poll's wait.
   - **Run token.** Issued at claim (`aud` `infraweave-runner`), scoped to one run,
     accepted only while the run is in a worker state and its `state_version`
     matches the run's current execution, and valid at most until the run ends
@@ -284,7 +308,7 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   at `worker.poll_timeout_max`. A held poll holds no transaction or pooled
   connection ([0005](0005-persistence-postgresql.md)), and a worker's next
   poll answers its held one at once, so a worker holds one poll per replica.
-  The answer is always `200`
+  An authenticated, current generation's answer is `200`
   with a JSON body, empty when nothing happened, so a session renewal can ride on
   it. It may carry:
 

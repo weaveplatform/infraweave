@@ -78,26 +78,9 @@ func result(w Worker) PollResult {
 //
 // ref: decision 0008 § "The worker API", § "Claiming runs", § "Stop and kill"
 func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (PollResult, error) {
-	now := s.now()
-	w, serial, err := s.store.Seen(ctx, b.ID, in.Busy, now)
+	w, renewed, err := s.beginPoll(ctx, b, in)
 	if err != nil {
-		return PollResult{}, s.unauthenticated(err)
-	}
-	if w.Serial != serial {
-		return PollResult{}, refuse("worker %s registered under a replaced certificate", w.ID)
-	}
-	if !in.Busy && in.Run != nil {
-		if err := s.ended(ctx, w.ID, *in.Run, in.Exit); err != nil {
-			return PollResult{}, err
-		}
-	}
-	var renewed *accessapi.Token
-	if b.Expires.Sub(now) < RenewWithin {
-		t, err := s.tokens.WorkerToken(ctx, w.ID)
-		if err != nil {
-			return PollResult{}, err //nolint:wrapcheck // the access domain names the mint
-		}
-		renewed = &t
+		return PollResult{}, err
 	}
 	// The worker is reread and the claim tried after the wake-up is
 	// registered, so a change, or a run made ready, between Seen and the
@@ -109,36 +92,33 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 	timer := time.NewTimer(s.hold(in.Wait))
 	defer timer.Stop()
 	for {
-		cur, serial, err := s.store.Worker(ctx, w.ID, false)
+		cur, err := s.session(ctx, b, false)
 		if err != nil {
-			return PollResult{}, s.unauthenticated(err)
-		}
-		if cur.Serial != serial {
-			return PollResult{}, refuse("worker %s registered under a replaced certificate", w.ID)
+			return PollResult{}, err
 		}
 		out := result(cur)
 		out.Token = renewed
-		a, ok, err := s.claim(ctx, cur)
+		a, ok, err := s.claim(ctx, cur, b)
 		if err != nil {
 			return PollResult{}, err
 		}
 		if a.Retry {
 			if s.shouldAnswer(out, in) {
-				return out, nil
+				return s.sessionReply(ctx, b, out)
 			}
 			again, err := retryPoll(ctx, a.RetryAfter, wake, ended, timer.C)
 			if err != nil {
 				return PollResult{}, err
 			}
 			if !again || s.hub.stopped() {
-				return out, nil
+				return s.sessionReply(ctx, b, out)
 			}
 			continue
 		}
 		if ok {
 			out.Assignment = &a
 		}
-		sig, err := s.deliver(ctx, cur)
+		sig, err := s.deliver(ctx, cur, b)
 		if err != nil {
 			return PollResult{}, err
 		}
@@ -146,18 +126,77 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 			out.Signals = append(out.Signals, string(sig))
 		}
 		if s.shouldAnswer(out, in) {
-			return out, nil
+			return s.sessionReply(ctx, b, out)
 		}
 		select {
 		case <-wake:
 		case <-ended:
-			return result(cur), nil
+			return s.sessionReply(ctx, b, result(cur))
 		case <-timer.C:
-			return result(cur), nil
+			return s.sessionReply(ctx, b, result(cur))
 		case <-ctx.Done():
 			return PollResult{}, ctx.Err() //nolint:wrapcheck // the request ended
 		}
 	}
+}
+
+// session checks the immutable bearer generation against both registration
+// and current pool state. Locked checks acquire the pool before its worker.
+func (s *Service) session(ctx context.Context, b accessapi.Bearer, lock bool) (Worker, error) {
+	if b.WorkerSerial <= 0 {
+		return Worker{}, refuse("worker token has no credential generation")
+	}
+	w, serial, err := s.store.Worker(ctx, b.ID, lock)
+	if err != nil {
+		return Worker{}, s.unauthenticated(err)
+	}
+	if b.WorkerSerial != w.Serial || b.WorkerSerial != serial {
+		return Worker{}, refuse("worker %s credential generation is no longer current", b.ID)
+	}
+	return w, nil
+}
+
+// beginPoll fences all initial effects in one short transaction. Neither its
+// pool/worker locks nor its connection survive into a long poll's wait.
+func (s *Service) beginPoll(ctx context.Context, b accessapi.Bearer, in PollInput) (Worker, *accessapi.Token, error) {
+	var w Worker
+	var renewed *accessapi.Token
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		renewed = nil
+		var err error
+		w, err = s.session(ctx, b, true)
+		if err != nil {
+			return err
+		}
+		now := s.now()
+		w, _, err = s.store.Seen(ctx, b.ID, b.WorkerSerial, in.Busy, now)
+		if err != nil {
+			return s.unauthenticated(err)
+		}
+		if !in.Busy && in.Run != nil {
+			if err := s.ended(ctx, w.ID, *in.Run, in.Exit); err != nil {
+				return err
+			}
+		}
+		if b.Expires.Sub(now) < RenewWithin {
+			t, err := s.tokens.WorkerToken(ctx, w.ID, b.WorkerSerial)
+			if err != nil {
+				return err //nolint:wrapcheck // access names token issuance
+			}
+			renewed = &t
+		}
+		return nil
+	})
+	return w, renewed, err //nolint:wrapcheck // every failure is classified above
+}
+
+// sessionReply rechecks generation even when a timeout or superseding poll ends
+// the wait without another loop iteration. A cached worker is not authority.
+func (s *Service) sessionReply(ctx context.Context, b accessapi.Bearer, out PollResult) (PollResult, error) {
+	if _, err := s.session(ctx, b, false); err != nil {
+		return PollResult{}, err
+	}
+	return out, nil
 }
 
 // shouldAnswer applies the same delivery rules before normal holds and before
@@ -205,7 +244,7 @@ func (w Worker) idle() bool { return !w.Busy && !w.Drained && !w.Cycle }
 // It locks w's row before it claims, so polls of one worker on two
 // replicas claim one after the other and the second finds the worker
 // busy; a run token that cannot be minted rolls the claim back.
-func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error) {
+func (s *Service) claim(ctx context.Context, w Worker, b accessapi.Bearer) (Assignment, bool, error) {
 	if s.scheduler == nil || !w.idle() || w.Public && !s.publicPoolEnabled {
 		return Assignment{}, false, nil
 	}
@@ -224,7 +263,7 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 				return err //nolint:wrapcheck // the store names the owner lock
 			}
 		}
-		cur, _, err := s.store.Worker(ctx, w.ID, true)
+		cur, err := s.session(ctx, b, true)
 		if err != nil || !cur.idle() {
 			return err //nolint:wrapcheck // the store names the read
 		}
@@ -274,14 +313,17 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 // other poll answers it; "" when w is not busy or none waits.
 //
 // ref: decision 0008 § "Stop and kill"
-func (s *Service) deliver(ctx context.Context, w Worker) (workersapi.Signal, error) {
+func (s *Service) deliver(ctx context.Context, w Worker, b accessapi.Bearer) (workersapi.Signal, error) {
 	if s.signals == nil || !w.Busy {
 		return "", nil
 	}
 	var sig workersapi.Signal
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		var err error
-		sig, err = s.signals.Deliver(ctx, w.ID)
+		current, err := s.session(ctx, b, true)
+		if err != nil || !current.Busy {
+			return err
+		}
+		sig, err = s.signals.Deliver(ctx, current.ID)
 		return err //nolint:wrapcheck // the runs domain names the delivery
 	})
 	return sig, err //nolint:wrapcheck // as above
@@ -312,7 +354,13 @@ func (s *Service) unauthenticated(err error) error {
 // Deregister removes the session's worker, whose session then
 // authenticates nothing; ErrUnauthenticated when it is gone already.
 func (s *Service) Deregister(ctx context.Context, b accessapi.Bearer) error {
-	return s.unauthenticated(s.store.Remove(ctx, b.ID))
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		if _, err := s.session(ctx, b, true); err != nil {
+			return err
+		}
+		return s.store.Remove(ctx, b.ID) //nolint:wrapcheck // store names the removal
+	})
+	return s.unauthenticated(err)
 }
 
 // Wake ends the hold of every poll held for pool, each of which rereads
