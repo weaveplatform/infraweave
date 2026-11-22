@@ -70,6 +70,13 @@ swapped store/key identities fail to decrypt, `sample := false` still produces a
 sanitized capture, and public APPROVAL receipts report retained then expired
 samples before and after the actual cleanup/deletion jobs run.
 
+The composed evaluator and two-replica transition tests identify each evaluation
+and run-update event's fanout separately from the independent capture upload.
+They verify the exact account, target space, event, input and job identities;
+unsampled evaluations create one capture without spending sample quota. Caller
+rollback, lease loss and stale retries preserve run/receipt/flag identities,
+evaluation metadata, capture reservation time, staging state and queue generations.
+
 The policy PostgreSQL acceptance tests use real OPA V0/V1 and sealed filesystem
 objects. They race quota and capture reservations across two pools, including a
 different session timezone; prove rollback and account/hour/type isolation; use
