@@ -64,7 +64,7 @@ func (m *managedSteps) lists(want string) error {
 }
 
 // groups records the groups the identity provider reported at the home
-// member's latest sign-in to the account, as P23's sign-in will.
+// member's latest sign-in to the account.
 func (m *managedSteps) groups(ctx context.Context, which, names string) error {
 	_, err := m.w.Query(ctx, fmt.Sprintf(
 		`UPDATE account_users

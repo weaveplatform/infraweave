@@ -37,6 +37,6 @@
 //
 // It imports pgx, platform/tx, platform/queue for EnqueueTx and job kinds,
 // and platform/sql for the unavailable error; the ticker logs through
-// log/slog. The scheduler mode in internal/app runs the ticker; later
-// phases add their own sources, such as scheduled runs and drift detection.
+// log/slog. The scheduler mode in internal/app runs the ticker; scheduled
+// runs and drift detection supply their own periodic-task sources.
 package cron

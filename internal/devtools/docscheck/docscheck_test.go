@@ -40,30 +40,10 @@ const spec = "openapi: 3.0.3\ntags:\n  - name: Stacks\n    description: Stack ma
 // whatever their schema says.
 const anySchema = `{"x-id-pattern": ".+"}`
 
-// features, capabilities and supersessions are registers that name only
-// phases the plan has. The scope-and-tiers report's wording in a
-// capability's spacelift member and a phase in a code span are not
-// assignments.
-const (
-	features = `{"$schema": "schema/features.schema.json", "records": [
-  {"id": "stacks", "phase": "P0", "notes": "` + "`P42`" + ` is a name"}]}`
-	capabilities = `{"$schema": "schema/capabilities.schema.json", "records": [
-  {"id": "tag:Stacks", "product": "deploy", "spacelift": {"notes": "P99 in report 26"}, "infraweave": {"phase": "P0"}},
-  {"id": "tag:Runs", "product": "deploy", "infraweave": {"phase": "P1a", "also": "P0"}},
-  {"id": "operation:x", "infraweave": {"phase": "P1a"}}]}`
-	supersessions = `{"$schema": "schema/supersessions.schema.json", "records": [
-  {"id": "SUP-01", "replacementPhase": "P0, P1a"}]}`
-)
-
 // option is an architecture option's outline. H3s outside the nested
 // sections, and those before the tree, may differ between options.
 const option = "# Option\n\n## Summary\n\n### Rules\n\n## Full package tree\n\n### Status\n\n### The tree\n\n" +
 	"## Deep dives\n\n### Runs\n\n## Walkthroughs\n\n### A push\n"
-
-// plan is an implementation plan with two phases; the registers name both.
-const plan = "# Plan\n\n## Build status\n\n| P0 | done |\n\n## P0: Reference\n\nDecisions: [0001](../research/decisions/0001-one.md)\n\n" +
-	"**Depends on:** nothing.\n\n**Tasks**\n\n1. Generate.\n\n**Exit criteria**\n\n- `make gate` passes.\n\n" +
-	"## P1a: Skeleton\n\nDecisions: none.\n\n**Depends on:** P0.\n\n**Tasks**\n\n1. Serve.\n\n```\n## P9: Not a phase\n```\n\n**Exit criteria**\n\n- Served.\n"
 
 // glossary is a root glossary whose second term's definition runs over two
 // lines.
@@ -77,7 +57,8 @@ func pkgDoc(name string) string {
 }
 
 // tree is a repository that passes every check; each case changes one file.
-func tree() fstest.MapFS {
+func tree(t *testing.T) fstest.MapFS {
+	t.Helper()
 	return fstest.MapFS{
 		"README.md":   file("# Repo\n\n## Make targets\n"),
 		"GLOSSARY.md": file(glossary),
@@ -114,14 +95,14 @@ func tree() fstest.MapFS {
 				1,
 			) + "\n```\n## Not a heading\n```\n",
 		),
-		"docs/implementation/plan.md":                file(plan),
+		"docs/implementation/plan.md":                file(documentFixture(t, "plan.golden")),
 		"docs/data/schema/common.schema.json":        file(commonSchema),
 		"docs/data/schema/features.schema.json":      file(anySchema),
 		"docs/data/schema/capabilities.schema.json":  file(anySchema),
 		"docs/data/schema/supersessions.schema.json": file(anySchema),
-		"docs/data/features.json":                    file(features),
-		"docs/data/capabilities.json":                file(capabilities),
-		"docs/data/supersessions.json":               file(supersessions),
+		"docs/data/features.json":                    file(documentFixture(t, "features.json")),
+		"docs/data/capabilities.json":                file(documentFixture(t, "capabilities.json")),
+		"docs/data/supersessions.json":               file(documentFixture(t, "supersessions.json")),
 		".git/description.md":                        file("docs/missing.md\n"),
 		".github/workflows/w.yml":                    file("# docs/research/README.md\n"),
 		"api/spec.yaml": file(
@@ -131,7 +112,7 @@ func tree() fstest.MapFS {
 }
 
 func TestUnitCheckPasses(t *testing.T) {
-	found, err := Check(tree())
+	found, err := Check(tree(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,6 +122,10 @@ func TestUnitCheckPasses(t *testing.T) {
 }
 
 func TestUnitCheckFindings(t *testing.T) {
+	var findings map[string]string
+	if err := json.Unmarshal([]byte(documentFixture(t, "findings.json")), &findings); err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		name  string
 		edit  func(fstest.MapFS)
@@ -355,10 +340,10 @@ func TestUnitCheckFindings(t *testing.T) {
 			name: "phase without exit criteria",
 			edit: func(m fstest.MapFS) {
 				m["docs/implementation/plan.md"] = file(
-					strings.Replace(plan, "**Exit criteria**\n\n- Served.\n", "", 1),
+					strings.Replace(documentFixture(t, "plan.golden"), "**Exit criteria**\n\n- Served.\n", "", 1),
 				)
 			},
-			want:  `phase P1a has no "**Exit criteria**"`,
+			want:  findings["no-exit"],
 			where: "docs/implementation/plan.md:21",
 		},
 		{
@@ -366,42 +351,42 @@ func TestUnitCheckFindings(t *testing.T) {
 			edit: func(m fstest.MapFS) {
 				m["docs/implementation/plan.md"] = file(
 					strings.Replace(
-						plan,
+						documentFixture(t, "plan.golden"),
 						"Decisions: [0001](../research/decisions/0001-one.md)\n\n",
 						"",
 						1,
 					),
 				)
 			},
-			want:  `phase P0 has no "Decisions:"`,
+			want:  findings["no-decisions"],
 			where: "docs/implementation/plan.md:7",
 		},
 		{
 			name: "feature names a missing phase",
 			edit: func(m fstest.MapFS) {
-				m["docs/data/features.json"] = file(strings.Replace(features, `"P0"`, `"P2"`, 1))
+				m["docs/data/features.json"] = file(documentFixture(t, "features-unknown-owner.json"))
 			},
-			want:  "stacks names phase P2, which plan.md does not have",
+			want:  findings["feature-owner"],
 			where: "docs/data/features.json:2",
 		},
 		{
 			name: "capability names a missing phase",
 			edit: func(m fstest.MapFS) {
 				m["docs/data/capabilities.json"] = file(
-					strings.Replace(capabilities, `"also": "P0"`, `"also": "P0, P3"`, 1),
+					documentFixture(t, "capabilities-unknown-owner.json"),
 				)
 			},
-			want:  "tag:Runs names phase P3, which plan.md does not have",
+			want:  findings["capability-owner"],
 			where: "docs/data/capabilities.json:3",
 		},
 		{
 			name: "replacement in a missing phase",
 			edit: func(m fstest.MapFS) {
 				m["docs/data/supersessions.json"] = file(
-					strings.Replace(supersessions, "P1a", "P1b", 1),
+					documentFixture(t, "supersessions-unknown-owner.json"),
 				)
 			},
-			want:  "SUP-01 names phase P1b, which plan.md does not have",
+			want:  findings["replacement-owner"],
 			where: "docs/data/supersessions.json:2",
 		},
 		{
@@ -495,7 +480,10 @@ func TestUnitCheckFindings(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			m := tree()
+			if tc.want == "" {
+				t.Fatal("expected finding must be nonempty")
+			}
+			m := tree(t)
 			tc.edit(m)
 			found, err := Check(m)
 			if err != nil {
@@ -532,7 +520,7 @@ func openQuestions(m fstest.MapFS, reports ...string) {
 // their checks, and the register without a spec to check it against. The
 // report defines the marker, so no record lists it.
 func TestUnitCheckScopeAndOpenQuestions(t *testing.T) {
-	m := tree()
+	m := tree(t)
 	m["docs/research/reference/30-open-questions.md"] = file(
 		goodReport + "\n| *(unverified)* | A claim no primary source confirms |\n",
 	)
@@ -570,7 +558,7 @@ func TestUnitCheckWithoutPlan(t *testing.T) {
 		"no registers": registers,
 	} {
 		t.Run(name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			for _, p := range gone {
 				delete(m, p)
 			}
@@ -587,7 +575,7 @@ func TestUnitCheckWithoutPlan(t *testing.T) {
 }
 
 func TestUnitCheckSortsFindings(t *testing.T) {
-	m := tree()
+	m := tree(t)
 	m["docs/b.md"] = file("[x](gone.md)\n[y](gone.md)\n")
 	m["docs/a.md"] = file("[x](gone.md)\n")
 	found, err := Check(m)
@@ -622,7 +610,7 @@ func (f failFS) Open(name string) (fs.File, error) {
 func TestUnitCheckReadErrors(t *testing.T) {
 	for _, name := range []string{"docs/research/README.md", "internal/x/x.go", "docs", "internal", referenceAPI, glossaryDoc} {
 		t.Run(name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			m[referenceAPI] = file(spec)
 			if _, err := Check(failFS{m: m, name: name}); !errors.Is(err, errRead) {
 				t.Errorf("err = %v, want %v", err, errRead)
@@ -632,12 +620,14 @@ func TestUnitCheckReadErrors(t *testing.T) {
 }
 
 func TestUnitSlug(t *testing.T) {
-	for h, want := range map[string]string{
-		"Target version and sources":       "target-version-and-sources",
-		"01: The Spacelift API landscape":  "01-the-spacelift-api-landscape",
-		"P19: Live `make` checks (part 2)": "p19-live-make-checks-part-2",
-		"snake_case and hyphen-ated":       "snake_case-and-hyphen-ated",
-	} {
+	var cases map[string]string
+	if err := json.Unmarshal([]byte(documentFixture(t, "slugs.json")), &cases); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != 4 {
+		t.Fatalf("slug cases = %d, want 4", len(cases))
+	}
+	for h, want := range cases {
 		if got := slug(h); got != want {
 			t.Errorf("slug(%q) = %q, want %q", h, got, want)
 		}
@@ -652,9 +642,9 @@ const flowsAPI = "api/reference/spacelift-flows/flows.openapi.yaml"
 // product's records: a Flows tag needs a flows record, a Deploy tag a deploy
 // one, and a flows record names a Flows tag.
 func TestUnitCheckProductTags(t *testing.T) {
-	flowsRecord := `{"id": "tag:Flows Projects", "product": "flows", "infraweave": {"phase": "P0"}}`
+	flowsRecord := documentFixture(t, "flows-tag.json")
 	withFlows := func(m fstest.MapFS, records ...string) {
-		caps := capabilities
+		caps := documentFixture(t, "capabilities.json")
 		for _, r := range records {
 			caps = strings.Replace(caps, `"records": [`, `"records": [`+"\n  "+r+",", 1)
 		}
@@ -697,7 +687,7 @@ func TestUnitCheckProductTags(t *testing.T) {
 		}, []string{flowsAPI + ":1: cannot read its tags"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			tc.edit(m)
 			found, err := Check(m)
 			if err != nil {
@@ -733,11 +723,10 @@ func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 	}
 	for name, product := range map[string]string{"no product": "", "unknown product": `"product": "space", `} {
 		t.Run(name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			m["docs/data/schema/capabilities.schema.json"] = &fstest.MapFile{Data: schema}
 			m["docs/data/schema/common.schema.json"] = &fstest.MapFile{Data: common}
-			m[capsReg] = file(`{"$schema": "schema/capabilities.schema.json", "records": [
-  {"id": "operation:x", "kind": "operation", ` + product + `"infraweave": {"feature": "x", "lowestTier": "Free", "phase": "P0"}}]}`)
+			m[capsReg] = file(fmt.Sprintf(documentFixture(t, "operation.golden"), product))
 			found, err := Check(m)
 			if err != nil {
 				t.Fatal(err)
@@ -779,7 +768,7 @@ func TestUnitCheckSupersededOperations(t *testing.T) {
 	const deploySpec = spec + "paths:\n  /stacks:\n    get: {operationId: stacks, tags: [Stacks]}\n"
 	withOps := func(m fstest.MapFS, ops string) {
 		m[referenceAPI] = file(deploySpec)
-		m[supersReg] = file(strings.Replace(supersessions, `"SUP-01", `,
+		m[supersReg] = file(strings.Replace(documentFixture(t, "supersessions.json"), `"SUP-01", `,
 			`"SUP-01", "operations": [`+ops+`], `, 1))
 	}
 	for _, tc := range []struct {
@@ -807,7 +796,7 @@ func TestUnitCheckSupersededOperations(t *testing.T) {
 		}, []string{referenceAPI + ":1: cannot read its operations"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			tc.edit(m)
 			found, err := Check(m)
 			if err != nil {
@@ -836,7 +825,7 @@ func TestUnitCheckSupersededMembers(t *testing.T) {
 	withMembers := func(m fstest.MapFS, member, values string) {
 		m["docs/data/schema/graphql-inventory.schema.json"] = file(anySchema)
 		m["docs/data/graphql-inventory.json"] = file(inventory)
-		m[supersReg] = file(strings.Replace(supersessions, `"SUP-01", `,
+		m[supersReg] = file(strings.Replace(documentFixture(t, "supersessions.json"), `"SUP-01", `,
 			`"SUP-01", "`+member+`": [`+values+`], `, 1))
 	}
 	withValues := func(m fstest.MapFS, values string) { withMembers(m, "enumValues", values) }
@@ -870,7 +859,7 @@ func TestUnitCheckSupersededMembers(t *testing.T) {
 		}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := tree()
+			m := tree(t)
 			tc.edit(m)
 			found, err := Check(m)
 			if err != nil {

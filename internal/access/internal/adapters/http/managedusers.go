@@ -68,8 +68,8 @@ var userStatuses = map[member.Status]api.UserStatus{
 
 // managedUser is u as Spacelift's ManagedUser, with acts as its
 // allowedActions and the access rules among held, its bindings. role is
-// USER; no identity provider is configured before P23's, so loginMethod
-// is EMPTY.
+// USER; the managed-user record contains no identity-provider association,
+// so loginMethod is EMPTY.
 func managedUser(u managed.User, acts []api.Action, held []binding.Listed) api.ManagedUser {
 	out := api.ManagedUser{
 		AccessRules:          rules(held),

@@ -1,0 +1,7 @@
+{
+  "no-exit": "phase P1a has no \"**Exit criteria**\"",
+  "no-decisions": "phase P0 has no \"Decisions:\"",
+  "feature-owner": "stacks names phase P2, which plan.md does not have",
+  "capability-owner": "tag:Runs names phase P3, which plan.md does not have",
+  "replacement-owner": "SUP-01 names phase P1b, which plan.md does not have"
+}

@@ -23,9 +23,8 @@ import (
 // whether a run blocks it, versions, a Terragrunt stack's effective
 // versions, and no contexts, config elements, blocker, outputs or
 // rollback, which views reads from the configuration, runs and state
-// domains. The fields later
-// phases own read their empty values: no other attachments, no
-// dependencies and no managed resources.
+// domains. Other attachment, dependency and managed-resource projections
+// start empty for the owning domain to populate.
 func viewOf(st core.Stack, space string, held []accessapi.Action, starred bool, versions api.EffectiveTerragruntVersionResult) (api.Stack, error) {
 	vendor, err := vendorView(st, versions)
 	if err != nil {

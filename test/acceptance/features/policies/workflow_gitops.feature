@@ -1,4 +1,4 @@
-@policy-phase @terraform-vcs @postgres @objectstore @github @gitlab @bitbucket-cloud @bitbucket-dc @azure-devops @docker @terraform @policy-push @policy-push-workers @policy-plan-worker
+@policies @terraform-vcs @postgres @objectstore @github @gitlab @bitbucket-cloud @bitbucket-dc @azure-devops @docker @terraform @policy-push @policy-push-workers @policy-plan-worker
 Feature: GitOps policy decisions reach real workers and native feedback
   Signed provider requests and their branch pushes create one proposed run.
   Actual Terraform uploads are evaluated by the linked OPA runtime before

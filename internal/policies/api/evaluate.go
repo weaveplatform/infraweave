@@ -26,8 +26,8 @@ const (
 	Trigger        Type = "TRIGGER"
 )
 
-// TargetKind leaves module and Intent execution explicit for their owning
-// phases. An unavailable target kind fails rather than selecting no policies.
+// TargetKind distinguishes stack, module and Intent policy execution.
+// An unavailable target kind fails rather than selecting no policies.
 type TargetKind string
 
 const (

@@ -1,4 +1,4 @@
-@postgres @objectstore @policy-phase
+@postgres @objectstore @policies
 Feature: Edited policy simulation uses the live runtime without persistence
   A simulation compiles the submitted policy with the normal preamble and
   capabilities and evaluates edited JSON. It never applies the resulting

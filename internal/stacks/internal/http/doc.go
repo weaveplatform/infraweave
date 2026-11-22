@@ -21,8 +21,8 @@
 // UNCONFIRMED, its outputs from the same StackStatus, each value the
 // JSON of the tool's output as a string and none for a sensitive output,
 // isStateRollback from the stacksapi.StateRollbacks BindStateRollbacks
-// binds, read once for a whole page and false until one is bound, and the
-// members later phases own at their empty values. A Terragrunt
+// binds, read once for a whole page and false until one is bound. Unbound
+// domain projections retain their empty values. A Terragrunt
 // stack reads back as Terragrunt, its useStateManagement whether
 // infraweave keeps its state and its effectiveVersions the Terragrunt and
 // tool releases its runs' handover would resolve from the

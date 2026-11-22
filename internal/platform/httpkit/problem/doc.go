@@ -32,6 +32,6 @@
 // It imports the standard library and internal/kernel, for ErrUnavailable,
 // ErrStale and the inputs a rule refuses.
 // Every HTTP package imports it: the
-// generated server's stubs, the middleware, the page codec, internal/app and,
-// from P3, each domain's HTTP adapter.
+// generated server's stubs, the middleware, the page codec, internal/app and
+// each domain's HTTP adapter.
 package problem

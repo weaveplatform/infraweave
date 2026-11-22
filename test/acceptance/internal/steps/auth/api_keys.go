@@ -477,8 +477,8 @@ func (k *keySteps) delete(ctx context.Context, tok, name, replica string) error 
 	return nil
 }
 
-// disable disables the key in the database, as no P3 operation disables
-// an account's key; personalApiKeyDisable is P3b's.
+// disable seeds an inactive account key in the database; the public disable
+// operation applies to personal API keys.
 func (k *keySteps) disable(ctx context.Context, name string) error {
 	c, err := k.key(name)
 	if err != nil {

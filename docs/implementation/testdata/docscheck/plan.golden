@@ -1,0 +1,37 @@
+# Plan
+
+## Build status
+
+| P0 | done |
+
+## P0: Reference
+
+Decisions: [0001](../research/decisions/0001-one.md)
+
+**Depends on:** nothing.
+
+**Tasks**
+
+1. Generate.
+
+**Exit criteria**
+
+- `make gate` passes.
+
+## P1a: Skeleton
+
+Decisions: none.
+
+**Depends on:** P0.
+
+**Tasks**
+
+1. Serve.
+
+```
+## P9: Not a phase
+```
+
+**Exit criteria**
+
+- Served.

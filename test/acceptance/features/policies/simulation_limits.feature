@@ -1,4 +1,4 @@
-@postgres @objectstore @policy-phase
+@postgres @objectstore @policies
 Feature: Simulation enforces public compiler and input boundaries
   Policy source and decoded input have domain ceilings as well as the shared
   HTTP envelope. Limits and failures never become retained evaluation evidence.

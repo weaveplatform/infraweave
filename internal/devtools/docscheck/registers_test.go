@@ -46,11 +46,12 @@ const notes = `{
   ]
 }`
 
-// registerTree is tree() with one register whose report cites N-1. N-1's
+// registerTree adds one register whose report cites N-1 to the repository fixture. N-1's
 // absent phrase cites a missing id and links a missing file, which the
 // checks leave alone: evidence is another file's text.
-func registerTree() fstest.MapFS {
-	m := tree()
+func registerTree(t *testing.T) fstest.MapFS {
+	t.Helper()
+	m := tree(t)
 	m["docs/data/schema/common.schema.json"] = file(commonSchema)
 	m["docs/data/schema/notes.schema.json"] = file(noteSchema)
 	m["docs/data/notes.json"] = file(notes)
@@ -61,7 +62,7 @@ func registerTree() fstest.MapFS {
 }
 
 func TestUnitRegistersPass(t *testing.T) {
-	found, err := Check(registerTree())
+	found, err := Check(registerTree(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +282,7 @@ func TestUnitRegisterFindings(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			m := registerTree()
+			m := registerTree(t)
 			tc.edit(m)
 			found, err := Check(m)
 			if err != nil {

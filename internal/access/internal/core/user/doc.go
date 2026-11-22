@@ -3,9 +3,9 @@
 // Invite admits the organization's member with the
 // invited login to the caller's account, creating a pending member when
 // there is none, and records an Invitation with its e-mail address and
-// sentAt; no e-mail is sent (capture C251), and the person accepts by
-// signing in through the invitation's link, never by an e-mail match,
-// which P23's sign-in serves. Inviting a member the
+// sentAt; no e-mail is sent (capture C251). Acceptance belongs to the
+// organization sign-in flow and uses the invitation link, never an e-mail
+// match. Inviting a member the
 // account admits, a deactivated member, or an e-mail address with a
 // pending invitation in the account is ErrInvalidState, and the
 // invitation's seat is checked through the features domain unless
@@ -18,7 +18,7 @@
 // the role bindings and space access rules an input carries, in the
 // transaction of the write that carries them. RequestInvite and
 // RequestRoleChange record the request on the account's trail; only a
-// member asks for a role, on the root space until P4's spaces. A User's
+// member asks for a role on a space. A User's
 // Version is raised by every change of the account's admission of the
 // member; Update and Delete carry a kernel.Expect, and the store refuses
 // an admission whose version it does not accept with kernel.ErrStale,

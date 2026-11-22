@@ -133,7 +133,7 @@ func TestAccMigrateCommands(t *testing.T) {
 			"  pending  00001_create_widgets") {
 		t.Fatalf("status before up: %v\n%s", err, out)
 	}
-	// The platform stream grows with each phase, so only its first file and
+	// The platform stream can contain multiple migrations; its first file and
 	// its place before the fixture stream are fixed.
 	if out, err := run(up); err != nil ||
 		!strings.HasPrefix(out, "applied platform 00001_api_controls\n") ||

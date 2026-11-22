@@ -1,0 +1,4 @@
+{"$schema": "schema/capabilities.schema.json", "records": [
+  {"id": "tag:Stacks", "product": "deploy", "spacelift": {"notes": "P99 in report 26"}, "infraweave": {"phase": "P0"}},
+  {"id": "tag:Runs", "product": "deploy", "infraweave": {"phase": "P1a", "also": "P0, P3"}},
+  {"id": "operation:x", "infraweave": {"phase": "P1a"}}]}

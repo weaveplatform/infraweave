@@ -1,7 +1,7 @@
 # Policy workflow verification
 
 [POL-17 (#654)](https://github.com/weaveplatform/infraweave/issues/654) joins the
-workflow evidence from #649–#653. Its new scenarios carry `@policy-phase`; their
+workflow evidence from #649–#653. Its new scenarios carry `@policies`; their
 dependency tags retain the existing CI partitions. PostgreSQL, queue jobs,
 object storage, Gitea and the Terraform-family executables are real services and
 tools. The five provider HTTP servers model upstream APIs. Real-provider proof
@@ -90,7 +90,7 @@ Run the new combined workflow slice with Docker available:
 ```sh
 GOFIPS140=certified GODEBUG=fips140=only \
 INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1 \
-INFRAWEAVE_ACCEPT_TAGS=@policy-phase make accept
+INFRAWEAVE_ACCEPT_TAGS=@policies make accept
 ```
 
 `make accept` writes the executed scenarios to `cover/accept/cucumber.json`.

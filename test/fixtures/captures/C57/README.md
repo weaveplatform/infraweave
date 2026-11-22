@@ -43,5 +43,5 @@ a return to a stale deferral; an empty call list cannot replace this replay.
 
 [#679](https://github.com/weaveplatform/infraweave/issues/679) owns this bounded
 handoff from completed #640/#645. [#656](https://github.com/weaveplatform/infraweave/issues/656)
-owns the broader P13 evidence audit. This mapping does not mark other recorded,
+owns the broader policy workflow evidence audit. This mapping does not mark other recorded,
 deferred or later-phase captures implemented.

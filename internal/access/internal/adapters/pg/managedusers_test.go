@@ -247,7 +247,7 @@ func TestAccManagedUserGroups(t *testing.T) {
 		onTrail(x, user.ActionInvite)); err != nil {
 		t.Fatal(err)
 	}
-	// Alice's latest sign-in reported two groups, as P23's sign-in records.
+	// Alice's latest sign-in reported two identity-provider groups.
 	if _, err := db.Exec(ctx, `UPDATE account_users SET latest_groups = '{ops,dev}'
 		WHERE account_id = $1`, x.acct); err != nil {
 		t.Fatal(err)

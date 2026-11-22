@@ -23,7 +23,7 @@ handoffs:
   "/exchanges/23/response/data/policies":
     classification: rest
     owner: https://github.com/weaveplatform/infraweave/issues/683
-    detail: Create and read all eight captured policy types, attach the six supported stack types, delete all temporary policies and verify 404 plus restoration of the original inventory. INTENT attachment remains reserved for P25.
+    detail: Create and read all eight captured policy types, attach the six supported stack types, delete all temporary policies and verify 404 plus restoration of the original inventory. INTENT attachment is reserved for Intent projects.
 observed:
   "/exchanges/0/response/data/tier": "V5_FREE"
   "/exchanges/0/response/data/tierFeatures": ["SPACELIFT_INTELLIGENCE", "BACKSTAGE_INTEGRATION", "CLOUD_CREDENTIAL_GENERATION"]

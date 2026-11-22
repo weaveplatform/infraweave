@@ -72,7 +72,7 @@ func registerSimulationFixtures(sc *godog.ScenarioContext, w *harness.World) {
 			if len(row.Response.Errors) != 0 {
 				want = 422
 			}
-			// ACCESS is an explicit phase/enum deviation; it must remain
+			// ACCESS is an explicit policy-type deviation; it must remain
 			// refused even though the upstream legacy runtime accepted it.
 			if string(in.Type) == "ACCESS" {
 				want = 400

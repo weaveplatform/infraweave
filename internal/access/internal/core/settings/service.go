@@ -66,7 +66,7 @@ type Deps struct {
 }
 
 // Service reads and sets the settings of the caller's account. Who may
-// change them is decided by P4's authorization, as for every other
+// change them is decided by account authorization, as for every other
 // operation, but for NonHumanKeyManagers, which only a person may flip.
 type Service struct{ d Deps }
 

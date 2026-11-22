@@ -55,7 +55,7 @@ func Contract() (ContractDocument, error) {
 	c := ContractDocument{
 		Schema:      "https://json-schema.org/draft/2020-12/schema",
 		Title:       "infraweave Policy Contract",
-		Description: "Policy input snapshots and raw decisions. Typed future phase fields are optional and are not synthesized.",
+		Description: "Policy input snapshots and raw decisions. Optional typed fields remain absent unless supplied by the caller.",
 		PolicyTypes: map[string]PolicyContract{}, Defs: map[string]*Schema{},
 	}
 	pairs := contractPairs()

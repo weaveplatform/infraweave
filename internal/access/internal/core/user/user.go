@@ -162,7 +162,7 @@ type Deps struct {
 }
 
 // Service manages the managed users of the caller's account. Who may is
-// decided by P4b's authorization, as for the account's API keys.
+// decided by account authorization, as for the account's API keys.
 type Service struct{ d Deps }
 
 // NewService returns the service on d.

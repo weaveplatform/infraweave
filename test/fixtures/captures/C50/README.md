@@ -16,7 +16,7 @@ tokens and the key secret were redacted before export. The key was deleted,
 fresh admission then returned null, and old-session viewer returned null.
 
 An entitled LOGIN evaluation/receipt is still needed for C50. ACCESS remains
-superseded; NOTIFICATION and INTENT no-run effects remain with P18/P25.
+superseded; NOTIFICATION and INTENT no-run effects belong to notification and Intent execution.
 
 The final exchange verifies restoration and resource cleanup. Eight provider-free
 runs were created; none applied infrastructure. The executable native replay is described below.

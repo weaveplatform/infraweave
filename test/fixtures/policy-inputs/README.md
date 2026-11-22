@@ -8,7 +8,7 @@ account; later API captures have separate provenance below. Each
 `*.decision.json` is a decision returned by a real simulation. They are the observed counterpart of the
 per-type contract in
 [report 09, section 4](../../../docs/research/reference/09-policies.md#4-input-documents):
-P13's `TestUnitPolicyContract` reads them and fails when a key they hold has
+`TestUnitPolicyContract` reads them and fails when a key they hold has
 no field in infraweave's input structs, or a field's JSON type differs.
 [Report 32, section 16](../../../docs/research/reference/32-spacelift-console-survey.md#16-driven-policies-runs-and-the-registry)
 says what each run did.

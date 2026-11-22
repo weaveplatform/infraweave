@@ -1,0 +1,2 @@
+{"$schema": "schema/features.schema.json", "records": [
+  {"id": "stacks", "phase": "P0", "notes": "`P42` is a name"}]}

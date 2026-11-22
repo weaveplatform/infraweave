@@ -55,8 +55,6 @@ type Feature struct {
 	// Values are a limit's seeded values by tier name; a tier without one
 	// has no limit.
 	Values map[string]int64
-	// Phase is the plan phase that owns it.
-	Phase string
 	// TierFeatures are the BillingTierFeature values it covers, which
 	// tierFeatures reports.
 	TierFeatures []string

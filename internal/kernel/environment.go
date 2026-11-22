@@ -9,8 +9,7 @@ const (
 
 // ComputedEnvironmentNames lists the metadata and token shown as computed
 // elements in a stack's runtimeConfig, sorted by name. The four launcher
-// settings are execution settings and are not part of this view. P15 adds
-// INFRAWEAVE_OIDC_TOKEN.
+// settings are execution settings and are not part of this view.
 //
 // ref: decision 0008 § "infraweave's own variables"
 func ComputedEnvironmentNames() []string {

@@ -1,4 +1,4 @@
-@policy-phase @postgres @vcs @policy-approval
+@policies @postgres @vcs @policy-approval
 Feature: Actual workflow decisions retain bounded messages and private prints
   OPA evaluates oversized Unicode notes and more than 64 KiB of print output.
   The public review commits bounded UTF-8 notes while private printing neither

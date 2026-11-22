@@ -2,10 +2,9 @@ name: go | Nightly acceptance
 
 # Every acceptance partition on main, each night. The job is informational,
 # so a newer Terraform or OpenTofu release that breaks a case never stops a
-# merge: a failure opens an issue, or comments on the open one. Once
-# @terraform and @tofu scenarios exist (P9), this is where they run on the
-# newest Terraform and OpenTofu releases; until then it runs the suite as the
-# quality gate does.
+# merge: a failure opens an issue, or comments on the open one. Terraform and
+# OpenTofu scenarios run against the newest tool releases; other scenarios use
+# the quality gate's dependency configuration.
 #
 # Once a week, and on demand, the stress jobs run terraform-plans, terraform-vcs, terraform and runs
 # under make accept-stress: refused signed uploads, a slow object store and

@@ -33,8 +33,7 @@ import (
 type Mode struct {
 	// API serves the API on the API listener.
 	API bool
-	// Scheduler runs the scheduler's loops, which arrive with their phases;
-	// until then it serves only the admin listener.
+	// Scheduler runs background loops and serves the admin listener.
 	Scheduler bool
 }
 
@@ -191,7 +190,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	return err //nolint:wrapcheck // serve's errors name the listener
 }
 
-// databaseChecks are P2's probe checks, which every mode runs: the
+// databaseChecks registers the probes every process mode runs: the
 // configuration decoded, which it has by the time any probe answers, and
 // the schema at this binary's version, at startup; PostgreSQL answering
 // through the pool, for readiness.
@@ -210,7 +209,7 @@ func databaseChecks(h *observe.Health, db *sql.DB) {
 	})
 }
 
-// keyringCheck is P2b's startup check: the keyring loaded, with an active
+// keyringCheck verifies startup has a loaded keyring with an active
 // key to seal under, which it has by the time any probe answers.
 func keyringCheck(h *observe.Health, keys *crypt.Keyring) {
 	h.Startup("keyring", func(context.Context) error {
