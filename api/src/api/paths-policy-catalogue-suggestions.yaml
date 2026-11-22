@@ -1,0 +1,49 @@
+components: {}
+paths:
+    /policy-templates/search/suggestions:
+        post:
+            description: ℹ **ADVANCED** — Autocomplete helper that powers search filters in the UI.
+            operationId: searchPolicyTemplatesSuggestions
+            requestBody:
+                content:
+                    application/json:
+                        example: {}
+                        schema:
+                            $ref: '#/components/schemas/SearchSuggestionsInput'
+                required: true
+                x-graphql-arg: input
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SearchSuggestionsOutput'
+                    description: The searchPolicyTemplatesSuggestions result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Search Policy Templates Suggestions
+            tags:
+                - Search Suggestions
+            x-bruno: Advanced/Search Suggestions/Search Policy Templates Suggestions.bru
+            x-graphql:
+                field: searchPolicyTemplatesSuggestions
+                operation: query
+                type: Query
+            x-infraweave-cost: expensive
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-action: SPACE_READ
+            x-infraweave-subject: any
+            x-infraweave-feature: policies
+            x-rest-style: search

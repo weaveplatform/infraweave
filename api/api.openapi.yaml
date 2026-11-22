@@ -10018,6 +10018,147 @@ paths:
           $ref: '#/components/responses/Problem'
         "503":
           $ref: '#/components/responses/ApiDisabled'
+  /policy-templates/search:
+    post:
+      operationId: searchPolicyTemplates
+      requestBody:
+        content:
+          application/json:
+            example:
+              first: 50
+            schema:
+              $ref: '#/components/schemas/SearchInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchPolicyTemplatesOutput'
+          description: The searchPolicyTemplates result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Policy Templates
+      tags:
+        - Policies
+      x-bruno: Policies/Search Policy Templates.bru
+      x-graphql:
+        field: searchPolicyTemplates
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: any
+      x-infraweave-feature: policies
+      x-rest-style: search
+  /policy-templates/search/suggestions:
+    post:
+      description: ℹ **ADVANCED** — Autocomplete helper that powers search filters in the UI.
+      operationId: searchPolicyTemplatesSuggestions
+      requestBody:
+        content:
+          application/json:
+            example: {}
+            schema:
+              $ref: '#/components/schemas/SearchSuggestionsInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchPolicyTemplatesSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Search Policy Templates Suggestions
+      tags:
+        - Search Suggestions
+      x-bruno: Advanced/Search Suggestions/Search Policy Templates Suggestions.bru
+      x-graphql:
+        field: searchPolicyTemplatesSuggestions
+        operation: query
+        type: Query
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: any
+      x-infraweave-feature: policies
+      x-rest-style: search
+  /policy-templates/{policyTemplateId}:
+    get:
+      operationId: policyTemplate
+      parameters:
+        - in: path
+          name: policyTemplateId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyTemplate'
+          description: The policyTemplate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Policy Template
+      tags:
+        - Policies
+      x-bruno: Policies/Get Policy Template.bru
+      x-graphql:
+        field: policyTemplate
+        operation: query
+        type: Query
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: any
+      x-infraweave-feature: policies
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: item
   /public-worker-pool:
     get:
       description: Shows public worker pool details
@@ -27842,6 +27983,64 @@ components:
         - stackSpaceDetails
       type: object
       x-graphql-type: PolicyStackAttachment
+    PolicyTemplate:
+      properties:
+        engineType:
+          $ref: '#/components/schemas/PolicyEngineType'
+          description: The dialect to use when importing this template. This explicit compatibility field is an infraweave extension.
+        body:
+          description: Body of the policy template.
+          type: string
+        description:
+          description: Description of the policy template.
+          nullable: true
+          type: string
+        id:
+          description: Unique ID of the policy template.
+          type: string
+        labels:
+          description: Labels of the policy template.
+          items:
+            type: string
+          type: array
+        name:
+          description: Name of the policy template.
+          type: string
+        slug:
+          description: Slug of the policy template.
+          type: string
+        type:
+          $ref: '#/components/schemas/PolicyType'
+      required:
+        - engineType
+        - body
+        - id
+        - labels
+        - name
+        - slug
+        - type
+      type: object
+      x-graphql-type: PolicyTemplate
+    PolicyTemplateConnection:
+      properties:
+        cursor:
+          type: string
+        node:
+          $ref: '#/components/schemas/PolicyTemplateRef'
+      required:
+        - cursor
+        - node
+      type: object
+      x-graphql-type: PolicyTemplateConnection
+    PolicyTemplateRef:
+      description: A reference to a PolicyTemplate; fetch it with GET /policy-templates/{policyTemplateId}.
+      properties:
+        id:
+          type: string
+      required:
+        - id
+      type: object
+      x-graphql-type: PolicyTemplate
     PolicyType:
       description: PolicyType represents a type of policy.
       enum:
@@ -30126,6 +30325,19 @@ components:
         - pageInfo
       type: object
       x-graphql-type: SearchPoliciesOutput
+    SearchPolicyTemplatesOutput:
+      properties:
+        edges:
+          items:
+            $ref: '#/components/schemas/PolicyTemplateConnection'
+          type: array
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+        - edges
+        - pageInfo
+      type: object
+      x-graphql-type: SearchPolicyTemplatesOutput
     SearchQueryFieldConstraint:
       additionalProperties: false
       description: SearchQueryFieldConstraint constraints the values of a field.

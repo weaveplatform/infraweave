@@ -25,6 +25,7 @@ internal/agent/tools/testdata/** -text
 
 # Pinned MIT policy/notice bytes are hash-verified on every OS.
 test/fixtures/rego-compatibility/** text eol=lf
+internal/policies/internal/catalogue/upstream/** -text
 
 # Recorded tool JSON/provenance has byte-exact NONE and checksum assertions.
 test/fixtures/plan-payloads/** text eol=lf
