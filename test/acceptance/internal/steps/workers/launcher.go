@@ -61,6 +61,8 @@ type launcherSteps struct {
 	// needs to prove their propagation into a run.
 	maxRequestsPerSecond int
 	maxRequestsBurst     int
+	initializationPolicy string
+	initializationEngine string
 }
 
 // launcher is one launcher of the scenario: its process, the directory
@@ -81,6 +83,12 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer is the pinned Terraform runner image$`, func() error {
 		return harness.Answered(l.w.Last(), "default runner image", strconv.Quote(harness.RunnerTerraform))
 	})
+	sc.Step(`^the launchers started from now on evaluate a (REGO_V0|REGO_V1) initialization policy:$`,
+		func(engine string, body *godog.DocString) {
+			l.initializationEngine, l.initializationPolicy = engine, body.Content
+		})
+	sc.Step(`^the launcher "(\w+)" masked its initialization token in print and reports$`, l.initializationMasked)
+	sc.Step(`^the run "(\w+)" never started a container$`, l.noRunContainer)
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
@@ -214,6 +222,14 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 		"docker": map[string]any{
 			"network": l.network, "runner_binary": host.Runner,
 		},
+	}
+	if l.initializationPolicy != "" {
+		path := filepath.Join(dir, "initialization.rego")
+		if err := os.WriteFile(path, []byte(l.initializationPolicy), 0o600); err != nil {
+			return fmt.Errorf("write launcher initialization policy: %w", err)
+		}
+		settings["initialization_policy"] = path
+		settings["initialization_policy_engine"] = l.initializationEngine
 	}
 	if ca := w.CAFile(); ca != "" {
 		settings["ca_file"] = ca

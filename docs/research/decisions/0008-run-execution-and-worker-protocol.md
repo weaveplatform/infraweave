@@ -1592,7 +1592,10 @@ offers this policy is available to it alone; 0009 lists built-ins.
   `launcher.state_lock_timeout` (5m),
   `launcher.max_requests_per_second` (10), `launcher.max_requests_burst` (100),
   `launcher.log.*`, `launcher.default_runner_image` (unset),
-  `launcher.default_ansible_runner_image`, `launcher.initialization_policy`,
+  `launcher.default_ansible_runner_image`, `launcher.initialization_policy`
+  (optional local file), `launcher.initialization_policy_engine` (`REGO_V1`,
+  also accepts `REGO_V0`), `launcher.initialization_timeout` (60s, positive
+  and at most 60s),
   `launcher.mask_envs`, `launcher.whitelist_envs`,
   `launcher.sensitive_output_upload` (off), `launcher.tool_mirror`,
   `launcher.ca_file`, `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,

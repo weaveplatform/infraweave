@@ -206,6 +206,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	rc, custom, repository, hasFile := runtime.Effective, runtime.Custom, runtime.Repository, runtime.HasFile
 	resolved, ovs, fileVariables := runtime.Environment, runtime.Overrides, runtime.Variables
 	stack := workersapi.SpecStack{
+		ID:                           r.Stack,
 		Slug:                         st.Slug,
 		Name:                         st.Name,
 		Space:                        slugs[st.Space],
@@ -233,7 +234,8 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		},
 		Stack: stack,
 		Commit: workersapi.SpecCommit{
-			Hash: r.Commit.Hash, Tag: r.Commit.Tag, URL: r.Commit.URL, Message: r.Commit.Message,
+			Branch: r.Commit.Branch,
+			Hash:   r.Commit.Hash, Tag: r.Commit.Tag, URL: r.Commit.URL, Message: r.Commit.Message,
 			AuthorName: r.Commit.AuthorName, AuthorLogin: r.Commit.AuthorLogin,
 			Timestamp: r.Commit.Timestamp,
 		},

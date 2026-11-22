@@ -400,7 +400,31 @@ remain as in Docker. C67 stays open.
 ## Worker initialization and signed runs
 
 This is launcher-local admission, distinct from the already implemented server
-INITIALIZATION policy at READY. Compile at worker startup with bounded embedded
+INITIALIZATION policy at READY. The local configuration is optional
+`launcher.initialization_policy` (regular Rego file),
+`launcher.initialization_policy_engine` (`REGO_V1` default, or `REGO_V0`) and
+`launcher.initialization_timeout` (60 seconds default, positive and at most
+60 seconds). The file is compiled once before registration; missing/invalid or
+oversized source fails startup, and changing it requires restart. A configured
+policy requires the worker specification's additive `stack.ulid` and
+`commit.branch` fields; the existing `stack.id` remains its slug. Missing fields
+from an older server fail that admission closed. Current run metadata has no
+producer and is represented as an empty array, without inventing server-side
+metadata ingestion or changing its unknown-metadata policy semantics.
+The local adapter emits a typed projection, checks required facts, the supported
+run-type enum and assignment run/state/version consistency. Identity strings
+come from the authenticated server/pool-token producers; the adapter does not
+independently parse every ULID or verify the run JWT.
+
+The local implementation's combined deadline honors caller cancellation and
+any earlier context deadline. Issued/restart-safe preparation deadlines,
+independent JWT verification and isolated exec retain their own delivery owners;
+a local timeout proves none of those additions. Without exec delivery, worker
+programs using exec fail compilation. Server policy/simulation still cannot
+compile exec, and worker queries use a separate cache identity. The
+[worker initialization verification](worker-initialization-verification.json)
+records the bounded local implementation's candidate evidence; other worker
+and cloud requirements remain unproven. Compile at worker startup with bounded embedded
 OPA and a separate worker-only capability set. Default evaluation deadline is
 60 seconds or remaining preparation, whichever is less; server initialization
 stays 5 seconds. Common server evaluation, simulation and policies cannot compile

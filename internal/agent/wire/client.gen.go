@@ -709,6 +709,9 @@ type RunSpecCommit struct {
 	// AuthorName The commit author's name.
 	AuthorName string `json:"authorName"`
 
+	// Branch The run commit's stored source branch, which may differ from the stack's tracked branch. New servers provide it, including an empty string when unknown; older servers may omit it.
+	Branch *string `json:"branch,omitempty"`
+
 	// Hash The commit's hash.
 	Hash string `json:"hash"`
 
@@ -855,6 +858,9 @@ type RunSpecStack struct {
 
 	// Space The slug of the stack's space.
 	Space string `json:"space"`
+
+	// Ulid The immutable stack ULID, separate from id, which remains the slug. New servers provide it for worker-local initialization policies; an older server may omit it.
+	Ulid *string `json:"ulid,omitempty"`
 
 	// Vendor The stack's infrastructure tool, such as terraform.
 	Vendor string `json:"vendor"`

@@ -167,6 +167,18 @@ func (l *Launchers) RunImage(ctx context.Context, run string) (string, error) {
 	return c.Container.Config.Image, nil
 }
 
+// RunContainerCount verifies run's actual Docker inventory, including stopped
+// containers. A daemon failure cannot stand in for resource absence.
+func (l *Launchers) RunContainerCount(ctx context.Context, run string) (int, error) {
+	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
+		All: true, Filters: client.Filters{}.Add("label", docker.LabelRun+"="+run),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("docker: count run containers: %w", err)
+	}
+	return len(list.Items), nil
+}
+
 // Remove removes every container labelled with the label key=value, run
 // containers and forwarders alike, running or not. Runs end and hand their
 // workspace directories back before removal. A container already

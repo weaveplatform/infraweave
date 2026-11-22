@@ -21,6 +21,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
@@ -300,5 +301,30 @@ func TestUnitCA(t *testing.T) {
 	}
 	if _, _, err := (config.Launcher{CAFile: junk}).CA(); !errors.Is(err, config.ErrConfig) {
 		t.Fatalf("a CA file with no certificate: %v", err)
+	}
+}
+
+func TestUnitInitializationPolicyConfiguration(t *testing.T) {
+	path := file(t, "launcher:\n  initialization_policy: /worker/policy.rego\n  initialization_policy_engine: REGO_V0\n  initialization_timeout: 30s\n")
+	c, err := load(t, "--config", path)
+	if err != nil || c.Launcher.InitializationPolicy != "/worker/policy.rego" || c.Launcher.InitializationPolicyEngine != rego.V0 ||
+		c.Launcher.InitializationTimeout != 30*time.Second {
+		t.Fatalf("policy settings: %+v %v", c, err)
+	}
+	t.Setenv("INFRAWEAVE_LAUNCHER_INITIALIZATION_TIMEOUT", "15s")
+	c, err = load(t, "--config", path)
+	if err != nil || c.Launcher.InitializationTimeout != 15*time.Second {
+		t.Fatal("policy env precedence")
+	}
+	for _, value := range []string{"0s", "-1s", "61s"} {
+		t.Setenv("INFRAWEAVE_LAUNCHER_INITIALIZATION_TIMEOUT", value)
+		if _, err := load(t); !errors.Is(err, config.ErrConfig) {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("INFRAWEAVE_LAUNCHER_INITIALIZATION_TIMEOUT", "1s")
+	t.Setenv("INFRAWEAVE_LAUNCHER_INITIALIZATION_POLICY_ENGINE", "REGO_V2")
+	if _, err := load(t); !errors.Is(err, config.ErrConfig) {
+		t.Fatal(err)
 	}
 }

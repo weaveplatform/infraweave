@@ -3,6 +3,10 @@ package rego
 import "fmt"
 
 func boundDecision(kind Type, value map[string]any) error {
+	return boundDecisionRedacted(kind, value, nil)
+}
+
+func boundDecisionRedacted(kind Type, value map[string]any, redact func(string) string) error {
 	known := rules(kind)
 	if len(value) != len(known) {
 		return ErrResult
@@ -38,6 +42,9 @@ func boundDecision(kind Type, value map[string]any) error {
 					break
 				}
 				if k == messageSet {
+					if redact != nil {
+						text = redact(text)
+					}
 					entries[i] = truncate(text, MessageBytes)
 				}
 			}

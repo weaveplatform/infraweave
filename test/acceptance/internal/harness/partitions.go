@@ -81,7 +81,7 @@ var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 var exemptTags = []string{
 	"@policies", "@policy-sampling", "@policy-evidence", "@policy-initialization", "@policy-login-oauth", "@policy-login-review", "@policy-login-failures",
-	"@policy-projection-denial",
+	"@policy-projection-denial", "@worker-initialization",
 	"@policy-approval-worker", "@policy-plan-worker", "@policy-trigger-worker",
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",
 	"@policy-management", "@policy-attachments", "@policy-check", "@policy-approval",

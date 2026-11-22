@@ -271,7 +271,31 @@ argv/result frames, masking and budgets are the [worker pool contract](../../imp
 It includes the bare server run JWT and trusted static assignment environment;
 optional user-provided metadata signatures remain a separate admission rule.
 C68 is still missing vendor input evidence, not permission to leave the
-infraweave input unspecified.
+infraweave input unspecified. The local evaluator reuses the INITIALIZATION
+preamble and has a distinct worker prepared-query identity within the bounded
+cache. The optional launcher file is a startup snapshot: missing, oversized or
+invalid source stops registration, and changes require a launcher restart.
+`launcher.initialization_policy_engine` selects V0/V1; the timeout is a positive
+at-most-60-second combined budget that honors an earlier caller deadline.
+
+Current run metadata has no producer, so `user_provided_metadata` is always an
+empty array, independently of server policy input's unknown-metadata semantics.
+The worker specification adds the immutable stack ULID beside its existing slug
+`id` and the stored run commit's branch beside the stack's tracked branch. A
+configured local policy fails closed if an older server omits either new field.
+Without a configured policy, the supported older-server path is unchanged.
+The bare token is supplied by authenticated assignment delivery; independent JWT
+signature/admission, isolated exec and issued restart-safe preparation deadlines
+remain separate implementation requirements. The evaluator adds no replacement
+preparation clock and cannot claim those protections from its own timeout.
+
+Print and deny text are masked in the individual evaluation before truncation,
+so a long token cannot leak a truncated prefix. Raw OPA evaluation/startup
+errors never become launcher diagnostics or preparing-failure notes. An empty
+deny set, including a rule whose helper is undefined, allows under the existing
+preamble; a malformed final decision or evaluation/cancellation error fails
+closed. The policy receives no opened environment, source credential, files,
+workspace or override tool binaries.
 
 Worker initialization has an explicitly separate capability scope and default
 60-second total deadline under remaining preparation; server INITIALIZATION

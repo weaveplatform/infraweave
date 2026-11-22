@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
@@ -1367,5 +1368,80 @@ func TestUnitNewChecksTheIdentity(t *testing.T) {
 	cfg.PrivateKey = observe.Secret(other.pool.Key)
 	if _, err := launcher.New(launcher.Deps{Config: cfg}); !errors.Is(err, launcher.ErrIdentity) {
 		t.Fatalf("New: %v", err)
+	}
+}
+
+func TestUnitLauncherPolicyStartupRefused(t *testing.T) {
+	w := newWorld(t)
+	for _, body := range []string{"package wrong", "package infraweave\ndeny contains"} {
+		cfg := w.config()
+		cfg.InitializationPolicy = filepath.Join(t.TempDir(), "policy.rego")
+		if err := os.WriteFile(cfg.InitializationPolicy, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := launcher.NewContext(t.Context(), launcher.Deps{Config: cfg, Executor: w.exec, Doer: w.srv.Client()}); !errors.Is(err, initpolicy.ErrPolicy) {
+			t.Fatal(err)
+		}
+	}
+	cfg := w.config()
+	cfg.InitializationPolicy = filepath.Join(t.TempDir(), "missing")
+	if _, err := launcher.New(launcher.Deps{Config: cfg, Executor: w.exec, Doer: w.srv.Client()}); !errors.Is(err, initpolicy.ErrPolicy) {
+		t.Fatal(err)
+	}
+	if len(w.srv.Registrations()) != 0 || len(w.exec.Jobs()) != 0 {
+		t.Fatal("invalid startup policy registered or started a container")
+	}
+}
+
+func TestUnitLauncherPolicyDeniesBeforeSourceRestoreAndTools(t *testing.T) {
+	for _, state := range []wire.AssignmentState{wire.AssignmentStatePREPARING, wire.AssignmentStatePREPARINGAPPLY, wire.AssignmentStatePREPARINGREPLAN} {
+		t.Run(string(state), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				w := newWorld(t)
+				cfg := w.config()
+				cfg.InitializationPolicy = filepath.Join(w.dir, "initialization.rego")
+				if err := os.WriteFile(cfg.InitializationPolicy, []byte("package infraweave\ndeny contains input.run.token if { print(input.run.token) }"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				l, err := launcher.New(
+					launcher.Deps{Config: cfg, Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources, Tools: w.tools, Log: slog.New(slog.NewTextHandler(w.log, nil))},
+				)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				done := make(chan error, 1)
+				go func() { done <- l.Run(ctx) }()
+				synctest.Wait()
+				r := newRun("run-policy", state, "")
+				stack, branch := "immutable-stack", "feature/source"
+				r.Spec.Run = wire.RunSpecRun{
+					Id:           r.Assignment.Run,
+					Account:      "account",
+					State:        string(state),
+					StateVersion: r.Assignment.StateVersion,
+					Type:         wire.RunSpecRunType("TRACKED"),
+				}
+				r.Spec.Stack = wire.RunSpecStack{Id: "slug", Ulid: &stack, Space: "legacy"}
+				r.Spec.Commit.Branch = &branch
+				r.Spec.Tool = &wire.RunSpecTool{Name: wire.Terraform, Version: "1.17.2", Download: true}
+				w.queue(t, r)
+				reports := w.srv.Reports()
+				if len(reports) != 1 || reports[0].Report.State != wire.WorkerState(state) || reports[0].Report.Event != wire.Failed || reports[0].Report.Details == nil ||
+					*reports[0].Report.Details != "worker initialization policy denied: *****" {
+					t.Fatalf("preparation refusal: %+v", reports)
+				}
+				if len(w.exec.Jobs()) != 0 || len(w.sources.dirs) != 0 || len(w.sources.restored) != 0 || len(w.tools.fetched()) != 0 {
+					t.Fatal("denied run reached preparation or execution")
+				}
+				if strings.Contains(w.log.String(), r.Assignment.RunToken) {
+					t.Fatal("policy leaked run token")
+				}
+				cancel()
+				if err := <-done; err != nil {
+					t.Fatal(err)
+				}
+			})
+		})
 	}
 }

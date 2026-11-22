@@ -31,6 +31,9 @@ type Request struct {
 	Policy     Policy
 	Input      json.RawMessage
 	Simulation bool
+	// Redact is evaluation-local and runs before diagnostic text is bounded.
+	// It is never retained by a prepared query.
+	Redact func(string) string
 }
 
 // Result is the preamble's bounded raw decision and captured print text.
@@ -68,6 +71,7 @@ type Engine struct {
 	cache        *queryCache
 	slots        chan struct{}
 	capabilities func() *ast.Capabilities
+	scope        string
 }
 
 // New constructs a runtime with validated budgets and the process's effective
@@ -79,11 +83,25 @@ func New(settings Settings) (*Engine, error) {
 	return &Engine{settings: settings, cache: processQueries, slots: processSlots, capabilities: capabilities}, nil
 }
 
+// NewWorker constructs an initialization-only engine with a distinct prepared
+// query identity. It cannot enable commands in server engines or their caches.
+func NewWorker(settings Settings) (*Engine, error) {
+	e, err := New(settings)
+	if err != nil {
+		return nil, err
+	}
+	e.scope = "worker-initialization"
+	return e, nil
+}
+
 // InputLimit lets typed input adapters enforce the configured byte budget
 // before allocating their own decoded document.
 func (e *Engine) InputLimit() int64 { return e.settings.MaxInputBytes }
 
 func (e *Engine) validate(p Policy) error {
+	if e.scope != "" && p.Type != Initialization {
+		return fmt.Errorf("%w: worker initialization type required", ErrPolicy)
+	}
 	if rules(p.Type) == nil {
 		return fmt.Errorf("%w: unknown type %q", ErrPolicy, p.Type)
 	}
@@ -131,7 +149,7 @@ func (e *Engine) prepare(ctx context.Context, p Policy) (oparego.PreparedEvalQue
 	if err != nil {
 		return oparego.PreparedEvalQuery{}, fmt.Errorf("encode policy capabilities: %w", err)
 	}
-	key := cacheKey{Body: sha256.Sum256([]byte(p.Body)), Dialect: p.Engine, Type: p.Type, Preamble: preambleVersion, Capabilities: sha256.Sum256(raw)}
+	key := cacheKey{Scope: e.scope, Body: sha256.Sum256([]byte(p.Body)), Dialect: p.Engine, Type: p.Type, Preamble: preambleVersion, Capabilities: sha256.Sum256(raw)}
 	if query, ok := e.cache.get(key); ok {
 		return query, nil
 	}
@@ -200,7 +218,7 @@ func (e *Engine) Evaluate(ctx context.Context, req Request) (Result, error) {
 	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
 		return Result{}, ErrInput
 	}
-	printed := &printBuffer{}
+	printed := &printBuffer{redact: req.Redact}
 	results, err := query.Eval(ctx, oparego.EvalInput(input), oparego.EvalPrintHook(printed))
 	if err != nil {
 		if ctx.Err() != nil {
@@ -221,7 +239,7 @@ func (e *Engine) Evaluate(ctx context.Context, req Request) (Result, error) {
 	if !ok {
 		return Result{}, ErrResult
 	}
-	if err := boundDecision(req.Policy.Type, decision); err != nil {
+	if err := boundDecisionRedacted(req.Policy.Type, decision, req.Redact); err != nil {
 		return Result{}, err
 	}
 	body, err := json.Marshal(decision)
@@ -269,6 +287,7 @@ func (e *Engine) EvaluateAll(ctx context.Context, requests []Request) []Outcome 
 type printBuffer struct {
 	text      strings.Builder
 	truncated bool
+	redact    func(string) string
 }
 
 // EvaluateSequence applies the combined budget to adapters whose output changes
@@ -295,6 +314,9 @@ func (e *Engine) EvaluateSequence(ctx context.Context, requests []Request, advan
 }
 
 func (p *printBuffer) Print(_ opaprint.Context, message string) error {
+	if p.redact != nil {
+		message = p.redact(message)
+	}
 	remaining := PrintBytes - p.text.Len()
 	if remaining <= 0 {
 		p.truncated = true

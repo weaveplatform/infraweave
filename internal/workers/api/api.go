@@ -151,6 +151,7 @@ type SpecRun struct {
 // patterns, and EnableSensitiveOutputUpload lets the runner keep the
 // sensitive outputs' values where its launcher allows it too.
 type SpecStack struct {
+	ID                           kernel.ULID
 	Slug                         string
 	Name                         string
 	Space                        string
@@ -215,6 +216,7 @@ type StateBackend struct {
 
 // SpecCommit is the commit a Spec's run works on.
 type SpecCommit struct {
+	Branch      string
 	Hash        string
 	Tag         string
 	URL         string

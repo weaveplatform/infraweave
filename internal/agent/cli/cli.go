@@ -104,7 +104,7 @@ func launch(cmd *cobra.Command, d deps) error {
 		return fmt.Errorf("launcher: docker: %w", err)
 	}
 	defer func() { _ = e.Close() }()
-	l, err := launcher.New(launcher.Deps{
+	l, err := launcher.NewContext(ctx, launcher.Deps{
 		Config: lc, Doer: d.doer, Executor: e, Log: log,
 		Version: buildinfo.Version(), OS: runtime.GOOS, Arch: runtime.GOARCH,
 	})

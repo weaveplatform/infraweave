@@ -195,6 +195,7 @@ func (s Server) WorkerRunSpec(ctx context.Context, req gen.WorkerRunSpecRequestO
 // runSpec is spec as the worker API answers it.
 func runSpec(spec worker.RunSpec) gen.RunSpec {
 	r, st, c := spec.Run, spec.Stack, spec.Commit
+	stackID, branch := st.ID.String(), c.Branch
 	mode := gen.PlanSanitization(spec.PlanSanitization)
 	if mode == "" {
 		mode = gen.DEFAULT
@@ -214,14 +215,16 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 			CreatedAt:      r.CreatedAt.Unix(),
 		},
 		Stack: gen.RunSpecStack{
-			Id: st.Slug, Name: st.Name, Space: st.Space, Labels: nonNil(st.Labels),
+			Ulid: &stackID,
+			Id:   st.Slug, Name: st.Name, Space: st.Space, Labels: nonNil(st.Labels),
 			Repository: st.Repository, Branch: st.Branch, ProjectRoot: st.ProjectRoot,
 			Vendor: st.Vendor, VendorConfig: object(st.VendorConfig),
 			EnableWellKnownSecretMasking: st.EnableWellKnownSecretMasking,
 			EnableSensitiveOutputUpload:  st.EnableSensitiveOutputUpload,
 		},
 		Commit: gen.RunSpecCommit{
-			Hash: c.Hash, Tag: optional(c.Tag), Url: optional(c.URL), Message: c.Message,
+			Branch: &branch,
+			Hash:   c.Hash, Tag: optional(c.Tag), Url: optional(c.URL), Message: c.Message,
 			AuthorName: c.AuthorName, AuthorLogin: c.AuthorLogin, Timestamp: c.Timestamp.Unix(),
 		},
 		RunnerImage: spec.RunnerImage,

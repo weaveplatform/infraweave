@@ -13,7 +13,9 @@
 //
 // The process caches at most 2,048 prepared queries. Evaluations share eight
 // execution slots, honor context deadlines and never send print or input to
-// process logs. Capabilities exclude network, process and nondeterministic
+// process logs. Worker initialization uses a distinct cache identity and an
+// invocation-local redactor before print/message truncation. No input or
+// redactor closure enters the cache. Capabilities exclude network, process and nondeterministic
 // built-ins; FIPS enforcement removes MD5/SHA-1 built-ins before compilation.
 //
 // # Dependencies

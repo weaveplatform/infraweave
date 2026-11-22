@@ -18,7 +18,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
+	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
@@ -31,6 +33,10 @@ type Config struct {
 
 // Launcher holds the launcher.* settings.
 type Launcher struct {
+	// InitializationPolicy is an optional local Rego file compiled before registration.
+	InitializationPolicy       string          `mapstructure:"initialization_policy"`
+	InitializationPolicyEngine rego.EngineType `mapstructure:"initialization_policy_engine"`
+	InitializationTimeout      time.Duration   `mapstructure:"initialization_timeout"`
 	// Token is the pool token, base64 of the JSON workerPoolCreate
 	// answers.
 	Token string `mapstructure:"token"`
@@ -136,11 +142,13 @@ func Defaults() Config {
 		cache = os.TempDir()
 	}
 	return Config{Launcher: Launcher{
-		PollTimeout:      60 * time.Second,
-		CacheDir:         filepath.Join(cache, "infraweave-launcher"),
-		StateLockTimeout: 5 * time.Minute,
-		RunTimeout:       70 * time.Minute,
-		LogTimeout:       7 * time.Minute,
+		PollTimeout:                60 * time.Second,
+		InitializationPolicyEngine: rego.V1,
+		InitializationTimeout:      initpolicy.DefaultTimeout,
+		CacheDir:                   filepath.Join(cache, "infraweave-launcher"),
+		StateLockTimeout:           5 * time.Minute,
+		RunTimeout:                 70 * time.Minute,
+		LogTimeout:                 7 * time.Minute,
 		// Match the server's standard rate class in platform/httpkit/
 		// middleware/ratelimit; run clients share the server's defaults.
 		MaxRequestsPerSecond: 10,
@@ -172,6 +180,9 @@ var ErrConfig = errors.New("invalid launcher configuration")
 // Validate rejects a setting the launcher could not start with.
 func (c Launcher) Validate() error {
 	var errs []error
+	if err := (initpolicy.Settings{Path: c.InitializationPolicy, Engine: c.InitializationPolicyEngine, Timeout: c.InitializationTimeout}).Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("%w: %w", ErrConfig, err))
+	}
 	bad := func(format string, args ...any) {
 		errs = append(errs, fmt.Errorf("%w: %s", ErrConfig, fmt.Sprintf(format, args...)))
 	}
