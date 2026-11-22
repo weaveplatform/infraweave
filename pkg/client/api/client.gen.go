@@ -6348,7 +6348,7 @@ type PolicyInputCapture struct {
 	Id string `json:"id"`
 
 	// Input The input as a JSON document. Null when a newer capture replaced it in the meantime.
-	Input *string `json:"input,omitempty"`
+	Input *string `json:"input"`
 
 	// Kind The event that produced a captured policy input. Every policy type has one kind, except trigger, which has one per event.
 	Kind PolicyInputCaptureKind `json:"kind"`

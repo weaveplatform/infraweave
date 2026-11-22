@@ -13,6 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 )
 
 // ErrNotFound is an account-qualified missing input or evaluation.
@@ -74,7 +75,7 @@ type Store interface {
 	References(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]Reference, error)
 	Reserve(context.Context, kernel.AccountID, policyapi.Type) (bool, error)
 	CreateInput(context.Context, Input, []byte) error
-	RecordEvaluation(context.Context, policyapi.EvaluationRequest, kernel.ULID, policyapi.Receipt, *Input) error
+	RecordEvaluation(context.Context, policyapi.EvaluationRequest, kernel.ULID, policyapi.Receipt, *Input, inputs.EvaluationFacts) error
 	Input(context.Context, kernel.AccountID, kernel.ULID, bool) (Input, error)
 	StartUpload(context.Context, kernel.AccountID, kernel.ULID) error
 	FinishInput(context.Context, kernel.AccountID, kernel.ULID, string, time.Time) error

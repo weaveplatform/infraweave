@@ -14,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 )
 
@@ -76,7 +77,14 @@ func (s *Store) CreateInput(ctx context.Context, input sampling.Input, body []by
 }
 
 // RecordEvaluation retains no plaintext input, source, result or print.
-func (s *Store) RecordEvaluation(ctx context.Context, req policyapi.EvaluationRequest, space kernel.ULID, r policyapi.Receipt, input *sampling.Input) error {
+func (s *Store) RecordEvaluation(
+	ctx context.Context,
+	req policyapi.EvaluationRequest,
+	space kernel.ULID,
+	r policyapi.Receipt,
+	input *sampling.Input,
+	facts inputs.EvaluationFacts,
+) error {
 	if !tx.In(ctx) {
 		return queue.ErrNoTransaction
 	}
@@ -86,8 +94,8 @@ func (s *Store) RecordEvaluation(ctx context.Context, req policyapi.EvaluationRe
 		id, key = &input.ID, &input.Key
 	}
 	_, err := tx.Q(ctx, s.db).
-		Exec(ctx, `INSERT INTO policy_evaluations(account_id,id,policy_id,policy_name,policy_version,space_id,type,engine_type,outcome,target_kind,target_id,run_id,sample_requested,sample_input_id,blob_key,created_at)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`, req.Account, r.ID, r.Policy, r.PolicyName, r.PolicyVersion, space, string(r.Type), r.Engine, string(r.Outcome), string(req.Target.Kind), req.Target.ID, req.Run, r.Sample, id, key, r.CreatedAt)
+		Exec(ctx, `INSERT INTO policy_evaluations(account_id,id,policy_id,policy_name,policy_version,space_id,type,engine_type,outcome,target_kind,target_id,run_id,sample_requested,sample_input_id,blob_key,created_at,pull_request_id,push_branch,run_type,run_drift_detection,module_event,module_id,stack_name,stack_repository)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)`, req.Account, r.ID, r.Policy, r.PolicyName, r.PolicyVersion, space, string(r.Type), r.Engine, string(r.Outcome), string(req.Target.Kind), req.Target.ID, req.Run, r.Sample, id, key, r.CreatedAt, facts.PullRequestID, facts.PushBranch, facts.RunType, facts.RunDriftDetection, facts.ModuleEvent, facts.ModuleID, facts.StackName, facts.StackRepository)
 	if err != nil {
 		return fmt.Errorf("policies: record evaluation metadata: %w", sql.Unavailable(err))
 	}

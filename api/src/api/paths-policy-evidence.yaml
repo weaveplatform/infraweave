@@ -73,6 +73,7 @@ components:
             required:
                 - capturedAt
                 - id
+                - input
                 - kind
             type: object
             x-graphql-type: PolicyInputCapture

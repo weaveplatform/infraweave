@@ -9,6 +9,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 )
 
 type reference struct {
@@ -67,7 +68,11 @@ func (s *Service) Record(ctx context.Context, req policyapi.EvaluationRequest, s
 				linked[receipt.ID] = input.ID
 			}
 		}
-		if err := s.d.Store.RecordEvaluation(ctx, req, space, evaluation.Receipt, input); err != nil {
+		facts, err := inputs.Facts(string(req.Type), evaluation.Input)
+		if err != nil {
+			return nil, fmt.Errorf("policies: snapshot evaluation metadata: %w", err)
+		}
+		if err := s.d.Store.RecordEvaluation(ctx, req, space, evaluation.Receipt, input, facts); err != nil {
 			return nil, fmt.Errorf("policies: stage evaluation evidence: %w", err)
 		}
 	}
