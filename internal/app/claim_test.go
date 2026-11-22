@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -154,7 +155,10 @@ func (w *claimWorld) poll(ctx context.Context, r int, worker kernel.ULID, draine
 	if err != nil {
 		return polled{err: err, took: time.Since(start)}
 	}
-	ok, _ := res.(workerapi.WorkerPoll200JSONResponse)
+	ok, valid := res.(workerapi.WorkerPoll200JSONResponse)
+	if !valid {
+		return polled{err: fmt.Errorf("unexpected worker poll response %T", res), took: time.Since(start)}
+	}
 	return polled{a: ok.Body.Assignment, took: time.Since(start)}
 }
 
@@ -165,6 +169,38 @@ func (w *claimWorld) pollAll(ctx context.Context, workers []kernel.ULID, drained
 	var wg sync.WaitGroup
 	for i, id := range workers {
 		wg.Go(func() { out[i] = w.poll(ctx, i, id, slices.Contains(drained, id), 5) })
+	}
+	wg.Wait()
+	return out
+}
+
+// pollAssignments drives eligible claimants like the launcher: an empty poll
+// ends one hold, not the worker's demand for a run. Each call keeps its original
+// five-second hold; the existing test deadline bounds the entire client loop.
+func (w *claimWorld) pollAssignments(t *testing.T, ctx context.Context, workers []kernel.ULID) []polled {
+	t.Helper()
+	deadline, ok := t.Deadline()
+	if !ok {
+		t.Fatal("claim clients require a finite test deadline")
+	}
+	ctx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	out := make([]polled, len(workers))
+	var wg sync.WaitGroup
+	for i, id := range workers {
+		wg.Go(func() {
+			for {
+				if err := ctx.Err(); err != nil {
+					out[i] = polled{err: err}
+					return
+				}
+				p := w.poll(ctx, i, id, false, 5)
+				if p.err != nil || p.a != nil {
+					out[i] = p
+					return
+				}
+			}
+		})
 	}
 	wg.Wait()
 	return out
@@ -254,7 +290,7 @@ func TestAccRunClaim(t *testing.T) {
 		workers[i] = w.worker(t, main, false)
 	}
 	holder := map[kernel.ULID]kernel.ULID{}
-	for i, p := range w.pollAll(ctx, workers) {
+	for i, p := range w.pollAssignments(t, ctx, workers) {
 		run := claimed(t, p)
 		if prev, ok := holder[run]; ok {
 			t.Errorf("run %s claimed by %s and %s", run, prev, workers[i])
