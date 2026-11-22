@@ -6284,6 +6284,22 @@ type PolicyIntentProjectAttachment struct {
 	ProjectSpaceDetails SpaceRef `json:"projectSpaceDetails"`
 }
 
+// PolicyLibrariesInput PolicyLibrariesInput is the input containing policy libraries used to
+// evaluate the main policy body.
+type PolicyLibrariesInput struct {
+	Libraries []PolicyLibraryInput `json:"libraries"`
+}
+
+// PolicyLibraryInput PolicyLibraryInput is the input type containing the data for a single policy
+// library used to evaluate the main policy body.
+type PolicyLibraryInput struct {
+	// Body The body of the library.
+	Body string `json:"body"`
+
+	// Name The name of the library.
+	Name string `json:"name"`
+}
+
 // PolicyPage One page of a cursor-paginated list.
 type PolicyPage struct {
 	Items []Policy `json:"items"`
@@ -6301,6 +6317,25 @@ type PolicyRef struct {
 type PolicyRuntimeDetails struct {
 	// OpenPolicyAgentVersion The linked github.com/open-policy-agent/opa module version.
 	OpenPolicyAgentVersion string `json:"openPolicyAgentVersion"`
+}
+
+// PolicySimulateInput All arguments to simulate a Policy.
+type PolicySimulateInput struct {
+	// Body Body of the policy.
+	Body string `json:"body"`
+
+	// EngineType The Rego dialect. Omission intentionally selects REGO_V1, as policy creation does.
+	EngineType *PolicyEngineType `json:"engineType,omitempty"`
+
+	// Input Edited JSON input, at most 4 MiB after decoding this string. The configured HTTP envelope and runtime limits may be lower.
+	Input string `json:"input"`
+
+	// Libraries PolicyLibrariesInput is the input containing policy libraries used to
+	// evaluate the main policy body.
+	Libraries *PolicyLibrariesInput `json:"libraries,omitempty"`
+
+	// Type PolicyType represents a type of policy.
+	Type PolicyType `json:"type"`
 }
 
 // PolicyStackAttachment PolicyStackAttachment is the policy-stack attachment viewed from the Policy.
@@ -11547,6 +11582,12 @@ type PolicyCheckParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// PolicySimulatev2Params defines parameters for PolicySimulatev2.
+type PolicySimulatev2Params struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // PolicyDeleteParams defines parameters for PolicyDelete.
 type PolicyDeleteParams struct {
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
@@ -12800,6 +12841,9 @@ type SearchPoliciesJSONRequestBody = SearchInput
 
 // SearchPoliciesSuggestionsJSONRequestBody defines body for SearchPoliciesSuggestions for application/json ContentType.
 type SearchPoliciesSuggestionsJSONRequestBody = SearchSuggestionsInput
+
+// PolicySimulatev2JSONRequestBody defines body for PolicySimulatev2 for application/json ContentType.
+type PolicySimulatev2JSONRequestBody = PolicySimulateInput
 
 // PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody defines body for PolicyUpdatev2Patch for application/merge-patch+json ContentType.
 type PolicyUpdatev2PatchApplicationMergePatchPlusJSONRequestBody = MergePatch
@@ -17023,6 +17067,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
 	SearchPoliciesSuggestions(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicySimulatev2WithBody Simulate Policy
+	//
+	// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+	PolicySimulatev2WithBody(ctx context.Context, params *PolicySimulatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PolicySimulatev2 Simulate Policy
+	//
+	// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+	PolicySimulatev2(ctx context.Context, params *PolicySimulatev2Params, body PolicySimulatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PolicyDelete Delete Policy
 	//
@@ -24140,6 +24202,44 @@ func (c *Client) SearchPoliciesSuggestionsWithBody(ctx context.Context, contentT
 // Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
 func (c *Client) SearchPoliciesSuggestions(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchPoliciesSuggestionsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicySimulatev2WithBody Simulate Policy
+//
+// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+func (c *Client) PolicySimulatev2WithBody(ctx context.Context, params *PolicySimulatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicySimulatev2RequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PolicySimulatev2 Simulate Policy
+//
+// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+func (c *Client) PolicySimulatev2(ctx context.Context, params *PolicySimulatev2Params, body PolicySimulatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPolicySimulatev2Request(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -38986,6 +39086,61 @@ func NewSearchPoliciesSuggestionsRequestWithBody(server string, contentType stri
 	return req, nil
 }
 
+// NewPolicySimulatev2Request calls the generic PolicySimulatev2 builder with application/json body
+func NewPolicySimulatev2Request(server string, params *PolicySimulatev2Params, body PolicySimulatev2JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPolicySimulatev2RequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPolicySimulatev2RequestWithBody constructs an http.Request for the PolicySimulatev2 method, with any body, and a specified content type
+func NewPolicySimulatev2RequestWithBody(server string, params *PolicySimulatev2Params, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/policies/simulate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewPolicyDeleteRequest constructs an http.Request for the PolicyDelete method
 func NewPolicyDeleteRequest(server string, policyId string, params *PolicyDeleteParams) (*http.Request, error) {
 	var err error
@@ -52923,6 +53078,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /policies/search/suggestions (the `SearchPoliciesSuggestions` operationId).
 	SearchPoliciesSuggestionsWithResponse(ctx context.Context, body SearchPoliciesSuggestionsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchPoliciesSuggestionsResponse, error)
+
+	// PolicySimulatev2WithBodyWithResponse Simulate Policy
+	//
+	// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+	PolicySimulatev2WithBodyWithResponse(ctx context.Context, params *PolicySimulatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicySimulatev2Response, error)
+
+	// PolicySimulatev2WithResponse Simulate Policy
+	//
+	// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+	PolicySimulatev2WithResponse(ctx context.Context, params *PolicySimulatev2Params, body PolicySimulatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicySimulatev2Response, error)
 
 	// PolicyDeleteWithResponse Delete Policy
 	//
@@ -74232,6 +74405,108 @@ func (r SearchPoliciesSuggestionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SearchPoliciesSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PolicySimulatev2Response200Headers the declared response headers of an HTTP 200 response for PolicySimulatev2
+type PolicySimulatev2Response200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySimulatev2Response429Headers the declared response headers of an HTTP 429 response for PolicySimulatev2
+type PolicySimulatev2Response429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PolicySimulatev2Response503Headers the declared response headers of an HTTP 503 response for PolicySimulatev2
+type PolicySimulatev2Response503Headers struct {
+	RetryAfter *int
+}
+
+type PolicySimulatev2Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PolicySimulatev2Response200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PolicySimulatev2Response429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PolicySimulatev2Response503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PolicySimulatev2Response) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PolicySimulatev2Response) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PolicySimulatev2Response) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PolicySimulatev2Response) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PolicySimulatev2Response) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PolicySimulatev2Response) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PolicySimulatev2Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PolicySimulatev2Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PolicySimulatev2Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PolicySimulatev2Response) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -98763,6 +99038,36 @@ func (c *ClientWithResponses) SearchPoliciesSuggestionsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseSearchPoliciesSuggestionsResponse(rsp)
+}
+
+// PolicySimulatev2WithBodyWithResponse Simulate Policy
+//
+// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+func (c *ClientWithResponses) PolicySimulatev2WithBodyWithResponse(ctx context.Context, params *PolicySimulatev2Params, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PolicySimulatev2Response, error) {
+	rsp, err := c.PolicySimulatev2WithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicySimulatev2Response(rsp)
+}
+
+// PolicySimulatev2WithResponse Simulate Policy
+//
+// Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /policies/simulate (the `PolicySimulatev2` operationId).
+func (c *ClientWithResponses) PolicySimulatev2WithResponse(ctx context.Context, params *PolicySimulatev2Params, body PolicySimulatev2JSONRequestBody, reqEditors ...RequestEditorFn) (*PolicySimulatev2Response, error) {
+	rsp, err := c.PolicySimulatev2(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePolicySimulatev2Response(rsp)
 }
 
 // PolicyDeleteWithResponse Delete Policy
@@ -127070,6 +127375,135 @@ func ParseSearchPoliciesSuggestionsResponse(rsp *http.Response) (*SearchPolicies
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers SearchPoliciesSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePolicySimulatev2Response parses an HTTP response from a PolicySimulatev2WithResponse call
+func ParsePolicySimulatev2Response(rsp *http.Response) (*PolicySimulatev2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PolicySimulatev2Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PolicySimulatev2Response200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PolicySimulatev2Response429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PolicySimulatev2Response503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

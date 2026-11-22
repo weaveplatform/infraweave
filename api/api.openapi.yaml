@@ -9586,6 +9586,66 @@ paths:
       x-infraweave-feature: policies
       x-infraweave-subject: list
       x-rest-style: search
+  /policies/simulate:
+    post:
+      description: Compile and evaluate caller-supplied policy source and edited JSON through the normal bounded runtime. Returns the full decision as a JSON string, including type defaults. It does not save a policy, receipt, sample, capture, budget charge, session grant or target run. Source is limited to 256 KiB and decoded input to 4 MiB; operator limits still apply. Print is bounded internally and is not logged or added to the recorded decision-string contract.
+      operationId: policySimulatev2
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: |-
+                package infraweave
+
+                warn contains "review" if { input.changed }
+              input: '{"changed": true}'
+              type: PLAN
+            schema:
+              $ref: '#/components/schemas/PolicySimulateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The policySimulatev2 result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Simulate Policy
+      tags:
+        - Policies
+      x-bruno: Policies/Simulate Policy.bru
+      x-graphql:
+        field: policySimulatev2
+        operation: mutation
+        type: Mutation
+      x-infraweave-feature: policies
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: any
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
   /policies/{policyId}:
     delete:
       description: Delete an existing Policy.
@@ -27667,6 +27727,37 @@ components:
         - projectSpaceDetails
       type: object
       x-graphql-type: PolicyIntentProjectAttachment
+    PolicyLibrariesInput:
+      additionalProperties: false
+      description: |-
+        PolicyLibrariesInput is the input containing policy libraries used to
+        evaluate the main policy body.
+      properties:
+        libraries:
+          items:
+            $ref: '#/components/schemas/PolicyLibraryInput'
+          type: array
+      required:
+        - libraries
+      type: object
+      x-graphql-type: PolicyLibrariesInput
+    PolicyLibraryInput:
+      additionalProperties: false
+      description: |-
+        PolicyLibraryInput is the input type containing the data for a single policy
+        library used to evaluate the main policy body.
+      properties:
+        body:
+          description: The body of the library.
+          type: string
+        name:
+          description: The name of the library.
+          type: string
+      required:
+        - body
+        - name
+      type: object
+      x-graphql-type: PolicyLibraryInput
     PolicyPage:
       description: One page of a cursor-paginated list.
       properties:
@@ -27698,6 +27789,30 @@ components:
           type: string
       required:
         - openPolicyAgentVersion
+    PolicySimulateInput:
+      additionalProperties: false
+      description: All arguments to simulate a Policy.
+      properties:
+        body:
+          description: Body of the policy.
+          type: string
+        engineType:
+          allOf:
+            - $ref: '#/components/schemas/PolicyEngineType'
+          description: The Rego dialect. Omission intentionally selects REGO_V1, as policy creation does.
+        input:
+          description: Edited JSON input, at most 4 MiB after decoding this string. The configured HTTP envelope and runtime limits may be lower.
+          type: string
+        libraries:
+          $ref: '#/components/schemas/PolicyLibrariesInput'
+        type:
+          $ref: '#/components/schemas/PolicyType'
+      required:
+        - body
+        - input
+        - type
+      type: object
+      x-graphql-type: PolicySimulateInput
     PolicyStackAttachment:
       description: PolicyStackAttachment is the policy-stack attachment viewed from the Policy.
       properties:
