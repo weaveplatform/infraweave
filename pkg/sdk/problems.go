@@ -90,6 +90,8 @@ type (
 	IdempotencyKeyInFlight struct{ Problem }
 	// PreconditionFailed is the precondition-failed problem (412).
 	PreconditionFailed struct{ Problem }
+	// PreconditionRequired is the precondition-required problem (428).
+	PreconditionRequired struct{ Problem }
 	// PayloadTooLarge is the payload-too-large problem (413).
 	PayloadTooLarge struct{ Problem }
 	// UnsupportedMediaType is the unsupported-media-type problem (415).
@@ -131,6 +133,7 @@ var bySlug = map[string]func(Problem) error{
 	"intent-project-locked":       func(p Problem) error { return IntentProjectLocked{p} },
 	"idempotency-key-in-flight":   func(p Problem) error { return IdempotencyKeyInFlight{p} },
 	"precondition-failed":         func(p Problem) error { return PreconditionFailed{p} },
+	"precondition-required":       func(p Problem) error { return PreconditionRequired{p} },
 	"payload-too-large":           func(p Problem) error { return PayloadTooLarge{p} },
 	"unsupported-media-type":      func(p Problem) error { return UnsupportedMediaType{p} },
 	"validation-failed":           func(p Problem) error { return ValidationFailed{p} },

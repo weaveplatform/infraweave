@@ -42,6 +42,7 @@ func Held() []integrity.Held {
 	stack := []string{"account_id", "stack_id"}
 	return []integrity.Held{
 		{Entity: "account", Table: "runs", Columns: []string{"account_id"}},
+		{Entity: "organization", Table: "runs", Columns: []string{"organization_id"}},
 		{Entity: "stack", Table: "runs", Columns: stack},
 		{Entity: "stack", Table: "stack_run_locks", Columns: stack},
 		{Entity: "stack", Table: "stack_run_state", Columns: stack},

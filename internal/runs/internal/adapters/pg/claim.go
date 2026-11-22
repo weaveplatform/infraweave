@@ -33,11 +33,15 @@ var onWorker = func() []string {
 // Announce notifies the held polls of run's pool, which run.WorkerPool
 // names, that run waits, on commit of the transaction ctx carries.
 func (s *Store) Announce(ctx context.Context, run lifecycle.Run) error {
+	payload := workersapi.PublicWaiting
+	if pool := run.ExecutionPool(); pool != nil {
+		payload = workersapi.Waiting(*pool, run.ID)
+	}
 	err := notify.Notify(
 		ctx,
 		tx.Q(ctx, s.db),
 		notify.Runs,
-		workersapi.Waiting(*run.WorkerPool, run.ID),
+		payload,
 	)
 	if err != nil {
 		return fmt.Errorf("runs: announce run %s: %w", run.ID, sql.Unavailable(err))
@@ -246,7 +250,7 @@ func (s *Store) Overdue(ctx context.Context, now time.Time, timeouts []workersap
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
 		WHERE state = ANY($1) AND state_changed_at < $2::timestamptz -
 			coalesce((SELECT t.micros FROM unnest($3::uuid[], $4::bigint[]) AS t(pool, micros)
-				WHERE t.pool = runs.worker_pool_id), $5) * interval '1 microsecond'
+				WHERE t.pool = coalesce(runs.worker_pool_id,runs.public_worker_pool_id)), $5) * interval '1 microsecond'
 		ORDER BY state_changed_at, id
 		LIMIT $6 FOR UPDATE SKIP LOCKED`,
 		preparing, now, pools, micros, fallback.Microseconds(), batch)

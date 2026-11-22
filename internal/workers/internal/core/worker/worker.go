@@ -41,6 +41,8 @@ const (
 
 // Worker is a registered worker of a private pool.
 type Worker struct {
+	// Public workers carry installation authority and have no tenant owner.
+	Public       bool
 	Account      kernel.AccountID
 	Organization kernel.OrganizationID
 	ID           kernel.ULID
@@ -134,6 +136,8 @@ const (
 // Store is what the service needs of the workers' storage. Every method
 // joins the transaction its context carries.
 type Store interface {
+	Public(ctx context.Context, lock bool) (pool.Pool, error)
+	PublicShare(ctx context.Context) (pool.Pool, error)
 	// PoolByID reads the pool id of whichever account holds it;
 	// pool.ErrNotFound when none does.
 	PoolByID(ctx context.Context, id kernel.ULID) (pool.Pool, error)
@@ -216,34 +220,39 @@ type Limits interface {
 // DefaultLostAfter when zero; and PreparingTimeout, the preparing timeout
 // of a pool that sets none, pool.DefaultPreparingTimeout when zero.
 type Deps struct {
-	Store            Store
-	DB               tx.Beginner
-	Tokens           Tokens
-	Limits           Limits
-	Version          string
-	PollMax          time.Duration
-	OfflineAfter     time.Duration
-	LostAfter        time.Duration
-	PreparingTimeout time.Duration
-	Now              func() time.Time
+	PublicRegistries       []string
+	PublicPoolEnabled      bool
+	PublicPreparingTimeout time.Duration
+	Store                  Store
+	DB                     tx.Beginner
+	Tokens                 Tokens
+	Limits                 Limits
+	Version                string
+	PollMax                time.Duration
+	OfflineAfter           time.Duration
+	LostAfter              time.Duration
+	PreparingTimeout       time.Duration
+	Now                    func() time.Time
 }
 
 // Service is the workers' logic: the worker API's registration, polls and
 // exit, and the API's drain, cycle and worker reads.
 type Service struct {
-	store     Store
-	db        tx.Beginner
-	tokens    Tokens
-	limits    Limits
-	scheduler workersapi.Scheduler
-	reports   workersapi.Reports
-	liveness  workersapi.Liveness
-	signals   workersapi.Signals
-	version   string
-	pollMax   time.Duration
-	clocks    clocks
-	now       func() time.Time
-	hub       *hub
+	publicRegistries  []string
+	publicPoolEnabled bool
+	store             Store
+	db                tx.Beginner
+	tokens            Tokens
+	limits            Limits
+	scheduler         workersapi.Scheduler
+	reports           workersapi.Reports
+	liveness          workersapi.Liveness
+	signals           workersapi.Signals
+	version           string
+	pollMax           time.Duration
+	clocks            clocks
+	now               func() time.Time
+	hub               *hub
 }
 
 // New returns the service over d.
@@ -257,7 +266,9 @@ func New(d Deps) *Service {
 		pollMax = MaxWait
 	}
 	return &Service{
-		store: d.Store, db: d.DB, tokens: d.Tokens, limits: d.Limits, version: d.Version,
+		publicRegistries:  slices.Clone(d.PublicRegistries),
+		publicPoolEnabled: d.PublicPoolEnabled,
+		store:             d.Store, db: d.DB, tokens: d.Tokens, limits: d.Limits, version: d.Version,
 		pollMax: pollMax, clocks: newClocks(d), now: now, hub: newHub(),
 	}
 }
@@ -357,6 +368,18 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 		if err != nil {
 			return err //nolint:wrapcheck // the store names the read
 		}
+		if p.Public {
+			if !s.publicPoolEnabled {
+				return refuse("the installation public pool is disabled")
+			}
+			if !slices.Contains(c.Capabilities, "public-pool-v1") {
+				return invalid(kernel.ReasonRule, "Public workers must support public-pool-v1; upgrade the launcher before registering.")
+			}
+			p, err = s.store.PublicShare(ctx)
+			if err != nil {
+				return err //nolint:wrapcheck // the store names the locked read
+			}
+		}
 		if leaf.SerialNumber.Cmp(big.NewInt(p.Serial)) != 0 {
 			return refuse("pool %s's certificate %s was replaced by a reset", id, leaf.SerialNumber)
 		}
@@ -368,6 +391,7 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 			return refuse("jti %q was used in the last %s", c.ID, NonceTTL)
 		}
 		w := Worker{
+			Public:  p.Public,
 			Account: p.Account, Organization: p.Organization, Pool: p.ID, Serial: p.Serial,
 			Version: c.Version, OS: c.OS, Arch: c.Arch, Metadata: c.Metadata,
 			LastSeenAt: now, AvailableAt: &now, CreatedAt: now,
@@ -380,7 +404,7 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 			out.Worker = resumed
 			return err
 		}
-		if s.limits != nil {
+		if s.limits != nil && !p.Public {
 			if err := s.limits.CheckLimit(ctx, p.Organization, p.Account,
 				featuresapi.PrivateWorkers,
 				func(ctx context.Context) (featuresapi.Usage, error) {
@@ -418,7 +442,7 @@ func (s *Service) resume(ctx context.Context, named string, w Worker) (kernel.UL
 		return kernel.ULID{}, nil
 	case err != nil:
 		return kernel.ULID{}, err //nolint:wrapcheck // the store names the read
-	case old.Account != w.Account || old.Pool != w.Pool:
+	case old.Account != w.Account || old.Pool != w.Pool || old.Public && old.Serial != w.Serial:
 		return kernel.ULID{}, nil
 	}
 	w.ID = id

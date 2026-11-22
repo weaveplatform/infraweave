@@ -784,6 +784,18 @@ components:
         message:
           type: string
           description: The refusal, for people.
+    PublicPoolPolicy:
+      description: Installation public-pool admission policy, applied to the fully resolved runner image before starting it. Absent for private execution.
+      type: object
+      additionalProperties: false
+      required: [allowedRegistries]
+      properties:
+        allowedRegistries:
+          type: array
+          items:
+            type: string
+            maxLength: 259
+          description: Canonical registry authorities or DNS suffixes, with the ECR region selector supported. Empty admits no images.
     RegisterRequest:
       description: A registration, signed with the pool's private key.
       type: object
@@ -794,7 +806,7 @@ components:
           type: string
           maxLength: 32768
           description: >-
-            A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
+            A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
     Registration:
       description: The registered worker and its session token.
       type: object
@@ -874,7 +886,9 @@ components:
         runnerImage:
           type: string
           description: >-
-            The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
+            The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for the selected pool kind. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
+        publicPool:
+          $ref: '#/components/schemas/PublicPoolPolicy'
         stateBackend:
           $ref: '#/components/schemas/RunSpecStateBackend'
         source:

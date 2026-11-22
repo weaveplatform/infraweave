@@ -1,0 +1,199 @@
+components:
+  schemas:
+    PublicWorkerPoolCredentials:
+      description: The installation public pool identity and public certificate token. The private key remains with its operator.
+      type: object
+      additionalProperties: false
+      required: [id, config, version]
+      properties:
+        id:
+          type: string
+          description: The immutable installation pool ULID.
+        config:
+          type: string
+          description: The pool token containing its endpoint and public certificate.
+        version:
+          type: integer
+          format: int64
+          description: The credential version, also returned as a strong ETag.
+    PublicWorkerPoolCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [certificateSigningRequest]
+      properties:
+        certificateSigningRequest:
+          type: string
+          minLength: 1
+          maxLength: 32768
+          description: An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+    PublicWorkerPoolResetRequest:
+      type: object
+      additionalProperties: false
+      required: [certificateSigningRequest]
+      properties:
+        certificateSigningRequest:
+          type: string
+          minLength: 1
+          maxLength: 32768
+          description: An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+        releaseBinding:
+          type: boolean
+          default: false
+          description: Release an abandoned controller binding, requiring a different key and no remaining workers or active assignments.
+  parameters:
+    PublicWorkerPoolIfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: A strong credential ETag, or *. Its absence answers 428; a stale version answers 412.
+      schema:
+        type: string
+paths:
+  /public-worker-pool:
+    get:
+      summary: Read installation public pool credentials
+      description: Operator credentials only. Does not return any private key.
+      operationId: publicWorkerPoolCredentials
+      x-infraweave-feature: operator
+      x-infraweave-cost: standard
+      tags: [Workers]
+      responses:
+        '200':
+          description: The installation pool credentials.
+          headers:
+            ETag:
+              description: The current strong credential version tag.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWorkerPoolCredentials'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: The operator has not created a public pool.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      summary: Create installation public pool credentials
+      description: Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+      operationId: publicWorkerPoolCreate
+      x-infraweave-feature: operator
+      x-infraweave-cost: standard
+      tags: [Workers]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicWorkerPoolCreateRequest'
+      responses:
+        '201':
+          description: The newly created pool credentials.
+          headers:
+            ETag:
+              description: The current strong credential version tag.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWorkerPoolCredentials'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The singleton exists, or an idempotent request is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The signing request is invalid, or an idempotency key was reused for another request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /public-worker-pool/reset:
+    post:
+      summary: Reset installation public pool credentials
+      description: Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+      operationId: publicWorkerPoolReset
+      x-infraweave-feature: operator
+      x-infraweave-cost: standard
+      tags: [Workers]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/PublicWorkerPoolIfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicWorkerPoolResetRequest'
+      responses:
+        '200':
+          description: The replacement credentials and new version.
+          headers:
+            ETag:
+              description: The new strong credential version tag.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWorkerPoolCredentials'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: The public pool has not been created.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Workers or active assignments prevent binding release, or an idempotent request is in flight.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412':
+          description: The credential version is stale.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: The signing request or replacement key is invalid, or an idempotency key was reused.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '428':
+          description: The required If-Match precondition is absent.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'

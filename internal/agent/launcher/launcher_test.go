@@ -335,7 +335,7 @@ func TestUnitLauncherRegistersPollsAndDeregisters(t *testing.T) {
 		}
 		c := regs[0].Claims
 		capabilities, ok := c["capabilities"].([]any)
-		if !ok || len(capabilities) != 1 || capabilities[0] != "plan-sanitization-v1" {
+		if !ok || len(capabilities) != 2 || capabilities[0] != "plan-sanitization-v1" || capabilities[1] != "public-pool-v1" {
 			t.Fatalf("signed capabilities: %v", c["capabilities"])
 		}
 		meta, _ := c["metadata"].(map[string]any)
@@ -482,6 +482,48 @@ func TestUnitRunnerImage(t *testing.T) {
 				})
 			})
 		}
+	}
+}
+
+func TestUnitPublicRunnerImageAdmission(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		launcher   string
+		spec       string
+		registries []string
+		allowed    bool
+	}{
+		{"vendor fallback", "", "", []string{"ghcr.io"}, true},
+		{"launcher allowed", "ghcr.io/weaveplatform/runner:1", "", []string{"ghcr.io"}, true},
+		{"launcher denied", "untrusted.example/runner:1", "", []string{"ghcr.io"}, false},
+		{"specification allowed", "untrusted.example/runner:1", "ghcr.io/weaveplatform/runner:1", []string{"ghcr.io"}, true},
+		{"specification denied", "ghcr.io/weaveplatform/runner:1", "untrusted.example/runner:1", []string{"ghcr.io"}, false},
+		{"empty policy", "", "", nil, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				w := newWorld(t)
+				w.image = tt.launcher
+				r := w.start(t)
+				run := newRun("run-1", wire.AssignmentStatePREPARING, tt.spec)
+				run.Spec.PublicPool = &wire.PublicPoolPolicy{AllowedRegistries: tt.registries}
+				w.queue(t, run)
+				if jobs := w.exec.Jobs(); (len(jobs) == 1) != tt.allowed {
+					t.Fatalf("public image admission allowed=%t: %+v", tt.allowed, jobs)
+				}
+				if !tt.allowed {
+					reports := w.srv.Reports()
+					if len(reports) != 1 || reports[0].Report.Event != wire.Failed || reports[0].Report.Details == nil ||
+						*reports[0].Report.Details != "runner image is not admitted by the installation public pool" {
+						t.Fatalf("public image refusal: %+v", reports)
+					}
+					if len(w.tools.fetched()) != 0 {
+						t.Fatal("downloaded tools for a refused image")
+					}
+				}
+				r.stop(t)
+			})
+		})
 	}
 }
 

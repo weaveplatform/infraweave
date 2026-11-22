@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"slices"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -48,7 +49,15 @@ func (s *Service) Spec(ctx context.Context, b accessapi.Bearer, run kernel.ULID)
 		if err != nil {
 			return err //nolint:wrapcheck // the runs domain names the handover
 		}
-		p, err := s.store.Get(ctx, h.Account, h.Pool, false)
+		var p pool.Pool
+		if h.Public {
+			p, err = s.store.Public(ctx, false)
+			if err == nil && p.ID != h.Pool {
+				return workersapi.ErrNotOnWorker
+			}
+		} else {
+			p, err = s.store.Get(ctx, h.Account, h.Pool, false)
+		}
 		if errors.Is(err, pool.ErrNotFound) {
 			return workersapi.ErrNotOnWorker
 		}
@@ -60,12 +69,18 @@ func (s *Service) Spec(ctx context.Context, b accessapi.Bearer, run kernel.ULID)
 			return err
 		}
 		out = RunSpec{Spec: h.Spec}
+		if h.Public {
+			out.PublicPool = &workersapi.PublicPoolPolicy{AllowedRegistries: slices.Clone(s.publicRegistries)}
+		}
 		if out.RunnerImage == nil {
 			images, err := s.store.RunnerImages(ctx, h.Account)
 			if err != nil {
 				return err //nolint:wrapcheck // the store names the read
 			}
 			out.RunnerImage = images.Private
+			if h.Public {
+				out.RunnerImage = images.Public
+			}
 		}
 		out.Sealed, err = seal.SealEnvelope(key, run.String(), h.Spec.Run.StateVersion,
 			h.Secrets.Reveal())

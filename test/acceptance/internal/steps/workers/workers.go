@@ -37,8 +37,10 @@ import (
 // ref: decision 0008 § "The worker API", § "The run specification and its
 // secrets"
 type workerSteps struct {
-	legacy bool
-	w      *harness.World
+	legacy  bool
+	public  bool
+	expired bool
+	w       *harness.World
 	// certs are the pool certificates by the name their serial is kept
 	// as, each with its pool's ID.
 	certs map[string]poolCert
@@ -67,6 +69,18 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		`^the launcher "(\w+)" registers with the key of "(\w+)" and the certificate "(\w+)"(?: as the worker "(\w+)")? through ([AB])$`,
 		w.registerLauncher,
 	)
+	sc.Step(`^the public launcher "(\w+)" registers with the key of "(\w+)" and the certificate "(\w+)"(?: as the worker "(\w+)")? through ([AB])$`,
+		func(ctx context.Context, launcher, key, cert, named, replica string) error {
+			w.public = true
+			defer func() { w.public = false }()
+			return w.registerLauncher(ctx, launcher, key, cert, named, replica)
+		})
+	sc.Step(`^the public launcher "(\w+)" registers an expired proof with the key of "(\w+)" and the certificate "(\w+)" through ([AB])$`,
+		func(ctx context.Context, launcher, key, cert, replica string) error {
+			w.public, w.expired = true, true
+			defer func() { w.public, w.expired = false, false }()
+			return w.registerLauncher(ctx, launcher, key, cert, "", replica)
+		})
 	sc.Step(
 		`^the legacy launcher "(\w+)" registers without plan sanitization with the key of "(\w+)" and the certificate "(\w+)" through ([AB])$`,
 		func(ctx context.Context, launcher, key, cert, replica string) error {
@@ -78,6 +92,24 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the launcher "(\w+)" sends its registration again through ([AB])$`, w.replay)
 	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
 	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
+	sc.Step(`^public pool credential persistence is refused$`, func(ctx context.Context) error {
+		_, err := w.w.Query(ctx, `ALTER TABLE worker_public_pool ADD CONSTRAINT refuse_credential_rotation CHECK(version=1)`)
+		return err
+	})
+	sc.Step(`^public pool credential persistence is restored$`, func(ctx context.Context) error {
+		_, err := w.w.Query(ctx, `ALTER TABLE worker_public_pool DROP CONSTRAINT refuse_credential_rotation`)
+		return err
+	})
+	sc.Step(`^the answer has no worker assignment$`, func() error {
+		var out wire.PollResult
+		if err := json.Unmarshal(w.w.Last().Body, &out); err != nil {
+			return fmt.Errorf("poll response: %w", err)
+		}
+		if out.Assignment != nil {
+			return fmt.Errorf("%w: poll unexpectedly assigned work", harness.ErrStep)
+		}
+		return nil
+	})
 	sc.Step(`^the answer lists the workers "([^"]*)"$`, w.lists)
 	sc.Step(`^the answer assigns the run "(\w+)", its run token kept as "(\w+)"$`, w.assigned)
 	sc.Step(`^the specification names the run "(\w+)" of the home account, kept as "(\w+)"$`,
@@ -184,7 +216,8 @@ func (w *workerSteps) token(ctx context.Context, pool, name string) error {
 	}
 	var ca []byte
 	var serial int64
-	if err := w.row(ctx, `SELECT c.certificate, p.serial FROM worker_pool_ca c, worker_pools p
+	if err := w.row(ctx, `SELECT c.certificate, p.serial FROM worker_pool_ca c,
+		(SELECT id,serial FROM worker_pools UNION ALL SELECT id,serial FROM worker_public_pool) p
 		WHERE p.id = $1`, []any{harness.UUIDOf(t.Pool)}, &ca, &serial); err != nil {
 		return err
 	}
@@ -264,6 +297,12 @@ func (w *workerSteps) registerLauncher(ctx context.Context, launcher, key, cert,
 		"pool": pc.pool, "iat": time.Now().Unix(), "jti": kernel.NewULID().String(),
 		"capabilities": []string{"plan-sanitization-v1"}, "version": "1.0.0", "os": "linux", "arch": "amd64",
 		"metadata": map[string]string{"host": launcher},
+	}
+	if w.expired {
+		payload["iat"] = time.Now().Add(-time.Hour).Unix()
+	}
+	if w.public {
+		payload["capabilities"] = []string{"plan-sanitization-v1", "public-pool-v1"}
 	}
 	if w.legacy {
 		delete(payload, "capabilities")

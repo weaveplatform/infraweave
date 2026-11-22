@@ -37,10 +37,11 @@ func (s *Store) Request(ctx context.Context, run lifecycle.Run, kind workersapi.
 		sig.Note); err != nil {
 		return fmt.Errorf("runs: record the %s of run %s: %w", kind, run.ID, sql.Unavailable(err))
 	}
-	if run.WorkerPool == nil {
+	pool := run.ExecutionPool()
+	if pool == nil {
 		return nil
 	}
-	if err := notify.Notify(ctx, q, notify.Runs, run.WorkerPool.String()); err != nil {
+	if err := notify.Notify(ctx, q, notify.Runs, pool.String()); err != nil {
 		return fmt.Errorf("runs: announce the %s of run %s: %w", kind, run.ID,
 			sql.Unavailable(err))
 	}

@@ -237,6 +237,9 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 		Files:       make([]gen.RunSpecFile, 0, len(spec.Files)),
 		Sealed:      spec.Sealed,
 	}
+	if spec.PublicPool != nil {
+		out.PublicPool = &gen.PublicPoolPolicy{AllowedRegistries: nonNil(spec.PublicPool.AllowedRegistries)}
+	}
 	if out.Hooks == nil {
 		out.Hooks = map[string][]string{}
 	}

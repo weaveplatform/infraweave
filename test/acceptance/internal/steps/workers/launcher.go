@@ -49,10 +49,11 @@ type launcherSteps struct {
 	w *harness.World
 	// label names the scenario's forwarder and run containers, which its
 	// end removes.
-	label     string
-	relay     *harness.Relay
-	network   string
-	launchers map[string]*launcher
+	label       string
+	relay       *harness.Relay
+	network     string
+	launchers   map[string]*launcher
+	publicPools map[string]bool
 	// tampered names the tool whose build the scenario's launchers
 	// download altered, through tamperer, a mirror of the suite's.
 	tampered string
@@ -76,6 +77,7 @@ type launcher struct {
 
 func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	l.launchers = map[string]*launcher{}
+	l.publicPools = map[string]bool{}
 	l.w.IDs["runner.spacelift"] = deps.ImageSpaceliftRunnerTerraform
 	l.w.IDs["runner.terraform"] = harness.RunnerTerraform
 	l.w.IDs["runner.opentofu"] = harness.RunnerOpenTofu
@@ -92,6 +94,16 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)
+	sc.Step(`^two infraweave servers, A and B, on one database, with an operator key and the settings '([^']*)'$`,
+		func(ctx context.Context, raw string) error {
+			l.w.Settings["auth"] = harness.OperatorAuth()
+			return l.servers(ctx, raw)
+		})
+	sc.Step(`^token "(\w+)" starts the public launcher "(\w+)" of the pool "(\w+)" with the key of "(\w+)" through ([AB])$`,
+		func(ctx context.Context, token, name, pool, csr, replica string) error {
+			l.publicPools[pool] = true
+			return l.startWithImage(ctx, token, name, pool, csr, harness.RunnerTerraform, replica)
+		})
 	sc.Step(`^the launchers started from now on set the run request limits to (\d+) per second and a burst of (\d+)$`,
 		func(rate, burst int) { l.maxRequestsPerSecond, l.maxRequestsBurst = rate, burst })
 	sc.Step(
@@ -321,8 +333,11 @@ var scenarioTools = []struct {
 // poolToken reads the pool kept as pool through replica with token and
 // answers its pool token with the relay as its endpoint.
 func (l *launcherSteps) poolToken(ctx context.Context, token, pool, replica string) (string, error) {
-	if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet,
-		"/api/v1/worker-pools/"+l.w.IDs[pool], "", replica); err != nil {
+	path := "/api/v1/worker-pools/" + l.w.IDs[pool]
+	if l.publicPools[pool] {
+		path = "/operator/v1/public-worker-pool"
+	}
+	if err := l.w.SendAs(ctx, `token "`+token+`"`, http.MethodGet, path, "", replica); err != nil {
 		return "", err
 	}
 	r := l.w.Last()

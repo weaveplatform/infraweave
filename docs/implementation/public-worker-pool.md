@@ -1,0 +1,105 @@
+# Installation public worker pool
+
+The installation operator can issue a single pool identity through
+`/operator/v1/public-worker-pool`. Account credentials do not administer it.
+Public workers use the ordinary `/worker/v1` registration, poll, sealed run
+specification and reporting protocol. They have no fabricated account,
+organization or space identity and consume no private-worker registration quota.
+Tenant runs retain their own immutable account/organization ownership.
+
+## Enablement and configuration
+
+Public capacity is disabled by default. Enabling it neither creates hosting nor
+registers workers. Configure every server replica consistently:
+
+```yaml
+worker:
+  public_pool:
+    enabled: true
+    preparing_timeout: 15m
+    allowed_registries: [ghcr.io]
+    outgoing_ip_addresses: []
+```
+
+The default registry selectors are `azurecr.io`,
+`dkr.ecr.<region>.amazonaws.com`, `docker.io`, `docker.pkg.dev`, `gcr.io`,
+`ghcr.io`, `public.ecr.aws`, `quay.io`, `registry.gitlab.com` and
+`registry.hub.docker.com`. Empty selectors admit no images. DNS suffixes match
+label boundaries; IP/localhost selectors match exactly. A selector without a
+port accepts only the default port or explicit 443; any other port is an explicit
+opt-in. ECR's region selector requires a twelve-digit account and its actual
+registry host shape. `docker.pkg.dev` also accepts Google's regional
+`LOCATION-docker.pkg.dev` authorities. Complete image references are validated
+and Docker shorthand is normalized before comparison. Lookalike host/path
+prefixes do not match.
+
+The launcher applies the policy to its final image after the run/account image,
+launcher default and vendor fallback have been resolved, before tool acquisition
+or container creation. Public registrations must advertise signed
+`public-pool-v1` support as well as `plan-sanitization-v1`, preventing older
+launchers from silently ignoring this policy. Private execution carries no public
+policy and retains its existing image behavior.
+
+The preparation timeout must be positive whole seconds. Outgoing addresses are
+an operator assertion of canonical IPv4/IPv6 literals, with no duplicates or
+IPv4-mapped/zone-qualified forms; configuration does not provision or verify NAT.
+Public egress/default-image/search projections are delivered separately.
+
+## Credentials and rotation
+
+The host generates and retains a P-256 private key and submits only its CSR.
+An operator bearer can create/read credentials or reset the certificate. Creation
+uses the standard idempotency control: identical key/body replays its result;
+a different creation after the singleton exists is a conflict. Reads return the
+same stable pool ULID, version, ETag and launcher configuration. The server
+stores the signed certificate, not the pool's private key.
+
+Reset requires the current `If-Match`: absent is 428, stale is 412. Successful
+rotation preserves the pool ULID and advances its certificate serial/version.
+A public launcher restarting under the same certificate resumes its worker ID.
+After rotation, replacement-key registration creates a fresh worker identity;
+it never revives an old bearer by rewriting that bearer's worker serial.
+Obsolete public polls cannot refresh liveness, and the ordinary reap retires
+obsolete registrations and fails abandoned assignments. Existing work is not
+replayed or silently adopted by a new worker.
+
+`releaseBinding=true` additionally requires a different key, no registered
+workers and no active public assignments, including assignments whose worker
+row is gone. Missing/failing assignment storage refuses release. The eventual
+controller binding lifecycle is a separate delivery. Private-worker reset's
+pre-existing session-resume defect is tracked separately in
+[#766](https://github.com/weaveplatform/infraweave/issues/766).
+
+## Assignment and limits
+
+An enabled public worker can claim eligible normal-priority, non-drift runs
+without a private pool. Selection is FIFO by creation/ID across tenant accounts.
+The ordinary transactional organization/account `public-worker-slots` check,
+owner fences, candidate revalidation and state transition govern assignment;
+full organizations/accounts are skipped so another eligible owner can proceed.
+Billing disabled retains the existing unbounded Enterprise behavior.
+
+First assignment fixes the installation pool ID on the run; subsequent
+apply/replan, handover, reporting, signalling and preparation reap use that
+binding. It remains distinct from the selected private pool. Disabling public
+capacity refuses new public registration/claims and does not redirect work to a
+private pool. Priority/scheduled admission restrictions, public queue/user
+projections, samples and Kubernetes hosting retain their own implementation
+owners in the [delivery register](worker-pool-contracts.json).
+
+## Verification
+
+`features/workers/public_execution.feature` executes provider-free
+`terraform_data` configurations through real launchers, PostgreSQL, object
+storage, Gitea and Docker. It checks the exact pinned runner image with its baked
+Terraform CLI, successful state persistence, an unlisted-image refusal and a
+billing-enabled Free slot ceiling that queues work until the active run finishes.
+
+`public_pool.feature` and `public_registration.feature` cover normal operator
+routes, missing/stale preconditions, invalid CSR, wrong audiences, disabled
+registration, signed capabilities, replay, same-certificate resume and rotation
+revocation. PostgreSQL component tests exercise concurrent singleton creation,
+certificate write failure/rollback, NULL tenant scope, active assignment/usage
+readback, FIFO exclusions, obsolete-worker liveness and unavailable dependencies.
+These are application evidence, not new vendor captures. Cloud/controller,
+complete public restriction/projection and final concurrency gates remain open.

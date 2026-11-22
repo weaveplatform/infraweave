@@ -27,6 +27,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
 
@@ -346,7 +347,7 @@ func (l *Launcher) register(ctx context.Context) error {
 	var backoff time.Duration
 	for {
 		jws, err := l.id.sign(claims{
-			Capabilities: []string{"plan-sanitization-v1"},
+			Capabilities: []string{"plan-sanitization-v1", "public-pool-v1"},
 			Version:      l.d.Version, OS: l.d.OS, Arch: l.d.Arch, Metadata: l.d.Config.Metadata,
 			Worker: l.st.Worker,
 		}, l.d.Now())
@@ -710,6 +711,8 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 	}
 }
 
+var errPublicRunnerImage = errors.New("runner image is not admitted by the installation public pool")
+
 // container fetches the tool a's specification names, and the Terragrunt
 // that drives it for a Terragrunt stack's run, and starts the run's
 // container with ws as its workspace, each binary mounted read-only at
@@ -720,6 +723,10 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 //
 // ref: decision 0008 § "Runner images"
 func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets, ws string, out *lines) (executor.Container, error) {
+	image := l.runnerImage(spec)
+	if spec.PublicPool != nil && !runnerimages.RegistryAllowed(image, spec.PublicPool.AllowedRegistries) {
+		return nil, errPublicRunnerImage
+	}
 	var mounts []executor.Mount
 	for _, b := range binaries(spec) {
 		bin, err := l.d.Tools.Binary(ctx, tools.Release{
@@ -732,8 +739,6 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 			Source: bin, Target: "/bin/" + string(b.Tool), ReadOnly: true,
 		})
 	}
-	image := l.runnerImage(spec)
-
 	spec.Sealed = nil
 	var h bytes.Buffer
 	if err := handoff.Write(&h, handoff.Handoff{

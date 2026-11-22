@@ -70,6 +70,18 @@ func (UnimplementedStrict) OrganizationTierSet(context.Context, OrganizationTier
 	return nil, &problem.NotImplementedError{OperationID: "organizationTierSet", Route: "PUT /organizations/{organization}/tier"}
 }
 
+func (UnimplementedStrict) PublicWorkerPoolCredentials(context.Context, PublicWorkerPoolCredentialsRequestObject) (PublicWorkerPoolCredentialsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolCredentials", Route: "GET /public-worker-pool"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolCreate(context.Context, PublicWorkerPoolCreateRequestObject) (PublicWorkerPoolCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolCreate", Route: "POST /public-worker-pool"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolReset(context.Context, PublicWorkerPoolResetRequestObject) (PublicWorkerPoolResetResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolReset", Route: "POST /public-worker-pool/reset"}
+}
+
 func (UnimplementedStrict) DeadJobs(context.Context, DeadJobsRequestObject) (DeadJobsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "deadJobs", Route: "GET /queue/jobs"}
 }

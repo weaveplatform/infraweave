@@ -28,7 +28,7 @@ const runColumns = `account_id, id, stack_id, type, state, state_version, state_
 	created_at, updated_at, delta, command, skip_initialization, replan_targets,
 	stop_requested_at, coalesce(stop_requested_by, ''), coalesce(stop_note, ''), stop_delivered_at,
 	kill_requested_at, coalesce(kill_requested_by, ''), coalesce(kill_note, ''), kill_delivered_at,
-	logs_deleted_at, resolved_config`
+	logs_deleted_at, resolved_config, organization_id, public_worker_pool_id`
 
 // insertColumns are runColumns as an INSERT names them, with the
 // priority_tier the claim orders by and without the delta, which a plan
@@ -36,7 +36,7 @@ const runColumns = `account_id, id, stack_id, type, state, state_version, state_
 const insertColumns = `account_id, id, stack_id, type, state, state_version, state_changed_at,
 	commit, triggered_by, priority, drift_detection, runtime_config, force_apply_mode,
 	local_workspace, worker_pool_id, worker_id, created_at, updated_at, priority_tier, command,
-	skip_initialization, resolved_config`
+	skip_initialization, resolved_config, organization_id, public_worker_pool_id`
 
 // scanRun reads one row of runColumns.
 func scanRun(row pgx.Row) (lifecycle.Run, error) {
@@ -53,7 +53,8 @@ func scanRun(row pgx.Row) (lifecycle.Run, error) {
 		&r.LocalWorkspace, &r.WorkerPool, &r.Worker, &r.CreatedAt, &r.UpdatedAt, &d, &command,
 		&skipInit, &r.ReplanTargets,
 		&stop.at, &stop.by, &stop.note, &stop.delivered,
-		&kill.at, &kill.by, &kill.note, &kill.delivered, &r.LogsDeletedAt, &r.ResolvedConfig)
+		&kill.at, &kill.by, &kill.note, &kill.delivered, &r.LogsDeletedAt, &r.ResolvedConfig,
+		&r.Organization, &r.PublicWorkerPool)
 	if err != nil {
 		return lifecycle.Run{}, err //nolint:wrapcheck // the caller names the read
 	}
@@ -138,12 +139,12 @@ func (s *Store) Insert(ctx context.Context, run lifecycle.Run, step lifecycle.St
 	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO runs (`+insertColumns+`)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, nullif($13, ''),
-			nullif($14, ''), $15, $16, $17, $18, $19, $20, $21, $22)`,
+			nullif($14, ''), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
 		run.Account, run.ID, run.Stack, string(run.Type), string(run.State), run.Version,
 		run.StateChangedAt, commit, run.TriggeredBy, string(run.Priority), run.DriftDetection,
 		[]byte(run.RuntimeConfig), run.ForceApply, run.LocalWorkspace, run.WorkerPool, run.Worker,
 		run.CreatedAt, run.UpdatedAt, kernel.RunTier(run.Priority, run.Type, run.DriftDetection),
-		command, skipInit, run.ResolvedConfig)
+		command, skipInit, run.ResolvedConfig, run.Organization, run.PublicWorkerPool)
 	if err != nil {
 		return fmt.Errorf("runs: insert run %s: %w", run.ID, sql.Unavailable(err))
 	}

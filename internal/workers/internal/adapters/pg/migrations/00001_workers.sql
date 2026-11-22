@@ -14,6 +14,21 @@ CREATE TABLE worker_pool_ca (
     created_at         timestamptz NOT NULL DEFAULT now()
 );
 
+-- The installation public pool has no tenant owner. Its immutable identity
+-- survives certificate rotation and disabling the public execution service.
+CREATE TABLE worker_public_pool (
+    singleton   smallint PRIMARY KEY CHECK (singleton = 1),
+    id          uuid NOT NULL UNIQUE,
+    certificate bytea NOT NULL,
+    serial      bigint NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    version     bigint NOT NULL DEFAULT 1
+);
+
+COMMENT ON TABLE worker_public_pool IS
+    'global: the installation public pool identity and public certificate';
+
 COMMENT ON TABLE worker_pool_ca IS
     'global: the installation''s one pool CA, which signs every account''s pool certificates';
 
@@ -60,9 +75,11 @@ CREATE UNIQUE INDEX worker_pools_id ON worker_pools (id);
 -- cycle is set by workerPoolCycle and answered on each poll until the
 -- worker deregisters. organization_id is its pool's, which the
 -- private-workers limit counts by.
+-- Installation public workers leave both tenant columns NULL and do not
+-- contribute to any organization's private-worker usage.
 CREATE TABLE workers (
-    account_id      uuid        NOT NULL,
-    organization_id uuid        NOT NULL,
+    account_id      uuid,
+    organization_id uuid,
     id              uuid        NOT NULL,
     pool_id         uuid        NOT NULL,
     serial          bigint      NOT NULL,
@@ -77,13 +94,14 @@ CREATE TABLE workers (
     last_seen_at    timestamptz NOT NULL DEFAULT now(),
     available_at    timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (account_id, id)
+    PRIMARY KEY (id),
+    CHECK ((account_id IS NULL) = (organization_id IS NULL))
 );
 
-CREATE INDEX workers_pool ON workers (account_id, pool_id);
+COMMENT ON TABLE workers IS
+    'global: protocol identities include installation public workers; private registrations retain their account and organization scope';
 
--- A worker session token names the worker alone.
-CREATE UNIQUE INDEX workers_id ON workers (id);
+CREATE INDEX workers_pool ON workers (account_id, pool_id);
 
 CREATE INDEX workers_organization ON workers (organization_id);
 
@@ -93,12 +111,14 @@ CREATE INDEX workers_seen ON workers (last_seen_at);
 -- A registration's jti, kept until expires_at, so a replayed
 -- registration is refused.
 CREATE TABLE worker_nonces (
-    account_id uuid        NOT NULL,
+    account_id uuid,
     pool_id    uuid        NOT NULL,
     jti        text        NOT NULL,
     expires_at timestamptz NOT NULL,
-    PRIMARY KEY (account_id, pool_id, jti)
+    PRIMARY KEY (pool_id, jti)
 );
+COMMENT ON TABLE worker_nonces IS
+    'global: replay protection is keyed by globally unique pool and jti; installation public registrations have no account';
 
 -- An account's default runner images, which accountUpdateDefaultWorkerPoolRunnerImages
 -- sets: the image a run on a private or a public pool uses when neither

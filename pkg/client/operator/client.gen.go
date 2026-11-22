@@ -263,6 +263,33 @@ type Problem struct {
 // ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
 type ProblemScope string
 
+// PublicWorkerPoolCreateRequest defines model for PublicWorkerPoolCreateRequest.
+type PublicWorkerPoolCreateRequest struct {
+	// CertificateSigningRequest An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+}
+
+// PublicWorkerPoolCredentials The installation public pool identity and public certificate token. The private key remains with its operator.
+type PublicWorkerPoolCredentials struct {
+	// Config The pool token containing its endpoint and public certificate.
+	Config string `json:"config"`
+
+	// Id The immutable installation pool ULID.
+	Id string `json:"id"`
+
+	// Version The credential version, also returned as a strong ETag.
+	Version int64 `json:"version"`
+}
+
+// PublicWorkerPoolResetRequest defines model for PublicWorkerPoolResetRequest.
+type PublicWorkerPoolResetRequest struct {
+	// CertificateSigningRequest An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+
+	// ReleaseBinding Release an abandoned controller binding, requiring a different key and no remaining workers or active assignments.
+	ReleaseBinding *bool `json:"releaseBinding,omitempty"`
+}
+
 // Tier A tier: a set of features and a set of limit values.
 type Tier struct {
 	// Editable False for Enterprise, which holds every feature and no limit and which the operator can neither edit nor delete.
@@ -328,6 +355,9 @@ type Limit = int32
 // OrganizationSlug defines model for OrganizationSlug.
 type OrganizationSlug = string
 
+// PublicWorkerPoolIfMatch defines model for PublicWorkerPoolIfMatch.
+type PublicWorkerPoolIfMatch = string
+
 // TierName defines model for TierName.
 type TierName = string
 
@@ -365,6 +395,21 @@ type OrganizationsParams struct {
 type OrganizationCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PublicWorkerPoolCreateParams defines parameters for PublicWorkerPoolCreate.
+type PublicWorkerPoolCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PublicWorkerPoolResetParams defines parameters for PublicWorkerPoolReset.
+type PublicWorkerPoolResetParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch A strong credential ETag, or *. Its absence answers 428; a stale version answers 412.
+	IfMatch *PublicWorkerPoolIfMatch `json:"If-Match,omitempty"`
 }
 
 // DeadJobsParams defines parameters for DeadJobs.
@@ -417,6 +462,12 @@ type OrganizationLimitGrantJSONRequestBody = LimitGrantInput
 
 // OrganizationTierSetJSONRequestBody defines body for OrganizationTierSet for application/json ContentType.
 type OrganizationTierSetJSONRequestBody = TierChoice
+
+// PublicWorkerPoolCreateJSONRequestBody defines body for PublicWorkerPoolCreate for application/json ContentType.
+type PublicWorkerPoolCreateJSONRequestBody = PublicWorkerPoolCreateRequest
+
+// PublicWorkerPoolResetJSONRequestBody defines body for PublicWorkerPoolReset for application/json ContentType.
+type PublicWorkerPoolResetJSONRequestBody = PublicWorkerPoolResetRequest
 
 // TierCreateJSONRequestBody defines body for TierCreate for application/json ContentType.
 type TierCreateJSONRequestBody = TierInput
@@ -644,6 +695,49 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /organizations/{organization}/tier (the `OrganizationTierSet` operationId).
 	OrganizationTierSet(ctx context.Context, organization OrganizationSlug, body OrganizationTierSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolCredentials Read installation public pool credentials
+	//
+	// Operator credentials only. Does not return any private key.
+	//
+	// Corresponds with GET /public-worker-pool (the `PublicWorkerPoolCredentials` operationId).
+	PublicWorkerPoolCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolCreateWithBody Create installation public pool credentials
+	//
+	// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+	PublicWorkerPoolCreateWithBody(ctx context.Context, params *PublicWorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolCreate Create installation public pool credentials
+	//
+	// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+	PublicWorkerPoolCreate(ctx context.Context, params *PublicWorkerPoolCreateParams, body PublicWorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolResetWithBody Reset installation public pool credentials
+	//
+	// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+	PublicWorkerPoolResetWithBody(ctx context.Context, params *PublicWorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolReset Reset installation public pool credentials
+	//
+	// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+	PublicWorkerPoolReset(ctx context.Context, params *PublicWorkerPoolResetParams, body PublicWorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeadJobs List dead jobs
 	//
@@ -1059,6 +1153,99 @@ func (c *Client) OrganizationTierSetWithBody(ctx context.Context, organization O
 // Corresponds with PUT /organizations/{organization}/tier (the `OrganizationTierSet` operationId).
 func (c *Client) OrganizationTierSet(ctx context.Context, organization OrganizationSlug, body OrganizationTierSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOrganizationTierSetRequest(c.Server, organization, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolCredentials Read installation public pool credentials
+//
+// Operator credentials only. Does not return any private key.
+//
+// Corresponds with GET /public-worker-pool (the `PublicWorkerPoolCredentials` operationId).
+func (c *Client) PublicWorkerPoolCredentials(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolCredentialsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolCreateWithBody Create installation public pool credentials
+//
+// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+func (c *Client) PublicWorkerPoolCreateWithBody(ctx context.Context, params *PublicWorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolCreate Create installation public pool credentials
+//
+// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+func (c *Client) PublicWorkerPoolCreate(ctx context.Context, params *PublicWorkerPoolCreateParams, body PublicWorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolResetWithBody Reset installation public pool credentials
+//
+// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+func (c *Client) PublicWorkerPoolResetWithBody(ctx context.Context, params *PublicWorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolResetRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolReset Reset installation public pool credentials
+//
+// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+func (c *Client) PublicWorkerPoolReset(ctx context.Context, params *PublicWorkerPoolResetParams, body PublicWorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolResetRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1870,6 +2057,154 @@ func NewOrganizationTierSetRequestWithBody(server string, organization Organizat
 	return req, nil
 }
 
+// NewPublicWorkerPoolCredentialsRequest constructs an http.Request for the PublicWorkerPoolCredentials method
+func NewPublicWorkerPoolCredentialsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/public-worker-pool")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPublicWorkerPoolCreateRequest calls the generic PublicWorkerPoolCreate builder with application/json body
+func NewPublicWorkerPoolCreateRequest(server string, params *PublicWorkerPoolCreateParams, body PublicWorkerPoolCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPublicWorkerPoolCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPublicWorkerPoolCreateRequestWithBody constructs an http.Request for the PublicWorkerPoolCreate method, with any body, and a specified content type
+func NewPublicWorkerPoolCreateRequestWithBody(server string, params *PublicWorkerPoolCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/public-worker-pool")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewPublicWorkerPoolResetRequest calls the generic PublicWorkerPoolReset builder with application/json body
+func NewPublicWorkerPoolResetRequest(server string, params *PublicWorkerPoolResetParams, body PublicWorkerPoolResetJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPublicWorkerPoolResetRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPublicWorkerPoolResetRequestWithBody constructs an http.Request for the PublicWorkerPoolReset method, with any body, and a specified content type
+func NewPublicWorkerPoolResetRequestWithBody(server string, params *PublicWorkerPoolResetParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/public-worker-pool/reset")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewDeadJobsRequest constructs an http.Request for the DeadJobs method
 func NewDeadJobsRequest(server string, params *DeadJobsParams) (*http.Request, error) {
 	var err error
@@ -2539,6 +2874,51 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /organizations/{organization}/tier (the `OrganizationTierSet` operationId).
 	OrganizationTierSetWithResponse(ctx context.Context, organization OrganizationSlug, body OrganizationTierSetJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationTierSetResponse, error)
+
+	// PublicWorkerPoolCredentialsWithResponse Read installation public pool credentials
+	//
+	// Operator credentials only. Does not return any private key.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /public-worker-pool (the `PublicWorkerPoolCredentials` operationId).
+	PublicWorkerPoolCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCredentialsResponse, error)
+
+	// PublicWorkerPoolCreateWithBodyWithResponse Create installation public pool credentials
+	//
+	// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+	PublicWorkerPoolCreateWithBodyWithResponse(ctx context.Context, params *PublicWorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCreateResponse, error)
+
+	// PublicWorkerPoolCreateWithResponse Create installation public pool credentials
+	//
+	// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+	PublicWorkerPoolCreateWithResponse(ctx context.Context, params *PublicWorkerPoolCreateParams, body PublicWorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCreateResponse, error)
+
+	// PublicWorkerPoolResetWithBodyWithResponse Reset installation public pool credentials
+	//
+	// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+	PublicWorkerPoolResetWithBodyWithResponse(ctx context.Context, params *PublicWorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResetResponse, error)
+
+	// PublicWorkerPoolResetWithResponse Reset installation public pool credentials
+	//
+	// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+	PublicWorkerPoolResetWithResponse(ctx context.Context, params *PublicWorkerPoolResetParams, body PublicWorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResetResponse, error)
 
 	// DeadJobsWithResponse List dead jobs
 	//
@@ -4197,6 +4577,362 @@ func (r OrganizationTierSetResponse) ContentType() string {
 	return ""
 }
 
+// PublicWorkerPoolCredentialsResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolCredentials
+type PublicWorkerPoolCredentialsResponse200Headers struct {
+	ETag *string
+}
+
+// PublicWorkerPoolCredentialsResponse401Headers the declared response headers of an HTTP 401 response for PublicWorkerPoolCredentials
+type PublicWorkerPoolCredentialsResponse401Headers struct {
+	WWWAuthenticate *string
+}
+
+// PublicWorkerPoolCredentialsResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolCredentials
+type PublicWorkerPoolCredentialsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolCredentialsResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolCredentials
+type PublicWorkerPoolCredentialsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolCredentialsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PublicWorkerPoolCredentials
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolCredentialsResponse200Headers
+	// Headers401 the parsed response headers for an HTTP 401 response
+	Headers401 *PublicWorkerPoolCredentialsResponse401Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolCredentialsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolCredentialsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolCredentialsResponse) GetJSON200() *PublicWorkerPoolCredentials {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PublicWorkerPoolCredentialsResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PublicWorkerPoolCredentialsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolCredentialsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolCredentialsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolCredentialsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolCredentialsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolCredentialsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolCredentialsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolCredentialsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PublicWorkerPoolCreateResponse201Headers the declared response headers of an HTTP 201 response for PublicWorkerPoolCreate
+type PublicWorkerPoolCreateResponse201Headers struct {
+	ETag *string
+}
+
+// PublicWorkerPoolCreateResponse401Headers the declared response headers of an HTTP 401 response for PublicWorkerPoolCreate
+type PublicWorkerPoolCreateResponse401Headers struct {
+	WWWAuthenticate *string
+}
+
+// PublicWorkerPoolCreateResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolCreate
+type PublicWorkerPoolCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolCreateResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolCreate
+type PublicWorkerPoolCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PublicWorkerPoolCredentials
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *PublicWorkerPoolCreateResponse201Headers
+	// Headers401 the parsed response headers for an HTTP 401 response
+	Headers401 *PublicWorkerPoolCreateResponse401Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r PublicWorkerPoolCreateResponse) GetJSON201() *PublicWorkerPoolCredentials {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSON422() *Problem {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PublicWorkerPoolResetResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolReset
+type PublicWorkerPoolResetResponse200Headers struct {
+	ETag *string
+}
+
+// PublicWorkerPoolResetResponse401Headers the declared response headers of an HTTP 401 response for PublicWorkerPoolReset
+type PublicWorkerPoolResetResponse401Headers struct {
+	WWWAuthenticate *string
+}
+
+// PublicWorkerPoolResetResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolReset
+type PublicWorkerPoolResetResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolResetResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolReset
+type PublicWorkerPoolResetResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolResetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PublicWorkerPoolCredentials
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *Problem
+	// ApplicationproblemJSON428 the response for an HTTP 428 `application/problem+json` response
+	ApplicationproblemJSON428 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolResetResponse200Headers
+	// Headers401 the parsed response headers for an HTTP 401 response
+	Headers401 *PublicWorkerPoolResetResponse401Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolResetResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolResetResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolResetResponse) GetJSON200() *PublicWorkerPoolCredentials {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON422() *Problem {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON428 returns the response for an HTTP 428 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON428() *Problem {
+	return r.ApplicationproblemJSON428
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolResetResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolResetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolResetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolResetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolResetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // DeadJobsResponse200Headers the declared response headers of an HTTP 200 response for DeadJobs
 type DeadJobsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -5613,6 +6349,81 @@ func (c *ClientWithResponses) OrganizationTierSetWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseOrganizationTierSetResponse(rsp)
+}
+
+// PublicWorkerPoolCredentialsWithResponse Read installation public pool credentials
+//
+// Operator credentials only. Does not return any private key.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /public-worker-pool (the `PublicWorkerPoolCredentials` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolCredentialsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCredentialsResponse, error) {
+	rsp, err := c.PublicWorkerPoolCredentials(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolCredentialsResponse(rsp)
+}
+
+// PublicWorkerPoolCreateWithBodyWithResponse Create installation public pool credentials
+//
+// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolCreateWithBodyWithResponse(ctx context.Context, params *PublicWorkerPoolCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCreateResponse, error) {
+	rsp, err := c.PublicWorkerPoolCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolCreateResponse(rsp)
+}
+
+// PublicWorkerPoolCreateWithResponse Create installation public pool credentials
+//
+// Creates one stable installation identity using the operator's public-key request. No private key is accepted or returned.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /public-worker-pool (the `PublicWorkerPoolCreate` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolCreateWithResponse(ctx context.Context, params *PublicWorkerPoolCreateParams, body PublicWorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*PublicWorkerPoolCreateResponse, error) {
+	rsp, err := c.PublicWorkerPoolCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolCreateResponse(rsp)
+}
+
+// PublicWorkerPoolResetWithBodyWithResponse Reset installation public pool credentials
+//
+// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolResetWithBodyWithResponse(ctx context.Context, params *PublicWorkerPoolResetParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResetResponse, error) {
+	rsp, err := c.PublicWorkerPoolResetWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolResetResponse(rsp)
+}
+
+// PublicWorkerPoolResetWithResponse Reset installation public pool credentials
+//
+// Replaces its certificate serial without changing pool identity. Requires a current credential precondition.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /public-worker-pool/reset (the `PublicWorkerPoolReset` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolResetWithResponse(ctx context.Context, params *PublicWorkerPoolResetParams, body PublicWorkerPoolResetJSONRequestBody, reqEditors ...RequestEditorFn) (*PublicWorkerPoolResetResponse, error) {
+	rsp, err := c.PublicWorkerPoolReset(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolResetResponse(rsp)
 }
 
 // DeadJobsWithResponse List dead jobs
@@ -7750,6 +8561,416 @@ func ParseOrganizationTierSetResponse(rsp *http.Response) (*OrganizationTierSetR
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OrganizationTierSetResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolCredentialsResponse parses an HTTP response from a PublicWorkerPoolCredentialsWithResponse call
+func ParsePublicWorkerPoolCredentialsResponse(rsp *http.Response) (*PublicWorkerPoolCredentialsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolCredentialsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PublicWorkerPoolCredentials
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolCredentialsResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 401:
+		var headers PublicWorkerPoolCredentialsResponse401Headers
+		if values := rsp.Header.Values("WWW-Authenticate"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "WWW-Authenticate", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.WWWAuthenticate = &value
+		}
+		response.Headers401 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolCredentialsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolCredentialsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolCreateResponse parses an HTTP response from a PublicWorkerPoolCreateWithResponse call
+func ParsePublicWorkerPoolCreateResponse(rsp *http.Response) (*PublicWorkerPoolCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PublicWorkerPoolCredentials
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers PublicWorkerPoolCreateResponse201Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 401:
+		var headers PublicWorkerPoolCreateResponse401Headers
+		if values := rsp.Header.Values("WWW-Authenticate"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "WWW-Authenticate", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.WWWAuthenticate = &value
+		}
+		response.Headers401 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolResetResponse parses an HTTP response from a PublicWorkerPoolResetWithResponse call
+func ParsePublicWorkerPoolResetResponse(rsp *http.Response) (*PublicWorkerPoolResetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolResetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PublicWorkerPoolCredentials
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 428:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON428 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolResetResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 401:
+		var headers PublicWorkerPoolResetResponse401Headers
+		if values := rsp.Header.Values("WWW-Authenticate"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "WWW-Authenticate", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.WWWAuthenticate = &value
+		}
+		response.Headers401 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolResetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolResetResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -17,7 +17,7 @@ components:
             seconds, within five minutes of the server's clock; jti, a value
             the pool has not used in the last ten minutes; version, the
             launcher's version; capabilities, at most 16 strings of at most 64
-            characters, including plan-sanitization-v1 (otherwise 422 requires a
+            characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a
             launcher upgrade); os and arch, the host's, each at most 64
             characters; metadata, an object of at most 32 strings describing
             the worker, keys at most 64 characters and values at most 255;

@@ -55,9 +55,10 @@ const Entity = "worker_pool"
 //
 // ref: decision 0008 § "Configuration"
 type Settings struct {
-	PollTimeoutMax time.Duration  `mapstructure:"poll_timeout_max"`
-	OfflineAfter   time.Duration  `mapstructure:"offline_after"`
-	Samples        SampleSettings `mapstructure:"samples"`
+	PollTimeoutMax time.Duration      `mapstructure:"poll_timeout_max"`
+	OfflineAfter   time.Duration      `mapstructure:"offline_after"`
+	Samples        SampleSettings     `mapstructure:"samples"`
+	PublicPool     PublicPoolSettings `mapstructure:"public_pool"`
 }
 
 // SampleSettings are the pool samples': Retention, how long a sample is
@@ -74,7 +75,8 @@ type SampleSettings struct {
 func DefaultSettings() Settings {
 	return Settings{
 		PollTimeoutMax: worker.MaxWait, OfflineAfter: worker.DefaultOfflineAfter,
-		Samples: SampleSettings{Retention: sample.DefaultRetention},
+		Samples:    SampleSettings{Retention: sample.DefaultRetention},
+		PublicPool: defaultPublicPoolSettings(),
 	}
 }
 
@@ -99,7 +101,7 @@ func (s Settings) Validate() error {
 		return fmt.Errorf("%w: worker.samples.retention %s is under %s", ErrConfig,
 			s.Samples.Retention, time.Minute)
 	}
-	return nil
+	return s.PublicPool.Validate()
 }
 
 // DB is the pool the domain queries and begins its transactions on.
@@ -123,6 +125,7 @@ type DB interface {
 // and the log a refused worker credential and each reap are recorded in.
 // A zero duration takes the default.
 type Deps struct {
+	PublicPool       PublicPoolSettings
 	DB               DB
 	Keys             pg.Sealer
 	Spaces           accessapi.Spaces
@@ -157,7 +160,10 @@ func New(d Deps) *Domain {
 		Public: d.Public, PreparingTimeout: d.PreparingTimeout, Now: d.Now,
 	})
 	wk := worker.New(worker.Deps{
-		Store: store, DB: d.DB, Tokens: d.Tokens, Limits: d.Features, Version: d.Version,
+		PublicRegistries:       d.PublicPool.AllowedRegistries,
+		PublicPoolEnabled:      d.PublicPool.Enabled,
+		PublicPreparingTimeout: d.PublicPool.PreparingTimeout,
+		Store:                  store, DB: d.DB, Tokens: d.Tokens, Limits: d.Features, Version: d.Version,
 		PollMax: d.PollMax, OfflineAfter: d.OfflineAfter, LostAfter: d.LostAfter,
 		PreparingTimeout: d.PreparingTimeout, Now: d.Now,
 	})
@@ -222,6 +228,8 @@ func watchPolls(ctx context.Context, svc *worker.Service, msgs <-chan notify.Mes
 			switch {
 			case m.Resync:
 				svc.WakeAll()
+			case m.Payload == workersapi.PublicWaiting:
+				svc.WakePublic()
 			case err != nil:
 			case one:
 				svc.WakeOne(id)
@@ -266,6 +274,11 @@ func (d *Domain) BindReports(r workersapi.Reports) { d.workers.BindReports(r) }
 // internal/app binds after it constructs that domain, which the reap and
 // a poll that reports an ended container fail runs through.
 func (d *Domain) BindLiveness(l workersapi.Liveness) { d.workers.BindLiveness(l) }
+
+// BindPublicAssignments binds the runs reader protecting public ownership release.
+func (d *Domain) BindPublicAssignments(r workersapi.PublicAssignments) {
+	d.svc.BindPublicAssignments(r)
+}
 
 // BindSignals binds the runs domain's workersapi.Signals, a back edge
 // internal/app binds after it constructs that domain, which a busy
@@ -370,4 +383,15 @@ func (d *Domain) API() WorkersAPI {
 		return WorkersAPI{}
 	}
 	return d.api
+}
+
+// WorkersOperatorAPI is the workers-owned installation credential API partial.
+type WorkersOperatorAPI = http.OperatorServer
+
+// OperatorAPI exposes installation credentials through the operator surface.
+func (d *Domain) OperatorAPI() WorkersOperatorAPI {
+	if d == nil {
+		return WorkersOperatorAPI{}
+	}
+	return http.NewOperatorServer(d.svc)
 }

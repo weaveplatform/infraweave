@@ -602,9 +602,15 @@ type ProblemFieldError struct {
 // ProblemFieldErrorReason Why the field was refused, for clients to branch on.
 type ProblemFieldErrorReason string
 
+// PublicPoolPolicy Installation public-pool admission policy, applied to the fully resolved runner image before starting it. Absent for private execution.
+type PublicPoolPolicy struct {
+	// AllowedRegistries Canonical registry authorities or DNS suffixes, with the ECR region selector supported. Empty admits no images.
+	AllowedRegistries []string `json:"allowedRegistries"`
+}
+
 // RegisterRequest A registration, signed with the pool's private key.
 type RegisterRequest struct {
-	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
+	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
 	Registration string `json:"registration"`
 }
 
@@ -664,13 +670,16 @@ type RunSpec struct {
 	// PlanSanitization The resolved plan JSON transformation: the explicit opt-out label selects NONE before useSmartSanitization selects SMART, otherwise DEFAULT. RunSpec omission from an older server means DEFAULT. A new server requires this mode as a receipt on each plan.json declaration and recording, and refuses missing, unknown or mismatched receipts. A new runner omits receipts only when the old server omitted RunSpec.planSanitization.
 	PlanSanitization *PlanSanitization `json:"planSanitization,omitempty"`
 
+	// PublicPool Installation public-pool admission policy, applied to the fully resolved runner image before starting it. Absent for private execution.
+	PublicPool *PublicPoolPolicy `json:"publicPool,omitempty"`
+
 	// Refusal A repository runtime configuration refusal naming its key's path. The runner logs it and fails INITIALIZING before any hook or command, including a task that skips initialization.
 	Refusal *string `json:"refusal,omitempty"`
 
 	// Run The run.
 	Run RunSpecRun `json:"run"`
 
-	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for private pools. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
+	// RunnerImage The image the run's container starts from: the runtime configuration's, else the stack's, else the account's default for the selected pool kind. Absent when none names one, for the launcher's default: its own default runner image when set, else the stack's vendor's image.
 	RunnerImage *string `json:"runnerImage,omitempty"`
 
 	// RuntimeConfig The trigger's configuration for reference, with variable values redacted. The specification's own hooks, environment, tools and source fields already apply it; the runner reads those fields. Absent when the trigger gave none.

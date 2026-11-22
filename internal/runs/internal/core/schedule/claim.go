@@ -85,6 +85,8 @@ const contentionRetryDelay = 50 * time.Millisecond
 //
 // ref: decision 0008 § "Claiming runs"
 type Claims struct {
+	publicStore    PublicClaimStore
+	publicLimits   PublicLimits
 	store          ClaimStore
 	lifecycle      *lifecycle.Lifecycle
 	fence          ClaimFence
@@ -107,6 +109,9 @@ func (s *Claims) WithInitialization(gate InitializationPolicies) *Claims {
 // The worker's own claims are serialized by its caller, which locks the
 // worker's row first, so a worker never holds two runs.
 func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assignment, bool, error) {
+	if c.Public {
+		return s.claimPublic(ctx, c)
+	}
 	if !tx.In(ctx) {
 		return workersapi.Assignment{}, false, lifecycle.ErrNoTransaction
 	}

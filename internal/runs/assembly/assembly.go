@@ -121,37 +121,40 @@ type Objects interface {
 // when nil, the run settings, and LogRetention,
 // objectstore.retention.run-logs.
 type Deps struct {
-	PolicyIdentities   policiesapi.PolicyIdentities
-	PolicySamples      policiesapi.SampleRetentions
-	PolicySampleReader policiesapi.SampleReader
-	PolicyEvaluator    policiesapi.Evaluator
-	PolicySelection    policiesapi.Selection
-	PolicyInputs       policiesapi.RunInputBuilder
-	PolicyTaskInputs   policiesapi.TaskInputBuilder
-	ReviewMetadata     accessapi.ReviewMetadataReader
-	PolicyStacks       stacksapi.PolicySnapshots
-	PolicyPools        workersapi.PoolMetadataReader
-	PolicyRoles        accessapi.StackRoleReader
-	PolicySpaces       accessapi.PolicySpaceReader
-	PolicyContexts     configapi.PolicyContextReader
-	ClaimSpaces        accessapi.ClaimSpaces
-	ClaimStacks        stacksapi.ClaimTargets
-	DB                 queue.DB
-	Keys               pg.Sealer
-	Objects            Objects
-	Spaces             accessapi.Spaces
-	Accounts           accessapi.Accounts
-	Authz              accessapi.Authorizer
-	Tokens             handover.Tokens
-	Stacks             stacksapi.Stacks
-	Environment        configapi.Environment
-	Catalog            vendorsapi.Catalog
-	Events             lifecycle.Events
-	Jobs               schedule.Queue
-	Now                func() time.Time
-	Settings           Settings
-	RuntimeSettings    RuntimeSettings
-	LogRetention       time.Duration
+	PublicLimits        schedule.PublicLimits
+	AccountOrganization func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
+	PublicPoolEnabled   bool
+	PolicyIdentities    policiesapi.PolicyIdentities
+	PolicySamples       policiesapi.SampleRetentions
+	PolicySampleReader  policiesapi.SampleReader
+	PolicyEvaluator     policiesapi.Evaluator
+	PolicySelection     policiesapi.Selection
+	PolicyInputs        policiesapi.RunInputBuilder
+	PolicyTaskInputs    policiesapi.TaskInputBuilder
+	ReviewMetadata      accessapi.ReviewMetadataReader
+	PolicyStacks        stacksapi.PolicySnapshots
+	PolicyPools         workersapi.PoolMetadataReader
+	PolicyRoles         accessapi.StackRoleReader
+	PolicySpaces        accessapi.PolicySpaceReader
+	PolicyContexts      configapi.PolicyContextReader
+	ClaimSpaces         accessapi.ClaimSpaces
+	ClaimStacks         stacksapi.ClaimTargets
+	DB                  queue.DB
+	Keys                pg.Sealer
+	Objects             Objects
+	Spaces              accessapi.Spaces
+	Accounts            accessapi.Accounts
+	Authz               accessapi.Authorizer
+	Tokens              handover.Tokens
+	Stacks              stacksapi.Stacks
+	Environment         configapi.Environment
+	Catalog             vendorsapi.Catalog
+	Events              lifecycle.Events
+	Jobs                schedule.Queue
+	Now                 func() time.Time
+	Settings            Settings
+	RuntimeSettings     RuntimeSettings
+	LogRetention        time.Duration
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -193,7 +196,9 @@ func New(d Deps) *Domain {
 		})
 	}
 	lc := lifecycle.New(lifecycle.Deps{
-		Store: store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store, Plans: store,
+		AccountOrganization: d.AccountOrganization,
+		PublicPoolEnabled:   d.PublicPoolEnabled,
+		Store:               store, Stacks: d.Stacks, Events: d.Events, Jobs: d.Jobs, Now: d.Now, Evidence: store, Plans: store,
 		Approvals: approvals,
 	})
 	views := read.New(
@@ -238,9 +243,11 @@ func New(d Deps) *Domain {
 		runs:      core.New(store),
 		lifecycle: lc,
 		scheduler: scheduler,
-		claims:    schedule.NewClaims(store, lc, schedule.OwnerFence{Spaces: d.ClaimSpaces, Stacks: d.ClaimStacks}).WithInitialization(initializations),
-		liveness:  schedule.NewLiveness(store, lc),
-		signals:   schedule.NewSignals(store, d.Now),
+		claims: schedule.NewClaims(store, lc, schedule.OwnerFence{Spaces: d.ClaimSpaces, Stacks: d.ClaimStacks}).
+			WithInitialization(initializations).
+			WithPublic(store, d.PublicLimits),
+		liveness: schedule.NewLiveness(store, lc),
+		signals:  schedule.NewSignals(store, d.Now),
 		handover: handover.New(handover.Deps{
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
 			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
@@ -291,6 +298,9 @@ func New(d Deps) *Domain {
 		planningLogs: logs.NewPlanningReader(store, d.Objects),
 	}
 }
+
+// PublicAssignments supplies the installation pool ownership release guard.
+func (d *Domain) PublicAssignments() workersapi.PublicAssignments { return d.store }
 
 // SpaceOf finds the space of a run's stack by the run's ID, which
 // internal/app registers with the access domain for Entity.

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -30,6 +31,7 @@ const ReapBatch = 100
 // preparing timeout of a pool that sets none.
 type clocks struct {
 	offlineAfter, lostAfter, preparing time.Duration
+	publicPreparing                    time.Duration
 }
 
 func newClocks(d Deps) clocks {
@@ -42,6 +44,10 @@ func newClocks(d Deps) clocks {
 	}
 	if c.preparing == 0 {
 		c.preparing = pool.DefaultPreparingTimeout
+	}
+	c.publicPreparing = d.PublicPreparingTimeout
+	if c.publicPreparing == 0 {
+		c.publicPreparing = pool.DefaultPreparingTimeout
 	}
 	return c
 }
@@ -88,6 +94,13 @@ func (s *Service) Reap(ctx context.Context) (Reaped, error) {
 	timeouts, err := s.store.PoolTimeouts(ctx)
 	if err != nil {
 		return out, err //nolint:wrapcheck // the store names the read
+	}
+	public, err := s.store.Public(ctx, false)
+	if err != nil && !errors.Is(err, pool.ErrNotFound) {
+		return out, err //nolint:wrapcheck // the store names the read
+	}
+	if err == nil {
+		timeouts = append(timeouts, workersapi.PoolTimeout{Pool: public.ID, Timeout: s.clocks.publicPreparing})
 	}
 	err = tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		out.Overdue, err = s.liveness.Overdue(ctx, now, timeouts, s.clocks.preparing, ReapBatch)

@@ -92,6 +92,11 @@ var (
 		http.StatusPreconditionFailed,
 		"precondition failed",
 	}
+	PreconditionRequired = Type{
+		"precondition-required",
+		http.StatusPreconditionRequired,
+		"precondition required",
+	}
 	PayloadTooLarge = Type{
 		"payload-too-large",
 		http.StatusRequestEntityTooLarge,
@@ -140,7 +145,7 @@ func Types() []Type {
 		InvalidRequest, InvalidCursor, Unauthenticated, Forbidden, FeatureDisabled,
 		FeatureNotInTier, LimitReached, InstallationUnsupported, NotFound,
 		MethodNotAllowed, AlreadyExists, InvalidState, ResourceLocked,
-		IntentProjectLocked, IdempotencyKeyInFlight, PreconditionFailed,
+		IntentProjectLocked, IdempotencyKeyInFlight, PreconditionFailed, PreconditionRequired,
 		PayloadTooLarge, UnsupportedMediaType, ValidationFailed,
 		WebhookVerificationFailed, IdempotencyKeyReuse, RateLimited, InternalError,
 		NotImplemented, UpstreamError, APIDisabled, ServiceUnavailable,

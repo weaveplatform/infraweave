@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
+	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 )
 
 // SignalCycle asks a launcher to exit: at once when idle, after its run
@@ -102,7 +103,7 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 	// registered, so a change, or a run made ready, between Seen and the
 	// registration still ends the hold.
 	wake, ended, done := s.hub.wait(w.Pool, waiter{
-		worker: w.ID, registered: w.CreatedAt, claimant: w.idle(),
+		worker: w.ID, registered: w.CreatedAt, claimant: w.idle(), public: w.Public,
 	})
 	defer done()
 	timer := time.NewTimer(s.hold(in.Wait))
@@ -205,7 +206,7 @@ func (w Worker) idle() bool { return !w.Busy && !w.Drained && !w.Cycle }
 // replicas claim one after the other and the second finds the worker
 // busy; a run token that cannot be minted rolls the claim back.
 func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error) {
-	if s.scheduler == nil || !w.idle() {
+	if s.scheduler == nil || !w.idle() || w.Public && !s.publicPoolEnabled {
 		return Assignment{}, false, nil
 	}
 	var out *Assignment
@@ -215,15 +216,30 @@ func (s *Service) claim(ctx context.Context, w Worker) (Assignment, bool, error)
 		out = nil
 		retry = false
 		retryAfter = 0
+		var publicPool pool.Pool
+		if w.Public {
+			var err error
+			publicPool, err = s.store.PublicShare(ctx)
+			if err != nil {
+				return err //nolint:wrapcheck // the store names the owner lock
+			}
+		}
 		cur, _, err := s.store.Worker(ctx, w.ID, true)
 		if err != nil || !cur.idle() {
 			return err //nolint:wrapcheck // the store names the read
 		}
-		p, err := s.store.Get(ctx, cur.Account, cur.Pool, false)
-		if err != nil {
-			return err //nolint:wrapcheck // the store names the read
+		p := publicPool
+		if cur.Public {
+			if p.ID != cur.Pool || p.Serial != cur.Serial {
+				return refuse("public worker %s has stale pool credentials", cur.ID)
+			}
+		} else {
+			p, err = s.store.Get(ctx, cur.Account, cur.Pool, false)
+			if err != nil {
+				return err //nolint:wrapcheck // the store names the read
+			}
 		}
-		c := workersapi.Claim{Account: cur.Account, Pool: cur.Pool, Worker: cur.ID}
+		c := workersapi.Claim{Account: cur.Account, Pool: cur.Pool, Worker: cur.ID, Public: cur.Public}
 		if p.DriftDetectionRunLimit != nil {
 			limit := int(*p.DriftDetectionRunLimit)
 			c.DriftLimit = &limit
@@ -316,6 +332,25 @@ func (s *Service) WakeOne(pool kernel.ULID) { s.hub.wakeOne(pool) }
 // that may have been missed.
 func (s *Service) WakeAll() { s.hub.wakeAll() }
 
+// WakePublic wakes only the installation's public pool, leaving private pools
+// asleep when a new unassigned public run becomes ready.
+func (s *Service) WakePublic() {
+	s.hub.mu.Lock()
+	var pools []kernel.ULID
+	for id, group := range s.hub.waiting {
+		for _, waiting := range group {
+			if waiting.public {
+				pools = append(pools, id)
+				break
+			}
+		}
+	}
+	s.hub.mu.Unlock()
+	for _, id := range pools {
+		s.hub.wakeOne(id)
+	}
+}
+
 // Stop answers every held poll at once, and every later one without a
 // hold, so a replica that is shutting down drains its held requests
 // within its shutdown timeout and its launchers poll another replica.
@@ -338,6 +373,7 @@ type hub struct {
 // waiter is a held poll's worker, when it registered, and whether it was
 // idle, so a waiting run may wake it.
 type waiter struct {
+	public     bool
 	worker     kernel.ULID
 	registered time.Time
 	claimant   bool
