@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/jsonstream"
 	"github.com/moby/moby/client"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -61,19 +64,51 @@ func (l *Launchers) EnsureRunnerImage(ctx context.Context, image string) error {
 }
 
 func pullRunnerImage(ctx context.Context, cli *testcontainers.DockerClient, image string) error {
+	for attempt := 0; ; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("pull runner image %s: %w", image, err)
+		}
+		retry, err := pullRunnerImageAttempt(ctx, cli, image)
+		if stopped := ctx.Err(); stopped != nil {
+			return fmt.Errorf("pull runner image %s: %w", image, stopped)
+		}
+		if err == nil || !retry || attempt == 2 {
+			return err
+		}
+		timer := time.NewTimer(time.Duration(attempt+1) * 100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("pull runner image %s: %w", image, ctx.Err())
+		case <-timer.C:
+		}
+	}
+}
+
+func pullRunnerImageAttempt(ctx context.Context, cli *testcontainers.DockerClient, image string) (bool, error) {
 	if _, err := cli.ImageInspect(ctx, image); err == nil {
-		return nil
+		return false, nil
 	} else if !cerrdefs.IsNotFound(err) {
-		return fmt.Errorf("inspect runner image %s: %w", image, err)
+		return false, fmt.Errorf("inspect runner image %s: %w", image, err)
 	}
 	pull, err := cli.ImagePull(ctx, image, client.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("pull runner image %s: %w", image, err)
+		return runnerPullReset(err), fmt.Errorf("pull runner image %s: %w", image, err)
 	}
 	if err := pull.Wait(ctx); err != nil {
-		return fmt.Errorf("pull runner image %s: %w", image, err)
+		return runnerPullReset(err), fmt.Errorf("pull runner image %s: %w", image, err)
 	}
-	return nil
+	return false, nil
+}
+
+func runnerPullReset(err error) bool {
+	if errors.Is(err, syscall.ECONNRESET) {
+		return true
+	}
+	// The daemon serializes registry transport errors, losing net.OpError.
+	// Other daemon errors, including coded auth and digest failures, stay terminal.
+	var remote *jsonstream.Error
+	return errors.As(err, &remote) && remote.Code == 0 && strings.HasSuffix(remote.Message, ": read: connection reset by peer")
 }
 
 // RunnerContract pulls the released image and runs deploy/images/contract.sh in a

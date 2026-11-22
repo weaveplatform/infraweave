@@ -97,7 +97,8 @@ scenario. Native selection excludes only the exact TestAccFeatures function.
 The existing unpartitioned acceptance run and complete certified-FIPS run remain
 available with their original deadlines.
 
-Each test-producing CI job retains a validation artifact with the PR head,
-base, actual checkout commit, tree, run and attempt. A passing descendant PR
+The quality gate’s unit, feature, native, certified-FIPS and PostgreSQL-next
+jobs retain validation artifacts with the PR head, base, actual checkout commit,
+tree, run and attempt. A passing descendant PR
 therefore identifies which dependency revision it tested; a newer parent change
 requires integration and fresh validation before it is included in that claim.
