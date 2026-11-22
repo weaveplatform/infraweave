@@ -14,6 +14,8 @@ The operation audit finds success, denial and failure evidence for all **31**
 served policy, scheme, receipt-sample and contributing stack operations. No
 capability record claims more than those results establish. Policies remains
 `partial` as a complete reference tag because Intent attachments are later work.
+The four policy Terraform resource/data-source records now match their computed
+`partial` API state; each explicitly retains the absent native provider in P24.
 These are baseline facts, not a claim that this final gate has completed CI.
 
 This branch adds executable C47/C50/C52/C53/C54/C273 replay and actual V0/V1 LOGIN

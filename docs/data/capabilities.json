@@ -1680,7 +1680,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -1698,7 +1699,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2856,7 +2858,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2874,7 +2877,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
