@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -102,7 +101,7 @@ func pullRunnerImageAttempt(ctx context.Context, cli *testcontainers.DockerClien
 }
 
 func runnerPullReset(err error) bool {
-	if errors.Is(err, syscall.ECONNRESET) {
+	if nativeRunnerPullReset(err) {
 		return true
 	}
 	// The daemon serializes registry transport errors, losing net.OpError.
