@@ -9,7 +9,7 @@ import (
 
 func TestUnitReplayCallerQualifiesOnlyAuthenticatedAccountContext(t *testing.T) {
 	p := kernel.Principal{Kind: kernel.PrincipalUser, ActorID: kernel.NewULID(), AccountID: kernel.NewAccountID(), SessionID: kernel.NewULID()}
-	request := httptest.NewRequest("POST", "/api/v1/policies", nil)
+	request := httptest.NewRequestWithContext(t.Context(), "POST", "/api/v1/policies", nil)
 	request.RemoteAddr = "192.0.2.10:12345"
 	with := func(principal kernel.Principal) string {
 		return replayCaller(request.WithContext(kernel.WithPrincipal(t.Context(), principal)))
