@@ -66,6 +66,7 @@ jobs:
 
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
@@ -172,6 +173,7 @@ jobs:
       # parity job reads.
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
@@ -235,6 +237,7 @@ jobs:
 
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
@@ -416,6 +419,7 @@ jobs:
 
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
@@ -501,6 +505,7 @@ jobs:
 
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
@@ -848,7 +853,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, native, lab-batch, fips-only, parity, reference, generated, lint, vuln, build, coverage, changes, images]
+    needs: [unit, accept, native, lab-batch, fips-only, postgres-next, parity, reference, generated, lint, vuln, build, coverage, changes, images]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
