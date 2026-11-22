@@ -30,7 +30,8 @@ Feature: Runs queue on their stack
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
     And a certificate signing request for a P-256 key is kept as "queuecsr"
-    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Queue workers","space":"acme","certificateSigningRequest":"{queuecsr}"}' through A
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Queue workers","space":"legacy","certificateSigningRequest":"{queuecsr}"}' through A
+    And it answers 201
     And the answer's id names "queuepool"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
@@ -38,7 +39,9 @@ Feature: Runs queue on their stack
       | main.tf | terraform {} |
     And the head of "main" of "infra" is kept as "seed"
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{queuepool}"},"manageState":false}' through B
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hidden","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}","workerPool":"{queuepool}"},"manageState":false}' through A
+    And it answers 201
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hidden","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}"},"manageState":false}' through A
+    And it answers 201
     And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
 
   @op:runTrigger @case:success

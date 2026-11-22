@@ -510,16 +510,7 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	if err != nil {
 		return Run{}, false, err //nolint:wrapcheck // the stacks domain names the read
 	}
-	switch {
-	case st.Disabled:
-		return Run{}, false, fmt.Errorf("%w: %s", ErrDisabled, st.Slug)
-	case st.Deleting:
-		return Run{}, false, fmt.Errorf("%w: %s", ErrDeleting, st.Slug)
-	}
-	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
-		return Run{}, false, &Locked{By: st.Lock.By}
-	}
-	if err := checkPublicCreation(st.WorkerPool, n); err != nil {
+	if err := checkCreation(st, n); err != nil {
 		return Run{}, false, err
 	}
 	// Overrides and tasks always create a run. Other operations explicitly

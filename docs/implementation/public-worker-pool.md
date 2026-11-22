@@ -108,6 +108,32 @@ never advertise `RUN_PRIORITIZE_SET`. The public claim independently skips any
 stored candidate that is prioritized or drift detection. Private execution
 keeps its priority tiers, drift limits and pool selection.
 
+### Schedule producer dependency
+
+The accepted contract also requires timed schedules to select a private pool.
+The declared `stackScheduledRun*`, `stackScheduledTask*` and
+`stackScheduledDelete*` routes still use generated unimplemented handlers, and
+there is no timed run producer in this revision. Drift configuration is likewise
+a declared schema without an executing producer. A uniform `501` is not proof
+of a public-specific restriction. Current lifecycle drift refusal and the claim
+exclusion prove those boundaries, not a working drift workflow.
+
+The proposed integration for the future schedule owner uses the existing
+`runsapi.Creator.Create` transaction and `CreateRequest.BeforeCreate` callback.
+Under the owner/stack creation fence, admission must check that the locked stack
+still selects a private pool before inserting the timed run. Schedule
+configuration writes need the same private-only check under their owner fence.
+Timed fires must use `Mode=None` with their job/fire deduplication committed in
+the same transaction: `OncePerCommit` intentionally skips admission callbacks
+for reused runs. Real public refusal and private timed firing acceptance remain
+required before the schedule criterion is complete; no unused scheduled
+provenance or producer execution is claimed here.
+
+Public read projections, including required nullable int64
+`PublicWorkerPool.parallelism`, literal public queue/user selectors and
+egress/default-image reads, remain owned by #744. Admission uses existing int64
+quota values without claiming those separate read shapes.
+
 ## Verification
 
 `features/workers/public_execution.feature` executes provider-free

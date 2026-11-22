@@ -1,6 +1,24 @@
 package lifecycle
 
-import "github.com/weaveplatform/infraweave/internal/kernel"
+import (
+	"fmt"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
+	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+)
+
+func checkCreation(st stacksapi.Settings, in NewRun) error {
+	switch {
+	case st.Disabled:
+		return fmt.Errorf("%w: %s", ErrDisabled, st.Slug)
+	case st.Deleting:
+		return fmt.Errorf("%w: %s", ErrDeleting, st.Slug)
+	}
+	if st.Lock != nil && st.Lock.Holder != in.Actor.Caller {
+		return &Locked{By: st.Lock.By}
+	}
+	return checkPublicCreation(st.WorkerPool, in)
+}
 
 // Validate the selected pool while Create holds the stack, before reuse,
 // admission callbacks or writes. Public claims retain their own exclusion for

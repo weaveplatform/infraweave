@@ -438,9 +438,18 @@ func TestAccPublicTerminalAndWorkerLossReleaseCapacityAcrossReplicas(t *testing.
 	}
 }
 
-func TestAccPublicProposedPlanReplayPreservesCommittedRelease(t *testing.T) {
+func TestAccPublicDeniedPlanReplayPreservesCommittedRelease(t *testing.T) {
 	w := newPublicCapacityWorld(t, true, 2)
 	w.oneSlot(t)
+	// The protocol intentionally supplies no plan artifacts. The real evaluator
+	// must commit an INPUT failure receipt and refuse the plan before releasing
+	// capacity; this exercises report replay without fabricating policy evidence.
+	if _, err := w.d.Policies.API().PolicyCreatev2(w.admin, api.PolicyCreatev2RequestObject{Body: &api.PolicyCreateInput{
+		Name: "Unavailable plan fails closed", Type: api.PolicyTypePLAN, Space: new("kept"), Labels: &[]string{"autoattach:*"},
+		Body: "package infraweave\ndeny contains \"must never bypass unavailable input\" if false\n",
+	}}); err != nil {
+		t.Fatal(err)
+	}
 	first := w.pollPublic(t.Context(), 0, w.workers[0])
 	if first.err != nil || first.a == nil {
 		t.Fatalf("initial assignment: %v", first.err)
@@ -471,7 +480,17 @@ func TestAccPublicProposedPlanReplayPreservesCommittedRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 	if response.(workerapi.WorkerRunReport200JSONResponse).Body.Action != "exit" || w.active(t) != 0 {
-		t.Fatal("proposed plan did not release its public slot")
+		t.Fatal("denied plan did not release its public slot")
+	}
+	failedRun, err := kernel.ParseULID(first.a.Run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipts int
+	if err := w.q.QueryRow(t.Context(), `SELECT count(*) FROM run_policy_receipts WHERE run_id=$1 AND policy_type='PLAN' AND error_code='INPUT'`, failedRun).
+		Scan(&receipts); err != nil ||
+		receipts != 1 {
+		t.Fatalf("missing fail-closed report receipt: count=%d error=%v", receipts, err)
 	}
 	// This is the same committed report, retried after its answer was lost.
 	if _, err := w.replicas[1].Workers.Protocol().WorkerRunReport(ctx, request); err != nil {
