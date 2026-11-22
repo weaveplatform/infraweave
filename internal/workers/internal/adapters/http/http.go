@@ -374,7 +374,8 @@ func (s Server) WorkerPoolReset(ctx context.Context, req api.WorkerPoolResetRequ
 	if err != nil {
 		return nil, err
 	}
-	wp, err := s.svc.Reset(ctx, p, req.WorkerPoolId, req.Body.CertificateSigningRequest)
+	release := req.Body.ReleaseBinding != nil && *req.Body.ReleaseBinding
+	wp, err := s.svc.Reset(ctx, p, req.WorkerPoolId, req.Body.CertificateSigningRequest, release)
 	if err != nil {
 		return nil, poolError(err)
 	}
@@ -523,6 +524,9 @@ func poolError(err error) error {
 	}
 	if errors.Is(err, pool.ErrOwnership) {
 		return problem.InvalidState.Error("The worker pool's immutable management identity conflicts with this request.") //nolint:wrapcheck // an API problem is answered as it is
+	}
+	if errors.Is(err, pool.ErrBusy) {
+		return problem.InvalidState.Error("The worker pool still has registered workers or runs on workers.") //nolint:wrapcheck // an API problem is answered as it is
 	}
 	if errors.Is(err, pool.ErrConditionRequired) {
 		return problem.PreconditionRequired.Error("Managed worker pool settings require If-Match.") //nolint:wrapcheck // an API problem is answered as it is

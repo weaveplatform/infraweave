@@ -75,8 +75,9 @@ var refusals = []struct {
 	},
 }
 
-// answer maps the service's refusals to problems: a refused credential
-// to 401, which the log records with its reason, the private-workers
+// answer maps the service's refusals to problems: a refused hosting
+// ownership to 409 invalid-state and a refused credential to 401, which the
+// log records with their reasons, the private-workers
 // limit to 403 limit-reached, and the runs domain's refusals as refusals
 // lists. A *kernel.Invalid is answered as it is.
 func (s Server) answer(ctx context.Context, err error) error {
@@ -84,6 +85,11 @@ func (s Server) answer(ctx context.Context, err error) error {
 		if errors.Is(err, r.err) {
 			return r.typ.Error(r.detail) //nolint:wrapcheck // a problem, answered as it is
 		}
+	}
+	if errors.Is(err, worker.ErrOwnership) {
+		s.log.InfoContext(ctx, "worker pool ownership refused", "reason", err.Error())
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InvalidState.Error("The pool's hosting ownership refuses this request.")
 	}
 	if errors.Is(err, worker.ErrUnauthenticated) {
 		s.log.InfoContext(ctx, "worker credential refused", "reason", err.Error())
@@ -108,6 +114,23 @@ func (s Server) WorkerRegister(ctx context.Context, req gen.WorkerRegisterReques
 		Worker: reg.Worker.String(), SessionToken: reg.Token.Raw,
 		SessionExpiresAt: reg.Token.Expires.Unix(),
 	}}, nil
+}
+
+// WorkerPoolBind binds the pool to the owner its signed proof names.
+func (s Server) WorkerPoolBind(ctx context.Context, req gen.WorkerPoolBindRequestObject) (gen.WorkerPoolBindResponseObject, error) {
+	if err := s.svc.Bind(ctx, req.Body.Proof); err != nil {
+		return nil, s.answer(ctx, err)
+	}
+	return gen.WorkerPoolBind204Response{}, nil
+}
+
+// WorkerPoolRelease releases the pool's binding to the owner its signed
+// proof names.
+func (s Server) WorkerPoolRelease(ctx context.Context, req gen.WorkerPoolReleaseRequestObject) (gen.WorkerPoolReleaseResponseObject, error) {
+	if err := s.svc.Release(ctx, req.Body.Proof); err != nil {
+		return nil, s.answer(ctx, err)
+	}
+	return gen.WorkerPoolRelease204Response{}, nil
 }
 
 // WorkerPoll reports the session's worker's state and answers what the

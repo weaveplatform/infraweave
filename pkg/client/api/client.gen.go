@@ -10716,6 +10716,9 @@ type WorkerPoolRef struct {
 // WorkerPoolResetRequest The arguments of workerPoolReset not carried in the path.
 type WorkerPoolResetRequest struct {
 	CertificateSigningRequest string `json:"certificateSigningRequest"`
+
+	// ReleaseBinding Release an abandoned controller's hosting binding, requiring a different key and no remaining workers or runs on workers.
+	ReleaseBinding *bool `json:"releaseBinding,omitempty"`
 }
 
 // WorkerPoolScanReference WorkerPoolScanReference is a scan using the worker pool, viewed from the worker pool.

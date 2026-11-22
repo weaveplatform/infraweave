@@ -554,6 +554,12 @@ type PollResult struct {
 	Signals *[]Signal `json:"signals,omitempty"`
 }
 
+// PoolOwnershipRequest A hosting ownership proof, signed with the pool's private key.
+type PoolOwnershipRequest struct {
+	// Proof A compact JWS, ES256, whose protected header's x5c carries the pool's current certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; owner, an object of clusterID and namespace, each a lowercase DNS label of at most 63 characters, and resourceUID, the opaque Kubernetes UID of the owning resource, at most 128 characters; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; and jti, a value the pool has not used in the last ten minutes.
+	Proof string `json:"proof"`
+}
+
 // Problem An RFC 9457 problem detail. Every error response uses the status code and this body.
 type Problem struct {
 	// Detail What went wrong with this request.
@@ -610,7 +616,7 @@ type PublicPoolPolicy struct {
 
 // RegisterRequest A registration, signed with the pool's private key.
 type RegisterRequest struct {
-	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
+	// Registration A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker; and, for a pool a controller hosts, owner, the bound hosting identity (clusterID, namespace and resourceUID), and slot, the logical slot from 0 to 2147483647. A pool with a hosting binding admits only its owner's registrations, and each slot holds at most one worker: registering a slot again resumes its worker.
 	Registration string `json:"registration"`
 }
 
@@ -1018,6 +1024,12 @@ type Unauthenticated = Problem
 // WorkerPollJSONRequestBody defines body for WorkerPoll for application/json ContentType.
 type WorkerPollJSONRequestBody = PollRequest
 
+// WorkerPoolBindJSONRequestBody defines body for WorkerPoolBind for application/json ContentType.
+type WorkerPoolBindJSONRequestBody = PoolOwnershipRequest
+
+// WorkerPoolReleaseJSONRequestBody defines body for WorkerPoolRelease for application/json ContentType.
+type WorkerPoolReleaseJSONRequestBody = PoolOwnershipRequest
+
 // WorkerRegisterJSONRequestBody defines body for WorkerRegister for application/json ContentType.
 type WorkerRegisterJSONRequestBody = RegisterRequest
 
@@ -1132,9 +1144,45 @@ type ClientInterface interface {
 	// Corresponds with POST /poll (the `WorkerPoll` operationId).
 	WorkerPoll(ctx context.Context, body WorkerPollJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// WorkerPoolBindWithBody Bind a pool to its hosting controller
+	//
+	// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+	WorkerPoolBindWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolBind Bind a pool to its hosting controller
+	//
+	// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+	WorkerPoolBind(ctx context.Context, body WorkerPoolBindJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolReleaseWithBody Release a pool's hosting binding
+	//
+	// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+	WorkerPoolReleaseWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolRelease Release a pool's hosting binding
+	//
+	// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+	WorkerPoolRelease(ctx context.Context, body WorkerPoolReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// WorkerRegisterWithBody Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1143,7 +1191,7 @@ type ClientInterface interface {
 
 	// WorkerRegister Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1292,9 +1340,85 @@ func (c *Client) WorkerPoll(ctx context.Context, body WorkerPollJSONRequestBody,
 	return c.Client.Do(req)
 }
 
+// WorkerPoolBindWithBody Bind a pool to its hosting controller
+//
+// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+func (c *Client) WorkerPoolBindWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolBindRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolBind Bind a pool to its hosting controller
+//
+// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+func (c *Client) WorkerPoolBind(ctx context.Context, body WorkerPoolBindJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolBindRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolReleaseWithBody Release a pool's hosting binding
+//
+// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+func (c *Client) WorkerPoolReleaseWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolReleaseRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolRelease Release a pool's hosting binding
+//
+// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+func (c *Client) WorkerPoolRelease(ctx context.Context, body WorkerPoolReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolReleaseRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // WorkerRegisterWithBody Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1313,7 +1437,7 @@ func (c *Client) WorkerRegisterWithBody(ctx context.Context, contentType string,
 
 // WorkerRegister Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1564,6 +1688,86 @@ func NewWorkerPollRequestWithBody(server string, contentType string, body io.Rea
 	}
 
 	operationPath := fmt.Sprintf("/poll")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerPoolBindRequest calls the generic WorkerPoolBind builder with application/json body
+func NewWorkerPoolBindRequest(server string, body WorkerPoolBindJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolBindRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewWorkerPoolBindRequestWithBody constructs an http.Request for the WorkerPoolBind method, with any body, and a specified content type
+func NewWorkerPoolBindRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/pools/bind")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerPoolReleaseRequest calls the generic WorkerPoolRelease builder with application/json body
+func NewWorkerPoolReleaseRequest(server string, body WorkerPoolReleaseJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewWorkerPoolReleaseRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewWorkerPoolReleaseRequestWithBody constructs an http.Request for the WorkerPoolRelease method, with any body, and a specified content type
+func NewWorkerPoolReleaseRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/pools/release")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1950,9 +2154,45 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /poll (the `WorkerPoll` operationId).
 	WorkerPollWithResponse(ctx context.Context, body WorkerPollJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPollResponse, error)
 
+	// WorkerPoolBindWithBodyWithResponse Bind a pool to its hosting controller
+	//
+	// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+	WorkerPoolBindWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolBindResponse, error)
+
+	// WorkerPoolBindWithResponse Bind a pool to its hosting controller
+	//
+	// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+	WorkerPoolBindWithResponse(ctx context.Context, body WorkerPoolBindJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolBindResponse, error)
+
+	// WorkerPoolReleaseWithBodyWithResponse Release a pool's hosting binding
+	//
+	// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+	WorkerPoolReleaseWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolReleaseResponse, error)
+
+	// WorkerPoolReleaseWithResponse Release a pool's hosting binding
+	//
+	// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+	WorkerPoolReleaseWithResponse(ctx context.Context, body WorkerPoolReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolReleaseResponse, error)
+
 	// WorkerRegisterWithBodyWithResponse Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -1961,7 +2201,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerRegisterWithResponse Register a worker
 	//
-	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+	// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2242,6 +2482,196 @@ func (r WorkerPollResponse) ContentType() string {
 	return ""
 }
 
+// WorkerPoolBindResponse204Headers the declared response headers of an HTTP 204 response for WorkerPoolBind
+type WorkerPoolBindResponse204Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolBindResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolBind
+type WorkerPoolBindResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolBindResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolBind
+type WorkerPoolBindResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolBindResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *WorkerPoolBindResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolBindResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolBindResponse503Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerPoolBindResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolBindResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolBindResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolBindResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolBindResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolBindResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolBindResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolBindResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolBindResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerPoolReleaseResponse204Headers the declared response headers of an HTTP 204 response for WorkerPoolRelease
+type WorkerPoolReleaseResponse204Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolReleaseResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolRelease
+type WorkerPoolReleaseResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolReleaseResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolRelease
+type WorkerPoolReleaseResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolReleaseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *WorkerPoolReleaseResponse204Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolReleaseResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolReleaseResponse503Headers
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerPoolReleaseResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerPoolReleaseResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolReleaseResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolReleaseResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolReleaseResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolReleaseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolReleaseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolReleaseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolReleaseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WorkerRegisterResponse200Headers the declared response headers of an HTTP 200 response for WorkerRegister
 type WorkerRegisterResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -2269,6 +2699,8 @@ type WorkerRegisterResponse struct {
 	JSON200 *Registration
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
 	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
 	ApplicationproblemJSON429 *TooManyRequests
 	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
@@ -2291,6 +2723,11 @@ func (r WorkerRegisterResponse) GetJSON200() *Registration {
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
 func (r WorkerRegisterResponse) GetApplicationproblemJSON401() *Unauthenticated {
 	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRegisterResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
 }
 
 // GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
@@ -2988,9 +3425,69 @@ func (c *ClientWithResponses) WorkerPollWithResponse(ctx context.Context, body W
 	return ParseWorkerPollResponse(rsp)
 }
 
+// WorkerPoolBindWithBodyWithResponse Bind a pool to its hosting controller
+//
+// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+func (c *ClientWithResponses) WorkerPoolBindWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolBindResponse, error) {
+	rsp, err := c.WorkerPoolBindWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolBindResponse(rsp)
+}
+
+// WorkerPoolBindWithResponse Bind a pool to its hosting controller
+//
+// Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /pools/bind (the `WorkerPoolBind` operationId).
+func (c *ClientWithResponses) WorkerPoolBindWithResponse(ctx context.Context, body WorkerPoolBindJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolBindResponse, error) {
+	rsp, err := c.WorkerPoolBind(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolBindResponse(rsp)
+}
+
+// WorkerPoolReleaseWithBodyWithResponse Release a pool's hosting binding
+//
+// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+func (c *ClientWithResponses) WorkerPoolReleaseWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*WorkerPoolReleaseResponse, error) {
+	rsp, err := c.WorkerPoolReleaseWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolReleaseResponse(rsp)
+}
+
+// WorkerPoolReleaseWithResponse Release a pool's hosting binding
+//
+// Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /pools/release (the `WorkerPoolRelease` operationId).
+func (c *ClientWithResponses) WorkerPoolReleaseWithResponse(ctx context.Context, body WorkerPoolReleaseJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolReleaseResponse, error) {
+	rsp, err := c.WorkerPoolRelease(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolReleaseResponse(rsp)
+}
+
 // WorkerRegisterWithBodyWithResponse Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3005,7 +3502,7 @@ func (c *ClientWithResponses) WorkerRegisterWithBodyWithResponse(ctx context.Con
 
 // WorkerRegisterWithResponse Register a worker
 //
-// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+// Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3408,6 +3905,256 @@ func ParseWorkerPollResponse(rsp *http.Response) (*WorkerPollResponse, error) {
 	return response, nil
 }
 
+// ParseWorkerPoolBindResponse parses an HTTP response from a WorkerPoolBindWithResponse call
+func ParseWorkerPoolBindResponse(rsp *http.Response) (*WorkerPoolBindResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolBindResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers WorkerPoolBindResponse204Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolBindResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolBindResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolReleaseResponse parses an HTTP response from a WorkerPoolReleaseWithResponse call
+func ParseWorkerPoolReleaseResponse(rsp *http.Response) (*WorkerPoolReleaseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolReleaseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers WorkerPoolReleaseResponse204Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers204 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolReleaseResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolReleaseResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseWorkerRegisterResponse parses an HTTP response from a WorkerRegisterWithResponse call
 func ParseWorkerRegisterResponse(rsp *http.Response) (*WorkerRegisterResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3435,6 +4182,13 @@ func ParseWorkerRegisterResponse(rsp *http.Response) (*WorkerRegisterResponse, e
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests

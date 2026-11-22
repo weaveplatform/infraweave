@@ -95,7 +95,8 @@ type Store interface {
 	Public(ctx context.Context, lock bool) (Pool, error)
 	CreatePublic(ctx context.Context, p Pool) error
 	WritePublic(ctx context.Context, p Pool) error
-	PublicWorkers(ctx context.Context, id kernel.ULID) (bool, error)
+	// HasWorkers reports whether the pool id has a registered worker.
+	HasWorkers(ctx context.Context, id kernel.ULID) (bool, error)
 	// Authority reads the pool CA, creating it with mint when the
 	// installation has none, and takes its next serial; the CA's row
 	// stays locked until the transaction ends.
@@ -112,6 +113,8 @@ type Store interface {
 	// Managed resolves an immutable resource identity in the caller's account.
 	// Deleted pools remain reserved but cannot be read through this lookup.
 	Managed(ctx context.Context, acct kernel.AccountID, owner kernel.WorkerOwner) (Pool, error)
+	// Unbind removes the pool id's hosting binding.
+	Unbind(ctx context.Context, id kernel.ULID) error
 	// Share reads the space of acct's pool id, locked FOR SHARE, so a
 	// delete or move waits for the transaction; ErrNotFound when acct
 	// lacks it.
@@ -159,10 +162,10 @@ type Service struct {
 	preparing time.Duration
 	now       func() time.Time
 
-	mu                sync.RWMutex
-	guards            []workersapi.PoolGuard
-	stacks            accessapi.SpaceOf
-	publicAssignments workersapi.PublicAssignments
+	mu              sync.RWMutex
+	guards          []workersapi.PoolGuard
+	stacks          accessapi.SpaceOf
+	poolAssignments workersapi.PoolAssignments
 }
 
 // New returns the service over d.
@@ -202,11 +205,11 @@ func (s *Service) BindStacks(stacks accessapi.SpaceOf) {
 	s.stacks = stacks
 }
 
-// BindPublicAssignments supplies the runs domain during application construction.
-func (s *Service) BindPublicAssignments(runs workersapi.PublicAssignments) {
+// BindPoolAssignments supplies the runs domain during application construction.
+func (s *Service) BindPoolAssignments(runs workersapi.PoolAssignments) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.publicAssignments = runs
+	s.poolAssignments = runs
 }
 
 // Missing is an entity a request names that the account lacks or the
@@ -552,9 +555,10 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 
 // Reset signs a new certificate for the key of the request req, under a
 // new serial, for p's account's pool id, so registrations under the
-// old one are refused. The route has decided WORKER_POOL_RESET on its
-// space.
-func (s *Service) Reset(ctx context.Context, p kernel.Principal, id, req string) (Pool, error) {
+// old one are refused. releaseBinding also removes an abandoned
+// controller's hosting binding, as release allows. The route has decided
+// WORKER_POOL_RESET on its space.
+func (s *Service) Reset(ctx context.Context, p kernel.Principal, id, req string, releaseBinding bool) (Pool, error) {
 	key, err := csr(req)
 	if err != nil {
 		return Pool{}, err
@@ -565,6 +569,11 @@ func (s *Service) Reset(ctx context.Context, p kernel.Principal, id, req string)
 		id,
 		kernel.Expect{},
 		func(ctx context.Context, out *Pool) error {
+			if releaseBinding {
+				if err := s.release(ctx, *out, key); err != nil {
+					return err
+				}
+			}
 			out.UpdatedAt = s.now()
 			return s.sign(ctx, out, key)
 		},

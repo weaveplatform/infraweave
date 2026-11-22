@@ -15,12 +15,12 @@ import (
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
-type publicAssignments struct {
+type poolAssignments struct {
 	active bool
 	err    error
 }
 
-func (a publicAssignments) ActivePublicPool(context.Context, kernel.ULID) (bool, error) {
+func (a poolAssignments) ActivePool(context.Context, kernel.ULID) (bool, error) {
 	return a.active, a.err
 }
 
@@ -86,10 +86,10 @@ func TestAccPublicPoolCredentials(t *testing.T) {
 	if _, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatalf("unbound assignment reader allowed release: %v", err)
 	}
-	for _, assignments := range []publicAssignments{{active: true}, {err: errDown}} {
-		f.svc.BindPublicAssignments(assignments)
+	for _, assignments := range []poolAssignments{{active: true}, {err: errDown}} {
+		f.svc.BindPoolAssignments(assignments)
 		_, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true)
-		want := pool.ErrPublicBusy
+		want := pool.ErrBusy
 		if assignments.err != nil {
 			want = errDown
 		}
@@ -97,7 +97,7 @@ func TestAccPublicPoolCredentials(t *testing.T) {
 			t.Fatalf("unsafe ownership release: %v, want %v", err, want)
 		}
 	}
-	f.svc.BindPublicAssignments(publicAssignments{})
+	f.svc.BindPoolAssignments(poolAssignments{})
 	reset, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true)
 	if err != nil || reset.ID != first.ID || reset.Version != 2 || reset.Serial == first.Serial || f.svc.Token(reset) == f.svc.Token(first) {
 		t.Fatalf("replacement credentials=%+v error=%v", reset, err)
@@ -153,13 +153,13 @@ func TestAccPublicWorkerStorage(t *testing.T) {
 			t.Fatalf("public replay check=%t want=%t error=%v", fresh, want, err)
 		}
 	}
-	if _, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true); !errors.Is(err, pool.ErrPublicBusy) {
+	if _, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true); !errors.Is(err, pool.ErrBusy) {
 		t.Fatalf("released pool with registered workers: %v", err)
 	}
 	if err := f.store.Remove(ctx, w.ID); err != nil {
 		t.Fatal(err)
 	}
-	f.svc.BindPublicAssignments(publicAssignments{})
+	f.svc.BindPoolAssignments(poolAssignments{})
 	if _, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), true); err != nil {
 		t.Fatal(err)
 	}

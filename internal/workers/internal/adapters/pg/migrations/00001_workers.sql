@@ -82,7 +82,9 @@ CREATE TABLE worker_pool_management (
 );
 
 -- Certificate-authorized hosting ownership is independent of account API
--- management. Installation public pools have no account; private bindings do.
+-- management: one controller resource hosts a pool and registers its slots.
+-- Installation public pools have no account; private bindings do. A pool's
+-- delete removes its binding; release removes it once no worker remains.
 CREATE TABLE worker_pool_bindings (
     pool_id      uuid        PRIMARY KEY,
     account_id   uuid,
@@ -105,7 +107,8 @@ COMMENT ON TABLE worker_pool_bindings IS
 -- worker deregisters. organization_id is its pool's, which the
 -- private-workers limit counts by.
 -- Installation public workers leave both tenant columns NULL and do not
--- contribute to any organization's private-worker usage.
+-- contribute to any organization's private-worker usage. slot is a
+-- controller's logical slot, NULL for a launcher's worker.
 CREATE TABLE workers (
     account_id      uuid,
     organization_id uuid,
@@ -123,6 +126,7 @@ CREATE TABLE workers (
     last_seen_at    timestamptz NOT NULL DEFAULT now(),
     available_at    timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
+    slot            integer     CHECK (slot >= 0),
     PRIMARY KEY (id),
     CHECK ((account_id IS NULL) = (organization_id IS NULL))
 );
@@ -133,6 +137,9 @@ COMMENT ON TABLE workers IS
 CREATE INDEX workers_pool ON workers (account_id, pool_id);
 
 CREATE INDEX workers_organization ON workers (organization_id);
+
+-- A slot holds one worker, so a retried registration resumes it.
+CREATE UNIQUE INDEX workers_slot ON workers (pool_id, slot) WHERE slot IS NOT NULL;
 
 -- The reap reads the workers unseen since a time, of every account.
 CREATE INDEX workers_seen ON workers (last_seen_at);

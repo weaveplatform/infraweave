@@ -228,7 +228,7 @@ func TestAccPools(t *testing.T) {
 		f.svc.PreparingTimeout(up) != pool.DefaultPreparingTimeout {
 		t.Errorf("Update = %+v, %v", up, err)
 	}
-	reset, err := f.svc.Reset(ctx, f.admin, p.ID.String(), request(t))
+	reset, err := f.svc.Reset(ctx, f.admin, p.ID.String(), request(t), false)
 	if err != nil || reset.Serial == p.Serial || reset.Version != 3 ||
 		bytes.Equal(reset.Certificate, p.Certificate) {
 		t.Errorf("Reset = %+v, %v", reset, err)
@@ -299,7 +299,7 @@ func TestAccPoolRefusals(t *testing.T) {
 	invalid("Create with no timeout", err, "/preparingTimeoutSeconds")
 	_, err = f.svc.Create(ctx, f.admin, pool.Input{Name: "x"}, "nope")
 	invalid("Create with no request", err, "/certificateSigningRequest")
-	_, err = f.svc.Reset(ctx, f.admin, p.ID.String(), "nope")
+	_, err = f.svc.Reset(ctx, f.admin, p.ID.String(), "nope", false)
 	invalid("Reset with no request", err, "/certificateSigningRequest")
 	_, err = f.svc.Update(ctx, f.admin, p.ID.String(), kernel.Expect{}, pool.Input{})
 	invalid("Update with no name", err, "/name")

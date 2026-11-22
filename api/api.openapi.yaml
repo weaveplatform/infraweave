@@ -35809,6 +35809,10 @@ components:
       properties:
         certificateSigningRequest:
           type: string
+        releaseBinding:
+          type: boolean
+          default: false
+          description: Release an abandoned controller's hosting binding, requiring a different key and no remaining workers or runs on workers.
       required:
         - certificateSigningRequest
       type: object

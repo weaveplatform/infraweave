@@ -75,7 +75,7 @@ func publicPoolError(err error) error {
 		return problem.NotFound.Error("The installation public pool has not been created.")
 	case errors.Is(err, pool.ErrPublicExists):
 		return problem.InvalidState.Error("The installation public pool already exists.")
-	case errors.Is(err, pool.ErrPublicBusy):
+	case errors.Is(err, pool.ErrBusy):
 		return problem.InvalidState.Error("The public pool still has registered workers or active assignments.")
 	case errors.Is(err, pool.ErrPublicCondition):
 		return problem.PreconditionRequired.Error("Public pool credential reset requires If-Match.")

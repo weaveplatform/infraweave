@@ -137,7 +137,7 @@ func TestAccManagedSettingsRequireExactOwnerAndVersion(t *testing.T) {
 	if err != nil || updated.Version != 2 || updated.Management == nil || *updated.Management != owner {
 		t.Fatalf("owned update: %+v %v", updated, err)
 	}
-	reset, err := f.svc.Reset(ctx, f.admin, created.ID.String(), request(t))
+	reset, err := f.svc.Reset(ctx, f.admin, created.ID.String(), request(t), false)
 	if err != nil || reset.Serial == created.Serial || reset.Management == nil || *reset.Management != owner {
 		t.Fatalf("authorized recovery reset lost owner: %+v %v", reset, err)
 	}
