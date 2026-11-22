@@ -153,7 +153,7 @@ func TestUnitCINativeAcceptanceIsRequired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, recipe, ok := strings.Cut(string(raw), "\naccept-native:\n")
+	_, recipe, ok := strings.Cut(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\naccept-native:\n")
 	if !ok {
 		t.Fatal("missing native acceptance target")
 	}
