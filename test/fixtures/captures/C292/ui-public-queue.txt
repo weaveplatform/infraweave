@@ -1,0 +1,76 @@
+## Latest page snapshot
+uid=5_0 RootWebArea "Queue · Public worker pool | Spacelift" url="https://example.app.spacelift.io/worker-pool/public-worker-pool/queue?sort=position&sortDirection=ASC"
+  uid=5_1 main
+    uid=5_2 generic
+      uid=5_3 " "
+      uid=5_4 link "Spacelift homepage" url="https://example.app.spacelift.io/"
+      uid=5_5 button "Switch product" expandable haspopup="menu"
+      uid=5_6 button "Sidebar customization"
+      uid=5_7 button "Collapse"
+      uid=5_8 button "Search Spacelift"
+      uid=5_9 button "Ask"
+      uid=5_10 button "Pinned - Collapse" expandable expanded haspopup="menu"
+      uid=5_11 "Quickly access your most important links by pinning them."
+      uid=5_12 link "Infra Assistant" url="https://example.app.spacelift.io/assistant"
+      uid=5_14 button "Get Insights - Expand" expandable haspopup="menu"
+      uid=5_15 button "Ship Infra - Expand" expandable haspopup="menu"
+      uid=5_16 button "Share Code & Config - Expand" expandable haspopup="menu"
+      uid=5_17 button "Enforce Guardrails - Expand" expandable haspopup="menu"
+      uid=5_18 button "Integrate Services - Expand" expandable haspopup="menu"
+      uid=5_19 button "Manage Organization - Expand" expandable haspopup="menu"
+      uid=5_20 button "Support & Feedback - Expand" expandable haspopup="menu"
+      uid=5_21 button "User menu" expandable haspopup="menu"
+    uid=5_22 button "Skip header"
+    uid=5_23 link "Worker pools" url="https://example.app.spacelift.io/worker-pools"
+    "•"
+    uid=5_25 "Public worker pool"
+    uid=5_26 link "Go back" url="https://example.app.spacelift.io/worker-pools"
+    uid=5_27 heading "Public worker pool" level="1"
+    uid=5_28 link "Go to worker pools documentation" url="https://docs.spacelift.io/concepts/worker-pools"
+    uid=5_29 "Public"
+    uid=5_30 link "Queue 0" url="https://example.app.spacelift.io/worker-pool/public-worker-pool/queue"
+    uid=5_33 link "Used by 0" url="https://example.app.spacelift.io/worker-pool/public-worker-pool/used-by"
+    uid=5_36 button "Back to header"
+    uid=5_37 heading "Queue" level="2"
+    uid=5_38 button "Skip filters"
+    uid=5_39 tab "Filters" selectable selected
+    uid=5_40 tab "Views" selectable
+    uid=5_41 button "Hide filters" expandable expanded
+    uid=5_42 "Default view"
+    uid=5_43 button "New view" expandable
+    uid=5_44 button "Manage view" expandable haspopup="menu"
+    uid=5_45 button "Expand all"
+    uid=5_46 button "Manage filters"
+    uid=5_47 button "commit sha" expandable
+    uid=5_48 button "drift detection" expandable
+    uid=5_49 button "isprioritized" expandable
+    uid=5_50 button "stack name" expandable
+    uid=5_51 button "status" expandable
+    uid=5_52 button "type" expandable
+    uid=5_53 button "Back to filters"
+    uid=5_54 "No schedulable runs found"
+    uid=5_55 "You have no schedulable runs, everything is running smoothly."
+  uid=5_56 Iframe "Checklist launcher"
+    uid=5_57 RootWebArea url="about:blank"
+      uid=5_58 button "Get Started 4 uncompleted tasks"
+  uid=5_59 Iframe "Pylon Chat Widget"
+    uid=5_60 RootWebArea url="https://example.app.spacelift.io/worker-pool/public-worker-pool/queue?sort=position&sortDirection=ASC"
+  uid=5_61 Iframe "Customer support window"
+    uid=5_62 RootWebArea url="about:srcdoc"
+      uid=5_63 image "Spacelift" url="https://avatars.slack-edge.com/2022-02-16/3113145347074_616dc3959fd7805ef47b_88.png"
+      uid=5_64 button "Close"
+      uid=5_65 "Welcome, how can we help?"
+      uid=5_66 heading "Check the knowledge base" level="2"
+      uid=5_67 form
+        uid=5_68 searchbox
+      uid=5_69 heading "Bookmarks" level="3"
+      uid=5_70 link "📖 Knowledge Base" url="https://support.spacelift.io/"
+      uid=5_73 link "📚 Documentation" url="https://docs.spacelift.io/"
+      uid=5_76 link "🏫 Blog Posts" url="https://spacelift.io/blog/product"
+      uid=5_79 link "🚥 Status Page" url="https://spacelift.statuspage.io/"
+      uid=5_82 "Start new chat"
+      uid=5_83 "We're offline. We'll be back soon."
+      uid=5_84 button "Start new chat"
+      uid=5_85 "Submit a ticket"
+      uid=5_86 button "Report a Bug or Issue"
+      uid=5_87 link "Powered by Pylon" url="https://usepylon.com/"

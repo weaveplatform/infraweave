@@ -1,0 +1,34 @@
+## Latest page snapshot
+uid=1_0 RootWebArea "Worker pools · example | Spacelift" url="https://example.app.spacelift.io/worker-pools"
+  uid=1_1 main
+  uid=3_0 button "Dismiss"
+  uid=3_1 dialog "Create a new worker pool" modal
+    uid=3_2 form
+      uid=3_3 heading "Create a new worker pool" level="2"
+      uid=3_4 button "Close"
+      uid=3_5 "Name"
+      uid=3_6 textbox "Name" focusable focused required
+      uid=3_7 "Certificate"
+      uid=3_8 button "Upload certificate .csr file" value="No file chosen"
+      uid=3_9 "Drag and drop the .csr file here"
+      uid=3_10 "Space"
+      uid=3_11 button "Open more information" haspopup="dialog"
+      uid=3_12 combobox "Space" expandable haspopup="tree" required
+      uid=3_13 button "Open" expandable haspopup="tree"
+      uid=3_14 "Description"
+      uid=3_15 " "
+      uid=3_16 "(Optional)"
+      uid=3_17 textbox "Description (Optional)" multiline
+      uid=3_18 switch "Configure drift detection run limits" description="Control how many drift detection runs can execute simultaneously on this worker pool."
+      uid=3_19 "Configure drift detection run limits"
+      uid=3_20 "Control how many drift detection runs can execute simultaneously on this worker pool."
+      uid=3_21 "Labels"
+      uid=3_22 " "
+      uid=3_23 "(Optional)"
+      uid=3_24 textbox "Labels (Optional)"
+      uid=3_25 "Upon worker pool creation, a file will be generated with the worker pool configuration, encoded using base64. Please save this file somewhere safe as it will never be available again. You will need to make the configuration data available to all workers joining this worker pool."
+      uid=3_26 LineBreak "
+"
+      uid=3_27 link "Read more" url="https://docs.spacelift.io/concepts/worker-pools#setting-up"
+      uid=3_29 button "Cancel"
+      uid=3_30 button "Create"

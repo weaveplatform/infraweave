@@ -1,0 +1,93 @@
+{
+  "sourceIssue": 739,
+  "sourceRevision": "41ab59b5b417ff3d0f9767642b2db0620706640e",
+  "capturedAt": "2026-11-22T17:19:48.727Z",
+  "introspection": "sha256:a5576e83b0d69dec495851182193fa774b6cbc4bc2b644628ef8389fbde33bfe",
+  "mode": "read-only Chrome DevTools MCP",
+  "tier": "V5_FREE",
+  "resourceMutations": 0,
+  "observedExchangeCount": 9,
+  "observedAssertions": 52,
+  "referenceQuestionsResolved": 0,
+  "privateExecutionProven": false,
+  "multiCloudExecutionProven": false,
+  "questions": [
+    {
+      "id": "C21",
+      "status": "unavailable",
+      "attempt": "Read the live pool-management surface and inventory. No private pool/controller exists; private scheduling is disabled on this account. Running a vendor controller would create/manage resources outside the read-only boundary.",
+      "missing": "Actual GraphQL operations sent by vendor controller v0.0.47 and auto-registration effects.",
+      "owners": [
+        740,
+        745
+      ],
+      "procedure": "Use an entitled account and a separately approved isolated controller lab; proxy its real API traffic and preserve exact controller/chart versions."
+    },
+    {
+      "id": "C66",
+      "status": "unavailable",
+      "attempt": "Inspected worker inventory and private-tier warning. There are no stacks or private workers and no run was created.",
+      "missing": "Actual ro_/wo_ environment and extra-mount behavior in plan versus apply.",
+      "owners": [
+        740,
+        752
+      ],
+      "procedure": "On an entitled isolated private worker, run a provider-free stack and record environment/mount visibility and actual read/write outcomes in both stages."
+    },
+    {
+      "id": "C67",
+      "status": "unavailable",
+      "attempt": "Inspected pool inventory: no vendor-managed Kubernetes worker or run pod is present. Source/default documentation is supporting context, not pod observation.",
+      "missing": "Effective activeDeadlineSeconds on a real v0.0.47 run pod and its relation to run/preparation timeouts.",
+      "owners": [
+        740,
+        746,
+        747
+      ],
+      "procedure": "Inspect a real pod created by the exact vendor controller/chart version in an approved Kubernetes lab, recording both desired configuration and effective pod spec."
+    },
+    {
+      "id": "C68",
+      "status": "unavailable",
+      "attempt": "Inspected the read-only account inventory. No worker-side policy invocation exists; creating a private worker or run would exceed this capture boundary.",
+      "missing": "Complete actual worker-side initialization input, including token/static environment fields and sampled deny.",
+      "owners": [
+        740,
+        749,
+        751
+      ],
+      "procedure": "On a separately approved entitled private-worker lab, use a bounded policy that records sanitized input and an actual deny; omit run tokens and other credentials from committed evidence."
+    },
+    {
+      "id": "C69",
+      "status": "unavailable",
+      "attempt": "Read-only inventory contains no stacks/runs; no supported-vendor execution or observabilityStatus was observed.",
+      "missing": "Vendor-by-vendor real worker tracing and metrics behavior.",
+      "owners": [
+        740,
+        752
+      ],
+      "procedure": "Run approved real vendor cases on an entitled account and read each actual observabilityStatus. Keep tool-image smoke tests distinct from supported application vendor backends."
+    },
+    {
+      "id": "C292",
+      "status": "partial",
+      "attempt": "Captured actual public-pool overview, queue, suggestions, used-by queries and account inventory. Queue and private-pool lists are empty; priority filter names/enums are visible but no priority action or queue movement was performed.",
+      "missing": "Where a private queued run is reprioritized and how multiple runs move in its queue.",
+      "owners": [
+        740,
+        743,
+        744,
+        753
+      ],
+      "procedure": "Queue multiple runs on an entitled private pool with one worker. Record the real prioritize control, mutation, before/after queue and worker assignment ordering.",
+      "fixture": "../../test/fixtures/captures/C292/README.md"
+    }
+  ],
+  "replayOwner": 744,
+  "stackSelection": {
+    "status": "partial",
+    "observed": "The new-stack wizard shows root space and disabled later steps; attachableWorkerPoolsInSpace(root) returns an empty list.",
+    "missing": "A populated private-pool selector and a successful assignment. No stack was created."
+  }
+}

@@ -1,0 +1,56 @@
+# Partial public-pool observation; private priority behavior remains unobserved.
+# Do not turn the downstream stub's 501 response into an acceptance expectation.
+replayAfter: https://github.com/weaveplatform/infraweave/issues/744
+observed:
+  "/exchanges/0/status": 200
+  "/exchanges/0/request/operationName": "SearchWorkerPools"
+  "/exchanges/1/status": 200
+  "/exchanges/1/request/operationName": "SearchWorkerPoolsSuggestions"
+  "/exchanges/2/status": 200
+  "/exchanges/2/request/operationName": "GetPublicWorkerPoolDetails"
+  "/exchanges/3/status": 200
+  "/exchanges/3/request/operationName": "SearchPublicWorkerPoolSchedulableRuns"
+  "/exchanges/4/status": 200
+  "/exchanges/4/request/operationName": "SearchPublicWorkerPoolSchedulableRunsSuggestions"
+  "/exchanges/5/status": 200
+  "/exchanges/5/request/operationName": "GetPublicWorkerPoolDetails"
+  "/exchanges/6/status": 200
+  "/exchanges/6/request/operationName": "SearchPublicWorkerPoolUsedBy"
+  "/exchanges/7/status": 200
+  "/exchanges/7/request/operationName": "SearchPublicWorkerPoolUsedBySuggestions"
+  "/exchanges/8/status": 200
+  "/exchanges/8/request/operationName": "CaptureWorkerPoolInventory"
+  "/readOnly": true
+  "/exchanges/0/response/data/publicWorkerPool/parallelism": 1
+  "/exchanges/2/response/data/publicWorkerPool/parallelism": 1
+  "/exchanges/5/response/data/publicWorkerPool/parallelism": 1
+  "/exchanges/8/response/data/publicWorkerPool/parallelism": 1
+  "/exchanges/0/response/data/publicWorkerPool/busyWorkers": 0
+  "/exchanges/0/response/data/publicWorkerPool/schedulableRunsCount": 0
+  "/exchanges/1/response/data/searchWorkerPoolsSuggestions/filteredCount": 0
+  "/exchanges/3/response/data/publicWorkerPool/schedulableRunsCount": 0
+  "/exchanges/3/response/data/publicWorkerPool/usersCount": 0
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/filteredCount": 0
+  "/exchanges/6/response/data/publicWorkerPool/usersCount": 0
+  "/exchanges/7/response/data/publicWorkerPool/searchUsersSuggestions/filteredCount": 0
+  "/exchanges/0/response/data/searchWorkerPools/edges": []
+  "/exchanges/3/response/data/publicWorkerPool/searchSchedulableRuns/edges": []
+  "/exchanges/6/response/data/publicWorkerPool/searchUsers/edges": []
+  "/exchanges/8/response/data/workerPools": []
+  "/exchanges/8/response/data/stacks": []
+  "/exchanges/8/response/data/attachableWorkerPoolsInSpace": []
+  "/exchanges/0/response/data/searchWorkerPools/pageInfo/hasNextPage": false
+  "/exchanges/3/response/data/publicWorkerPool/searchSchedulableRuns/pageInfo/hasNextPage": false
+  "/exchanges/6/response/data/publicWorkerPool/searchUsers/pageInfo/hasNextPage": false
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/0/name": "commit"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/1/name": "createdAt"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/2/name": "isDriftDetection"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/3/name": "isPrioritized"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/4/name": "position"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/5/name": "priorityPreset"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/6/name": "stackName"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/7/name": "state"
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/8/name": "type"
+  "/exchanges/8/response/data/tier": "V5_FREE"
+  "/exchanges/8/response/data/defaultPrivateWorkerPoolRunnerImage": ""
+  "/exchanges/8/response/data/defaultPublicWorkerPoolRunnerImage": ""
