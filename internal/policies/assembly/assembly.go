@@ -10,6 +10,8 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
+	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
@@ -20,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/http"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/pg"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -29,9 +32,10 @@ const ContractPattern = http.ContractPattern
 // Domain wires policy persistence, management and contract publication on the
 // shared API listener.
 type Domain struct {
-	server http.Server
-	svc    *core.Service
-	store  *pg.Store
+	server  http.Server
+	svc     *core.Service
+	store   *pg.Store
+	samples *sampling.Service
 }
 
 // Deps supplies persistence, space ownership, authorization and the bounded runtime.
@@ -45,7 +49,15 @@ type Deps struct {
 	Targets      stacksapi.AttachmentTargets
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
+	Keys         *crypt.Keyring
+	Objects      Objects
 }
+
+// Objects is the blob-owned sealed retention contract supplied by app.
+type Objects = sampling.Objects
+
+// SealedColumns include pending upload staging in the rotation inventory.
+func SealedColumns() []crypt.Column { return pg.SealedColumns() }
 
 // Entity identifies policy IDs to the shared subject resolver.
 const Entity = "policy"
@@ -64,7 +76,11 @@ func (d *Domain) Surfaces() []expr.Surface { return []expr.Surface{d.svc.CheckSu
 
 // New constructs policy management over its owned store and domain ports.
 func New(d Deps) *Domain {
-	store := pg.New(d.DB)
+	store := pg.NewWithSamples(d.DB, d.Keys)
+	var samples *sampling.Service
+	if d.Keys != nil && d.Objects != nil {
+		samples = sampling.New(sampling.Deps{DB: d.DB, Store: store, Queue: queue.New(d.DB), Objects: d.Objects, Now: d.Now})
+	}
 	svc := core.New(
 		core.Deps{
 			Store:        store,
@@ -78,9 +94,10 @@ func New(d Deps) *Domain {
 			Queue:        queue.New(d.DB),
 			Now:          d.Now,
 			LoginChanges: d.LoginChanges,
+			Sampling:     samples,
 		},
 	)
-	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store}
+	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store, samples: samples}
 }
 
 // PurgeBatch bounds each account-deletion transaction.
@@ -88,6 +105,11 @@ const PurgeBatch = 500
 
 // Purge resumes an account cleanup safely after any completed batch.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	if d.samples != nil {
+		if err := d.samples.PurgeAccount(ctx, acct); err != nil {
+			return fmt.Errorf("policies: purge retained evidence: %w", err)
+		}
+	}
 	for {
 		done, err := d.store.Purge(ctx, acct, PurgeBatch)
 		if err != nil || done {
@@ -139,9 +161,17 @@ func (d *Domain) Subscribe(events *outbox.Outbox) error {
 
 // Jobs binds accepted space versions to reconciliation of their current tree.
 func (d *Domain) Jobs() []queue.Registration {
-	return []queue.Registration{{Kind: core.Reconcile, Handler: func(ctx context.Context, j queue.Job) error {
+	jobs := []queue.Registration{{Kind: core.Reconcile, Handler: func(ctx context.Context, j queue.Job) error {
 		return d.svc.ReconcileAccount(ctx, kernel.AccountID{ULID: j.Account})
 	}, Options: queue.HandlerOptions{Feature: "policies"}}}
+	if d.samples != nil {
+		jobs = append(
+			jobs,
+			queue.Registration{Kind: sampling.UploadKind, Handler: d.samples.Upload, Options: queue.HandlerOptions{Feature: "policies"}},
+			queue.Registration{Kind: sampling.DeletedPolicyKind, Handler: d.samples.RetirePolicySamples},
+		)
+	}
+	return jobs
 }
 
 // StackGuard fences explicit attachment reach and removes deleted stack rows.
@@ -190,4 +220,20 @@ func (d *Domain) API() PoliciesAPI {
 		return PoliciesAPI{}
 	}
 	return d.server
+}
+
+// SampleRetentions supplies safe historical status without sharing raw input.
+func (d *Domain) SampleRetentions() policyapi.SampleRetentions {
+	if d.samples == nil {
+		return nil
+	}
+	return d.samples
+}
+
+// Cron removes retained private evidence even when the policy feature is disabled.
+func (d *Domain) Cron() []cron.Task {
+	if d == nil || d.samples == nil {
+		return nil
+	}
+	return []cron.Task{{Kind: sampling.CleanupKind, Every: sampling.CleanupEvery, Handler: func(ctx context.Context, _ queue.Job) error { return d.samples.Cleanup(ctx) }}}
 }

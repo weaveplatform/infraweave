@@ -30,6 +30,10 @@ func Stream() migrate.Stream {
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "policies", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "policy_input_objects", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "policy_evaluations", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "policy_sample_budgets", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "policy_input_capture_heads", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "policies", Columns: []string{"account_id", "space_id"}},
 		{Entity: "stack", Table: "policy_stack_attachments", Columns: []string{"account_id", "stack_id"}},
 	}
@@ -42,7 +46,10 @@ type DB interface {
 }
 
 // Store joins the transaction carried by its context.
-type Store struct{ db DB }
+type Store struct {
+	db   DB
+	seal SampleSealer
+}
 
 // New constructs the policy store over db.
 func New(db DB) *Store { return &Store{db: db} }

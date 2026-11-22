@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
@@ -86,6 +87,7 @@ type Deps struct {
 	Queue        *queue.Queue
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
+	Sampling     *sampling.Service
 }
 
 // Events appends policy changes in the transaction carried by the context.
@@ -368,6 +370,11 @@ func (s *Service) Delete(ctx context.Context, p kernel.Principal, id string, exp
 		}
 		if count > 0 && !force {
 			return &kernel.Invalid{Detail: "The policy still has attachments; detach them first, or delete with force."}
+		}
+		if s.deps.Sampling != nil {
+			if err := s.deps.Sampling.PolicyDeleted(ctx, p.AccountID, parsed); err != nil {
+				return fmt.Errorf("policies: retire deleted samples: %w", err)
+			}
 		}
 		if err := s.deps.Store.Delete(ctx, p.AccountID, parsed); err != nil {
 			return err //nolint:wrapcheck // the transaction adds the delete operation

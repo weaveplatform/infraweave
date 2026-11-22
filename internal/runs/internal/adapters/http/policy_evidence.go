@@ -23,7 +23,7 @@ func receiptsOf(receipts []read.PolicyReceipt) []api.RunPolicyReceipt {
 			EngineType: api.PolicyEngineType(receipt.Engine), PolicyType: api.PolicyType(receipt.Type),
 			Outcome: string(receipt.Outcome), Flags: flags, PolicyName: receipt.PolicyName,
 			PolicyDeleted: receipt.Deleted, PolicySlug: slug, PolicyVersion: &version,
-			Sampled: receipt.SampleEvaluation != nil,
+			Sampled: receipt.Sampled, SampleExpired: receipt.SampleExpired,
 		}
 		if receipt.Failure != nil {
 			value.Error = &api.RunPolicyError{Code: receipt.Failure.Code, Message: receipt.Failure.Message}

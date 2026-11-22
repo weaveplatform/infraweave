@@ -123,6 +123,7 @@ type Deps struct {
 	Authz     accessapi.Authorizer
 	Evidence  evidence.Store
 	Policies  policiesapi.PolicyIdentities
+	Samples   policiesapi.SampleRetentions
 	Reviews   review.Store
 	Approvals evidence.ApprovalStore
 	Plans     evidence.PlanStore
@@ -158,7 +159,8 @@ type View struct {
 // its public reference identifies only a currently existing account-owned policy.
 type PolicyReceipt struct {
 	evidence.Receipt
-	Deleted bool
+	Deleted                bool
+	Sampled, SampleExpired bool
 }
 
 // Page is a page of views and whether a later page has runs.
