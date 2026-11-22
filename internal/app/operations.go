@@ -778,7 +778,7 @@ func Guarded(log *slog.Logger, c config.Server, ops Operations, g Guards, auth a
 				op, _ := resolve(req)
 				return op.Cost
 			}),
-		idempotency.Middleware(g.Keys, caller,
+		idempotency.Middleware(g.Keys, replayCaller,
 			func(req *http.Request) bool {
 				op, ok := resolve(req)
 				return ok && !op.Search && !op.Unkeyed && !op.Worker && !op.State
@@ -1106,7 +1106,7 @@ func sentence(reason string) string {
 	return string(unicode.ToUpper(r)) + strings.TrimSuffix(reason[n:], ".") + "."
 }
 
-// caller is the key of the rate limits and idempotency keys: the
+// caller is the actor key of rate limits and disabled callers: the
 // principal's, or the client's address on a route no credential
 // authenticates.
 //
@@ -1116,6 +1116,17 @@ func caller(r *http.Request) string {
 		return p.Caller()
 	}
 	return ratelimit.ClientAddr(r)
+}
+
+// replayCaller keeps retries stable across tokens and replicas in one account.
+// The account prefix is disjoint from legacy actor-only keys, so old encrypted
+// responses retain their original AAD and cannot be reinterpreted after a switch.
+func replayCaller(r *http.Request) string {
+	p, ok := kernel.PrincipalFrom(r.Context())
+	if !ok || p.AccountID.IsZero() {
+		return caller(r)
+	}
+	return "account/" + p.AccountID.String() + "/" + p.Caller()
 }
 
 // unlisted answers 403 to a request for a route the router serves but the
