@@ -112,3 +112,15 @@ and [publisher](https://github.com/spacelift-io/runner-terraform/blob/6c75296f90
 establish this backup's provenance. The compatibility case still requires the
 same tracked plan/apply/FINISHED lifecycle, UID 1983 and persisted Terraform
 state; the weekly pin updater follows that same upstream GHCR repository.
+
+Cold release preparation serializes callers of the same pinned archive and
+rechecks its verified cache. Transient HTTP responses, connection timeouts and
+interrupted bodies have at most three attempts, with 100/200 ms backoff inside
+the caller's existing context. Permanent responses, checksum failures and bad
+archives remain terminal. Real TCP HTTP controls reproduce service failures,
+closed connections and partial bodies; verify the retry ceiling and temporary
+file cleanup; and prove cancellation of either a waiter or the initial owner
+cannot cancel an independent caller. Failed preparations are not cached. The
+unchanged mixed Terraform/OpenTofu/Terragrunt policy-worker feature passes all
+**six scenarios / 220 steps** with certified FIPS; its tool pins, signature
+verification and scenario bounds remain unchanged.
