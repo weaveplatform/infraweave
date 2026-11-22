@@ -29,13 +29,19 @@ Feature: Runs queue on their stack
     Given two infraweave servers, A and B, on one database
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through A for token "m"
+    And a certificate signing request for a P-256 key is kept as "queuecsr"
+    And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Queue workers","space":"legacy","certificateSigningRequest":"{queuecsr}"}' through A
+    And it answers 201
+    And the answer's id names "queuepool"
     And token "h" sends "POST /api/v1/spaces" with '{"name":"Team","description":"","inheritEntities":true,"parentSpace":"acme"}' through A
     And the answer's id is the space "team"
     And a Gitea repository "infra" with the files:
       | main.tf | terraform {} |
     And the head of "main" of "infra" is kept as "seed"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy"},"manageState":false}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{queuepool}"},"manageState":false}' through B
+    And it answers 201
     And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Hidden","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}"},"manageState":false}' through A
+    And it answers 201
     And token "h" eventually reads the stack "infra" tracking the commit kept as "seed" through A
 
   @op:runTrigger @case:success
@@ -99,7 +105,7 @@ Feature: Runs queue on their stack
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"branch":"main"}' through A
     Then it answers a 400 problem "invalid-request"
-    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Gone","repository":"gone","branch":"main","provider":"GIT","repositoryURL":"https://127.0.0.1:1/gone.git","space":"legacy"},"manageState":false}' through B
+    When token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Gone","repository":"gone","branch":"main","provider":"GIT","repositoryURL":"https://127.0.0.1:1/gone.git","space":"legacy","workerPool":"{queuepool}"},"manageState":false}' through B
     Then it answers 201
     When token "h" sends "POST /api/v1/stacks/gone/runs" with '{}' through A
     Then it answers a 409 problem "invalid-state"

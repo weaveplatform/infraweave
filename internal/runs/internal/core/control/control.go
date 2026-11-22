@@ -291,6 +291,15 @@ func (s *Service) decide(ctx context.Context, p kernel.Principal, slug, raw, not
 // stack's space.
 func (s *Service) SetPriority(ctx context.Context, p kernel.Principal, slug, raw string, priority kernel.RunPriority) (read.View, error) {
 	return s.act(ctx, p, slug, raw, func(ctx context.Context, _ stacksapi.Stack, r lifecycle.Run) (lifecycle.Run, error) {
+		if r.WorkerPool == nil {
+			return r, &kernel.Invalid{
+				Detail: "Public worker pool runs do not support priority changes.",
+				Errors: []kernel.FieldError{{
+					Pointer: "/preset", Reason: kernel.ReasonRule,
+					Message: "Public worker pool runs use FIFO ordering.",
+				}},
+			}
+		}
 		if r.State.Terminal() {
 			return r, &Refused{Run: r.ID, State: r.State, Needs: needsPriority}
 		}

@@ -141,10 +141,17 @@ func (s *Service) apply(ctx context.Context, run lifecycle.Run, result *policyap
 	}
 	for _, name := range result.Trigger.Targets {
 		target := targets[name]
+		// Public execution is FIFO: a policy's level applies only to a target
+		// on a private pool, as push policies do, rather than refusing the
+		// whole fan-out because one target runs on public workers.
+		var priority kernel.RunPriority
+		if target.WorkerPool != nil {
+			priority = kernel.RunPriority(result.Trigger.Priority)
+		}
 		if _, err := s.d.Creator.Create(ctx, runsapi.CreateRequest{
 			Account: run.Account, Stack: target.ID, Type: kernel.RunTypeTracked, Commit: runsapi.Commit(*target.TrackedCommit),
 			TriggeredBy: "policy/" + owners.Settings[run.Stack].Slug + "/" + run.ID.String(), Mode: runsapi.None,
-			Priority: kernel.RunPriority(result.Trigger.Priority),
+			Priority: priority,
 		}); err != nil {
 			return fmt.Errorf("runs: create trigger target: %w", err)
 		}

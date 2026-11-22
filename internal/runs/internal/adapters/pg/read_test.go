@@ -123,7 +123,7 @@ func TestAccRead(t *testing.T) {
 	}
 	if v, err = r.StackRun(ctx, p, "network", proposed.ID.String()); err != nil ||
 		!slices.Equal(v.Actions, []accessapi.Action{
-			accessapi.ActionRunDiscard, accessapi.ActionRunCancel, accessapi.ActionRunPrioritizeSet,
+			accessapi.ActionRunDiscard, accessapi.ActionRunCancel,
 		}) {
 		t.Errorf("StackRun = %+v, %v", v.Actions, err)
 	}
@@ -360,6 +360,7 @@ func TestAccSearch(t *testing.T) {
 // ends.
 func TestAccCancel(t *testing.T) {
 	w := newWorld(t)
+	privateRunPool(w)
 	a := w.access()
 	c := w.controller(a)
 	ctx, p := t.Context(), w.alice()

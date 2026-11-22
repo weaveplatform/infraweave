@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 )
 
 func TestUnitPublicPoolSettings(t *testing.T) {
@@ -60,5 +62,22 @@ func TestUnitPublicPoolSettings(t *testing.T) {
 				t.Fatalf("Validate() = %v, valid=%v", err, tt.valid)
 			}
 		})
+	}
+}
+
+// A launcher with no default of its own runs a vendor's shipped GHCR image,
+// so the installation's default allowlist must admit every shipped image
+// and a narrowed one must refuse them.
+func TestUnitPublicPoolDefaultsAdmitShippedRunnerImages(t *testing.T) {
+	registries := DefaultSettings().PublicPool.AllowedRegistries
+	for _, image := range []string{
+		runnerimages.Terraform, runnerimages.OpenTofu, runnerimages.Pulumi, runnerimages.Ansible, runnerimages.TestSupport,
+	} {
+		if !runnerimages.RegistryAllowed(image, registries) {
+			t.Errorf("default public allowlist refuses the shipped image %s", image)
+		}
+		if runnerimages.RegistryAllowed(image, []string{"quay.io"}) {
+			t.Errorf("a narrowed public allowlist admits the shipped image %s", image)
+		}
 	}
 }

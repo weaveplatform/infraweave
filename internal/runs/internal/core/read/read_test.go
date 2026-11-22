@@ -37,7 +37,8 @@ func TestUnitAllowed(t *testing.T) {
 		{kernel.RunStateConfirmed, all, []accessapi.Action{accessapi.ActionRunPrioritizeSet}},
 		{kernel.RunStateDiscarded, all, []accessapi.Action{}},
 	} {
-		r := lifecycle.Run{Type: kernel.RunTypeTracked, State: c.state}
+		pool := kernel.NewULID()
+		r := lifecycle.Run{Type: kernel.RunTypeTracked, State: c.state, WorkerPool: &pool}
 		if got := read.Allowed(r, true, c.held, read.Guards{}); !slices.Equal(got, c.want) {
 			t.Errorf("Allowed of %s holding %v = %v, want %v", c.state, c.held, got, c.want)
 		}
@@ -204,6 +205,15 @@ func TestUnitAllowedRetryPromote(t *testing.T) {
 		r := lifecycle.Run{Type: c.typ, State: kernel.RunStateFinished}
 		if got := read.Allowed(r, false, c.held, c.g); !slices.Equal(got, c.want) {
 			t.Errorf("Allowed of %s = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestUnitPublicAllowedNeverAdvertisesPriority(t *testing.T) {
+	for _, state := range []kernel.RunState{kernel.RunStateQueued, kernel.RunStateReady, kernel.RunStatePlanning, kernel.RunStateUnconfirmed, kernel.RunStateConfirmed} {
+		r := lifecycle.Run{Type: kernel.RunTypeTracked, State: state}
+		if got := read.Allowed(r, false, []accessapi.Action{accessapi.ActionRunPrioritizeSet}, read.Guards{}); len(got) != 0 {
+			t.Fatalf("public %s advertised priority: %v", state, got)
 		}
 	}
 }

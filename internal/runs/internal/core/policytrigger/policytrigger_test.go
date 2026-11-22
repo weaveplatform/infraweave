@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policytrigger"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var errOwner = errors.New("required owner unavailable")
@@ -77,6 +78,32 @@ func TestUnitTriggerOperationalFailuresRemainRetryable(t *testing.T) {
 	}
 }
 
+func TestUnitTriggerPriorityAppliesOnlyToPrivateTargets(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		phase string
+		want  kernel.RunPriority
+	}{
+		{"public prioritized target", ""},
+		{"private prioritized target", kernel.RunPriorityHigh},
+	} {
+		t.Run(test.phase, func(t *testing.T) {
+			t.Parallel()
+			f := newTriggerFixture(t, test.phase)
+			if test.want != "" {
+				pool := kernel.NewULID()
+				f.settings.WorkerPool = &pool
+			}
+			if err := f.service.Handle(t.Context(), f.job); err != nil {
+				t.Fatal(err)
+			}
+			if len(f.created) != 1 || f.created[0].Priority != test.want || f.commits != 1 {
+				t.Fatalf("trigger targets %+v committed %d times, want priority %q", f.created, f.commits, test.want)
+			}
+		})
+	}
+}
+
 func TestUnitTriggerObsoleteSourcesSettleWithoutNewEvidence(t *testing.T) {
 	t.Parallel()
 	for _, reason := range []string{"deleted source", "different source stack", "old source version", "nonterminal source", "proposed source", "no policies", "unbound evaluator"} {
@@ -122,6 +149,7 @@ type triggerFixture struct {
 	policy                       kernel.ULID
 	begins, commits, sourceReads int
 	evidenceWrites               int
+	created                      []runsapi.CreateRequest
 }
 
 func newTriggerFixture(t *testing.T, phase string) *triggerFixture {
@@ -147,7 +175,7 @@ func newTriggerFixture(t *testing.T, phase string) *triggerFixture {
 	spaces, stacks := triggerSpaces{f: f}, triggerStacks{f: f}
 	d := policytrigger.Deps{
 		DB: f, Store: f, Jobs: f, Spaces: spaces, Stacks: stacks, Snapshots: f, Identities: f, Evaluator: f, Inputs: f, Creator: f,
-		Metadata:  policyinput.Metadata{Store: f, Roles: f, Contexts: f, SpaceFacts: f},
+		Metadata:  policyinput.Metadata{Store: f, Roles: f, Contexts: f, SpaceFacts: f, Pools: f},
 		Lifecycle: lifecycle.New(lifecycle.Deps{Stacks: stacks, Events: f}),
 	}
 	if phase == "unbound evaluator" {
@@ -289,6 +317,10 @@ func (f *triggerFixture) PolicySpace(context.Context, kernel.AccountID, kernel.U
 	return accessapi.PolicySpace{ID: f.settings.Space, Slug: "legacy", Name: "Legacy"}, nil
 }
 
+func (f *triggerFixture) PoolMetadata(context.Context, kernel.AccountID, kernel.ULID) (workersapi.PoolMetadata, error) {
+	return workersapi.PoolMetadata{}, workersapi.ErrNoPool
+}
+
 func (f *triggerFixture) Changes(context.Context, lifecycle.Run) (string, bool, error) {
 	return "", false, f.fail("source changes")
 }
@@ -322,10 +354,14 @@ func (f *triggerFixture) Evaluate(ctx context.Context, request policyapi.Evaluat
 		result.Trigger = nil
 	case "invalid receipt decision":
 		result.Receipts[0].Decision = json.RawMessage(`[]`)
-	case "child creation":
+	case "child creation", "public prioritized target", "private prioritized target":
 		result.Outcome = policyapi.TriggerRuns
 		result.Trigger.Targets = []string{"source"}
+		result.Receipts[0].Outcome = policyapi.TriggerRuns
 		result.Receipts[0].Decision = json.RawMessage(`{"trigger":["source"]}`)
+		if f.phase != "child creation" {
+			result.Trigger.Priority = string(kernel.RunPriorityHigh)
+		}
 	}
 	return result, nil
 }
@@ -338,8 +374,9 @@ func (f *triggerFixture) Identities(context.Context, kernel.AccountID, []kernel.
 	return map[kernel.ULID]policyapi.PolicyIdentity{f.policy: {ID: f.policy, Space: f.settings.Space, Type: policyapi.Trigger, Version: version}}, f.fail("policy identities")
 }
 
-func (f *triggerFixture) Create(context.Context, runsapi.CreateRequest) (runsapi.CreatedRun, error) {
-	return runsapi.CreatedRun{}, f.fail("child creation")
+func (f *triggerFixture) Create(_ context.Context, request runsapi.CreateRequest) (runsapi.CreatedRun, error) {
+	f.created = append(f.created, request)
+	return runsapi.CreatedRun{ID: kernel.NewULID(), Created: true}, f.fail("child creation")
 }
 
 func (f *triggerFixture) RecordPolicyEvidence(context.Context, kernel.AccountID, kernel.ULID, int64, []policyapi.Receipt) error {

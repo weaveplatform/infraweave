@@ -33,6 +33,11 @@ registry host shape. `docker.pkg.dev` also accepts Google's regional
 and Docker shorthand is normalized before comparison. Lookalike host/path
 prefixes do not match.
 
+The shipped runner images are published on `ghcr.io`, which the default
+selectors admit. A launcher without its own default runs the stack vendor's
+shipped image, so an allowlist that omits `ghcr.io` needs every public launcher
+configured with an admitted default image, or such runs fail in preparation.
+
 The launcher applies the policy to its final image after the run/account image,
 launcher default and vendor fallback have been resolved, before tool acquisition
 or container creation. Public registrations must advertise signed
@@ -77,15 +82,57 @@ without a private pool. Selection is FIFO by creation/ID across tenant accounts.
 The ordinary transactional organization/account `public-worker-slots` check,
 owner fences, candidate revalidation and state transition govern assignment;
 full organizations/accounts are skipped so another eligible owner can proceed.
-Billing disabled retains the existing unbounded Enterprise behavior.
+Billing disabled retains the existing unbounded Enterprise behavior. An account
+ceiling cannot exceed its organization's pool. Usage is the count of public runs
+in a worker-held state, so a terminal report, cancellation, stop or worker loss
+releases its slot through the run's committed transition, exactly once across
+replicas; a rolled-back assignment consumes none.
 
 First assignment fixes the installation pool ID on the run; subsequent
 apply/replan, handover, reporting, signalling and preparation reap use that
 binding. It remains distinct from the selected private pool. Disabling public
 capacity refuses new public registration/claims and does not redirect work to a
-private pool. Priority/scheduled admission restrictions, public queue/user
-projections, samples and Kubernetes hosting retain their own implementation
-owners in the [delivery register](worker-pool-contracts.json).
+private pool. Public queue/user projections, samples and Kubernetes hosting
+retain their own implementation owners in the
+[delivery register](worker-pool-contracts.json).
+
+## Execution restrictions
+
+A run keeps the pool selected when it was created, whatever later happens to
+its stack. Creating a run on a stack that selects public execution refuses a
+non-normal priority or drift detection with `422 validation-failed` before any
+write. Push and trigger policy priorities apply only to private-pool targets, so
+a public target is created at normal priority. `runPrioritySet` on a public run
+answers `422 validation-failed` after authorization, and its allowed actions
+never advertise `RUN_PRIORITIZE_SET`. The public claim independently skips any
+stored candidate that is prioritized or drift detection. Private execution
+keeps its priority tiers, drift limits and pool selection.
+
+### Schedule producer dependency
+
+The accepted contract also requires timed schedules to select a private pool.
+The declared `stackScheduledRun*`, `stackScheduledTask*` and
+`stackScheduledDelete*` routes still use generated unimplemented handlers, and
+there is no timed run producer in this revision. Drift configuration is likewise
+a declared schema without an executing producer. A uniform `501` is not proof
+of a public-specific restriction. Current lifecycle drift refusal and the claim
+exclusion prove those boundaries, not a working drift workflow.
+
+The proposed integration for the future schedule owner uses the existing
+`runsapi.Creator.Create` transaction and `CreateRequest.BeforeCreate` callback.
+Under the owner/stack creation fence, admission must check that the locked stack
+still selects a private pool before inserting the timed run. Schedule
+configuration writes need the same private-only check under their owner fence.
+Timed fires must use `Mode=None` with their job/fire deduplication committed in
+the same transaction: `OncePerCommit` intentionally skips admission callbacks
+for reused runs. Real public refusal and private timed firing acceptance remain
+required before the schedule criterion is complete; no unused scheduled
+provenance or producer execution is claimed here.
+
+Public read projections, including required nullable int64
+`PublicWorkerPool.parallelism`, literal public queue/user selectors and
+egress/default-image reads, remain owned by #744. Admission uses existing int64
+quota values without claiming those separate read shapes.
 
 ## Verification
 
@@ -101,5 +148,15 @@ registration, signed capabilities, replay, same-certificate resume and rotation
 revocation. PostgreSQL component tests exercise concurrent singleton creation,
 certificate write failure/rollback, NULL tenant scope, active assignment/usage
 readback, FIFO exclusions, obsolete-worker liveness and unavailable dependencies.
-These are application evidence, not new vendor captures. Cloud/controller,
-complete public restriction/projection and final concurrency gates remain open.
+These are application evidence, not new vendor captures.
+
+`public_execution_admission.feature` runs registry lookalikes and unadmitted
+ports through a real launcher, which refuses them before creating a container,
+and proves that stopping a public plan or losing its launcher admits waiting
+work. `public_admission.feature` and `organization/public_capacity.feature`
+cover priority refusal, authorization order and account ceilings through the
+normal API. Real PostgreSQL tests claim with fifty concurrent public workers
+across two replicas, two accounts of one organization and a second organization,
+with billing on and off, and release capacity through failed assignments,
+terminal reports, duplicate reports and worker loss. Cloud/controller and
+public projection gates remain open.
