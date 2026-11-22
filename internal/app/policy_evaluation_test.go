@@ -75,6 +75,7 @@ func TestAccPolicyEvaluatorUsesRealOwnerPortsAndCallerTransaction(t *testing.T) 
 		return n
 	}
 	beforeEvents, beforeJobs := count("events"), count("jobs")
+	beforeEvidence, beforeKinds := policyEvidenceSnapshot(t, w), policyJobKinds(t, w)
 	abort := errors.New("caller rollback")
 	err = tx.Do(t.Context(), w.q, tx.Options{}, func(ctx context.Context) error {
 		got, err := w.d.Policies.Evaluator().Evaluate(ctx, req)
@@ -89,13 +90,19 @@ func TestAccPolicyEvaluatorUsesRealOwnerPortsAndCallerTransaction(t *testing.T) 
 	if !errors.Is(err, abort) || count("events") != beforeEvents || count("jobs") != beforeJobs {
 		t.Fatalf("rollback leaked evaluator event/job: %v", err)
 	}
+	assertPolicyEvidenceUnchanged(t, w, beforeEvidence)
 	got, err := w.d.Policies.Evaluator().Evaluate(t.Context(), req)
-	if err != nil || got.Outcome != policyapi.Deny || count("events") != beforeEvents+1 || count("jobs") != beforeJobs+1 {
+	if err != nil || got.Outcome != policyapi.Deny || len(got.Receipts) != 1 || count("events") != beforeEvents+1 {
 		t.Fatalf("real composed evaluator: %+v %v", got, err)
 	}
+	assertPolicyJobsAdded(t, w, beforeKinds, 1)
+	assertEvaluationCapture(t, w, req, got.Receipts[0], w.kept)
+	assertPolicyEventFanout(t, w, got.Receipts[0].ID, policyapi.EvaluatedKind, "policy_evaluation", got.Receipts[0].ID.String(), 1)
+	committed := policyEvidenceSnapshot(t, w)
 	wrong := req
 	wrong.Account = kernel.NewAccountID()
 	if _, err := w.d.Policies.Evaluator().Evaluate(t.Context(), wrong); err == nil {
 		t.Fatal("real stack port accepted a foreign account")
 	}
+	assertPolicyEvidenceUnchanged(t, w, committed)
 }
