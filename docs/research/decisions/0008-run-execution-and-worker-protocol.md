@@ -41,7 +41,8 @@ facts shape the design.
   [run-transitions register](../../data/run-transitions.json) as data: report
   08's T1 to T43
   ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
-  and T44 and T45 below, each with the register's source state, target state and run
+  and T44, T45 and the C52 assignment refusal T46, each with the register's
+  source state, target state and run
   types, and the driver allowed to take it. A pair not in the table is
   refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
   absent from the served enum (decision 0021).
@@ -112,6 +113,7 @@ facts shape the design.
 | Creation | T1 | Every route in [08 section 1](../reference/08-run-lifecycle.md#1-run-types) inserts the run in `QUEUED` in the transaction that creates it |
 | Scheduler | T2, T5 and T6 for dependencies; for a push policy `cancel`, T4 on a queued run, T9 on a ready one and T27 on one awaiting confirmation | The `run.schedule` job, below |
 | Approval policy | T5, T23, T24, T29, and the gates on T2 and T26 | Evaluated on entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW` and on each review ([09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)) |
+| Server INITIALIZATION policy | T46 | The worker claim evaluates the READY run before assignment; C52 fixes the refusal boundary |
 | Worker claim | T7, T30, T33 | The poll claims the run (below) |
 | Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |
 | Server decision after planning | T17, T18 for a plan policy `deny`, T20, T21, T22 | The server evaluates plan policies on the reported plan ([0009](0009-policy-engine-opa.md)) and picks the edge |
@@ -159,16 +161,22 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   state is claimable serves the claim. `runs.worker_id` and
   `runs.worker_pool_id` are columns of the run row holding the `workers`
   domain's IDs, so the claim writes no other table of `runs`.
-- **The claim** runs in one transaction:
+- **The claim** runs in one transaction. It first locks the worker and takes
+  any finite drift-limit fence, then probes candidates in priority, creation
+  and ID order without locking a run ahead of its owners:
 
-  ```sql
-  SELECT id FROM runs
-  WHERE worker_pool_id = $1 AND state IN ('READY', 'CONFIRMED', 'REPLAN_REQUESTED')
-  ORDER BY priority_tier, created_at, id
-  LIMIT 1 FOR UPDATE SKIP LOCKED
+  ```text
+  probe the next eligible account/pool entry
+  savepoint: take nonblocking space → stack fences, then lock its exact run version
+  on a miss: release every candidate lock before considering another target
+  on a contended owner: exclude that stack for the rest of this queue walk
+  on success: evaluate server INITIALIZATION for READY, before assignment
   ```
 
-  then `run.Transition` to `PREPARING`, `PREPARING_APPLY` or `PREPARING_REPLAN`,
+  A contended stack is excluded as a unit: its fence freeing partway through
+  the walk must not let a lower-priority sibling overtake its earlier run.
+  Exact revalidation includes account, pool, state, version and priority tier.
+  An allowed claim takes `run.Transition` to `PREPARING`, `PREPARING_APPLY` or `PREPARING_REPLAN`,
   sets `runs.worker_id`, marks the worker busy and issues the run token
   ([0006](0006-authentication-and-tokens.md)). Two replicas never hand one run to
   two workers, and no replica is special. The poll locks the worker's row
@@ -192,8 +200,15 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   wakes one held poll for that pool, the one from the most recently registered
   idle worker, which approximates Spacelift's newest-first
   assignment ([10 section 5.3](../reference/10-workers-and-execution.md#53-scheduling-inside-a-pool)).
-  A woken poll that loses the `SKIP LOCKED` race goes back to waiting. A poll
-  always tries one claim before it starts to wait, so a missed notification costs
+  A queue walk that encounters contention but finds no assignable run retries
+  after a randomized 50–100ms wait, without a transaction or pooled connection.
+  Jitter keeps workers sharing a stack from retrying in lockstep. A normal
+  metadata transaction can release an owner without emitting a run event, so
+  this retry does not depend on another assignment. Existing pool wakes can
+  end the wait earlier. The original hold deadline, cancellation, superseding
+  poll, shutdown and token-renewal behavior still bound it; idle pools with no
+  candidates keep their ordinary notification hold. A poll always tries one
+  claim before it starts to wait, so a missed notification costs
   at most one poll interval.
 
 ### The worker API
@@ -1574,7 +1589,7 @@ Terraform-family opt-out and still seals artifacts. Pool-sealed binary plans
 and workspaces remain usable for apply and are not rewritten by JSON sanitization.
 The 512 MiB artifact upload bound and 0009's 64 MiB policy input bound remain
 separate. A sanitization failure never falls back to uploading raw plan JSON.
-Server INITIALIZATION is P13b before scheduling; launcher initialization and
+Server INITIALIZATION is P13b at READY before worker assignment (C52, T46); launcher initialization and
 its exec capability are P14.
 
 ## Rationale

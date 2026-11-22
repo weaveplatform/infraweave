@@ -132,6 +132,14 @@ func (f *tree) HoldSpace(_ context.Context, acct kernel.AccountID, id kernel.ULI
 	return port.ErrNotFound
 }
 
+func (f *tree) TryHoldSpace(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (bool, error) {
+	err := f.HoldSpace(ctx, acct, id)
+	if errors.Is(err, port.ErrNotFound) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func (f *tree) DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(context.Context, space.Space) error) error {
 	s, err := f.Space(ctx, acct, slug)
 	if err != nil {

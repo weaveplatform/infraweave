@@ -92,6 +92,18 @@ func (f *spaceTree) UpdateSpace(
 
 func (*spaceTree) HoldSpace(context.Context, kernel.AccountID, kernel.ULID) error { return nil }
 
+func (f *spaceTree) TryHoldSpace(_ context.Context, acct kernel.AccountID, id kernel.ULID) (bool, error) {
+	if err := f.st.err(); err != nil {
+		return false, err
+	}
+	for _, candidate := range f.spaces {
+		if f.acct == acct && candidate.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (f *spaceTree) DeleteSpace(ctx context.Context, acct kernel.AccountID, slug string, check func(context.Context, space.Space) error) error {
 	s, err := f.Space(ctx, acct, slug)
 	if err != nil {
