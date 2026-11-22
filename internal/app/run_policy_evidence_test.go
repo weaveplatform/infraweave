@@ -94,6 +94,8 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 		return n
 	}
 	beforeEvents, beforeJobs := count("events"), count("jobs")
+	beforeEvidence, beforeKinds := policyEvidenceSnapshot(t, w), policyJobKinds(t, w)
+	var evaluated policyapi.Receipt
 	abort := errors.New("caller rollback")
 	apply := func(server Domains, job queue.Job, rollback bool) error {
 		d := runstest.EvidenceDeps{DB: w.q, Stacks: server.Stacks.Stacks(), Events: events, Jobs: jobs, At: at}
@@ -116,6 +118,7 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 			if got.Outcome != policyapi.Approve || len(got.Receipts) != 1 {
 				return fmt.Errorf("real approval refused: %+v", got)
 			}
+			evaluated = got.Receipts[0]
 			if err := runstest.Ready(ctx, d, w.acct, run.ID, 1, got.Receipts); err != nil {
 				return err
 			}
@@ -141,16 +144,30 @@ func TestAccEvaluatorEvidenceSharesTwoReplicaTransitionFence(t *testing.T) {
 			count("jobs") != beforeJobs {
 			t.Fatalf("rollback escaped: state=%s/%d error=%v", state, version, err)
 		}
+		assertPolicyEvidenceUnchanged(t, w, beforeEvidence)
 	}
 	if err := apply(servers[1], current, false); err != nil {
 		t.Fatal(err)
 	}
+	committedReceipt, committed := evaluated, policyEvidenceSnapshot(t, w)
 	if err := apply(servers[0], old, false); err == nil {
 		t.Fatal("stale replica acknowledged a committed transition")
 	}
-	if count("run_policy_receipts") != 1 || count("run_flags") != 1 || count("events") != beforeEvents+2 || count("jobs") != beforeJobs+2 {
+	assertPolicyEvidenceUnchanged(t, w, committed)
+	if count("run_policy_receipts") != 1 || count("run_flags") != 1 || count("events") != beforeEvents+2 {
 		t.Fatal("actual evaluator evidence did not commit exactly once")
 	}
+	assertPolicyJobsAdded(t, w, beforeKinds, 2)
+	assertEvaluationCapture(t, w, policyapi.EvaluationRequest{
+		Account: w.acct, Type: policyapi.Approval, Target: policyapi.Target{Kind: policyapi.StackTarget, ID: stack.ID}, Run: &run.ID,
+	}, committedReceipt, w.kept)
+	assertPolicyEventFanout(t, w, committedReceipt.ID, policyapi.EvaluatedKind, "policy_evaluation", committedReceipt.ID.String(), 1)
+	var updated kernel.ULID
+	if err := w.q.QueryRow(t.Context(), `SELECT id FROM events WHERE account_id=$1 AND kind=$2 AND subject_kind='run' AND subject_id=$3 AND sequence=2`,
+		w.acct, runsapi.UpdatedKind, run.ID.String()).Scan(&updated); err != nil {
+		t.Fatal(err)
+	}
+	assertPolicyEventFanout(t, w, updated, runsapi.UpdatedKind, "run", run.ID.String(), 2)
 	principal, ok := kernel.PrincipalFrom(w.admin)
 	if !ok {
 		t.Fatal("fixture has no admin principal")
