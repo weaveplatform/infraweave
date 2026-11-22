@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"sync"
@@ -9,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/schema"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/sqltest"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/test/deps"
 )
 
@@ -31,7 +34,7 @@ func pool(t *testing.T) *pgxpool.Pool {
 	return p
 }
 
-func exec(t *testing.T, p *pgxpool.Pool, stmt string, args ...any) {
+func exec(t *testing.T, p tx.Querier, stmt string, args ...any) {
 	t.Helper()
 	if _, err := p.Exec(t.Context(), stmt, args...); err != nil {
 		t.Fatal(err)
@@ -39,10 +42,20 @@ func exec(t *testing.T, p *pgxpool.Pool, stmt string, args ...any) {
 }
 
 // TestAccPostgresBucket checks the refill arithmetic on the database clock.
-// Time passes by moving refilled_at back rather than by waiting, so each
-// expectation allows for the milliseconds the test itself takes.
+// A real transaction fixes now() while explicit refilled_at changes advance
+// the bucket's clock, so host scheduling cannot refill it between assertions.
 func TestAccPostgresBucket(t *testing.T) {
-	p := pool(t)
+	p, err := pool(t).Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Second)
+		defer cancel()
+		if err := p.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			t.Errorf("bucket transaction cleanup: %v", err)
+		}
+	})
 	s := NewPostgres(p)
 	l := Limit{Rate: 2, Burst: 3}
 	k := Key{Caller: "a", Class: Standard}
@@ -101,6 +114,9 @@ WHERE caller = 'a' AND class = 'standard'`, d)
 			st.Remaining != 0 {
 			t.Errorf("%+v: %+v %v", other, st, err)
 		}
+	}
+	if err := p.Commit(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 }
 
