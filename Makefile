@@ -182,6 +182,7 @@ generate: bundle
 		$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-$$s.yaml api/$$s.openapi.yaml || exit 1; \
 		$(GO) run ./tools/stubgen internal/platform/gen/$$s/server.gen.go api/$$s.openapi.yaml || exit 1; \
 	done
+	$(GO) run $(OAPI_CODEGEN) -config api/oapi-client-controller.yaml api/api.openapi.yaml
 	$(GO) run ./tools/specref actions --generated $(ACTIONS)
 	$(GO) run ./tools/dataview docs/data $(DATA_VIEW) $(CATALOGUE)
 	python3 deploy/images/imagectl.py generate

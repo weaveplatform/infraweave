@@ -37,6 +37,13 @@ type Kubernetes struct {
 	client     *http.Client
 }
 
+// HTTPClient reuses the verified CA/client identity and redirect policy for
+// application-resource acceptance. It copies the client so a caller cannot
+// alter the shared readiness client's settings.
+func (k *Kubernetes) HTTPClient() *http.Client {
+	return &http.Client{Transport: k.client.Transport, CheckRedirect: k.client.CheckRedirect, Timeout: k.client.Timeout}
+}
+
 // Kubernetes borrows the explicitly provisioned cluster or fails; ordinary
 // acceptance never creates an untracked replacement for a missing lab.
 func (d *Dependencies) Kubernetes(ctx context.Context) (*Kubernetes, error) {

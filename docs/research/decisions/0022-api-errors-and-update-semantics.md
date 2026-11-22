@@ -129,8 +129,10 @@ path.
   `If-Match`, the last write wins, as in Spacelift.
   Operator public-pool credential reset requires `If-Match`: omission answers
   `428 precondition-required`; a stale credential tag still answers `412`.
-  This explicit credential-rotation contract does not change optional conditions
-  on existing item updates.
+  Controller-managed private settings also require `If-Match` and the exact
+  immutable management identity; their merge patch must supply that identity
+  explicitly rather than inferring it from the read view. Other item updates
+  retain optional conditions.
 - **Configuration elements.** `PUT /stacks/{stackId}/configs/{configId}`,
   `PUT /contexts/{contextId}/configs/{configId}` and the module equivalent
   create or replace one element: `201` when created, `200` when replaced. The

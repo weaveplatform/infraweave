@@ -12,4 +12,5 @@ import (
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&workerSteps{w: w}).register(sc)
 	(&launcherSteps{w: w}).register(sc)
+	(&schemaSteps{w: w}).register(sc)
 }

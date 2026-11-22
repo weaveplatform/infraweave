@@ -1550,6 +1550,10 @@ func (UnimplementedStrict) WorkerPoolCreate(context.Context, WorkerPoolCreateReq
 	return nil, &problem.NotImplementedError{OperationID: "workerPoolCreate", Route: "POST /worker-pools"}
 }
 
+func (UnimplementedStrict) WorkerPoolManaged(context.Context, WorkerPoolManagedRequestObject) (WorkerPoolManagedResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolManaged", Route: "GET /worker-pools/managed"}
+}
+
 func (UnimplementedStrict) SearchWorkerPools(context.Context, SearchWorkerPoolsRequestObject) (SearchWorkerPoolsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "searchWorkerPools", Route: "POST /worker-pools/search"}
 }

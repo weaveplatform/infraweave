@@ -206,10 +206,32 @@ components:
         - node
       type: object
       x-graphql-type: WorkerPoolConnection
+    WorkerPoolManagement:
+      additionalProperties: false
+      description: Immutable Kubernetes resource identity; carrying it grants no permission.
+      type: object
+      required: [clusterID, namespace, resourceUID]
+      properties:
+        clusterID:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+        namespace:
+          type: string
+          minLength: 1
+          maxLength: 63
+          pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+        resourceUID:
+          type: string
+          minLength: 1
+          maxLength: 128
     WorkerPoolCreateRequest:
       additionalProperties: false
       description: The arguments of workerPoolCreate not carried in the path.
       properties:
+        management:
+          $ref: '#/components/schemas/WorkerPoolManagement'
         certificateSigningRequest:
           description: certificate signing request in base64. Changing this value will trigger a token reset.
           type: string
@@ -269,6 +291,8 @@ components:
       additionalProperties: false
       description: The arguments of workerPoolUpdate not carried in the path.
       properties:
+        management:
+          $ref: '#/components/schemas/WorkerPoolManagement'
         description:
           nullable: true
           type: string
@@ -578,6 +602,64 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: create
+  /worker-pools/managed:
+    get:
+      description: Resolve the live private pool of an exact immutable management identity, within the caller's account and readable spaces. Deleted resources remain reserved and answer 404.
+      operationId: workerPoolManaged
+      x-infraweave-feature: private-worker-pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      x-infraweave-cost: standard
+      x-rest-style: read
+      parameters:
+        - name: clusterID
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+        - name: namespace
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+        - name: resourceUID
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      responses:
+        "200":
+          description: The managed worker pool and its public certificate configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerPool'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Managed Worker Pool
+      tags: [Worker Pools]
+      x-infraweave-divergence: [rate-limit]
   /worker-pools/{workerPoolId}:
     delete:
       description: Delete an existing WorkerPool.

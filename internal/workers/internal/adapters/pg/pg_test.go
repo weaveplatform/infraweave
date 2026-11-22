@@ -674,7 +674,7 @@ func TestAccUnavailable(t *testing.T) {
 	if _, err := s.Share(ctx, acct, p.ID); err == nil || errors.Is(err, pool.ErrNotFound) {
 		t.Errorf("Share on a closed pool = %v", err)
 	}
-	if len(pg.Held()) != 8 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
+	if len(pg.Held()) != 10 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
 		t.Errorf("held %v, keys %v, sealed %v", pg.Held(), pg.Keys(), pg.SealedColumns())
 	}
 }

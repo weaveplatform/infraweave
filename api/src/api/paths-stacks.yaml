@@ -6547,6 +6547,8 @@ components:
     WorkerPool:
       description: WorkerPool represents a single WorkerPool.
       properties:
+        management:
+          $ref: '#/components/schemas/WorkerPoolManagement'
         allowedActions:
           description: Actions that the user can perform on this WorkerPool.
           items:

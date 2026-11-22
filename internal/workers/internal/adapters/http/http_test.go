@@ -47,6 +47,18 @@ func (s *store) Get(_ context.Context, _ kernel.AccountID, id kernel.ULID, _ boo
 	return p, nil
 }
 
+func (s *store) Managed(_ context.Context, _ kernel.AccountID, owner kernel.WorkerOwner) (pool.Pool, error) {
+	if s.fail != nil {
+		return pool.Pool{}, s.fail
+	}
+	for _, p := range s.rows {
+		if p.Management != nil && *p.Management == owner {
+			return p, nil
+		}
+	}
+	return pool.Pool{}, pool.ErrNotFound
+}
+
 func (s *store) Search(context.Context, kernel.AccountID, search.Input, pool.Scope) (search.Result[pool.Pool], error) {
 	out := search.Result[pool.Pool]{}
 	for _, p := range s.rows {
@@ -130,6 +142,10 @@ type authz struct {
 	accessapi.Authorizer
 
 	fail error
+}
+
+func (a authz) Authorize(context.Context, kernel.Principal, accessapi.Action, kernel.ULID) (bool, error) {
+	return a.fail == nil, a.fail
 }
 
 func (a authz) Actions(context.Context, kernel.Principal, kernel.ULID) ([]accessapi.Action, error) {

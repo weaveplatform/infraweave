@@ -143,10 +143,12 @@ Strict `worker_controller` YAML/configuration keys:
 |---|---|
 | `watch_namespaces` | Required nonempty unique namespace list; no wildcard default. |
 | `cluster_id` | Required stable installation-assigned string, 1..63 DNS-label characters. |
-| `management_credentials_ref` | Optional same-namespace Secret name/key references for account API key ID/secret; required for Managed resources; resolved per watched namespace. |
+| `management_credentials_ref` | Optional `{name, id_key, secret_key}` reference to distinct keys in a same-namespace Secret; required for Managed resources; resolved per watched namespace. |
 | `leader_election` | Required enabled; Lease name `infraweave-worker-controller`, namespace explicitly configured, timings above. |
 | `bootstrap_image` | Required immutable digest of same-version multi-architecture infraweave image; runner binary copied from it. |
 | `cache_dir` | Slot-private ephemeral staging/cache root, default `/var/cache/infraweave`; no hostPath. |
+| `ca_file` | Optional mounted PEM trust bundle for private application endpoints; no insecure TLS switch. |
+| `log` | Existing strict format/level settings; JSON/info by default. |
 | `admin_listen` | `:9091`, cluster-internal probes/metrics. |
 | `initialization_policy`, `initialization_timeout` | Optional mounted policy path; timeout 60 seconds, positive and no longer than effective preparation; compile failure stops startup. |
 | `cleanup_timeout` | 120 seconds per reconciliation attempt; pending failure remains visible/retryable. |
@@ -166,7 +168,16 @@ closed without creating a replacement pool.
 
 ### WorkerPool schema
 
-WorkerPool spec is an object with `additionalProperties: false` throughout:
+WorkerPool uses native Kubernetes structural schemas with named supported fields,
+typed map entries and pruning enabled. Kubernetes rejects the literal
+`additionalProperties: false` spelling for CRDs. Controller writes use
+`fieldValidation=Strict`, so unknown fields are refused; clients requesting
+non-strict validation may receive safely pruned resources. No unknown PodSpec is
+preserved or forwarded. CEL enforces mode, resource bounds and lifecycle
+invariants. The [controller design and native verification](worker-controller-design.md)
+record this schema-form correction and its real API evidence.
+
+The supported spec fields are:
 
 - `endpoint`: required HTTPS origin, immutable; `account`/`space`: required
   account ID and space slug in Managed/Existing, immutable after binding. Public
@@ -175,7 +186,9 @@ WorkerPool spec is an object with `additionalProperties: false` throughout:
   same-namespace Secret name with fixed token/privateKey keys. Existing requires
   immutable `poolID` ULID. Public also requires poolID, matching the separately
   operator-issued installation token. Managed omits poolID until status records
-  creation. Public forbids management key/private-pool settings and consumes only
+  creation. A credential Secret reference can be corrected without changing the
+  pool identity; opened token/key matching still fails closed after binding.
+  Public forbids management key/private-pool settings and consumes only
   installation credentials; it creates capacity for the singleton without
   calling account API or consuming private-worker quota.
 - `capacity`: required integer 0..2147483647, desired registered logical slots;

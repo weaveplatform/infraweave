@@ -45,6 +45,9 @@ type Pool struct {
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
 	Version                int64
+	// Management is the resource that creates and maintains this private
+	// pool. Hosting an existing pool is a separate certificate-authorized binding.
+	Management *kernel.WorkerOwner
 }
 
 // Authority is the pool CA as the store keeps it, with a serial it has
@@ -61,6 +64,10 @@ var (
 	ErrNotFound = errors.New("workers: no such worker pool")
 	// ErrNameTaken reports a name another pool of the account has.
 	ErrNameTaken = errors.New("workers: worker pool name taken")
+	// ErrOwnership reports an owner mismatch or an already reserved resource.
+	ErrOwnership = errors.New("workers: worker pool ownership conflict")
+	// ErrConditionRequired refuses unconditional changes to managed settings.
+	ErrConditionRequired = errors.New("workers: managed settings require a version condition")
 )
 
 // Fields are what a pool search filters and orders by: name,
@@ -102,6 +109,9 @@ type Store interface {
 	// Get reads acct's pool id, locked FOR UPDATE when lock is set;
 	// ErrNotFound when acct lacks it.
 	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Pool, error)
+	// Managed resolves an immutable resource identity in the caller's account.
+	// Deleted pools remain reserved but cannot be read through this lookup.
+	Managed(ctx context.Context, acct kernel.AccountID, owner kernel.WorkerOwner) (Pool, error)
 	// Share reads the space of acct's pool id, locked FOR SHARE, so a
 	// delete or move waits for the transaction; ErrNotFound when acct
 	// lacks it.
@@ -376,6 +386,7 @@ type Input struct {
 	Labels                  []string
 	PreparingTimeoutSeconds *int32
 	DriftDetectionRunLimit  *int32
+	Management              *kernel.WorkerOwner
 }
 
 // invalidDetail is the detail of an input the checks refuse.
@@ -399,6 +410,9 @@ func check(in Input) error {
 		})
 	}
 	errs = append(errs, kernel.CheckLabels("/labels", in.Labels)...)
+	if in.Management != nil {
+		errs = append(errs, kernel.CheckWorkerOwner("/management", *in.Management)...)
+	}
 	if len(errs) == 0 {
 		return nil
 	}
@@ -446,6 +460,10 @@ func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input, req 
 		out = Pool{
 			Account: p.AccountID, Organization: p.OrganizationID, ID: kernel.NewULID(),
 			CreatedAt: now, Version: 1,
+		}
+		if in.Management != nil {
+			owner := *in.Management
+			out.Management = &owner
 		}
 		apply(&out, space, in, now)
 		if err := s.sign(ctx, &out, key); err != nil {
@@ -505,11 +523,21 @@ func (s *Service) Update(ctx context.Context, p kernel.Principal, id string, exp
 		return Pool{}, err
 	}
 	return s.write(ctx, p.AccountID, id, expect, func(ctx context.Context, out *Pool) error {
+		if (out.Management == nil) != (in.Management == nil) ||
+			(out.Management != nil && *out.Management != *in.Management) {
+			return ErrOwnership
+		}
+		if out.Management != nil && !expect.Conditional() {
+			return ErrConditionRequired
+		}
 		space, err := s.space(ctx, p, in.Space)
 		if err != nil {
 			return err
 		}
 		if space != out.Space {
+			if out.Management != nil {
+				return ErrOwnership
+			}
 			if err := s.require(ctx, p, accessapi.ActionWorkerPoolCreate, space); err != nil {
 				return err
 			}

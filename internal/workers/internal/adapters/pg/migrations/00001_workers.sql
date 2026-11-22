@@ -67,6 +67,35 @@ CREATE INDEX worker_pools_space ON worker_pools (account_id, space_id);
 -- A registration names the pool alone.
 CREATE UNIQUE INDEX worker_pools_id ON worker_pools (id);
 
+-- Resource ownership outlives a pool and HTTP response retention. A deleted
+-- pool leaves a tombstone: the same Kubernetes UID cannot create a replacement.
+CREATE TABLE worker_pool_management (
+    account_id   uuid        NOT NULL,
+    cluster_id   text        NOT NULL,
+    namespace    text        NOT NULL,
+    resource_uid text        NOT NULL,
+    pool_id      uuid        UNIQUE REFERENCES worker_pools (id) ON DELETE SET NULL,
+    revoked      boolean     NOT NULL DEFAULT false,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, cluster_id, namespace, resource_uid),
+    UNIQUE (cluster_id, namespace, resource_uid)
+);
+
+-- Certificate-authorized hosting ownership is independent of account API
+-- management. Installation public pools have no account; private bindings do.
+CREATE TABLE worker_pool_bindings (
+    pool_id      uuid        PRIMARY KEY,
+    account_id   uuid,
+    cluster_id   text        NOT NULL,
+    namespace    text        NOT NULL,
+    resource_uid text        NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (cluster_id, namespace, resource_uid)
+);
+
+COMMENT ON TABLE worker_pool_bindings IS
+    'global: certificate-authorized hosting identity for private and installation public pools; private bindings retain account scope';
+
 -- A registered worker of a pool, until it deregisters or its pool is
 -- deleted. serial is the pool certificate's serial it registered under,
 -- which a reset leaves behind. last_seen_at is its last call; offline is
