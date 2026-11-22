@@ -76,7 +76,7 @@ inheritance on the fixture's non-inheriting legacy space.
 
 Native race/FIPS PostgreSQL controls pass with a one-connection pool. They
 execute **501 actual OPA evaluations and sealed filesystem publications**, model
-one prior UTC quota hour in fixture metadata without changing production
+prior UTC quota windows in fixture metadata without changing production
 budgets, and prove all 501 samples count while the preview contains 100. The
 preview agrees record-for-record with the first search page at equal frozen
 clock timestamps. Physically unavailable test payloads do not cause a private
