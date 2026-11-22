@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "date": "2026-11-22",
+  "classification": "local dirty candidate proof; exact-head CI remains required",
+  "baseRevision": "f50b9da4ef5f4bcd34824b3b5f6cab348dbcd64d",
+  "dirtyWorktree": true,
+  "terraform": {
+    "version": "1.17.2",
+    "platform": "darwin_arm64",
+    "officialArchiveSHA256": "da0c7ef278a911347862758e7573a5907365e66485c2637cf5c217c5e227992e",
+    "signatureVerifiedWith": "internal/agent/tools/keys/hashicorp.asc"
+  },
+  "docker": {
+    "version": "29.6.1",
+    "api": "1.55",
+    "host": "native ARM64 Docker Desktop"
+  },
+  "k3s": {
+    "version": "v1.37.2+k3s1",
+    "image": "rancher/k3s:v1.37.2-k3s1@sha256:21ea6e0fac4e3930c2ce8aa40ddd41a8b18cb3e9a0222c030dc005e7e88c4332",
+    "provider": "registry.terraform.io/kreuzwerker/docker 4.7.0; existing committed lock retained"
+  },
+  "fips": {
+    "GOFIPS140": "certified",
+    "GODEBUG": "fips140=only"
+  },
+  "kubernetesBatch": {
+    "passed": true,
+    "scenarios": 3,
+    "steps": 33,
+    "fips": true,
+    "terraformVersion": "1.17.2",
+    "opa": "v1.22.4",
+    "reportSHA256": "a87b3b45a4c6f5065fa21ae17557018cd354ff9267d3d1fc81c956e8c70e9347",
+    "resultSHA256": "d2230a7aa3b2318284247ea070225d1f27e0c12bc7cc522b01bc3f8901f4d2a4",
+    "cleanup": {
+      "owner": "iw-lab-7aa5bfdc84164d4eb19b89a100a91a70",
+      "before": {
+        "containers": [
+          "428da5895c7f",
+          "d7788613a74f",
+          "de2426be995c",
+          "5b8f1824c47c"
+        ],
+        "volumes": [
+          "iw-lab-7aa5bfdc84164d4eb19b89a100a91a70-gitea",
+          "iw-lab-7aa5bfdc84164d4eb19b89a100a91a70-kubernetes",
+          "iw-lab-7aa5bfdc84164d4eb19b89a100a91a70-objectstore",
+          "iw-lab-7aa5bfdc84164d4eb19b89a100a91a70-postgres"
+        ],
+        "networks": [
+          "39d3f95728f9"
+        ]
+      },
+      "after": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "emptyState": true,
+      "passed": true,
+      "privateInputsRemoved": true
+    }
+  },
+  "existingPolicyBatch": {
+    "passed": true,
+    "scenarios": 51,
+    "steps": 902,
+    "fips": true,
+    "terraformVersion": "1.17.2",
+    "opa": "v1.22.4",
+    "reportSHA256": "3658d099737b231c38a8980d5d4916f495c93545d960781da7ef83dc5ba699fe",
+    "resultSHA256": "536d1f665db8ca25dba0db3ec64fd8160482c5a9152d9dc1036cf71ab315a6eb",
+    "cleanup": {
+      "owner": "iw-lab-32c80913a236484ab8b0527b2ddd25a8",
+      "before": {
+        "containers": [
+          "f7ba32d13127",
+          "03af224327ab",
+          "63a681c2302b"
+        ],
+        "volumes": [
+          "iw-lab-32c80913a236484ab8b0527b2ddd25a8-gitea",
+          "iw-lab-32c80913a236484ab8b0527b2ddd25a8-objectstore",
+          "iw-lab-32c80913a236484ab8b0527b2ddd25a8-postgres"
+        ],
+        "networks": [
+          "1f828463f4ce"
+        ]
+      },
+      "after": {
+        "containers": [],
+        "volumes": [],
+        "networks": []
+      },
+      "emptyState": true,
+      "passed": true,
+      "privateInputsRemoved": true
+    }
+  },
+  "realControls": {
+    "passed": true,
+    "revision": "f50b9da4ef5f4bcd34824b3b5f6cab348dbcd64d",
+    "dirty": true,
+    "controls": [
+      "two independently owned clusters attached",
+      "foreign manifest refused without replacement",
+      "foreign cleanup journal refused before destroy",
+      "paused real cluster fails attachment",
+      "same owned cluster recovers without replacement",
+      "destroy and repeated cleanup preserve the second owner"
+    ],
+    "cleanup": [
+      {
+        "owner": "iw-lab-72815c26863140c0a49d6ef36c30ec58",
+        "before": {
+          "containers": [
+            "c871c045d27b",
+            "f08daa44ec09",
+            "5276220d7619",
+            "6cea4f52f62d"
+          ],
+          "volumes": [
+            "iw-lab-72815c26863140c0a49d6ef36c30ec58-gitea",
+            "iw-lab-72815c26863140c0a49d6ef36c30ec58-kubernetes",
+            "iw-lab-72815c26863140c0a49d6ef36c30ec58-objectstore",
+            "iw-lab-72815c26863140c0a49d6ef36c30ec58-postgres"
+          ],
+          "networks": [
+            "e96e5f2f5596"
+          ]
+        },
+        "after": {
+          "containers": [],
+          "volumes": [],
+          "networks": []
+        },
+        "emptyState": true,
+        "passed": true,
+        "privateInputsRemoved": true
+      },
+      {
+        "owner": "iw-lab-e1baebb21c4346f5a427f3b6e09d2b9e",
+        "before": {
+          "containers": [],
+          "volumes": [],
+          "networks": []
+        },
+        "after": {
+          "containers": [],
+          "volumes": [],
+          "networks": []
+        },
+        "emptyState": true,
+        "passed": true,
+        "privateInputsRemoved": true
+      }
+    ]
+  },
+  "controlsSHA256": "4e638d764df17785fff939ae6631f26172789bdbd7e40c9bddd7881878cf44ff",
+  "negativeStartup": {
+    "classification": "actual partial startup failure; not passing application evidence",
+    "cause": "initial readiness command refused by bundled kubectl entry point; corrected before passing batch",
+    "ownedCleanupPassed": true,
+    "emptyState": true,
+    "ownedResourcesAbsent": true,
+    "privateInputsRemoved": true
+  },
+  "scope": {
+    "realKubernetesAPIReady": true,
+    "singleNodeReady": true,
+    "terraformOwnedNamespaceVerified": true,
+    "currentSourceApplicationProcesses": true,
+    "workerControllerImplemented": false,
+    "kubernetesRunExecutorImplemented": false,
+    "managedCloudProvisioned": false,
+    "workloadTools": "unchanged published runner images"
+  },
+  "localArtifacts": [
+    "/private/tmp/infraweave-741-final-batch",
+    "/private/tmp/infraweave-741-policy-regression",
+    "/private/tmp/infraweave-741-controls-final"
+  ],
+  "validation": {
+    "pythonLifecycleTests": 14,
+    "terraformDescendantTimeoutAndCancellation": "passed against actual child processes, including TERM-resistant child KILL escalation",
+    "exactEndpointRedirectRefusal": "passed in Go and Python; redirected targets received zero requests",
+    "certifiedFipsRaceLabAndKubernetesTests": "passed",
+    "configuredGoLint": "passed; no issues",
+    "terraformValidate": "passed",
+    "docsCheck": "passed",
+    "coverageGate": "unchanged >=95% total / >=90% per gated package; not recomputed across all partitions locally"
+  },
+  "sourceQualification": "The application batches and controls record their baseline revision and dirty=true. Final lifecycle cancellation/time-limit changes are separately covered by Python controls; this file does not certify an exact commit or replace required CI."
+}
