@@ -62,6 +62,28 @@ approved contracts are distinguished from original vendor observations.
 | Account replay isolation | `api/idempotency_accounts.feature`, real PostgreSQL substitution controls | A → B → A, changed grants, independent actors, refreshed credentials and exact owned row counts; ciphertext copied between accounts fails |
 | Certified FIPS | Complete required FIPS job | All suites run in mode only with actual Go Cryptographic Module v1.0.0; no relaxed gate |
 
+## Kind, dialect and workflow coverage
+
+The linked OPA dependency is **v1.22.4**. `policies/runtime.feature` checks the
+actual running binary's version; the final CI and lab records must confirm it.
+A default-engine policy below runs V1 under the intentional ADR 0009 default.
+
+| Kind | Actual V0 workflow | Actual V1 workflow | Owned result |
+| --- | --- | --- | --- |
+| LOGIN | `authz/login_language.feature`, malformed-result control | Same language outline, member/session/scheme controls and actual timeout | Account admission and exact session grants; no run-owned effects |
+| TASK | `runs/tasks.feature` admitted command and invalid result; captured C52 refusal | `runs/tasks.feature` and `policies/sampling.feature` denial | Refusal creates no run/job; admitted real Terraform command runs |
+| INITIALIZATION | `policies/initialization.feature` actual task, duplicate jobs, invalid result and multiple policies | Same feature's four READY-denial cases and captured C52 source | Owned receipt and exact state/note before preparation; admitted task executes |
+| PLAN | `policies/plan_workers.feature` real Terraform and `workflow_plan_flags.feature` owner | Same features' real OpenTofu/Terragrunt, new decision on replan and captured C53/C273 plans | Sanitized native reports, warn/deny/allow, receipt/state and owner-qualified flags |
+| APPROVAL | `workflow_approval_flags.feature` and `workflow_isolation.feature` legacy owners | Same real review/concurrent workflow features and `approval_workers.feature` | Approval/deny precedence, current-state review ownership, lock/flag history |
+| GIT_PUSH | `policies/push.feature` V0 proposed event | Same feature's V1 tracked selection plus worker/range/native-provider walkthroughs | One admitted run, retained initial receipt/flags and durable no-trigger reasons |
+| TRIGGER | `policies/trigger_semantics.feature` legacy high-priority rule | Same feature's conflicting low-priority rule and isolated child | Normal-priority fallback, durable errors, independently owned downstream state |
+| NOTIFICATION | Pinned original V0 source/corpus, stateless tooling only | Typed contract and stateless tooling only | Execution/inbox is P18; C273 proves it has no stack attachment or used-by projection |
+| INTENT / module execution / worker exec initialization | Later owning phase | Later owning phase | P25 / P17 / P14; no completed execution row is claimed |
+
+This matrix names committed workflow assertions, rather than treating a
+successful compile or simulation as workflow execution. The complete required
+CI runs these features with real services and checks their nonzero reports.
+
 ## Capture provenance and executable assertions
 
 Original responses, request documents, browser snapshots, source pins and notices
@@ -79,11 +101,13 @@ newly observed vendor fact or a full upstream parity claim.
 | C54 | All 62 captured served identities page without duplicates or omissions | All 68 original templates and 62 test files remain pinned/licensed; six LOGIN templates are corpus-only |
 | C273 | Two real tracked plans produce two ALLOW samples; body/used-by/search/suggestions/sample/simulation agree; NOTIFICATION cannot attach; session controls and cleanup pass | Original browser admin/inventory is separate from native organization/account IAM; opaque REST handles and transport schema are normalized |
 
-Focused certified-FIPS development reports currently establish C50 **1/33**,
-C52 **2/73**, C273 session **1/33** plus page **1/49**, C53 **1/61** and the new
-LOGIN language matrix **2/34** (scenarios/steps). Final combined frozen-revision
-reports and complete CI remain required; these individual counts do not stand
-in for them.
+The frozen implementation revision `3f8249c6` passed a combined certified-FIPS
+capture batch: **14 scenarios / 557 steps**, including all six P13b replayers
+and the C192/C291/C46/C48/C51 baseline workflows. C47 additionally passed its
+direct public `/type` rejection and unchanged-inventory assertions. The new
+LOGIN language matrix passed **2 scenarios / 34 steps** during development.
+These local reports establish actual execution; full exact-head CI and final
+main lab evidence remain required before delivery is complete.
 
 ## Later-phase boundaries and final gates
 

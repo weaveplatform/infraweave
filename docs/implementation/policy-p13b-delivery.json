@@ -1992,5 +1992,29 @@
       },
       "missing": []
     }
-  ]
+  ],
+  "developmentEvidence": {
+    "opa": "v1.22.4",
+    "captureRevision": "3f8249c6",
+    "captureScenarios": 14,
+    "captureSteps": 557,
+    "captureIds": [
+      "C192",
+      "C273",
+      "C291",
+      "C46",
+      "C47",
+      "C48",
+      "C50",
+      "C51",
+      "C52",
+      "C53",
+      "C54"
+    ],
+    "accessRetirement": "direct public problem and inventory assertions; no synthetic Cucumber count",
+    "loginLanguageScenarios": 2,
+    "loginLanguageSteps": 34,
+    "finalExactHeadCI": "required",
+    "finalMainLab": "required"
+  }
 }
