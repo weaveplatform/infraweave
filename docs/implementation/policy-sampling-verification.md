@@ -76,6 +76,11 @@ They verify the exact account, target space, event, input and job identities;
 unsampled evaluations create one capture without spending sample quota. Caller
 rollback, lease loss and stale retries preserve run/receipt/flag identities,
 evaluation metadata, capture reservation time, staging state and queue generations.
+Adapter controls also preserve the opaque sample-owner link across partially
+written malformed receipt batches, foreign run owners and mismatched state
+versions. Terminating an owned PostgreSQL connection or closing the pool cannot
+acknowledge a receipt or return an empty successful metadata view. The stored link does not imply sample
+publication or availability, and metadata never returns the raw decision.
 
 The policy PostgreSQL acceptance tests use real OPA V0/V1 and sealed filesystem
 objects. They race quota and capture reservations across two pools, including a
@@ -95,3 +100,27 @@ policy package suite passes with race detection, randomized test order and
 certified FIPS. Its merged local counters cover **256/282 sampling statements
 (90.8%)** and **315/341 policy-storage statements (92.4%)**. These package results
 do not substitute for CI's complete repository-wide coverage gate.
+
+The tracked-run vendor-image compatibility case uses Spacelift's own official
+GHCR backup. An anonymous registry read on 2026-11-22 verified that
+`ghcr.io/spacelift-io/runner-terraform:v2.5.1_20261116` serves the unchanged pinned
+OCI index `sha256:b48969aba860b11f7fbfc12acdd3be539d8befeea64edeef544655a50f819a35`,
+including Linux amd64 and arm64. Its raw SHA-256 and registry digest both match
+the existing ECR pin. The upstream
+[README](https://github.com/spacelift-io/runner-terraform/blob/6c75296f90e3fafd9f40bf166af59286768cb096/README.md#docker-repository)
+and [publisher](https://github.com/spacelift-io/runner-terraform/blob/6c75296f90e3fafd9f40bf166af59286768cb096/.github/workflows/publish/action.yml)
+establish this backup's provenance. The compatibility case still requires the
+same tracked plan/apply/FINISHED lifecycle, UID 1983 and persisted Terraform
+state; the weekly pin updater follows that same upstream GHCR repository.
+
+Cold release preparation serializes callers of the same pinned archive and
+rechecks its verified cache. Transient HTTP responses, connection timeouts and
+interrupted bodies have at most three attempts, with 100/200 ms backoff inside
+the caller's existing context. Permanent responses, checksum failures and bad
+archives remain terminal. Real TCP HTTP controls reproduce service failures,
+closed connections and partial bodies; verify the retry ceiling and temporary
+file cleanup; and prove cancellation of either a waiter or the initial owner
+cannot cancel an independent caller. Failed preparations are not cached. The
+unchanged mixed Terraform/OpenTofu/Terragrunt policy-worker feature passes all
+**six scenarios / 220 steps** with certified FIPS; its tool pins, signature
+verification and scenario bounds remain unchanged.
