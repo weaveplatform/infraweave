@@ -46,6 +46,7 @@ type Schema struct {
 	OneOf                []*Schema          `json:"oneOf,omitempty"`
 	AllOf                []*Schema          `json:"allOf,omitempty"`
 	Enum                 []string           `json:"enum,omitempty"`
+	CaptureSensitive     bool               `json:"x-infraweave-capture-sensitive,omitempty"` //nolint:tagliatelle // JSON Schema extension.
 }
 
 // Contract reflects the input and decision structs; no independently maintained
@@ -57,18 +58,7 @@ func Contract() (ContractDocument, error) {
 		Description: "Policy input snapshots and raw decisions. Typed future phase fields are optional and are not synthesized.",
 		PolicyTypes: map[string]PolicyContract{}, Defs: map[string]*Schema{},
 	}
-	pairs := map[string][2]reflect.Type{
-		"ACCESS":         {reflect.TypeFor[AccessInput](), reflect.TypeFor[AccessDecision]()},
-		"APPROVAL":       {reflect.TypeFor[ApprovalInput](), reflect.TypeFor[ApprovalDecision]()},
-		"GIT_PUSH":       {reflect.TypeFor[PushInput](), reflect.TypeFor[PushDecision]()},
-		"INITIALIZATION": {reflect.TypeFor[InitializationInput](), reflect.TypeFor[InitializationDecision]()},
-		"INTENT":         {reflect.TypeFor[IntentInput](), reflect.TypeFor[IntentDecision]()},
-		"LOGIN":          {reflect.TypeFor[LoginInput](), reflect.TypeFor[LoginDecision]()},
-		"NOTIFICATION":   {reflect.TypeFor[NotificationInput](), reflect.TypeFor[NotificationDecision]()},
-		"PLAN":           {reflect.TypeFor[PlanInput](), reflect.TypeFor[PlanDecision]()},
-		"TASK":           {reflect.TypeFor[TaskInput](), reflect.TypeFor[TaskDecision]()},
-		"TRIGGER":        {reflect.TypeFor[TriggerInput](), reflect.TypeFor[TriggerDecision]()},
-	}
+	pairs := contractPairs()
 	for name, pair := range pairs {
 		input, err := schemaOf(pair[0], c.Defs)
 		if err != nil {
@@ -81,6 +71,21 @@ func Contract() (ContractDocument, error) {
 		c.PolicyTypes[name] = PolicyContract{Input: input, Rules: rules}
 	}
 	return c, nil
+}
+
+func contractPairs() map[string][2]reflect.Type {
+	return map[string][2]reflect.Type{
+		"ACCESS":         {reflect.TypeFor[AccessInput](), reflect.TypeFor[AccessDecision]()},
+		"APPROVAL":       {reflect.TypeFor[ApprovalInput](), reflect.TypeFor[ApprovalDecision]()},
+		"GIT_PUSH":       {reflect.TypeFor[PushInput](), reflect.TypeFor[PushDecision]()},
+		"INITIALIZATION": {reflect.TypeFor[InitializationInput](), reflect.TypeFor[InitializationDecision]()},
+		"INTENT":         {reflect.TypeFor[IntentInput](), reflect.TypeFor[IntentDecision]()},
+		"LOGIN":          {reflect.TypeFor[LoginInput](), reflect.TypeFor[LoginDecision]()},
+		"NOTIFICATION":   {reflect.TypeFor[NotificationInput](), reflect.TypeFor[NotificationDecision]()},
+		"PLAN":           {reflect.TypeFor[PlanInput](), reflect.TypeFor[PlanDecision]()},
+		"TASK":           {reflect.TypeFor[TaskInput](), reflect.TypeFor[TaskDecision]()},
+		"TRIGGER":        {reflect.TypeFor[TriggerInput](), reflect.TypeFor[TriggerDecision]()},
+	}
 }
 
 type field interface{ fieldType() reflect.Type }
@@ -164,6 +169,7 @@ func schemaOf(t reflect.Type, defs map[string]*Schema) (*Schema, error) {
 			if strings.Contains(tag, "nullable") {
 				prop = &Schema{AnyOf: []*Schema{prop, {Types: []string{"null"}}}}
 			}
+			prop.CaptureSensitive = f.Tag.Get("capture") == "sensitive"
 			out.Properties[name] = prop
 		}
 		constraints(t, out)
