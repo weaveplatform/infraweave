@@ -64,7 +64,7 @@ func captureReplayRegistry(parent *testing.T) (map[string]func(*testing.T, *sdk.
 	registerIgnoredCaptureReplay(parent, subsets, &workers)
 	full["policy-simulation"] = func(t *testing.T, _ *sdk.Client) {
 		if workers == nil {
-			workers = harness.NewFeatureReplay(parent, areas)
+			workers = harness.NewFeatureReplay(parent, append(slices.Clone(areas), registerCaptureWorkflow))
 		}
 		name := "C192 hashes the recorded values through the public simulator"
 		contents := []byte(`@postgres @objectstore
