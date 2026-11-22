@@ -29,10 +29,10 @@ func TestAccProjectionsCountEveryRetainedSampleIndependentlyOfPreview(t *testing
 	req := fixtureEvaluationRequest(w.f, policyapi.Plan, evaluationInput(t, "plan-tracked-warn.json"))
 	for i := range 501 {
 		if i == 500 {
-			// Model an already populated previous UTC hour without changing the
-			// production budget or waiting an hour. All evaluations and uploads
+			// Model already populated prior UTC quota windows without changing the
+			// production budget or waiting for a window. All evaluations and uploads
 			// still use the real owner, queue, OPA, sealing and filesystem paths.
-			if _, err := w.f.db.Exec(t.Context(), `UPDATE policy_sample_budgets SET hour=hour-interval '1 hour' WHERE account_id=$1`, p.Account); err != nil {
+			if _, err := w.f.db.Exec(t.Context(), `UPDATE policy_sample_budgets SET hour=hour-interval '1 day' WHERE account_id=$1`, p.Account); err != nil {
 				t.Fatal(err)
 			}
 		}
