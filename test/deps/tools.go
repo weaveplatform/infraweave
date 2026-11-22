@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Tool is a pinned release of a command a scenario runs in a container:
@@ -182,9 +184,10 @@ var (
 // tools are the binaries a test binary extracted, by the cache name of
 // their build, each once.
 type tools struct {
-	mu   sync.Mutex
-	once map[string]*toolOnce
-	dir  string
+	mu       sync.Mutex
+	once     map[string]*toolOnce
+	releases map[string]chan struct{}
+	dir      string
 }
 
 type toolOnce struct {
@@ -275,11 +278,41 @@ func (d *Dependencies) cached(ctx context.Context, t Tool, archive string) (stri
 // verifies it as it would the vendor's.
 func (d *Dependencies) Release(ctx context.Context, t Tool, arch string) (map[string]string, error) {
 	archive := t.Archive(arch)
+	unlock, err := d.releaseLock(ctx, t.cacheName(archive))
+	if err != nil {
+		return nil, fmt.Errorf("%s %s for linux/%s: %w", t.Name, t.Version, arch, err)
+	}
+	defer unlock()
 	files, err := d.release(ctx, t, archive)
 	if err != nil {
 		return nil, fmt.Errorf("%s %s for linux/%s: %w", t.Name, t.Version, arch, err)
 	}
 	return files, nil
+}
+
+// A cold release has one preparation owner. Waiters retain their own contexts;
+// a failed owner releases the slot without caching its error for later callers.
+func (d *Dependencies) releaseLock(ctx context.Context, key string) (func(), error) {
+	d.tools.mu.Lock()
+	if d.tools.releases == nil {
+		d.tools.releases = make(map[string]chan struct{})
+	}
+	gate := d.tools.releases[key]
+	if gate == nil {
+		gate = make(chan struct{}, 1)
+		d.tools.releases[key] = gate
+	}
+	d.tools.mu.Unlock()
+	select {
+	case gate <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			<-gate
+			return nil, fmt.Errorf("prepare release: %w", err)
+		}
+		return func() { <-gate }, nil
+	case <-ctx.Done():
+		return nil, fmt.Errorf("prepare release: %w", ctx.Err())
+	}
 }
 
 func (d *Dependencies) release(ctx context.Context, t Tool, archive string) (map[string]string, error) {
@@ -385,37 +418,78 @@ func fileSHA256(path string) (string, error) {
 // that is renamed into place once complete, so a test binary that stops
 // mid-download leaves no partial archive under path.
 func download(ctx context.Context, url, path string) error {
+	for attempt := 0; ; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("download %s: %w", url, err)
+		}
+		retry, err := downloadAttempt(ctx, url, path)
+		if stopped := ctx.Err(); stopped != nil {
+			return fmt.Errorf("download %s: %w", url, stopped)
+		}
+		if err == nil || !retry || attempt == 2 {
+			return err
+		}
+		timer := time.NewTimer(time.Duration(attempt+1) * 100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("download %s: %w", url, ctx.Err())
+		case <-timer.C:
+		}
+	}
+}
+
+// Only transport failures may retry. A completed body still has to match its
+// immutable pin; retry never accepts changed bytes, archives or signatures.
+func downloadAttempt(ctx context.Context, url, path string) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return fmt.Errorf("download %s: %w", url, err)
+		return false, fmt.Errorf("download %s: %w", url, err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("download %s: %w", url, err)
+		return transientDownload(err), fmt.Errorf("download %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%w: %s answered %d", ErrToolDownload, url, resp.StatusCode)
+		return transientStatus(resp.StatusCode), fmt.Errorf("%w: %s answered %d", ErrToolDownload, url, resp.StatusCode)
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*")
 	if err != nil {
-		return fmt.Errorf("download %s: %w", url, err)
+		return false, fmt.Errorf("download %s: %w", url, err)
 	}
 	defer os.Remove(tmp.Name())
 	n, err := io.Copy(tmp, io.LimitReader(resp.Body, maxArchive+1))
 	if cerr := tmp.Close(); err == nil {
-		err = cerr
+		if cerr != nil {
+			return false, fmt.Errorf("download %s: %w", url, cerr)
+		}
 	}
 	switch {
 	case err != nil:
-		return fmt.Errorf("download %s: %w", url, err)
+		return transientDownload(err), fmt.Errorf("download %s: %w", url, err)
 	case n > maxArchive:
-		return fmt.Errorf("%w: %s is over %d bytes", ErrToolDownload, url, maxArchive)
+		return false, fmt.Errorf("%w: %s is over %d bytes", ErrToolDownload, url, maxArchive)
 	}
 	if err := os.Rename(tmp.Name(), path); err != nil {
-		return fmt.Errorf("download %s: %w", url, err)
+		return false, fmt.Errorf("download %s: %w", url, err)
 	}
-	return nil
+	return false, nil
+}
+
+func transientDownload(err error) bool {
+	var network net.Error
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.As(err, &network) && network.Timeout()
+}
+
+func transientStatus(status int) bool {
+	switch status {
+	case http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusInternalServerError,
+		http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 // copyBinary writes the binary at path to bin, executable.

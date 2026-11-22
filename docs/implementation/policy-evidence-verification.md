@@ -58,6 +58,14 @@ storage verification is labelled a contract fixture, not a live module capture.
 - Independent PostgreSQL transactions prove a held run/receipt link blocks
   deletion, rejects wrong account/stack/run/receipt tuples and releases the fence
   on completion. No deadline, retry, quota, coverage or rate limit is relaxed.
+- Seven native failure controls use real pending/retired rows, the exact expiry
+  boundary and a damaged sealed-file header. Unfenced or unavailable reads return
+  no private bytes; the malformed header produces only a fixed unavailable audit
+  after rollback, and restoring the exact original file restores its sample.
+- Actual PostgreSQL enqueue/binding constraint failures preserve the complete
+  capture head/minute, staging, evaluation, job, quota and blob state. The previous
+  protected capture stays readable; removing the fault permits a fresh sanitized
+  publication and makes the old advertised input explicitly null.
 
 `GOFIPS140=certified GODEBUG=fips140=only`, race detection and shuffled order are
 used for focused storage/owner proofs. Final generated/reference, configured lint,
