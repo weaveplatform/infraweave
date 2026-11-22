@@ -98,9 +98,10 @@ CREATE TABLE workers (
     CHECK ((account_id IS NULL) = (organization_id IS NULL))
 );
 
-CREATE INDEX workers_pool ON workers (account_id, pool_id);
+COMMENT ON TABLE workers IS
+    'global: protocol identities include installation public workers; private registrations retain their account and organization scope';
 
--- A worker session token names the globally unique primary key alone.
+CREATE INDEX workers_pool ON workers (account_id, pool_id);
 
 CREATE INDEX workers_organization ON workers (organization_id);
 
@@ -116,6 +117,8 @@ CREATE TABLE worker_nonces (
     expires_at timestamptz NOT NULL,
     PRIMARY KEY (pool_id, jti)
 );
+COMMENT ON TABLE worker_nonces IS
+    'global: replay protection is keyed by globally unique pool and jti; installation public registrations have no account';
 
 -- An account's default runner images, which accountUpdateDefaultWorkerPoolRunnerImages
 -- sets: the image a run on a private or a public pool uses when neither

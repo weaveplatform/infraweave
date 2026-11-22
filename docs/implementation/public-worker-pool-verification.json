@@ -39,7 +39,12 @@
   "additionalChecks": {
     "affectedUnitRaceFips": "Passed except the old integrity-row expectation; the corrected expectation passes in the full PostgreSQL rerun. Application, launcher, SDK and docs checks passed.",
     "moduleTidy": "Only promotes existing distribution/reference v0.6.0 to direct; no version or sum change.",
-    "whitespace": "passed"
+    "whitespace": "passed",
+    "schemaConventions": {
+      "result": "passed",
+      "command": "GOFIPS140=certified GODEBUG=fips140=only go test -race -v -count=1 -run '^TestAccSchemaConventions$' ./internal/app",
+      "logSha256": "d4e6ab221706db99a3b58886f58a5221daa279d1d0fc122ad81c1ed1373ccf1a"
+    }
   },
   "cleanup": "Completed acceptance commands stopped and removed their owned service and runner resources.",
   "knownIndependentBug": 766,
