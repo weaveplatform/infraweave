@@ -145,6 +145,49 @@ def kubernetes_opener(context):
     return urllib.request.build_opener(urllib.request.HTTPSHandler(context=context), RefuseRedirect())
 
 
+def kubernetes_credentials(raw, cluster):
+    if len(raw) > 65536:
+        raise ValueError("Kubernetes kubeconfig exceeds 64 KiB")
+    config = json.loads(raw)
+
+    def first(collection, field):
+        entries = config.get(collection) if isinstance(config, dict) else None
+        if not isinstance(entries, list) or not entries or not isinstance(entries[0], dict):
+            raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+        value = entries[0].get(field)
+        if not isinstance(value, dict):
+            raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+        return value
+
+    connection = first("clusters", "cluster")
+    identity = first("users", "user")
+    context = first("contexts", "context")
+    names = {kind: config[kind][0].get("name") for kind in ("clusters", "contexts", "users")}
+    if any(not isinstance(name, str) or not name for name in names.values()):
+        raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+    # Export the same CA/client identity that the readiness probes validate.
+    if (context.get("cluster") != names["clusters"] or context.get("user") != names["users"] or
+            config.get("current-context") != names["contexts"]):
+        raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+    encoded = {"ca": connection.get("certificate-authority-data"),
+               "cert": identity.get("client-certificate-data"), "key": identity.get("client-key-data")}
+    certificates = {}
+    for name, value in encoded.items():
+        if not isinstance(value, str) or not value:
+            raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+        try:
+            certificates[name] = base64.b64decode(value, validate=True)
+        except ValueError:
+            raise RuntimeError("Kubernetes bootstrap credentials are incomplete") from None
+        if not certificates[name]:
+            raise RuntimeError("Kubernetes bootstrap credentials are incomplete")
+    # Bootstrap may return an empty kubeconfig before k3s writes its identity.
+    # Validate every required field before writing any private credential file.
+    connection["server"] = cluster["endpoint"]
+    context["namespace"] = cluster["namespace"]
+    return config, certificates
+
+
 def kubernetes_ready(directory, manifest):
     cluster = manifest["kubernetes"]
     owner = manifest["owner"]
@@ -162,19 +205,11 @@ def kubernetes_ready(directory, manifest):
         try:
             raw = subprocess.check_output(["docker", "exec", cluster["container"], "kubectl", "config", "view", "--raw", "-o", "json"],
                                           stderr=subprocess.DEVNULL, timeout=5)
-            if len(raw) > 65536:
-                raise ValueError("Kubernetes kubeconfig exceeds 64 KiB")
-            config = json.loads(raw)
-            connection = config["clusters"][0]["cluster"]
-            connection["server"] = cluster["endpoint"]
-            config["contexts"][0]["context"]["namespace"] = cluster["namespace"]
-            certificates = {"ca": connection["certificate-authority-data"],
-                            "cert": config["users"][0]["user"]["client-certificate-data"],
-                            "key": config["users"][0]["user"]["client-key-data"]}
+            config, certificates = kubernetes_credentials(raw, cluster)
             for name, value in certificates.items():
                 path = directory / "pki" / ("kubernetes-" + name + ".pem")
                 with open(path, "wb", opener=lambda name, flags: os.open(name, flags, 0o600)) as file:
-                    file.write(base64.b64decode(value, validate=True))
+                    file.write(value)
             context = ssl.create_default_context(cafile=str(directory / "pki/kubernetes-ca.pem"))
             context.load_cert_chain(directory / "pki/kubernetes-cert.pem", directory / "pki/kubernetes-key.pem")
             opener = kubernetes_opener(context)
