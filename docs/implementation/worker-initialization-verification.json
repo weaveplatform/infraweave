@@ -1,0 +1,100 @@
+{
+  "sourceIssue": 749,
+  "status": "local-dirty-candidate-not-final-head-ci",
+  "source": {
+    "baseCommit": "4e2178396598d8c8394e2a4cb72dfa8558e3f003",
+    "uncommitted": true,
+    "testedFileSHA256": {
+      "api/src/worker/paths-runs.yaml": "e486b0a61ded24ba895811d2960a6ef86be2ff6ff02a1c7e1962a2d7b2b47d58",
+      "api/worker.openapi.yaml": "580298b07e1c78a4bd0732f6b5cce9babb6d14c6b983827e30482870660eae82",
+      "internal/agent/cli/cli.go": "9893f5af06598a67ec6e84eb05a790a71788bd1f7aca2139bd5d856e3a1d3dc9",
+      "internal/agent/config/config.go": "1c60e08e59cf033a4a36a375ef714816592244338c07cfc70b029981fc942813",
+      "internal/agent/config/config_test.go": "c5ea03dccecbfd1fa67f38eedea80bf8cf9e3f7c085fed5c9d33e75884e6a5ac",
+      "internal/agent/initpolicy/doc.go": "e6af27de6af1095415858f4a2b3f4944f6b73f79f677152cfca4d8b732a74ab9",
+      "internal/agent/initpolicy/initpolicy.go": "ebb54e57a887b26381428029dab03af90aca44a37e53144a5fc8ec5c2f14e303",
+      "internal/agent/initpolicy/initpolicy_test.go": "3bc9ff00f6adc1fc12a24c8e601330153c072c8d9d2dd5027145a87c9845bad4",
+      "internal/agent/launcher/doc.go": "5d745483a47a0e1ca4ad30b5f249302690fd542e0e4402b2dfb8a5ca96dea3f5",
+      "internal/agent/launcher/launcher.go": "151a6894b3fdee801590ada16d152cea9330d3ed7938d902174d95765c37d09c",
+      "internal/agent/launcher/launcher_test.go": "aee6e73b92039cc0a0528af23f42445fb5ac581d9f2c962c119c6ba33e76bf87",
+      "internal/agent/wire/client.gen.go": "7f4b55136e6803998dc01aeadaee6dc0445ea7ffedb70ee7fabb9c8e67aef5e0",
+      "internal/platform/gen/worker/server.gen.go": "ae855ebda0d83e469fbd4051056f6ea81f4db4c997906ffa083a436ae00bec3b",
+      "internal/platform/rego/cache.go": "e1b754ec057f5f7d28658ac732262b2ae8796e662b2435037d016ae3eee8f8f3",
+      "internal/platform/rego/doc.go": "6812b384a35c065dae9b3cb0f28529bda5f0969199b380e443a6d078de24eaad",
+      "internal/platform/rego/rego.go": "846dc68dbb2ff9e4eb80e12e9fd4e70c3d41e597f32972d85896d08019a493cb",
+      "internal/platform/rego/result.go": "a4a82aff213328736ad4a4f84395d8225a2fa301de299c45d50a7e11f0d83fd0",
+      "internal/platform/rego/worker_test.go": "f1135f1641f99291d38cf19f9f3cbee41e4a588f0e02f1901825ba63cd9a8a36",
+      "internal/runs/internal/core/handover/handover.go": "c586a5cafba217e229c0509dd103564883067502ca349887a570d851ee52f525",
+      "internal/runs/internal/core/handover/handover_test.go": "9c618b073b7deb8c661f143cf38768edd449aa8ed6b9514851cc2ac5b9c75582",
+      "internal/workers/api/api.go": "59a8ae7ce987f2aa1d67ebc453c859902e3d529f19d74953dadde18ead3be550",
+      "internal/workers/internal/adapters/protocol/protocol.go": "8fad19dbaea74a361af0e93f7f1f8e47f3b59bc4716dd41462ec47b7f0f57467",
+      "internal/workers/internal/adapters/protocol/spec_test.go": "c7d864e79f1d30a1c9517835d2dd02ecf6f4f7a43d9663508682b5874e5ceca5",
+      "test/acceptance/features/policies/worker_initialization.feature": "a6d50f3cf5161e1a2f8fbb1a08f3573f315ea864848eef20c17822f082f92e66",
+      "test/acceptance/internal/harness/launcher.go": "065399b311ce08f01562192927e97244dd2fd4939b80775aad309e6084511366",
+      "test/acceptance/internal/harness/partitions.go": "e471eecdda1d76a1637925535a275576f557ec8a987a12665a466b60648a84c0",
+      "test/acceptance/internal/steps/workers/initialization.go": "b313509e17dd7f3ae2c349ae51868ffd92f6d233c8e6af991250a448c089f9be",
+      "test/acceptance/internal/steps/workers/launcher.go": "ed9bb0ac7c64db0e463d261a6ce501a7742e842979bed1105ee9d3eb64badeec"
+    }
+  },
+  "scope": "Worker-local initialization only; no exec, independent JWT verification, issued preparing deadline, user metadata ingestion or Kubernetes/cloud worker proof",
+  "acceptance": {
+    "feature": "test/acceptance/features/policies/worker_initialization.feature",
+    "services": [
+      "actual source-built infraweave server and launcher processes",
+      "PostgreSQL",
+      "object storage",
+      "TLS Gitea source",
+      "Docker Terraform run containers"
+    ],
+    "scenarios": 6,
+    "steps": 129,
+    "allSteps": "passed",
+    "reportSHA256": "c45d39d7ff706991ac088ebcc7844361b5480f018d10eb54de1aafd1d188be83",
+    "report": "private local cucumber artifact; exact-head CI remains required"
+  },
+  "ordinaryFocusedUnitPackages": [
+    "internal/agent/initpolicy",
+    "internal/agent/config",
+    "internal/agent/launcher",
+    "internal/agent/cli",
+    "internal/platform/rego",
+    "internal/workers/internal/adapters/protocol",
+    "internal/runs/internal/core/handover",
+    "test/acceptance/internal/harness"
+  ],
+  "certifiedFIPS": {
+    "GOFIPS140": "certified",
+    "GODEBUG": "fips140=only",
+    "race": true,
+    "result": "passed",
+    "unitCoveragePercent": {
+      "internal/agent/initpolicy": 90.2,
+      "internal/agent/config": 97.2,
+      "internal/agent/launcher": 94.6,
+      "internal/agent/cli": 96.5,
+      "internal/platform/rego": 95.3,
+      "internal/workers/internal/adapters/protocol": 95.9,
+      "internal/runs/internal/core/handover": 99.0
+    },
+    "acceptance": {
+      "scenarios": 6,
+      "steps": 129,
+      "allSteps": "passed",
+      "reportSHA256": "3de9ef734b472e7314c3a3c2fff81814f05be64c5d4b6c7ab9a91aaeadd322c8"
+    }
+  },
+  "remaining": [
+    "Final exact-head required CI, merged coverage >=95 percent total and >=90 percent per gated package",
+    "Issued/restart-safe preparing deadline and runtime delivery owned by #746",
+    "Isolated exec owned by #750; all exec programs currently fail compilation",
+    "Independent JWT verification/admission owned by #751",
+    "No current user-provided metadata producer; current worker input is []",
+    "C68 remains unavailable; authored programs are infraweave contract evidence"
+  ],
+  "checks": {
+    "configuredGolangciLint": "0 issues",
+    "docsAndRegisters": "passed",
+    "featurePartitionsAndTags": "passed",
+    "signatures": "passed",
+    "whitespace": "passed"
+  }
+}

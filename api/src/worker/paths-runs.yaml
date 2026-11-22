@@ -192,6 +192,12 @@ components:
         - enableWellKnownSecretMasking
         - enableSensitiveOutputUpload
       properties:
+        ulid:
+          type: string
+          description: >-
+            The immutable stack ULID, separate from id, which remains the slug.
+            New servers provide it for worker-local initialization policies;
+            an older server may omit it.
         id:
           type: string
           description: The stack's slug.
@@ -362,6 +368,12 @@ components:
       type: object
       required: [hash, message, authorName, timestamp]
       properties:
+        branch:
+          type: string
+          description: >-
+            The run commit's stored source branch, which may differ from the
+            stack's tracked branch. New servers provide it, including an empty
+            string when unknown; older servers may omit it.
         hash:
           type: string
           description: The commit's hash.

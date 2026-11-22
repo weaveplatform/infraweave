@@ -8,6 +8,7 @@ import (
 )
 
 type cacheKey struct {
+	Scope        string
 	Body         [32]byte
 	Dialect      EngineType
 	Type         Type

@@ -44,6 +44,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	f := newFixture(t)
 	f.store.pool.Certificate = f.cert.Raw
 	run := kernel.NewULID()
+	stackID := kernel.NewULID()
 	at := time.Unix(1_800_000_000, 0)
 	root, image, login, value, mode := "infra", "ghcr.io/acme/runner", "alice", "eu", "600"
 	refusal := "stacks.infra.before_plan: must be a list"
@@ -63,6 +64,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 				CreatedAt:    at,
 			},
 			Stack: workersapi.SpecStack{
+				ID:   stackID,
 				Slug: "infra", Name: "Infra", Space: "legacy", Repository: "infra",
 				Branch: "main", ProjectRoot: &root, Vendor: "terraform",
 				VendorConfig:                 json.RawMessage(`{"version":"1.9"}`),
@@ -70,7 +72,8 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 				EnableSensitiveOutputUpload:  true,
 			},
 			Commit: workersapi.SpecCommit{
-				Hash: "abc", URL: "https://example.com/abc", Message: "Fix", AuthorName: "Alice",
+				Branch: "feature/source",
+				Hash:   "abc", URL: "https://example.com/abc", Message: "Fix", AuthorName: "Alice",
 				AuthorLogin: &login, Timestamp: at,
 			},
 			RuntimeConfig: json.RawMessage(`{"projectRoot":"infra"}`),
@@ -130,14 +133,14 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			"createdAt":      1.8e9,
 		},
 		"stack": map[string]any{
-			"id": "infra", "name": "Infra", "space": "legacy", "labels": []any{},
+			"ulid": stackID.String(), "id": "infra", "name": "Infra", "space": "legacy", "labels": []any{},
 			"repository": "infra", "branch": "main", "projectRoot": "infra",
 			"vendor": "terraform", "vendorConfig": map[string]any{"version": "1.9"},
 			"enableWellKnownSecretMasking": true,
 			"enableSensitiveOutputUpload":  true,
 		},
 		"commit": map[string]any{
-			"hash": "abc", "url": "https://example.com/abc", "message": "Fix",
+			"branch": "feature/source", "hash": "abc", "url": "https://example.com/abc", "message": "Fix",
 			"authorName": "Alice", "authorLogin": "alice", "timestamp": 1.8e9,
 		},
 		"runtimeConfig": map[string]any{"projectRoot": "infra"},

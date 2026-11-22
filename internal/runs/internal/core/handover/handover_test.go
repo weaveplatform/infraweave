@@ -607,6 +607,9 @@ func TestUnitHandoverMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if h.Spec.Commit.Branch != tc.branch || h.Spec.Stack.ID != w.store.run.Stack {
+				t.Fatal("worker admission lost the immutable stack or run source branch")
+			}
 			got := map[string]string{}
 			count := map[string]int{}
 			for _, v := range h.Spec.Environment {

@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -87,9 +88,10 @@ const maxDetails = 1024
 //
 // ref: decision 0008 § "The launcher and the runner"
 type Launcher struct {
-	d   Deps
-	id  identity
-	api *client.Client
+	d      Deps
+	id     identity
+	api    *client.Client
+	policy *initpolicy.Policy
 
 	// registered holds while the launcher has a session, and answered is
 	// when the server last answered it, in Unix nanoseconds.
@@ -134,6 +136,11 @@ type waited struct {
 // New is a launcher of d.Config's pool, whose token and private key it
 // reads and checks against each other.
 func New(d Deps) (*Launcher, error) {
+	return NewContext(context.Background(), d)
+}
+
+// NewContext cancels startup policy compilation when its caller stops startup.
+func NewContext(ctx context.Context, d Deps) (*Launcher, error) {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
@@ -160,7 +167,14 @@ func New(d Deps) (*Launcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Launcher{d: d, id: id, api: client.New(client.Base(id.endpoint), d.Doer)}, nil
+	policy, err := initpolicy.Load(ctx, initpolicy.Settings{
+		Path: d.Config.InitializationPolicy, Engine: d.Config.InitializationPolicyEngine,
+		Timeout: d.Config.InitializationTimeout,
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck // initpolicy exposes only safe startup failures
+	}
+	return &Launcher{d: d, id: id, api: client.New(client.Base(id.endpoint), d.Doer), policy: policy}, nil
 }
 
 // newClient is the launcher's HTTP client, trusting roots, or the
@@ -556,6 +570,20 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (
 	if err := json.Unmarshal(plain, &secrets); err != nil {
 		return nil, fmt.Errorf("read the run's secrets: %w", err)
 	}
+	if l.policy != nil {
+		input, err := initpolicy.Snapshot(a, spec, l.id.pool, l.runnerImage(spec))
+		if err != nil {
+			return nil, err //nolint:wrapcheck // initpolicy exposes a safe refusal
+		}
+		result, err := l.policy.Evaluate(ctx, input)
+		if result.Print != "" {
+			l.d.Log.InfoContext(ctx, "worker initialization policy print", "run", a.Run,
+				"print", result.Print, "truncated", result.PrintTruncated)
+		}
+		if err != nil {
+			return nil, err //nolint:wrapcheck // policy denies are masked before reporting
+		}
+	}
 	ws, err := l.workspace(ctx, a, spec, secrets.SourceCredential)
 	if err != nil {
 		return nil, err
@@ -704,13 +732,8 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 			Source: bin, Target: "/bin/" + string(b.Tool), ReadOnly: true,
 		})
 	}
-	image := l.d.Config.DefaultRunnerImage
-	if image == "" {
-		image = config.VendorRunnerImage(spec.Stack.Vendor)
-	}
-	if spec.RunnerImage != nil && *spec.RunnerImage != "" {
-		image = *spec.RunnerImage
-	}
+	image := l.runnerImage(spec)
+
 	spec.Sealed = nil
 	var h bytes.Buffer
 	if err := handoff.Write(&h, handoff.Handoff{
@@ -733,6 +756,18 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		return nil, err //nolint:wrapcheck // the executor names the step
 	}
 	return c, nil
+}
+
+// runnerImage resolves the image once by the same precedence for admission
+// and execution, so a policy never sees a display default instead of its image.
+func (l *Launcher) runnerImage(spec wire.RunSpec) string {
+	if spec.RunnerImage != nil && *spec.RunnerImage != "" {
+		return *spec.RunnerImage
+	}
+	if l.d.Config.DefaultRunnerImage != "" {
+		return l.d.Config.DefaultRunnerImage
+	}
+	return config.VendorRunnerImage(spec.Stack.Vendor)
 }
 
 // binaries are the releases spec mounts, each without its platform: the
