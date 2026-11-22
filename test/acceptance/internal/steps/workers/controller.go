@@ -79,7 +79,10 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^(\d+) worker controllers? watch the controller namespaces$`, c.start)
 	sc.Step(`^the leading worker controller is replaced$`, c.replace)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)" is applied in "(\w+)"( for another account)?$`, c.managed)
-	sc.Step(`^the Existing WorkerPool "(\w+)" of capacity (\d+) over the pool of the certificate "(\w+)" with the key of "(\w+)" in the space "(\w+)" is applied in "(\w+)"$`, c.existing)
+	sc.Step(
+		`^the Existing WorkerPool "(\w+)" of capacity (\d+) over the pool of the certificate "(\w+)" with the key of "(\w+)" in the space "(\w+)" is applied in "(\w+)"$`,
+		c.existing,
+	)
 	sc.Step(`^the WorkerPool "(\w+)" eventually reports (\w+) (True|False) "(\w+)"$`, c.reports)
 	sc.Step(`^the WorkerPool "(\w+)" eventually has (\d+) registered slots, its pool kept as "(\w+)"$`, c.registered)
 	sc.Step(`^the workers of the WorkerPool "(\w+)" are the ones kept$`, c.same)

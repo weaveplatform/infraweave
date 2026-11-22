@@ -449,7 +449,10 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 	case limited != nil:
 		meta.SetStatusCondition(&status.Conditions, condition(ConditionRegistered, false, ReasonLimitReached, limited.message, wp.Generation))
 	default:
-		meta.SetStatusCondition(&status.Conditions, condition(ConditionRegistered, false, ReasonRegistering, fmt.Sprintf("%d of %d slots hold a registered worker.", registered, wp.Spec.Capacity), wp.Generation))
+		meta.SetStatusCondition(
+			&status.Conditions,
+			condition(ConditionRegistered, false, ReasonRegistering, fmt.Sprintf("%d of %d slots hold a registered worker.", registered, wp.Spec.Capacity), wp.Generation),
+		)
 	}
 	return errors.Join(errs...)
 }

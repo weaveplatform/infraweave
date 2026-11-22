@@ -111,8 +111,10 @@ func (in *installation) issue(account string, key *ecdsa.PublicKey) *remotePool 
 	if err != nil {
 		in.t.Fatal(err)
 	}
-	raw, err := json.Marshal(poolToken{Version: tokenVersion, Endpoint: in.srv.URL, Pool: id,
-		Certificate: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))})
+	raw, err := json.Marshal(poolToken{
+		Version: tokenVersion, Endpoint: in.srv.URL, Pool: id,
+		Certificate: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})),
+	})
 	if err != nil {
 		in.t.Fatal(err)
 	}
@@ -238,8 +240,10 @@ func (in *installation) id(w http.ResponseWriter, r *http.Request) {
 
 func view(p *remotePool) management.WorkerPool {
 	s := p.settings
-	out := management.WorkerPool{Id: p.id, Config: p.token, Name: s.Name, Description: s.Description,
-		PreparingTimeoutSeconds: s.PreparingTimeoutSeconds, DriftDetectionRunLimit: s.DriftDetectionRunLimit, Labels: []string{}}
+	out := management.WorkerPool{
+		Id: p.id, Config: p.token, Name: s.Name, Description: s.Description,
+		PreparingTimeoutSeconds: s.PreparingTimeoutSeconds, DriftDetectionRunLimit: s.DriftDetectionRunLimit, Labels: []string{},
+	}
 	if s.Space != nil {
 		out.Space = *s.Space
 	}
@@ -302,8 +306,10 @@ func (in *installation) create(w http.ResponseWriter, r *http.Request) {
 	p := in.issue(account, pub)
 	owner := kernel.WorkerOwner{ClusterID: req.Management.ClusterID, Namespace: req.Management.Namespace, ResourceUID: req.Management.ResourceUID}
 	p.management, p.binding = &owner, &owner
-	p.settings = management.WorkerPoolUpdateRequest{Name: req.Name, Space: req.Space, Description: req.Description, Labels: req.Labels,
-		PreparingTimeoutSeconds: req.PreparingTimeoutSeconds, DriftDetectionRunLimit: req.DriftDetectionRunLimit}
+	p.settings = management.WorkerPoolUpdateRequest{
+		Name: req.Name, Space: req.Space, Description: req.Description, Labels: req.Labels,
+		PreparingTimeoutSeconds: req.PreparingTimeoutSeconds, DriftDetectionRunLimit: req.DriftDetectionRunLimit,
+	}
 	in.idempotent[key] = p.id
 	reply(w, http.StatusCreated, view(p))
 }
@@ -343,7 +349,7 @@ func (in *installation) remove(w http.ResponseWriter, r *http.Request) {
 // proof verifies a signed proof against its pool's certificate and
 // answers its claims and pool; the caller holds in.mu.
 func (in *installation) proof(w http.ResponseWriter, raw string) (claims, *remotePool, bool) {
-	obj, err := jose.ParseSigned(raw, []jose.SignatureAlgorithm{jose.ES256})
+	obj, err := jose.ParseSignedCompact(raw, []jose.SignatureAlgorithm{jose.ES256})
 	if err != nil {
 		problem(w, http.StatusUnauthorized, "", "proof")
 		return claims{}, nil, false

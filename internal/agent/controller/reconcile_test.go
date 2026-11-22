@@ -881,8 +881,10 @@ func TestUnitRetiringFailuresAreReported(t *testing.T) {
 }
 
 func TestUnitSettingsDriftComparesEveryField(t *testing.T) {
-	wp := WorkerPool{Spec: PoolSpec{Name: ptr("n"), Space: ptr("s"), Description: ptr("d"), Labels: &[]string{"a"},
-		PreparingTimeoutSeconds: ptr(int32(1)), DriftDetectionRunLimit: ptr(int32(2))}}
+	wp := WorkerPool{Spec: PoolSpec{
+		Name: ptr("n"), Space: ptr("s"), Description: ptr("d"), Labels: &[]string{"a"},
+		PreparingTimeoutSeconds: ptr(int32(1)), DriftDetectionRunLimit: ptr(int32(2)),
+	}}
 	want := settings(wp)
 	same := view(&remotePool{settings: want})
 	if drifted(same, want) {
