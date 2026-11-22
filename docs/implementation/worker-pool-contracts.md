@@ -539,6 +539,16 @@ PodSpecs that evade security. Run namespace egress must reach the configured
 API/store/source/tool mirror and declared verifier hosts; DNS/network policy
 allowances are explicit and may be restricted further by operators.
 
+The detailed [managed Kubernetes hosting contract](worker-hosting-contracts.md)
+defines common typed semantic inputs/outputs, explicit three-cloud identifiers,
+secret/state boundaries and ordered apply/run/destroy responsibilities.
+Each cloud delivery includes its acceptance root in the same PR; module-only
+completion is refused. Separate cluster and deployment states keep the cluster
+available through finalizer and protocol cleanup. Provider/version pins belong
+to the implementing cloud owner. The 12 GiB default resource/storage budget
+requires explicit managed-profile admission and node-capacity evidence;
+emptyDir size, resource requests/limits and available storage are distinct.
+
 Worker-hosting Terraform modules live at `deploy/terraform/modules/workers/{aws,azure,google}`;
 acceptance roots at `test/terraform/cloud/workers/{aws,azure,google}` integrate
 `test/terraform/lab`. Modules take existing server HTTPS endpoint, cluster/create

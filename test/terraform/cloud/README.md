@@ -72,3 +72,21 @@ tests skip until their fixture is recorded.
 
 The writer identity has no delete permission, so a case that asserts its
 delete is refused proves `serve` needs none (decision 0005).
+
+## Worker hosting acceptance
+
+The [managed Kubernetes worker hosting contract](../../../docs/implementation/worker-hosting-contracts.md)
+specifies the future `workers/{aws,azure,google}` roots and their shared modules
+under `deploy/terraform/modules/workers/{aws,azure,google}`. Each cloud delivery
+must include both its module and its real acceptance root, with separate
+cluster/deployment state, reference-only Secrets, verified immutable artifacts,
+explicit cloud IDs, owner/TTL inventory and ordered destroy plus cloud absence
+readback. Existing shared infrastructure retains its external ownership. These
+roots are not implemented or proven by this documentation change; their owners
+supply verified provider locks and actual apply/run/destroy instructions.
+
+The general credential-discovery examples above do not apply to worker roots:
+worker inputs explicitly name the cloud account/subscription/project, tenant
+where applicable, region/location, network and cluster. The caller's short-lived
+identity must match those IDs before mutation. Live applies keep the protected
+environment and maintainer approval requirement from ADR 0020.

@@ -2,6 +2,7 @@
   "sourceIssue": 740,
   "sourceRevision": "af9c8ab4",
   "contract": "worker-pool-contracts.md",
+  "hostingContract": "worker-hosting-contracts.md",
   "status": "specified-not-runtime-delivered",
   "referenceEvidence": "worker-pool-reference-observations.json",
   "architectureDecisions": [
@@ -286,9 +287,10 @@
         754
       ],
       "domain": "deployment",
-      "contract": "Worker-hosting modules only; four identities separate; no workload credentials or server deployment",
-      "requiredEvidence": "Static module/chart contract plus live hosting cases downstream",
-      "delivery": "unproven"
+      "contract": "Shared typed worker-hosting inputs/outputs and three-cloud mapping; separate cluster/deployment state, four identities, reference-only secrets/TLS, immutable pins, resources/capacity, ownership/TTL and ordered absence verification",
+      "requiredEvidence": "Docs/register consistency for the linked hosting specification; static module/chart and actual cloud acceptance evidence remains with downstream owners",
+      "delivery": "unproven",
+      "specification": "worker-hosting-contracts.md"
     },
     {
       "id": "eks-worker-hosting",
@@ -297,8 +299,8 @@
         755
       ],
       "domain": "deployment",
-      "contract": "Terraform EKS Auto Mode root test/terraform/cloud/workers/aws",
-      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "contract": "Shared deploy/terraform/modules/workers/aws module plus test/terraform/cloud/workers/aws cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },
     {
@@ -308,8 +310,8 @@
         756
       ],
       "domain": "deployment",
-      "contract": "Terraform AKS root test/terraform/cloud/workers/azure",
-      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "contract": "Shared deploy/terraform/modules/workers/azure module plus test/terraform/cloud/workers/azure cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },
     {
@@ -319,8 +321,8 @@
         757
       ],
       "domain": "deployment",
-      "contract": "Terraform GKE Autopilot root test/terraform/cloud/workers/google",
-      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "contract": "Shared deploy/terraform/modules/workers/google module plus test/terraform/cloud/workers/google cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },
     {
