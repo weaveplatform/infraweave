@@ -42,13 +42,13 @@ func TestAccPublicClaimStorage(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := w.store.ActivePublicPool(ctx, pool); err != nil || active {
+	if active, err := w.store.ActivePool(ctx, pool); err != nil || active {
 		t.Fatalf("waiting run counted active: %t %v", active, err)
 	}
 	if _, err := w.db.Exec(ctx, `UPDATE runs SET state='PREPARING' WHERE id=$1`, first); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := w.store.ActivePublicPool(ctx, pool); err != nil || !active {
+	if active, err := w.store.ActivePool(ctx, pool); err != nil || !active {
 		t.Fatalf("orphaned active assignment missed: %t %v", active, err)
 	}
 	if held, err := w.store.HoldingPublic(ctx, worker); err != nil || !held {
@@ -76,7 +76,7 @@ func TestAccPublicClaimStorage(t *testing.T) {
 	if _, err := w.db.Exec(ctx, `UPDATE runs SET state='FINISHED' WHERE id=$1`, first); err != nil {
 		t.Fatal(err)
 	}
-	if active, err := w.store.ActivePublicPool(ctx, pool); err != nil || active {
+	if active, err := w.store.ActivePool(ctx, pool); err != nil || active {
 		t.Fatalf("terminal run retained public ownership: %t %v", active, err)
 	}
 }
@@ -137,7 +137,7 @@ func TestAccPublicClaimStorageUnavailable(t *testing.T) {
 	id := kernel.NewULID()
 	run := lifecycle.Run{Account: w.acct, ID: id, Stack: w.stack, Version: 1}
 	_, holding := w.store.HoldingPublic(ctx, id)
-	_, active := w.store.ActivePublicPool(ctx, id)
+	_, active := w.store.ActivePool(ctx, id)
 	_, usage := w.store.PublicUsage(ctx, kernel.NewOrganizationID(), w.acct)
 	_, _, probe := w.store.ProbePublicCandidate(ctx, id, machine.Claimable(), nil, nil, nil, nil)
 	_, _, lock := w.store.LockPublicCandidate(ctx, run, id, machine.Claimable())

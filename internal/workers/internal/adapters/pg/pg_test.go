@@ -228,7 +228,7 @@ func TestAccPools(t *testing.T) {
 		f.svc.PreparingTimeout(up) != pool.DefaultPreparingTimeout {
 		t.Errorf("Update = %+v, %v", up, err)
 	}
-	reset, err := f.svc.Reset(ctx, f.admin, p.ID.String(), request(t))
+	reset, err := f.svc.Reset(ctx, f.admin, p.ID.String(), request(t), false)
 	if err != nil || reset.Serial == p.Serial || reset.Version != 3 ||
 		bytes.Equal(reset.Certificate, p.Certificate) {
 		t.Errorf("Reset = %+v, %v", reset, err)
@@ -299,7 +299,7 @@ func TestAccPoolRefusals(t *testing.T) {
 	invalid("Create with no timeout", err, "/preparingTimeoutSeconds")
 	_, err = f.svc.Create(ctx, f.admin, pool.Input{Name: "x"}, "nope")
 	invalid("Create with no request", err, "/certificateSigningRequest")
-	_, err = f.svc.Reset(ctx, f.admin, p.ID.String(), "nope")
+	_, err = f.svc.Reset(ctx, f.admin, p.ID.String(), "nope", false)
 	invalid("Reset with no request", err, "/certificateSigningRequest")
 	_, err = f.svc.Update(ctx, f.admin, p.ID.String(), kernel.Expect{}, pool.Input{})
 	invalid("Update with no name", err, "/name")
@@ -674,7 +674,7 @@ func TestAccUnavailable(t *testing.T) {
 	if _, err := s.Share(ctx, acct, p.ID); err == nil || errors.Is(err, pool.ErrNotFound) {
 		t.Errorf("Share on a closed pool = %v", err)
 	}
-	if len(pg.Held()) != 8 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
+	if len(pg.Held()) != 10 || len(pg.Keys()) != 1 || len(pg.SealedColumns()) != 1 {
 		t.Errorf("held %v, keys %v, sealed %v", pg.Held(), pg.Keys(), pg.SealedColumns())
 	}
 }

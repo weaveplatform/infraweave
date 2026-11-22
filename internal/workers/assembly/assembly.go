@@ -275,9 +275,11 @@ func (d *Domain) BindReports(r workersapi.Reports) { d.workers.BindReports(r) }
 // a poll that reports an ended container fail runs through.
 func (d *Domain) BindLiveness(l workersapi.Liveness) { d.workers.BindLiveness(l) }
 
-// BindPublicAssignments binds the runs reader protecting public ownership release.
-func (d *Domain) BindPublicAssignments(r workersapi.PublicAssignments) {
-	d.svc.BindPublicAssignments(r)
+// BindPoolAssignments binds the runs reader protecting ownership release and
+// reset of private and public pools.
+func (d *Domain) BindPoolAssignments(r workersapi.PoolAssignments) {
+	d.svc.BindPoolAssignments(r)
+	d.workers.BindAssignments(r)
 }
 
 // BindSignals binds the runs domain's workersapi.Signals, a back edge

@@ -282,6 +282,8 @@ func TestUnitClientFailures(t *testing.T) {
 			"register":   func() error { _, err := c.Register(ctx, "jws"); return err }(),
 			"poll":       func() error { _, err := c.Poll(ctx, "s", wire.PollRequest{}); return err }(),
 			"deregister": c.Deregister(ctx, "s"),
+			"bind":       c.Bind(ctx, "proof"),
+			"release":    c.Release(ctx, "proof"),
 			"spec":       func() error { _, err := c.Spec(ctx, "t", "r"); return err }(),
 			"report":     func() error { _, err := c.Report(ctx, "t", "r", wire.RunReport{}); return err }(),
 			"uploads": func() error {

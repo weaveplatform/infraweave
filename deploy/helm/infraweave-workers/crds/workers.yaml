@@ -1,0 +1,172 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: workers.workers.infraweave.io
+spec:
+  group: workers.infraweave.io
+  scope: Namespaced
+  names:
+    plural: workers
+    singular: worker
+    kind: Worker
+    listKind: WorkerList
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              poolUID:
+                type: string
+                minLength: 1
+                maxLength: 128
+              poolID:
+                type: string
+                minLength: 26
+                maxLength: 26
+                pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              slot:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+            required:
+            - poolUID
+            - poolID
+            - slot
+            x-kubernetes-validations:
+            - rule: self == oldSelf
+              message: This resource identity is immutable.
+          status:
+            type: object
+            properties:
+              observedGeneration:
+                type: integer
+                format: int64
+                minimum: 0
+              workerID:
+                type: string
+                minLength: 26
+                maxLength: 26
+                pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              assignment:
+                type: object
+                properties:
+                  runID:
+                    type: string
+                    minLength: 26
+                    maxLength: 26
+                    pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  podUID:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                  podName:
+                    type: string
+                    minLength: 1
+                    maxLength: 253
+                    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+                  state:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  stateVersion:
+                    type: integer
+                    format: int64
+                    minimum: 1
+                  preparationDeadline:
+                    type: string
+                    format: date-time
+                  runDeadline:
+                    type: string
+                    format: date-time
+                  logDeadline:
+                    type: string
+                    format: date-time
+                  startedAt:
+                    type: string
+                    format: date-time
+                  handoffPhase:
+                    type: string
+                    enum:
+                    - Pending
+                    - Staged
+                    - Acknowledged
+                    - Finished
+                  exitCode:
+                    type: integer
+                    format: int32
+                    minimum: -2147483648
+                    maximum: 2147483647
+                  exitReason:
+                    type: string
+                    enum:
+                    - exited
+                    - killed
+                    - out-of-memory
+                    - missing
+                    - run-timeout
+                    - log-timeout
+                  handoffAcknowledged:
+                    type: boolean
+                required:
+                - runID
+                - state
+                - stateVersion
+                - handoffAcknowledged
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      minLength: 1
+                      maxLength: 316
+                    status:
+                      type: string
+                      enum:
+                      - 'True'
+                      - 'False'
+                      - Unknown
+                    observedGeneration:
+                      type: integer
+                      format: int64
+                      minimum: 0
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    reason:
+                      type: string
+                      minLength: 1
+                      maxLength: 1024
+                    message:
+                      type: string
+                      minLength: 0
+                      maxLength: 32768
+                  required:
+                  - type
+                  - status
+                  - lastTransitionTime
+                  - reason
+                  - message
+                maxItems: 32
+                x-kubernetes-list-type: map
+                x-kubernetes-list-map-keys:
+                - type
+        required:
+        - spec

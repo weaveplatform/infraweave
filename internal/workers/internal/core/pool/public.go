@@ -14,8 +14,9 @@ import (
 var (
 	// ErrPublicExists refuses creating a second installation pool.
 	ErrPublicExists = errors.New("workers: the installation public pool already exists")
-	// ErrPublicBusy refuses releasing controller ownership while workers or active assignments remain.
-	ErrPublicBusy = errors.New("workers: the installation public pool has registered workers or active assignments")
+	// ErrBusy refuses releasing controller ownership while workers or runs on
+	// workers remain.
+	ErrBusy = errors.New("workers: the pool has registered workers or runs on workers")
 	// ErrPublicCondition refuses credential rotation without a precondition.
 	ErrPublicCondition = errors.New("workers: public pool reset requires a credential precondition")
 )
@@ -73,35 +74,8 @@ func (s *Service) ResetPublic(ctx context.Context, expect kernel.Expect, req str
 			return err //nolint:wrapcheck // the shared precondition is answered as it is
 		}
 		if releaseBinding {
-			cert, err := x509.ParseCertificate(out.Certificate)
-			if err != nil {
-				return fmt.Errorf("workers: read public pool certificate: %w", err)
-			}
-			if bytes.Equal(cert.RawSubjectPublicKeyInfo, key.RawSubjectPublicKeyInfo) {
-				return &kernel.Invalid{
-					Detail: "Releasing controller ownership requires a replacement pool key.",
-					Errors: []kernel.FieldError{{Pointer: csrPointer, Reason: kernel.ReasonRule, Message: "Use a different pool key to revoke the old controller."}},
-				}
-			}
-			busy, err := s.store.PublicWorkers(ctx, out.ID)
-			if err != nil {
-				return err //nolint:wrapcheck // the store names the read
-			}
-			if busy {
-				return ErrPublicBusy
-			}
-			s.mu.RLock()
-			assignments := s.publicAssignments
-			s.mu.RUnlock()
-			if assignments == nil {
-				return fmt.Errorf("workers: public assignment reader is not bound: %w", kernel.ErrUnavailable)
-			}
-			busy, err = assignments.ActivePublicPool(ctx, out.ID)
-			if err != nil {
-				return err //nolint:wrapcheck // the runs domain names the read
-			}
-			if busy {
-				return ErrPublicBusy
+			if err := s.release(ctx, out, key); err != nil {
+				return err
 			}
 		}
 		if err := s.sign(ctx, &out, key); err != nil {
@@ -112,4 +86,42 @@ func (s *Service) ResetPublic(ctx context.Context, expect kernel.Expect, req str
 		return s.store.WritePublic(ctx, out) //nolint:wrapcheck // the store names the write
 	})
 	return out, err //nolint:wrapcheck // the transaction names each failure
+}
+
+// release removes the hosting binding of out, whose row the caller's
+// transaction locks, for a reset to key. A different key is required, so
+// the old controller can no longer sign, and no worker or run on a worker
+// may remain; otherwise ErrBusy.
+func (s *Service) release(ctx context.Context, out Pool, key *x509.CertificateRequest) error {
+	cert, err := x509.ParseCertificate(out.Certificate)
+	if err != nil {
+		return fmt.Errorf("workers: read pool certificate: %w", err)
+	}
+	if bytes.Equal(cert.RawSubjectPublicKeyInfo, key.RawSubjectPublicKeyInfo) {
+		return &kernel.Invalid{
+			Detail: "Releasing controller ownership requires a replacement pool key.",
+			Errors: []kernel.FieldError{{Pointer: csrPointer, Reason: kernel.ReasonRule, Message: "Use a different pool key to revoke the old controller."}},
+		}
+	}
+	busy, err := s.store.HasWorkers(ctx, out.ID)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	if busy {
+		return ErrBusy
+	}
+	s.mu.RLock()
+	assignments := s.poolAssignments
+	s.mu.RUnlock()
+	if assignments == nil {
+		return fmt.Errorf("workers: pool assignment reader is not bound: %w", kernel.ErrUnavailable)
+	}
+	busy, err = assignments.ActivePool(ctx, out.ID)
+	if err != nil {
+		return err //nolint:wrapcheck // the runs domain names the read
+	}
+	if busy {
+		return ErrBusy
+	}
+	return s.store.Unbind(ctx, out.ID) //nolint:wrapcheck // the store names the write
 }

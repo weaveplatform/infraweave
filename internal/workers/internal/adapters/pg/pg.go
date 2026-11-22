@@ -52,6 +52,8 @@ func Held() []integrity.Held {
 		{Entity: "account", Table: "worker_nonces", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "worker_runner_images", Columns: []string{"account_id"}},
 		{Entity: "account", Table: "worker_pool_samples", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "worker_pool_management", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "worker_pool_bindings", Columns: []string{"account_id"}},
 		{Entity: "space", Table: "worker_pools", Columns: []string{"account_id", "space_id"}},
 	}
 }
@@ -152,7 +154,10 @@ func (s *Store) mint(ctx context.Context, mint func() (pool.Authority, error)) e
 // columns are a pool's columns as scan reads them, over worker_pools p.
 const columns = `p.account_id, p.organization_id, p.id, p.name, p.space_id, p.description, p.labels,
 	p.preparing_timeout_seconds, p.drift_detection_run_limit, p.certificate, p.serial,
-	p.created_at, p.updated_at, p.version`
+	p.created_at, p.updated_at, p.version,
+	(SELECT jsonb_build_object('clusterID', m.cluster_id, 'namespace', m.namespace,
+	'resourceUID', m.resource_uid) FROM worker_pool_management m
+	WHERE m.account_id = p.account_id AND m.pool_id = p.id AND NOT m.revoked)`
 
 // scan reads columns, then into extra.
 func scan(row pgx.Row, extra ...any) (pool.Pool, error) {
@@ -173,6 +178,7 @@ func scan(row pgx.Row, extra ...any) (pool.Pool, error) {
 		&p.CreatedAt,
 		&p.UpdatedAt,
 		&p.Version,
+		&p.Management,
 	}, extra...)...)
 	if preparing != nil {
 		p.PreparingTimeout = time.Duration(*preparing) * time.Second
@@ -191,13 +197,22 @@ func seconds(d time.Duration) *int32 {
 
 // Create writes a new pool.
 func (s *Store) Create(ctx context.Context, p pool.Pool) error {
+	if p.Management != nil && !tx.In(ctx) {
+		return errManagedTransaction
+	}
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO worker_pools (account_id, organization_id, id,
 			name, space_id, description, labels, preparing_timeout_seconds,
 			drift_detection_run_limit, certificate, serial, created_at, updated_at, version)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		p.Account, p.Organization, p.ID, p.Name, p.Space, p.Description, p.Labels, seconds(p.PreparingTimeout),
 		p.DriftDetectionRunLimit, p.Certificate, p.Serial, p.CreatedAt, p.UpdatedAt, p.Version)
-	return writeError(p, err)
+	if err := writeError(p, err); err != nil {
+		return err
+	}
+	if p.Management != nil {
+		return s.createManagement(ctx, p)
+	}
+	return nil
 }
 
 // writeError names a refused write of p: a name another pool of its
@@ -289,6 +304,7 @@ func (s *Store) SetRunnerImages(ctx context.Context, acct kernel.AccountID, in i
 // Delete deletes acct's pool id with its workers and their nonces.
 func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
 	for _, stmt := range []string{
+		`DELETE FROM worker_pool_bindings WHERE account_id = $1 AND pool_id = $2`,
 		`DELETE FROM worker_nonces WHERE account_id = $1 AND pool_id = $2`,
 		`DELETE FROM workers WHERE account_id = $1 AND pool_id = $2`,
 		`DELETE FROM worker_pools WHERE account_id = $1 AND id = $2`,
@@ -318,6 +334,8 @@ var purged = []struct{ table, key string }{
 	{"worker_runner_images", "account_id"},
 	{"worker_nonces", "pool_id, jti"},
 	{"workers", "id"},
+	{"worker_pool_bindings", "pool_id"},
+	{"worker_pool_management", "cluster_id, namespace, resource_uid"},
 	{"worker_pools", "id"},
 }
 

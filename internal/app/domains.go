@@ -218,7 +218,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.SetStackStatus(runs.StackStatus())
 	stacks.BindDestroyer(runs.StackDestroyer())
 	workers.BindScheduler(runs.Scheduler())
-	workers.BindPublicAssignments(runs.PublicAssignments())
+	workers.BindPoolAssignments(runs.PoolAssignments())
 	workers.BindReports(runs.Reports())
 	workers.BindLiveness(runs.Liveness())
 	workers.BindSignals(runs.Signals())

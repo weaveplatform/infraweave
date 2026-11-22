@@ -80,11 +80,81 @@ paths:
           $ref: '#/components/responses/ApiDisabled'
         default:
           $ref: '#/components/responses/Problem'
+  /pools/bind:
+    post:
+      summary: Bind a pool to its hosting controller
+      description: >-
+        Records the proof's owner as the only controller that hosts the pool. Binding again with the same owner succeeds. Another owner, a controller-managed pool of another resource, or workers registered before any binding answer 409 invalid-state; the owner of another pool's binding answers 409 too.
+      operationId: workerPoolBind
+      security: []
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoolOwnershipRequest'
+      responses:
+        '204':
+          description: The pool is bound to the owner.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /pools/release:
+    post:
+      summary: Release a pool's hosting binding
+      description: >-
+        Removes the proof owner's hosting binding once the pool has no registered worker and no run on a worker; the pool, its settings and its certificate remain. A pool with no binding succeeds. Another owner's binding, remaining workers or active runs answer 409 invalid-state.
+      operationId: workerPoolRelease
+      security: []
+      tags:
+        - Workers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoolOwnershipRequest'
+      responses:
+        '204':
+          description: The pool has no hosting binding.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
   /register:
     post:
       summary: Register a worker
       description: >-
-        Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version.
+        Registers a worker of the pool the registration names, or resumes the worker it names. The certificate must chain to the installation's pool CA and carry the pool's current serial. A new worker beyond the organization's private-workers limit answers 403 limit-reached; a resumed one is not counted again. Missing the signed plan-sanitization-v1 capability or using a version older than the server's previous minor answers 422 validation-failed, naming the required capability or version. A registration whose owner differs from the pool's hosting binding, or that omits the owner of a bound pool, answers 409 invalid-state.
       operationId: workerRegister
       security: []
       tags:
@@ -111,6 +181,8 @@ paths:
                 $ref: '#/components/schemas/Registration'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/InvalidState'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '503':
@@ -715,6 +787,17 @@ components:
           type: integer
           format: int64
           description: When the renewed session token expires, in Unix seconds.
+    PoolOwnershipRequest:
+      description: A hosting ownership proof, signed with the pool's private key.
+      type: object
+      additionalProperties: false
+      required: [proof]
+      properties:
+        proof:
+          type: string
+          maxLength: 32768
+          description: >-
+            A compact JWS, ES256, whose protected header's x5c carries the pool's current certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; owner, an object of clusterID and namespace, each a lowercase DNS label of at most 63 characters, and resourceUID, the opaque Kubernetes UID of the owning resource, at most 128 characters; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; and jti, a value the pool has not used in the last ten minutes.
     Problem:
       description: >-
         An RFC 9457 problem detail. Every error response uses the status code and this body.
@@ -806,7 +889,7 @@ components:
           type: string
           maxLength: 32768
           description: >-
-            A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; and worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker.
+            A compact JWS, ES256, whose protected header's x5c carries the pool's certificate from its pool token. Its payload is a JSON object: pool, the pool's ID; iat, when it was signed, in Unix seconds, within five minutes of the server's clock; jti, a value the pool has not used in the last ten minutes; version, the launcher's version; capabilities, at most 16 strings of at most 64 characters, including plan-sanitization-v1 and, for installation public workers, public-pool-v1 (otherwise 422 requires a launcher upgrade); os and arch, the host's, each at most 64 characters; metadata, an object of at most 32 strings describing the worker, keys at most 64 characters and values at most 255; worker, the ID of a worker of the pool to resume, which keeps its run, or absent for a new worker; and, for a pool a controller hosts, owner, the bound hosting identity (clusterID, namespace and resourceUID), and slot, the logical slot from 0 to 2147483647. A pool with a hosting binding admits only its owner's registrations, and each slot holds at most one worker: registering a slot again resumes its worker.
     Registration:
       description: The registered worker and its session token.
       type: object

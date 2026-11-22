@@ -36,10 +36,11 @@ type PoolGuard interface {
 	PoolInUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]PoolUse, error)
 }
 
-// PublicAssignments reads active execution ownership under the public pool lock.
-// Implementations join the caller transaction so a reset cannot race a claim.
-type PublicAssignments interface {
-	ActivePublicPool(context.Context, kernel.ULID) (bool, error)
+// PoolAssignments reads whether runs remain on a private or public pool's
+// workers. Implementations join the caller transaction, whose pool lock keeps
+// a reset or hosting release from racing a claim.
+type PoolAssignments interface {
+	ActivePool(context.Context, kernel.ULID) (bool, error)
 }
 
 // Claim is a worker's claim of a run: the worker, its account and pool,

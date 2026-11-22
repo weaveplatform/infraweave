@@ -226,10 +226,17 @@ func (s Server) WorkerPoolCreate(ctx context.Context, req api.WorkerPoolCreateRe
 		return nil, err
 	}
 	b := req.Body
+	if b.Management != nil && (req.Params.IdempotencyKey == nil || strings.TrimSpace(*req.Params.IdempotencyKey) == "") {
+		//nolint:wrapcheck // an API problem is answered as it is
+		return nil, problem.InvalidRequest.Error(
+			"Managed pool creation requires Idempotency-Key derived from the resource UID.",
+		)
+	}
 	wp, err := s.svc.Create(ctx, p, pool.Input{
 		Name: b.Name, Space: deref(b.Space), Description: deref(b.Description),
 		Labels: deref(b.Labels), PreparingTimeoutSeconds: b.PreparingTimeoutSeconds,
 		DriftDetectionRunLimit: b.DriftDetectionRunLimit,
+		Management:             ownerInput(b.Management),
 	}, b.CertificateSigningRequest)
 	if err != nil {
 		return nil, poolError(err)
@@ -265,6 +272,7 @@ func (s Server) update(ctx context.Context, p kernel.Principal, id string, expec
 		Name: b.Name, Space: deref(b.Space), Description: deref(b.Description),
 		Labels: deref(b.Labels), PreparingTimeoutSeconds: b.PreparingTimeoutSeconds,
 		DriftDetectionRunLimit: b.DriftDetectionRunLimit,
+		Management:             ownerInput(b.Management),
 	})
 	return wp, err //nolint:wrapcheck // answered by poolError
 }
@@ -284,6 +292,11 @@ func (s Server) WorkerPoolPatch(ctx context.Context, req api.WorkerPoolPatchRequ
 		wp, err := s.svc.Read(ctx, p.AccountID, req.WorkerPoolId)
 		if err != nil {
 			return api.WorkerPoolUpdateRequest{}, 0, err //nolint:wrapcheck // answered by poolError
+		}
+		if wp.Management != nil {
+			if _, supplied := patch["management"]; !supplied {
+				return api.WorkerPoolUpdateRequest{}, 0, pool.ErrOwnership
+			}
 		}
 		slugs, err := s.spaces.Slugs(ctx, p.AccountID)
 		if err != nil {
@@ -313,6 +326,7 @@ func inputView(wp pool.Pool, space string) api.WorkerPoolUpdateRequest {
 	out := api.WorkerPoolUpdateRequest{
 		Name: wp.Name, Space: &space, Labels: &wp.Labels,
 		DriftDetectionRunLimit: wp.DriftDetectionRunLimit,
+		Management:             ownerView(wp.Management),
 	}
 	if wp.Description != "" {
 		out.Description = &wp.Description
@@ -360,7 +374,8 @@ func (s Server) WorkerPoolReset(ctx context.Context, req api.WorkerPoolResetRequ
 	if err != nil {
 		return nil, err
 	}
-	wp, err := s.svc.Reset(ctx, p, req.WorkerPoolId, req.Body.CertificateSigningRequest)
+	release := req.Body.ReleaseBinding != nil && *req.Body.ReleaseBinding
+	wp, err := s.svc.Reset(ctx, p, req.WorkerPoolId, req.Body.CertificateSigningRequest, release)
 	if err != nil {
 		return nil, poolError(err)
 	}
@@ -428,12 +443,14 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...pool.Pool)
 			CreatedAt: unix(
 				wp.CreatedAt.Unix(),
 			),
-			UpdatedAt:      unix(wp.UpdatedAt.Unix()),
-			IntentProjects: []api.IntentProjectReference{},
-			Scans:          []api.WorkerPoolScanReference{},
-			Users:          []api.WorkerPoolUser{},
-			Workers:        make([]api.Worker, 0, len(workers[wp.ID])),
-			WorkersCount:   int32(len(workers[wp.ID])), //nolint:gosec // limited by private-workers
+			UpdatedAt:              unix(wp.UpdatedAt.Unix()),
+			IntentProjects:         []api.IntentProjectReference{},
+			Scans:                  []api.WorkerPoolScanReference{},
+			Users:                  []api.WorkerPoolUser{},
+			Workers:                make([]api.Worker, 0, len(workers[wp.ID])),
+			WorkersCount:           int32(len(workers[wp.ID])), //nolint:gosec // limited by private-workers
+			Management:             ownerView(wp.Management),
+			ManagedByK8sController: wp.Management != nil,
 		}
 		for _, w := range workers[wp.ID] {
 			v.Workers = append(v.Workers, workerView(w))
@@ -504,6 +521,15 @@ func poolError(err error) error {
 	if errors.Is(err, pool.ErrNameTaken) {
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.AlreadyExists.Error("Another worker pool of this account has this name.")
+	}
+	if errors.Is(err, pool.ErrOwnership) {
+		return problem.InvalidState.Error("The worker pool's immutable management identity conflicts with this request.") //nolint:wrapcheck // an API problem is answered as it is
+	}
+	if errors.Is(err, pool.ErrBusy) {
+		return problem.InvalidState.Error("The worker pool still has registered workers or runs on workers.") //nolint:wrapcheck // an API problem is answered as it is
+	}
+	if errors.Is(err, pool.ErrConditionRequired) {
+		return problem.PreconditionRequired.Error("Managed worker pool settings require If-Match.") //nolint:wrapcheck // an API problem is answered as it is
 	}
 	if errors.Is(err, pool.ErrNotFound) {
 		//nolint:wrapcheck // as above

@@ -100,7 +100,7 @@ func TestAccWorkerResetFencesClaimAfterUnlockedRead(t *testing.T) {
 		result <- err
 	}()
 	<-boundary.reached
-	reset, err := f.svc.Reset(t.Context(), f.admin, p.ID.String(), request(t))
+	reset, err := f.svc.Reset(t.Context(), f.admin, p.ID.String(), request(t), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestAccWorkerSeenWaitsForResetAndDoesNotMutateStaleGeneration(t *testing.T)
 	csr := request(t)
 	go func() {
 		resetDone <- tx.Do(t.Context(), f.db, tx.Options{}, func(ctx context.Context) error {
-			if _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csr); err != nil {
+			if _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csr, false); err != nil {
 				return err
 			}
 			close(locked)
@@ -238,7 +238,7 @@ func TestAccWorkerAdmissionLocksPoolBeforeWorkerAndSerializesReset(t *testing.T)
 	waitForLock(t, f.db)
 	resetDone := make(chan error, 1)
 	csr := request(t)
-	go func() { _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csr); resetDone <- err }()
+	go func() { _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csr, false); resetDone <- err }()
 	for {
 		var waiting int
 		if err := f.db.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'`).Scan(&waiting); err != nil {
@@ -311,7 +311,7 @@ func TestAccWorkerRegistrationTokenFailureRollsBackNonceAndResume(t *testing.T) 
 		t.Fatal(err)
 	}
 	keyB, csrB := registrationKey(t)
-	reset, err := f.svc.Reset(t.Context(), f.admin, p.ID.String(), csrB)
+	reset, err := f.svc.Reset(t.Context(), f.admin, p.ID.String(), csrB, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func TestAccWorkerRegistrationAndResetShareOneGenerationFence(t *testing.T) {
 	}
 	reset := make(chan error, 1)
 	csrB := request(t)
-	go func() { _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csrB); reset <- err }()
+	go func() { _, err := f.svc.Reset(ctx, f.admin, p.ID.String(), csrB, false); reset <- err }()
 	waitForLock(t, f.db)
 	select {
 	case err := <-reset:

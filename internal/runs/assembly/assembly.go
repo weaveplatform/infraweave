@@ -299,8 +299,8 @@ func New(d Deps) *Domain {
 	}
 }
 
-// PublicAssignments supplies the installation pool ownership release guard.
-func (d *Domain) PublicAssignments() workersapi.PublicAssignments { return d.store }
+// PoolAssignments supplies the ownership release and reset guard of pools.
+func (d *Domain) PoolAssignments() workersapi.PoolAssignments { return d.store }
 
 // SpaceOf finds the space of a run's stack by the run's ID, which
 // internal/app registers with the access domain for Entity.

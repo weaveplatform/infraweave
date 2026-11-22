@@ -113,14 +113,15 @@ func (s *Store) AssignPublic(ctx context.Context, run lifecycle.Run, worker, poo
 	return nil
 }
 
-// ActivePublicPool includes orphaned worker assignments until run recovery ends
-// them, so deleting a worker never makes an in-flight ownership reset safe.
-func (s *Store) ActivePublicPool(ctx context.Context, pool kernel.ULID) (bool, error) {
+// ActivePool includes orphaned worker assignments until run recovery ends
+// them, so deleting a worker never makes an in-flight ownership reset or
+// hosting release safe. pool is a private or the public pool's ID.
+func (s *Store) ActivePool(ctx context.Context, pool kernel.ULID) (bool, error) {
 	var active bool
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs
-		WHERE public_worker_pool_id=$1 AND state=ANY($2))`, pool, onWorker).Scan(&active)
+		WHERE (public_worker_pool_id=$1 OR worker_pool_id=$1) AND state=ANY($2))`, pool, onWorker).Scan(&active)
 	if err != nil {
-		return false, fmt.Errorf("runs: read public pool assignments: %w", sql.Unavailable(err))
+		return false, fmt.Errorf("runs: read pool assignments: %w", sql.Unavailable(err))
 	}
 	return active, nil
 }

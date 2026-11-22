@@ -46,6 +46,8 @@ type store struct {
 	removeOnLock kernel.ULID
 	wake         func(kernel.ULID)
 	images       images.Images
+	bindings     map[kernel.ULID]kernel.WorkerOwner
+	managed      map[kernel.WorkerOwner]*kernel.ULID
 }
 
 func (s *store) down(method string) error {

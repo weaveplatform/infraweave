@@ -10606,6 +10606,9 @@ type WorkerPool struct {
 	// where the infraweave API and Kubernetes API become out of sync.
 	ManagedByK8sController bool `json:"managedByK8sController"`
 
+	// Management Immutable Kubernetes resource identity; carrying it grants no permission.
+	Management *WorkerPoolManagement `json:"management,omitempty"`
+
 	// Name Mutable name of the WorkerPool, unique within the scope of a single account.
 	Name string `json:"name"`
 
@@ -10679,12 +10682,22 @@ type WorkerPoolCreateRequest struct {
 	DriftDetectionRunLimit *int32    `json:"driftDetectionRunLimit,omitempty"`
 	Labels                 *[]string `json:"labels,omitempty"`
 
+	// Management Immutable Kubernetes resource identity; carrying it grants no permission.
+	Management *WorkerPoolManagement `json:"management,omitempty"`
+
 	// Name name of the worker pool
 	Name                    string `json:"name"`
 	PreparingTimeoutSeconds *int32 `json:"preparingTimeoutSeconds,omitempty"`
 
 	// Space ID (slug) of the space the worker pool is in
 	Space *string `json:"space,omitempty"`
+}
+
+// WorkerPoolManagement Immutable Kubernetes resource identity; carrying it grants no permission.
+type WorkerPoolManagement struct {
+	ClusterID   string `json:"clusterID"`
+	Namespace   string `json:"namespace"`
+	ResourceUID string `json:"resourceUID"`
 }
 
 // WorkerPoolPage One page of a cursor-paginated list.
@@ -10703,6 +10716,9 @@ type WorkerPoolRef struct {
 // WorkerPoolResetRequest The arguments of workerPoolReset not carried in the path.
 type WorkerPoolResetRequest struct {
 	CertificateSigningRequest string `json:"certificateSigningRequest"`
+
+	// ReleaseBinding Release an abandoned controller's hosting binding, requiring a different key and no remaining workers or runs on workers.
+	ReleaseBinding *bool `json:"releaseBinding,omitempty"`
 }
 
 // WorkerPoolScanReference WorkerPoolScanReference is a scan using the worker pool, viewed from the worker pool.
@@ -10719,12 +10735,15 @@ type WorkerPoolScanReference struct {
 
 // WorkerPoolUpdateRequest The arguments of workerPoolUpdate not carried in the path.
 type WorkerPoolUpdateRequest struct {
-	Description             *string   `json:"description,omitempty"`
-	DriftDetectionRunLimit  *int32    `json:"driftDetectionRunLimit,omitempty"`
-	Labels                  *[]string `json:"labels,omitempty"`
-	Name                    string    `json:"name"`
-	PreparingTimeoutSeconds *int32    `json:"preparingTimeoutSeconds,omitempty"`
-	Space                   *string   `json:"space,omitempty"`
+	Description            *string   `json:"description,omitempty"`
+	DriftDetectionRunLimit *int32    `json:"driftDetectionRunLimit,omitempty"`
+	Labels                 *[]string `json:"labels,omitempty"`
+
+	// Management Immutable Kubernetes resource identity; carrying it grants no permission.
+	Management              *WorkerPoolManagement `json:"management,omitempty"`
+	Name                    string                `json:"name"`
+	PreparingTimeoutSeconds *int32                `json:"preparingTimeoutSeconds,omitempty"`
+	Space                   *string               `json:"space,omitempty"`
 }
 
 // WorkerPoolUser WorkerPoolUser represents a user (module or stacks) of the worker pool.
@@ -12766,6 +12785,13 @@ type WorkerPoolsParams struct {
 type WorkerPoolCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// WorkerPoolManagedParams defines parameters for WorkerPoolManaged.
+type WorkerPoolManagedParams struct {
+	ClusterID   string `form:"clusterID" json:"clusterID"`
+	Namespace   string `form:"namespace" json:"namespace"`
+	ResourceUID string `form:"resourceUID" json:"resourceUID"`
 }
 
 // WorkerPoolDeleteParams defines parameters for WorkerPoolDelete.
@@ -19679,6 +19705,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
 	WorkerPoolCreate(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerPoolManaged Get Managed Worker Pool
+	//
+	// Resolve the live private pool of an exact immutable management identity, within the caller's account and readable spaces. Deleted resources remain reserved and answer 404.
+	//
+	// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
+	WorkerPoolManaged(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchWorkerPoolsWithBody Search Worker Pools
 	//
@@ -29759,6 +29792,23 @@ func (c *Client) WorkerPoolCreateWithBody(ctx context.Context, params *WorkerPoo
 // Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
 func (c *Client) WorkerPoolCreate(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerPoolCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerPoolManaged Get Managed Worker Pool
+//
+// Resolve the live private pool of an exact immutable management identity, within the caller's account and readable spaces. Deleted resources remain reserved and answer 404.
+//
+// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
+func (c *Client) WorkerPoolManaged(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerPoolManagedRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -50691,6 +50741,72 @@ func NewWorkerPoolCreateRequestWithBody(server string, params *WorkerPoolCreateP
 	return req, nil
 }
 
+// NewWorkerPoolManagedRequest constructs an http.Request for the WorkerPoolManaged method
+func NewWorkerPoolManagedRequest(server string, params *WorkerPoolManagedParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/managed")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "clusterID", params.ClusterID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resourceUID", params.ResourceUID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchWorkerPoolsRequest calls the generic SearchWorkerPools builder with application/json body
 func NewSearchWorkerPoolsRequest(server string, body SearchWorkerPoolsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -56626,6 +56742,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /worker-pools (the `WorkerPoolCreate` operationId).
 	WorkerPoolCreateWithResponse(ctx context.Context, params *WorkerPoolCreateParams, body WorkerPoolCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerPoolCreateResponse, error)
+
+	// WorkerPoolManagedWithResponse Get Managed Worker Pool
+	//
+	// Resolve the live private pool of an exact immutable management identity, within the caller's account and readable spaces. Deleted resources remain reserved and answer 404.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
+	WorkerPoolManagedWithResponse(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*WorkerPoolManagedResponse, error)
 
 	// SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
 	//
@@ -95302,6 +95427,102 @@ func (r WorkerPoolCreateResponse) ContentType() string {
 	return ""
 }
 
+// WorkerPoolManagedResponse200Headers the declared response headers of an HTTP 200 response for WorkerPoolManaged
+type WorkerPoolManagedResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolManagedResponse429Headers the declared response headers of an HTTP 429 response for WorkerPoolManaged
+type WorkerPoolManagedResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerPoolManagedResponse503Headers the declared response headers of an HTTP 503 response for WorkerPoolManaged
+type WorkerPoolManagedResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerPoolManagedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkerPool
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerPoolManagedResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerPoolManagedResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerPoolManagedResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerPoolManagedResponse) GetJSON200() *WorkerPool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r WorkerPoolManagedResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerPoolManagedResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerPoolManagedResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerPoolManagedResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerPoolManagedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerPoolManagedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerPoolManagedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerPoolManagedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SearchWorkerPoolsResponse200Headers the declared response headers of an HTTP 200 response for SearchWorkerPools
 type SearchWorkerPoolsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -105238,6 +105459,21 @@ func (c *ClientWithResponses) WorkerPoolCreateWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseWorkerPoolCreateResponse(rsp)
+}
+
+// WorkerPoolManagedWithResponse Get Managed Worker Pool
+//
+// Resolve the live private pool of an exact immutable management identity, within the caller's account and readable spaces. Deleted resources remain reserved and answer 404.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
+func (c *ClientWithResponses) WorkerPoolManagedWithResponse(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*WorkerPoolManagedResponse, error) {
+	rsp, err := c.WorkerPoolManaged(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerPoolManagedResponse(rsp)
 }
 
 // SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
@@ -154851,6 +155087,135 @@ func ParseWorkerPoolCreateResponse(rsp *http.Response) (*WorkerPoolCreateRespons
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerPoolCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerPoolManagedResponse parses an HTTP response from a WorkerPoolManagedWithResponse call
+func ParseWorkerPoolManagedResponse(rsp *http.Response) (*WorkerPoolManagedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerPoolManagedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkerPool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerPoolManagedResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerPoolManagedResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerPoolManagedResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

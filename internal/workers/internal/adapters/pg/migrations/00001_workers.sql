@@ -67,6 +67,37 @@ CREATE INDEX worker_pools_space ON worker_pools (account_id, space_id);
 -- A registration names the pool alone.
 CREATE UNIQUE INDEX worker_pools_id ON worker_pools (id);
 
+-- Resource ownership outlives a pool and HTTP response retention. A deleted
+-- pool leaves a tombstone: the same Kubernetes UID cannot create a replacement.
+CREATE TABLE worker_pool_management (
+    account_id   uuid        NOT NULL,
+    cluster_id   text        NOT NULL,
+    namespace    text        NOT NULL,
+    resource_uid text        NOT NULL,
+    pool_id      uuid        UNIQUE REFERENCES worker_pools (id) ON DELETE SET NULL,
+    revoked      boolean     NOT NULL DEFAULT false,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, cluster_id, namespace, resource_uid),
+    UNIQUE (cluster_id, namespace, resource_uid)
+);
+
+-- Certificate-authorized hosting ownership is independent of account API
+-- management: one controller resource hosts a pool and registers its slots.
+-- Installation public pools have no account; private bindings do. A pool's
+-- delete removes its binding; release removes it once no worker remains.
+CREATE TABLE worker_pool_bindings (
+    pool_id      uuid        PRIMARY KEY,
+    account_id   uuid,
+    cluster_id   text        NOT NULL,
+    namespace    text        NOT NULL,
+    resource_uid text        NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (cluster_id, namespace, resource_uid)
+);
+
+COMMENT ON TABLE worker_pool_bindings IS
+    'global: certificate-authorized hosting identity for private and installation public pools; private bindings retain account scope';
+
 -- A registered worker of a pool, until it deregisters or its pool is
 -- deleted. serial is the pool certificate's serial it registered under,
 -- which a reset leaves behind. last_seen_at is its last call; offline is
@@ -76,7 +107,8 @@ CREATE UNIQUE INDEX worker_pools_id ON worker_pools (id);
 -- worker deregisters. organization_id is its pool's, which the
 -- private-workers limit counts by.
 -- Installation public workers leave both tenant columns NULL and do not
--- contribute to any organization's private-worker usage.
+-- contribute to any organization's private-worker usage. slot is a
+-- controller's logical slot, NULL for a launcher's worker.
 CREATE TABLE workers (
     account_id      uuid,
     organization_id uuid,
@@ -94,6 +126,7 @@ CREATE TABLE workers (
     last_seen_at    timestamptz NOT NULL DEFAULT now(),
     available_at    timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
+    slot            integer     CHECK (slot >= 0),
     PRIMARY KEY (id),
     CHECK ((account_id IS NULL) = (organization_id IS NULL))
 );
@@ -104,6 +137,9 @@ COMMENT ON TABLE workers IS
 CREATE INDEX workers_pool ON workers (account_id, pool_id);
 
 CREATE INDEX workers_organization ON workers (organization_id);
+
+-- A slot holds one worker, so a retried registration resumes it.
+CREATE UNIQUE INDEX workers_slot ON workers (pool_id, slot) WHERE slot IS NOT NULL;
 
 -- The reap reads the workers unseen since a time, of every account.
 CREATE INDEX workers_seen ON workers (last_seen_at);

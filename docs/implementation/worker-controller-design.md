@@ -1,0 +1,164 @@
+# Kubernetes worker controller implementation notes
+
+Status: implemented for #745 (pool and worker resources, ownership and
+registration). The accepted
+[worker contract](worker-pool-contracts.md#controller-and-resources) governs the
+public interface; this document records the concrete ownership and recovery
+choices behind it. Pod execution (#746), lifecycle recovery (#747) and the
+chart (#748) are separate deliveries.
+
+## Process and API boundaries
+
+`infraweave worker-controller` is agent code. It uses the worker protocol for
+pool binding and registration, and the existing account API for scoped Managed
+pool creation/read/update/delete. It imports no server domain or database code.
+The agent import rules allow kernel value types and its own wire clients, but
+not `pkg/client`; generate the small management client from the same account
+OpenAPI source, retaining one schema and normal server authorization.
+
+Use official Kubernetes client/API modules at v0.37.2, matching the actual k3s
+v1.37.2 lab. Its version-specific vulnerability lookup returned no results on
+2026-11-22. Prefer the dynamic client for custom resources and typed core/Lease
+clients; do not link an API-server implementation to operate CRDs.
+
+## Durable ownership
+
+A shared `kernel.WorkerOwner` is the immutable tuple of cluster ID, namespace
+and opaque Kubernetes WorkerPool UID. Names are not identities. It appears in
+Managed create/update inputs and in certificate-signed protocol proofs.
+
+Use two distinct records within workers persistence:
+
+- A private management registry reserves each Managed resource tuple and its
+  pool ID beyond HTTP idempotency retention. It retains a tombstone when the
+  pool is deleted or explicitly released for recovery. A stale resource cannot
+  manufacture another pool when its status or a create response is lost.
+  Account purge removes that account's retained registry records.
+- A hosting binding selects the sole live owner of a private or public pool.
+  It is acquired by the current pool certificate, not by an account management
+  key alone. It survives controller restart and is released only after workers
+  and active assignments are absent. Existing/Public finalizers retain the
+  remote pool. Explicit reset recovery needs a replacement private key.
+
+Managed create reserves management and hosting ownership atomically with the
+pool. A normal update cannot add or replace management identity; owned settings
+updates require the exact identity and current version. Normal authorized
+recovery deletion/reset keeps its existing action checks. Managed lookup is
+account/space scoped, returns no private key, and never adopts a name match.
+
+Hosting owner acquisition is serialized with the pool and owner tuple. Same
+owner plus fresh proof is idempotent; a competing owner, legacy unowned workers,
+retained management tombstone or active work is a conflict. Identical signed
+proof replay remains invalid: retries sign a fresh timestamp/nonce. Register
+requires the exact bound owner, and a Docker registration cannot omit ownership
+to join a bound pool. All certificate/current-generation checks and effects
+remain in their short transaction; no network wait holds a database connection.
+
+## Kubernetes reconciliation and execution readiness
+
+Persist finalizers before remote effects. WorkerPool status records the stable
+remote ID and owner; Worker objects have deterministic slot names and immutable
+parent UID/pool/slot. A restart recovers that identity and re-registers the same
+worker, rather than creating another due to empty process memory. Use versioned
+status updates and bounded work per reconciliation. A quota denial stops further
+slot creation for that attempt and remains a visible condition.
+
+Registration also carries the signed logical slot. The server reserves at most
+one live worker per bound pool/slot, and a fresh signed retry recovers that row
+when the registration response or Kubernetes status write is lost. Persisting
+only Worker status would leave a duplicate-registration window before the
+returned ID reaches Kubernetes. Owned registration serializes its short creation
+transaction before slot lookup/quota admission; ordinary public claim
+transactions retain shared pool locking and independent organization fencing.
+No registration response is evidence of execution readiness without an executor.
+
+Lease leadership uses the agreed 15/10/2-second bounds, context cancellation and
+explicit watch namespaces. Server ownership and Kubernetes resource-version
+fences remain necessary during leader transitions. Never perform pool takeover,
+credential reset or namespace-wide sweeping as automatic recovery.
+
+The controller has a separate execution port. Until its concrete Pod executor
+is available, registration maintenance must not poll for/claim runs or report
+execution readiness. A missing executor is a visible unavailable condition,
+not successful capacity. Run/helper Pod execution, streamed preparation and
+issued deadlines are owned by #746; lifecycle adoption/cleanup proof by #747.
+This boundary lets #745 prove actual CRDs, ownership, registration and scoped
+management without dropping assignments into a placeholder executor.
+
+## Structural schema compatibility
+
+Kubernetes explicitly rejects `additionalProperties: false` in CRD schemas,
+and it cannot accompany named `properties`. The literal schema spelling in the
+planning contract therefore cannot be installed. Use structural schemas with
+every supported field named, typed maps for deliberate extension points,
+pruning enabled, CEL invariants/immutability, and `fieldValidation=Strict` for
+controller and acceptance writes. Configuration decoding remains strict.
+
+A client that explicitly requests non-strict native API validation can receive
+pruning rather than unknown-field rejection; unknown PodSpec fields are never
+preserved or forwarded. Record that Kubernetes behavior honestly and exercise
+both strict rejection and safe pruning against the real lab. Do not add
+preserved unknown objects, arbitrary sidecars/commands or a raw PodSpec escape.
+This is a schema-form correction, not evidence of runtime compatibility.
+
+Primary source: [Kubernetes CRD validation restrictions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#validation).
+
+## Required real acceptance
+
+Use `infraweave-lab`'s Terraform-owned k3s extension and normal application
+replicas/SDK. Before completing this ticket, exercise:
+
+1. Actual CRD installation, strict valid/invalid resources, immutable fields,
+   missing/mismatched Secrets and scoped Kubernetes/account permissions.
+2. Concurrent controllers/reconciles, status/create-response loss, restart and
+   idempotency retention boundaries: one remote pool and stable worker IDs.
+3. Multiple independent pool resources, wrong account/space, unowned pool
+   refusal, competing cluster ownership, and the aggregate registration quota.
+4. Pool/key reset, remote deletion, zero-capacity retirement and finalizers while
+   resources remain; failures stay visible and retryable without force deletion.
+5. Cleanup plus readback preserving another owner and borrowed resources.
+
+Keep vendor C21 traffic explicitly unobserved. Rendered YAML, fake Kubernetes
+clients and local helper tests establish no real-controller acceptance.
+
+## Delivered behaviour
+
+`infraweave worker-controller` (`internal/agent/controller`) leads a Lease and
+reconciles every WorkerPool of its watch namespaces each five seconds:
+
+- **Credentials.** A Managed pool exchanges the configured management key for
+  an API token and requires `/api/v1/id` to equal `spec.account`. Existing and
+  Public pools read `token` and `privateKey`; the token must name
+  `spec.poolID` and certify the private key. The controller reaches the
+  installation at `spec.endpoint` over HTTPS, trusting the system roots and
+  `ca_file`; the token's own endpoint is not consulted.
+- **Managed pools.** `GET /worker-pools/managed` finds the pool by owner. On
+  404 it creates one only when status records no pool, with a certificate
+  signing request of the Secret's key and `Idempotency-Key:
+  worker-pool-<resource UID>`, then patches only the Secret's `token` key.
+  Settings that differ from the resource are written with `If-Match`.
+  A managed pool deleted elsewhere is reported as `RemotePoolMissing` and
+  never recreated.
+- **Binding.** Every mode binds with a fresh signed proof each pass. A pool
+  bound to or managed for another owner answers 409, reported as
+  `OwnershipConflict`.
+- **Slots.** Worker resources `SlotName(uid, slot)` carry the pool label,
+  owner reference and finalizer. Each slot registers with owner and slot and
+  registers again every minute, well within the server's three-minute
+  offline bound, which resumes its worker. A slot the private-workers limit
+  refuses stays unregistered (`Registered=False`, `LimitReached`), and the
+  pass creates no later slot. No slot polls or claims runs:
+  `ExecutorAvailable=False` until #746 adds the executor.
+- **Retirement and deletion.** A slot beyond capacity, or of a deleted pool,
+  is deleted, its worker resumed and deregistered, and only then its
+  finalizer released. A deleted Managed pool is then removed through the
+  ordinary guarded delete; an Existing or Public pool's binding is released.
+  Each cleanup attempt is bounded by `cleanup_timeout`; a refusal is
+  recorded as `Terminating=False` with its reason and retried next pass.
+- **Writes.** Finalizers and status are written with patches under strict
+  field validation, so the controller never rewrites the user's spec.
+
+Real acceptance: `features/workers/hosting.feature` exercises binding,
+release, slots, managed lookup and the aggregate limit against PostgreSQL;
+`features/workers/kubernetes_controller.feature` runs replicated controller
+processes against the Terraform-owned k3s lab and two servers.

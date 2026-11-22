@@ -1,0 +1,469 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: workerpools.workers.infraweave.io
+spec:
+  group: workers.infraweave.io
+  scope: Namespaced
+  names:
+    plural: workerpools
+    singular: workerpool
+    kind: WorkerPool
+    listKind: WorkerPoolList
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            properties:
+              endpoint:
+                type: string
+                minLength: 1
+                maxLength: 2048
+                pattern: "^https://[^/?#@ ]+/?$"
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: This resource identity is immutable.
+              account:
+                type: string
+                minLength: 26
+                maxLength: 26
+                pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              space:
+                type: string
+                minLength: 0
+                maxLength: 255
+              mode:
+                type: string
+                enum:
+                - Managed
+                - Existing
+                - Public
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: This resource identity is immutable.
+              credentialsRef:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    minLength: 1
+                    maxLength: 253
+                    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+                required:
+                - name
+              poolID:
+                type: string
+                minLength: 26
+                maxLength: 26
+                pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: This resource identity is immutable.
+              capacity:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              name:
+                type: string
+                minLength: 1
+              description:
+                type: string
+              labels:
+                type: array
+                items:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                maxItems: 100
+                x-kubernetes-list-type: set
+              preparingTimeoutSeconds:
+                type: integer
+                format: int32
+                minimum: 1
+                maximum: 2147483647
+              driftDetectionRunLimit:
+                type: integer
+                format: int32
+                minimum: -2147483648
+                maximum: 2147483647
+              pod:
+                type: object
+                properties:
+                  resources:
+                    type: object
+                    properties:
+                      requests:
+                        type: object
+                        maxProperties: 32
+                        additionalProperties:
+                          x-kubernetes-int-or-string: true
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          maxLength: 64
+                          x-kubernetes-validations:
+                          - rule: isQuantity(string(self)) && quantity(string(self)).isGreaterThan(quantity('0'))
+                            message: Use a positive Kubernetes resource quantity.
+                        x-kubernetes-validations:
+                        - rule: "['cpu', 'memory', 'ephemeral-storage'].all(k, k in
+                            self)"
+                          message: CPU, memory and ephemeral-storage resources are
+                            required.
+                      limits:
+                        type: object
+                        maxProperties: 32
+                        additionalProperties:
+                          x-kubernetes-int-or-string: true
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          maxLength: 64
+                          x-kubernetes-validations:
+                          - rule: isQuantity(string(self)) && quantity(string(self)).isGreaterThan(quantity('0'))
+                            message: Use a positive Kubernetes resource quantity.
+                        x-kubernetes-validations:
+                        - rule: "['cpu', 'memory', 'ephemeral-storage'].all(k, k in
+                            self)"
+                          message: CPU, memory and ephemeral-storage resources are
+                            required.
+                    required:
+                    - requests
+                    - limits
+                    x-kubernetes-validations:
+                    - rule: self.requests.all(k, k in self.limits && quantity(string(self.requests[k])).compareTo(quantity(string(self.limits[k])))
+                        <= 0)
+                      message: Every request needs an equal or greater limit.
+                  helperResources:
+                    type: object
+                    properties:
+                      requests:
+                        type: object
+                        maxProperties: 32
+                        additionalProperties:
+                          x-kubernetes-int-or-string: true
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          maxLength: 64
+                          x-kubernetes-validations:
+                          - rule: isQuantity(string(self)) && quantity(string(self)).isGreaterThan(quantity('0'))
+                            message: Use a positive Kubernetes resource quantity.
+                        x-kubernetes-validations:
+                        - rule: "['cpu', 'memory', 'ephemeral-storage'].all(k, k in
+                            self)"
+                          message: CPU, memory and ephemeral-storage resources are
+                            required.
+                      limits:
+                        type: object
+                        maxProperties: 32
+                        additionalProperties:
+                          x-kubernetes-int-or-string: true
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          maxLength: 64
+                          x-kubernetes-validations:
+                          - rule: isQuantity(string(self)) && quantity(string(self)).isGreaterThan(quantity('0'))
+                            message: Use a positive Kubernetes resource quantity.
+                        x-kubernetes-validations:
+                        - rule: "['cpu', 'memory', 'ephemeral-storage'].all(k, k in
+                            self)"
+                          message: CPU, memory and ephemeral-storage resources are
+                            required.
+                    required:
+                    - requests
+                    - limits
+                    x-kubernetes-validations:
+                    - rule: self.requests.all(k, k in self.limits && quantity(string(self.requests[k])).compareTo(quantity(string(self.limits[k])))
+                        <= 0)
+                      message: Every request needs an equal or greater limit.
+                  storageSize:
+                    x-kubernetes-int-or-string: true
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    maxLength: 64
+                    x-kubernetes-validations:
+                    - rule: isQuantity(string(self)) && quantity(string(self)).isGreaterThan(quantity('0'))
+                      message: Use a positive Kubernetes resource quantity.
+                  nodeSelector:
+                    type: object
+                    maxProperties: 64
+                    additionalProperties:
+                      type: string
+                      minLength: 0
+                      maxLength: 63
+                  tolerations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          minLength: 0
+                          maxLength: 253
+                        operator:
+                          type: string
+                          enum:
+                          - Equal
+                          - Exists
+                          default: Equal
+                        value:
+                          type: string
+                          minLength: 0
+                          maxLength: 63
+                        effect:
+                          type: string
+                          enum:
+                          - NoSchedule
+                          - PreferNoSchedule
+                          - NoExecute
+                        tolerationSeconds:
+                          type: integer
+                          format: int64
+                          minimum: 0
+                      x-kubernetes-validations:
+                      - rule: "!has(self.tolerationSeconds) || (has(self.effect) &&
+                          self.effect == 'NoExecute')"
+                        message: tolerationSeconds applies only to NoExecute.
+                      - rule: self.operator != 'Exists' || !has(self.value) || self.value
+                          == ''
+                        message: Exists does not take a value.
+                    maxItems: 64
+                  imagePullSecrets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          minLength: 1
+                          maxLength: 253
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+                      required:
+                      - name
+                    maxItems: 64
+                required:
+                - resources
+                - storageSize
+              environment:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      minLength: 1
+                      maxLength: 255
+                      pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+                    exposure:
+                      type: string
+                      enum:
+                      - all
+                      - read
+                      - write
+                  required:
+                  - name
+                  - exposure
+                maxItems: 256
+                x-kubernetes-list-type: map
+                x-kubernetes-list-map-keys:
+                - name
+              mounts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                      - Secret
+                      - ConfigMap
+                      - PVC
+                    name:
+                      type: string
+                      minLength: 1
+                      maxLength: 253
+                      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+                    key:
+                      type: string
+                      minLength: 1
+                      maxLength: 253
+                    target:
+                      type: string
+                      minLength: 1
+                      maxLength: 4096
+                      pattern: "^/"
+                    exposure:
+                      type: string
+                      enum:
+                      - all
+                      - read
+                      - write
+                    readOnly:
+                      type: boolean
+                  required:
+                  - kind
+                  - name
+                  - target
+                  - exposure
+                  - readOnly
+                  x-kubernetes-validations:
+                  - rule: self.readOnly
+                    message: Mounts must be read-only.
+                  - rule: self.target != '/' && !self.target.contains('//') && !self.target.endsWith('/')
+                      && !self.target.contains('/../') && !self.target.endsWith('/..')
+                      && !self.target.contains('/./') && !self.target.endsWith('/.')
+                    message: Mount targets must use canonical absolute paths.
+                  - rule: "['/opt/infraweave', '/run/infraweave', '/bin', '/usr/bin',
+                      '/usr/local/bin', '/sbin', '/usr/sbin'].all(p, self.target !=
+                      p && !self.target.startsWith(p + '/') && !p.startsWith(self.target
+                      + '/'))"
+                    message: Mount targets cannot overlap runtime binary, tools or
+                      handoff paths.
+                  - rule: 'self.kind == ''PVC'' ? !has(self.key) : has(self.key)'
+                    message: Secret/ConfigMap mounts select a key; PVC mounts do not.
+                maxItems: 128
+            required:
+            - endpoint
+            - mode
+            - credentialsRef
+            - capacity
+            - pod
+            x-kubernetes-validations:
+            - rule: 'self.mode == ''Public'' ? (!has(self.account) && !has(self.space))
+                : (has(self.account) && has(self.space))'
+              message: Private modes require account and space; Public forbids them.
+            - rule: 'self.mode == ''Managed'' ? (has(self.name) && !has(self.poolID))
+                : (has(self.poolID) && !has(self.name) && !has(self.description) &&
+                !has(self.labels) && !has(self.preparingTimeoutSeconds) && !has(self.driftDetectionRunLimit))'
+              message: Only Managed configures private pool settings; Existing/Public
+                require poolID.
+            - rule: "!has(self.mounts) || self.mounts.all(m, m.kind != 'Secret' ||
+                m.name != self.credentialsRef.name)"
+              message: Pool credentials cannot be mounted into workloads.
+          status:
+            type: object
+            properties:
+              observedGeneration:
+                type: integer
+                format: int64
+                minimum: 0
+              poolID:
+                type: string
+                minLength: 26
+                maxLength: 26
+                pattern: "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              owner:
+                type: object
+                properties:
+                  clusterID:
+                    type: string
+                    minLength: 1
+                    maxLength: 63
+                    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                  namespace:
+                    type: string
+                    minLength: 1
+                    maxLength: 63
+                    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                  resourceUID:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                required:
+                - clusterID
+                - namespace
+                - resourceUID
+              desired:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              registered:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              ready:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              busy:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              retiring:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 2147483647
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      minLength: 1
+                      maxLength: 316
+                    status:
+                      type: string
+                      enum:
+                      - 'True'
+                      - 'False'
+                      - Unknown
+                    observedGeneration:
+                      type: integer
+                      format: int64
+                      minimum: 0
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    reason:
+                      type: string
+                      minLength: 1
+                      maxLength: 1024
+                    message:
+                      type: string
+                      minLength: 0
+                      maxLength: 32768
+                  required:
+                  - type
+                  - status
+                  - lastTransitionTime
+                  - reason
+                  - message
+                maxItems: 32
+                x-kubernetes-list-type: map
+                x-kubernetes-list-map-keys:
+                - type
+        required:
+        - spec
+        x-kubernetes-validations:
+        - rule: "!has(oldSelf.status) || !has(oldSelf.status.poolID) || ((has(self.spec.account)
+            == has(oldSelf.spec.account)) && (has(self.spec.space) == has(oldSelf.spec.space))
+            && (!has(oldSelf.spec.account) || self.spec.account == oldSelf.spec.account)
+            && (!has(oldSelf.spec.space) || self.spec.space == oldSelf.spec.space))"
+          message: Account and space are immutable after the pool is bound.
+        - rule: "!has(oldSelf.status) || !has(oldSelf.status.poolID) || (has(self.status)
+            && has(self.status.poolID) && self.status.poolID == oldSelf.status.poolID)"
+          message: A bound resource retains its remote pool identity.

@@ -22,6 +22,14 @@ func (UnimplementedStrict) WorkerPoll(context.Context, WorkerPollRequestObject) 
 	return nil, &problem.NotImplementedError{OperationID: "workerPoll", Route: "POST /poll"}
 }
 
+func (UnimplementedStrict) WorkerPoolBind(context.Context, WorkerPoolBindRequestObject) (WorkerPoolBindResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolBind", Route: "POST /pools/bind"}
+}
+
+func (UnimplementedStrict) WorkerPoolRelease(context.Context, WorkerPoolReleaseRequestObject) (WorkerPoolReleaseResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerPoolRelease", Route: "POST /pools/release"}
+}
+
 func (UnimplementedStrict) WorkerRegister(context.Context, WorkerRegisterRequestObject) (WorkerRegisterResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerRegister", Route: "POST /register"}
 }

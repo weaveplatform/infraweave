@@ -7,7 +7,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
@@ -79,14 +78,4 @@ func (s *Store) WritePublic(ctx context.Context, p pool.Pool) error {
 		return pool.ErrNotFound
 	}
 	return nil
-}
-
-// PublicWorkers reports whether registered slots still hold this pool identity.
-func (s *Store) PublicWorkers(ctx context.Context, id kernel.ULID) (bool, error) {
-	var found bool
-	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM workers WHERE pool_id=$1)`, id).Scan(&found)
-	if err != nil {
-		return false, fmt.Errorf("workers: read public pool registrations: %w", sql.Unavailable(err))
-	}
-	return found, nil
 }

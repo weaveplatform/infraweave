@@ -64,6 +64,9 @@ type Worker struct {
 	// AvailableAt is when the worker last became idle; nil while busy.
 	AvailableAt *time.Time
 	CreatedAt   time.Time
+	// Slot is a controller's logical slot, nil for a launcher's worker. A
+	// pool holds at most one worker in each slot.
+	Slot *int32
 }
 
 // Status is w's status.
@@ -198,6 +201,24 @@ type Store interface {
 	RunnerImages(ctx context.Context, acct kernel.AccountID) (images.Images, error)
 	// OfPools reads the workers of acct's pools, by pool, oldest first.
 	OfPools(ctx context.Context, acct kernel.AccountID, pools []kernel.ULID) (map[kernel.ULID][]Worker, error)
+	// Binding reads the hosting owner of pool, holding a lock that
+	// serializes the pool's binds, releases and registrations until the
+	// transaction ends; false when the pool has no binding.
+	Binding(ctx context.Context, pool kernel.ULID) (kernel.WorkerOwner, bool, error)
+	// Bind records owner as p's hosting owner; ErrOwnership when owner
+	// hosts another pool.
+	Bind(ctx context.Context, p pool.Pool, owner kernel.WorkerOwner) error
+	// Unbind removes pool's hosting binding.
+	Unbind(ctx context.Context, pool kernel.ULID) error
+	// ManagedPool reads the pool owner's management identity reserves:
+	// reserved is false when owner manages none, and the pool is nil for a
+	// deleted pool's retained reservation.
+	ManagedPool(ctx context.Context, owner kernel.WorkerOwner) (*kernel.ULID, bool, error)
+	// HasWorkers reports whether pool has a registered worker.
+	HasWorkers(ctx context.Context, pool kernel.ULID) (bool, error)
+	// SlotWorker reads the worker in pool's slot, locked FOR UPDATE;
+	// ErrNotFound when the slot is empty.
+	SlotWorker(ctx context.Context, pool kernel.ULID, slot int32) (Worker, error)
 }
 
 // Tokens mints the worker session tokens registrations and polls answer,
@@ -251,6 +272,7 @@ type Service struct {
 	reports           workersapi.Reports
 	liveness          workersapi.Liveness
 	signals           workersapi.Signals
+	assignments       workersapi.PoolAssignments
 	version           string
 	pollMax           time.Duration
 	clocks            clocks
@@ -311,6 +333,9 @@ type claims struct {
 	Arch         string            `json:"arch"`
 	Metadata     map[string]string `json:"metadata"`
 	Worker       string            `json:"worker"`
+	// Owner and Slot name a controller's hosting identity and logical slot.
+	Owner *kernel.WorkerOwner `json:"owner"`
+	Slot  *int32              `json:"slot"`
 }
 
 // refuse is ErrUnauthenticated, naming why for the log.
@@ -322,39 +347,16 @@ func refuse(format string, args ...any) error {
 // private key, describes, or resumes the worker of the pool it names, and
 // answers it with a session token. A proof the server does not accept is
 // ErrUnauthenticated; a launcher of a version it does not serve is a
-// *kernel.Invalid; a new worker beyond the private-workers limit is the
-// features domain's *featuresapi.LimitError.
+// *kernel.Invalid; a registration that does not match the pool's hosting
+// binding is ErrOwnership; a new worker beyond the private-workers limit is
+// the features domain's *featuresapi.LimitError.
 //
 // ref: decision 0008 § "The worker API"
 func (s *Service) Register(ctx context.Context, raw string) (Registration, error) {
 	now := s.now()
-	if len(raw) > MaxRegistration {
-		return Registration{}, invalid(kernel.ReasonMaxLength,
-			"A registration is at most %d bytes.", MaxRegistration)
-	}
-	jws, err := jose.ParseSignedCompact(raw, []jose.SignatureAlgorithm{jose.ES256})
-	if err != nil {
-		return Registration{}, refuse("not an ES256 compact JWS: %v", err)
-	}
-	ca, err := s.store.CA(ctx)
-	if err != nil {
-		return Registration{}, err //nolint:wrapcheck // the store names the read
-	}
-	c, leaf, err := verify(jws, ca, now)
+	c, leaf, id, err := s.proof(ctx, raw, now)
 	if err != nil {
 		return Registration{}, err
-	}
-	if err := c.bounded(); err != nil {
-		return Registration{}, err
-	}
-	id, err := kernel.ParseULID(c.Pool)
-	switch {
-	case err != nil || leaf.Subject.CommonName != c.Pool:
-		return Registration{}, refuse("the certificate is not pool %q's", c.Pool)
-	case now.Sub(time.Unix(c.IssuedAt, 0)).Abs() > Skew:
-		return Registration{}, refuse("iat %d is more than %s from now", c.IssuedAt, Skew)
-	case c.ID == "":
-		return Registration{}, refuse("no jti")
 	}
 	if err := s.supported(c.Version); err != nil {
 		return Registration{}, err
@@ -362,41 +364,25 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 	if !slices.Contains(c.Capabilities, "plan-sanitization-v1") {
 		return Registration{}, invalid(kernel.ReasonRule, "The launcher must support plan-sanitization-v1; upgrade the launcher before registering.")
 	}
+	if c.Owner != nil && c.Slot == nil {
+		return Registration{}, invalid(kernel.ReasonRequired, "A controller registration names its logical slot.")
+	}
+	if c.Slot != nil && c.Owner == nil {
+		return Registration{}, invalid(kernel.ReasonRequired, "A logical slot belongs to a controller registration, which names its owner.")
+	}
 	var out Registration
 	err = tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		p, err := s.store.PoolByID(ctx, id)
-		if errors.Is(err, pool.ErrNotFound) {
-			return refuse("no pool %s", id)
-		}
+		p, err := s.admit(ctx, c, leaf, id, true, now)
 		if err != nil {
-			return err //nolint:wrapcheck // the store names the read
+			return err
 		}
-		if p.Public {
-			if !s.publicPoolEnabled {
-				return refuse("the installation public pool is disabled")
-			}
-			if !slices.Contains(c.Capabilities, "public-pool-v1") {
-				return invalid(kernel.ReasonRule, "Public workers must support public-pool-v1; upgrade the launcher before registering.")
-			}
-			p, err = s.store.PublicShare(ctx)
-			if err != nil {
-				return err //nolint:wrapcheck // the store names the locked read
-			}
-		}
-		if leaf.SerialNumber.Cmp(big.NewInt(p.Serial)) != 0 {
-			return refuse("pool %s's certificate %s was replaced by a reset", id, leaf.SerialNumber)
-		}
-		fresh, err := s.store.Nonce(ctx, p.Account, p.ID, c.ID, now.Add(NonceTTL))
-		if err != nil {
-			return err //nolint:wrapcheck // the store names the write
-		}
-		if !fresh {
-			return refuse("jti %q was used in the last %s", c.ID, NonceTTL)
+		if err := s.hosted(ctx, p, c.Owner); err != nil {
+			return err
 		}
 		w := Worker{
 			Public:  p.Public,
 			Account: p.Account, Organization: p.Organization, Pool: p.ID, Serial: p.Serial,
-			Version: c.Version, OS: c.OS, Arch: c.Arch, Metadata: c.Metadata,
+			Version: c.Version, OS: c.OS, Arch: c.Arch, Metadata: c.Metadata, Slot: c.Slot,
 			LastSeenAt: now, AvailableAt: &now, CreatedAt: now,
 		}
 		if w.Metadata == nil {
@@ -434,11 +420,96 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 	return out, nil
 }
 
+// proof verifies raw, a compact JWS a pool's private key signed, against
+// the pool CA at now, and answers its bounded payload, the certificate that
+// signed it and the pool it names.
+func (s *Service) proof(ctx context.Context, raw string, now time.Time) (claims, *x509.Certificate, kernel.ULID, error) {
+	if len(raw) > MaxRegistration {
+		return claims{}, nil, kernel.ULID{}, invalid(kernel.ReasonMaxLength,
+			"A registration is at most %d bytes.", MaxRegistration)
+	}
+	jws, err := jose.ParseSignedCompact(raw, []jose.SignatureAlgorithm{jose.ES256})
+	if err != nil {
+		return claims{}, nil, kernel.ULID{}, refuse("not an ES256 compact JWS: %v", err)
+	}
+	ca, err := s.store.CA(ctx)
+	if err != nil {
+		return claims{}, nil, kernel.ULID{}, err //nolint:wrapcheck // the store names the read
+	}
+	c, leaf, err := verify(jws, ca, now)
+	if err != nil {
+		return claims{}, nil, kernel.ULID{}, err
+	}
+	if err := c.bounded(); err != nil {
+		return claims{}, nil, kernel.ULID{}, err
+	}
+	id, err := kernel.ParseULID(c.Pool)
+	switch {
+	case err != nil || leaf.Subject.CommonName != c.Pool:
+		return claims{}, nil, kernel.ULID{}, refuse("the certificate is not pool %q's", c.Pool)
+	case now.Sub(time.Unix(c.IssuedAt, 0)).Abs() > Skew:
+		return claims{}, nil, kernel.ULID{}, refuse("iat %d is more than %s from now", c.IssuedAt, Skew)
+	case c.ID == "":
+		return claims{}, nil, kernel.ULID{}, refuse("no jti")
+	}
+	return c, leaf, id, nil
+}
+
+// admit reads the pool id that c names inside the caller's transaction,
+// requires leaf to carry its current serial and records c's jti. A
+// registration, as opposed to an ownership proof, also needs the public
+// pool enabled and the public-pool-v1 capability.
+func (s *Service) admit(ctx context.Context, c claims, leaf *x509.Certificate, id kernel.ULID, registration bool, now time.Time) (pool.Pool, error) {
+	p, err := s.store.PoolByID(ctx, id)
+	if errors.Is(err, pool.ErrNotFound) {
+		return pool.Pool{}, refuse("no pool %s", id)
+	}
+	if err != nil {
+		return pool.Pool{}, err //nolint:wrapcheck // the store names the read
+	}
+	if p.Public {
+		if registration && !s.publicPoolEnabled {
+			return pool.Pool{}, refuse("the installation public pool is disabled")
+		}
+		if registration && !slices.Contains(c.Capabilities, "public-pool-v1") {
+			return pool.Pool{}, invalid(kernel.ReasonRule, "Public workers must support public-pool-v1; upgrade the launcher before registering.")
+		}
+		p, err = s.store.PublicShare(ctx)
+		if err != nil {
+			return pool.Pool{}, err //nolint:wrapcheck // the store names the locked read
+		}
+	}
+	if leaf.SerialNumber.Cmp(big.NewInt(p.Serial)) != 0 {
+		return pool.Pool{}, refuse("pool %s's certificate %s was replaced by a reset", id, leaf.SerialNumber)
+	}
+	fresh, err := s.store.Nonce(ctx, p.Account, p.ID, c.ID, now.Add(NonceTTL))
+	if err != nil {
+		return pool.Pool{}, err //nolint:wrapcheck // the store names the write
+	}
+	if !fresh {
+		return pool.Pool{}, refuse("jti %q was used in the last %s", c.ID, NonceTTL)
+	}
+	return p, nil
+}
+
 // resume rewrites the worker named, when it is one of w's pool, with w's
 // registration, and answers its ID; the zero ID when there is none to
-// resume, which registers a new worker. A resumed worker keeps its run
+// resume, which registers a new worker. A controller's registration
+// resumes the worker of its slot instead, so a retry after a lost response
+// never registers a second worker for one slot. A resumed worker keeps its run
 // and its flags, and is not counted against private-workers again.
 func (s *Service) resume(ctx context.Context, named string, w Worker) (kernel.ULID, error) {
+	if w.Slot != nil {
+		old, err := s.store.SlotWorker(ctx, w.Pool, *w.Slot)
+		if errors.Is(err, ErrNotFound) {
+			return kernel.ULID{}, nil
+		}
+		if err != nil {
+			return kernel.ULID{}, err //nolint:wrapcheck // the store names the read
+		}
+		w.ID = old.ID
+		return old.ID, s.store.Resume(ctx, w) //nolint:wrapcheck // the store names the write
+	}
 	id, err := kernel.ParseULID(named)
 	if named == "" || err != nil {
 		return kernel.ULID{}, nil
@@ -505,6 +576,14 @@ func (c claims) bounded() error {
 			return invalid(kernel.ReasonMaxLength,
 				"A registration's %s is at most %d characters.", f.name, MaxDescription)
 		}
+	}
+	if c.Owner != nil {
+		if faults := kernel.CheckWorkerOwner("/registration/owner", *c.Owner); len(faults) > 0 {
+			return &kernel.Invalid{Detail: "The hosting owner is refused.", Errors: faults}
+		}
+	}
+	if c.Slot != nil && *c.Slot < 0 {
+		return invalid(kernel.ReasonMinimum, "A logical slot is at least 0.")
 	}
 	if len(c.Metadata) > MaxMetadata {
 		return invalid(kernel.ReasonMaxLength,

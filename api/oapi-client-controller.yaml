@@ -1,0 +1,16 @@
+# Generated from the account API so controller credentials use ordinary scope,
+# authorization and problems without linking server-domain implementations.
+package: management
+output: internal/agent/wire/management/client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  include-operation-ids:
+    - apiKeyUser
+    - id
+    - workerPool
+    - workerPoolCreate
+    - workerPoolUpdate
+    - workerPoolDelete
+    - workerPoolManaged

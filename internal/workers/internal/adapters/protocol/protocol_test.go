@@ -44,9 +44,10 @@ var errBoom = errors.New("boom")
 type store struct {
 	worker.Store
 
-	ca      []byte
-	pool    pool.Pool
-	workers map[kernel.ULID]worker.Worker
+	ca       []byte
+	pool     pool.Pool
+	workers  map[kernel.ULID]worker.Worker
+	bindings map[kernel.ULID]kernel.WorkerOwner
 }
 
 func (s *store) PoolByID(_ context.Context, id kernel.ULID) (pool.Pool, error) {
@@ -212,7 +213,10 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f := &fixture{
-		store:  &store{ca: ca.Certificate.Raw, pool: p, workers: map[kernel.ULID]worker.Worker{}},
+		store: &store{
+			ca: ca.Certificate.Raw, pool: p, workers: map[kernel.ULID]worker.Worker{},
+			bindings: map[kernel.ULID]kernel.WorkerOwner{},
+		},
 		tokens: &tokens{expires: map[string]time.Time{}}, key: key, cert: cert,
 	}
 	f.svc = worker.New(worker.Deps{

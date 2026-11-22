@@ -89,7 +89,7 @@ func (s *Store) Count(ctx context.Context, org kernel.OrganizationID, acct kerne
 // workers w.
 const workerColumns = `w.account_id, w.organization_id, w.id, w.pool_id, w.serial, w.version,
 	w.os, w.arch, w.metadata, w.busy, w.drained, w.cycle, w.offline, w.last_seen_at,
-	w.available_at, w.created_at`
+	w.available_at, w.created_at, w.slot`
 
 // scanWorker reads workerColumns, then into extra.
 func scanWorker(row pgx.Row, extra ...any) (worker.Worker, error) {
@@ -99,7 +99,7 @@ func scanWorker(row pgx.Row, extra ...any) (worker.Worker, error) {
 	err := row.Scan(append([]any{
 		&account, &organization, &w.ID, &w.Pool, &w.Serial, &w.Version, &w.OS, &w.Arch,
 		&w.Metadata, &w.Busy, &w.Drained, &w.Cycle, &w.Offline, &w.LastSeenAt, &w.AvailableAt,
-		&w.CreatedAt,
+		&w.CreatedAt, &w.Slot,
 	}, extra...)...)
 	if account != nil {
 		w.Account = *account
@@ -172,10 +172,10 @@ func (s *Store) CreateWorker(ctx context.Context, w worker.Worker) error {
 	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO workers (account_id, organization_id, id,
 			pool_id, serial, version, os, arch, metadata, busy, drained, cycle, last_seen_at,
-			available_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+			available_at, created_at, slot)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		account, organization, w.ID, w.Pool, w.Serial, w.Version, w.OS, w.Arch, md, w.Busy,
-		w.Drained, w.Cycle, w.LastSeenAt, w.AvailableAt, w.CreatedAt)
+		w.Drained, w.Cycle, w.LastSeenAt, w.AvailableAt, w.CreatedAt, w.Slot)
 	if err != nil {
 		return workerError(w.ID, err)
 	}
