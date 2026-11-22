@@ -66,6 +66,14 @@ storage verification is labelled a contract fixture, not a live module capture.
   capture head/minute, staging, evaluation, job, quota and blob state. The previous
   protected capture stays readable; removing the fault permits a fresh sanitized
   publication and makes the old advertised input explicitly null.
+- Reconciliation with the merged simulator, catalogue and account-isolated
+  replay fixes passes 41 unchanged public scenarios / 396 steps under certified
+  FIPS. This combines the five evidence/sampling cases, 22 simulator cases, nine
+  catalogue cases and five actual account-switch/replay cases. Native checks
+  also retain account-bound sealed
+  response authentication and stable actor identity for rate limits/audits.
+  The combined capture pass completes seven scenarios / 305 steps, and the
+  executed application reports Go Cryptographic Module v1.0.0 in mode only.
 
 `GOFIPS140=certified GODEBUG=fips140=only`, race detection and shuffled order are
 used for focused storage/owner proofs. Final generated/reference, configured lint,
