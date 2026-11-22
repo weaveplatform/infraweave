@@ -16,4 +16,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&referenceSteps{}).register(sc)
 	(&updateSteps{w: w, etags: map[string]string{}}).register(sc)
 	(&errorSteps{w: w}).register(sc)
+	registerAccountReplay(sc, w)
 }

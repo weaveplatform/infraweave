@@ -27,6 +27,7 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	registerWorkflowFlags(sc, w)
 	registerTask(sc, w)
 	registerSampling(sc, w)
+	registerSimulation(sc, w)
 	registerEvidenceReaders(sc, w)
 	registerInitialization(sc, w)
 	sc.Step(`^the policy contract validates every recorded input and decision$`, func() error { return validate(w.Last()) })
