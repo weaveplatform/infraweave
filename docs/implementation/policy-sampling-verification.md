@@ -76,6 +76,11 @@ They verify the exact account, target space, event, input and job identities;
 unsampled evaluations create one capture without spending sample quota. Caller
 rollback, lease loss and stale retries preserve run/receipt/flag identities,
 evaluation metadata, capture reservation time, staging state and queue generations.
+Adapter controls also preserve the opaque sample-owner link across partially
+written malformed receipt batches, foreign run owners and mismatched state
+versions. Terminating an owned PostgreSQL connection or closing the pool cannot
+acknowledge a receipt or return an empty successful metadata view. The stored link does not imply sample
+publication or availability, and metadata never returns the raw decision.
 
 The policy PostgreSQL acceptance tests use real OPA V0/V1 and sealed filesystem
 objects. They race quota and capture reservations across two pools, including a
