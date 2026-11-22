@@ -33,7 +33,7 @@ func (f *fixture) add() (worker.Worker, accessapi.Bearer) {
 		Pool: f.pool.ID, Serial: f.pool.Serial,
 	}
 	f.store.workers[w.ID] = w
-	return w, accessapi.Bearer{ID: w.ID, Expires: time.Now().Add(time.Hour)}
+	return w, accessapi.Bearer{ID: w.ID, WorkerSerial: w.Serial, Expires: time.Now().Add(time.Hour)}
 }
 
 // poll starts a poll and answers its result once it returns.

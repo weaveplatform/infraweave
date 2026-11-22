@@ -392,6 +392,9 @@ func TestUnitRunIssuer(t *testing.T) {
 	} {
 		r := request()
 		r.Kind = kind
+		if kind == token.KindWorker {
+			r.WorkerSerial = 7
+		}
 		raw, issued, err := svc.Issue(ctx, r)
 		if err != nil {
 			t.Fatal(err)

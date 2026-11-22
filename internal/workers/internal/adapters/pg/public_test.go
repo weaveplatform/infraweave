@@ -141,7 +141,7 @@ func TestAccPublicWorkerStorage(t *testing.T) {
 	if err != nil || u.Account != 0 || u.Organization != 0 {
 		t.Fatalf("public registration consumed private quota: %+v %v", u, err)
 	}
-	if got, _, err := f.store.Seen(ctx, w.ID, true, now); err != nil || !got.Public || !got.Busy || got.AvailableAt != nil {
+	if got, _, err := f.store.Seen(ctx, w.ID, w.Serial, true, now); err != nil || !got.Public || !got.Busy || got.AvailableAt != nil {
 		t.Fatalf("busy public worker=%+v error=%v", got, err)
 	}
 	w.Metadata = map[string]string{"resumed": "yes"}
@@ -191,7 +191,7 @@ func TestAccPublicResetDoesNotRefreshObsoleteWorkers(t *testing.T) {
 	if _, err := f.svc.ResetPublic(ctx, kernel.ExpectVersions(1), request(t), false); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := f.store.Seen(ctx, w.ID, true, now.Add(time.Minute)); !errors.Is(err, worker.ErrNotFound) {
+	if _, _, err := f.store.Seen(ctx, w.ID, w.Serial, true, now.Add(time.Minute)); !errors.Is(err, worker.ErrNotFound) {
 		t.Fatalf("obsolete public worker updated: %v", err)
 	}
 	got, _, err := f.store.Worker(ctx, w.ID, false)

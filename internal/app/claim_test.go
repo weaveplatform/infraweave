@@ -147,7 +147,7 @@ type polled struct {
 func (w *claimWorld) poll(ctx context.Context, r int, worker kernel.ULID, drained bool, wait int32) polled {
 	start := time.Now()
 	ctx = accessapi.WithBearer(ctx,
-		accessapi.Bearer{ID: worker, Expires: time.Now().Add(time.Hour)})
+		accessapi.Bearer{ID: worker, WorkerSerial: 1, Expires: time.Now().Add(time.Hour)})
 	res, err := w.replicas[r%len(w.replicas)].Workers.Protocol().WorkerPoll(ctx,
 		workerapi.WorkerPollRequestObject{
 			Body: &workerapi.PollRequest{Drained: &drained, Wait: &wait},

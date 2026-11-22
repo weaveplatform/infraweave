@@ -21,10 +21,11 @@ import (
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
-// PoolByID reads the pool id of whichever account holds it.
+// PoolByID share-locks the pool generation through its caller's registration
+// transaction, serializing certificate reset with nonce/worker/token issuance.
 func (s *Store) PoolByID(ctx context.Context, id kernel.ULID) (pool.Pool, error) {
 	p, err := scan(tx.Q(ctx, s.db).QueryRow(ctx,
-		`SELECT `+columns+` FROM worker_pools p WHERE p.id = $1`, id))
+		`SELECT `+columns+` FROM worker_pools p WHERE p.id = $1 FOR SHARE`, id))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		public, err := s.Public(ctx, false)
@@ -118,13 +119,26 @@ func workerError(id kernel.ULID, err error) error {
 	return fmt.Errorf("workers: worker %s: %w", id, sql.Unavailable(err))
 }
 
-// Worker reads the worker id with its pool's current serial.
+// Worker reads the worker id with its pool's current serial. A locked read
+// acquires the pool share lock before the worker update lock, matching resume
+// and reset ordering; a long poll must finish the transaction before waiting.
 func (s *Store) Worker(ctx context.Context, id kernel.ULID, lock bool) (worker.Worker, int64, error) {
 	query := `SELECT ` + workerColumns + `, p.serial FROM workers w
 		JOIN (SELECT id,serial FROM worker_pools UNION ALL SELECT id,serial FROM worker_public_pool) p ON p.id = w.pool_id
 		WHERE w.id = $1`
 	if lock {
-		query += ` FOR UPDATE OF w`
+		query = `WITH held_private AS MATERIALIZED (
+			SELECT p.account_id, p.id, p.serial FROM worker_pools p
+			JOIN workers registered ON p.account_id = registered.account_id AND p.id = registered.pool_id
+			WHERE registered.id = $1 FOR SHARE OF p),
+			held_public AS MATERIALIZED (
+			SELECT NULL::uuid AS account_id, p.id, p.serial FROM worker_public_pool p
+			JOIN workers registered ON registered.account_id IS NULL AND p.id = registered.pool_id
+			WHERE registered.id = $1 FOR SHARE OF p),
+			held_pool AS MATERIALIZED (SELECT * FROM held_private UNION ALL SELECT * FROM held_public)
+			SELECT ` + workerColumns + `, p.serial FROM workers w
+			JOIN held_pool p ON p.account_id IS NOT DISTINCT FROM w.account_id AND p.id = w.pool_id
+			WHERE w.id = $1 FOR UPDATE OF w`
 	}
 	var serial int64
 	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, query, id), &serial)
@@ -192,23 +206,33 @@ func (s *Store) Resume(ctx context.Context, w worker.Worker) error {
 	return nil
 }
 
-// Seen marks the worker id seen at now with busy, and no longer offline.
+// Seen validates the bearer, registration and current pool serials under a
+// pool share lock before changing any liveness field.
 // available_at is set when the worker becomes idle and cleared while it
 // is busy.
-func (s *Store) Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Time) (worker.Worker, int64, error) {
-	var serial int64
-	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, `UPDATE workers w SET last_seen_at = $2,
+func (s *Store) Seen(ctx context.Context, id kernel.ULID, serial int64, busy bool, now time.Time) (worker.Worker, int64, error) {
+	var current int64
+	w, err := scanWorker(tx.Q(ctx, s.db).QueryRow(ctx, `WITH held_private AS MATERIALIZED (
+			SELECT p.account_id, p.id, p.serial FROM worker_pools p
+			JOIN workers registered ON p.account_id = registered.account_id AND p.id = registered.pool_id
+			WHERE registered.id = $1 AND p.serial = $4 FOR SHARE OF p),
+			held_public AS MATERIALIZED (
+			SELECT NULL::uuid AS account_id, p.id, p.serial FROM worker_public_pool p
+			JOIN workers registered ON registered.account_id IS NULL AND p.id = registered.pool_id
+			WHERE registered.id = $1 AND p.serial = $4 FOR SHARE OF p),
+			held_pool AS MATERIALIZED (SELECT * FROM held_private UNION ALL SELECT * FROM held_public)
+		UPDATE workers w SET last_seen_at = $2,
 			busy = $3, offline = false,
 			available_at = CASE WHEN $3 THEN NULL
 				WHEN w.busy OR w.available_at IS NULL THEN $2 ELSE w.available_at END
-		FROM (SELECT id,serial FROM worker_pools UNION ALL SELECT id,serial FROM worker_public_pool) p
-		WHERE w.id = $1 AND p.id = w.pool_id
-		AND (w.account_id IS NOT NULL OR w.serial = p.serial)
-		RETURNING `+workerColumns+`, p.serial`, id, now, busy), &serial)
+		FROM held_pool p
+		WHERE w.id = $1 AND p.account_id IS NOT DISTINCT FROM w.account_id AND p.id = w.pool_id
+			AND w.serial = $4 AND w.serial = p.serial AND $4 > 0
+		RETURNING `+workerColumns+`, p.serial`, id, now, busy, serial), &current)
 	if err != nil {
 		return w, 0, workerError(id, err)
 	}
-	return w, serial, nil
+	return w, current, nil
 }
 
 // Claimed marks the worker id busy and clears its available_at.

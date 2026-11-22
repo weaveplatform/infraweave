@@ -138,7 +138,8 @@ const (
 type Store interface {
 	Public(ctx context.Context, lock bool) (pool.Pool, error)
 	PublicShare(ctx context.Context) (pool.Pool, error)
-	// PoolByID reads the pool id of whichever account holds it;
+	// PoolByID reads and share-locks a private pool, or reads the public pool;
+	// public registration takes PublicShare before any worker access.
 	// pool.ErrNotFound when none does.
 	PoolByID(ctx context.Context, id kernel.ULID) (pool.Pool, error)
 	// Get reads acct's pool id, as pool.Store's Get.
@@ -151,18 +152,20 @@ type Store interface {
 	Nonce(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, jti string, expires time.Time) (bool, error)
 	// Count counts the registered workers of org and of acct.
 	Count(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID) (featuresapi.Usage, error)
-	// Worker reads the worker id with its pool's current serial, locked
-	// FOR UPDATE when lock is set; ErrNotFound when none.
+	// Worker reads the worker id with its pool's current serial. A locked read
+	// takes pool FOR SHARE before worker FOR UPDATE; ErrNotFound when none.
 	Worker(ctx context.Context, id kernel.ULID, lock bool) (Worker, int64, error)
 	// CreateWorker writes a new worker.
 	CreateWorker(ctx context.Context, w Worker) error
 	// Resume rewrites w's serial, version, os, arch and metadata, and
 	// marks it seen at w.LastSeenAt, and no longer offline.
 	Resume(ctx context.Context, w Worker) error
-	// Seen marks the worker id seen at now with busy, and no longer
+	// Seen first fences the positive bearer serial against registration and
+	// current pool under a pool share lock, then marks the worker seen at now,
+	// and no longer
 	// offline, setting its available_at when it becomes idle, and answers
-	// it with its pool's current serial; ErrNotFound when none.
-	Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Time) (Worker, int64, error)
+	// it with its pool's current serial; ErrNotFound for missing/stale credentials.
+	Seen(ctx context.Context, id kernel.ULID, serial int64, busy bool, now time.Time) (Worker, int64, error)
 	// Claimed marks the worker id busy, as a claim leaves it until its
 	// launcher's next poll reports.
 	Claimed(ctx context.Context, id kernel.ULID) error
@@ -200,7 +203,7 @@ type Store interface {
 // Tokens mints the worker session tokens registrations and polls answer,
 // and the run tokens of the runs polls claim.
 type Tokens interface {
-	WorkerToken(ctx context.Context, worker kernel.ULID) (accessapi.Token, error)
+	WorkerToken(ctx context.Context, worker kernel.ULID, serial int64) (accessapi.Token, error)
 	RunToken(ctx context.Context, run kernel.ULID) (accessapi.Token, error)
 }
 
@@ -400,9 +403,13 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 			w.Metadata = map[string]string{}
 		}
 		resumed, err := s.resume(ctx, c.Worker, w)
-		if err != nil || !resumed.IsZero() {
-			out.Worker = resumed
+		if err != nil {
 			return err
+		}
+		if !resumed.IsZero() {
+			out.Worker = resumed
+			out.Token, err = s.tokens.WorkerToken(ctx, resumed, p.Serial)
+			return err //nolint:wrapcheck // access names token issuance
 		}
 		if s.limits != nil && !p.Public {
 			if err := s.limits.CheckLimit(ctx, p.Organization, p.Account,
@@ -415,14 +422,14 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 		}
 		w.ID = kernel.NewULID()
 		out.Worker = w.ID
-		return s.store.CreateWorker(ctx, w) //nolint:wrapcheck // the store names the write
+		if err := s.store.CreateWorker(ctx, w); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		out.Token, err = s.tokens.WorkerToken(ctx, w.ID, p.Serial)
+		return err //nolint:wrapcheck // access names token issuance
 	})
 	if err != nil {
 		return Registration{}, err //nolint:wrapcheck // the refusal or the store's error
-	}
-	out.Token, err = s.tokens.WorkerToken(ctx, out.Worker)
-	if err != nil {
-		return Registration{}, err //nolint:wrapcheck // the access domain names the mint
 	}
 	return out, nil
 }

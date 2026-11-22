@@ -52,14 +52,15 @@ const (
 // store is the ports and tokens in memory; a token is its kind, session
 // and audience joined by spaces.
 type store struct {
-	accounts map[kernel.AccountID]account.Account
-	keys     map[kernel.ULID]apikey.Key
-	sessions map[kernel.ULID]session.Session
-	orgs     map[kernel.Slug]organization.Organization
-	creds    map[kernel.Slug]*breakglass.Credential
-	trail    []kernel.OrganizationAuditEntry
-	admits   map[kernel.MemberID][]session.Admitted
-	down     bool
+	workerSerials map[string]int64
+	accounts      map[kernel.AccountID]account.Account
+	keys          map[kernel.ULID]apikey.Key
+	sessions      map[kernel.ULID]session.Session
+	orgs          map[kernel.Slug]organization.Organization
+	creds         map[kernel.Slug]*breakglass.Credential
+	trail         []kernel.OrganizationAuditEntry
+	admits        map[kernel.MemberID][]session.Admitted
+	down          bool
 	// full refuses a key's use as the seats limit would.
 	full *featuresapi.LimitError
 	// peopleOnly lets only people manage API keys.

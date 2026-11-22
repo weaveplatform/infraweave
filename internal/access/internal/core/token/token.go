@@ -3,9 +3,11 @@ package token
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -84,26 +86,30 @@ type Request struct {
 	// Scope is an OAuth access token's scope claim, its scopes separated
 	// by spaces; empty leaves the claim out.
 	Scope string
+	// WorkerSerial binds only worker tokens to their registration certificate.
+	WorkerSerial int64
 }
 
 // Claims are a verified token's claims.
 type Claims struct {
-	Issuer   string
-	Subject  string
-	Audience string
-	Session  kernel.ULID
-	Kind     Kind
-	Scope    string
-	IssuedAt time.Time
-	Expiry   time.Time
+	Issuer       string
+	Subject      string
+	Audience     string
+	Session      kernel.ULID
+	Kind         Kind
+	Scope        string
+	WorkerSerial int64
+	IssuedAt     time.Time
+	Expiry       time.Time
 }
 
 // wire is the JWT's claim set: the registered claims and iw_kind.
 type wire struct {
 	jwt.Claims
 
-	Kind  Kind   `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
-	Scope string `json:"scope,omitempty"`
+	Kind         Kind            `json:"iw_kind"` //nolint:tagliatelle // the claim is named iw_kind on the wire
+	Scope        string          `json:"scope,omitempty"`
+	WorkerSerial json.RawMessage `json:"iw_worker_serial,omitempty"` //nolint:tagliatelle // worker-only signed credential generation
 }
 
 // Service issues and verifies the api-token purpose's JWTs and rotates its
@@ -152,7 +158,8 @@ func (s *Service) issuerOf(kind Kind) string {
 // if there is none. Its times are whole seconds, as the claims carry them.
 func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) {
 	if !slices.Contains(Kinds, r.Kind) || r.Subject == "" || r.Session.IsZero() ||
-		r.Audience == "" || r.TTL < time.Second {
+		r.Audience == "" || r.TTL < time.Second ||
+		r.Kind == KindWorker && r.WorkerSerial <= 0 || r.Kind != KindWorker && r.WorkerSerial != 0 {
 		return "", Claims{}, fmt.Errorf("%w: %+v", ErrRequest, r)
 	}
 	sg, err := s.signer(ctx)
@@ -161,14 +168,15 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 	}
 	now := s.now().UTC().Truncate(time.Second)
 	c := Claims{
-		Issuer:   s.issuerOf(r.Kind),
-		Subject:  r.Subject,
-		Audience: r.Audience,
-		Session:  r.Session,
-		Kind:     r.Kind,
-		Scope:    r.Scope,
-		IssuedAt: now,
-		Expiry:   now.Add(r.TTL),
+		Issuer:       s.issuerOf(r.Kind),
+		Subject:      r.Subject,
+		Audience:     r.Audience,
+		Session:      r.Session,
+		Kind:         r.Kind,
+		Scope:        r.Scope,
+		WorkerSerial: r.WorkerSerial,
+		IssuedAt:     now,
+		Expiry:       now.Add(r.TTL),
 	}
 	js, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signer.ES256, Key: opaque{ctx: ctx, s: sg}},
@@ -176,6 +184,10 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 	)
 	if err != nil {
 		return "", Claims{}, fmt.Errorf("issue token: %w", err)
+	}
+	var serial json.RawMessage
+	if c.Kind == KindWorker {
+		serial = strconv.AppendInt(nil, c.WorkerSerial, 10)
 	}
 	raw, err := jwt.Signed(js).Claims(wire{
 		Claims: jwt.Claims{
@@ -187,8 +199,9 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 			NotBefore: jwt.NewNumericDate(now),
 			Expiry:    jwt.NewNumericDate(c.Expiry),
 		},
-		Kind:  c.Kind,
-		Scope: c.Scope,
+		Kind:         c.Kind,
+		Scope:        c.Scope,
+		WorkerSerial: serial,
 	}).Serialize()
 	if err != nil {
 		return "", Claims{}, fmt.Errorf("issue token: %w", err)
@@ -273,6 +286,11 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		return Claims{}, fmt.Errorf("%w: %w", ErrToken, err)
 	}
 	session, err := kernel.ParseULID(w.ID)
+	var serial int64
+	var serialErr error
+	if len(w.WorkerSerial) != 0 {
+		serialErr = json.Unmarshal(w.WorkerSerial, &serial)
+	}
 	switch {
 	case w.IssuedAt == nil || w.NotBefore == nil || w.Expiry == nil:
 		return Claims{}, fmt.Errorf("%w: iat, nbf and exp are required", ErrToken)
@@ -287,6 +305,10 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		return Claims{}, fmt.Errorf("%w: jti: %w", ErrToken, err)
 	case w.Subject == "":
 		return Claims{}, fmt.Errorf("%w: no sub", ErrToken)
+	case w.Kind == KindWorker && (len(w.WorkerSerial) == 0 || serialErr != nil || serial <= 0):
+		return Claims{}, fmt.Errorf("%w: positive iw_worker_serial is required for workers", ErrToken)
+	case w.Kind != KindWorker && len(w.WorkerSerial) != 0:
+		return Claims{}, fmt.Errorf("%w: iw_worker_serial is worker-only", ErrToken)
 	case !slices.Contains(Kinds, w.Kind):
 		return Claims{}, fmt.Errorf("%w: iw_kind %q", ErrToken, w.Kind)
 	}
@@ -298,14 +320,15 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		return Claims{}, fmt.Errorf("%w: %w", ErrToken, err)
 	}
 	return Claims{
-		Issuer:   w.Issuer,
-		Subject:  w.Subject,
-		Audience: audience,
-		Session:  session,
-		Kind:     w.Kind,
-		Scope:    w.Scope,
-		IssuedAt: w.IssuedAt.Time().UTC(),
-		Expiry:   w.Expiry.Time().UTC(),
+		Issuer:       w.Issuer,
+		Subject:      w.Subject,
+		Audience:     audience,
+		Session:      session,
+		Kind:         w.Kind,
+		Scope:        w.Scope,
+		WorkerSerial: serial,
+		IssuedAt:     w.IssuedAt.Time().UTC(),
+		Expiry:       w.Expiry.Time().UTC(),
 	}, nil
 }
 

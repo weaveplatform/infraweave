@@ -37,10 +37,11 @@ import (
 // ref: decision 0008 § "The worker API", § "The run specification and its
 // secrets"
 type workerSteps struct {
-	legacy  bool
-	public  bool
-	expired bool
-	w       *harness.World
+	legacy   bool
+	public   bool
+	expired  bool
+	liveness map[string]workerLiveness
+	w        *harness.World
 	// certs are the pool certificates by the name their serial is kept
 	// as, each with its pool's ID.
 	certs map[string]poolCert
@@ -57,6 +58,7 @@ type poolCert struct {
 
 func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	w.certs = map[string]poolCert{}
+	w.liveness = map[string]workerLiveness{}
 	w.registrations, w.held = map[string]string{}, map[string]chan harness.Response{}
 	sc.Step(`^a certificate signing request for an? (P-256|P-384|RSA) key is kept as "(\w+)"$`,
 		w.request)
@@ -64,6 +66,10 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		`^the answer's pool token names the pool "(\w+)" and chains to the pool CA, its serial kept as "(\w+)"$`,
 		w.token,
 	)
+	sc.Step(`^worker "(\w+)" liveness is kept as "(\w+)"$`, w.keepLiveness)
+	sc.Step(`^worker "(\w+)" liveness matches "(\w+)"$`, w.sameLiveness)
+	sc.Step(`^worker token "(\w+)" carries certificate generation "(\w+)"$`, w.tokenGeneration)
+	sc.Step(`^the renewed worker session is kept as "(\w+)" for worker "(\w+)"$`, w.keepRenewed)
 	sc.Step(`^the pool "(\w+)" no longer has the serial kept as "(\w+)"$`, w.replaced)
 	sc.Step(
 		`^the launcher "(\w+)" registers with the key of "(\w+)" and the certificate "(\w+)"(?: as the worker "(\w+)")? through ([AB])$`,
