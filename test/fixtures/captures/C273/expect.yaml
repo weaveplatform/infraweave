@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/665
+replaySubset: policy-page-tooling
 observed:
   "/exchanges/5/response/data/viewer/admin": false
   "/exchanges/6/response/data/authorizationScheme": "MANAGED_USERS"
@@ -9,3 +9,101 @@ observed:
   "/exchanges/13/response/data/accountUpdateAuthorizationScheme": "MANAGED_USERS"
   "/exchanges/34/response/data/stacks": []
   "/exchanges/34/response/data/policies": []
+  "/exchanges/24/response/data/policy/type": "PLAN"
+  "/exchanges/24/response/data/policy/engineType": "REGO_V1"
+  "/exchanges/24/response/data/policy/sampleCount": 2
+  "/exchanges/24/response/data/policy/hasAttachedStacks": true
+  "/exchanges/25/response/data/policy/evaluationRecords/0/outcome": "allow"
+  "/exchanges/25/response/data/policy/evaluationRecords/1/outcome": "allow"
+  "/exchanges/27/response/data/policySimulatev2": "{\"deny\":[],\"flag\":[],\"info\":[],\"reset_flag\":[],\"sample\":true,\"warn\":[]}"
+  "/exchanges/30/response/data/policy/searchEvaluationRecordSuggestions/filteredCount": 2
+  "/exchanges/32/response/data/policy/type": "NOTIFICATION"
+  "/exchanges/32/response/data/policy/sampleCount": 0
+  "/exchanges/32/response/data/policy/hasAttachedStacks": false
+  "/exchanges/33/response/data/policy/evaluationRecords": []
+
+handoffs:
+  "/exchanges/5/response/data/viewer/admin":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Preserve the historical browser viewer/admin or inactive-scheme inventory fact. Current native permissions, caller preservation and non-admin private-sample denials are independently tested through real role/action and evidence APIs; no new vendor identity observation is claimed."
+  "/exchanges/6/response/data/authorizationScheme":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Preserve the historical browser viewer/admin or inactive-scheme inventory fact. Current native permissions, caller preservation and non-admin private-sample denials are independently tested through real role/action and evidence APIs; no new vendor identity observation is claimed."
+  "/exchanges/7/response/data/accountUpdateAuthorizationScheme":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/8/response/data/viewer/admin":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Preserve the historical browser viewer/admin or inactive-scheme inventory fact. Current native permissions, caller preservation and non-admin private-sample denials are independently tested through real role/action and evidence APIs; no new vendor identity observation is claimed."
+  "/exchanges/9/response/errors/0/message":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/12/response/data/viewer":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/13/response/data/accountUpdateAuthorizationScheme":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/34/response/data/stacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/34/response/data/policies":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/24/response/data/policy/type":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/24/response/data/policy/engineType":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/24/response/data/policy/sampleCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/24/response/data/policy/hasAttachedStacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/25/response/data/policy/evaluationRecords/0/outcome":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/25/response/data/policy/evaluationRecords/1/outcome":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/27/response/data/policySimulatev2":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/30/response/data/policy/searchEvaluationRecordSuggestions/filteredCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/32/response/data/policy/type":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/32/response/data/policy/sampleCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/32/response/data/policy/hasAttachedStacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."
+  "/exchanges/33/response/data/policy/evaluationRecords":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Execute real public scheme/session controls using the byte-equal captured C50 programs, then the captured PLAN/NOTIFICATION bodies with mapped namespace/actor/root-space identities. Two actual tracked Terraform runs produce two ALLOW records and retained samples; compare body/used-by/history/search/suggestions, protected sample input, whole captured simulation output and restored resource inventories. REST uses opaque evaluation IDs and its documented JSON/problem schema."

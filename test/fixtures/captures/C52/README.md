@@ -17,4 +17,8 @@ deny-before-run-creation behavior for #659. The four histories and both policy
 versions are retained, rather than rewriting a successful task into a denial.
 
 The final exchange verifies restoration and resource cleanup. Eight provider-free
-runs were created; none applied infrastructure. REST replay awaits #660.
+runs were created; none applied infrastructure. The executable native replay is described below.
+
+## Native verification for #666
+
+Native REST replay now executes the actual captured initialization-denial body through real worker assignment, requires the exact history/note/receipt and verifies no worker preparation. An ordinary Terraform task is a positive execution control. A separate real scenario runs the captured V0 TASK deny against the approved refusal-before-creation contract; its result is not represented as an upstream observation. The exact observed/REST/upstream classification is recorded in [expect.yaml](expect.yaml); original responses and browser snapshots are unchanged.

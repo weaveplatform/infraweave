@@ -24,8 +24,8 @@ type PullRequestComment struct {
 }
 
 // Comments queues a notification comment update in its caller's transaction.
-// Native effects run only in VCS jobs. P18 supplies notification policy callers;
-// plan comments use VCS's own run-based keys and never edit another run's plan.
+// Native effects run only in VCS jobs. Plan comments use VCS's own run-based
+// keys and never edit another run's plan.
 type Comments interface {
 	Upsert(context.Context, kernel.AccountID, PullRequestComment) error
 }

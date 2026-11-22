@@ -132,7 +132,7 @@ type Evaluation struct {
 	Notification *NotificationDecision `json:"notification,omitempty"`
 	Receipts     []Receipt             `json:"receipts"`
 	Failures     []Failure             `json:"failures"`
-	// Samples is an in-memory handoff to P13b's sealed persistence. It must
+	// Samples is an in-memory handoff to sealed sample storage. It must
 	// never be copied into a response, event document or plaintext log.
 	// Workflow evaluation succeeds without an installed sampling consumer.
 	Samples []SampleRequest `json:"-"`

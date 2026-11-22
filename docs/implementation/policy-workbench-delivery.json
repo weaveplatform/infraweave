@@ -1,0 +1,2020 @@
+{
+  "schemaVersion": 1,
+  "issue": 666,
+  "status": "baseline-and-focused-development-proof; final-CI-and-main-lab-required",
+  "auditedOn": "2026-11-22",
+  "baseline": {
+    "revision": "bf85746e20165b7ac9b6384357f15621bb63282a",
+    "ciRun": 44982320621,
+    "features": 189,
+    "scenarios": 1136,
+    "declaredOperations": 31,
+    "operationsWithMissingCases": 0
+  },
+  "operations": [
+    {
+      "operation": "accountUpdateAuthorizationScheme",
+      "method": "POST",
+      "path": "/account/update-authorization-scheme",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 37,
+            "name": "An authenticated key without account administration cannot change the strategy"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 133,
+            "name": "Administration retained for the switching caller does not transfer to a new session"
+          },
+          {
+            "uri": "features/authz/authorization_scheme_controls.feature",
+            "line": 5,
+            "name": "Both operations answer a literal 403 when the feature is disabled"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 50,
+            "name": "An unknown strategy is refused without changing the account"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 111,
+            "name": "Two simultaneous administrators cannot preserve two sessions through one switch"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 174,
+            "name": "Malformed and cross-account requests cannot change any strategy"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 175,
+            "name": "Malformed and cross-account requests cannot change any strategy"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 176,
+            "name": "Malformed and cross-account requests cannot change any strategy"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 177,
+            "name": "Malformed and cross-account requests cannot change any strategy"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 22,
+            "name": "The current administrator changes strategies and remains able to change back"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 58,
+            "name": "A switch revokes cached peer sessions across replicas while other accounts stay usable"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 77,
+            "name": "Switching in both directions preserves saved policy and managed authorization rows"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 111,
+            "name": "Two simultaneous administrators cannot preserve two sessions through one switch"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 121,
+            "name": "A real idempotent switch replays across replicas and a current-value write has no security effects"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 150,
+            "name": "A different organization changes only its own account and sessions"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 180,
+            "name": "A real browser session remains administrative while switching in both directions"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "attachablePoliciesInSpace",
+      "method": "GET",
+      "path": "/attachable-policies-in-space",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 380,
+            "name": "Candidate lists exclude policy types that do not attach to stacks"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "authorizationScheme",
+      "method": "GET",
+      "path": "/authorization-scheme",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/authz/authorization_scheme_controls.feature",
+            "line": 5,
+            "name": "Both operations answer a literal 403 when the feature is disabled"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/authz/authorization_scheme_controls.feature",
+            "line": 15,
+            "name": "The read answers 503 when its real PostgreSQL is unavailable"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 13,
+            "name": "An account with no changed settings uses managed users on both replicas"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 22,
+            "name": "The current administrator changes strategies and remains able to change back"
+          },
+          {
+            "uri": "features/authz/authorization_scheme.feature",
+            "line": 150,
+            "name": "A different organization changes only its own account and sessions"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "autoattachmentForLabels",
+      "method": "GET",
+      "path": "/autoattachment-for-labels",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 237,
+            "name": "Preview counts all matching targets and returns current target labels"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 179,
+            "name": "Automatic attachment follows accepted inheritance and policy space changes"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 237,
+            "name": "Preview counts all matching targets and returns current target labels"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policies",
+      "method": "GET",
+      "path": "/policies",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 55,
+            "name": "Invalid policy search requests and unknown spaces have public failures"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 35,
+            "name": "Both list and search cursors resume on another replica without skipped policies"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 96,
+            "name": "Account and inherited space searches use persistent policy projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policy",
+      "method": "GET",
+      "path": "/policies/{policyId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 81,
+            "name": "A space reader reads its policy but cannot save policy settings"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 113,
+            "name": "Switching off policies refuses creation and conceals missing policies"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 221,
+            "name": "A compiled policy persists across replicas with the intentional V1 default"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 32,
+            "name": "Policy views project real retained counts and safe committed metadata"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyAttach",
+      "method": "PUT",
+      "path": "/stacks/{stackId}/policies/{policyId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 358,
+            "name": "A space reader reads attachments and cannot invoke the legacy admin fallbacks"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 93,
+            "name": "Legacy stack policy actions remain disabled for custom role assignment"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 102,
+            "name": "Concurrent automatic selection and explicit promotion evaluate one effective policy"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 272,
+            "name": "Explicit attachment replaces the automatic marker and survives label removal"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyAttachedStack",
+      "method": "GET",
+      "path": "/policies/{policyId}/attached-stack",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 358,
+            "name": "A space reader reads attachments and cannot invoke the legacy admin fallbacks"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyCheck",
+      "method": "POST",
+      "path": "/policies/check",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/check.feature",
+            "line": 45,
+            "name": "Switching off expressions refuses policy checking"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/check.feature",
+            "line": 15,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 16,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 17,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 18,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 19,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 20,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 21,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 22,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 38,
+            "name": "Check and save respect the configured policy source limit"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 53,
+            "name": "Missing credentials and unknown dialects refuse checks"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/check.feature",
+            "line": 15,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 16,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 17,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 18,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 19,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 20,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 21,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 22,
+            "name": "Editor checks and policy saves share compilation and exact diagnostics"
+          },
+          {
+            "uri": "features/policies/check.feature",
+            "line": 25,
+            "name": "Both replicas compile the default V1 and explicit V0 policy dialects"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyContract",
+      "method": "GET",
+      "path": "/.well-known/policy-contract.json",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/contract.feature",
+            "line": 24,
+            "name": "The installation's policies switch refuses contract reads"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/contract.feature",
+            "line": 34,
+            "name": "Missing credentials and the database-backed caller switch refuse schema reads"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/contract.feature",
+            "line": 10,
+            "name": "Both replicas publish a complete schema through the ordinary account controls"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyCreatev2",
+      "method": "POST",
+      "path": "/policies",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 81,
+            "name": "A space reader reads its policy but cannot save policy settings"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 113,
+            "name": "Switching off policies refuses creation and conceals missing policies"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 43,
+            "name": "The unsupported TASK_RUN policy type is refused through the actual API"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 44,
+            "name": "The unsupported TERRAFORM_PLAN policy type is refused through the actual API"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 45,
+            "name": "The unsupported ACCESS policy type is refused through the actual API"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 8,
+            "name": "Login policies are account-wide and cannot move into child spaces"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 157,
+            "name": "A policy prevents deleting its owning space until it is moved"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 174,
+            "name": "Compilation refusals preserve the stored body and engine"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 79,
+            "name": "Creating and deleting active LOGIN policies invalidates old peer credentials without ending the editor"
+          },
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 157,
+            "name": "A policy prevents deleting its owning space until it is moved"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 221,
+            "name": "A compiled policy persists across replicas with the intentional V1 default"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 48,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 49,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 50,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 51,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 52,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyDelete",
+      "method": "DELETE",
+      "path": "/policies/{policyId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 81,
+            "name": "A space reader reads its policy but cannot save policy settings"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 54,
+            "name": "Conditional updates and deletion refuse stale policy versions across replicas"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 79,
+            "name": "Creating and deleting active LOGIN policies invalidates old peer credentials without ending the editor"
+          },
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 54,
+            "name": "Conditional updates and deletion refuse stale policy versions across replicas"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyDetach",
+      "method": "DELETE",
+      "path": "/policy-attachments/{attachmentId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 358,
+            "name": "A space reader reads attachments and cannot invoke the legacy admin fallbacks"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 93,
+            "name": "Legacy stack policy actions remain disabled for custom role assignment"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 154,
+            "name": "Explicit attachment guards inheritance and moves of either endpoint"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 250,
+            "name": "Stack and policy labels reconcile automatic attachments across replicas"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 272,
+            "name": "Explicit attachment replaces the automatic marker and survives label removal"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyEvaluationSample",
+      "method": "GET",
+      "path": "/policies/{policyId}/evaluation-sample",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyInputCapture",
+      "method": "GET",
+      "path": "/policy-input-captures/{policyInputCaptureId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyInputCaptures",
+      "method": "GET",
+      "path": "/policy-input-captures",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_api.feature",
+            "line": 13,
+            "name": "A root administrator can list an empty capture collection in an owned space"
+          },
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyRuntime",
+      "method": "GET",
+      "path": "/policy-runtime",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/runtime.feature",
+            "line": 21,
+            "name": "Switching off policies refuses runtime metadata reads"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/runtime.feature",
+            "line": 31,
+            "name": "Missing credentials and a disabled caller refuse runtime metadata"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/runtime.feature",
+            "line": 8,
+            "name": "Both replicas report the OPA version actually linked from this build"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policySearchEvaluationRecordSuggestions",
+      "method": "GET",
+      "path": "/policies/{policyId}/search-evaluation-record-suggestions",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policySearchEvaluationRecords",
+      "method": "GET",
+      "path": "/policies/{policyId}/search-evaluation-records",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policySimulatev2",
+      "method": "POST",
+      "path": "/policies/simulate",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 46,
+            "name": "A caller with no readable space cannot simulate account policy code"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 44,
+            "name": "Switching off policies refuses simulation before execution"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 39,
+            "name": "Recorded preambles decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 40,
+            "name": "Recorded roles decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 41,
+            "name": "Recorded trigger decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 42,
+            "name": "Recorded C273 decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 43,
+            "name": "Recorded C192 decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 62,
+            "name": "Invalid simulation JSON never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 63,
+            "name": "Invalid simulation source never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 64,
+            "name": "Invalid simulation dialect never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 65,
+            "name": "Invalid simulation package never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 66,
+            "name": "Invalid simulation exec never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 67,
+            "name": "Invalid simulation HTTP never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 68,
+            "name": "Invalid simulation libraries never records evaluation evidence"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 71,
+            "name": "Unauthenticated callers and unknown dialects cannot simulate"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 21,
+            "name": "The body boundary is enforced after JSON-string decoding"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 22,
+            "name": "The input boundary is enforced after JSON-string decoding"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 25,
+            "name": "The normal HTTP envelope remains stricter when configured below the simulation ceiling"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 34,
+            "name": "The configured PLAN deadline bounds real public OPA evaluation"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 13,
+            "name": "A policy author simulates edited PLAN input through the real endpoint"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 21,
+            "name": "Explicit V0 and omitted-engine V1 simulate edited input without retaining a true sample"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 39,
+            "name": "Recorded preambles decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 40,
+            "name": "Recorded roles decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 41,
+            "name": "Recorded trigger decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 42,
+            "name": "Recorded C273 decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation.feature",
+            "line": 43,
+            "name": "Recorded C192 decisions are replayed through the public simulator"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 21,
+            "name": "The body boundary is enforced after JSON-string decoding"
+          },
+          {
+            "uri": "features/policies/simulation_limits.feature",
+            "line": 22,
+            "name": "The input boundary is enforced after JSON-string decoding"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 48,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 49,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 50,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 51,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 52,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/simulation_retention.feature",
+            "line": 8,
+            "name": "A simulated LOGIN grant and true sample leave real evidence and member permissions unchanged"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyTemplate",
+      "method": "GET",
+      "path": "/policy-templates/{policyTemplateId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 22,
+            "name": "Catalogue browsing requires read access to some account space"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 32,
+            "name": "Unknown templates and unsupported search fields fail without importing anything"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 48,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 49,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 50,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 51,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 52,
+            "name": "Imported catalogue bodies keep origin and execute in their declared dialect"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyUpdatev2",
+      "method": "PUT",
+      "path": "/policies/{policyId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 81,
+            "name": "A space reader reads its policy but cannot save policy settings"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 113,
+            "name": "Switching off policies refuses creation and conceals missing policies"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 8,
+            "name": "Login policies are account-wide and cannot move into child spaces"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 54,
+            "name": "Conditional updates and deletion refuse stale policy versions across replicas"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 157,
+            "name": "A policy prevents deleting its owning space until it is moved"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 174,
+            "name": "Compilation refusals preserve the stored body and engine"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 60,
+            "name": "Updating an active LOGIN policy revokes peer sessions across replicas and preserves the editor and another account"
+          },
+          {
+            "uri": "features/authz/login_policy.feature",
+            "line": 100,
+            "name": "Inactive LOGIN configuration and failed compilation never revoke managed-user sessions"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 54,
+            "name": "Conditional updates and deletion refuse stale policy versions across replicas"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 157,
+            "name": "A policy prevents deleting its owning space until it is moved"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 199,
+            "name": "An omitted engine preserves V0 while an explicit switch recompiles under V1"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "policyUpdatev2Patch",
+      "method": "PATCH",
+      "path": "/policies/{policyId}",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 81,
+            "name": "A space reader reads its policy but cannot save policy settings"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 26,
+            "name": "Merge patch keeps source and dialect while resetting nullable settings"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 33,
+            "name": "Known TASK policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/tiers/deprecation.feature",
+            "line": 34,
+            "name": "Known INITIALIZATION policy responses retain the notice through reads, edits, compiler refusal and deletion"
+          },
+          {
+            "uri": "features/policies/management.feature",
+            "line": 26,
+            "name": "Merge patch keeps source and dialect while resetting nullable settings"
+          },
+          {
+            "uri": "features/policies/projections.feature",
+            "line": 78,
+            "name": "Current projections follow automatic labels and space moves without exposing hidden targets"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "runPolicyReceiptSample",
+      "method": "GET",
+      "path": "/runs/{runId}/policy-receipt-sample",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/evidence_samples.feature",
+            "line": 32,
+            "name": "All six evidence routes enforce current ownership root administration and expiry across replicas"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchPolicies",
+      "method": "POST",
+      "path": "/policies/search",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 55,
+            "name": "Invalid policy search requests and unknown spaces have public failures"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 35,
+            "name": "Both list and search cursors resume on another replica without skipped policies"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 96,
+            "name": "Account and inherited space searches use persistent policy projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchPoliciesSuggestions",
+      "method": "POST",
+      "path": "/policies/search/suggestions",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 9,
+            "name": "A sibling account cannot read or change a known policy ID"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 55,
+            "name": "Invalid policy search requests and unknown spaces have public failures"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 96,
+            "name": "Account and inherited space searches use persistent policy projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchPolicyTemplates",
+      "method": "POST",
+      "path": "/policy-templates/search",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 22,
+            "name": "Catalogue browsing requires read access to some account space"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 32,
+            "name": "Unknown templates and unsupported search fields fail without importing anything"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 12,
+            "name": "A policy author can page the template catalogue"
+          },
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 18,
+            "name": "Type and label filters return the same rows and facet counts"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchPolicyTemplatesSuggestions",
+      "method": "POST",
+      "path": "/policy-templates/search/suggestions",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 22,
+            "name": "Catalogue browsing requires read access to some account space"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 32,
+            "name": "Unknown templates and unsupported search fields fail without importing anything"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/catalogue.feature",
+            "line": 18,
+            "name": "Type and label filters return the same rows and facet counts"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchSpacePoliciesSuggestions",
+      "method": "POST",
+      "path": "/space-policies/search/suggestions",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/management.feature",
+            "line": 125,
+            "name": "Revoking the policy entitlement refuses known policies on both replicas"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 55,
+            "name": "Invalid policy search requests and unknown spaces have public failures"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/search.feature",
+            "line": 68,
+            "name": "Searches and facet counts exclude policies in unreadable spaces"
+          },
+          {
+            "uri": "features/policies/search.feature",
+            "line": 96,
+            "name": "Account and inherited space searches use persistent policy projections"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "stackAttachablePolicies",
+      "method": "GET",
+      "path": "/stacks/{stackId}/attachable-policies",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 380,
+            "name": "Candidate lists exclude policy types that do not attach to stacks"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 418,
+            "name": "Candidates and explicit attachment follow the same inheritance boundary"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "stackPolicyAttachment",
+      "method": "GET",
+      "path": "/stacks/{stackId}/policy-attachment",
+      "public": false,
+      "cases": {
+        "denial": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 111,
+            "name": "Revoking the policy entitlement refuses every attachment operation"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 358,
+            "name": "A space reader reads attachments and cannot invoke the legacy admin fallbacks"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 133,
+            "name": "Missing, malformed and mismatched attachment parents are refused"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 215,
+            "name": "A failed durable reconcile request refuses the space change atomically"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          }
+        ],
+        "success": [
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 17,
+            "name": "Account-qualified attachments, candidates and preview never cross accounts"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 52,
+            "name": "A child reader inherits ancestor reads without seeing sibling targets"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 102,
+            "name": "Concurrent automatic selection and explicit promotion evaluate one effective policy"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 179,
+            "name": "Automatic attachment follows accepted inheritance and policy space changes"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 215,
+            "name": "A failed durable reconcile request refuses the space change atomically"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 250,
+            "name": "Stack and policy labels reconcile automatic attachments across replicas"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 294,
+            "name": "Explicit attachment persists once with distinct policy and attachment IDs"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 334,
+            "name": "C9 forced deletion removes the policy and both attachment projections"
+          },
+          {
+            "uri": "features/policies/attachments.feature",
+            "line": 405,
+            "name": "Git push policies participate in automatic stack label reconciliation"
+          }
+        ]
+      },
+      "missing": []
+    }
+  ],
+  "developmentEvidence": {
+    "opa": "v1.22.4",
+    "captureRevision": "3f8249c6",
+    "captureScenarios": 14,
+    "captureSteps": 557,
+    "captureIds": [
+      "C192",
+      "C273",
+      "C291",
+      "C46",
+      "C47",
+      "C48",
+      "C50",
+      "C51",
+      "C52",
+      "C53",
+      "C54"
+    ],
+    "accessRetirement": "direct public problem and inventory assertions; no synthetic Cucumber count",
+    "loginLanguageScenarios": 2,
+    "loginLanguageSteps": 34,
+    "finalExactHeadCI": "required",
+    "finalMainLab": "required"
+  }
+}

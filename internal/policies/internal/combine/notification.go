@@ -7,7 +7,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 )
 
-// Notification validates typed routes but leaves all provider work to P18.
+// Notification validates and combines typed routes for notification delivery.
 func Notification(receipts []policyapi.Receipt) policyapi.Evaluation {
 	out := evaluation(policyapi.Notification, receipts)
 	if !out.HasPolicies {

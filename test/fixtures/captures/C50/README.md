@@ -19,4 +19,8 @@ An entitled LOGIN evaluation/receipt is still needed for C50. ACCESS remains
 superseded; NOTIFICATION and INTENT no-run effects remain with P18/P25.
 
 The final exchange verifies restoration and resource cleanup. Eight provider-free
-runs were created; none applied infrastructure. REST replay awaits #658.
+runs were created; none applied infrastructure. The executable native replay is described below.
+
+## Native verification for #666
+
+Native REST replay now executes the captured flag=true, flag=false and deny programs with namespace, native secret-key login and root-space identities mapped to the local fixture. Real admission/grants, scheme/session invalidation, denied-entry session/grant stability, no run effects and key/policy cleanup pass. Historical V5_FREE evaluation/flag observations remain unresolved as described above. The exact observed/REST/upstream classification is recorded in [expect.yaml](expect.yaml); original responses and browser snapshots are unchanged.

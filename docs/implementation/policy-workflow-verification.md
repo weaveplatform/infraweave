@@ -1,4 +1,4 @@
-# P13 policy workflow verification
+# Policy workflow verification
 
 [POL-17 (#654)](https://github.com/weaveplatform/infraweave/issues/654) joins the
 workflow evidence from #649–#653. Its new scenarios carry `@policy-phase`; their
@@ -79,7 +79,7 @@ retention, privacy or expiry. #661/#662/#666 own those paths. Authored deferred
 artifact fixtures do not establish native deferred-plan capture. #675's later
 maintainer-approved source-pinned experimental capture and full positive
 compatibility matrix now pass exact-main CI; official-release production
-remains unproven. The [delivery audit](policy-p13-delivery.md) retains that
+remains unproven. The [delivery audit](policy-workflow-delivery.md) retains that
 distinction. The [verification ownership record](policy-verification-ownership.md)
 and each capture's handoffs remain authoritative for later phases.
 
@@ -104,4 +104,4 @@ mandatory subsequent phase gates.
 
 ## Delivered source evidence
 
-The [P13 delivery audit](policy-p13-delivery.md) links current main `3ff32129c22db94166780230d3c637f829655401`, full quality run 44898323446 and the four-provider native run 44934050424. This matrix remains the language/workflow proof; native service delivery and the audit's own required CI are independent gates. Full catalogue and P13b claims remain excluded.
+The [P13 delivery audit](policy-workflow-delivery.md) links current main `3ff32129c22db94166780230d3c637f829655401`, full quality run 44898323446 and the four-provider native run 44934050424. This matrix remains the language/workflow proof; native service delivery and the audit's own required CI are independent gates. Full catalogue and P13b claims remain excluded.

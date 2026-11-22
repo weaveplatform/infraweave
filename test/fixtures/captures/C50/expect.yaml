@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/658
+replaySubset: policy-login-session-contract
 observed:
   "/exchanges/7/response/data/accountUpdateAuthorizationScheme": "LOGIN_POLICIES"
   "/exchanges/9/response/errors/0/message": "unauthorized"
@@ -12,3 +12,53 @@ observed:
   "/exchanges/21/response/data/accountUpdateAuthorizationScheme": "MANAGED_USERS"
   "/exchanges/24/response/data/apiKeyUser": null
   "/exchanges/27/response/data/apiKeys": []
+
+handoffs:
+  "/exchanges/7/response/data/accountUpdateAuthorizationScheme":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Switch the real account to LOGIN_POLICIES and require the public scheme response."
+  "/exchanges/9/response/errors/0/message":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "The prior member credential is rejected on the other replica after the scheme switch; REST uses 401 rather than GraphQL unauthorized."
+  "/exchanges/10/response/data/apiKeyUser/admin":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/11/response/data/policy/sampleCount":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/12/response/data/stack":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/15/response/data/viewer":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Editing the active captured LOGIN flag body invalidates the prior issued credential on the other replica."
+  "/exchanges/16/response/data/apiKeyUser/admin":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/17/response/data/stack":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/20/response/data/apiKeyUser/admin":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "C50's free-tier experiment did not establish LOGIN evaluation or honored grants, even with an explicit deny. Preserve the original admission/sample/stack fact. The maintainer-approved ADR contract is tested separately with the exact captured flag/deny programs and real infraweave entry; it is not a newly observed vendor result."
+  "/exchanges/21/response/data/accountUpdateAuthorizationScheme":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Restore MANAGED_USERS through the public scheme operation."
+  "/exchanges/24/response/data/apiKeyUser":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Delete the fixture test key through the public API, then require fresh admission to return 401."
+  "/exchanges/27/response/data/apiKeys":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Read the deleted test key and require 404, preserving the seeded root caller; the test account baseline differs from the historical empty account."

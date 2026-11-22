@@ -1,5 +1,5 @@
-# Observed upstream facts, independent of pending infraweave REST behavior.
-replayAfter: https://github.com/weaveplatform/infraweave/issues/664
+# Dated vendor response bodies remain unchanged; pagination maps to REST.
+replayWith: policy-catalogue
 observed:
   "/pages/0/status": 200
   "/pages/0/response/data/searchPolicyTemplates/pageInfo/hasNextPage": true

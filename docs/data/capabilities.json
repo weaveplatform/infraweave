@@ -681,7 +681,7 @@
         "phase": "P13",
         "also": "P13b, P25b (Intent project attachments)",
         "state": "partial",
-        "notes": "POL-05/06 serve persisted policy CRUD and merge patch, account and inherited-space searches, explicit/automatic stack attachments and readable projections. P13 also serves the Rego compiler/runtime/typed contract, run review and workflow policy evaluation with committed receipts/flags. The P13 delivery audit links passing exact-source API/capture/workflow evidence and all four required real providers, with cleanup. Sampling, simulation, catalogue and page APIs remain P13b; notification routing and Intent integration retain their later phases. The complete tag remains partial."
+        "notes": "Policy CRUD, inherited-space searches, stack attachments, compiler/runtime and committed run-workflow receipts/flags retain the P13 exact-source/API/capture proof and four-provider lab cleanup. The integrated P13b baseline additionally serves LOGIN admission and scheme changes, TASK refusal, server INITIALIZATION, sealed sample/capture readers, no-write simulation, the pinned MIT catalogue and safe policy-page projections. The P13b delivery audit maps every served operation and distinguishes capture replays from approved inferences; final combined CI and the required main lab remain delivery gates. Notification routing and Intent integration retain their later phases, so the complete tag remains partial."
       }
     },
     {
@@ -1680,7 +1680,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -1698,7 +1699,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2856,7 +2858,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2874,7 +2877,8 @@
         "lowestTier": "Starter",
         "apiPhase": "P13",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The public policy API operations have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {

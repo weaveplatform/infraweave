@@ -53,11 +53,9 @@ type Admitted struct {
 	Name string
 }
 
-// Admission decides which accounts admit a member: rows of account_users,
-// whatever bindings the member holds there, so a member with none signs
-// in with empty grants; P13b's LOGIN policies extend it. Both are
-// evaluated when read, so a change admits or refuses at the member's next
-// switch.
+// Admission lists and checks accounts allowed by their active authorization
+// scheme. Decisions are evaluated when read, so configuration changes apply
+// at the member's next account switch.
 //
 // ref: decision 0007
 type Admission interface {

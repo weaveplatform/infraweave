@@ -15,6 +15,7 @@ import (
 )
 
 func (b *browserSteps) registerLoginIdentity(sc *godog.ScenarioContext) {
+	b.registerLoginDelivery(sc)
 	sc.Step(`^the LOGIN policy evaluation budget is (\d+) ms$`, func(milliseconds int) {
 		b.w.Settings["policy"] = map[string]any{"timeouts": map[string]any{"login": fmt.Sprintf("%dms", milliseconds)}}
 	})
