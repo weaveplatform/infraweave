@@ -41,13 +41,19 @@ CREATE TABLE policy_input_objects (
     object_key text NOT NULL UNIQUE,
     state text NOT NULL CHECK (state IN ('pending','uploading','live','failed','expired','superseded')),
     staging_sealed bytea,
+    space_snapshot_id uuid,
+    capture_kind text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL,
     expires_at timestamptz NOT NULL,
     upload_started_at timestamptz,
+    upload_job_id bigint,
     published_at timestamptz,
     PRIMARY KEY (account_id, id),
-    CHECK (staging_sealed IS NULL OR state IN ('pending','uploading'))
+    CHECK (staging_sealed IS NULL OR state IN ('pending','uploading')),
+    CHECK ((space_snapshot_id IS NULL) = (capture_kind = ''))
 );
+CREATE INDEX policy_input_objects_pending_jobs ON policy_input_objects (upload_job_id, account_id, id)
+    WHERE state IN ('pending','uploading');
 CREATE INDEX policy_input_objects_expiry ON policy_input_objects (expires_at, account_id, id)
     WHERE state IN ('pending','uploading','live');
 
@@ -83,3 +89,21 @@ CREATE TABLE policy_sample_budgets (
     used integer NOT NULL CHECK (used > 0 AND used <= 500),
     PRIMARY KEY (account_id, hour, bucket)
 );
+
+
+-- Space IDs are historical snapshots, not references that prevent space deletion.
+-- Reserving a refresh never discards the current capture before its replacement
+-- is uploaded and atomically published. Only the pending ID may be superseded.
+CREATE TABLE policy_input_capture_heads (
+    account_id uuid NOT NULL,
+    space_snapshot_id uuid NOT NULL,
+    capture_kind text NOT NULL,
+    current_input_id uuid,
+    pending_input_id uuid,
+    reserved_at timestamptz NOT NULL,
+    PRIMARY KEY (account_id, space_snapshot_id, capture_kind),
+    FOREIGN KEY (account_id, current_input_id) REFERENCES policy_input_objects (account_id, id),
+    FOREIGN KEY (account_id, pending_input_id) REFERENCES policy_input_objects (account_id, id)
+);
+CREATE INDEX policy_capture_heads_current ON policy_input_capture_heads (account_id, current_input_id);
+CREATE INDEX policy_capture_heads_pending ON policy_input_capture_heads (account_id, pending_input_id);

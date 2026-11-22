@@ -53,10 +53,24 @@ type Input struct {
 	CreatedAt, ExpiresAt time.Time
 	PublishedAt          *time.Time
 	Staging              crypt.Value
+	SpaceSnapshot        *kernel.ULID
+	CaptureKind          string
 }
 
 // Store owns evaluation metadata and the atomic account/hour quota.
 type Store interface {
+	AttachUploadJob(context.Context, kernel.AccountID, kernel.ULID, int64) error
+	InspectInput(context.Context, kernel.AccountID, kernel.ULID, bool) (Input, error)
+	DueInputs(context.Context, time.Time, int) ([]Input, error)
+	RetirementDue(context.Context, Input, time.Time) (bool, error)
+	PolicyInputs(context.Context, kernel.AccountID, kernel.ULID, int) ([]Input, error)
+	AccountInputs(context.Context, kernel.AccountID, int) ([]Input, error)
+	DropInput(context.Context, Input) error
+	PurgeMetadata(context.Context, kernel.AccountID, int) (bool, error)
+	CaptureSlot(context.Context, kernel.AccountID, kernel.ULID, string) (CaptureSlot, bool, error)
+	SetCapturePending(context.Context, Input) error
+	PublishCapture(context.Context, Input) (*kernel.ULID, bool, error)
+	ClearCapturePending(context.Context, Input) error
 	References(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID]Reference, error)
 	Reserve(context.Context, kernel.AccountID, policyapi.Type) (bool, error)
 	CreateInput(context.Context, Input, []byte) error
@@ -95,4 +109,10 @@ func New(d Deps) *Service {
 		d.Now = time.Now
 	}
 	return &Service{d: d}
+}
+
+// CaptureSlot is held by the transaction that reserved this minute's refresh.
+type CaptureSlot struct {
+	At               time.Time
+	Current, Pending *kernel.ULID
 }

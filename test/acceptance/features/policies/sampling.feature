@@ -37,3 +37,33 @@ Feature: Real policy decisions retain requested evaluation samples
     And policy "guard" has 1 committed TASK refusals and no task creation effects
     And policy "guard" eventually has 1 retained TASK sample
     And policy "guard" keeps "sampling-private-command" and "sampling-private-print" out of raw storage and logs
+
+  @op:taskCreate @case:denial
+  Scenario: Capture retention is independent of a false sample decision
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Capture without sampling","type":"TASK","space":"legacy","body":"package infraweave\nsample := false\ndeny contains \"Capture refused command\" if { input.request.command == \"echo capture-sensitive-command\" }\n"}' through B
+    And it answers 201
+    And the answer's id names "guard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through A
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"echo capture-sensitive-command"}' through B
+    Then it answers a 403 problem "forbidden"
+    And policy "guard" has 1 committed TASK refusals and no task creation effects
+    And policy "guard" eventually has 0 retained TASK sample
+    And the latest TASK capture has a sanitized command and no "capture-sensitive-command"
+
+  @op:runRead @case:success
+  Scenario: Public approval receipts distinguish retained evidence from expired samples before and after cleanup
+    Given token "h" sends "POST /api/v1/policies" with '{"name":"Sample approval","type":"APPROVAL","space":"legacy","body":"package infraweave\nsample := true\napprove if true\n"}' through A
+    And it answers 201
+    And the answer's id names "guard"
+    And token "h" sends "PUT /api/v1/stacks/infra/policies/{guard}" through B
+    And it answers 200
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{seed}"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    And token "h" eventually reads the run "run" in the state "READY" through B
+    And token "h" eventually reads run "run" with "retained" APPROVAL samples through A
+    When the retained inputs for run "run" expire
+    Then token "h" eventually reads run "run" with "expired" APPROVAL samples through B
+    When the input cleanup job removes the expired private data for run "run"
+    Then token "h" eventually reads run "run" with "expired" APPROVAL samples through A

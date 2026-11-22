@@ -67,8 +67,8 @@ func (s *Store) CreateInput(ctx context.Context, input sampling.Input, body []by
 	if err != nil {
 		return fmt.Errorf("policies: seal input staging: %w", err)
 	}
-	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO policy_input_objects(account_id,id,object_key,state,staging_sealed,created_at,expires_at)
-        VALUES($1,$2,$3,'pending',$4,$5,$6)`, input.Account, input.ID, input.Key, sealed, input.CreatedAt, input.ExpiresAt)
+	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO policy_input_objects(account_id,id,object_key,state,staging_sealed,created_at,expires_at,space_snapshot_id,capture_kind)
+        VALUES($1,$2,$3,'pending',$4,$5,$6,$7,$8)`, input.Account, input.ID, input.Key, sealed, input.CreatedAt, input.ExpiresAt, input.SpaceSnapshot, input.CaptureKind)
 	if err != nil {
 		return fmt.Errorf("policies: stage input: %w", sql.Unavailable(err))
 	}
@@ -97,23 +97,37 @@ func (s *Store) RecordEvaluation(ctx context.Context, req policyapi.EvaluationRe
 // Input locks immutable upload metadata when requested. Private staging never
 // enters an error or metadata projection.
 func (s *Store) Input(ctx context.Context, account kernel.AccountID, id kernel.ULID, lock bool) (sampling.Input, error) {
-	query := `SELECT account_id,id,object_key,state,staging_sealed,created_at,expires_at,published_at FROM policy_input_objects WHERE account_id=$1 AND id=$2`
+	return s.readInput(ctx, account, id, lock, true)
+}
+
+// InspectInput reads only lifecycle metadata; cleanup never opens private staging.
+func (s *Store) InspectInput(ctx context.Context, account kernel.AccountID, id kernel.ULID, lock bool) (sampling.Input, error) {
+	return s.readInput(ctx, account, id, lock, false)
+}
+
+func (s *Store) readInput(ctx context.Context, account kernel.AccountID, id kernel.ULID, lock, open bool) (sampling.Input, error) {
+	query := `SELECT account_id,id,object_key,state,staging_sealed,created_at,expires_at,published_at,space_snapshot_id,capture_kind FROM policy_input_objects WHERE account_id=$1 AND id=$2`
 	if lock {
 		if !tx.In(ctx) {
 			return sampling.Input{}, queue.ErrNoTransaction
+		}
+		if err := s.lockInputHead(ctx, account, id); err != nil {
+			return sampling.Input{}, err
 		}
 		query += ` FOR UPDATE`
 	}
 	var out sampling.Input
 	var sealed []byte
-	err := tx.Q(ctx, s.db).QueryRow(ctx, query, account, id).Scan(&out.Account, &out.ID, &out.Key, &out.State, &sealed, &out.CreatedAt, &out.ExpiresAt, &out.PublishedAt)
+	err := tx.Q(ctx, s.db).
+		QueryRow(ctx, query, account, id).
+		Scan(&out.Account, &out.ID, &out.Key, &out.State, &sealed, &out.CreatedAt, &out.ExpiresAt, &out.PublishedAt, &out.SpaceSnapshot, &out.CaptureKind)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, sampling.ErrNotFound
 	}
 	if err != nil {
 		return out, fmt.Errorf("policies: read input upload: %w", sql.Unavailable(err))
 	}
-	if sealed != nil {
+	if open && sealed != nil {
 		if s.seal == nil {
 			return sampling.Input{}, kernel.ErrUnavailable
 		}

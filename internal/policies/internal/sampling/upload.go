@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -33,6 +34,10 @@ func (s *Service) Upload(ctx context.Context, j queue.Job) error {
 		}
 		var err error
 		input, err = s.d.Store.Input(ctx, account, ref.ID, true)
+		if errors.Is(err, ErrNotFound) {
+			settled = true
+			return s.d.Queue.CompleteTx(ctx, j)
+		}
 		if err != nil {
 			return fmt.Errorf("policies: retain input: %w", err)
 		}
@@ -74,6 +79,9 @@ func (s *Service) settle(ctx context.Context, j queue.Job, account kernel.Accoun
 			return fmt.Errorf("policies: retain input: %w", err)
 		}
 		input, err := s.d.Store.Input(ctx, account, id, true)
+		if errors.Is(err, ErrNotFound) {
+			return s.d.Queue.CompleteTx(ctx, j)
+		}
 		if err != nil {
 			return fmt.Errorf("policies: retain input: %w", err)
 		}
@@ -90,11 +98,33 @@ func (s *Service) settle(ctx context.Context, j queue.Job, account kernel.Accoun
 		if !complete {
 			return s.retire(ctx, j, input, "failed")
 		}
+
+		var previous *kernel.ULID
+		if input.CaptureKind != "" {
+			var published bool
+			previous, published, err = s.d.Store.PublishCapture(ctx, input)
+			if err != nil {
+				return fmt.Errorf("policies: publish capture head: %w", err)
+			}
+			if !published {
+				return s.retire(ctx, j, input, "superseded")
+			}
+		}
 		if err := s.d.Objects.CommitUntil(ctx, objectstore.PolicyInputs, input.Key, input.ExpiresAt); err != nil {
 			return fmt.Errorf("policies: retain input: %w", err)
 		}
 		if err := s.d.Store.FinishInput(ctx, account, id, "live", s.d.Now()); err != nil {
 			return fmt.Errorf("policies: retain input: %w", err)
+		}
+
+		if previous != nil {
+			old, err := s.d.Store.Input(ctx, account, *previous, true)
+			if err != nil {
+				return fmt.Errorf("policies: read replaced capture: %w", err)
+			}
+			if err := s.retireInput(ctx, old, "superseded"); err != nil {
+				return err
+			}
 		}
 		return s.d.Queue.CompleteTx(ctx, j)
 	})
@@ -105,14 +135,24 @@ func (s *Service) settle(ctx context.Context, j queue.Job, account kernel.Accoun
 }
 
 func (s *Service) retire(ctx context.Context, j queue.Job, input Input, state string) error {
-	if err := s.d.Objects.Delete(ctx, objectstore.PolicyInputs, input.Key); err != nil {
-		return fmt.Errorf("policies: retain input: %w", err)
-	}
-	if err := s.d.Store.FinishInput(ctx, input.Account, input.ID, state, s.d.Now()); err != nil {
-		return fmt.Errorf("policies: retain input: %w", err)
+	if err := s.retireInput(ctx, input, state); err != nil {
+		return err
 	}
 	if err := s.d.Queue.CompleteTx(ctx, j); err != nil {
 		return fmt.Errorf("policies: settle retired input job: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) retireInput(ctx context.Context, input Input, state string) error {
+	if err := s.d.Objects.Delete(ctx, objectstore.PolicyInputs, input.Key); err != nil {
+		return fmt.Errorf("policies: retire input object: %w", err)
+	}
+	if err := s.d.Store.FinishInput(ctx, input.Account, input.ID, state, s.d.Now()); err != nil {
+		return fmt.Errorf("policies: retire input metadata: %w", err)
+	}
+	if err := s.d.Store.ClearCapturePending(ctx, input); err != nil {
+		return fmt.Errorf("policies: retire pending capture: %w", err)
 	}
 	return nil
 }

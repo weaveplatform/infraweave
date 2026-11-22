@@ -361,5 +361,5 @@ func newKinds() *outbox.Kinds {
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
 	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
-		d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), d.Events.Cron(), []cron.Task{orphansTask(q, log)})
+		d.Policies.Cron(), d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), d.Events.Cron(), []cron.Task{orphansTask(q, log)})
 }

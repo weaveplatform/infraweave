@@ -28,6 +28,7 @@ import (
 )
 
 type sampleWorld struct {
+	root    string
 	f       *fixture
 	samples *sampling.Service
 	objects *blobs.Objects
@@ -80,7 +81,7 @@ func newSampleWorld(t *testing.T) *sampleWorld {
 			Sampling: samples,
 		},
 	)
-	return &sampleWorld{f: f, samples: samples, objects: objects, raw: raw, keys: keys, q: q}
+	return &sampleWorld{f: f, samples: samples, objects: objects, raw: raw, keys: keys, q: q, root: c.FS.Root}
 }
 
 func (w *sampleWorld) evaluate(t *testing.T) policyapi.Evaluation {
@@ -213,9 +214,9 @@ func TestAccSampleMetadataBudgetAndStagingRollbackTogether(t *testing.T) {
 		Sample:        true,
 		CreatedAt:     w.f.now,
 	}
-	req := policyapi.EvaluationRequest{Account: account, Type: policyapi.Task, Target: policyapi.Target{Kind: policyapi.StackTarget, ID: w.f.stacks.stack.ID}}
+	req := policyapi.EvaluationRequest{Account: account, Type: policyapi.Plan, Target: policyapi.Target{Kind: policyapi.StackTarget, ID: w.f.stacks.stack.ID}}
 	err := tx.Do(t.Context(), w.f.db, tx.Options{}, func(ctx context.Context) error {
-		if _, err := w.samples.Record(ctx, req, account.ULID, []sampling.Evaluation{{Receipt: receipt, Input: json.RawMessage(`{"private":"rollback"}`)}}); err != nil {
+		if _, err := w.samples.Record(ctx, req, account.ULID, []sampling.Evaluation{{Receipt: receipt, Input: evaluationInput(t, "plan-tracked-warn.json")}}); err != nil {
 			return err
 		}
 		return sentinel

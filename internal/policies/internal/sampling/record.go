@@ -57,14 +57,23 @@ func (s *Service) Record(ctx context.Context, req policyapi.EvaluationRequest, s
 				if err := s.d.Store.CreateInput(ctx, *input, body); err != nil {
 					return nil, fmt.Errorf("policies: stage evaluation evidence: %w", err)
 				}
-				if _, err := s.d.Queue.EnqueueTx(ctx, UploadKind, reference{ID: input.ID}, queue.Account(req.Account.ULID), queue.UniqueKey(input.ID.String())); err != nil {
+				job, err := s.d.Queue.EnqueueTx(ctx, UploadKind, reference{ID: input.ID}, queue.Account(req.Account.ULID), queue.UniqueKey(input.ID.String()))
+				if err != nil {
 					return nil, fmt.Errorf("policies: enqueue sample upload: %w", err)
+				}
+				if err := s.d.Store.AttachUploadJob(ctx, req.Account, input.ID, job); err != nil {
+					return nil, fmt.Errorf("policies: bind sample upload job: %w", err)
 				}
 				linked[receipt.ID] = input.ID
 			}
 		}
 		if err := s.d.Store.RecordEvaluation(ctx, req, space, evaluation.Receipt, input); err != nil {
 			return nil, fmt.Errorf("policies: stage evaluation evidence: %w", err)
+		}
+	}
+	if len(evaluations) > 0 {
+		if err := s.capture(ctx, req, space, evaluations[0].Input); err != nil {
+			return nil, err
 		}
 	}
 	return linked, nil

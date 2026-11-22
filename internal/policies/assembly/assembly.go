@@ -10,6 +10,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -104,6 +105,11 @@ const PurgeBatch = 500
 
 // Purge resumes an account cleanup safely after any completed batch.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	if d.samples != nil {
+		if err := d.samples.PurgeAccount(ctx, acct); err != nil {
+			return fmt.Errorf("policies: purge retained evidence: %w", err)
+		}
+	}
 	for {
 		done, err := d.store.Purge(ctx, acct, PurgeBatch)
 		if err != nil || done {
@@ -159,7 +165,11 @@ func (d *Domain) Jobs() []queue.Registration {
 		return d.svc.ReconcileAccount(ctx, kernel.AccountID{ULID: j.Account})
 	}, Options: queue.HandlerOptions{Feature: "policies"}}}
 	if d.samples != nil {
-		jobs = append(jobs, queue.Registration{Kind: sampling.UploadKind, Handler: d.samples.Upload, Options: queue.HandlerOptions{Feature: "policies"}})
+		jobs = append(
+			jobs,
+			queue.Registration{Kind: sampling.UploadKind, Handler: d.samples.Upload, Options: queue.HandlerOptions{Feature: "policies"}},
+			queue.Registration{Kind: sampling.DeletedPolicyKind, Handler: d.samples.RetirePolicySamples},
+		)
 	}
 	return jobs
 }
@@ -218,4 +228,12 @@ func (d *Domain) SampleRetentions() policyapi.SampleRetentions {
 		return nil
 	}
 	return d.samples
+}
+
+// Cron removes retained private evidence even when the policy feature is disabled.
+func (d *Domain) Cron() []cron.Task {
+	if d == nil || d.samples == nil {
+		return nil
+	}
+	return []cron.Task{{Kind: sampling.CleanupKind, Every: sampling.CleanupEvery, Handler: func(ctx context.Context, _ queue.Job) error { return d.samples.Cleanup(ctx) }}}
 }

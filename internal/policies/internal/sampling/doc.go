@@ -16,6 +16,11 @@
 // before streaming a sealed object. Publication uses a new fenced transaction.
 // An immutable key is uploaded at most once; ambiguous partial failure is
 // unretained, while a completed upload can recover publication without rewriting.
+// Captures use a separate account/space/kind minute gate and the typed contract's
+// privacy projection; a false sample decision or exhausted sample quota does not
+// suppress them. A replacement becomes current only when publication commits.
+// Feature-independent maintenance erases expired or abandoned private staging;
+// policy deletion retires its samples, while account purge removes all evidence.
 //
 // # Dependencies
 //
