@@ -428,7 +428,9 @@ coverage it would contribute is not waived.
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
 | `parity` | `ubuntu-latest` | `make verify-parity` and the state check | 5 min | yes |
-| `fips-only` | `ubuntu-latest` | `make test` and every acceptance partition, with the binary under test built with `GOFIPS140=certified` and every process run with `GODEBUG=fips140=only` ([0013](0013-secrets-at-rest.md#fips-140-3)) | 45 min | yes |
+| `fips-unit` | `ubuntu-latest` | certified FIPS `make test` with race/shuffle and matrix production from the acceptance partition catalogue | 20 min | yes, through `fips-only` |
+| `fips-native` and `fips-<partition>` | `ubuntu-latest` | separate complete native/component/capture suite and each declared scenario partition, with the binary under test built with `GOFIPS140=certified` and every process run with `GODEBUG=fips140=only` ([0013](0013-secrets-at-rest.md#fips-140-3)) | 20 or 30 min per job; 10 min per Go test package | yes, through `fips-only` |
+| `fips-only` | `ubuntu-latest` | stable required aggregate: both dependency jobs and every declared execution receipt must pass on the exact tested source | 5 min | yes |
 | `console` | `ubuntu-latest` | `npm ci`, `tsc --strict`, ESLint, Vitest with its coverage thresholds and the production build in `web/console/` ([0023](0023-console.md)) | 15 min | yes |
 | `console-e2e` | `ubuntu-latest` | the Playwright journeys against a real `infraweave all` built with `-cover` ([0023](0023-console.md)) | 30 min | yes |
 | `coverage` | `ubuntu-latest` | `make cover` over every job above except `fips-only` and `console`, whose TypeScript coverage has its own thresholds | 10 min | yes |
@@ -439,8 +441,18 @@ coverage it would contribute is not waived.
 | `vendors-upstream` | `ubuntu-latest`, scheduled nightly | `indextest` against HashiCorp's, OpenTofu's, Terragrunt's and kubectl's real release indexes, which every pull request runs against fixtures recorded from them | 15 min | no |
 | `vcs-lab` | `ubuntu-latest`, scheduled nightly | `sourcetest` and the `@vcs-lab` scenarios against GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps repositories created for the run and destroyed after it | 45 min | no |
 
-- **`fips-only` and coverage.** It runs the same tests as the jobs above
-  under a stricter runtime, so its coverage adds nothing and is not merged.
+- **`fips-only` and coverage.** Its children run the same tests as the jobs above
+  under a stricter runtime, so their coverage adds nothing and is not merged.
+  Native/component/capture acceptance uses `make accept-native FIPS=1`;
+  scenario jobs use explicit `make accept FIPS=1 PARTITION=...` selectors.
+  The matrix comes directly from `harness.Partitions`, plus one native job.
+  The unit prerequisite seeds the incremental certified compiler cache; each
+  suite retains independent cache saves, bounded progress and failed-scenario
+  evidence. The always-run aggregate rejects failed, cancelled, skipped or
+  missing jobs, missing/duplicate receipts and mismatched source/run identity.
+  A partial rerun may reuse an earlier successful receipt only from the same
+  source head/base, actual checkout/tree and run. The greatest attempt for
+  each shard wins, so a newer failure cannot hide behind an older success.
 - **The cloud object store job.**
   - **Credentials.** GitHub's OIDC token is federated to an AWS IAM role, a
     Google Cloud workload identity pool and a Microsoft Entra federated
@@ -564,8 +576,14 @@ coverage it would contribute is not waived.
   needs margin for container teardown and coverage/report flushing after its
   scenario assertions finish. Their profiles and Cucumber results all join the
   same gates. Nightly acceptance and weekly/requested stress include all four
-  workloads; FIPS continues to run the complete suite under its existing
-  thirty-minute Go test deadline and forty-five-minute Actions job budget.
+  workloads. Certified FIPS runs the same complete partitions and the native
+  suite in separate jobs with independent ten-minute package deadlines;
+  unrelated suites cannot consume one another's alarm budget. The unit job
+  has twenty minutes, native/core/identity/integrations each twenty minutes,
+  and Terraform/run jobs each thirty minutes for setup, compilation and
+  cleanup. The unpartitioned local convenience command retains thirty minutes;
+  required FIPS CI does not use it. See the
+  [budget diagnosis and verification](../../implementation/fips-ci-budgets.md).
   Required acceptance also writes an incremental `out/progress.jsonl` when
   `INFRAWEAVE_ACCEPT_PROGRESS=1`. Scenario and step identities, elapsed times,
   run IDs and states survive a process timeout independently of the final
