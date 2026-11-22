@@ -15,6 +15,7 @@ import (
 
 func TestAccPushCreationSeedsEvidenceBeforeQueuedConsequences(t *testing.T) {
 	w := newWorld(t)
+	privateRunPool(w)
 	creator, _ := w.internalCreator()
 	request := creationRequest(w, "policy-head")
 	request.Priority = kernel.RunPriorityHigh

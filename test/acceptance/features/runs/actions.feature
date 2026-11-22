@@ -111,7 +111,7 @@ Feature: Runs are retried, promoted, discarded together and commented on
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"runType":"PROPOSED","commitSha":"{pushed}"}' through A
     And the answer's id names "proposal"
     And the answer's canPromote is 'true'
-    And the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL","RUN_PRIORITIZE_SET","RUN_PROMOTE","RUN_COMMENT"]'
+    And the answer's allowedActions is '["RUN_DISCARD","RUN_CANCEL","RUN_PROMOTE","RUN_COMMENT"]'
     When token "h" sends "POST /api/v1/stacks/infra/runs/{proposal}/promote" through B
     Then it answers 200
     And the answer drew on the expensive budget

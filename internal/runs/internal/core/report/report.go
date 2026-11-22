@@ -245,7 +245,7 @@ func (s *Service) Report(ctx context.Context, id kernel.ULID, r workersapi.Repor
 		return workersapi.Step{}, err
 	}
 	run, err := s.held(ctx, id)
-	if err != nil && (!errors.Is(err, workersapi.ErrNotOnWorker) || run.WorkerPool == nil) {
+	if err != nil && (!errors.Is(err, workersapi.ErrNotOnWorker) || run.ExecutionPool() == nil) {
 		return workersapi.Step{}, err
 	}
 	switch r.StateVersion {

@@ -496,7 +496,7 @@ func Allowed(r lifecycle.Run, blocking bool, held []accessapi.Action, g Guards) 
 	if r.Kill == nil && r.Killable() {
 		either(accessapi.ActionRunKill, accessapi.ActionRunKillBlocking)
 	}
-	if !r.State.Terminal() {
+	if !r.State.Terminal() && r.WorkerPool != nil {
 		add(accessapi.ActionRunPrioritizeSet)
 	}
 	if r.State == kernel.RunStateQueued || r.State == kernel.RunStateUnconfirmed || r.State == kernel.RunStatePendingReview {

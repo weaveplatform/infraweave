@@ -519,6 +519,9 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 	if st.Lock != nil && st.Lock.Holder != n.Actor.Caller {
 		return Run{}, false, &Locked{By: st.Lock.By}
 	}
+	if err := checkPublicCreation(st.WorkerPool, n); err != nil {
+		return Run{}, false, err
+	}
 	// Overrides and tasks always create a run. Other operations explicitly
 	// choose fresh creation; retries keep their normal active-run reuse.
 	if n.OncePerCommit {
