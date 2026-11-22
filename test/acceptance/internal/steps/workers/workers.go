@@ -41,7 +41,11 @@ type workerSteps struct {
 	public   bool
 	expired  bool
 	liveness map[string]workerLiveness
-	w        *harness.World
+	// owner and slot, when set, are the hosting owner and slot the next
+	// registration names.
+	owner *kernel.WorkerOwner
+	slot  *int32
+	w     *harness.World
 	// certs are the pool certificates by the name their serial is kept
 	// as, each with its pool's ID.
 	certs map[string]poolCert
@@ -96,6 +100,7 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		},
 	)
 	sc.Step(`^the launcher "(\w+)" sends its registration again through ([AB])$`, w.replay)
+	w.hosting(sc)
 	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
 	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
 	sc.Step(`^public pool credential persistence is refused$`, func(ctx context.Context) error {
@@ -315,6 +320,12 @@ func (w *workerSteps) registerLauncher(ctx context.Context, launcher, key, cert,
 	}
 	if named != "" {
 		payload["worker"] = w.w.IDs[named]
+	}
+	if w.owner != nil {
+		payload["owner"] = *w.owner
+	}
+	if w.slot != nil {
+		payload["slot"] = *w.slot
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {

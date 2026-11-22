@@ -1,9 +1,11 @@
 # Kubernetes worker controller implementation notes
 
-Status: implementation in progress for #745. The accepted
+Status: implemented for #745 (pool and worker resources, ownership and
+registration). The accepted
 [worker contract](worker-pool-contracts.md#controller-and-resources) governs the
 public interface; this document records the concrete ownership and recovery
-choices needed to implement it. It does not claim controller or cloud delivery.
+choices behind it. Pod execution (#746), lifecycle recovery (#747) and the
+chart (#748) are separate deliveries.
 
 ## Process and API boundaries
 
@@ -119,25 +121,44 @@ replicas/SDK. Before completing this ticket, exercise:
 Keep vendor C21 traffic explicitly unobserved. Rendered YAML, fake Kubernetes
 clients and local helper tests establish no real-controller acceptance.
 
-## Implementation checkpoint
+## Delivered behaviour
 
-The management API/storage slice is in progress: immutable owner validation,
-account/space-scoped lookup, atomic management/hosting reservation, retained
-deleted-resource tombstones, owner-and-version settings updates, explicit
-ownership on merge patches, and an agent-only generated management client.
-Unit contracts for kernel/workers, source OpenAPI contracts and HTTP mapping
-pass under certified FIPS/race; application listener tests pass with their
-required loopback permission. The full workers PostgreSQL acceptance suite now passes against the real pinned
-service under certified FIPS/race, including management response recovery,
-concurrent creation, account/space isolation, failed-write rollback, retained
-tombstones and scoped purge. Docker recovery required a bounded Desktop restart
-and termination of its unresponsive backend; no cache, image or volume pruning
-was used. This storage slice is not controller completion evidence.
-Agent-only Kubernetes core/Lease/dynamic client construction and durable resource
-identity controls also pass certified-FIPS/race units and configured lint. These
-controlled transport tests are not Kubernetes acceptance. Signed binding/slot
-registration, live CRD validation, controller reconciliation, CLI and full k3s
-controller acceptance remain outstanding. Canonical namespaced CRDs are drafted
-under `deploy/helm/infraweave-workers/crds`; configuration now has strict scoped
-namespace/leadership validation and Secret references. The configuration tests
-pass certified FIPS/race. CRD installation is still unverified.
+`infraweave worker-controller` (`internal/agent/controller`) leads a Lease and
+reconciles every WorkerPool of its watch namespaces each five seconds:
+
+- **Credentials.** A Managed pool exchanges the configured management key for
+  an API token and requires `/api/v1/id` to equal `spec.account`. Existing and
+  Public pools read `token` and `privateKey`; the token must name
+  `spec.poolID` and certify the private key. The controller reaches the
+  installation at `spec.endpoint` over HTTPS, trusting the system roots and
+  `ca_file`; the token's own endpoint is not consulted.
+- **Managed pools.** `GET /worker-pools/managed` finds the pool by owner. On
+  404 it creates one only when status records no pool, with a certificate
+  signing request of the Secret's key and `Idempotency-Key:
+  worker-pool-<resource UID>`, then patches only the Secret's `token` key.
+  Settings that differ from the resource are written with `If-Match`.
+  A managed pool deleted elsewhere is reported as `RemotePoolMissing` and
+  never recreated.
+- **Binding.** Every mode binds with a fresh signed proof each pass. A pool
+  bound to or managed for another owner answers 409, reported as
+  `OwnershipConflict`.
+- **Slots.** Worker resources `SlotName(uid, slot)` carry the pool label,
+  owner reference and finalizer. Each slot registers with owner and slot and
+  registers again every minute, well within the server's three-minute
+  offline bound, which resumes its worker. A slot the private-workers limit
+  refuses stays unregistered (`Registered=False`, `LimitReached`), and the
+  pass creates no later slot. No slot polls or claims runs:
+  `ExecutorAvailable=False` until #746 adds the executor.
+- **Retirement and deletion.** A slot beyond capacity, or of a deleted pool,
+  is deleted, its worker resumed and deregistered, and only then its
+  finalizer released. A deleted Managed pool is then removed through the
+  ordinary guarded delete; an Existing or Public pool's binding is released.
+  Each cleanup attempt is bounded by `cleanup_timeout`; a refusal is
+  recorded as `Terminating=False` with its reason and retried next pass.
+- **Writes.** Finalizers and status are written with patches under strict
+  field validation, so the controller never rewrites the user's spec.
+
+Real acceptance: `features/workers/hosting.feature` exercises binding,
+release, slots, managed lookup and the aggregate limit against PostgreSQL;
+`features/workers/kubernetes_controller.feature` runs replicated controller
+processes against the Terraform-owned k3s lab and two servers.

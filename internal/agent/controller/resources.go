@@ -1,10 +1,9 @@
-// Package controller maintains namespaced worker-pool resources through the
-// public management API and certificate-authorized worker protocol.
 package controller
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"slices"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -149,4 +148,26 @@ func (p WorkerPool) Owner(clusterID string) kernel.WorkerOwner {
 func SlotName(poolUID string, slot int32) string {
 	hash := sha256.Sum256([]byte(poolUID))
 	return "iw-worker-" + hex.EncodeToString(hash[:16]) + "-" + strconv.FormatInt(int64(slot), 10)
+}
+
+// DeepCopy is s with no storage shared with it.
+func (s PoolStatus) DeepCopy() *PoolStatus {
+	out := s
+	if s.Owner != nil {
+		owner := *s.Owner
+		out.Owner = &owner
+	}
+	out.Conditions = slices.Clone(s.Conditions)
+	return &out
+}
+
+// DeepCopy is s with no storage shared with it.
+func (s WorkerStatus) DeepCopy() *WorkerStatus {
+	out := s
+	if s.Assignment != nil {
+		a := *s.Assignment
+		out.Assignment = &a
+	}
+	out.Conditions = slices.Clone(s.Conditions)
+	return &out
 }

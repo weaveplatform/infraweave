@@ -143,6 +143,9 @@ func TestUnitPoolBindingOwnsRegistrations(t *testing.T) {
 	if _, err := f.register(t, func(p map[string]any) { p["owner"] = ownerA }); !errors.As(err, &invalid) {
 		t.Fatalf("slotless owner registration = %v", err)
 	}
+	if _, err := f.register(t, func(p map[string]any) { p["slot"] = 0 }); !errors.As(err, &invalid) {
+		t.Fatalf("ownerless slot registration = %v", err)
+	}
 	first, err := f.owned(t, ownerA, 0)
 	if err != nil {
 		t.Fatal(err)

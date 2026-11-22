@@ -134,6 +134,31 @@ func (c *Client) Register(ctx context.Context, jws string) (wire.Registration, e
 	return *res.JSON200, nil
 }
 
+// Bind binds the pool to the hosting owner the signed proof names.
+func (c *Client) Bind(ctx context.Context, proof string) error {
+	res, err := c.c.WorkerPoolBindWithResponse(ctx, wire.PoolOwnershipRequest{Proof: proof})
+	if err != nil {
+		return fmt.Errorf("bind the pool: %w", err)
+	}
+	if res.StatusCode() != http.StatusNoContent {
+		return refused("bind the pool", res.HTTPResponse, res.Body)
+	}
+	return nil
+}
+
+// Release releases the pool's binding to the hosting owner the signed
+// proof names.
+func (c *Client) Release(ctx context.Context, proof string) error {
+	res, err := c.c.WorkerPoolReleaseWithResponse(ctx, wire.PoolOwnershipRequest{Proof: proof})
+	if err != nil {
+		return fmt.Errorf("release the pool: %w", err)
+	}
+	if res.StatusCode() != http.StatusNoContent {
+		return refused("release the pool", res.HTTPResponse, res.Body)
+	}
+	return nil
+}
+
 // Poll polls as the worker whose session token is session.
 func (c *Client) Poll(ctx context.Context, session string, in wire.PollRequest) (wire.PollResult, error) {
 	res, err := c.c.WorkerPollWithResponse(ctx, in, bearer(session))

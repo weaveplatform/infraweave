@@ -367,6 +367,9 @@ func (s *Service) Register(ctx context.Context, raw string) (Registration, error
 	if c.Owner != nil && c.Slot == nil {
 		return Registration{}, invalid(kernel.ReasonRequired, "A controller registration names its logical slot.")
 	}
+	if c.Slot != nil && c.Owner == nil {
+		return Registration{}, invalid(kernel.ReasonRequired, "A logical slot belongs to a controller registration, which names its owner.")
+	}
 	var out Registration
 	err = tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		p, err := s.admit(ctx, c, leaf, id, true, now)

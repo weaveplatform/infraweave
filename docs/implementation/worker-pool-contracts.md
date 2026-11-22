@@ -135,7 +135,9 @@ compare-and-set, deterministic names and server fencing even during leader
 handover. Every slot's preparation and busy heartbeat continue independently;
 source/tool transfer never blocks protocol polling for other slots or its own
 liveness. No second worker registers merely because a replica's local cache is
-empty.
+empty. Until the Pod executor exists, a slot neither polls nor claims runs:
+it registers again each minute, which resumes its worker and keeps it within
+the server's offline bound, and the WorkerPool reports `ExecutorAvailable=False`.
 
 Strict `worker_controller` YAML/configuration keys:
 
@@ -156,7 +158,10 @@ Strict `worker_controller` YAML/configuration keys:
 All secret inputs are references, not embedded values in ConfigMaps, arguments
 or chart values. API key authentication uses the existing account API-key login
 and audience. Pool credentials use an existing Secret with fixed keys `token`
-and `privateKey`, read together and matched to immutable endpoint/pool. Only an
+and `privateKey`, read together and matched to the resource's pool: the token
+must name that pool and certify that key. The controller calls the resource's
+immutable HTTPS `endpoint`; the token's endpoint field, which names the server's
+public URL, is not used to reach it. Only an
 unbound Managed resource may initially omit token: its externally supplied
 privateKey is required, and create/management lookup returns the public token
 config for that exact owner so response loss can recover it before registration.
@@ -283,8 +288,9 @@ reset input under existing WORKER_POOL_RESET/operator authorization, requiring
 a replacement key different from the current certificate and refused while
 workers or on-worker runs remain. Private reset body gains the same optional
 boolean, default false; public operator reset uses it too. This does not grant reset to the
-controller role. These are explicit protocol/reset schema additions, not claims
-about today's implementation.
+controller role. Registration of a bound pool names its owner and a logical
+`slot`; each pool holds at most one worker per slot, so registering a slot
+again resumes its worker, and a slot without an owner is invalid.
 Qualified finalizers are installed before remote side effects. Worker finalizer
 waits for exit acknowledgement/deregistration and verified Pod removal; pool
 finalizer waits for children plus Managed remote delete. Existing retains remote

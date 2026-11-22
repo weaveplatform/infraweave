@@ -123,6 +123,12 @@ func StartLauncher(ctx context.Context, bin, dir, coverDir string, config []byte
 	return start(ctx, bin, dir, coverDir, "launcher", config, append([]string{"DOCKER_HOST=" + dockerHost}, env...))
 }
 
+// StartWorkerController is StartServer for infraweave worker-controller,
+// which reaches Kubernetes through the file kubeconfig names.
+func StartWorkerController(ctx context.Context, bin, dir, coverDir string, config []byte, kubeconfig string) (*Server, error) {
+	return start(ctx, bin, dir, coverDir, "worker-controller", config, []string{"KUBECONFIG=" + kubeconfig})
+}
+
 func start(ctx context.Context, bin, dir, coverDir, mode string, config []byte, env []string) (*Server, error) {
 	path := filepath.Join(dir, "config.yaml")
 	if err := os.WriteFile(path, config, 0o600); err != nil {

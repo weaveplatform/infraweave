@@ -10,7 +10,9 @@ import (
 // sharing the scenario's World w, whose Keys hold the pool keys the
 // worker steps make and the launcher steps start launchers with.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
-	(&workerSteps{w: w}).register(sc)
+	ws := &workerSteps{w: w}
+	ws.register(sc)
+	(&controllerSteps{w: w, workers: ws}).register(sc)
 	(&launcherSteps{w: w}).register(sc)
 	(&schemaSteps{w: w}).register(sc)
 }

@@ -1,5 +1,5 @@
-// Package cli is the agent's cobra commands: infraweave launcher, and
-// infraweave runner, which is hidden.
+// Package cli is the agent's cobra commands: infraweave launcher,
+// infraweave worker-controller, and infraweave runner, which is hidden.
 //
 // Launcher loads the launcher's configuration, strictly, from its flags,
 // the INFRAWEAVE_LAUNCHER_* environment and the file --config names; a key
@@ -12,17 +12,26 @@
 // answers. SIGHUP re-reads launcher.log.level. Runner reads the
 // launcher's handoff from standard input and runs the runner.
 //
+// WorkerController loads the worker_controller configuration the same
+// strict way, from its flags, the INFRAWEAVE_WORKER_CONTROLLER_*
+// environment and --config. It reaches Kubernetes through the file
+// KUBECONFIG names or else the Pod's service account, serves /livez and
+// /readyz, ready once the leader's first pass read its pools, and runs
+// the controller until its context ends.
+//
 // ref: decision 0008 § "The launcher and the runner"
 //
 // # Input and output
 //
 // It reads the configuration file and the environment, logs JSON or text
 // to the command's standard output, serves the admin listener, and calls
-// the worker API and the Docker daemon through the packages it runs.
+// the worker API, the account API, the Docker daemon and the Kubernetes
+// API through the packages it runs.
 //
 // # Dependencies
 //
-// It imports cobra, internal/agent/config, executor, executor/docker,
-// launcher, runner and wire, and platform/buildinfo, httpkit/serve and
-// observe; no server package. cmd/infraweave adds its commands.
+// It imports cobra, client-go's rest and clientcmd, internal/agent/config,
+// controller, executor, executor/docker, launcher, runner and wire, and
+// platform/buildinfo, httpkit/serve and observe; no server package.
+// cmd/infraweave adds its commands.
 package cli
