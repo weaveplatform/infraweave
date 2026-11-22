@@ -15,6 +15,8 @@ import (
 
 func registerProjections(sc *godog.ScenarioContext, w *harness.World) {
 	registerProjectionAttachments(sc, w)
+	registerCapturedPage(sc, w)
+	registerDefaultLoginSample(sc, w)
 	sc.Step(
 		`^token "(\w+)" eventually reads policy "([^"]+)" with (\d+) visible attachments and empty evidence through ([AB])$`,
 		func(ctx context.Context, token, name string, attachments int, replica string) error {

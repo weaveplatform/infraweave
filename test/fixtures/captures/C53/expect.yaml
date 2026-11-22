@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/662
+replaySubset: policy-sampling-tooling
 observed:
   "/exchanges/0/response/data/approval/kind": "APPROVAL"
   "/exchanges/0/response/data/plan/capturedAt": 1795126624
@@ -7,3 +7,33 @@ observed:
   "/exchanges/18/response/data/planPolicy/sampleCount": 1
   "/exchanges/18/response/data/approvalPolicy/sampleCount": 2
   "/exchanges/30/response/data/policies": []
+
+handoffs:
+  "/exchanges/0/response/data/approval/kind":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Actual sample=false APPROVAL execution publishes an account-level APPROVAL input capture; read its kind through the public API."
+  "/exchanges/0/response/data/plan/capturedAt":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Preserve the historical capture timestamp or workload-specific APPROVAL sample count. Native cadence, seven-day expiration and the number of approval reevaluations are explicit implementation contracts, not vendor observations. The actual replay proves sample/capture independence, typed reads, last-eight SHA-256 masking, non-admin refusal and expiry without fabricating the original timestamp or a fixed evaluation count."
+  "/exchanges/7/response/errors/0/message":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "A real non-admin root space-writer sees only the REST collection summary (opaque ID, kind, timestamp; no input) and is denied the corresponding private capture GET with 403. The captured GraphQL collection requested private input; REST splits that protected document from safe metadata."
+  "/exchanges/13/response/data/planPolicy/sampleCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Run the captured sample=false PLAN body on real Terraform with a marked sensitive variable; require zero retained samples, one safe metadata record and a readable masked PLAN capture."
+  "/exchanges/18/response/data/planPolicy/sampleCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Update to the captured sample=true PLAN body, execute another tracked Terraform run and require exactly one retained sample, two safe metadata records and correctly hashed sensitive input."
+  "/exchanges/18/response/data/approvalPolicy/sampleCount":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Preserve the historical capture timestamp or workload-specific APPROVAL sample count. Native cadence, seven-day expiration and the number of approval reevaluations are explicit implementation contracts, not vendor observations. The actual replay proves sample/capture independence, typed reads, last-eight SHA-256 masking, non-admin refusal and expiry without fabricating the original timestamp or a fixed evaluation count."
+  "/exchanges/30/response/data/policies":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Delete the replay policies and stack through the API and verify restoration of their original inventories."

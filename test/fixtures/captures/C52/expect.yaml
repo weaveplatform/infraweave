@@ -1,4 +1,4 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/660
+replaySubset: policy-initialization-tooling
 observed:
   "/exchanges/5/response/data/stack/run/state": "FAILED"
   "/exchanges/5/response/data/stack/run/history/0/note": "job assignment failed: denied by 1 initialization policy"
@@ -7,3 +7,33 @@ observed:
   "/exchanges/24/response/data/stack/run/policyReceipts": []
   "/exchanges/24/response/data/taskPolicy/sampleCount": 0
   "/exchanges/26/response/data/stacks": []
+
+handoffs:
+  "/exchanges/5/response/data/stack/run/state":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Run the actual captured V1 initialization denial through real worker polling and require FAILED before worker preparation."
+  "/exchanges/5/response/data/stack/run/history/0/note":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Require the exact captured assignment-denial note, QUEUED to READY to FAILED history, owned receipt and captured denial message."
+  "/exchanges/10/response/data/stack/run/state":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "The V5_FREE experiment completed TASK runs without TASK receipts despite captured V0/V1 deny programs, so it did not prove TASK evaluation. Preserve that observed state/count. The replay independently tests the captured V0 program against the maintainer-approved refusal-before-creation contract; no synthetic upstream parity result is claimed."
+  "/exchanges/23/response/data/stack/run/state":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "The V5_FREE experiment completed TASK runs without TASK receipts despite captured V0/V1 deny programs, so it did not prove TASK evaluation. Preserve that observed state/count. The replay independently tests the captured V0 program against the maintainer-approved refusal-before-creation contract; no synthetic upstream parity result is claimed."
+  "/exchanges/24/response/data/stack/run/policyReceipts":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "The V5_FREE experiment completed TASK runs without TASK receipts despite captured V0/V1 deny programs, so it did not prove TASK evaluation. Preserve that observed state/count. The replay independently tests the captured V0 program against the maintainer-approved refusal-before-creation contract; no synthetic upstream parity result is claimed."
+  "/exchanges/24/response/data/taskPolicy/sampleCount":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: "The V5_FREE experiment completed TASK runs without TASK receipts despite captured V0/V1 deny programs, so it did not prove TASK evaluation. Preserve that observed state/count. The replay independently tests the captured V0 program against the maintainer-approved refusal-before-creation contract; no synthetic upstream parity result is claimed."
+  "/exchanges/26/response/data/stacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: "Delete the local replay stacks and policies through their public APIs and require restoration of each original inventory."

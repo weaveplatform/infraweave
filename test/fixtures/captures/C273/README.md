@@ -27,4 +27,8 @@ redaction. Browser network headers, analytics and unrelated account responses
 are omitted. C54 reuses #637's complete 62-body catalogue/library comparison.
 
 The final exchange verifies restoration and resource cleanup. Eight provider-free
-runs were created; none applied infrastructure. REST replay awaits #665.
+runs were created; none applied infrastructure. The executable native replay is described below.
+
+## Native verification for #666
+
+Native REST replay now verifies the shared captured LOGIN session-control programs and drives the actual PLAN/NOTIFICATION page bodies through real Terraform runs and the public API. It checks two retained ALLOW records, body/attachment identity, search/suggestions, protected sample reads, whole captured simulation output with no writes, notification attachment refusal and cleanup. Historical browser viewer/admin inventory is kept separate from the native organization/account permission model. The exact observed/REST/upstream classification is recorded in [expect.yaml](expect.yaml); original responses and browser snapshots are unchanged.

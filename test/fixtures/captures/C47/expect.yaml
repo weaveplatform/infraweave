@@ -1,4 +1,21 @@
-replayAfter: https://github.com/weaveplatform/infraweave/issues/659
+replaySubset: policy-access-retirement
+handoffs:
+  "/exchanges/1/response/errors/0/message":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: ADR 0009/0021 intentionally remove ACCESS from the served enum. The real REST replay rejects this type with 400 rather than reproducing the upstream legacy-space wording. No ACCESS resource is created.
+  "/exchanges/2/response/data/space":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/644
+    detail: This historical account had no legacy space. Existing legacy-policy evaluation remains unobserved; the maintainer-approved supersession does not require reintroducing ACCESS or inventing that account comparison.
+  "/exchanges/3/response/data/stacks":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: Real REST stack inventories are identical before and after rejected retired-type creation; comparison uses the isolated replay baseline.
+  "/exchanges/3/response/data/policies":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/666
+    detail: Real REST policy inventories are identical before and after rejected retired-type creation; no cached or synthetic result is substituted.
 observed:
   "/exchanges/1/response/errors/0/message": "cannot create stack access policies outside of legacy space"
   "/exchanges/2/response/data/space": null

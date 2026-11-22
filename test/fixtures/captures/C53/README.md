@@ -29,4 +29,8 @@ policies, key and source branch; existing service-owned input capture history ha
 no exposed deletion operation and remains service-managed.
 
 The final exchange verifies restoration and resource cleanup. Eight provider-free
-runs were created; none applied infrastructure. REST replay awaits #662.
+runs were created; none applied infrastructure. The executable native replay is described below.
+
+## Native verification for #666
+
+Native REST replay now executes the captured false/true PLAN and APPROVAL bodies on real sensitive Terraform plans. It verifies independent typed-blank captures, last-eight SHA-256 values in evaluation samples, safe REST list metadata versus protected input GET, non-admin refusal, sealed raw storage, expiry and cleanup. Capture timestamps and exact workload-specific approval counts remain historical facts. The native seven-day/cadence/privacy contracts remain approved implementation choices. The exact observed/REST/upstream classification is recorded in [expect.yaml](expect.yaml); original responses and browser snapshots are unchanged.

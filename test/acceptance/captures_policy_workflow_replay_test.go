@@ -62,6 +62,7 @@ func captureReplayRegistry(parent *testing.T) (map[string]func(*testing.T, *sdk.
 	}
 	registerFlagCaptureReplay(parent, subsets, &workers)
 	registerIgnoredCaptureReplay(parent, subsets, &workers)
+	registerP13bCaptureReplays(parent, full, subsets, &workers)
 	full["policy-simulation"] = func(t *testing.T, _ *sdk.Client) {
 		if workers == nil {
 			workers = harness.NewFeatureReplay(parent, append(slices.Clone(areas), registerCaptureWorkflow))
