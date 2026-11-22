@@ -41,6 +41,8 @@ and fixture namespace, including nested capture replays.
 | `policies` | `@policies` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
 | `core`, `terraform-plans`, `terraform-vcs`, `terraform`, `runs`, `integrations` | The named existing Cucumber partition |
 | `vcs` | The existing real-provider partition, narrowed with `--tags '@lab:github'` and `--features features/vcs/feedback.feature` |
+| `workers-aws`, `workers-azure`, `workers-google` | Required `managed-cloud-workers` partition against one cloud's committed `test/terraform/cloud/workers/<cloud>` root and the local platform's control plane |
+| `workers-multicloud` | The same partition with all three clouds attached concurrently under one owner and one control plane |
 
 These are Gherkin batches. The ordinary quality gate still runs every existing
 component `TestAcc`, unit suite, partition and FIPS check. No existing check or
@@ -175,3 +177,143 @@ passed, and destroy verified empty state, absence and private-input removal for
 both owners. This is local candidate evidence; required Linux CI and the final
 exact-head coverage gate still apply. It proves infrastructure and existing pool
 API behavior, leaving controller/executor delivery to its implementation work.
+
+## Managed cloud worker batches
+
+The `workers-*` batches attach Terraform-managed EKS, AKS and GKE worker
+hosting to the same lab. Each selects the `@managed-cloud-workers` scenarios
+in `features/workers/managed_cloud_workers.feature`, which ordinary and other
+lab partitions exclude. The committed definition fixes the clouds and the
+bounds a reviewer approves before any billable apply: parallel clouds, owner
+TTL, the vCPU quota headroom each cloud must have, configured pool capacity per
+cloud, and provisioning, readiness and cleanup time. `cloudlab.py` refuses a
+definition outside the controller's limits and records its SHA-256 in the
+journal and review.
+
+```sh
+python3 test/terraform/lab/labctl.py preflight --batch workers-multicloud \
+  --inputs aws=/private/tmp/aws.json --inputs azure=/private/tmp/azure.json \
+  --inputs google=/private/tmp/google.json
+python3 test/terraform/lab/labctl.py run --batch workers-multicloud --fips \
+  --helper /private/tmp/infraweave-lab --directory /private/tmp/new-cloud-batch \
+  --inputs aws=/private/tmp/aws.json --inputs azure=/private/tmp/azure.json \
+  --inputs google=/private/tmp/google.json
+```
+
+`preflight` mutates nothing and prints the review. `run` and `up` repeat it in
+the new deployment directory and stop before the platform or any cloud is
+provisioned unless every selected cloud passes:
+
+| Check | Fails when |
+|---|---|
+| Root | `test/terraform/cloud/workers/<cloud>/{cluster,deployment}` lacks `versions.tf` or a committed `.terraform.lock.hcl` |
+| Inputs | No `--inputs` file, a file readable by group or others, over 64 KiB, carrying private key text, naming another cloud, missing or malformed explicit identifiers, setting a coordinator variable, or requesting pool capacity above the bound |
+| Credentials | The provider CLI's current identity is absent or resolves to another AWS account, Azure tenant/subscription or Google project number |
+| Quota | Regional vCPU headroom (`ec2` quota `L-1216C47A`, `az vm list-usage` cores, the region's `CPUS` quota) is below the bound, or the EKS cluster quota is full in create mode |
+| Cluster | An existing-mode cluster is unreadable or not `ACTIVE`, `Succeeded`/`Running` or `RUNNING` |
+
+A missing cloud is a failure, never a skip; the review names every problem of
+every cloud at once without account IDs.
+
+### Inputs and stage interface
+
+Each `--inputs CLOUD=/absolute/path` file is operator configuration that names
+accounts but holds no credential:
+
+```json
+{"cloud": {"provider": "aws", "identifiers": {"account_id": "...", "region": "..."}},
+ "cluster": {"...": "cluster/ stage variables"},
+ "deployment": {"cluster": {"mode": "create", "name": "..."}, "pools": [{"capacity": 2}], "...": "deployment/ stage variables"}}
+```
+
+Identifiers follow the [hosting contract's three-cloud mapping](../../../docs/implementation/worker-hosting-contracts.md#three-cloud-mapping-and-compatibility):
+AWS `account_id`/`region`; Azure `tenant_id`/`subscription_id`/`location`/`resource_group_name`;
+Google `project_id`/`project_number`/`location`. The controller adds three
+variables to every stage and refuses inputs that set them: `ownership`
+(`owner`, `batch`, an RFC 3339 `expires_at` from the TTL bound, and the
+`io.infraweave.lab.*` labels), `cloud`, and for `deployment/` the validated
+`cluster_stage` output. Each stage root declares `backend "local" {}`; the
+controller supplies an owner-private state path.
+
+The `cluster/` stage outputs `cluster = {schema: 1, kind: "worker-cluster",
+owner, batch, provider, id, name, endpoint, ca_certificate, owned, inventory}`.
+`id` must be the provider ID of the explicit cluster (EKS ARN, AKS ARM ID or
+`projects/<project>/locations/<location>/clusters/<name>`), `endpoint` a bare
+HTTPS origin and `ca_certificate` its PEM trust anchor. The controller
+completes a verified TLS handshake with that endpoint within the readiness
+bound before the deployment stage runs. The `deployment/` stage outputs the
+contract's `hosting` object; the controller requires its exact field set,
+ownership and TTL, the inputs' cloud identifiers, the cluster stage's ID,
+DNS-label names, `@sha256` artifacts, ULIDs on Existing/Public pools only,
+capacity within the bound, owner-matching inventory and no private key text.
+It then writes `workers.json` with each selected cloud exactly once and
+validates it before any scenario. The Go harness reads it through
+`INFRAWEAVE_LAB_WORKERS` and checks its owner and batch against the platform
+manifest. Owned cloud resources carry `io.infraweave.lab.owner`; Google labels,
+which admit no dots, carry `io_infraweave_lab_owner`.
+
+### Parallel apply and cleanup
+
+The platform deployment comes first, then up to `parallelism` clouds apply
+`cluster/` and `deployment/` at once. Each stage has its own private
+directory, `TF_DATA_DIR`, state, variables, plan and log under
+`clouds/<cloud>/<stage>`, and Terraform runs without verbose logging. A
+failing cloud lets the others finish their in-flight apply; interruption
+terminates every owned Terraform process group first. The journal records
+`applying` before each apply, so cleanup reads back a partially applied cloud.
+
+Cleanup runs per cloud in parallel, independently of the platform and of every
+other cloud's failure. It destroys `deployment/` before `cluster/` and never
+destroys a cluster whose deployment failed to destroy. Before destroy it
+refuses a state whose managed resource tags or recorded variables name another
+owner. Absence then needs both empty state and cloud readback: an owner tag or
+label search (`resourcegroupstaggingapi get-resources`, `az resource list` and
+`az group list`, `gcloud asset search-all-resources`) and the exact owned
+cluster lookup, retried within the cleanup bound. A denied, timed-out or
+missing CLI is `unknown`, never absent. `cleanup.json` names every recorded
+inventory entry with its outcome; borrowed entries are listed as `borrowed`.
+Only verified absence removes plans, state backups and variables, so a
+repeated `down` reads the empty state and the cloud again without them. A failed
+cleanup keeps the journal for a retry from the same directory.
+
+`evidence/` receives `review.json`, `cleanup.json`, `result.json` and, after a
+failure, each stage's Terraform log, with private keys removed and account,
+tenant, subscription and project identifiers replaced by their names. The
+journal, `workers.json`, state, plans and inputs stay private.
+
+### Credentials and CI
+
+Locally the provider CLIs' own sign-in supplies credentials: `aws sso login`
+or a short-lived profile, `az login`, `gcloud auth login` with
+`gcloud auth application-default login` for Terraform. The identity must be
+allowed to read quotas, the tagging/resource/asset search and the cluster
+APIs, and to apply the roots.
+
+`.github/workflows/managed-cloud-workers.yml` runs one batch on main when a
+maintainer dispatches it, in the `workers-cloud` environment, whose required
+reviewers approve the billable run and whose branch rule admits only main.
+GitHub's OIDC token is federated to each cloud. The environment's secrets are
+`WORKERS_AWS_ROLE`, `WORKERS_AWS_REGION`, `WORKERS_AZURE_CLIENT_ID`,
+`WORKERS_AZURE_TENANT_ID`, `WORKERS_AZURE_SUBSCRIPTION_ID`,
+`WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `WORKERS_GOOGLE_SERVICE_ACCOUNT`
+and one `WORKERS_<CLOUD>_INPUTS` inputs file per cloud. The AWS role must
+allow four-hour sessions. A selected cloud without its secrets fails
+preflight. Only `evidence/` is uploaded.
+
+### Scope
+
+The required Linux lab job runs `test_cloudlab.py` with the real pinned
+Terraform: fixture `cluster/` and `deployment/` roots built from
+`terraform_data` go through actual init, plan, apply, output, destroy and
+state readback, against a real TLS listener and recorded provider CLI answers.
+They prove a passing three-cloud batch with redacted evidence and repeated
+cleanup; one cloud's failed apply still cleaning all three; a hosting
+manifest mismatch and an untrusted cluster API failing before any scenario;
+a foreign journal refused before destroy; unknown or remaining cloud resources
+never reported absent; interruption stopping owned Terraform; and an existing
+directory never adopted. They are controller evidence, not cloud evidence.
+The `test/terraform/cloud/workers` roots ship with their cloud deliveries;
+until then every `workers-*` batch fails preflight. The scenarios prove the
+attachment and the control plane's pool API beside it; worker execution on
+the cloud pools needs a server endpoint those Pods can reach, which the
+concurrent cloud proof supplies.

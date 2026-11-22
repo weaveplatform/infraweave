@@ -43,9 +43,46 @@ def batch(name):
     if not re.fullmatch(r"[a-z0-9-]+", name):
         raise ValueError("invalid batch name")
     result = read_json(HERE / "batches" / (name + ".json"))
-    if set(result) != {"partition", "tags", "features"} or not all(isinstance(v, str) for v in result.values()):
+    selection = {"partition", "tags", "features"}
+    # Managed cloud batches add their clouds and reviewed bounds, which
+    # cloudlab.definition validates.
+    if set(result) not in (selection, selection | {"clouds", "bounds"}) or \
+            not all(isinstance(result[key], str) for key in selection):
         raise ValueError("invalid batch definition")
     return result
+
+
+def cloud_batch(definition):
+    return "clouds" in definition
+
+
+class Platform:
+    """The labctl.run hooks for a local platform batch."""
+
+    def __init__(self, args):
+        self.args = args
+
+    def up(self, directory, owner):
+        return up(directory, self.args.batch, self.args.terraform, self.args.helper, owner)
+
+    def down(self, directory):
+        return down(directory)
+
+    def environment(self, directory):
+        return {"INFRAWEAVE_LAB_MANIFEST": str(directory / "acceptance.json")}
+
+    def diagnostics(self, directory):
+        retain_diagnostics(directory)
+
+    def record(self, directory, result):
+        """Local batches publish result.json itself; it names no cloud account."""
+
+
+def lifecycle(definition, args):
+    if not cloud_batch(definition):
+        return Platform(args)
+    import cloudlab
+    return cloudlab.Lifecycle(args)
 
 
 def pins():
@@ -367,19 +404,19 @@ def run(args):
     if not feature_path.is_relative_to(REPO / "test/acceptance/features") or not feature_path.exists():
         raise ValueError("acceptance features must exist under test/acceptance/features")
     owner = "iw-lab-" + uuid.uuid4().hex
+    deployment = lifecycle(definition, args)
     result = {"batch": args.batch, "revision": output("git", "-C", str(REPO), "rev-parse", "HEAD"),
               "dirty": bool(output("git", "-C", str(REPO), "status", "--porcelain")), "passed": False,
               "terraformVersion": terraform_version(args.terraform)}
     try:
-        up(directory, args.batch, args.terraform, args.helper, owner)
+        deployment.up(directory, owner)
         evidence = directory / "evidence"
         coverage = directory / "coverage"
-        evidence.mkdir(); coverage.mkdir()
+        evidence.mkdir(mode=0o700, exist_ok=True); coverage.mkdir()
         tags = definition["tags"]
         if args.tags:
             tags = "(" + tags + ") and (" + args.tags + ")" if tags else args.tags
-        env = dict(os.environ, GOWORK="off", INFRAWEAVE_ACCEPT_REQUIRE_DOCKER="1",
-                   INFRAWEAVE_LAB_MANIFEST=str(directory / "acceptance.json"),
+        env = dict(os.environ, GOWORK="off", INFRAWEAVE_ACCEPT_REQUIRE_DOCKER="1", **deployment.environment(directory),
                    INFRAWEAVE_ACCEPT_PARTITION=definition["partition"], INFRAWEAVE_ACCEPT_TAGS=tags,
                    INFRAWEAVE_ACCEPT_FEATURES=features, INFRAWEAVE_ACCEPT_CUCUMBER=str(evidence / "cucumber.json"),
                    INFRAWEAVE_ACCEPT_OUT=str(evidence))
@@ -399,28 +436,33 @@ def run(args):
     except BaseException as error:
         result["error"] = type(error).__name__ + ": " + str(error)
         if (directory / "deployment.json").exists() and read_json(directory / "deployment.json")["owner"] == owner:
-            retain_diagnostics(directory)
+            deployment.diagnostics(directory)
         raise
     finally:
         if (directory / "deployment.json").exists() and read_json(directory / "deployment.json")["owner"] == owner:
             try:
-                result["cleanup"] = down(directory)
+                result["cleanup"] = deployment.down(directory)
             except BaseException as error:
                 result["passed"] = False
                 result["cleanupError"] = type(error).__name__ + ": " + str(error)
-                retain_diagnostics(directory)
+                deployment.diagnostics(directory)
                 raise
             finally:
                 write_json(directory / "result.json", result)
+                deployment.record(directory, result)
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for verb in ("up", "run"):
+    for verb in ("up", "run", "preflight"):
         cmd = commands.add_parser(verb)
         cmd.add_argument("--batch", required=True)
+        # Managed cloud batches read one private operator inputs file per cloud.
+        cmd.add_argument("--inputs", action="append", metavar="CLOUD=PATH")
+        if verb == "preflight":
+            continue
         cmd.add_argument("--directory", required=True)
         cmd.add_argument("--terraform", default="terraform")
         cmd.add_argument("--helper", default="infraweave-lab")
@@ -433,17 +475,30 @@ def main():
     args = parser.parse_args()
     if args.command == "run":
         result = run(args)
+    elif args.command == "preflight":
+        import cloudlab
+        result, _configs, _definition = cloudlab.preflight(args.batch, cloudlab.parse_inputs(args.inputs))
+        print(json.dumps(result))
+        if not result["passed"]:
+            raise cloudlab.preflight_error(result)
+        return
     elif args.command == "up":
         directory = Path(args.directory).resolve()
         owner = "iw-lab-" + uuid.uuid4().hex
+        deployment = lifecycle(batch(args.batch), args)
         try:
-            result = up(directory, args.batch, args.terraform, args.helper, owner)
+            result = deployment.up(directory, owner)
         except BaseException:
             if (directory / "deployment.json").exists() and read_json(directory / "deployment.json")["owner"] == owner:
-                down(directory)
+                deployment.down(directory)
             raise
     else:
-        result = down(Path(args.directory).resolve())
+        directory = Path(args.directory).resolve()
+        if read_json(directory / "deployment.json").get("kind") == "managed-cloud-workers":
+            import cloudlab
+            result = cloudlab.down(directory)
+        else:
+            result = down(directory)
     print(json.dumps(result))
 
 

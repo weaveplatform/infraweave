@@ -114,6 +114,8 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@postgres", "@kubernetes", "@kubernetes-lab"}, "kubernetes-lab"},
 		{[]string{"@terraform", "@kubernetes-lab"}, "kubernetes-lab"},
 		{[]string{"@vcs-lab", "@kubernetes-lab"}, "vcs-lab"},
+		{[]string{"@postgres", "@managed-cloud-workers"}, "managed-cloud-workers"},
+		{[]string{"@kubernetes-lab", "@managed-cloud-workers"}, "kubernetes-lab"},
 	} {
 		got, err := harness.Place(tc.tags)
 		if err != nil || got != tc.want {
@@ -131,21 +133,22 @@ func TestUnitPlace(t *testing.T) {
 }
 
 func TestUnitTagExpression(t *testing.T) {
-	ordinary := "~@vcs-lab && ~@kubernetes-lab"
+	ordinary := "~@vcs-lab && ~@kubernetes-lab && ~@managed-cloud-workers"
 	runPrefix := ordinary + " && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	corePrefix := integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai"
 	for name, want := range map[string]string{
-		"":                ordinary,
-		"vcs-lab":         "@vcs-lab",
-		"kubernetes-lab":  "~@vcs-lab && @kubernetes-lab",
-		"terraform-plans": ordinary + " && @terraform-plans",
-		"terraform-vcs":   ordinary + " && ~@terraform-plans && @terraform-vcs",
-		"terraform":       ordinary + " && ~@terraform-plans && ~@terraform-vcs && @terraform",
-		"runs":            strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
-		"integrations":    strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
-		"identity":        corePrefix + " && @identity",
-		"core":            corePrefix + " && ~@identity",
+		"":                      ordinary,
+		"vcs-lab":               "@vcs-lab",
+		"kubernetes-lab":        "~@vcs-lab && @kubernetes-lab",
+		"managed-cloud-workers": "~@vcs-lab && ~@kubernetes-lab && @managed-cloud-workers",
+		"terraform-plans":       ordinary + " && @terraform-plans",
+		"terraform-vcs":         ordinary + " && ~@terraform-plans && @terraform-vcs",
+		"terraform":             ordinary + " && ~@terraform-plans && ~@terraform-vcs && @terraform",
+		"runs":                  strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
+		"integrations":          strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
+		"identity":              corePrefix + " && @identity",
+		"core":                  corePrefix + " && ~@identity",
 	} {
 		got, err := harness.TagExpression(name)
 		if err != nil || got != want {
@@ -242,7 +245,8 @@ func TestUnitPartitionSelections(t *testing.T) {
 	withoutLabs := godogScenarios(t, expr)
 	for id, scenario := range all {
 		tags := pickleTags(scenario)
-		want := !slices.Contains(tags, "@vcs-lab") && !slices.Contains(tags, "@kubernetes-lab")
+		want := !slices.Contains(tags, "@vcs-lab") && !slices.Contains(tags, "@kubernetes-lab") &&
+			!slices.Contains(tags, "@managed-cloud-workers")
 		if _, got := withoutLabs[id]; got != want {
 			t.Errorf("default selection of %s: %s = %t, want %t", scenario.Uri, scenario.Name, got, want)
 		}
@@ -252,7 +256,7 @@ func TestUnitPartitionSelections(t *testing.T) {
 // The split must preserve the actual parser's complete previous Terraform
 // selection, with no duplicated or misplaced scenario in any required job.
 func TestUnitTerraformSplitCoverage(t *testing.T) {
-	legacy := godogScenarios(t, "~@vcs-lab && ~@kubernetes-lab && @terraform")
+	legacy := godogScenarios(t, "~@vcs-lab && ~@kubernetes-lab && ~@managed-cloud-workers && @terraform")
 	union := map[string]string{}
 	for _, name := range []string{"terraform", "terraform-plans", "terraform-vcs"} {
 		expr, err := harness.TagExpression(name)
@@ -320,7 +324,7 @@ func pickleTags(scenario *messages.Pickle) []string {
 func TestUnitCoreIdentitySplitCoverage(t *testing.T) {
 	legacy := godogScenarios(
 		t,
-		"~@vcs-lab && ~@terraform-plans && ~@terraform-vcs && ~@terraform && ~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
+		"~@vcs-lab && ~@managed-cloud-workers && ~@terraform-plans && ~@terraform-vcs && ~@terraform && ~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && ~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai",
 	)
 	union := map[string]string{}
 	for _, name := range []string{"core", "identity"} {

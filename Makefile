@@ -219,12 +219,13 @@ verify-parity:
 parity-baseline:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --write-baseline || exit 1; done
 
-## labs-cloud: terraform validate each cloud-platform lab root under test/terraform/cloud (objectstore-cloud and the KMS live tests)
+## labs-cloud: terraform validate each cloud-platform lab root under test/terraform/cloud (objectstore-cloud, the KMS live tests and each managed cloud worker stage)
 ## labs-vcs: terraform validate each VCS lab root under test/terraform/vcs (vcs-lab)
 # Each root initializes without its backend and against its committed lock
 # file, which init must not change, so a provider bump missing from a lock
-# fails here. The roots share one plugin cache.
-LAB_ROOTS_CLOUD = $(sort $(dir $(wildcard test/terraform/cloud/*/*/versions.tf)))
+# fails here. The roots share one plugin cache. Managed cloud worker roots
+# nest a cluster/ and a deployment/ stage under each cloud.
+LAB_ROOTS_CLOUD = $(sort $(dir $(wildcard test/terraform/cloud/*/*/versions.tf test/terraform/cloud/workers/*/*/versions.tf)))
 LAB_ROOTS_VCS = $(sort $(dir $(wildcard test/terraform/vcs/*/versions.tf)))
 TF_PLUGIN_CACHE_DIR ?= $(CURDIR)/.terraform.d/plugin-cache
 export TF_PLUGIN_CACHE_DIR
