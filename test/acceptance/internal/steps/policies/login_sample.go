@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
 
 	"github.com/cucumber/godog"
 
@@ -41,12 +42,21 @@ func registerDefaultLoginSample(sc *godog.ScenarioContext, w *harness.World) {
 						Login string `json:"login"`
 					} `json:"session"`
 				}
-				if json.Unmarshal([]byte(sample.Input), &input) != nil || !json.Valid([]byte(sample.Results)) || input.Session.Login != harness.Member.Key ||
+				var decision struct {
+					Allow  bool     `json:"allow"`
+					Sample bool     `json:"sample"`
+					Flag   []string `json:"flag"`
+					Team   []string `json:"team"`
+				}
+				if json.Unmarshal([]byte(sample.Input), &input) != nil || json.Unmarshal([]byte(sample.Results), &decision) != nil ||
+					!decision.Allow || !decision.Sample || !slices.Equal(decision.Flag, []string{"login-no-run"}) ||
+					len(decision.Team) != 2 || !slices.Contains(decision.Team, "ci") || !slices.Contains(decision.Team, "ops") ||
+					input.Session.Login != harness.Member.Key ||
 					string(sample.EngineType) != engine ||
 					sample.Outcome != "allow" ||
 					sample.Error != "" ||
 					sample.Body != view.Body {
-					return false, fmt.Errorf("%w: default LOGIN sample lost its real actor, dialect, source or successful decision", harness.ErrStep)
+					return false, fmt.Errorf("%w: default LOGIN sample lost its actor, dialect, source or computed helper/comprehension/flag result", harness.ErrStep)
 				}
 				return true, nil
 			})
