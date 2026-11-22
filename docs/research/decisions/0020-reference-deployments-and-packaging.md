@@ -238,6 +238,19 @@ P14 pulls forward only `deploy/terraform/modules/workers/{aws,azure,google}`
 and `deploy/helm/infraweave-workers`, with managed EKS Auto Mode, AKS and GKE
 Autopilot hosting or explicitly named existing managed clusters. The strict
 chart/config/CRD/secret-reference contract is [worker pool contracts](../../implementation/worker-pool-contracts.md#hosting-chart-and-evidence).
+The [managed Kubernetes hosting contract](../../implementation/worker-hosting-contracts.md)
+settles shared semantic inputs/outputs, explicit cloud IDs, secret transport,
+managed-profile compatibility and cleanup ownership. Every cloud delivery ships
+its `test/terraform/cloud/workers/{aws,azure,google}` acceptance root calling the
+shared module in the same PR; modules alone do not complete cloud delivery.
+Cluster infrastructure and worker deployment use separate state so finalizers,
+protocol deregistration and ownership release finish before cluster teardown.
+Existing clusters/networks/Secrets and shared CRDs retain external ownership.
+Implementing owners verify and pin providers, tools and supported Kubernetes
+versions, and record actual managed admission/resource envelopes before approval
+for a live apply. A chart default, including the 12 GiB storage budget, is not a
+managed-service admission guarantee or reserved node capacity.
+
 One chart runs on every cloud; cloud is not a tier entitlement. Several distinct
 stable pools/clusters may run concurrently, each with configured capacity;
 this introduces no queue-driven cross-cloud autoscaler.
