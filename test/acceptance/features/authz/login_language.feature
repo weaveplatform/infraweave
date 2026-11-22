@@ -10,7 +10,7 @@ Feature: Both Rego dialects drive real LOGIN admission and default evidence
     And the home key is exchanged through A for token "h"
     And the member key is exchanged through B for token "before"
 
-  @op:apiKeyUser @op:policyEvaluationSample @case:success @case:denial
+  @op:apiKeyUser @op:policyEvaluationSample @case:success
   Scenario Outline: <engine> LOGIN helpers and partial roles authorize the key and retain its default sample
     Given token "h" sends "POST /api/v1/policies" with '{"name":"Dialect admission","type":"LOGIN","engineType":"<engine>","body":"<body>"}' through A
     And it answers 201
