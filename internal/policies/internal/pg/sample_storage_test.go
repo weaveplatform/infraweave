@@ -310,3 +310,130 @@ func TestAccSampleStagingRejectsCiphertextCopiedToAnotherRow(t *testing.T) {
 		t.Fatal("copied staging opened under another primary key")
 	}
 }
+
+func TestAccLoginDefaultsRetainExactSamplesWithBothRealRegoDialects(t *testing.T) {
+	for _, engine := range []rego.EngineType{rego.V0, rego.V1} {
+		t.Run(string(engine), func(t *testing.T) {
+			w := newSampleWorld(t)
+			if _, err := w.f.svc.Create(
+				t.Context(),
+				w.f.principal,
+				core.Input{Name: "Default login sample", Type: rego.Login, Engine: engine, Body: "package infraweave\nallow := false\n"},
+			); err != nil {
+				t.Fatal(err)
+			}
+			input := json.RawMessage(`{"request":{},"session":{"machine":false,"member":true,"teams":[],"login":"private-login-identity"}}`)
+			out, err := w.f.svc.Evaluate(t.Context(), fixtureEvaluationRequest(w.f, policyapi.Login, input))
+			if err != nil || out.Outcome != policyapi.Deny || len(out.Receipts) != 1 || !out.Receipts[0].Sample || out.Receipts[0].SampleEvaluation == nil {
+				t.Fatalf("LOGIN default did not stage denied evidence: %+v %v", out, err)
+			}
+			w.uploadAll(t)
+			payload, err := w.samples.Read(t.Context(), w.f.principal.AccountID, out.Receipts[0].ID)
+			if err != nil || !bytes.Equal(payload.Input, input) || payload.Engine != string(engine) || payload.Outcome != policyapi.Deny {
+				t.Fatalf("default LOGIN sample changed its exact evidence: %+v %v", payload, err)
+			}
+		})
+	}
+}
+
+func TestAccSampleBudgetExhaustionCannotAuthorizeOrPublishRequestedEvidence(t *testing.T) {
+	for _, engine := range []rego.EngineType{rego.V0, rego.V1} {
+		t.Run(string(engine), func(t *testing.T) {
+			w := newSampleWorld(t)
+			if _, err := w.f.db.Exec(
+				t.Context(),
+				`INSERT INTO policy_sample_budgets(account_id,hour,bucket,used) VALUES($1,date_trunc('hour',statement_timestamp(),'UTC'),'OTHER',500)`,
+				w.f.principal.AccountID,
+			); err != nil {
+				t.Fatal(err)
+			}
+			body := "package infraweave\nsample := true\ndeny contains \"quota cannot authorize\" if true\n"
+			if engine == rego.V0 {
+				body = "package infraweave\nsample := true\ndeny[\"quota cannot authorize\"] { true }\n"
+			}
+			if _, err := w.f.svc.Create(
+				t.Context(),
+				w.f.principal,
+				core.Input{Name: "Denied over budget", Type: rego.Plan, Engine: engine, Body: body, Labels: []string{"autoattach:*"}},
+			); err != nil {
+				t.Fatal(err)
+			}
+			out, err := w.f.svc.Evaluate(t.Context(), fixtureEvaluationRequest(w.f, policyapi.Plan, evaluationInput(t, "plan-tracked-warn.json")))
+			if err != nil || out.Outcome != policyapi.Deny || len(out.Receipts) != 1 || !out.Receipts[0].Sample || out.Receipts[0].SampleEvaluation != nil {
+				t.Fatalf("budget changed denied policy or claimed a retained sample: %+v %v", out, err)
+			}
+			w.uploadAll(t)
+			var requested, sampled bool
+			if err := w.f.db.QueryRow(t.Context(), `SELECT sample_requested,sample_input_id IS NOT NULL FROM policy_evaluations WHERE account_id=$1 AND id=$2`, w.f.principal.AccountID, out.Receipts[0].ID).
+				Scan(&requested, &sampled); err != nil ||
+				!requested ||
+				sampled {
+				t.Fatalf("over-budget safe metadata: %t/%t %v", requested, sampled, err)
+			}
+			if _, err := w.samples.Read(t.Context(), w.f.principal.AccountID, out.Receipts[0].ID); !errors.Is(err, sampling.ErrNotFound) {
+				t.Fatalf("over-budget sample became readable: %v", err)
+			}
+			current, pending := w.captureHead(t)
+			if current == nil || pending != nil {
+				t.Fatal("sample quota suppressed the independent capture")
+			}
+		})
+	}
+}
+
+func TestAccCaptureKindsMatchEvaluatedEventsWithoutInventingInitializationCaptures(t *testing.T) {
+	for _, test := range []struct {
+		kind               policyapi.Type
+		file, raw, capture string
+	}{
+		{kind: policyapi.Push, file: "push-track.json", capture: "GIT_PUSH"},
+		{kind: policyapi.Notification, file: "notification-finished.json", capture: "NOTIFICATION"},
+		{kind: policyapi.Trigger, file: "trigger-finished.json", capture: "TRIGGER_RUN_FINISH"},
+		{kind: policyapi.Initialization, raw: `{"request":{"timestamp_ns":1795140000000000001},"commit":{"author":"actor","branch":"main","created_at":1,"message":"test"},"run":{"id":"run","created_at":1,"updated_at":1,"type":"TRACKED","state":"QUEUED","triggered_by":null},"stack":{"administrative":false,"autodeploy":false,"state":"NONE","branch":"main","id":"stack","name":"Stack","namespace":"owner","project_root":"","repository":"repo"}}`},
+	} {
+		t.Run(string(test.kind), func(t *testing.T) {
+			w := newSampleWorld(t)
+			labels := []string{"autoattach:*"}
+			if test.kind == policyapi.Notification {
+				labels = nil
+			}
+			body := "package infraweave\nsample := false\n"
+			if test.kind == policyapi.Initialization {
+				body = "package infraweave\nsample := true\n"
+			}
+			if _, err := w.f.svc.Create(t.Context(), w.f.principal, core.Input{Name: "Event capture", Type: rego.Type(test.kind), Body: body, Labels: labels}); err != nil {
+				t.Fatal(err)
+			}
+			input := json.RawMessage(test.raw)
+			if test.file != "" {
+				input = evaluationInput(t, test.file)
+			}
+			out, err := w.f.svc.Evaluate(t.Context(), fixtureEvaluationRequest(w.f, test.kind, input))
+			if err != nil || len(out.Receipts) != 1 || len(out.Failures) != 0 {
+				t.Fatalf("real event evaluation: %+v %v", out, err)
+			}
+			w.uploadAll(t)
+			var count int
+			if err := w.f.db.QueryRow(t.Context(), `SELECT count(*) FROM policy_input_capture_heads WHERE account_id=$1`, w.f.principal.AccountID).Scan(&count); err != nil {
+				t.Fatal(err)
+			}
+			if test.capture == "" {
+				if count != 0 || out.Receipts[0].SampleEvaluation == nil {
+					t.Fatal("INITIALIZATION invented a capture kind or suppressed its valid sample")
+				}
+				if _, err := w.samples.Read(t.Context(), w.f.principal.AccountID, out.Receipts[0].ID); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				var kind string
+				if err := w.f.db.QueryRow(t.Context(), `SELECT capture_kind FROM policy_input_capture_heads WHERE account_id=$1 AND current_input_id IS NOT NULL`, w.f.principal.AccountID).
+					Scan(&kind); err != nil ||
+					count != 1 ||
+					kind != test.capture ||
+					out.Receipts[0].SampleEvaluation != nil {
+					t.Fatalf("event capture kind/sample independence: %s/%d %v", kind, count, err)
+				}
+			}
+		})
+	}
+}

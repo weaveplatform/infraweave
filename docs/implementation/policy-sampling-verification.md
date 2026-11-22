@@ -81,3 +81,10 @@ uploads exercise generation loss, account purge and a newer capture winning
 before the stale upload resumes. These authored scenarios are implementation
 proof, not vendor captures. Complete CI coverage, parity, generation and FIPS
 checks remain required before merge.
+
+After integrating the merged LOGIN implementation, the combined public sampling,
+approval and LOGIN-failure batch passes **26 scenarios / 631 steps**. The complete
+policy package suite passes with race detection, randomized test order and
+certified FIPS. Its merged local counters cover **256/282 sampling statements
+(90.8%)** and **315/341 policy-storage statements (92.4%)**. These package results
+do not substitute for CI's complete repository-wide coverage gate.
