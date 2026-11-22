@@ -152,7 +152,7 @@ func (s *servedSteps) stored(ctx context.Context, status int, path, body, key st
 VALUES (%s, %s, %s, 'done', now(), %d, 'application/json', %s, decode(%s, 'hex'),
     now(), now() + interval '1 hour')`,
 		harness.Literal(
-			harness.ScenarioCaller,
+			harness.ScenarioReplayCaller,
 		),
 		harness.Literal(key),
 		harness.Literal(fingerprint(http.MethodPost, path, body)),
@@ -169,7 +169,7 @@ func (s *servedSteps) inFlight(ctx context.Context, path, body, key string) erro
     (caller, key, fingerprint, state, locked_until, created_at, expires_at)
 VALUES (%s, %s, %s, 'in_flight', now() + interval '1 hour', now(), now() + interval '1 day')`,
 		harness.Literal(
-			harness.ScenarioCaller,
+			harness.ScenarioReplayCaller,
 		),
 		harness.Literal(key),
 		harness.Literal(fingerprint(http.MethodPost, path, body)),
