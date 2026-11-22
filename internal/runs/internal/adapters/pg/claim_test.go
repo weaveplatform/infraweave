@@ -84,7 +84,7 @@ func (w *world) held(t *testing.T, run kernel.ULID) (kernel.RunState, *kernel.UL
 // claimed; and that a claim outside a transaction is refused.
 func TestAccClaim(t *testing.T) {
 	w := newWorld(t)
-	c := schedule.NewClaims(w.store, w.lc)
+	c := schedule.NewClaims(w.store, w.lc, w)
 	pool := kernel.NewULID()
 	if _, _, err := c.Claim(t.Context(), workersapi.Claim{Account: w.acct, Pool: pool}); !errors.Is(
 		err, lifecycle.ErrNoTransaction) {
@@ -162,7 +162,7 @@ func TestAccClaim(t *testing.T) {
 // scheduler, holds a worker, has finished or is in the public pool.
 func TestAccClaimQueued(t *testing.T) {
 	w := newWorld(t)
-	c := schedule.NewClaims(w.store, w.lc)
+	c := schedule.NewClaims(w.store, w.lc, w)
 	tracked, normal := kernel.RunTypeTracked, kernel.RunPriorityNormal
 	waiting, quiet := kernel.NewULID(), kernel.NewULID()
 	for _, s := range machine.Claimable() {
@@ -191,7 +191,7 @@ func TestAccClaimQueued(t *testing.T) {
 // claims at once under a limit of one take one drift run between them.
 func TestAccClaimDriftRace(t *testing.T) {
 	w := newWorld(t)
-	c := schedule.NewClaims(w.store, w.lc)
+	c := schedule.NewClaims(w.store, w.lc, w)
 	pool, one := kernel.NewULID(), 1
 	ready, proposed := kernel.RunStateReady, kernel.RunTypeProposed
 	base := w.now.Add(-time.Hour)
@@ -285,11 +285,39 @@ func (f failingClaims) TakeDrift(ctx context.Context, a kernel.AccountID, p kern
 	return f.ClaimStore.TakeDrift(ctx, a, p)
 }
 
-func (f failingClaims) Next(ctx context.Context, a kernel.AccountID, p kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
+func (f failingClaims) ProbeCandidate(
+	ctx context.Context,
+	a kernel.AccountID,
+	p kernel.ULID,
+	states []kernel.RunState,
+	last int,
+	after *schedule.ClaimCursor,
+	excluded []kernel.ULID,
+) (lifecycle.Run, bool, error) {
 	if f.fail == "Next" || (f.fail == "NextEarlier" && last < 6) {
 		return lifecycle.Run{}, false, errInjected
 	}
-	return f.ClaimStore.Next(ctx, a, p, states, last)
+	return f.ClaimStore.ProbeCandidate(ctx, a, p, states, last, after, excluded)
+}
+
+func (f failingClaims) LockCandidate(ctx context.Context, r lifecycle.Run, p kernel.ULID, states []kernel.RunState, last int) (lifecycle.Run, bool, error) {
+	if f.fail == "LockCandidate" {
+		return lifecycle.Run{}, false, errInjected
+	}
+	return f.ClaimStore.LockCandidate(ctx, r, p, states, last)
+}
+
+func (f failingClaims) CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error) {
+	if f.fail == "CandidateAttempt" {
+		return false, errInjected
+	}
+	return f.ClaimStore.CandidateAttempt(ctx, fn)
+}
+
+// The storage fixture has no stack/space owner rows. Public worker acceptance
+// and the owner-order tests exercise the actual owner fences separately.
+func (*world) HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, error) {
+	return true, nil
 }
 
 func (f failingClaims) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error {
@@ -309,7 +337,7 @@ func TestAccClaimFailures(t *testing.T) {
 	drift := w.waits(t, w.acct, drifts, ready, proposed, normal, true, w.now)
 	run := w.waits(t, w.acct, plain, ready, proposed, normal, false, w.now)
 	for _, fail := range []string{"Holding", "Next", "TakeDrift", "Drifting", "NextEarlier"} {
-		c := schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: fail}, w.lc)
+		c := schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: fail}, w.lc, w)
 		if _, _, err := w.take(t, c, drifts, kernel.NewULID(), &none); !errors.Is(
 			err, errInjected) {
 			t.Errorf("%s failing = %v", fail, err)
@@ -318,8 +346,10 @@ func TestAccClaimFailures(t *testing.T) {
 	moving := w.lifecycle(failing{Store: w.store, events: w.events, jobs: w.jobs, fail: "Move"},
 		w.events, w.jobs)
 	for name, c := range map[string]*schedule.Claims{
-		"Assign": schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "Assign"}, w.lc),
-		"Move":   schedule.NewClaims(w.store, moving),
+		"LockCandidate":    schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "LockCandidate"}, w.lc, w),
+		"CandidateAttempt": schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "CandidateAttempt"}, w.lc, w),
+		"Assign":           schedule.NewClaims(failingClaims{ClaimStore: w.store, fail: "Assign"}, w.lc, w),
+		"Move":             schedule.NewClaims(w.store, moving, w),
 	} {
 		if _, _, err := w.take(t, c, plain, kernel.NewULID(), nil); !errors.Is(err, errInjected) {
 			t.Errorf("%s failing = %v", name, err)
@@ -392,11 +422,13 @@ func TestAccClaimStoreUnavailable(t *testing.T) {
 	run := lifecycle.Run{Account: acct, ID: id, WorkerPool: &id}
 	_, holdingErr := s.Holding(ctx, acct, id)
 	_, driftingErr := s.Drifting(ctx, acct, id)
-	_, _, nextErr := s.Next(ctx, acct, id, kernel.RunStates(), 7)
+	_, _, nextErr := s.ProbeCandidate(ctx, acct, id, kernel.RunStates(), 7, nil, nil)
+	_, _, candidateErr := s.LockCandidate(ctx, run, id, kernel.RunStates(), 7)
 	_, waitingErr := s.Waiting(ctx, kernel.RunStates())
 	for name, err := range map[string]error{
 		"Holding": holdingErr, "Drifting": driftingErr, "Next": nextErr, "Waiting": waitingErr,
-		"TakeDrift": s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
+		"LockCandidate": candidateErr,
+		"TakeDrift":     s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
 		"Announce": s.Announce(ctx, run),
 	} {
 		if err == nil {

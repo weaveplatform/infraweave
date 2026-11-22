@@ -50,6 +50,11 @@ type Claim struct {
 // PREPARING, PREPARING_APPLY or PREPARING_REPLAN, and its state version
 // after the claim.
 type Assignment struct {
+	// Retry requests fresh selection after the current transaction ends.
+	// No run was assigned. Refusal retries are immediate; lock contention
+	// supplies RetryAfter so an idle poll waits without a pooled connection.
+	Retry        bool
+	RetryAfter   time.Duration
 	Run          kernel.ULID
 	State        kernel.RunState
 	StateVersion int64

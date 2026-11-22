@@ -150,8 +150,11 @@ func (s Server) PolicyUpdatev2Patch(ctx context.Context, req api.PolicyUpdatev2P
 }
 
 func markDeprecated(ctx context.Context, kind rego.Type) {
-	if kind == rego.Task {
+	switch kind {
+	case rego.Task:
 		middleware.Deprecate(ctx, policyapi.TaskDeprecatedSince, policyapi.TaskDeprecationInfo)
+	case rego.Initialization:
+		middleware.Deprecate(ctx, policyapi.InitializationDeprecatedSince, policyapi.InitializationDeprecationInfo)
 	}
 }
 
