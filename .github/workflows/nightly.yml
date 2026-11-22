@@ -146,6 +146,7 @@ jobs:
 
       - name: Record tested revision
         if: always()
+        shell: bash
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha || '' }}

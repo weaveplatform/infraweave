@@ -30,9 +30,10 @@ type partitionJob struct {
 }
 
 type partitionStep struct {
-	Run  string            `yaml:"run"`
-	With map[string]string `yaml:"with"`
-	Env  map[string]string `yaml:"env"`
+	Shell string            `yaml:"shell"`
+	Run   string            `yaml:"run"`
+	With  map[string]string `yaml:"with"`
+	Env   map[string]string `yaml:"env"`
 }
 
 func partitionWorkflowAt(t *testing.T, name string) partitionWorkflow {
@@ -167,6 +168,9 @@ func TestUnitCINativeAcceptanceIsRequired(t *testing.T) {
 func TestUnitNextPostgresPreservesNativeAndIdentityCoverage(t *testing.T) {
 	workflow := partitionWorkflowAt(t, "quality-gate.yml")
 	samePartitions(t, "next PostgreSQL", workflow.Jobs["postgres-next"].Strategy.Matrix.Partition, []string{"core", "identity", "native"})
+	if !slices.Contains(workflow.Jobs["gate"].Needs, "postgres-next") {
+		t.Error("quality gate can pass despite next PostgreSQL failure")
+	}
 	next := workflow.Jobs["postgres-next"]
 	if !slices.ContainsFunc(next.Steps, func(step partitionStep) bool {
 		return step.Env["INFRAWEAVE_POSTGRES"] == "next" && step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1" &&
@@ -185,10 +189,10 @@ func TestUnitCIRecordsActualTestedRevision(t *testing.T) {
 	for _, name := range []string{"unit", "accept", "native", "fips-only", "postgres-next"} {
 		job := workflow.Jobs[name]
 		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
-			return strings.Contains(step.Run, "git rev-parse HEAD") && strings.Contains(step.Run, "HEAD^{tree}") &&
+			return step.Shell == "bash" && strings.Contains(step.Run, "git rev-parse HEAD") && strings.Contains(step.Run, "HEAD^{tree}") &&
 				step.Env["PR_HEAD"] != "" && step.Env["PR_BASE"] != ""
 		}) {
-			t.Errorf("%s omits the source head, base or actual tested checkout/tree", name)
+			t.Errorf("%s omits Bash-safe source head, base or actual tested checkout/tree provenance", name)
 		}
 		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
 			return strings.HasPrefix(step.With["name"], "validation-") && strings.HasSuffix(step.With["path"], "/validation/revision.json")
