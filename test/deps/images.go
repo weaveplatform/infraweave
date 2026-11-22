@@ -71,10 +71,12 @@ const (
 	// ImageSpaceliftRunnerTerraform is Spacelift's public Terraform runner
 	// image, a weekly rebuild of a release, which a stack names as its
 	// runner image to show that an image meeting the runner image contract
-	// runs unchanged.
+	// runs unchanged. Its official GHCR backup avoids ECR Public's anonymous
+	// data allowance on shared CI egress. Upstream publishes the same image:
+	// https://github.com/spacelift-io/runner-terraform#docker-repository
 	//
 	// ref: decision 0008 § "Runner images"
-	ImageSpaceliftRunnerTerraform = "public.ecr.aws/spacelift/runner-terraform:v2.5.1_20261116@sha256:b48969aba860b11f7fbfc12acdd3be539d8befeea64edeef544655a50f819a35"
+	ImageSpaceliftRunnerTerraform = "ghcr.io/spacelift-io/runner-terraform:v2.5.1_20261116@sha256:b48969aba860b11f7fbfc12acdd3be539d8befeea64edeef544655a50f819a35"
 )
 
 // ErrPostgresEnv marks a PostgresEnv value that names no image.

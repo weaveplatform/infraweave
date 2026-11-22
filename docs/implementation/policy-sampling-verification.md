@@ -100,3 +100,15 @@ policy package suite passes with race detection, randomized test order and
 certified FIPS. Its merged local counters cover **256/282 sampling statements
 (90.8%)** and **315/341 policy-storage statements (92.4%)**. These package results
 do not substitute for CI's complete repository-wide coverage gate.
+
+The tracked-run vendor-image compatibility case uses Spacelift's own official
+GHCR backup. An anonymous registry read on 2026-11-22 verified that
+`ghcr.io/spacelift-io/runner-terraform:v2.5.1_20261116` serves the unchanged pinned
+OCI index `sha256:b48969aba860b11f7fbfc12acdd3be539d8befeea64edeef544655a50f819a35`,
+including Linux amd64 and arm64. Its raw SHA-256 and registry digest both match
+the existing ECR pin. The upstream
+[README](https://github.com/spacelift-io/runner-terraform/blob/6c75296f90e3fafd9f40bf166af59286768cb096/README.md#docker-repository)
+and [publisher](https://github.com/spacelift-io/runner-terraform/blob/6c75296f90e3fafd9f40bf166af59286768cb096/.github/workflows/publish/action.yml)
+establish this backup's provenance. The compatibility case still requires the
+same tracked plan/apply/FINISHED lifecycle, UID 1983 and persisted Terraform
+state; the weekly pin updater follows that same upstream GHCR repository.
