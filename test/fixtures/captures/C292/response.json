@@ -1,0 +1,671 @@
+{
+  "capturedAt": "2026-11-22T17:19:48.727Z",
+  "account": "example",
+  "introspection": "sha256:a5576e83b0d69dec495851182193fa774b6cbc4bc2b644628ef8389fbde33bfe",
+  "readOnly": true,
+  "exchanges": [
+    {
+      "requestId": 59,
+      "stage": "pool-overview",
+      "observedAt": "2026-11-22T17:19:38.895Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchWorkerPools",
+        "variables": {
+          "input": {
+            "predicates": [],
+            "orderBy": [
+              {
+                "field": "name",
+                "direction": "DESC"
+              }
+            ],
+            "fullTextSearch": "",
+            "first": 50,
+            "after": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchWorkerPools($input: SearchInput!) {\n  publicWorkerPool {\n    parallelism\n    busyWorkers\n    schedulableRunsCount\n    __typename\n  }\n  searchWorkerPools(input: $input) {\n    edges {\n      cursor\n      node {\n        id\n        name\n        description\n        spaceDetails {\n          id\n          name\n          accessLevel\n          __typename\n        }\n        allowedActions\n        labels\n        driftDetectionRunLimit\n        busyWorkers\n        schedulableRunsCount\n        usersCount\n        workersCount\n        managedByK8sController\n        __typename\n      }\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "parallelism": 1,
+            "busyWorkers": 0,
+            "schedulableRunsCount": 0,
+            "__typename": "PublicWorkerPool"
+          },
+          "searchWorkerPools": {
+            "edges": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "",
+              "__typename": "PageInfo"
+            },
+            "__typename": "SearchWorkerPoolsOutput"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 66,
+      "stage": "pool-overview",
+      "observedAt": "2026-11-22T17:19:38.899Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchWorkerPoolsSuggestions",
+        "variables": {
+          "input": {
+            "fullTextSearch": null,
+            "predicates": null,
+            "fields": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchWorkerPoolsSuggestions($input: SearchSuggestionsInput!) {\n  searchWorkerPoolsSuggestions(input: $input) {\n    ...SearchSuggestionsFragment\n    __typename\n  }\n}\n\nfragment SearchSuggestionsFragment on SearchSuggestionsOutput {\n  filteredCount\n  ...SearchSuggestionsFieldsFragment\n  __typename\n}\n\nfragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {\n  fields {\n    name\n    orderable\n    filterable\n    type\n    possibleValuesBoolean {\n      values\n      counts\n      __typename\n    }\n    possibleValuesEnum {\n      values\n      counts\n      __typename\n    }\n    possibleValuesString {\n      values\n      counts\n      __typename\n    }\n    possibleValuesHierarchy {\n      values {\n        id\n        parentId\n        displayValue\n        __typename\n      }\n      counts\n      directCounts\n      __typename\n    }\n    __typename\n  }\n  __typename\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "searchWorkerPoolsSuggestions": {
+            "filteredCount": 0,
+            "fields": [
+              {
+                "name": "busyWorkers",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "createdAt",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "label",
+                "orderable": false,
+                "filterable": true,
+                "type": "STRING",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": {
+                  "values": [],
+                  "counts": [],
+                  "__typename": "SearchSuggestionsPossibleValuesString"
+                },
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "name",
+                "orderable": true,
+                "filterable": true,
+                "type": "STRING",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": {
+                  "values": [],
+                  "counts": [],
+                  "__typename": "SearchSuggestionsPossibleValuesString"
+                },
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "schedulableRunsCount",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "space",
+                "orderable": true,
+                "filterable": true,
+                "type": "HIERARCHY",
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": {
+                  "values": [],
+                  "counts": [],
+                  "directCounts": null,
+                  "__typename": "SearchSuggestionsPossibleValuesHierarchy"
+                },
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "updatedAt",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              },
+              {
+                "name": "workersCount",
+                "orderable": true,
+                "filterable": false,
+                "type": null,
+                "possibleValuesBoolean": null,
+                "possibleValuesEnum": null,
+                "possibleValuesString": null,
+                "possibleValuesHierarchy": null,
+                "__typename": "SearchSuggestionsField"
+              }
+            ],
+            "__typename": "SearchSuggestionsOutput"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 388,
+      "stage": "public-queue",
+      "observedAt": "2026-11-22T17:19:43.158Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "GetPublicWorkerPoolDetails",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPublicWorkerPoolDetails {\n  publicWorkerPool {\n    parallelism\n    schedulableRunsCount\n    usersCount\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "parallelism": 1,
+            "schedulableRunsCount": 0,
+            "usersCount": 0,
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 397,
+      "stage": "public-queue",
+      "observedAt": "2026-11-22T17:19:43.160Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchPublicWorkerPoolSchedulableRuns",
+        "variables": {
+          "input": {
+            "predicates": [],
+            "fullTextSearch": "",
+            "first": null,
+            "after": null,
+            "orderBy": [
+              {
+                "field": "position",
+                "direction": "ASC"
+              }
+            ]
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPublicWorkerPoolSchedulableRuns($input: SearchInput!) {\n  publicWorkerPool {\n    schedulableRunsCount\n    usersCount\n    searchSchedulableRuns(input: $input) {\n      edges {\n        cursor\n        node {\n          isModule\n          position\n          stackId\n          stackName\n          provider\n          run {\n            id\n            type\n            title\n            finished\n            triggeredBy\n            createdAt\n            updatedAt\n            driftDetection\n            priorityPreset\n            state\n            commit {\n              authorName\n              hash\n              url\n              __typename\n            }\n            __typename\n          }\n          space {\n            id\n            accessLevel\n            __typename\n          }\n          version\n          __typename\n        }\n        __typename\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "schedulableRunsCount": 0,
+            "usersCount": 0,
+            "searchSchedulableRuns": {
+              "edges": [],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": "",
+                "__typename": "PageInfo"
+              },
+              "__typename": "SearchSchedulableRunsOutput"
+            },
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 398,
+      "stage": "public-queue",
+      "observedAt": "2026-11-22T17:19:43.161Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchPublicWorkerPoolSchedulableRunsSuggestions",
+        "variables": {
+          "input": {
+            "predicates": [],
+            "fullTextSearch": "",
+            "fields": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPublicWorkerPoolSchedulableRunsSuggestions($input: SearchSuggestionsInput!) {\n  publicWorkerPool {\n    schedulableRunsCount\n    usersCount\n    searchSchedulableRunsSuggestions(input: $input) {\n      ...SearchSuggestionsFragment\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment SearchSuggestionsFragment on SearchSuggestionsOutput {\n  filteredCount\n  ...SearchSuggestionsFieldsFragment\n  __typename\n}\n\nfragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {\n  fields {\n    name\n    orderable\n    filterable\n    type\n    possibleValuesBoolean {\n      values\n      counts\n      __typename\n    }\n    possibleValuesEnum {\n      values\n      counts\n      __typename\n    }\n    possibleValuesString {\n      values\n      counts\n      __typename\n    }\n    possibleValuesHierarchy {\n      values {\n        id\n        parentId\n        displayValue\n        __typename\n      }\n      counts\n      directCounts\n      __typename\n    }\n    __typename\n  }\n  __typename\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "schedulableRunsCount": 0,
+            "usersCount": 0,
+            "searchSchedulableRunsSuggestions": {
+              "filteredCount": 0,
+              "fields": [
+                {
+                  "name": "commit",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [],
+                    "counts": [],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "createdAt",
+                  "orderable": true,
+                  "filterable": false,
+                  "type": null,
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "isDriftDetection",
+                  "orderable": false,
+                  "filterable": true,
+                  "type": "BOOLEAN",
+                  "possibleValuesBoolean": {
+                    "values": [
+                      false,
+                      true
+                    ],
+                    "counts": [
+                      0,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesBoolean"
+                  },
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "isPrioritized",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "BOOLEAN",
+                  "possibleValuesBoolean": {
+                    "values": [
+                      false,
+                      true
+                    ],
+                    "counts": [
+                      0,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesBoolean"
+                  },
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "position",
+                  "orderable": true,
+                  "filterable": false,
+                  "type": null,
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "priorityPreset",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "ENUM",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": {
+                    "values": [
+                      "high",
+                      "low",
+                      "normal"
+                    ],
+                    "counts": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesEnum"
+                  },
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "stackName",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "STRING",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": null,
+                  "possibleValuesString": {
+                    "values": [],
+                    "counts": [],
+                    "__typename": "SearchSuggestionsPossibleValuesString"
+                  },
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "state",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "ENUM",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": {
+                    "values": [
+                      "APPLYING",
+                      "CONFIRMED",
+                      "DESTROYING",
+                      "INITIALIZING",
+                      "PERFORMING",
+                      "PLANNING",
+                      "PREPARING",
+                      "PREPARING_APPLY",
+                      "PREPARING_REPLAN",
+                      "READY",
+                      "REPLAN_REQUESTED"
+                    ],
+                    "counts": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesEnum"
+                  },
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "type",
+                  "orderable": true,
+                  "filterable": true,
+                  "type": "ENUM",
+                  "possibleValuesBoolean": null,
+                  "possibleValuesEnum": {
+                    "values": [
+                      "DESTROY",
+                      "PARSE",
+                      "PROPOSED",
+                      "TASK",
+                      "TESTING",
+                      "TRACKED",
+                      "UNKNOWN"
+                    ],
+                    "counts": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "__typename": "SearchSuggestionsPossibleValuesEnum"
+                  },
+                  "possibleValuesString": null,
+                  "possibleValuesHierarchy": null,
+                  "__typename": "SearchSuggestionsField"
+                }
+              ],
+              "__typename": "SearchSuggestionsOutput"
+            },
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 529,
+      "stage": "public-used-by",
+      "observedAt": "2026-11-22T17:19:45.564Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "GetPublicWorkerPoolDetails",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query GetPublicWorkerPoolDetails {\n  publicWorkerPool {\n    parallelism\n    schedulableRunsCount\n    usersCount\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "parallelism": 1,
+            "schedulableRunsCount": 0,
+            "usersCount": 0,
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 536,
+      "stage": "public-used-by",
+      "observedAt": "2026-11-22T17:19:45.565Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchPublicWorkerPoolUsedBy",
+        "variables": {
+          "input": {
+            "predicates": null,
+            "fullTextSearch": "",
+            "first": 50,
+            "after": null,
+            "orderBy": [
+              {
+                "field": "name",
+                "direction": "DESC"
+              }
+            ]
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPublicWorkerPoolUsedBy($input: SearchInput!) {\n  publicWorkerPool {\n    usersCount\n    searchUsers(input: $input) {\n      edges {\n        cursor\n        node {\n          stackId\n          stackName\n          isModule\n          spaceDetails {\n            id\n            name\n            accessLevel\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "usersCount": 0,
+            "searchUsers": {
+              "edges": [],
+              "pageInfo": {
+                "hasNextPage": false,
+                "endCursor": "",
+                "__typename": "PageInfo"
+              },
+              "__typename": "SearchWorkerPoolUsersOutput"
+            },
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "requestId": 537,
+      "stage": "public-used-by",
+      "observedAt": "2026-11-22T17:19:45.566Z",
+      "origin": "UI-triggered GraphQL query",
+      "request": {
+        "operationName": "SearchPublicWorkerPoolUsedBySuggestions",
+        "variables": {
+          "input": {
+            "fullTextSearch": null,
+            "predicates": null,
+            "fields": null
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.1"
+          }
+        },
+        "query": "query SearchPublicWorkerPoolUsedBySuggestions($input: SearchSuggestionsInput!) {\n  publicWorkerPool {\n    usersCount\n    searchUsersSuggestions(input: $input) {\n      filteredCount\n      fields {\n        name\n        orderable\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "response": {
+        "data": {
+          "publicWorkerPool": {
+            "usersCount": 0,
+            "searchUsersSuggestions": {
+              "filteredCount": 0,
+              "fields": [
+                {
+                  "name": "isModule",
+                  "orderable": true,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "label",
+                  "orderable": false,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "name",
+                  "orderable": true,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "slug",
+                  "orderable": true,
+                  "__typename": "SearchSuggestionsField"
+                },
+                {
+                  "name": "space",
+                  "orderable": true,
+                  "__typename": "SearchSuggestionsField"
+                }
+              ],
+              "__typename": "SearchSuggestionsOutput"
+            },
+            "__typename": "PublicWorkerPool"
+          }
+        }
+      }
+    },
+    {
+      "stage": "read-only-inventory",
+      "origin": "explicit read-only GraphQL query",
+      "startedAt": "2026-11-22T17:19:47.981Z",
+      "finishedAt": "2026-11-22T17:19:48.055Z",
+      "status": 200,
+      "request": {
+        "operationName": "CaptureWorkerPoolInventory",
+        "query": "query CaptureWorkerPoolInventory { tier workerPools { id name space managedByK8sController workersCount busyWorkers schedulableRunsCount } stacks { id } publicWorkerPool { parallelism activeRuns busyWorkers pendingRuns usersCount queuedRunsCount schedulableRunsCount } defaultPrivateWorkerPoolRunnerImage defaultPublicWorkerPoolRunnerImage outgoingIPAddresses attachableWorkerPoolsInSpace(id:\"root\") { id name } }",
+        "variables": {}
+      },
+      "response": {
+        "data": {
+          "tier": "V5_FREE",
+          "workerPools": [],
+          "stacks": [],
+          "publicWorkerPool": {
+            "parallelism": 1,
+            "activeRuns": 0,
+            "busyWorkers": 0,
+            "pendingRuns": 0,
+            "usersCount": 0,
+            "queuedRunsCount": 0,
+            "schedulableRunsCount": 0
+          },
+          "defaultPrivateWorkerPoolRunnerImage": "",
+          "defaultPublicWorkerPoolRunnerImage": "",
+          "outgoingIPAddresses": [
+            "3.248.70.24",
+            "34.246.213.75",
+            "52.49.218.181"
+          ],
+          "attachableWorkerPoolsInSpace": []
+        }
+      }
+    }
+  ]
+}

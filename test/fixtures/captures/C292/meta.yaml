@@ -1,0 +1,10 @@
+entry: C292
+captured: 2026-11-22
+tier: V5_FREE
+introspection: sha256:a5576e83b0d69dec495851182193fa774b6cbc4bc2b644628ef8389fbde33bfe
+capturedBy: Codex via Chrome DevTools MCP
+redacted:
+  - the account name and browser subdomain are replaced by example
+  - authentication headers, cookies, analytics and unrelated account requests are omitted
+  - schema fingerprint comes from the account response to the repository standard introspection query
+  - GraphQL field names, values, timestamps, empty lists, nulls, registry defaults and public egress addresses are preserved

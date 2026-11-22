@@ -459,7 +459,7 @@
       "kind": "capture",
       "area": "Platform, API and clients (reports 01 to 06)",
       "question": "Which GraphQL operations does the Kubernetes worker-pool controller (v0.0.47) send? Its source is not public",
-      "howToCapture": "Proxy the controller's traffic against a trial account; ask Spacelift",
+      "howToCapture": "Proxy the controller's traffic against a trial account; ask Spacelift Read-only verification on 2026-11-22: Read the live pool-management surface and inventory. No private pool/controller exists; private scheduling is disabled on this account. Running a vendor controller would create/manage resources outside the read-only boundary. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "auto-registered pools and controller-managed workers",
       "reports": [
         "docs/research/reference/06-spacectl-and-clients.md",
@@ -991,7 +991,7 @@
       "kind": "capture",
       "area": "Workers (report 10)",
       "question": "Do the `SPACELIFT_WHITELIST_ENVS` `ro_` and `wo_` prefixes and the RO and WO extra mounts follow the read and apply stage split?",
-      "howToCapture": "A tracked run on a private worker that prints `env` and mounts in plan and apply hooks",
+      "howToCapture": "A tracked run on a private worker that prints `env` and mounts in plan and apply hooks Read-only verification on 2026-11-22: Inspected worker inventory and private-tier warning. There are no stacks or private workers and no run was created. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "how the worker scopes passthrough values",
       "reports": [
         "docs/research/reference/10-workers-and-execution.md"
@@ -1002,7 +1002,7 @@
       "kind": "capture",
       "area": "Workers (report 10)",
       "question": "Is the default `spec.pod.activeDeadlineSeconds` 70 minutes (docs) or 81 minutes 20 seconds (CRD)?",
-      "howToCapture": "Inspect a run pod created by controller v0.0.47",
+      "howToCapture": "Inspect a run pod created by controller v0.0.47 Read-only verification on 2026-11-22: Inspected pool inventory: no vendor-managed Kubernetes worker or run pod is present. Source/default documentation is supporting context, not pod observation. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "pod deadline against run timeout",
       "reports": [
         "docs/research/reference/10-workers-and-execution.md"
@@ -1013,7 +1013,7 @@
       "kind": "capture",
       "area": "Workers (report 10)",
       "question": "What is the full input document of the worker-side initialization policy?",
-      "howToCapture": "A policy that prints `input`, with a sampled deny",
+      "howToCapture": "A policy that prints `input`, with a sampled deny Read-only verification on 2026-11-22: Inspected the read-only account inventory. No worker-side policy invocation exists; creating a private worker or run would exceed this capture boundary. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "signed-run policy compatibility",
       "reports": [
         "docs/research/reference/10-workers-and-execution.md"
@@ -1024,7 +1024,7 @@
       "kind": "capture",
       "area": "Workers (report 10)",
       "question": "Which vendors besides the excluded Terraform vendor produce worker traces and metrics?",
-      "howToCapture": "Read `observabilityStatus` on OpenTofu, Pulumi and Ansible runs",
+      "howToCapture": "Read `observabilityStatus` on OpenTofu, Pulumi and Ansible runs Read-only verification on 2026-11-22: Read-only inventory contains no stacks/runs; no supported-vendor execution or observabilityStatus was observed. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "scope of the observability API",
       "reports": [
         "docs/research/reference/10-workers-and-execution.md"
@@ -3851,7 +3851,7 @@
       "kind": "capture",
       "area": "Console survey (report 32)",
       "question": "Where does the console set a run's priority, and how does a prioritized run move in a private pool's queue?",
-      "howToCapture": "Queue several runs on a private worker pool with one worker and look for the prioritize control on the queued run, the stack and the pool's queue",
+      "howToCapture": "Queue several runs on a private worker pool with one worker and look for the prioritize control on the queued run, the stack and the pool's queue Read-only verification on 2026-11-22: Captured actual public-pool overview, queue, suggestions, used-by queries and account inventory. Queue and private-pool lists are empty; priority filter names/enums are visible but no priority action or queue movement was performed. Remaining evidence and owners: [worker-pool observations](../implementation/worker-pool-reference-observations.md).",
       "blocks": "P14's queue order and `runPrioritySet`",
       "reports": [
         "docs/research/reference/32-spacelift-console-survey.md"

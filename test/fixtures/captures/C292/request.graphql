@@ -1,0 +1,283 @@
+# exchange 1: pool-overview (UI-triggered GraphQL query)
+# variables: {"input":{"predicates":[],"orderBy":[{"field":"name","direction":"DESC"}],"fullTextSearch":"","first":50,"after":null}}
+query SearchWorkerPools($input: SearchInput!) {
+  publicWorkerPool {
+    parallelism
+    busyWorkers
+    schedulableRunsCount
+    __typename
+  }
+  searchWorkerPools(input: $input) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        description
+        spaceDetails {
+          id
+          name
+          accessLevel
+          __typename
+        }
+        allowedActions
+        labels
+        driftDetectionRunLimit
+        busyWorkers
+        schedulableRunsCount
+        usersCount
+        workersCount
+        managedByK8sController
+        __typename
+      }
+      __typename
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 2: pool-overview (UI-triggered GraphQL query)
+# variables: {"input":{"fullTextSearch":null,"predicates":null,"fields":null}}
+query SearchWorkerPoolsSuggestions($input: SearchSuggestionsInput!) {
+  searchWorkerPoolsSuggestions(input: $input) {
+    ...SearchSuggestionsFragment
+    __typename
+  }
+}
+
+fragment SearchSuggestionsFragment on SearchSuggestionsOutput {
+  filteredCount
+  ...SearchSuggestionsFieldsFragment
+  __typename
+}
+
+fragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {
+  fields {
+    name
+    orderable
+    filterable
+    type
+    possibleValuesBoolean {
+      values
+      counts
+      __typename
+    }
+    possibleValuesEnum {
+      values
+      counts
+      __typename
+    }
+    possibleValuesString {
+      values
+      counts
+      __typename
+    }
+    possibleValuesHierarchy {
+      values {
+        id
+        parentId
+        displayValue
+        __typename
+      }
+      counts
+      directCounts
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+# exchange 3: public-queue (UI-triggered GraphQL query)
+# variables: {}
+query GetPublicWorkerPoolDetails {
+  publicWorkerPool {
+    parallelism
+    schedulableRunsCount
+    usersCount
+    __typename
+  }
+}
+
+# exchange 4: public-queue (UI-triggered GraphQL query)
+# variables: {"input":{"predicates":[],"fullTextSearch":"","first":null,"after":null,"orderBy":[{"field":"position","direction":"ASC"}]}}
+query SearchPublicWorkerPoolSchedulableRuns($input: SearchInput!) {
+  publicWorkerPool {
+    schedulableRunsCount
+    usersCount
+    searchSchedulableRuns(input: $input) {
+      edges {
+        cursor
+        node {
+          isModule
+          position
+          stackId
+          stackName
+          provider
+          run {
+            id
+            type
+            title
+            finished
+            triggeredBy
+            createdAt
+            updatedAt
+            driftDetection
+            priorityPreset
+            state
+            commit {
+              authorName
+              hash
+              url
+              __typename
+            }
+            __typename
+          }
+          space {
+            id
+            accessLevel
+            __typename
+          }
+          version
+          __typename
+        }
+        __typename
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 5: public-queue (UI-triggered GraphQL query)
+# variables: {"input":{"predicates":[],"fullTextSearch":"","fields":null}}
+query SearchPublicWorkerPoolSchedulableRunsSuggestions($input: SearchSuggestionsInput!) {
+  publicWorkerPool {
+    schedulableRunsCount
+    usersCount
+    searchSchedulableRunsSuggestions(input: $input) {
+      ...SearchSuggestionsFragment
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment SearchSuggestionsFragment on SearchSuggestionsOutput {
+  filteredCount
+  ...SearchSuggestionsFieldsFragment
+  __typename
+}
+
+fragment SearchSuggestionsFieldsFragment on SearchSuggestionsOutput {
+  fields {
+    name
+    orderable
+    filterable
+    type
+    possibleValuesBoolean {
+      values
+      counts
+      __typename
+    }
+    possibleValuesEnum {
+      values
+      counts
+      __typename
+    }
+    possibleValuesString {
+      values
+      counts
+      __typename
+    }
+    possibleValuesHierarchy {
+      values {
+        id
+        parentId
+        displayValue
+        __typename
+      }
+      counts
+      directCounts
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+# exchange 6: public-used-by (UI-triggered GraphQL query)
+# variables: {}
+query GetPublicWorkerPoolDetails {
+  publicWorkerPool {
+    parallelism
+    schedulableRunsCount
+    usersCount
+    __typename
+  }
+}
+
+# exchange 7: public-used-by (UI-triggered GraphQL query)
+# variables: {"input":{"predicates":null,"fullTextSearch":"","first":50,"after":null,"orderBy":[{"field":"name","direction":"DESC"}]}}
+query SearchPublicWorkerPoolUsedBy($input: SearchInput!) {
+  publicWorkerPool {
+    usersCount
+    searchUsers(input: $input) {
+      edges {
+        cursor
+        node {
+          stackId
+          stackName
+          isModule
+          spaceDetails {
+            id
+            name
+            accessLevel
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 8: public-used-by (UI-triggered GraphQL query)
+# variables: {"input":{"fullTextSearch":null,"predicates":null,"fields":null}}
+query SearchPublicWorkerPoolUsedBySuggestions($input: SearchSuggestionsInput!) {
+  publicWorkerPool {
+    usersCount
+    searchUsersSuggestions(input: $input) {
+      filteredCount
+      fields {
+        name
+        orderable
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+# exchange 9: read-only-inventory (explicit read-only GraphQL query)
+# variables: {}
+query CaptureWorkerPoolInventory { tier workerPools { id name space managedByK8sController workersCount busyWorkers schedulableRunsCount } stacks { id } publicWorkerPool { parallelism activeRuns busyWorkers pendingRuns usersCount queuedRunsCount schedulableRunsCount } defaultPrivateWorkerPoolRunnerImage defaultPublicWorkerPoolRunnerImage outgoingIPAddresses attachableWorkerPoolsInSpace(id:"root") { id name } }
