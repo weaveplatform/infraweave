@@ -110,9 +110,9 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
-// Caller is the principal's key for idempotency keys and rate-limit
-// buckets, <kind>:<actor ID>, so every session of one API key shares one
-// budget.
+// Caller is the stable actor identity, <kind>:<actor ID>, used by rate
+// limits and as part of the account-qualified replay namespace. Every
+// session of one API key shares one rate-limit budget.
 //
 // ref: decision 0003
 func (p Principal) Caller() string {

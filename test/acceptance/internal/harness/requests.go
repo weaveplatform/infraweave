@@ -399,7 +399,7 @@ func (w *World) SealBody(ctx context.Context, key string, body []byte) ([]byte, 
 		return nil, err
 	}
 	defer pool.Close()
-	sealed, err := keys.SealColumn(ctx, idempotency.Body, []string{ScenarioCaller, key}, body)
+	sealed, err := keys.SealColumn(ctx, idempotency.Body, []string{ScenarioReplayCaller, key}, body)
 	if err != nil {
 		return nil, fmt.Errorf("seal a stored body: %w", err)
 	}
@@ -409,3 +409,7 @@ func (w *World) SealBody(ctx context.Context, key string, body []byte) ([]byte, 
 // ScenarioCaller is the caller every scenario's requests count against:
 // the home tenant's key, whose token the scenario's clients hold.
 var ScenarioCaller = Home.caller()
+
+// ScenarioReplayCaller qualifies fixture-seeded replay rows and their sealing
+// identity without changing the actor-only rate/disabled-caller controls.
+var ScenarioReplayCaller = "account/" + Home.Account + "/" + Home.caller()
