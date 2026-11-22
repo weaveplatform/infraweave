@@ -71,11 +71,7 @@ func replayAccessRetirement(t *testing.T, client *sdk.Client) []string {
 	if len(capture.Exchanges) < 2 || capture.Exchanges[1].Request.Variables.Input["type"] != "ACCESS" {
 		t.Fatal("C47 lacks its actual legacy creation control")
 	}
-	var failure struct {
-		Errors []struct {
-			Pointer string `json:"pointer"`
-		} `json:"errors"`
-	}
+	var failure sdk.Problem
 	input := maps.Clone(capture.Exchanges[1].Request.Variables.Input)
 	input["space"] = "acme"
 	input["body"] = "package infraweave\n"
@@ -85,12 +81,8 @@ func replayAccessRetirement(t *testing.T, client *sdk.Client) []string {
 	if response == nil || response.Status != 400 {
 		t.Fatalf("C47 retired ACCESS creation: %+v/%v", response, err)
 	}
-	if json.Unmarshal(response.Body, &failure) != nil || !slices.ContainsFunc(failure.Errors, func(field struct {
-		Pointer string `json:"pointer"`
-	},
-	) bool {
-		return field.Pointer == "/type"
-	}) {
+	if json.Unmarshal(response.Body, &failure) != nil || failure.Status != 400 || failure.Slug() != "invalid-request" ||
+		!strings.Contains(failure.Detail, `Error at "/type"`) {
 		t.Fatalf("C47 refused a field other than the retired type: %s", response.Body)
 	}
 	for path, ids := range before {
