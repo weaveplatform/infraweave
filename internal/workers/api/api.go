@@ -36,10 +36,17 @@ type PoolGuard interface {
 	PoolInUse(ctx context.Context, acct kernel.AccountID, id kernel.ULID) ([]PoolUse, error)
 }
 
+// PublicAssignments reads active execution ownership under the public pool lock.
+// Implementations join the caller transaction so a reset cannot race a claim.
+type PublicAssignments interface {
+	ActivePublicPool(context.Context, kernel.ULID) (bool, error)
+}
+
 // Claim is a worker's claim of a run: the worker, its account and pool,
 // and DriftLimit, the pool's drift detection run limit, nil or negative
 // for none.
 type Claim struct {
+	Public     bool
 	Account    kernel.AccountID
 	Pool       kernel.ULID
 	Worker     kernel.ULID
@@ -69,6 +76,7 @@ var ErrNotOnWorker = errors.New("workers: the run is not on a worker")
 // specification, and Secrets, the JSON of the worker API's
 // RunSpecSecrets, which Reveal alone renders.
 type Handover struct {
+	Public  bool
 	Account kernel.AccountID
 	Pool    kernel.ULID
 	Spec    Spec
@@ -81,6 +89,7 @@ type Secret interface{ Reveal() []byte }
 // Spec is a run's specification, what the worker API's RunSpec answers
 // but sealed: no write-only value is in it.
 type Spec struct {
+	PublicPool *PublicPoolPolicy
 	// Notices and Refusal describe the repository runtime configuration;
 	// the runner reports them before INITIALIZING can run any command.
 	Notices []string
@@ -118,6 +127,12 @@ type Spec struct {
 	Hooks       map[string][]string
 	Environment []Variable
 	Files       []File
+}
+
+// PublicPoolPolicy constrains the resolved image on an installation worker.
+// The authenticated specification supplies it; stack/runtime inputs cannot.
+type PublicPoolPolicy struct {
+	AllowedRegistries []string
 }
 
 // SanitizationMode is the worker protocol's plan JSON transformation.
@@ -280,6 +295,9 @@ type Scheduler interface {
 // PostgreSQL does to identical payloads. A payload of the pool's ID alone
 // wakes every held poll of the pool.
 func Waiting(pool, run kernel.ULID) string { return pool.String() + "/" + run.String() }
+
+// PublicWaiting wakes a public poll before a run has its installation pool binding.
+const PublicWaiting = "public"
 
 // ReportEvent is what a worker's report says of a phase of its run.
 //

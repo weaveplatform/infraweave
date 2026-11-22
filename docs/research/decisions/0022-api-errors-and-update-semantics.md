@@ -127,6 +127,10 @@ path.
   `ETag` derived from the row's version column. `PUT`, `PATCH` and `DELETE`
   accept `If-Match`; a stale tag answers `412 precondition-failed`. Without
   `If-Match`, the last write wins, as in Spacelift.
+  Operator public-pool credential reset requires `If-Match`: omission answers
+  `428 precondition-required`; a stale credential tag still answers `412`.
+  This explicit credential-rotation contract does not change optional conditions
+  on existing item updates.
 - **Configuration elements.** `PUT /stacks/{stackId}/configs/{configId}`,
   `PUT /contexts/{contextId}/configs/{configId}` and the module equivalent
   create or replace one element: `201` when created, `200` when replaced. The

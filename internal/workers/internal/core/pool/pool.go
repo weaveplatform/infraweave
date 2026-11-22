@@ -18,10 +18,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
 )
 
-// Pool is one private worker pool of an account. Certificate is the DER
+// Pool is an execution pool, either account-owned or installation-public. Certificate is the DER
 // of the certificate the pool CA last signed for the pool's key, and
 // Serial its serial: a registration under any other is refused.
 type Pool struct {
+	// Public identifies the installation singleton, which has no account,
+	// organization or space identity.
+	Public  bool
 	Account kernel.AccountID
 	// Organization is Account's organization, which a registration counts
 	// the organization's workers in.
@@ -82,6 +85,10 @@ type Scope struct {
 // Store is what the service needs of the pools' storage. Every method
 // joins the transaction its context carries.
 type Store interface {
+	Public(ctx context.Context, lock bool) (Pool, error)
+	CreatePublic(ctx context.Context, p Pool) error
+	WritePublic(ctx context.Context, p Pool) error
+	PublicWorkers(ctx context.Context, id kernel.ULID) (bool, error)
 	// Authority reads the pool CA, creating it with mint when the
 	// installation has none, and takes its next serial; the CA's row
 	// stays locked until the transaction ends.
@@ -142,9 +149,10 @@ type Service struct {
 	preparing time.Duration
 	now       func() time.Time
 
-	mu     sync.RWMutex
-	guards []workersapi.PoolGuard
-	stacks accessapi.SpaceOf
+	mu                sync.RWMutex
+	guards            []workersapi.PoolGuard
+	stacks            accessapi.SpaceOf
+	publicAssignments workersapi.PublicAssignments
 }
 
 // New returns the service over d.
@@ -182,6 +190,13 @@ func (s *Service) BindStacks(stacks accessapi.SpaceOf) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stacks = stacks
+}
+
+// BindPublicAssignments supplies the runs domain during application construction.
+func (s *Service) BindPublicAssignments(runs workersapi.PublicAssignments) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.publicAssignments = runs
 }
 
 // Missing is an entity a request names that the account lacks or the

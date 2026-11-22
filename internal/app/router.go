@@ -79,6 +79,7 @@ type unimplemented struct{ api.UnimplementedStrict }
 type operatorServer struct {
 	accessassembly.AccessOperatorAPI
 	featuresassembly.FeaturesOperatorAPI
+	workersassembly.WorkersOperatorAPI
 	unimplementedOperator
 	platform Platform
 }
@@ -161,6 +162,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 		operatorServer{
 			AccessOperatorAPI:   d.Access.OperatorAPI(),
 			FeaturesOperatorAPI: d.Features.OperatorAPI(d.Access.OrganizationID),
+			WorkersOperatorAPI:  d.Workers.OperatorAPI(),
 			platform:            p,
 		},
 		nil,

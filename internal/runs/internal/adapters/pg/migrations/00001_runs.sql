@@ -72,6 +72,9 @@ CREATE TABLE runs (
     delta            jsonb,
     priority_tier    smallint    NOT NULL DEFAULT 3,
     worker_pool_id   uuid,
+    organization_id  uuid,
+    public_worker_pool_id uuid,
+    CHECK (worker_pool_id IS NULL OR public_worker_pool_id IS NULL),
     worker_id        uuid,
     artifact_key_sealed bytea,
     env_overrides_sealed bytea,
@@ -121,6 +124,15 @@ CREATE INDEX runs_claimable ON runs (worker_pool_id, priority_tier, created_at, 
 
 -- A claim reads whether its worker holds a run already, and how many of
 -- its pool's drift runs workers hold.
+-- Public selection is FIFO across organizations; usage reads hold the owning
+-- entitlement lock and count only active states of public-bound executions.
+CREATE INDEX runs_public_queue ON runs (created_at, id)
+    WHERE worker_pool_id IS NULL AND organization_id IS NOT NULL
+      AND NOT drift_detection AND priority = 'normal';
+CREATE INDEX runs_public_usage ON runs (organization_id, account_id, state)
+    WHERE public_worker_pool_id IS NOT NULL;
+CREATE INDEX runs_public_pool ON runs (public_worker_pool_id, state)
+    WHERE public_worker_pool_id IS NOT NULL;
 CREATE INDEX runs_worker ON runs (worker_id, state) WHERE worker_id IS NOT NULL;
 CREATE INDEX runs_drift ON runs (worker_pool_id, state) WHERE drift_detection;
 

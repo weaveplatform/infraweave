@@ -27,7 +27,14 @@ func (s *Store) PoolByID(ctx context.Context, id kernel.ULID) (pool.Pool, error)
 		`SELECT `+columns+` FROM worker_pools p WHERE p.id = $1`, id))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return p, fmt.Errorf("%w: %s", pool.ErrNotFound, id)
+		public, err := s.Public(ctx, false)
+		if err != nil {
+			return pool.Pool{}, err
+		}
+		if public.ID != id {
+			return pool.Pool{}, fmt.Errorf("%w: %s", pool.ErrNotFound, id)
+		}
+		return public, nil
 	case err != nil:
 		return p, fmt.Errorf("workers: read worker pool %s: %w", id, sql.Unavailable(err))
 	}
@@ -49,12 +56,16 @@ func (s *Store) CA(ctx context.Context) ([]byte, error) {
 // expired ones, so a jti seen again once it expired is fresh again.
 func (s *Store) Nonce(ctx context.Context, acct kernel.AccountID, pool kernel.ULID, jti string, expires time.Time) (bool, error) {
 	q := tx.Q(ctx, s.db)
+	var account any = acct
+	if acct.IsZero() {
+		account = nil
+	}
 	if _, err := q.Exec(ctx, `DELETE FROM worker_nonces
-		WHERE account_id = $1 AND pool_id = $2 AND expires_at < now()`, acct, pool); err != nil {
+		WHERE account_id IS NOT DISTINCT FROM $1::uuid AND pool_id = $2 AND expires_at < now()`, account, pool); err != nil {
 		return false, fmt.Errorf("workers: expire pool %s's nonces: %w", pool, sql.Unavailable(err))
 	}
 	tag, err := q.Exec(ctx, `INSERT INTO worker_nonces (account_id, pool_id, jti, expires_at)
-		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, acct, pool, jti, expires)
+		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, account, pool, jti, expires)
 	if err != nil {
 		return false, fmt.Errorf("workers: record pool %s's nonce: %w", pool, sql.Unavailable(err))
 	}
@@ -82,11 +93,20 @@ const workerColumns = `w.account_id, w.organization_id, w.id, w.pool_id, w.seria
 // scanWorker reads workerColumns, then into extra.
 func scanWorker(row pgx.Row, extra ...any) (worker.Worker, error) {
 	var w worker.Worker
+	var account *kernel.AccountID
+	var organization *kernel.OrganizationID
 	err := row.Scan(append([]any{
-		&w.Account, &w.Organization, &w.ID, &w.Pool, &w.Serial, &w.Version, &w.OS, &w.Arch,
+		&account, &organization, &w.ID, &w.Pool, &w.Serial, &w.Version, &w.OS, &w.Arch,
 		&w.Metadata, &w.Busy, &w.Drained, &w.Cycle, &w.Offline, &w.LastSeenAt, &w.AvailableAt,
 		&w.CreatedAt,
 	}, extra...)...)
+	if account != nil {
+		w.Account = *account
+	}
+	if organization != nil {
+		w.Organization = *organization
+	}
+	w.Public = account == nil
 	return w, err //nolint:wrapcheck // callers name the read
 }
 
@@ -101,7 +121,7 @@ func workerError(id kernel.ULID, err error) error {
 // Worker reads the worker id with its pool's current serial.
 func (s *Store) Worker(ctx context.Context, id kernel.ULID, lock bool) (worker.Worker, int64, error) {
 	query := `SELECT ` + workerColumns + `, p.serial FROM workers w
-		JOIN worker_pools p ON p.account_id = w.account_id AND p.id = w.pool_id
+		JOIN (SELECT id,serial FROM worker_pools UNION ALL SELECT id,serial FROM worker_public_pool) p ON p.id = w.pool_id
 		WHERE w.id = $1`
 	if lock {
 		query += ` FOR UPDATE OF w`
@@ -132,11 +152,15 @@ func (s *Store) CreateWorker(ctx context.Context, w worker.Worker) error {
 	if err != nil {
 		return err
 	}
+	var account, organization any = w.Account, w.Organization
+	if w.Public {
+		account, organization = nil, nil
+	}
 	_, err = tx.Q(ctx, s.db).Exec(ctx, `INSERT INTO workers (account_id, organization_id, id,
 			pool_id, serial, version, os, arch, metadata, busy, drained, cycle, last_seen_at,
 			available_at, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-		w.Account, w.Organization, w.ID, w.Pool, w.Serial, w.Version, w.OS, w.Arch, md, w.Busy,
+		account, organization, w.ID, w.Pool, w.Serial, w.Version, w.OS, w.Arch, md, w.Busy,
 		w.Drained, w.Cycle, w.LastSeenAt, w.AvailableAt, w.CreatedAt)
 	if err != nil {
 		return workerError(w.ID, err)
@@ -151,10 +175,14 @@ func (s *Store) Resume(ctx context.Context, w worker.Worker) error {
 	if err != nil {
 		return err
 	}
+	var account any = w.Account
+	if w.Public {
+		account = nil
+	}
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE workers SET serial = $3, version = $4,
 			os = $5, arch = $6, metadata = $7, last_seen_at = $8, offline = false
-		WHERE account_id = $1 AND id = $2`,
-		w.Account, w.ID, w.Serial, w.Version, w.OS, w.Arch, md, w.LastSeenAt)
+		WHERE account_id IS NOT DISTINCT FROM $1::uuid AND id = $2`,
+		account, w.ID, w.Serial, w.Version, w.OS, w.Arch, md, w.LastSeenAt)
 	if err == nil && tag.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
 	}
@@ -173,8 +201,9 @@ func (s *Store) Seen(ctx context.Context, id kernel.ULID, busy bool, now time.Ti
 			busy = $3, offline = false,
 			available_at = CASE WHEN $3 THEN NULL
 				WHEN w.busy OR w.available_at IS NULL THEN $2 ELSE w.available_at END
-		FROM worker_pools p
-		WHERE w.id = $1 AND p.account_id = w.account_id AND p.id = w.pool_id
+		FROM (SELECT id,serial FROM worker_pools UNION ALL SELECT id,serial FROM worker_public_pool) p
+		WHERE w.id = $1 AND p.id = w.pool_id
+		AND (w.account_id IS NOT NULL OR w.serial = p.serial)
 		RETURNING `+workerColumns+`, p.serial`, id, now, busy), &serial)
 	if err != nil {
 		return w, 0, workerError(id, err)

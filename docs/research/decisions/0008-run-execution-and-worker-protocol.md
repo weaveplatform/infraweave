@@ -1258,6 +1258,13 @@ private-worker quota. Protocol bind/release enforces exclusive controller
 hosting even for an Existing pool. These are intended additions, not current
 runtime or observed reference compatibility.
 
+The [installation public pool implementation](../../implementation/public-worker-pool.md)
+describes operator issuance, image-policy capability, tenant-owned assignment
+and credential rotation. Public replacement-certificate registration uses a fresh
+worker identity so old session tokens cannot revive; same-certificate restarts
+retain their identity. Controller binding and the remaining public admission/read
+surfaces retain their separate delivery owners.
+
 ### Pool samples
 
 - **The job.** `worker.sample`, a periodic queue task of `scheduler`

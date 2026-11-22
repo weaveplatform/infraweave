@@ -1,0 +1,61 @@
+{
+  "issue": 742,
+  "status": "local-candidate-verified-exact-head-ci-required",
+  "date": "2026-11-22",
+  "source": "Uncommitted implementation candidate before final commit/rebase; required CI at the final PR head remains authoritative.",
+  "mode": "GOFIPS140=certified GODEBUG=fips140=only; PostgreSQL regressions also race/shuffle",
+  "realDependencies": [
+    "PostgreSQL 18.7",
+    "RustFS 1.0.6",
+    "Gitea 28.4.0",
+    "Docker with the pinned published Terraform runner and baked CLI"
+  ],
+  "runs": [
+    {
+      "name": "public execution and billing-enabled Free quota",
+      "result": "passed",
+      "logSha256": "371fe04151c0ce452a7ace779900630dcde753647c37e680c56c313a6badbad2",
+      "scenarios": 3,
+      "steps": 75
+    },
+    {
+      "name": "public and private core API regression",
+      "result": "passed",
+      "logSha256": "2f17aeec90d8c50e8ce36dfe5c76db214587f765d539d61db30ca8cab82e4cad",
+      "scenarios": 24,
+      "steps": 609
+    },
+    {
+      "name": "public/private PostgreSQL and integrity regression",
+      "result": "passed",
+      "logSha256": "60b5f03317991e6375ed7ced29412e5ae8b94c36261d2cd277f50f74124a72d3"
+    },
+    {
+      "name": "configured lint",
+      "result": "passed",
+      "logSha256": "2f2f4ce0254fa46adcf2a5e6b098f5e68c2ec22ccb025ad5bdb9874b41b74fc8"
+    }
+  ],
+  "additionalChecks": {
+    "affectedUnitRaceFips": "Passed except the old integrity-row expectation; the corrected expectation passes in the full PostgreSQL rerun. Application, launcher, SDK and docs checks passed.",
+    "moduleTidy": "Only promotes existing distribution/reference v0.6.0 to direct; no version or sum change.",
+    "whitespace": "passed"
+  },
+  "cleanup": "Completed acceptance commands stopped and removed their owned service and runner resources.",
+  "knownIndependentBug": 766,
+  "remainingOwners": [
+    743,
+    744,
+    745,
+    746,
+    747,
+    748,
+    749,
+    750,
+    751,
+    752,
+    753,
+    759
+  ],
+  "referenceCaptureClaim": false
+}

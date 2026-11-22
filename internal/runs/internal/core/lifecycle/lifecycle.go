@@ -23,6 +23,8 @@ import (
 // Errors of Transition and Create. Each refusal is also a typed error
 // that names what refused it.
 var (
+	// ErrAccountMissing refuses new work whose tenant owner no longer exists.
+	ErrAccountMissing = errors.New("runs: account has no organization")
 	// ErrNoTransaction reports a call outside a transaction, whose writes
 	// could commit apart.
 	ErrNoTransaction = runsapi.ErrNoTransaction
@@ -158,7 +160,11 @@ func ActorOf(p kernel.Principal) Actor { return Actor{Caller: p.Caller(), Login:
 // LogsDeletedAt is when a caller deleted its logs ahead of their
 // retention, nil until one did.
 type Run struct {
-	Account        kernel.AccountID
+	Account kernel.AccountID
+	// Organization is the immutable account owner resolved during creation.
+	// Public admission counts its in-flight runs without querying another
+	// domain's persistence.
+	Organization   *kernel.OrganizationID
 	ID             kernel.ULID
 	Stack          kernel.ULID
 	Type           kernel.RunType
@@ -174,15 +180,18 @@ type Run struct {
 	ForceApply     string
 	LocalWorkspace string
 	WorkerPool     *kernel.ULID
-	Worker         *kernel.ULID
-	Delta          *kernel.PlanDelta
-	Task           *kernel.Task
-	ReplanTargets  []string
-	Stop           *Signal
-	Kill           *Signal
-	LogsDeletedAt  *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// PublicWorkerPool binds public execution to its installation identity
+	// across apply and replan; nil before the first public assignment.
+	PublicWorkerPool *kernel.ULID
+	Worker           *kernel.ULID
+	Delta            *kernel.PlanDelta
+	Task             *kernel.Task
+	ReplanTargets    []string
+	Stop             *Signal
+	Kill             *Signal
+	LogsDeletedAt    *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Signal is a caller's request to stop or to kill a run: when it was
@@ -285,15 +294,17 @@ type Jobs interface {
 // Deps are what the lifecycle writes through. Sources is nil until
 // internal/app binds the vcs domain's; Now defaults to time.Now.
 type Deps struct {
-	Store     Store
-	Stacks    stacksapi.Stacks
-	Events    Events
-	Jobs      Jobs
-	Sources   runsapi.RunSources
-	Now       func() time.Time
-	Evidence  evidence.Store
-	Plans     evidence.PlanStore
-	Approvals Approvals
+	AccountOrganization func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
+	PublicPoolEnabled   bool
+	Store               Store
+	Stacks              stacksapi.Stacks
+	Events              Events
+	Jobs                Jobs
+	Sources             runsapi.RunSources
+	Now                 func() time.Time
+	Evidence            evidence.Store
+	Plans               evidence.PlanStore
+	Approvals           Approvals
 }
 
 // Approvals evaluates and records a decision under the run's current fence.
@@ -527,13 +538,25 @@ func (l *Lifecycle) Create(ctx context.Context, n NewRun) (Run, bool, error) {
 			return Run{}, false, err //nolint:wrapcheck // the caller identifies its admission refusal
 		}
 	}
+	var organization *kernel.OrganizationID
+	if l.d.AccountOrganization != nil {
+		id, err := l.d.AccountOrganization(ctx, n.Account)
+		if err != nil {
+			return Run{}, false, fmt.Errorf("runs: resolve account organization: %w", err)
+		}
+		if id.IsZero() {
+			return Run{}, false, ErrAccountMissing
+		}
+		organization = &id
+	}
 	now := l.now()
 	priority := n.Priority
 	if priority == "" {
 		priority = kernel.RunPriorityNormal
 	}
 	run := Run{
-		Account: n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
+		Organization: organization,
+		Account:      n.Account, ID: kernel.NewULID(), Stack: n.Stack, Type: n.Type,
 		State: kernel.RunStateQueued, Version: 1, StateChangedAt: now, Commit: n.Commit,
 		TriggeredBy: n.Actor.Login, Priority: priority, DriftDetection: n.DriftDetection,
 		RuntimeConfig: n.RuntimeConfig, ResolvedConfig: n.Resolved,
@@ -607,7 +630,7 @@ func (l *Lifecycle) consequences(ctx context.Context, run Run, step Step, timer 
 			return err //nolint:wrapcheck // the queue names the terminal work
 		}
 	}
-	if run.WorkerPool != nil && slices.Contains(machine.Claimable(), run.State) {
+	if (run.WorkerPool != nil || l.d.PublicPoolEnabled) && slices.Contains(machine.Claimable(), run.State) {
 		if err := l.d.Store.Announce(ctx, run); err != nil {
 			return err //nolint:wrapcheck // the store names the notification
 		}

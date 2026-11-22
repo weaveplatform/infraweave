@@ -268,6 +268,33 @@ type Problem struct {
 // ProblemScope For limit-reached, whether the organization's pool or the account's limit was reached.
 type ProblemScope string
 
+// PublicWorkerPoolCreateRequest defines model for PublicWorkerPoolCreateRequest.
+type PublicWorkerPoolCreateRequest struct {
+	// CertificateSigningRequest An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+}
+
+// PublicWorkerPoolCredentials The installation public pool identity and public certificate token. The private key remains with its operator.
+type PublicWorkerPoolCredentials struct {
+	// Config The pool token containing its endpoint and public certificate.
+	Config string `json:"config"`
+
+	// Id The immutable installation pool ULID.
+	Id string `json:"id"`
+
+	// Version The credential version, also returned as a strong ETag.
+	Version int64 `json:"version"`
+}
+
+// PublicWorkerPoolResetRequest defines model for PublicWorkerPoolResetRequest.
+type PublicWorkerPoolResetRequest struct {
+	// CertificateSigningRequest An EC P-256 certificate signing request in PEM or base64-encoded PEM or DER.
+	CertificateSigningRequest string `json:"certificateSigningRequest"`
+
+	// ReleaseBinding Release an abandoned controller binding, requiring a different key and no remaining workers or active assignments.
+	ReleaseBinding *bool `json:"releaseBinding,omitempty"`
+}
+
 // Tier A tier: a set of features and a set of limit values.
 type Tier struct {
 	// Editable False for Enterprise, which holds every feature and no limit and which the operator can neither edit nor delete.
@@ -333,6 +360,9 @@ type Limit = int32
 // OrganizationSlug defines model for OrganizationSlug.
 type OrganizationSlug = string
 
+// PublicWorkerPoolIfMatch defines model for PublicWorkerPoolIfMatch.
+type PublicWorkerPoolIfMatch = string
+
 // TierName defines model for TierName.
 type TierName = string
 
@@ -370,6 +400,21 @@ type OrganizationsParams struct {
 type OrganizationCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PublicWorkerPoolCreateParams defines parameters for PublicWorkerPoolCreate.
+type PublicWorkerPoolCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// PublicWorkerPoolResetParams defines parameters for PublicWorkerPoolReset.
+type PublicWorkerPoolResetParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch A strong credential ETag, or *. Its absence answers 428; a stale version answers 412.
+	IfMatch *PublicWorkerPoolIfMatch `json:"If-Match,omitempty"`
 }
 
 // DeadJobsParams defines parameters for DeadJobs.
@@ -423,6 +468,12 @@ type OrganizationLimitGrantJSONRequestBody = LimitGrantInput
 // OrganizationTierSetJSONRequestBody defines body for OrganizationTierSet for application/json ContentType.
 type OrganizationTierSetJSONRequestBody = TierChoice
 
+// PublicWorkerPoolCreateJSONRequestBody defines body for PublicWorkerPoolCreate for application/json ContentType.
+type PublicWorkerPoolCreateJSONRequestBody = PublicWorkerPoolCreateRequest
+
+// PublicWorkerPoolResetJSONRequestBody defines body for PublicWorkerPoolReset for application/json ContentType.
+type PublicWorkerPoolResetJSONRequestBody = PublicWorkerPoolResetRequest
+
 // TierCreateJSONRequestBody defines body for TierCreate for application/json ContentType.
 type TierCreateJSONRequestBody = TierInput
 
@@ -473,6 +524,15 @@ type ServerInterface interface {
 	// OrganizationTierSet Set an organization's tier
 	// (PUT /organizations/{organization}/tier)
 	OrganizationTierSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug)
+	// PublicWorkerPoolCredentials Read installation public pool credentials
+	// (GET /public-worker-pool)
+	PublicWorkerPoolCredentials(w http.ResponseWriter, r *http.Request)
+	// PublicWorkerPoolCreate Create installation public pool credentials
+	// (POST /public-worker-pool)
+	PublicWorkerPoolCreate(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolCreateParams)
+	// PublicWorkerPoolReset Reset installation public pool credentials
+	// (POST /public-worker-pool/reset)
+	PublicWorkerPoolReset(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolResetParams)
 	// DeadJobs List dead jobs
 	// (GET /queue/jobs)
 	DeadJobs(w http.ResponseWriter, r *http.Request, params DeadJobsParams)
@@ -590,6 +650,24 @@ func (_ Unimplemented) OrganizationLimitGrant(w http.ResponseWriter, r *http.Req
 // OrganizationTierSet Set an organization's tier
 // (PUT /organizations/{organization}/tier)
 func (_ Unimplemented) OrganizationTierSet(w http.ResponseWriter, r *http.Request, organization OrganizationSlug) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PublicWorkerPoolCredentials Read installation public pool credentials
+// (GET /public-worker-pool)
+func (_ Unimplemented) PublicWorkerPoolCredentials(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PublicWorkerPoolCreate Create installation public pool credentials
+// (POST /public-worker-pool)
+func (_ Unimplemented) PublicWorkerPoolCreate(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolCreateParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PublicWorkerPoolReset Reset installation public pool credentials
+// (POST /public-worker-pool/reset)
+func (_ Unimplemented) PublicWorkerPoolReset(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolResetParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1064,6 +1142,121 @@ func (siw *ServerInterfaceWrapper) OrganizationTierSet(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.OrganizationTierSet(w, r, organization)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublicWorkerPoolCredentials operation middleware
+func (siw *ServerInterfaceWrapper) PublicWorkerPoolCredentials(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublicWorkerPoolCredentials(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublicWorkerPoolCreate operation middleware
+func (siw *ServerInterfaceWrapper) PublicWorkerPoolCreate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublicWorkerPoolCreateParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublicWorkerPoolCreate(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublicWorkerPoolReset operation middleware
+func (siw *ServerInterfaceWrapper) PublicWorkerPoolReset(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublicWorkerPoolResetParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch PublicWorkerPoolIfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = &IfMatch
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublicWorkerPoolReset(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1581,6 +1774,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/organizations/{organization}/tier", wrapper.OrganizationTierSet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/public-worker-pool", wrapper.PublicWorkerPoolCredentials)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/public-worker-pool", wrapper.PublicWorkerPoolCreate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/public-worker-pool/reset", wrapper.PublicWorkerPoolReset)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/queue/jobs", wrapper.DeadJobs)
@@ -3659,6 +3861,464 @@ func (response OrganizationTierSetdefaultApplicationProblemPlusJSONResponse) Vis
 	return err
 }
 
+type PublicWorkerPoolCredentialsRequestObject struct {
+}
+
+type PublicWorkerPoolCredentialsResponseObject interface {
+	VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error
+}
+
+type PublicWorkerPoolCredentials200ResponseHeaders struct {
+	ETag *string
+}
+
+type PublicWorkerPoolCredentials200JSONResponse struct {
+	Body    PublicWorkerPoolCredentials
+	Headers PublicWorkerPoolCredentials200ResponseHeaders
+}
+
+func (response PublicWorkerPoolCredentials200JSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCredentials401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCredentials401ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCredentials404ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolCredentials404ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCredentials429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCredentials429ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCredentials503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCredentials503ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCredentialsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PublicWorkerPoolCredentialsdefaultApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreateRequestObject struct {
+	Params PublicWorkerPoolCreateParams
+	Body   *PublicWorkerPoolCreateJSONRequestBody
+}
+
+type PublicWorkerPoolCreateResponseObject interface {
+	VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error
+}
+
+type PublicWorkerPoolCreate201ResponseHeaders struct {
+	ETag *string
+}
+
+type PublicWorkerPoolCreate201JSONResponse struct {
+	Body    PublicWorkerPoolCredentials
+	Headers PublicWorkerPoolCreate201ResponseHeaders
+}
+
+func (response PublicWorkerPoolCreate201JSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreate401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCreate401ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreate409ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolCreate409ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreate422ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolCreate422ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreate429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCreate429ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreate503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolCreate503ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolCreatedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PublicWorkerPoolCreatedefaultApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolResetRequestObject struct {
+	Params PublicWorkerPoolResetParams
+	Body   *PublicWorkerPoolResetJSONRequestBody
+}
+
+type PublicWorkerPoolResetResponseObject interface {
+	VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error
+}
+
+type PublicWorkerPoolReset200ResponseHeaders struct {
+	ETag *string
+}
+
+type PublicWorkerPoolReset200JSONResponse struct {
+	Body    PublicWorkerPoolCredentials
+	Headers PublicWorkerPoolReset200ResponseHeaders
+}
+
+func (response PublicWorkerPoolReset200JSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset401ApplicationProblemPlusJSONResponse struct {
+	UnauthenticatedApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolReset401ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset404ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolReset404ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset409ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolReset409ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset412ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolReset412ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset422ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolReset422ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset428ApplicationProblemPlusJSONResponse Problem
+
+func (response PublicWorkerPoolReset428ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(428)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolReset429ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	if response.Headers.XRateLimitLimit != nil {
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(*response.Headers.XRateLimitLimit))
+	}
+	if response.Headers.XRateLimitRemaining != nil {
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(*response.Headers.XRateLimitRemaining))
+	}
+	if response.Headers.XRateLimitReset != nil {
+		w.Header().Set("X-RateLimit-Reset", fmt.Sprint(*response.Headers.XRateLimitReset))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolReset503ApplicationProblemPlusJSONResponse struct {
+	ApiDisabledApplicationProblemPlusJSONResponse
+}
+
+func (response PublicWorkerPoolReset503ApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublicWorkerPoolResetdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PublicWorkerPoolResetdefaultApplicationProblemPlusJSONResponse) VisitPublicWorkerPoolResetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeadJobsRequestObject struct {
 	Params DeadJobsParams
 }
@@ -5194,6 +5854,15 @@ type StrictServerInterface interface {
 	// OrganizationTierSet Set an organization's tier
 	// (PUT /organizations/{organization}/tier)
 	OrganizationTierSet(ctx context.Context, request OrganizationTierSetRequestObject) (OrganizationTierSetResponseObject, error)
+	// PublicWorkerPoolCredentials Read installation public pool credentials
+	// (GET /public-worker-pool)
+	PublicWorkerPoolCredentials(ctx context.Context, request PublicWorkerPoolCredentialsRequestObject) (PublicWorkerPoolCredentialsResponseObject, error)
+	// PublicWorkerPoolCreate Create installation public pool credentials
+	// (POST /public-worker-pool)
+	PublicWorkerPoolCreate(ctx context.Context, request PublicWorkerPoolCreateRequestObject) (PublicWorkerPoolCreateResponseObject, error)
+	// PublicWorkerPoolReset Reset installation public pool credentials
+	// (POST /public-worker-pool/reset)
+	PublicWorkerPoolReset(ctx context.Context, request PublicWorkerPoolResetRequestObject) (PublicWorkerPoolResetResponseObject, error)
 	// DeadJobs List dead jobs
 	// (GET /queue/jobs)
 	DeadJobs(ctx context.Context, request DeadJobsRequestObject) (DeadJobsResponseObject, error)
@@ -5664,6 +6333,96 @@ func (sh *strictHandler) OrganizationTierSet(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// PublicWorkerPoolCredentials operation middleware
+func (sh *strictHandler) PublicWorkerPoolCredentials(w http.ResponseWriter, r *http.Request) {
+	var request PublicWorkerPoolCredentialsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublicWorkerPoolCredentials(ctx, request.(PublicWorkerPoolCredentialsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublicWorkerPoolCredentials")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublicWorkerPoolCredentialsResponseObject); ok {
+		if err := validResponse.VisitPublicWorkerPoolCredentialsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublicWorkerPoolCreate operation middleware
+func (sh *strictHandler) PublicWorkerPoolCreate(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolCreateParams) {
+	var request PublicWorkerPoolCreateRequestObject
+
+	request.Params = params
+
+	var body PublicWorkerPoolCreateJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublicWorkerPoolCreate(ctx, request.(PublicWorkerPoolCreateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublicWorkerPoolCreate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublicWorkerPoolCreateResponseObject); ok {
+		if err := validResponse.VisitPublicWorkerPoolCreateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublicWorkerPoolReset operation middleware
+func (sh *strictHandler) PublicWorkerPoolReset(w http.ResponseWriter, r *http.Request, params PublicWorkerPoolResetParams) {
+	var request PublicWorkerPoolResetRequestObject
+
+	request.Params = params
+
+	var body PublicWorkerPoolResetJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublicWorkerPoolReset(ctx, request.(PublicWorkerPoolResetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublicWorkerPoolReset")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublicWorkerPoolResetResponseObject); ok {
+		if err := validResponse.VisitPublicWorkerPoolResetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DeadJobs operation middleware
 func (sh *strictHandler) DeadJobs(w http.ResponseWriter, r *http.Request, params DeadJobsParams) {
 	var request DeadJobsRequestObject
@@ -5944,108 +6703,121 @@ func (sh *strictHandler) TierUpdate(w http.ResponseWriter, r *http.Request, tier
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"2+X/DwA=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

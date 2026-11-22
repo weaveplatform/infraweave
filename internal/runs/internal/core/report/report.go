@@ -215,7 +215,7 @@ func (s *Service) held(ctx context.Context, id kernel.ULID) (lifecycle.Run, erro
 		return r, fmt.Errorf("%w: %s", workersapi.ErrNotOnWorker, id)
 	case err != nil:
 		return r, err //nolint:wrapcheck // the store names the read
-	case r.WorkerPool == nil || !r.State.OnWorker():
+	case r.ExecutionPool() == nil || !r.State.OnWorker():
 		return r, fmt.Errorf("%w: run %s is %s", workersapi.ErrNotOnWorker, id, r.State)
 	}
 	return r, nil

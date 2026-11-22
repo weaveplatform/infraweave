@@ -51,6 +51,10 @@ const Seats = "seats"
 // ref: decision 0021
 const PrivateWorkers = "private-workers"
 
+// PublicWorkerSlots bounds an organization's in-flight public executions,
+// with any lower account ceiling enforced in the same claim transaction.
+const PublicWorkerSlots = "public-worker-slots"
+
 // Usage is a counted thing's use at the moment of a creation: across the
 // organization's accounts, and in the account the creation is for.
 type Usage struct {

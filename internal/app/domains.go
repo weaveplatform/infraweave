@@ -101,6 +101,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		return Domains{}, err //nolint:wrapcheck // names the setting
 	}
 	workers := workersassembly.New(workersassembly.Deps{
+		PublicPool:       c.Worker.PublicPool,
 		DB:               db.Primary(),
 		Keys:             keys,
 		Spaces:           access.Spaces(),
@@ -176,36 +177,39 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.GuardStacks(policies.StackGuard())
 	access.GuardSpaces(policies.SpaceGuard())
 	runs := runsassembly.New(runsassembly.Deps{
-		PolicyTaskInputs:   policies.TaskInputBuilder(),
-		ClaimSpaces:        access.ClaimSpaces(),
-		ClaimStacks:        stacks.ClaimTargets(),
-		PolicyIdentities:   policies.Identities(),
-		PolicySamples:      policies.SampleRetentions(),
-		PolicySampleReader: policies.SampleReader(),
-		PolicyEvaluator:    policies.Evaluator(),
-		PolicySelection:    policies.Selection(),
-		PolicyInputs:       policies.RunInputBuilder(),
-		ReviewMetadata:     access.ReviewMetadata(),
-		PolicyStacks:       stacks.PolicySnapshots(),
-		PolicyPools:        workers.PoolMetadata(),
-		PolicyRoles:        access.StackRoles(),
-		PolicySpaces:       access.PolicySpaces(),
-		PolicyContexts:     configuration.PolicyContexts(),
-		DB:                 db.Primary(),
-		Keys:               keys,
-		Objects:            objects,
-		Spaces:             access.Spaces(),
-		Accounts:           access.Accounts(),
-		Authz:              access.Authorizer(),
-		Tokens:             access.Tokens(),
-		Stacks:             stacks.Stacks(),
-		Environment:        configuration.Environment(),
-		Catalog:            vendors.Catalog(),
-		Events:             events,
-		Jobs:               queue.New(db.Primary()),
-		Settings:           c.Run,
-		RuntimeSettings:    c.Runs,
-		LogRetention:       c.ObjectStore.Retention.RunLogs,
+		PublicLimits:        features.Entitlements(),
+		AccountOrganization: access.AccountOrganization,
+		PublicPoolEnabled:   c.Worker.PublicPool.Enabled,
+		PolicyTaskInputs:    policies.TaskInputBuilder(),
+		ClaimSpaces:         access.ClaimSpaces(),
+		ClaimStacks:         stacks.ClaimTargets(),
+		PolicyIdentities:    policies.Identities(),
+		PolicySamples:       policies.SampleRetentions(),
+		PolicySampleReader:  policies.SampleReader(),
+		PolicyEvaluator:     policies.Evaluator(),
+		PolicySelection:     policies.Selection(),
+		PolicyInputs:        policies.RunInputBuilder(),
+		ReviewMetadata:      access.ReviewMetadata(),
+		PolicyStacks:        stacks.PolicySnapshots(),
+		PolicyPools:         workers.PoolMetadata(),
+		PolicyRoles:         access.StackRoles(),
+		PolicySpaces:        access.PolicySpaces(),
+		PolicyContexts:      configuration.PolicyContexts(),
+		DB:                  db.Primary(),
+		Keys:                keys,
+		Objects:             objects,
+		Spaces:              access.Spaces(),
+		Accounts:            access.Accounts(),
+		Authz:               access.Authorizer(),
+		Tokens:              access.Tokens(),
+		Stacks:              stacks.Stacks(),
+		Environment:         configuration.Environment(),
+		Catalog:             vendors.Catalog(),
+		Events:              events,
+		Jobs:                queue.New(db.Primary()),
+		Settings:            c.Run,
+		RuntimeSettings:     c.Runs,
+		LogRetention:        c.ObjectStore.Retention.RunLogs,
 	})
 	stacks.GuardStacks(runs.StackGuard())
 	access.GuardSpaces(runs.SpaceGuard())
@@ -214,6 +218,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.SetStackStatus(runs.StackStatus())
 	stacks.BindDestroyer(runs.StackDestroyer())
 	workers.BindScheduler(runs.Scheduler())
+	workers.BindPublicAssignments(runs.PublicAssignments())
 	workers.BindReports(runs.Reports())
 	workers.BindLiveness(runs.Liveness())
 	workers.BindSignals(runs.Signals())

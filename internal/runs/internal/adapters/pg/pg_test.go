@@ -267,14 +267,17 @@ func TestAccStoreUnavailable(t *testing.T) {
 }
 
 // TestUnitHeld declares a held stack column for each table that names a
-// stack, and the runs' account, and the runs' key.
+// stack, and the runs' account/organization, and the runs' key.
 func TestUnitHeld(t *testing.T) {
 	held := pg.Held()
-	if len(held) != 5 || held[0].Entity != "account" || held[0].Table != "runs" {
+	if len(held) != 6 || held[0].Entity != "account" || held[0].Table != "runs" {
 		t.Fatalf("Held = %+v", held)
 	}
+	if h := held[1]; h.Entity != "organization" || h.Table != "runs" || len(h.Columns) != 1 || h.Columns[0] != "organization_id" {
+		t.Fatalf("held organization = %+v", h)
+	}
 	for i, table := range []string{"runs", "stack_run_locks", "stack_run_state", "stack_outputs"} {
-		if h := held[i+1]; h.Entity != "stack" || h.Table != table {
+		if h := held[i+2]; h.Entity != "stack" || h.Table != table {
 			t.Errorf("held %d = %+v, want the stack of %s", i+1, h, table)
 		}
 	}

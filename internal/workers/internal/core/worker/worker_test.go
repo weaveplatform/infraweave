@@ -68,6 +68,24 @@ func (s *store) PoolByID(_ context.Context, id kernel.ULID) (pool.Pool, error) {
 	return p, nil
 }
 
+func (s *store) Public(context.Context, bool) (pool.Pool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.down("Public"); err != nil {
+		return pool.Pool{}, err
+	}
+	for _, p := range s.pools {
+		if p.Public {
+			return p, nil
+		}
+	}
+	return pool.Pool{}, pool.ErrNotFound
+}
+
+func (s *store) PublicShare(ctx context.Context) (pool.Pool, error) {
+	return s.Public(ctx, false)
+}
+
 func (s *store) Get(_ context.Context, acct kernel.AccountID, id kernel.ULID, _ bool) (pool.Pool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -62,9 +62,11 @@ components:
           description: >-
             The image the run's container starts from: the runtime
             configuration's, else the stack's, else the account's default
-            for private pools. Absent when none names one, for the launcher's
+            for the selected pool kind. Absent when none names one, for the launcher's
             default: its own default runner image when set, else the stack's
             vendor's image.
+        publicPool:
+          $ref: '#/components/schemas/PublicPoolPolicy'
         stateBackend:
           $ref: '#/components/schemas/RunSpecStateBackend'
         source:
@@ -127,6 +129,18 @@ components:
             0x01, the run ID's length (uint16, big-endian), the run ID, and
             run.stateVersion (uint64, big-endian), so the launcher refuses a
             specification issued for another run or another of its states.
+    PublicPoolPolicy:
+      description: Installation public-pool admission policy, applied to the fully resolved runner image before starting it. Absent for private execution.
+      type: object
+      additionalProperties: false
+      required: [allowedRegistries]
+      properties:
+        allowedRegistries:
+          type: array
+          items:
+            type: string
+            maxLength: 259
+          description: Canonical registry authorities or DNS suffixes, with the ECR region selector supported. Empty admits no images.
     RunSpecRun:
       description: The run.
       type: object

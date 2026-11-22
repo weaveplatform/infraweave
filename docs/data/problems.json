@@ -114,6 +114,13 @@
       "decision": "0022"
     },
     {
+      "id": "precondition-required",
+      "status": 428,
+      "title": "precondition required",
+      "when": "An operator public-pool credential reset omits its required If-Match precondition",
+      "decision": "0022"
+    },
+    {
       "id": "payload-too-large",
       "status": 413,
       "title": "payload too large",

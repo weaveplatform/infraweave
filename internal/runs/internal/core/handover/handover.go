@@ -179,7 +179,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 		return workersapi.Handover{}, fmt.Errorf("%w: %s", workersapi.ErrNotOnWorker, id)
 	case err != nil:
 		return workersapi.Handover{}, err //nolint:wrapcheck // the store names the read
-	case r.WorkerPool == nil || !r.State.OnWorker():
+	case r.ExecutionPool() == nil || !r.State.OnWorker():
 		return workersapi.Handover{}, fmt.Errorf("%w: run %s is %s", workersapi.ErrNotOnWorker,
 			id, r.State)
 	}
@@ -312,7 +312,7 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	// strings always encodes.
 	doc, _ := json.Marshal(sec) //nolint:gosec // the secrets, held only sealed to the pool
 	return workersapi.Handover{
-		Account: r.Account, Pool: *r.WorkerPool, Spec: spec, Secrets: crypt.NewValue(doc),
+		Account: r.Account, Pool: *r.ExecutionPool(), Public: r.WorkerPool == nil, Spec: spec, Secrets: crypt.NewValue(doc),
 	}, nil
 }
 
