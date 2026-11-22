@@ -96,6 +96,7 @@ func New(d Deps) *Domain {
 			LoginChanges: d.LoginChanges,
 			Sampling:     samples,
 			Evidence:     store,
+			Catalogue:    store,
 		},
 	)
 	return &Domain{server: http.New(svc, d.Spaces), svc: svc, store: store, samples: samples}

@@ -754,6 +754,10 @@ func (UnimplementedStrict) SearchPoliciesSuggestions(context.Context, SearchPoli
 	return nil, &problem.NotImplementedError{OperationID: "searchPoliciesSuggestions", Route: "POST /policies/search/suggestions"}
 }
 
+func (UnimplementedStrict) PolicySimulatev2(context.Context, PolicySimulatev2RequestObject) (PolicySimulatev2ResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policySimulatev2", Route: "POST /policies/simulate"}
+}
+
 func (UnimplementedStrict) PolicyDelete(context.Context, PolicyDeleteRequestObject) (PolicyDeleteResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "policyDelete", Route: "DELETE /policies/{policyId}"}
 }
@@ -800,6 +804,18 @@ func (UnimplementedStrict) PolicyInputCapture(context.Context, PolicyInputCaptur
 
 func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestObject) (PolicyRuntimeResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "policyRuntime", Route: "GET /policy-runtime"}
+}
+
+func (UnimplementedStrict) SearchPolicyTemplates(context.Context, SearchPolicyTemplatesRequestObject) (SearchPolicyTemplatesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPolicyTemplates", Route: "POST /policy-templates/search"}
+}
+
+func (UnimplementedStrict) SearchPolicyTemplatesSuggestions(context.Context, SearchPolicyTemplatesSuggestionsRequestObject) (SearchPolicyTemplatesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPolicyTemplatesSuggestions", Route: "POST /policy-templates/search/suggestions"}
+}
+
+func (UnimplementedStrict) PolicyTemplate(context.Context, PolicyTemplateRequestObject) (PolicyTemplateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyTemplate", Route: "GET /policy-templates/{policyTemplateId}"}
 }
 
 func (UnimplementedStrict) PublicWorkerPool(context.Context, PublicWorkerPoolRequestObject) (PublicWorkerPoolResponseObject, error) {

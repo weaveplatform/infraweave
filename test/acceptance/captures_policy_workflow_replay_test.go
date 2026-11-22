@@ -62,7 +62,41 @@ func captureReplayRegistry(parent *testing.T) (map[string]func(*testing.T, *sdk.
 	}
 	registerFlagCaptureReplay(parent, subsets, &workers)
 	registerIgnoredCaptureReplay(parent, subsets, &workers)
+	full["policy-simulation"] = func(t *testing.T, _ *sdk.Client) {
+		if workers == nil {
+			workers = harness.NewFeatureReplay(parent, areas)
+		}
+		name := "C192 hashes the recorded values through the public simulator"
+		contents := []byte(`@postgres @objectstore
+Feature: Recorded policy simulation
+  Scenario: ` + name + `
+    Given two infraweave servers, A and B, on one database
+    And the home key is exchanged through A for token "h"
+    And the simulation's evaluation and workflow state is recorded
+    When recorded policy simulations "C192" agree through the public endpoint
+    Then the simulation leaves evaluation, workflow and object storage unchanged
+`)
+		workers.Run(t, "C192", contents, []string{name})
+	}
 	return full, subsets
+}
+
+func TestUnitC192HasExecutableRESTReplay(t *testing.T) {
+	captures, err := harness.LoadCaptures(capturesRoot, captureEntries(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, _ := captureReplayRegistry(t)
+	for _, capture := range captures {
+		if capture.ID != "C192" {
+			continue
+		}
+		if capture.ReplayAfter != "" || capture.ReplayWith != "policy-simulation" || registry[capture.ReplayWith] == nil {
+			t.Fatal("C192 is not wired to its public simulation replay")
+		}
+		return
+	}
+	t.Fatal("C192 capture is missing")
 }
 
 func approvalCaptureFeature(t *testing.T) ([]byte, []string) {

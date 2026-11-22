@@ -1,0 +1,374 @@
+[
+  {
+    "id": "01HRPFBHH75YQ0XV7CKM8PT9EG",
+    "name": "Allowlist Task Commands",
+    "slug": "allowlist-task-commands",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHHP7QNCW7N7MVR9JMCV",
+    "name": "Approval Outside Working Hours",
+    "slug": "approval-outside-working-hours",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHJ5S7R1RHHH3MNP7A08",
+    "name": "Require Approval from Security Team",
+    "slug": "require-approval-from-security-team",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHJHMM9R784VHPDNC929",
+    "name": "Require Private Worker",
+    "slug": "require-private-worker",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHJZMTQ6JD7HFT0T1HBG",
+    "name": "Role-based Approval",
+    "slug": "role-based-approval",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHKCBERY26EE4HXR6V37",
+    "name": "Task and Run Approvals",
+    "slug": "task-and-run-approvals",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHKW7PJGDYDRA16Y6KJM",
+    "name": "Two Approvals, No Rejections",
+    "slug": "two-approvals-no-rejections",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHM917RT6KF2NXV8RS8C",
+    "name": "Two Approvals, Two Rejections",
+    "slug": "two-approvals-two-rejections",
+    "type": "APPROVAL"
+  },
+  {
+    "id": "01HRPFBHQWCZ3RJ93F6Y5F7HRP",
+    "name": "Drift Detection with Changes",
+    "slug": "drift-detection-with-changes",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01HRPFBHRAJ4DZP77J87GY55NZ",
+    "name": "Notification Failure",
+    "slug": "notification-failure",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01HRPFBHRRRKCKB1CN9439BRE9",
+    "name": "Slack Channels with Labels",
+    "slug": "slack-channels-with-labels",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01HRPFBHSKXXMNNMHMNQ2J58F0",
+    "name": "Check Blast Radius",
+    "slug": "check-blast-radius",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHT3BSH55XE5N2P7P1RC",
+    "name": "Check Sanitized Value",
+    "slug": "check-sanitized-value",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHTHGRQZW56NABWN7XDV",
+    "name": "Checkov Failed Checks",
+    "slug": "checkov-failed-checks",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHV1G11YN455CY11174A",
+    "name": "Deny Proposed Runs, Warn Track Runs",
+    "slug": "deny-proposed-runs-warn-track-runs",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHVH2EBS3YTJWA7RNTD0",
+    "name": "Prevent Deletion of Stateful Resources",
+    "slug": "prevent-deletion-of-stateful-resources",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHW35CASM316KJ7Y1A2V",
+    "name": "Disallow AWS IAM Access Key Creation",
+    "slug": "disallow-aws-iam-access-key-creation",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHWS2YPRJRZV5DCT45JE",
+    "name": "Enforce Cloud Provider Policy",
+    "slug": "enforce-cloud-provider-policy",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHXDRAHAVKRNCR8N0SF0",
+    "name": "Enforce Instance Type",
+    "slug": "enforce-instance-type",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHXVH9S1NDC92SX6GS0T",
+    "name": "Enforce Module Use",
+    "slug": "enforce-module-use",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHYD05X5A7CFRRXDKDSG",
+    "name": "Enforce Password Length",
+    "slug": "enforce-password-length",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHZ1575BM416K9Q993TV",
+    "name": "Enforce SQLInstance Network",
+    "slug": "enforce-sqlinstance-network",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBHZHYTGEKNS5W4VCE2RP",
+    "name": "Enforce Tags On Resources",
+    "slug": "enforce-tags-on-resources",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ00G520P0YKP64SN1F5",
+    "name": "Enforce Terraform Version List",
+    "slug": "enforce-terraform-version-list",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ0CCZNYQV4NM1J7Y1D4",
+    "name": "Ensure Resource Creation Before Deletion",
+    "slug": "ensure-resource-creation-before-deletion",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ0XMXY8FVX1MH5AS16D",
+    "name": "Infracost Monthly Cost Restriction",
+    "slug": "infracost-monthly-cost-restriction",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ1DHZYTTEW623BNA79T",
+    "name": "KICS Severity Counter",
+    "slug": "kics-severity-counter",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ219W851DTJCGT4PB4V",
+    "name": "Mandatory and acceptable labels gcp",
+    "slug": "mandatory-and-acceptable-labels-gcp",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ2S9YSAQZRZXSDVAB61",
+    "name": "Mandatory And Acceptable Labels Stack",
+    "slug": "mandatory-and-acceptable-labels-stack",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ3CVQSN0VP2S0M0DAJQ",
+    "name": "Require Human Review For Drift Detection Reconciliation",
+    "slug": "require-human-review-for-drift-detection-reconciliation",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ3W5HG9QPJ6ZPYG355T",
+    "name": "Require Human Review For Unreachable Ansible Hosts",
+    "slug": "require-human-review-for-unreachable-ansible-hosts",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ4CHRR5GDG3D29KCQ3S",
+    "name": "Require Human Review For Update Deletion",
+    "slug": "require-human-review-for-update-deletion",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ4X20FSNK6TF1RCA5JA",
+    "name": "Require Reasonable Commit Size",
+    "slug": "require-reasonable-commit-size",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ5FVC5H3RRCJ6VQX3YM",
+    "name": "Terrascan Violated Policies",
+    "slug": "terrascan-violated-policies",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ5XT0BC7HY8PF59J1NZ",
+    "name": "Tfsec High Severity Issues",
+    "slug": "tfsec-high-severity-issues",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ6D97GPN9MPV6KYW77R",
+    "name": "Trusted Engineers Bypass Review",
+    "slug": "trusted-engineers-bypass-review",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ6XZ91Q7HB9S7PGGA01",
+    "name": "Warn On Change Sensitive Resources",
+    "slug": "warn-on-change-sensitive-resources",
+    "type": "PLAN"
+  },
+  {
+    "id": "01HRPFBJ7BEQ2CYT3RT618Z9JR",
+    "name": "Allow Forks",
+    "slug": "allow-forks",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJ7WCBBZBGRMKN3531GE",
+    "name": "Cancel In-Progress Runs",
+    "slug": "cancel-in-progress-runs",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJ88CVMZ4FVJAPMK92DV",
+    "name": "Create Proposed Run From Env Pr Labels",
+    "slug": "create-proposed-run-from-env-pr-labels",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJ8Q1DNXQ5NYQ32TWSMD",
+    "name": "Deploy With Git Tag",
+    "slug": "deploy-with-git-tag",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJ952J6K25E57409HYZJ",
+    "name": "Deploy With Pr Label",
+    "slug": "deploy-with-pr-label",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJ9NMGEGAR8NMK2F7BK7",
+    "name": "Ignore Changes Outside Root",
+    "slug": "ignore-changes-outside-root",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJA3ZD6XKX6VK07Q8EEM",
+    "name": "Lock Button Pauses Runs By Pushes",
+    "slug": "lock-button-pauses-runs-by-pushes",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJAHZES32P3AA1YQEQ3A",
+    "name": "PR Comment Driven Actions",
+    "slug": "pr-comment-driven-actions",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJB66GAMXAZBBVF0MVER",
+    "name": "PR Comment Driven User",
+    "slug": "pr-comment-driven-user",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJBQ4RDJQVQ5C9G028K4",
+    "name": "PRs Only",
+    "slug": "prs-only",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJC6WTYGP8NXW9S4343P",
+    "name": "Set Head Commit No Trigger",
+    "slug": "set-head-commit-no-trigger",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJCMN9ACTNERGQPG5RP2",
+    "name": "Tag Driven Tf Module Release Flow",
+    "slug": "tag-driven-tf-module-release-flow",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJD1HERFGHB2RZ9JM3T1",
+    "name": "Terragrunt Monorepo Ignore Changes Outside Root",
+    "slug": "terragrunt-monorepo-ignore-changes-outside-root",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJDFJA0A9Y3GZJK74BPC",
+    "name": "Track Using Labels",
+    "slug": "track-using-labels",
+    "type": "GIT_PUSH"
+  },
+  {
+    "id": "01HRPFBJDXYG019NRP5SY72QPH",
+    "name": "Automated Retries",
+    "slug": "automated-retries",
+    "type": "TRIGGER"
+  },
+  {
+    "id": "01HRPFBJEDYB4TNB6Q1S2GH3JS",
+    "name": "Trigger Dependencies Via Labels With State",
+    "slug": "trigger-dependencies-via-labels-with-state",
+    "type": "TRIGGER"
+  },
+  {
+    "id": "01HRPFBJFA58HFP7707XN3XZRD",
+    "name": "Trigger Hardcoded Dependencies",
+    "slug": "trigger-hardcoded-dependencies",
+    "type": "TRIGGER"
+  },
+  {
+    "id": "01J7EB0CPCR22V5FGYRVA6WQ7M",
+    "name": "Notification to Author of Stack Failure",
+    "slug": "notification-to-author-of-stack-failure",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01J7EB0CQ2TCCVXX83YHQWSXTD",
+    "name": "Notification as a comment on your pull request which summarises your logs",
+    "slug": "notification-as-a-comment-on-your-pull-request-which-summarises-your-logs",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01J7EB0D96E9M1NH7526FGVJZ8",
+    "name": "Trivy High Severity Issues",
+    "slug": "trivy-high-severity-issues",
+    "type": "PLAN"
+  },
+  {
+    "id": "01J7KD0GSENY0F66HBD2RZ8R7H",
+    "name": "Advanced Automated Retries",
+    "slug": "advanced-automated-retries",
+    "type": "TRIGGER"
+  },
+  {
+    "id": "01JEQXP3ZN2YWZRV703DDFD3AH",
+    "name": "Trigger Dependencies Via Labels",
+    "slug": "trigger-dependencies-via-labels",
+    "type": "TRIGGER"
+  },
+  {
+    "id": "01M7Q4VN3BTNR311VC385RVT14",
+    "name": "Discord | Drift Detection with Changes",
+    "slug": "discord-drift-detection-with-changes",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01M7Q4VN3P08QJ167JK61STS24",
+    "name": "MS Teams | Drift Detection with Changes",
+    "slug": "ms-teams-drift-detection-with-changes",
+    "type": "NOTIFICATION"
+  },
+  {
+    "id": "01M7Q4VN8B9JMD8AX42J5T87AA",
+    "name": "Warn On Destroy",
+    "slug": "warn-on-destroy",
+    "type": "PLAN"
+  }
+]
