@@ -6,7 +6,7 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
-func TestUnitP13bImplementedCapturesHaveExecutableRESTProof(t *testing.T) {
+func TestUnitPolicyToolingCapturesHaveExecutableRESTProof(t *testing.T) {
 	captures, err := harness.LoadCaptures(capturesRoot, captureEntries(t))
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +19,7 @@ func TestUnitP13bImplementedCapturesHaveExecutableRESTProof(t *testing.T) {
 					continue
 				}
 				if c.ReplayAfter != "" {
-					t.Fatalf("implemented P13b behavior still skips real REST proof behind %s", c.ReplayAfter)
+					t.Fatalf("policy tooling capture still skips real REST proof behind %s", c.ReplayAfter)
 				}
 				if c.ReplayWith != "" && full[c.ReplayWith] != nil {
 					return

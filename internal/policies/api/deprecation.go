@@ -12,5 +12,5 @@ const TaskDeprecationInfo = "https://github.com/weaveplatform/infraweave/blob/ma
 // 2026-11-21 UTC, rather than an asserted upstream deprecation date.
 const InitializationDeprecatedSince = TaskDeprecatedSince
 
-// InitializationDeprecationInfo scopes the server notice separately from P14.
+// InitializationDeprecationInfo links the server initialization policy notice.
 const InitializationDeprecationInfo = "https://github.com/weaveplatform/infraweave/blob/main/docs/implementation/initialization-policy-verification.md#deprecation-notice"

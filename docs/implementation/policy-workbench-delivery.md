@@ -1,8 +1,8 @@
-# P13b delivery verification
+# Policy workbench delivery verification
 
 Delivery gate: [#666](https://github.com/weaveplatform/infraweave/issues/666).
 Epic: [#636](https://github.com/weaveplatform/infraweave/issues/636).
-The [P13 audit](policy-p13-delivery.md) retains the earlier phase's exact evidence.
+The [P13 audit](policy-workflow-delivery.md) retains the earlier phase's exact evidence.
 This audit supplements it with identity, deprecated types and policy tooling.
 
 ## Current evidence boundary

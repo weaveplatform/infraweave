@@ -1,4 +1,4 @@
-# P13 delivery evidence audit
+# Policy workflow delivery audit
 
 Audit for [POL-19 (#656)](https://github.com/weaveplatform/infraweave/issues/656), dated 2026-11-21. The delivered application at `3ff32129c22db94166780230d3c637f829655401` has passing full CI and the real-provider walkthrough. This audit adds three missing literal projection-denial assertions and must pass its own unchanged quality gate before merge. P13b and later workflows retain their separate owners.
 
@@ -6,7 +6,7 @@ Audit for [POL-19 (#656)](https://github.com/weaveplatform/infraweave/issues/656
 
 [Current main quality gate](https://github.com/weaveplatform/infraweave/actions/runs/44898323446) passed normal acceptance, all three OS race/shuffle suites, complete certified FIPS, PostgreSQL-next, generation, parity, blocking lint, vulnerabilities, cross-compilation and final Quality. Coverage is **95.4% (49,704/52,084)**; every package meets 90%. The actual FIPS application uses Go Cryptographic Module v1.0.0 in `only` mode.
 
-The six independently downloaded reports contain **1,066 scenarios / 25,830 steps**, with every step passed. The [execution index](policy-p13-delivery.json) records artifact IDs, report SHA-256 digests, named cases, exact source locations and operation-specific request/response assertions. It also preserves the historical `1120bb8a` baseline separately; that baseline is not relabelled as this revision.
+The six independently downloaded reports contain **1,066 scenarios / 25,830 steps**, with every step passed. The [execution index](policy-workflow-delivery.json) records artifact IDs, report SHA-256 digests, named cases, exact source locations and operation-specific request/response assertions. It also preserves the historical `1120bb8a` baseline separately; that baseline is not relabelled as this revision.
 
 | Partition | Passed scenarios | Passed steps | Executed report |
 |---|---:|---:|---|
@@ -93,7 +93,7 @@ These 36 served operations retain their shared transport/control contracts. Each
 | `stackUnlock` | `POST /api/v1/stacks/{stackId}/unlock` | [P48](https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L139) | [P48](https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L139) | [P36](https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L56) |
 | `starSet` | `PUT /api/v1/stacks/{stackId}/star` | [P46](https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L161) | [L2](../../test/acceptance/features/stacks/policy_projection_controls.feature#L6) | [P36](https://github.com/weaveplatform/infraweave/blob/3ff32129c22db94166780230d3c637f829655401/test/acceptance/features/stacks/stacks.feature#L56) |
 
-Transport triads are distinct from the populated policy-field proof. S29 explicitly checks historical receipt metadata, the flag union, policy deletion and private-field redaction; its database-seeded historical receipt is labelled as a fixture. Actual public reviews and Terraform/OpenTofu worker reports execute the owner-reset, prior-input and committed-event assertions in [POL-17's language/workflow matrix](policy-phase-verification.md). Attachment scenarios separately verify public explicit/effective relations and inherited/account-qualified Stack projections.
+Transport triads are distinct from the populated policy-field proof. S29 explicitly checks historical receipt metadata, the flag union, policy deletion and private-field redaction; its database-seeded historical receipt is labelled as a fixture. Actual public reviews and Terraform/OpenTofu worker reports execute the owner-reset, prior-input and committed-event assertions in [POL-17's language/workflow matrix](policy-workflow-verification.md). Attachment scenarios separately verify public explicit/effective relations and inherited/account-qualified Stack projections.
 
 The shared read snapshot regression first failed all six controlled PostgreSQL interleavings, then passed 30 certified-FIPS/race/shuffle comparisons; the exact-main full gate includes the repaired suites. Its [proof record](run-read-snapshot-verification.json) preserves the red/green observations and the independently repaired retryable 503 outage boundary.
 
@@ -124,7 +124,7 @@ A `/recorded` pass verifies captured bytes and observations. It does not execute
 
 All 48 DEFAULT/SMART selection cases execute in the exact-main reports. Terraform, OpenTofu and selected Terragrunt units verify actual decrypted uploads, hashes/copies, unknowns/masks, NONE sealing, replan/resume and worker fencing. No raw fallback or new typed action/deferred input block is introduced. The [payload proof](policy-plan-payload-verification.json) retains the exact source-pinned patched-development producer and the maintainer's 2026-11-21 approval. Official-release deferred-action production remains unproven. Authored malformed controls remain labelled separately from actual CLI output. Runner CLIs remain official stable releases.
 
-The [POL-17 matrix](policy-phase-verification.md) supplies both dialects, compatibility imports, sets/partial objects, comprehensions, helpers, input/print/cache isolation, timeout/input/decision bounds, errors, rollback and real public review/report execution. The representative upstream corpus supplements those workflows; #664 owns the complete library corpus.
+The [POL-17 matrix](policy-workflow-verification.md) supplies both dialects, compatibility imports, sets/partial objects, comprehensions, helpers, input/print/cache isolation, timeout/input/decision bounds, errors, rollback and real public review/report execution. The representative upstream corpus supplements those workflows; #664 owns the complete library corpus.
 
 ## Real-provider lab and cleanup
 

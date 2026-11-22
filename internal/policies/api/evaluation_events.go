@@ -2,8 +2,8 @@ package api
 
 import "github.com/weaveplatform/infraweave/internal/kernel"
 
-// EvaluatedKind and InternalErrorKind are P13's producers for the policy_evaluated
-// and internal_error event contracts. Later notification routing owns delivery.
+// EvaluatedKind and InternalErrorKind identify policy evaluation and internal
+// error events. Notification routing owns delivery.
 const (
 	EvaluatedKind          = "policy.evaluated"
 	InternalErrorKind      = "policy.internal_error"

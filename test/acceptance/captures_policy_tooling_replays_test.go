@@ -13,7 +13,7 @@ import (
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
-func registerP13bCaptureReplays(
+func registerPolicyToolingCaptureReplays(
 	parent *testing.T,
 	full map[string]func(*testing.T, *sdk.Client),
 	subsets map[string]func(*testing.T, *sdk.Client) []string,
