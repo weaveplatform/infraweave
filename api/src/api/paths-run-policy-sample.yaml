@@ -47,6 +47,7 @@ paths:
                 operation: query
                 type: Run
             x-infraweave-action: SPACE_READ
+            x-infraweave-feature: policies
             x-infraweave-cost: expensive
             x-infraweave-divergence:
                 - rate-limit

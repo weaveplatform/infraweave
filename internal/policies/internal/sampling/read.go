@@ -33,27 +33,9 @@ func (s *Service) Read(ctx context.Context, account kernel.AccountID, evaluation
 		if !ok || !ref.PolicyExists || ref.Input.PublishedAt == nil || ref.Input.State != "live" || !s.d.Now().Before(ref.Input.ExpiresAt) {
 			return ErrNotFound
 		}
-		obj, err := s.d.Objects.LockLiveAt(ctx, objectstore.PolicyInputs, ref.Input.Key, s.d.Now())
-		if errors.Is(err, objectstore.ErrNotFound) {
-			return ErrNotFound
-		}
+		raw, err := s.ReadDocument(ctx, ref.Input)
 		if err != nil {
-			return fmt.Errorf("policies: fence retained input: %w", err)
-		}
-		if obj.Size < 0 || obj.Size > MaxReadBytes {
-			return fmt.Errorf("policies: retained input exceeds decode limit: %w", objectstore.ErrSize)
-		}
-		reader, err := s.d.Objects.Open(ctx, objectstore.PolicyInputs, ref.Input.Key)
-		if err != nil {
-			return fmt.Errorf("policies: open retained input: %w", err)
-		}
-		defer reader.Close()
-		raw, err := io.ReadAll(io.LimitReader(reader, MaxReadBytes+1))
-		if err != nil {
-			return fmt.Errorf("policies: authenticate retained input: %w", err)
-		}
-		if int64(len(raw)) > MaxReadBytes {
-			return fmt.Errorf("policies: retained input exceeds decode limit: %w", objectstore.ErrSize)
+			return err
 		}
 		if err := json.Unmarshal(raw, &out); err != nil {
 			return fmt.Errorf("policies: decode retained input: %w", err)
@@ -64,4 +46,41 @@ func (s *Service) Read(ctx context.Context, account kernel.AccountID, evaluation
 		return Payload{}, fmt.Errorf("policies: read retained sample: %w", err)
 	}
 	return out, nil
+}
+
+// ReadDocument authenticates and bounds one already authorized input while its
+// caller holds the owner fence. It cannot run outside a non-retrying transaction.
+func (s *Service) ReadDocument(ctx context.Context, input Input) ([]byte, error) {
+	if !tx.In(ctx) {
+		return nil, fmt.Errorf("policies: input read requires owner fence: %w", ErrNotFound)
+	}
+	if input.PublishedAt == nil || input.State != "live" || !s.d.Now().Before(input.ExpiresAt) {
+		return nil, ErrNotFound
+	}
+	obj, err := s.d.Objects.LockLiveAt(ctx, objectstore.PolicyInputs, input.Key, s.d.Now())
+	if errors.Is(err, objectstore.ErrNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("policies: fence retained input: %w", err)
+	}
+	if obj.Size < 0 || obj.Size > MaxReadBytes {
+		return nil, fmt.Errorf("policies: retained input exceeds decode limit: %w", objectstore.ErrSize)
+	}
+	reader, err := s.d.Objects.Open(ctx, objectstore.PolicyInputs, input.Key)
+	if errors.Is(err, objectstore.ErrNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("policies: open retained input: %w", err)
+	}
+	defer reader.Close()
+	raw, err := io.ReadAll(io.LimitReader(reader, MaxReadBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("policies: authenticate retained input: %w", err)
+	}
+	if int64(len(raw)) > MaxReadBytes {
+		return nil, fmt.Errorf("policies: retained input exceeds decode limit: %w", objectstore.ErrSize)
+	}
+	return raw, nil
 }

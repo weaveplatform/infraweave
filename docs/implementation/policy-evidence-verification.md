@@ -1,39 +1,64 @@
-# Policy evidence API implementation
+# Policy evidence API verification (#662)
 
-Ticket [#662](https://github.com/weaveplatform/infraweave/issues/662) owns the six
-sample, capture, record-search and run-receipt evidence operations. The protected
-readers and their full acceptance gate remain in progress on this branch.
+The branch implements all six policy/run evidence operations. It depends on
+#661's sealed retention and does not mark the complete Policies tag implemented.
+Full final-head CI and merge remain required before ticket closure.
 
-## Evaluation filter snapshots
+## Ownership and raw reads
 
-The evaluation transaction snapshots an allowlist from the actual per-policy
-document: PR ID, push branch, run type, drift detection, module-event/identity,
-stack name and stack repository. It skips allocating provider values and other
-private document subtrees. Nullable fields distinguish unavailable/null facts
-from known false, zero or empty values. The metadata contains no source, input
-document, raw result, print or object-store key beyond the existing private
-sample reference owned by persistence.
+Policy samples bind the exact account, current policy and evaluation handle.
+Run samples first hold the owned stack, run and exact immutable receipt link,
+then call the policies-owned reader. Current policy-space read permission and
+root-space SPACE_ADMIN are required before a sealed input or print is opened.
+Child-space administration confers no raw evidence permission. Handles are opaque
+evaluation/capture IDs; no request accepts a blob path or returns a signed URL.
 
-These values are recorded even when sampling is false. Metadata queries can
-therefore filter without decrypting retained input or consulting mutable current
-run/stack facts. The real PostgreSQL/OPA test changes its fixture's current stack name
-after evaluation and verifies the original input facts, known-false drift,
-absent sample link and zero object/budget rows. Typed projection tests cover
-push/PR, run and module notifications, unavailable facts and private-value
-exclusion.
+The outer transaction disables retries and holds owner/blob deletion fences
+through a 30-second, 128-MiB authenticated read. Runs hold stack → run → receipt
+before policy → blob. Captures probe immutable ownership, hold/authorize its
+space, then lock head → input → blob, matching evaluation/publication order.
+Expired, absent, foreign and unpublished samples are not found. A superseded,
+previously published capture returns its summary with required `input: null`;
+an absent head or expired input is not a replacement. Raw read failures commit
+only a fixed classification and actor/account into the audit trail after the true
+outer transaction has ended, including the runs-owned fence. Backend error text,
+input, source, object keys and print are excluded from that record.
 
-C273 records the PLAN suggestion names `createdAt`, `outcome`,
-`runDriftDetection`, `runType`, `stackName` and `stackRepository`. Actual records
-also establish lowercase `allow` and `approve` outcomes. Remaining lowercase
-outcome mappings and the push/notification names are infraweave implementation
-choices, not additional observed Spacelift facts. Notification metadata records
-both a nullable module-event Boolean and an optional module ID, keeping that
-choice explicit rather than inferring an upstream module-filter type. The shared
-search engine's TIME/filterable behavior is likewise a platform normalization;
-C273's createdAt field is orderable but not filterable.
+## Safe metadata
 
-The capture read projection declares `input` required and nullable, ensuring a
-superseded capture can return explicit `input: null` instead of omitting it.
-Root-space administration, current entity ownership, bounded authenticated
-reads, safe failure auditing and all six operations' real HTTP journeys remain
-required before this ticket is complete.
+Eight nullable columns in the initial policy migration snapshot the actual
+per-program OPA document: PR ID, push branch, run type, drift detection, module
+event/ID and stack name/repository. Missing/null differs from known false, zero
+or empty. No private plan values, raw decision, source or print enter them.
+Search/suggestions apply account and requested policy before counts/pagination;
+they join the current policy space rather than granting historical-space access.
+They select no input/staging/blob content and work before any upload runs.
+
+C273 records PLAN fields `createdAt`, `outcome`, `runDriftDetection`, `runType`,
+`stackName` and `stackRepository`, and records lowercase `allow`/`approve`.
+Other lowercase outcomes and these additional fields are explicit infraweave
+choices, not new observed Spacelift facts: push `pullRequestId` (STRING), `branch`
+(STRING), notification `module` (BOOLEAN), `moduleId` (STRING), run/drift and stack
+fields. Shared search TIME/filterability is a platform normalization: C273's
+createdAt is orderable but not filterable. The module notification input used in
+storage verification is labelled a contract fixture, not a live module capture.
+
+## Real proof
+
+- Public BDD: all six operations through A/B with actual PostgreSQL, Gitea,
+  RustFS-sealed OPA evidence, root success, unbound concealment, child-admin raw
+  denial, another account's isolation, typed-filter/cursor failures, expiry and
+  public sampleExpired flags. A real server restart with policies disabled proves
+  all six owned routes return `403 feature-disabled`. This is 40 passing steps.
+- The empty owned capture collection returns `200` and `items: []` (5 steps).
+- Real PostgreSQL/sealed-object tests prove exact parent binding, safe audits
+  after rollback, object-independent metadata, policy movement, typed PLAN,
+  push/PR and run/module notification filters, and replacement across independent
+  DB-backed readers. The module document is a synthetic typed-contract fixture.
+- Independent PostgreSQL transactions prove a held run/receipt link blocks
+  deletion, rejects wrong account/stack/run/receipt tuples and releases the fence
+  on completion. No deadline, retry, quota, coverage or rate limit is relaxed.
+
+`GOFIPS140=certified GODEBUG=fips140=only`, race detection and shuffled order are
+used for focused storage/owner proofs. Final generated/reference, configured lint,
+all required CI coverage and full certified-FIPS acceptance remain merge gates.

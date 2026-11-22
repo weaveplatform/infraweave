@@ -88,6 +88,7 @@ type Deps struct {
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
 	Sampling     *sampling.Service
+	Evidence     EvidenceStore
 }
 
 // Events appends policy changes in the transaction carried by the context.

@@ -199,6 +199,8 @@ paths:
                 operation: query
                 type: Policy
             x-infraweave-action: SPACE_READ
+            x-infraweave-subject: path:policyId:policy
+            x-infraweave-feature: policies
             x-infraweave-cost: expensive
             x-infraweave-divergence:
                 - rate-limit
@@ -251,6 +253,8 @@ paths:
                 operation: query
                 type: Policy
             x-infraweave-action: SPACE_READ
+            x-infraweave-subject: path:policyId:policy
+            x-infraweave-feature: policies
             x-infraweave-cost: standard
             x-infraweave-divergence:
                 - rate-limit
@@ -303,6 +307,8 @@ paths:
                 operation: query
                 type: Policy
             x-infraweave-action: SPACE_READ
+            x-infraweave-subject: path:policyId:policy
+            x-infraweave-feature: policies
             x-infraweave-cost: standard
             x-infraweave-divergence:
                 - rate-limit
@@ -357,6 +363,7 @@ paths:
                 operation: query
                 type: Query
             x-infraweave-action: SPACE_READ
+            x-infraweave-feature: policies
             x-infraweave-cost: standard
             x-infraweave-divergence:
                 - cursor-pagination
@@ -405,7 +412,9 @@ paths:
                 operation: query
                 type: Query
             x-infraweave-action: SPACE_READ
+            x-infraweave-feature: policies
             x-infraweave-cost: expensive
+            x-infraweave-subject: path:policyInputCaptureId:policy_input_capture
             x-infraweave-divergence:
                 - rate-limit
             x-rest-style: item

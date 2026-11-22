@@ -264,6 +264,12 @@ func input(body *api.RunTriggerRequest) (trigger.Input, error) {
 //
 // ref: decision 0003 § "Problem types"
 func runError(err error, slug, run string) error {
+	if denied, ok := errors.AsType[*policyapi.SampleDenied](err); ok {
+		return forbidden(accessapi.Action(denied.Action), "Reading raw policy evidence needs administration in the root space.")
+	}
+	if errors.Is(err, policyapi.ErrSampleMissing) {
+		return problem.NotFound.Error("No retained policy evidence is available.") //nolint:wrapcheck // public HTTP problem
+	}
 	if denied, ok := errors.AsType[*trigger.TaskDenied](err); ok {
 		return problem.Forbidden.Error(denied.Message) //nolint:wrapcheck // the committed policy refusal
 	}

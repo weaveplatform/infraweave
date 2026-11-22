@@ -267,13 +267,8 @@
       "plugins"
     ],
     "Policies": [
-      "policyEvaluationSample",
-      "policyInputCapture",
-      "policyInputCaptures",
       "policyIntentProjectAttach",
       "policyIntentProjectDetach",
-      "policySearchEvaluationRecordSuggestions",
-      "policySearchEvaluationRecords",
       "policySimulatev2",
       "policyTemplate",
       "searchPolicyTemplates"
@@ -302,7 +297,6 @@
       "runExternalDependencyMarkAsCompleted",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
-      "runPolicyReceiptSample",
       "runResourceCreate",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",
