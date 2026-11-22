@@ -24,6 +24,7 @@ type EvaluationRecord struct {
 
 // EvidenceStore keeps metadata queries separate from the sealed object reader.
 type EvidenceStore interface {
+	EvaluationPreviews(context.Context, kernel.AccountID, []kernel.ULID, []kernel.ULID, *kernel.ULID, time.Time) (map[kernel.ULID][]EvaluationRecord, error)
 	OwnsEvaluation(context.Context, kernel.AccountID, kernel.ULID, kernel.ULID) (bool, error)
 	SearchEvaluations(context.Context, kernel.AccountID, Policy, search.Input) (search.Result[EvaluationRecord], error)
 	SuggestEvaluations(context.Context, kernel.AccountID, Policy, search.SuggestionsInput) (search.Suggestions, error)

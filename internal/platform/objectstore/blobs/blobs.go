@@ -524,6 +524,35 @@ func (o *Objects) Available(ctx context.Context, store objectstore.Name, key str
 	return available, nil
 }
 
+// AvailableBatch reads lifecycle metadata for bounded status projections. It
+// neither opens sealed content nor grants permission to read any returned key.
+func (o *Objects) AvailableBatch(ctx context.Context, store objectstore.Name, keys []string, at time.Time) (map[string]bool, error) {
+	if len(keys) > 500 {
+		return nil, fmt.Errorf("blobs: availability batch exceeds 500 keys: %w", objectstore.ErrSize)
+	}
+	out := make(map[string]bool, len(keys))
+	if len(keys) == 0 {
+		return out, nil
+	}
+	rows, err := tx.Q(ctx, o.db).Query(ctx, `SELECT key FROM blob_objects
+        WHERE store=$1 AND key=ANY($2::text[]) AND state='live' AND (expires_at IS NULL OR expires_at>$3)`, store, keys, at)
+	if err != nil {
+		return nil, fmt.Errorf("blobs: read retained batch status: %w", sql.Unavailable(err))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, fmt.Errorf("blobs: scan retained batch status: %w", sql.Unavailable(err))
+		}
+		out[key] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("blobs: retained batch status rows: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 const lockLive = `SELECT size, sha256 FROM blob_objects
 WHERE store = $1 AND key = $2 AND state = 'live'
 AND ($3::timestamptz IS NULL OR expires_at IS NULL OR expires_at > $3) FOR UPDATE`

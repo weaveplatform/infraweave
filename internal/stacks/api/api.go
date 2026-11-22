@@ -30,10 +30,18 @@ type Stack struct {
 // AttachedPolicy is the readable policy projection of an effective attachment.
 // ID names the attachment; Policy names the independent immutable policy.
 type AttachedPolicy struct {
-	ID, Policy       kernel.ULID
-	Name, Body, Type string
-	Labels           []string
-	Autoattached     bool
+	ID, Policy        kernel.ULID
+	Name, Body, Type  string
+	Labels            []string
+	Autoattached      bool
+	EvaluationRecords []PolicyEvaluationRecord
+}
+
+// PolicyEvaluationRecord is safe policy+stack history exposed by its owner.
+type PolicyEvaluationRecord struct {
+	ID        kernel.ULID
+	Outcome   string
+	CreatedAt time.Time
 }
 
 // StackPolicies is the policies reader bound after stacks construction. The

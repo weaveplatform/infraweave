@@ -64,6 +64,10 @@ type edges struct {
 func (s Server) BindPolicies(p stacksapi.StackPolicies) { s.edges.policies = p }
 
 func policyView(p stacksapi.AttachedPolicy) api.StackPolicyAttachment {
+	records := make([]api.PolicyEvaluationRecord, 0, len(p.EvaluationRecords))
+	for _, record := range p.EvaluationRecords {
+		records = append(records, api.PolicyEvaluationRecord{Key: record.ID.String(), Outcome: record.Outcome, Timestamp: unix(record.CreatedAt.Unix())})
+	}
 	return api.StackPolicyAttachment{
 		Id:                p.ID.String(),
 		PolicyId:          p.Policy.String(),
@@ -72,7 +76,7 @@ func policyView(p stacksapi.AttachedPolicy) api.StackPolicyAttachment {
 		PolicyLabels:      orEmpty(p.Labels),
 		PolicyType:        api.PolicyType(p.Type),
 		IsAutoattached:    p.Autoattached,
-		EvaluationRecords: []api.PolicyEvaluationRecord{},
+		EvaluationRecords: records,
 	}
 }
 

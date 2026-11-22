@@ -294,6 +294,7 @@ func (s *Service) Detach(ctx context.Context, p kernel.Principal, id string) (At
 type Details struct {
 	Attachments map[kernel.ULID][]Attachment
 	Stacks      map[kernel.ULID]stacksapi.Stack
+	Evidence    EvidenceProjection
 }
 
 func (s *Service) Details(ctx context.Context, p kernel.Principal, rows ...Policy) (Details, error) {
@@ -301,6 +302,11 @@ func (s *Service) Details(ctx context.Context, p kernel.Principal, rows ...Polic
 	ids := make([]kernel.ULID, len(rows))
 	for i, row := range rows {
 		ids[i] = row.ID
+	}
+	var err error
+	out.Evidence, err = s.ProjectionEvidence(ctx, p, ids, nil, true)
+	if err != nil {
+		return out, err
 	}
 	all, err := s.deps.Store.Attachments(ctx, p.AccountID, ids, false)
 	if err != nil {
@@ -413,6 +419,24 @@ func (s *Service) AttachedPolicies(ctx context.Context, p kernel.Principal, stac
 					out[stack],
 					stacksapi.AttachedPolicy{ID: a.ID, Policy: row.ID, Name: row.Name, Body: row.Body, Type: string(row.Type), Labels: row.Labels, Autoattached: a.Autoattached},
 				)
+			}
+		}
+		if len(out[stack]) > 0 {
+			policyIDs := make([]kernel.ULID, len(out[stack]))
+			for i, policy := range out[stack] {
+				policyIDs[i] = policy.Policy
+			}
+			projection, err := s.ProjectionEvidence(ctx, p, policyIDs, &stack, false)
+			if err != nil {
+				return nil, err
+			}
+			for i := range out[stack] {
+				for _, record := range projection.Records[out[stack][i].Policy] {
+					out[stack][i].EvaluationRecords = append(
+						out[stack][i].EvaluationRecords,
+						stacksapi.PolicyEvaluationRecord{ID: record.ID, Outcome: record.Outcome, CreatedAt: record.At},
+					)
+				}
 			}
 		}
 		slices.SortFunc(out[stack], func(a, b stacksapi.AttachedPolicy) int {
