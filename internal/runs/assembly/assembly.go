@@ -121,36 +121,37 @@ type Objects interface {
 // when nil, the run settings, and LogRetention,
 // objectstore.retention.run-logs.
 type Deps struct {
-	PolicyIdentities policiesapi.PolicyIdentities
-	PolicySamples    policiesapi.SampleRetentions
-	PolicyEvaluator  policiesapi.Evaluator
-	PolicySelection  policiesapi.Selection
-	PolicyInputs     policiesapi.RunInputBuilder
-	PolicyTaskInputs policiesapi.TaskInputBuilder
-	ReviewMetadata   accessapi.ReviewMetadataReader
-	PolicyStacks     stacksapi.PolicySnapshots
-	PolicyPools      workersapi.PoolMetadataReader
-	PolicyRoles      accessapi.StackRoleReader
-	PolicySpaces     accessapi.PolicySpaceReader
-	PolicyContexts   configapi.PolicyContextReader
-	ClaimSpaces      accessapi.ClaimSpaces
-	ClaimStacks      stacksapi.ClaimTargets
-	DB               queue.DB
-	Keys             pg.Sealer
-	Objects          Objects
-	Spaces           accessapi.Spaces
-	Accounts         accessapi.Accounts
-	Authz            accessapi.Authorizer
-	Tokens           handover.Tokens
-	Stacks           stacksapi.Stacks
-	Environment      configapi.Environment
-	Catalog          vendorsapi.Catalog
-	Events           lifecycle.Events
-	Jobs             schedule.Queue
-	Now              func() time.Time
-	Settings         Settings
-	RuntimeSettings  RuntimeSettings
-	LogRetention     time.Duration
+	PolicyIdentities   policiesapi.PolicyIdentities
+	PolicySamples      policiesapi.SampleRetentions
+	PolicySampleReader policiesapi.SampleReader
+	PolicyEvaluator    policiesapi.Evaluator
+	PolicySelection    policiesapi.Selection
+	PolicyInputs       policiesapi.RunInputBuilder
+	PolicyTaskInputs   policiesapi.TaskInputBuilder
+	ReviewMetadata     accessapi.ReviewMetadataReader
+	PolicyStacks       stacksapi.PolicySnapshots
+	PolicyPools        workersapi.PoolMetadataReader
+	PolicyRoles        accessapi.StackRoleReader
+	PolicySpaces       accessapi.PolicySpaceReader
+	PolicyContexts     configapi.PolicyContextReader
+	ClaimSpaces        accessapi.ClaimSpaces
+	ClaimStacks        stacksapi.ClaimTargets
+	DB                 queue.DB
+	Keys               pg.Sealer
+	Objects            Objects
+	Spaces             accessapi.Spaces
+	Accounts           accessapi.Accounts
+	Authz              accessapi.Authorizer
+	Tokens             handover.Tokens
+	Stacks             stacksapi.Stacks
+	Environment        configapi.Environment
+	Catalog            vendorsapi.Catalog
+	Events             lifecycle.Events
+	Jobs               schedule.Queue
+	Now                func() time.Time
+	Settings           Settings
+	RuntimeSettings    RuntimeSettings
+	LogRetention       time.Duration
 }
 
 // Domain is the runs domain, constructed once per process.
@@ -197,8 +198,19 @@ func New(d Deps) *Domain {
 	})
 	views := read.New(
 		read.Deps{
-			DB: d.DB, Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz,
-			Evidence: store, Policies: d.PolicyIdentities, Samples: d.PolicySamples, Reviews: store, Approvals: store, Plans: store,
+			DB:           d.DB,
+			Store:        store,
+			Stacks:       d.Stacks,
+			Spaces:       d.Spaces,
+			Authz:        d.Authz,
+			Evidence:     store,
+			Policies:     d.PolicyIdentities,
+			Samples:      d.PolicySamples,
+			SampleReader: d.PolicySampleReader,
+			SampleOwners: store,
+			Reviews:      store,
+			Approvals:    store,
+			Plans:        store,
 		},
 	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})

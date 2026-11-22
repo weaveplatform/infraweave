@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 )
 
@@ -112,7 +113,7 @@ func TestAccSamplingTransactionBoundariesRefuseUnfencedWrites(t *testing.T) {
 	for name, call := range map[string]func(context.Context) error{
 		"create staging": func(ctx context.Context) error { return w.f.store.CreateInput(ctx, input, []byte(`{}`)) },
 		"metadata": func(ctx context.Context) error {
-			return w.f.store.RecordEvaluation(ctx, policyapi.EvaluationRequest{}, account.ULID, policyapi.Receipt{}, nil)
+			return w.f.store.RecordEvaluation(ctx, policyapi.EvaluationRequest{}, account.ULID, policyapi.Receipt{}, nil, inputs.EvaluationFacts{})
 		},
 		"upload binding": func(ctx context.Context) error { return w.f.store.AttachUploadJob(ctx, account, id, 1) },
 		"start upload":   func(ctx context.Context) error { return w.f.store.StartUpload(ctx, account, id) },
@@ -150,7 +151,7 @@ func TestAccSamplingTransactionBoundariesRefuseUnfencedWrites(t *testing.T) {
 		"finish input":    func(ctx context.Context) error { return w.f.store.FinishInput(ctx, account, id, "failed", w.f.now) },
 		"bind upload":     func(ctx context.Context) error { return w.f.store.AttachUploadJob(ctx, account, id, 1) },
 		"metadata": func(ctx context.Context) error {
-			return w.f.store.RecordEvaluation(ctx, policyapi.EvaluationRequest{}, id, policyapi.Receipt{}, nil)
+			return w.f.store.RecordEvaluation(ctx, policyapi.EvaluationRequest{}, id, policyapi.Receipt{}, nil, inputs.EvaluationFacts{})
 		},
 		"due inputs":      func(ctx context.Context) error { _, err := w.f.store.DueInputs(ctx, w.f.now, 10); return err },
 		"retirement due":  func(ctx context.Context) error { _, err := w.f.store.RetirementDue(ctx, input, w.f.now); return err },

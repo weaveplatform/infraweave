@@ -267,14 +267,8 @@
       "plugins"
     ],
     "Policies": [
-      "policyEvaluationSample",
-      "policyInputCapture",
-      "policyInputCaptures",
       "policyIntentProjectAttach",
-      "policyIntentProjectDetach",
-      "policySearchEvaluationRecordSuggestions",
-      "policySearchEvaluationRecords"
-
+      "policyIntentProjectDetach"
     ],
     "Repos": [
       "repo",
@@ -300,7 +294,6 @@
       "runExternalDependencyMarkAsCompleted",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
-      "runPolicyReceiptSample",
       "runResourceCreate",
       "runSearchEntityChanges",
       "runSearchEntityChangesSuggestions",

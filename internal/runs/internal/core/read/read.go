@@ -116,17 +116,19 @@ type Store interface {
 
 // Deps are what the reads read through.
 type Deps struct {
-	DB        tx.Beginner
-	Store     Store
-	Stacks    stacksapi.Stacks
-	Spaces    accessapi.Spaces
-	Authz     accessapi.Authorizer
-	Evidence  evidence.Store
-	Policies  policiesapi.PolicyIdentities
-	Samples   policiesapi.SampleRetentions
-	Reviews   review.Store
-	Approvals evidence.ApprovalStore
-	Plans     evidence.PlanStore
+	DB           tx.Beginner
+	Store        Store
+	Stacks       stacksapi.Stacks
+	Spaces       accessapi.Spaces
+	Authz        accessapi.Authorizer
+	Evidence     evidence.Store
+	Policies     policiesapi.PolicyIdentities
+	Samples      policiesapi.SampleRetentions
+	SampleReader policiesapi.SampleReader
+	SampleOwners SampleOwners
+	Reviews      review.Store
+	Approvals    evidence.ApprovalStore
+	Plans        evidence.PlanStore
 }
 
 // Service reads runs as the API answers them.

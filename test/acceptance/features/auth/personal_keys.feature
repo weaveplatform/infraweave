@@ -1,4 +1,4 @@
-@postgres
+@identity @postgres
 Feature: Personal API keys
   A personal API key is a member's own in one account. Its
   token acts as the owner in the key's account, with the owner's login and

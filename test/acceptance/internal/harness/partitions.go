@@ -13,7 +13,7 @@ import (
 // ref: decision 0016
 type Partition struct {
 	Name string
-	// Tags are the dependency tags whose scenarios run in the partition.
+	// Tags select the partition; dependency tags also provision its services.
 	Tags []string
 }
 
@@ -64,6 +64,7 @@ var Partitions = []Partition{
 			"@ai",
 		},
 	},
+	{Name: "identity", Tags: []string{"@identity"}},
 	{Name: "core", Tags: []string{"@postgres", "@objectstore", "@oidc", "@vault"}},
 }
 
@@ -79,7 +80,7 @@ var Partitions = []Partition{
 var exemptPrefixes = []string{"@op:", "@case:", "@provider:", "@lab:"}
 
 var exemptTags = []string{
-	"@policy-phase", "@policy-sampling", "@policy-initialization", "@policy-login-oauth", "@policy-login-review", "@policy-login-failures",
+	"@policy-phase", "@policy-sampling", "@policy-evidence", "@policy-initialization", "@policy-login-oauth", "@policy-login-review", "@policy-login-failures",
 	"@policy-projection-denial",
 	"@policy-approval-worker", "@policy-plan-worker", "@policy-trigger-worker",
 	"@quarantine", "@runtime-config-reject", "@webhook-controls", "@plan-sanitization",

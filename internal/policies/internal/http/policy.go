@@ -204,6 +204,14 @@ func policyView(row core.Policy, names map[kernel.ULID]string) api.Policy {
 func unix(value int64) int32 { return int32(value) } //nolint:gosec // the served schema is int32 Unix seconds
 
 func policyError(err error) error {
+	if denied, ok := errors.AsType[*policyapi.SampleDenied](err); ok {
+		p := problem.Forbidden.New("Reading raw policy evidence needs administration in the root space.")
+		p.Action = denied.Action
+		return &problem.Error{Problem: p}
+	}
+	if errors.Is(err, policyapi.ErrSampleMissing) {
+		return problem.NotFound.Error("No retained policy evidence is available.") //nolint:wrapcheck // public HTTP problem
+	}
 	var denied *core.Denied
 	if errors.As(err, &denied) {
 		p := problem.Forbidden.New(fmt.Sprintf("You may not perform %s here.", denied.Action))

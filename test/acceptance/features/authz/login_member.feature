@@ -1,4 +1,4 @@
-@postgres @policy-login @policy-login-member
+@identity @postgres @policy-login @policy-login-member
 Feature: Authenticated identities enter only accounts whose LOGIN policies admit them
   The identity-session harness supplies original upstream facts. Account entry,
   account lists, policy execution and issued CLI tokens use real services.

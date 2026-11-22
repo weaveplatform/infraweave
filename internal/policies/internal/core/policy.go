@@ -88,6 +88,7 @@ type Deps struct {
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
 	Sampling     *sampling.Service
+	Evidence     EvidenceStore
 	Catalogue    CatalogueStore
 }
 

@@ -79,6 +79,7 @@ func newSampleWorld(t *testing.T) *sampleWorld {
 			Queue:    q,
 			Now:      func() time.Time { return f.now },
 			Sampling: samples,
+			Evidence: f.store,
 		},
 	)
 	return &sampleWorld{f: f, samples: samples, objects: objects, raw: raw, keys: keys, q: q, root: c.FS.Root}

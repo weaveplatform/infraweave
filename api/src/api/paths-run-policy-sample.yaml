@@ -1,0 +1,55 @@
+components: {}
+paths:
+    /runs/{runId}/policy-receipt-sample:
+        get:
+            description: A retained sample belonging to a receipt of the account-owned run. Root-space administration is required after run and receipt ownership checks. Expired or unavailable samples return not-found.
+            operationId: runPolicyReceiptSample
+            parameters:
+                - description: Selects the parent object.
+                  in: path
+                  name: runId
+                  required: true
+                  schema:
+                    type: string
+                - in: query
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+                  x-graphql-arg: id
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PolicyEvaluationSample'
+                    description: The policyReceiptSample result.
+                    headers:
+                        X-RateLimit-Limit:
+                            $ref: '#/components/headers/RateLimitLimit'
+                        X-RateLimit-Remaining:
+                            $ref: '#/components/headers/RateLimitRemaining'
+                        X-RateLimit-Reset:
+                            $ref: '#/components/headers/RateLimitReset'
+                "404":
+                    $ref: '#/components/responses/NotFound'
+                "429":
+                    $ref: '#/components/responses/TooManyRequests'
+                "503":
+                    $ref: '#/components/responses/ApiDisabled'
+                default:
+                    $ref: '#/components/responses/Problem'
+            summary: Run policy receipt sample
+            tags:
+                - Runs
+            x-graphql:
+                field: policyReceiptSample
+                operation: query
+                type: Run
+            x-infraweave-action: SPACE_READ
+            x-infraweave-feature: policies
+            x-infraweave-cost: expensive
+            x-infraweave-divergence:
+                - rate-limit
+            x-infraweave-subject: path:runId:run
+            x-rest-style: field

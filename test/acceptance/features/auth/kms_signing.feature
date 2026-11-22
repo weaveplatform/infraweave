@@ -1,4 +1,4 @@
-@postgres @vault
+@identity @postgres @vault
 Feature: Tokens signed through a KMS
   With auth.signing.backend kms, the api-token signing keys live in a
   KMS the operator names in auth.signing.kms_keys, and infraweave signs

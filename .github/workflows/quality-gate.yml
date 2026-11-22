@@ -64,6 +64,28 @@ jobs:
         shell: bash
         run: make test
 
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-unit-${{ matrix.os }}
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
+
       - name: Upload unit coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -73,7 +95,7 @@ jobs:
           retention-days: 7
 
   # A scenario runs in the first of terraform-plans, terraform-vcs, terraform, runs,
-  # integrations and core that lists one of its tags; TestUnitFeaturePartitions
+  # integrations, identity and core that lists one of its tags; TestUnitFeaturePartitions
   # fails a tag no partition lists. A partition near its timeout splits by
   # tag into two jobs; scenarios are never dropped to fit.
   # ref: decision 0016
@@ -84,6 +106,8 @@ jobs:
       matrix:
         include:
           - partition: core
+            timeout: 20
+          - partition: identity
             timeout: 20
           - partition: terraform
             timeout: 30
@@ -147,11 +171,98 @@ jobs:
 
       # cover/accept also holds the partition's cucumber.json, which the
       # parity job reads.
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-accept-${{ matrix.partition }}
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
+
       - name: Upload acceptance coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cover-accept-${{ matrix.partition }}
           path: cover/accept
+          include-hidden-files: true
+          retention-days: 7
+
+  native:
+    name: accept-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Native acceptance and capture replays
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          INFRAWEAVE_ACCEPT_PROGRESS: '1'
+        run: make accept-native
+
+      - name: Upload failed native evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accept-evidence-native
+          path: test/acceptance/out
+          retention-days: 7
+
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-native
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
+
+      - name: Upload native coverage and capture reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cover-native
+          path: cover/native
           include-hidden-files: true
           retention-days: 7
 
@@ -306,6 +417,28 @@ jobs:
           path: test/acceptance/out
           retention-days: 7
 
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-fips
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
+
       - name: Report the mode
         run: |
           # Acceptance executes the current application and verifies its
@@ -333,7 +466,11 @@ jobs:
   # stops a merge.
   # ref: decisions 0005 and 0016
   postgres-next:
-    name: postgres-next
+    name: 'postgres-next (${{ matrix.partition }})'
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [core, identity, native]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -352,14 +489,41 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      # make accept runs every TestAcc of the module, so the core partition
-      # also runs the sqltest suites under internal/.
-      - name: accept-core and the sqltest suites on the next major
+      # Preserve both feature cohorts and every native SQL contract.
+      - name: Acceptance on the next major
         id: accept
         env:
           INFRAWEAVE_POSTGRES: next
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
-        run: make accept PARTITION=core
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          if [ "$PARTITION" = native ]; then
+            make accept-native
+          else
+            make accept PARTITION="$PARTITION"
+          fi
+
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-postgres-next-${{ matrix.partition }}
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
 
       - name: Report the PostgreSQL version
         if: always()
@@ -561,7 +725,7 @@ jobs:
 
   coverage:
     name: 'Coverage gate (≥95% total, ≥90% per package)'
-    needs: [unit, accept, lab-batch]
+    needs: [unit, accept, native, lab-batch]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -689,7 +853,7 @@ jobs:
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, lab-batch, fips-only, parity, reference, generated, lint, vuln, build, coverage, changes, images]
+    needs: [unit, accept, native, lab-batch, fips-only, postgres-next, parity, reference, generated, lint, vuln, build, coverage, changes, images]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed

@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [core, terraform-plans, terraform-vcs, terraform, runs, integrations]
+        partition: [core, identity, terraform-plans, terraform-vcs, terraform, runs, integrations]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -108,6 +108,72 @@ jobs:
           name: nightly-evidence-${{ matrix.partition }}
           path: test/acceptance/out
           retention-days: 14
+
+  native:
+    name: nightly accept-native
+    if: ${{ !inputs.stress && github.event.schedule != '17 5 * * 6' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Native acceptance and capture replays
+        env:
+          INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
+          INFRAWEAVE_ACCEPT_PROGRESS: '1'
+        run: make accept-native
+
+      - name: Upload failed native evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-evidence-native
+          path: test/acceptance/out
+          retention-days: 7
+
+      - name: Record tested revision
+        if: always()
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          jq -n --arg head "$PR_HEAD" --arg base "$PR_BASE" \
+            --arg checkout "$(git rev-parse HEAD)" --arg tree "$(git rev-parse 'HEAD^{tree}')" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{head:$head,base:$base,checkout:$checkout,tree:$tree,run:$run,attempt:$attempt}' \
+            > "$RUNNER_TEMP/validation/revision.json"
+
+      - name: Upload tested revision
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validation-native
+          path: ${{ runner.temp }}/validation/revision.json
+          retention-days: 7
+
+      - name: Upload native coverage and capture reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-native
+          path: cover/native
+          include-hidden-files: true
+          retention-days: 7
 
   stress:
     name: 'stress accept-${{ matrix.partition }}'
@@ -177,7 +243,7 @@ jobs:
   # a person closes it.
   report:
     name: 'Report a failed nightly'
-    needs: [accept, stress]
+    needs: [accept, native, stress]
     if: ${{ failure() }}
     runs-on: ubuntu-latest
     permissions:

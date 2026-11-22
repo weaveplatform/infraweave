@@ -95,6 +95,7 @@ func New(d Deps) *Domain {
 			Now:          d.Now,
 			LoginChanges: d.LoginChanges,
 			Sampling:     samples,
+			Evidence:     store,
 			Catalogue:    store,
 		},
 	)
@@ -197,6 +198,12 @@ const AttachmentEntity = "policy_attachment"
 // AttachmentSpaceOf resolves the owning stack's space for attachment mutations.
 func (d *Domain) AttachmentSpaceOf() accessapi.SpaceOf { return d.svc.AttachmentSpaceOf }
 
+// CaptureEntity resolves input handles without treating them as policy IDs.
+const CaptureEntity = "policy_input_capture"
+
+// CaptureSpaceOf resolves account-owned input capture subjects for shared auth.
+func (d *Domain) CaptureSpaceOf() accessapi.SpaceOf { return d.svc.CaptureSpaceOf }
+
 // StackPolicies is the readable projection port bound by app after construction.
 func (d *Domain) StackPolicies() stacksapi.StackPolicies { return d.svc }
 
@@ -230,6 +237,9 @@ func (d *Domain) SampleRetentions() policyapi.SampleRetentions {
 	}
 	return d.samples
 }
+
+// SampleReader authorizes raw policy evidence for the runs-owned receipt link.
+func (d *Domain) SampleReader() policyapi.SampleReader { return d.svc }
 
 // Cron removes retained private evidence even when the policy feature is disabled.
 func (d *Domain) Cron() []cron.Task {
