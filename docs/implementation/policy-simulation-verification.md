@@ -58,6 +58,13 @@ explicitly refused by the served enum, consistent with ADR 0009. C192 now has
 an executable `policy-simulation` capture replay instead of a ticket deferral;
 its focused real REST replay passes independently.
 
+The combined capture pass also starts with C192 before C291, C46, C48 and
+C51. C192 must register the common workflow steps when it initializes the
+shared replay suite. Without them, the later captures cannot check their
+restored inventories. The same real-service sequence fails before the fix and
+passes **7 scenarios / 305 steps** afterward with certified FIPS, including
+all rejection, reset and inventory cleanup checks.
+
 Before/after tests compare policy/evaluation/capture/quota/receipt/flag rows,
 run state/review/gate rows and actual S3 object inventories. An additional case
 first creates a real sampled TASK denial, waits for its sample and sanitized
