@@ -108,14 +108,13 @@ build:
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 # Feature partitions run Gherkin alone; accept-native runs captures and the
-# TestAcc suites beside the code. With no PARTITION, every
-# scenario runs but vcs-lab's, which need the scheduled job's labs.
-# Every partition at once, as fips-only runs it, takes about go test's
-# default ten minutes, so it gets 30m: under fips-only's 45-minute job, so
-# a hang still ends in a goroutine dump rather than the job's kill. One
-# partition keeps the default, under its own job's timeout.
+# TestAcc suites beside the code. With no PARTITION, ordinary scenarios run;
+# Terraform-provisioned labs require their explicit batches.
+# Explicit partitions and native acceptance have independent ten-minute
+# package deadlines in CI, including certified FIPS. The unpartitioned local
+# convenience command retains its thirty-minute aggregate deadline.
 # ref: decision 0016
-ACCEPT_FEATURES_ONLY = $(filter core identity terraform-plans terraform-vcs terraform runs integrations vcs-lab,$(PARTITION))
+ACCEPT_FEATURES_ONLY = $(strip $(PARTITION))
 ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept

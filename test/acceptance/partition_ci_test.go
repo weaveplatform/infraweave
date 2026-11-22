@@ -16,24 +16,42 @@ type partitionWorkflow struct {
 }
 
 type partitionJob struct {
+	Name     string   `yaml:"name"`
+	If       string   `yaml:"if"`
 	Needs    []string `yaml:"needs"`
 	Strategy struct {
-		Matrix struct {
-			Partition []string `yaml:"partition"`
-			Include   []struct {
-				Partition string `yaml:"partition"`
-				Timeout   int    `yaml:"timeout"`
-			} `yaml:"include"`
-		} `yaml:"matrix"`
+		FailFast bool            `yaml:"fail-fast"` //nolint:tagliatelle // GitHub Actions field
+		Matrix   partitionMatrix `yaml:"matrix"`
 	} `yaml:"strategy"`
 	Steps []partitionStep `yaml:"steps"`
 }
 
+type partitionMatrix struct {
+	Partition []string `yaml:"partition"`
+	Include   []struct {
+		Partition string `yaml:"partition"`
+		Timeout   int    `yaml:"timeout"`
+	} `yaml:"include"`
+	Expression string
+}
+
+func (m *partitionMatrix) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		return node.Decode(&m.Expression) //nolint:wrapcheck // YAML decoder preserves the workflow location
+	}
+	type literal partitionMatrix
+	return node.Decode((*literal)(m)) //nolint:wrapcheck // YAML decoder preserves the workflow location
+}
+
 type partitionStep struct {
-	Shell string            `yaml:"shell"`
-	Run   string            `yaml:"run"`
-	With  map[string]string `yaml:"with"`
-	Env   map[string]string `yaml:"env"`
+	ID              string            `yaml:"id"`
+	If              string            `yaml:"if"`
+	ContinueOnError bool              `yaml:"continue-on-error"` //nolint:tagliatelle // GitHub Actions field
+	Uses            string            `yaml:"uses"`
+	Shell           string            `yaml:"shell"`
+	Run             string            `yaml:"run"`
+	With            map[string]string `yaml:"with"`
+	Env             map[string]string `yaml:"env"`
 }
 
 func partitionWorkflowAt(t *testing.T, name string) partitionWorkflow {
@@ -99,15 +117,6 @@ func TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload(t *testing.T) {
 		if !found {
 			t.Errorf("%s does not collect every partition artifact via %s=%q", artifact.job, artifact.key, artifact.value)
 		}
-	}
-	fipsAll := false
-	for _, step := range quality.Jobs["fips-only"].Steps {
-		lines := strings.Split(strings.TrimSpace(step.Run), "\n")
-		fipsAll = fipsAll || lines[len(lines)-1] == "make accept FIPS=1" &&
-			step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1"
-	}
-	if !fipsAll {
-		t.Error("FIPS job does not run the complete acceptance workload")
 	}
 	for name, workflow := range map[string]partitionWorkflow{"required": quality, "nightly": nightly} {
 		found := slices.ContainsFunc(workflow.Jobs["accept"].Steps, func(step partitionStep) bool {
@@ -186,10 +195,11 @@ func TestUnitNextPostgresPreservesNativeAndIdentityCoverage(t *testing.T) {
 
 func TestUnitCIRecordsActualTestedRevision(t *testing.T) {
 	workflow := partitionWorkflowAt(t, "quality-gate.yml")
-	for _, name := range []string{"unit", "accept", "native", "fips-only", "postgres-next"} {
+	for _, name := range []string{"unit", "accept", "native", "fips-unit", "fips-tests", "postgres-next"} {
 		job := workflow.Jobs[name]
 		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
-			return step.Shell == "bash" && strings.Contains(step.Run, "git rev-parse HEAD") && strings.Contains(step.Run, "HEAD^{tree}") &&
+			return step.Shell == "bash" && (strings.Contains(step.Run, "git rev-parse HEAD") && strings.Contains(step.Run, "HEAD^{tree}") ||
+				strings.Contains(step.Run, "python3 .github/fips_gate.py record")) &&
 				step.Env["PR_HEAD"] != "" && step.Env["PR_BASE"] != ""
 		}) {
 			t.Errorf("%s omits Bash-safe source head, base or actual tested checkout/tree provenance", name)
@@ -198,6 +208,62 @@ func TestUnitCIRecordsActualTestedRevision(t *testing.T) {
 			return strings.HasPrefix(step.With["name"], "validation-") && strings.HasSuffix(step.With["path"], "/validation/revision.json")
 		}) {
 			t.Errorf("%s does not retain tested-revision provenance", name)
+		}
+	}
+}
+
+func TestUnitCIFIPSUsesCatalogueCompleteSelectorsAndFailClosedAggregate(t *testing.T) {
+	workflow := partitionWorkflowAt(t, "quality-gate.yml")
+	unit, suites, aggregate := workflow.Jobs["fips-unit"], workflow.Jobs["fips-tests"], workflow.Jobs["fips-only"]
+	if !slices.ContainsFunc(unit.Steps, func(step partitionStep) bool {
+		return step.ID == "matrix" && strings.Contains(step.Run, "go run ./test/acceptance/cmd/fips-matrix") &&
+			step.Env["GOFIPS140"] == "certified" && step.Env["GODEBUG"] == "fips140=only"
+	}) || !slices.ContainsFunc(unit.Steps, func(step partitionStep) bool { return strings.Contains(step.Run, "make test FIPS=1") }) {
+		t.Error("FIPS unit suite or catalogue producer is missing")
+	}
+	if suites.Strategy.Matrix.Expression != "${{ fromJSON(needs.fips-unit.outputs.matrix) }}" || suites.Strategy.FailFast {
+		t.Error("FIPS matrix must execute every catalogue job without cancelling siblings")
+	}
+	samePartitions(t, "FIPS matrix prerequisites", suites.Needs, []string{"fips-unit"})
+	if !slices.ContainsFunc(suites.Steps, func(step partitionStep) bool {
+		return step.ID == "suite" && strings.Contains(step.Run, "make accept-native FIPS=1") &&
+			strings.Contains(step.Run, `make accept FIPS=1 PARTITION="$PARTITION"`) &&
+			step.Env["PARTITION"] == "${{ matrix.partition }}" && step.Env["SHARD"] == "${{ matrix.shard }}" &&
+			step.Env["INFRAWEAVE_ACCEPT_REQUIRE_DOCKER"] == "1" && step.Env["INFRAWEAVE_ACCEPT_PROGRESS"] == "1" &&
+			strings.Contains(step.Run, "accept_progress.py")
+	}) {
+		t.Error("FIPS matrix omits native/capture or explicit feature selectors, Docker refusal or progress")
+	}
+	if aggregate.Name != "fips-only" || aggregate.If != "always()" {
+		t.Error("FIPS aggregate must preserve its required name and run after failures/skips")
+	}
+	samePartitions(t, "FIPS aggregate dependencies", aggregate.Needs, []string{"fips-unit", "fips-tests"})
+	if !slices.Contains(workflow.Jobs["gate"].Needs, "fips-only") || !slices.ContainsFunc(aggregate.Steps, func(step partitionStep) bool {
+		return strings.Contains(step.Run, "fips_gate.py check") && step.Shell == "bash" &&
+			step.Env["FIPS_CHILDREN"] == "${{ toJSON(needs) }}" && step.Env["FIPS_MATRIX"] == "${{ needs.fips-unit.outputs.matrix }}"
+	}) {
+		t.Error("Required FIPS gate does not validate child outcomes and complete receipt membership")
+	}
+	for name, job := range map[string]partitionJob{"fips-unit": unit, "fips-tests": suites} {
+		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
+			return step.ID == "suite" && step.If == "" && !step.ContinueOnError
+		}) {
+			t.Errorf("%s can skip or ignore its required suite", name)
+		}
+		if !slices.ContainsFunc(job.Steps, func(step partitionStep) bool {
+			return step.If == "always()" && step.With["if-no-files-found"] == "error" &&
+				strings.HasPrefix(step.With["name"], "fips-result-") && strings.Contains(step.With["name"], "github.run_attempt")
+		}) {
+			t.Errorf("%s can omit its unique bounded execution receipt", name)
+		}
+	}
+	raw, err := os.ReadFile("../../Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, selector := range []string{"ACCEPT_FEATURES_ONLY = $(strip $(PARTITION))", "^TestAccFeatures$$,^TestAcc", "./test/acceptance,./...", "ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)"} {
+		if !strings.Contains(string(raw), selector) {
+			t.Errorf("feature partitions can omit a newly registered catalogue entry or share an unbounded budget: missing %s", selector)
 		}
 	}
 }
