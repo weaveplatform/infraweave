@@ -347,8 +347,34 @@ type OwnPostgres struct {
 // OwnPostgres starts a container of the scenario's own and migrates its
 // default database. The scenario terminates it. Its host port is fixed
 // rather than Docker's choice, so a Stop and Start keep the DSN a running
-// server holds.
+// server holds. freePort releases the port before Docker binds it, so
+// another container or listener can take it in between; that start is
+// retried on a fresh port, and every other failure is returned at once.
 func (d *Dependencies) OwnPostgres(ctx context.Context) (*OwnPostgres, error) {
+	for attempt := 1; ; attempt++ {
+		p, err := d.ownPostgres(ctx)
+		if err == nil || !portTaken(err) || attempt == ownPostgresAttempts {
+			return p, err
+		}
+	}
+}
+
+// ownPostgresAttempts bounds OwnPostgres's starts. A port lost to a
+// neighbour is rare, so a scenario that still fails after this many is
+// failing for another reason.
+const ownPostgresAttempts = 5
+
+// portTaken reports whether err is Docker refusing to publish a container
+// port because its host port is already bound. Docker returns the reason
+// only as text.
+func portTaken(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "address already in use") ||
+		strings.Contains(msg, "port is already allocated")
+}
+
+// ownPostgres is one start of OwnPostgres on a port freePort chooses.
+func (d *Dependencies) ownPostgres(ctx context.Context) (*OwnPostgres, error) {
 	port, err := freePort(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("@postgres: %w", err)
