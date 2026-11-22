@@ -74,7 +74,7 @@ Feature: Policy page projections compose served public operations
     Then it answers a 404 problem "not-found"
 
 
-  @op:policy @op:policyUpdatev2 @op:policyDelete @case:success @case:failure
+  @op:policy @op:policyUpdatev2Patch @op:policyDelete @case:success @case:failure
   Scenario: Current projections follow automatic labels and space moves without exposing hidden targets
     Given token "h" sends "PATCH /api/v1/spaces/legacy" with '{"inheritEntities":true}' through A
     And it answers 200
