@@ -60,6 +60,7 @@ type Input struct {
 
 // Store owns evaluation metadata and the atomic account/hour quota.
 type Store interface {
+	CountableInputs(context.Context, kernel.AccountID, []kernel.ULID, []kernel.ULID, *kernel.ULID, time.Time, int) ([]CountableInput, error)
 	AttachUploadJob(context.Context, kernel.AccountID, kernel.ULID, int64) error
 	InspectInput(context.Context, kernel.AccountID, kernel.ULID, bool) (Input, error)
 	DueInputs(context.Context, time.Time, int) ([]Input, error)
@@ -83,6 +84,7 @@ type Store interface {
 
 // Objects is the blob owner's sealed immutable-write and transactional lifecycle.
 type Objects interface {
+	AvailableBatch(context.Context, objectstore.Name, []string, time.Time) (map[string]bool, error)
 	Available(context.Context, objectstore.Name, string, time.Time) (bool, error)
 	Put(context.Context, objectstore.Name, string, io.Reader, int64) (objectstore.Object, error)
 	CommitUntil(context.Context, objectstore.Name, string, time.Time) error
@@ -116,4 +118,10 @@ func New(d Deps) *Service {
 type CaptureSlot struct {
 	At               time.Time
 	Current, Pending *kernel.ULID
+}
+
+// CountableInput is an owned live sample candidate, without source or input.
+type CountableInput struct {
+	ID, Policy kernel.ULID
+	Key        string
 }

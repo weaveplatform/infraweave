@@ -161,16 +161,17 @@ func newFixture(t *testing.T) *fixture {
 func (f *fixture) service(events core.Events) *core.Service {
 	return core.New(
 		core.Deps{
-			Store:   f.store,
-			DB:      f.db,
-			Spaces:  f.spaces,
-			Authz:   f.authz,
-			Runtime: f.runtime,
-			Events:  events,
-			Stacks:  f.stacks,
-			Targets: f.stacks,
-			Queue:   queue.New(f.db),
-			Now:     func() time.Time { return f.now },
+			Store:    f.store,
+			Evidence: f.store,
+			DB:       f.db,
+			Spaces:   f.spaces,
+			Authz:    f.authz,
+			Runtime:  f.runtime,
+			Events:   events,
+			Stacks:   f.stacks,
+			Targets:  f.stacks,
+			Queue:    queue.New(f.db),
+			Now:      func() time.Time { return f.now },
 		},
 	)
 }

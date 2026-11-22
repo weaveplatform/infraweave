@@ -156,6 +156,10 @@ func (s Server) StackPolicyAttachment(ctx context.Context, req api.StackPolicyAt
 	if err != nil {
 		return nil, policyError(err)
 	}
+	projection, err := s.svc.ProjectionEvidence(ctx, p, []kernel.ULID{row.ID}, &a.Stack, false)
+	if err != nil {
+		return nil, policyError(err)
+	}
 	return api.StackPolicyAttachment200JSONResponse{
 		Body: api.StackPolicyAttachment{
 			Id:                a.ID.String(),
@@ -165,7 +169,7 @@ func (s Server) StackPolicyAttachment(ctx context.Context, req api.StackPolicyAt
 			PolicyLabels:      row.Labels,
 			PolicyType:        api.PolicyType(row.Type),
 			IsAutoattached:    a.Autoattached,
-			EvaluationRecords: []api.PolicyEvaluationRecord{},
+			EvaluationRecords: evaluationRecordViews(projection.Records[row.ID]),
 		},
 	}, nil
 }
@@ -197,6 +201,12 @@ func (s Server) views(ctx context.Context, p kernel.Principal, rows ...core.Poli
 	}
 	for _, row := range rows {
 		view := policyView(row, names)
+		count := details.Evidence.SampleCounts[row.ID]
+		if count < 0 || count > math.MaxInt32 {
+			return nil, fmt.Errorf("policies: sample count exceeds API range: %w", kernel.ErrUnavailable)
+		}
+		view.SampleCount = int32(count)
+		view.EvaluationRecords = evaluationRecordViews(details.Evidence.Records[row.ID])
 		for _, a := range details.Attachments[row.ID] {
 			view.AttachedStacks = append(view.AttachedStacks, attachmentView(a, details.Stacks[a.Stack], names))
 		}
@@ -204,4 +214,12 @@ func (s Server) views(ctx context.Context, p kernel.Principal, rows ...core.Poli
 		out = append(out, view)
 	}
 	return out, nil
+}
+
+func evaluationRecordViews(rows []core.EvaluationRecord) []api.PolicyEvaluationRecord {
+	out := make([]api.PolicyEvaluationRecord, 0, len(rows))
+	for _, record := range rows {
+		out = append(out, api.PolicyEvaluationRecord{Key: record.ID.String(), Outcome: record.Outcome, Timestamp: unix(record.At.Unix())})
+	}
+	return out
 }
