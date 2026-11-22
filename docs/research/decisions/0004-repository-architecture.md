@@ -234,6 +234,7 @@ with these cobra subcommands:
 | `serve` | Each domain's routes: the served REST API, webhooks, the state backend, the registry protocols, the worker long-poll endpoints, the VCS agent long-poll endpoints (decision 0012) and the Flows agent WebSocket gateway (decision 0018); readiness on its own port. It consumes no queue except the `flows.agent_task` jobs of the Flows agents connected to it (decision 0018) | server, and the VCS and Flows gateways |
 | `scheduler` | Each domain's queue consumers and outbox subscriptions, and the cron ticker, which every replica runs: due rows are claimed with `FOR UPDATE SKIP LOCKED`, so no leader is elected (decision 0011) | drain, with the scheduler folded in |
 | `launcher` | The launcher for a worker pool, from `internal/agent` only; it never calls `internal/app` | launcher |
+| `worker-controller` | Kubernetes pool/worker/Pod controller from `internal/agent` only, on the worker protocol; planned by P14 | worker-controller |
 | `all` | `serve` and `scheduler` in one process, for single-node installs and acceptance tests | none |
 | `runner` (hidden) | The runner, which executes a run's phases inside the run container, from the same static binary the launcher mounts | worker binary |
 | `vcs-agent` | The VCS agent for a VCS agent pool; it long-polls `serve` (decision 0012) | VCS agent |

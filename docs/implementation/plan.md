@@ -2433,66 +2433,82 @@ Decisions: [0008](../research/decisions/0008-run-execution-and-worker-protocol.m
 
 **Depends on:** P13.
 
-The optional operator-run public worker pool, Kubernetes workers on the same
-protocol, and the worker-side initialization policy that signed runs rest
-on. Spacelift's console shows the public worker pool as a ceiling of
-workers with its busy workers and queue, a pool's queue and users, and
-default runner images per pool kind; it has no Kubernetes surface, so the controller is an
-ordinary pool's client holding an API key with the Worker pool controller
-role ([32](../research/reference/32-spacelift-console-survey.md) section 4).
+The optional operator-run public worker pool, managed Kubernetes workers and
+signed-run admission retain the scope below. The complete [worker pool contract](worker-pool-contracts.md) and
+[requirement/ownership matrix](worker-pool-contracts.json) specify every P14
+behavior and the worker-hosting extension. [Reference observations](worker-pool-reference-observations.md)
+contain nine actual read-only exchanges; they prove neither private execution
+nor managed-cloud execution. The six named capture questions remain open.
+The architecture contract does not mark the downstream runtime delivered.
 
 **Tasks**
-1. The public worker pool in `internal/workers`, on when
-   `publicWorkerPool.enabled` is set (decision 0020's chart value): an
-   installation-level pool token from the operator API, the
-   `public-worker-slots` limit, pooled across the organization's accounts
-   and applied in the claim so a run beyond it waits, the image registry
-   allowlist, no priorities and no scheduled or drift runs. Records DV-078.
-   `publicWorkerPool` answers the organization's slots as the pool's
-   ceiling, with its busy workers and schedulable runs from the claim.
-   Operations: `publicWorkerPool`, `workerUsage`,
-   `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` (the
-   addresses the operator configures for the public worker pool's egress),
-   `workerPoolSearchUsers`, `workerPoolSearchUsersSuggestions`, and
-   `workerPoolSearchSchedulableRuns` and
-   `workerPoolSearchSchedulableRunsSuggestions` with the filters commit,
-   drift detection, prioritized, stack name, state and type, which `runs`'
-   partial serves, since `workers` imports no `runs` package. The served
-   spec already routes these to the generated stub, which answers `501`
-   until this phase. Feature: `workers/public_pool.feature`.
-2. `internal/agent/executor/kubernetes`: a controller that watches
-   `WorkerPool` and `Worker` resources, registers each pool's workers over
-   the worker protocol with the pool's credentials, creates a pod per run
-   from the run's image with the launcher's mounts, and reports the pod's
-   end as the container's. Its API key holds the `worker-pool-controller`
-   system role (decision 0007) and nothing more. The controller ships in
-   `deploy/helm/infraweave-workers` with its CRDs. Feature:
-   `workers/kubernetes.feature` (`@kubernetes`, k3s pinned by digest),
-   where C21 and C67 are awaited.
-3. `internal/agent/initpolicy`: the worker-side initialization policy
-   (`launcher.initialization_policy`) compiled at start over
-   `internal/platform/rego`, with the `exec` built-in in a short-lived
-   container of the run's image; a `deny` fails the run from `PREPARING`.
-   Signed runs: the run token's JWT is in the policy's input, so a policy
-   can admit only runs the server signed. Features: `runs/signed.feature`
-   and `policy/worker_initialization.feature`, where C68 is awaited.
-4. `availableAt` on workers for autoscalers, and the pool's workers, busy
-   workers and queue length on `workerPools`, which the console's pool list
-   shows.
-5. `@case:success`, `@case:denial` and `@case:failure` scenarios for every
-   operation of task 1; the run environment's `ro_` and `wo_` prefixes and
-   mounts follow the plan and apply split (C66), and worker traces and
-   metrics name the vendors that produce them (C69).
+1. Optional installation public worker pool with operator-only CSR/token lifecycle,
+   stable ULID and the existing `/worker/v1` protocol. Runs fences organization
+   `public-worker-slots` and lower account limits transactionally; excess waits.
+   `publicWorkerPool.parallelism` is the account's effective nullable int64
+   quota, null when unbounded, independently of physical worker capacity.
+   Preserve public no-priority/no-scheduled/no-drift and final-image allowlist.
+   Records DV-078. Workers owns pool/usage/default-image/configured-egress
+   projections; runs owns visible queue/user search and suggestions. Explicit
+   public selector read paths permit Free; private paths keep Business controls.
+   Add the missing `defaultPublicWorkerPoolRunnerImage` and `outgoingIPAddresses`
+   REST reads: the old claim that every operation already had a stub was false.
+   Every served operation gets normal API/SDK success, 403 denial and failure,
+   with operator/protocol credential classification. Feature:
+   `workers/public_pool.feature`.
+2. Agent-only `infraweave worker-controller` watches strict namespaced WorkerPool
+   and Worker resources, owns deterministic slots/Pods with durable management
+   identity, Lease leadership, resourceVersion fencing and finalizers. The
+   `worker-pool-controller` role retains only SPACE_READ and pool create/update/
+   delete; key reset is separately authorized. Preserve Docker and introduce
+   streamed bounded workspace/verified-tool assets into Pod-local volumes,
+   same-version bootstrap binary and separate 64-MiB in-memory stdin handoff.
+   Runner images retain baked CLIs and signed explicit tool-version overrides.
+   Define shared server-issued preparation deadlines, exact Pod recovery and
+   signals; no privileged DinD, controller-host mounts or automatic re-execution.
+   Ship `deploy/helm/infraweave-workers` and its CRDs. Feature:
+   `workers/kubernetes.feature` (`@kubernetes`, real digest-pinned k3s).
+3. `internal/agent/initpolicy`: complete versioned worker input, compile at
+   startup, evaluate before source/restore and override tools, isolated bounded
+   `exec` helpers using private argument/output frames, fail closed in the
+   assignment's preparing state. Only worker initialization admits exec;
+   server policies/simulation remain forbidden. Verify the bare server run JWT
+   with its actual run subject/audience, independently of optional user-metadata
+   signatures and stack/commit validation. Features: `runs/signed.feature` and
+   `policy/worker_initialization.feature`.
+4. Reuse existing workers `availableAt`, busy/drained/offline state and minute
+   samples; complete authorized pool worker/busy/queue projections through
+   domain API ports. Capacity is configured per pool; this adds no queue-driven
+   cross-cloud autoscaler.
+5. Implement the contract's exact ro_/wo_ phase exposures and typed portable
+   mounts, including TASK and after_run, and vendor/runtime reporting only for
+   implemented collectors. C66/C69 remain reference uncertainties rather than
+   inferred parity. Preserve all operation evidence and secret-negative cases.
+6. Pull only worker hosting forward from 0020: Terraform-managed EKS Auto Mode,
+   AKS and GKE Autopilot, one worker chart, concurrent distinct stable pools
+   across clusters/clouds, no cloud tier gate or silent fallback. Preserve
+   worker-pools Free/private-worker-pools Business, private-workers 0/0/3 and
+   public slots 1/2/2; a four-worker lab uses an explicit grant. Terraform
+   provisioner, scoped controller management, pool protocol and run credentials
+   stay distinct. Workload credentials and full server deployment stay later.
+   Acceptance roots are `test/terraform/cloud/workers/{aws,azure,google}` using
+   the existing `test/terraform/lab` ownership/evidence/cleanup lifecycle.
 
 **Exit criteria**
-- The Worker Pools operations of task 1 meet decision 0016's evidence rule.
-- With billing on, a run of an organization at its `public-worker-slots`
-  waits on the public worker pool, in whichever of its accounts it starts,
-  while another organization's run proceeds.
-- A run on k3s through the controller reaches `FINISHED`, and an
-  initialization policy's `deny` fails a run from `PREPARING`.
-- Captures C21, C66, C67, C68, C69 and C292 replay once recorded.
-- `make gate` passes at 95% in total and 90% per package.
+- Every requirement in the ownership matrix has its executed proof, exact tested
+  revision and owning domain; documenting the contract alone does not deliver it.
+- An organization's full public quota waits across accounts while another
+  organization proceeds; lower account ceilings and unbounded Enterprise/grant/
+  billing-off projections retain catalogue semantics.
+- Real Docker and k3s execution, recovery, policy deny/exec isolation, private
+  argument/secret transport and every authenticated API classification pass.
+- EKS/AKS/GKE hosting and simultaneous selected-pool execution pass with isolated
+  Terraform state/owners and verified cloud teardown; a second owner survives.
+- C21, C66, C67, C68, C69 and C292 replay to their actual recorded extent. Their
+  unresolved reference-only portions remain explicit and cannot be replaced by
+  synthetic fixtures or claimed as observed compatibility.
+- Native/OS/configured lint/certified-FIPS checks remain; `make gate` passes at
+  95% total and 90% per gated package. Skips/missing credentials are not proof.
 
 ## P15: Cloud integrations and OIDC federation
 

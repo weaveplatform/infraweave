@@ -335,6 +335,15 @@ tier still matches its seed.
   the transaction that creates the organization or account, and `features`'
   purge removes them when the organization or account is deleted.
 
+Cloud choice adds no worker entitlement: EKS, AKS and GKE use the same catalogue.
+Business retains three private workers across all accounts/pools/clusters;
+Free/Starter retain zero and public slots stay 1/2/2. An explicit organization
+grant can permit a four-worker lab. Historical Starter+ reference prose does not
+supersede this catalogue. The public account share is required nullable int64
+(null unbounded; zero none), with no int32 narrowing or physical-capacity
+substitution, as specified by [0008](0008-run-execution-and-worker-protocol.md#pools)
+and the [worker contract](../../implementation/worker-pool-contracts.md#identity-public-pool-and-quota).
+
 ### Billing
 
 `billing` is the feature that turns entitlement enforcement on. It belongs

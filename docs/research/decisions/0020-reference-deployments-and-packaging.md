@@ -48,7 +48,8 @@ Cryptographic Module and runs in FIPS 140-3 mode by default
 | `infraweave serve` | the API process mode (table below) | stateless | API and admin |
 | `infraweave scheduler` | the scheduler process mode (table below) | stateless | admin only |
 | `infraweave all` | `serve` and `scheduler` in one process, for single-node installs | stateless | API and admin |
-| `infraweave launcher` | the launcher: registration, work delivery and run containers (decision 0008) | none | admin only |
+| `infraweave launcher` | Docker launcher: registration, work delivery and run containers (decision 0008) | private local recovery cache | admin only |
+| `infraweave worker-controller` | Kubernetes worker pool/slot/Pod lifecycle over the same protocol (P14 intended addition) | non-secret CRD status and Lease; ephemeral preparation cache | admin only |
 | `infraweave runner` | hidden; the runner, which executes a run's phases inside the run container (decision 0008) | none | none |
 | `infraweave vcs-agent` | the VCS agent (decision 0012) | none | admin only |
 | `infraweave flows-agent` | Flows app execution ([0018](0018-flows-runtime.md)) | none | admin only |
@@ -94,9 +95,9 @@ Listeners:
 |---|---|---|
 | Release archives | `infraweave` for `linux`, `darwin` and `windows` on `amd64` and `arm64` (the Makefile's `PLATFORMS`), `SHA256SUMS`, a Sigstore bundle per file | GitHub release assets |
 | Server image | `infraweave` on `gcr.io/distroless/static-debian12:nonroot`, user `65532`, read-only root file system, no shell; `ENTRYPOINT ["/infraweave"]` | `ghcr.io/weaveplatform/infraweave:<version>`, multi-arch |
-| Runner images | Built from the repository's runner image definitions under `deploy/images/`, one per vendor, whose contents decision 0008 defines: the tools a phase's shell needs and no Terraform or OpenTofu binary, which the launcher downloads, verifies and mounts. The acceptance harness builds the same definitions locally as `infraweave-runner-<vendor>:acceptance` ([0016](0016-testing-and-acceptance.md)) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
+| Runner images | Built from the repository's runner image definitions under `deploy/images/`, one per vendor, whose contents decision 0008 defines: the tools a phase's shell needs and pinned verified Terraform/OpenTofu CLIs. The application and acceptance harness consume the same published immutable digests; explicit requested versions retain signed verified acquisition and read-only overrides (0016) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
 | First-party Flows apps | One OCI image per app version, a Go program on `pkg/flows/appsdk` that serves the `App` service ([0018](0018-flows-runtime.md)) | Multi-arch images under `ghcr.io/weaveplatform`, listed in infraweave's first-party app registry |
-| Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave launcher`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
+| Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave worker-controller`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
 | Terraform modules | `deploy/terraform/modules/<cloud>` (see reference deployments) | Git source in this repository at the release tag |
 | Compose file | `deploy/compose/compose.yaml` | Release asset |
 
@@ -110,8 +111,8 @@ Listeners:
 - **Versioning.** release-please produces one version for the binary, the
   application image, both charts, the modules and the compose file. Runner
   environments release independently when their upstream tools, base or packages
-  change: `tested-<tool-version>-r<N>` for the tool-free Terraform/OpenTofu
-  environments, `<baked-tool-version>-r<N>` for Pulumi/Ansible and `r<N>`
+  change: `<baked-tool-version>-r<N>` for Terraform/OpenTofu/Pulumi/Ansible
+  environments and `r<N>`
   for the minimal test-support fixture. Build inputs and resolved digest outputs
   are separate. The application and acceptance harness consume the same committed
   digest pins; retained released digests support rollback. A chart's
@@ -137,8 +138,9 @@ The server image carries both Linux binaries, the sums and the bundles under
 upload. Launchers run on Linux hosts only, so no other platform is served.
 VM-based workers download from the server they register with and verify the
 checksum and the signature before running. They never need egress to a
-vendor download host. Kubernetes workers use the server image, which
-carries the same binary.
+vendor download host. Kubernetes bootstrap uses the same-version infraweave image to copy this static
+binary into a Pod-local volume; the run uses its selected published runner image.
+The worker chart runs `infraweave worker-controller`, never a Docker daemon.
 
 ### Configuration in deployments
 
@@ -229,6 +231,29 @@ because they scale on different signals:
 | `podDisruptionBudget.maxUnavailable` | `1` per process mode |
 | `terminationGracePeriodSeconds` | `serve` 45, `scheduler` 120; both exceed 0017's ready delay, request drain and flush caps combined |
 | `migrations.mode` | `hook`: a `pre-install,pre-upgrade` Job runs `infraweave migrate up`, and the process modes run with `database.migrate: check`; `startup` leaves decision 0005's default, `database.migrate: auto` |
+
+### Worker hosting subset
+
+P14 pulls forward only `deploy/terraform/modules/workers/{aws,azure,google}`
+and `deploy/helm/infraweave-workers`, with managed EKS Auto Mode, AKS and GKE
+Autopilot hosting or explicitly named existing managed clusters. The strict
+chart/config/CRD/secret-reference contract is [worker pool contracts](../../implementation/worker-pool-contracts.md#hosting-chart-and-evidence).
+One chart runs on every cloud; cloud is not a tier entitlement. Several distinct
+stable pools/clusters may run concurrently, each with configured capacity;
+this introduces no queue-driven cross-cloud autoscaler.
+
+Terraform cloud provisioner, scoped controller management API key, pool protocol
+key/certificate and worker-session/run credentials have separate authority.
+Run pods receive no automatic cloud-admin identity; workload integration stays
+P15. Full server/database/object-store/key-root modules above stay packaging
+work, rather than becoming prerequisites of worker hosting. Keep published
+runner CLIs and explicit version overrides; Terraform acceptance infrastructure
+is not a replacement tool-image build.
+
+Local Kubernetes infrastructure extends `test/terraform/lab`; real-cloud roots
+are `test/terraform/cloud/workers/{aws,azure,google}`. Retain isolated owner/state,
+exact version evidence and destroy plus real cloud absence checks, including
+another owner's survival. k3s success cannot stand in for managed-cloud proof.
 
 ### Upgrades
 

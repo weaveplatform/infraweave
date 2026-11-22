@@ -11349,8 +11349,8 @@
         {
           "file": "docs/implementation/plan.md",
           "present": [
-            "an installation-level pool token from the operator API, the `public-worker-slots` limit",
-            "priorities and no scheduled or drift runs. Records DV-078."
+            "Optional installation public worker pool with operator-only CSR/token lifecycle",
+            "Preserve public no-priority/no-scheduled/no-drift and final-image allowlist."
           ],
           "absent": [
             "administration API",
@@ -13457,7 +13457,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Import at creation through a state-import port that `stacksapi` declares",
-            "which `runs`' partial serves, since `workers` imports no `runs` package"
+            "Workers owns pool/usage/default-image/configured-egress projections; runs owns visible queue/user search and suggestions."
           ]
         }
       ]

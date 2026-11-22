@@ -1240,9 +1240,23 @@ has failed":
   organization's accounts, so a tier or a grant sets it per organization and
   an organization admin may give an account a lower account limit
   ([0021](0021-capability-scope-and-supersession.md#limits));
-  `PublicWorkerPool.parallelism` reports the account's share: its account
-  limit when set, otherwise the organization's. An installation without
+  `PublicWorkerPool.parallelism` reports the account's effective share as a
+  required nullable int64: the minimum bounded account/organization ceiling,
+  null when unbounded (also billing off), zero when no run may start. Physical
+  installation capacity is separate; account ceilings are not reservations. An installation without
   public workers simply has none registered.
+
+Private hosting on EKS/AKS/GKE and concurrent pools/clusters uses the existing
+catalogue: worker-pools Free, private-worker-pools Business, private-workers
+0/0/3 and public slots 1/2/2. Limits aggregate across the organization, with
+lower account ceilings; an explicit lab grant may permit four. A run retains
+its stored pool through apply/replan; cloud has no separate entitlement.
+The [public REST/operator mappings](../../implementation/worker-pool-contracts.md#rest-and-operator-mappings)
+add the missing default-image/egress reads and explicit literal public queue/user
+paths. Installation public credentials never fabricate an account or consume
+private-worker quota. Protocol bind/release enforces exclusive controller
+hosting even for an Existing pool. These are intended additions, not current
+runtime or observed reference compatibility.
 
 ### Pool samples
 
@@ -1333,8 +1347,17 @@ has failed":
   launcher repeats it until the server answers.
 - **The admin listener** (`launcher.admin_listen`, `:9091`, one above the
   server's) answers decision 0017's probes for the launcher.
-- **Kubernetes.** A controller that creates a pod per run acts as a launcher on
-  this same protocol. Its resources and behaviour are outside this record.
+- **Kubernetes.** `infraweave worker-controller` is an agent-only launcher of
+  strict namespaced WorkerPool/Worker resources, deterministic logical slots and
+  one Pod per assignment version. The [worker pool contract](../../implementation/worker-pool-contracts.md)
+  specifies its Managed/Existing/Public modes, durable hosting/management owner,
+  Lease/replica fencing, finalizers, credential references, Pod-local streamed
+  workspace/verified-tool preparation, same-version static bootstrap, private
+  stdin handoff, signals and recovery. Docker's local bind mounts remain its
+  own adapter contract; Kubernetes uses no controller-host paths or privileged
+  daemon. Shared server-issued preparingDeadline covers scheduling/preparation;
+  run timeout and an absolute watchdog survive controller restarts. No runtime
+  replays an ambiguous handoff or silently selects another pool/cloud.
 
 ### Runner images
 
@@ -1544,8 +1567,12 @@ the note `killed`.
 The launcher evaluates the worker-side initialization policy before it starts the
 container, with the embedded OPA of [0009](0009-policy-engine-opa.md)
 ([10 section 10](../reference/10-workers-and-execution.md#10-signed-runs-and-worker-side-policy)).
-The input carries at least `run` (with `user_provided_metadata` and
-`commit.hash`) and `static_run_environment` (with `stack_slug`). An invalid policy
+The complete version-1 input in the [worker pool contract](../../implementation/worker-pool-contracts.md#worker-initialization-and-signed-runs)
+carries run metadata/commit/server JWT and immutable static environment. It is
+infraweave's chosen schema; C68 remains unobserved. The current bare runner JWT
+signs run subject, kind, audience and times, not pool/account/space claims.
+Trusted assignment/envelope supplies pool binding; optional user metadata
+signatures are verified independently. An invalid policy
 stops the launcher at start. A `deny` fails the run in preparation, with the
 reasons in the log of the preparing state. The `exec` built-in that Spacelift
 offers this policy is available to it alone; 0009 lists built-ins.
