@@ -26,6 +26,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/changes"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/control"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/initialization"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/logs"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/policyinput"
@@ -131,6 +132,8 @@ type Deps struct {
 	PolicyRoles      accessapi.StackRoleReader
 	PolicySpaces     accessapi.PolicySpaceReader
 	PolicyContexts   configapi.PolicyContextReader
+	ClaimSpaces      accessapi.ClaimSpaces
+	ClaimStacks      stacksapi.ClaimTargets
 	DB               queue.DB
 	Keys             pg.Sealer
 	Objects          Objects
@@ -176,10 +179,15 @@ type Domain struct {
 func New(d Deps) *Domain {
 	store := pg.New(d.DB, d.Keys)
 	var approvals lifecycle.Approvals
+	var initializations schedule.InitializationPolicies
 	if d.PolicyEvaluator != nil {
 		approvals = approval.New(approval.Deps{
 			Store: store, Evaluator: d.PolicyEvaluator, Inputs: d.PolicyInputs,
 			Stacks: d.PolicyStacks, Pools: d.PolicyPools, Objects: d.Objects, Now: d.Now, Roles: d.PolicyRoles, SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts,
+		})
+		initializations = initialization.New(initialization.Deps{
+			Store: store, Evaluator: d.PolicyEvaluator, Inputs: d.PolicyInputs, Stacks: d.PolicyStacks, Now: d.Now,
+			Metadata: policyinput.Metadata{Store: store, Objects: d.Objects, Pools: d.PolicyPools, Roles: d.PolicyRoles, SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts},
 		})
 	}
 	lc := lifecycle.New(lifecycle.Deps{
@@ -217,7 +225,7 @@ func New(d Deps) *Domain {
 		runs:      core.New(store),
 		lifecycle: lc,
 		scheduler: scheduler,
-		claims:    schedule.NewClaims(store, lc),
+		claims:    schedule.NewClaims(store, lc, schedule.OwnerFence{Spaces: d.ClaimSpaces, Stacks: d.ClaimStacks}).WithInitialization(initializations),
 		liveness:  schedule.NewLiveness(store, lc),
 		signals:   schedule.NewSignals(store, d.Now),
 		handover: handover.New(handover.Deps{

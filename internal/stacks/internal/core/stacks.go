@@ -104,6 +104,7 @@ type Store interface {
 	// Read reads acct's stack id whole, locking its row FOR UPDATE when
 	// lock is set; stacksapi.ErrNotFound when acct lacks it.
 	Read(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock bool) (Stack, error)
+	TryReadForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Stack, bool, error)
 	// BySlug reads acct's stack slug whole, locking its row FOR UPDATE
 	// when lock is set; stacksapi.ErrNotFound when acct lacks it.
 	BySlug(ctx context.Context, acct kernel.AccountID, slug string, lock bool) (Stack, error)
@@ -420,6 +421,12 @@ func (s *Service) ByVCSRepository(ctx context.Context, acct kernel.AccountID, u 
 func (s *Service) LockForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, error) {
 	st, err := s.store.Read(ctx, acct, id, true)
 	return st.Settings, err //nolint:wrapcheck // as above
+}
+
+// TryLockForRun takes the assignment fence without waiting on a busy target.
+func (s *Service) TryLockForRun(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (stacksapi.Settings, bool, error) {
+	st, held, err := s.store.TryReadForRun(ctx, acct, id)
+	return st.Settings, held, err //nolint:wrapcheck // the owner names the read
 }
 
 // Hold locks acct's stack id in the context's transaction until it ends,

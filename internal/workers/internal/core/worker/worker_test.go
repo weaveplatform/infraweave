@@ -374,7 +374,10 @@ func newFixture(t *testing.T, d worker.Deps) *fixture {
 	}
 	f.key, f.cert = f.sign(t, ca, f.pool.ID, f.pool.Serial)
 	f.store.pools[f.pool.ID] = f.pool
-	d.Store, d.DB = f.store, db{}
+	d.Store = f.store
+	if d.DB == nil {
+		d.DB = db{}
+	}
 	if d.Tokens == nil {
 		d.Tokens = tokens{}
 	}

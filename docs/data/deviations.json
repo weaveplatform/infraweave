@@ -1066,7 +1066,7 @@
       "id": "DV-104",
       "group": "Expressions: decision 0024",
       "spacelift": "`.spacelift/workflow.yml` commands are Go templates",
-      "infraweave": "`.infraweave/workflow.yml` commands are text templates (`${{ … }}`) rendered by the runner, with every interpolated value quoted for the shell. The runner reads the file from the project root whenever it exists, and a `CUSTOM` workflow tool requires it",
+      "infraweave": "`.infraweave/workflow.yml` commands are text templates (`${{ \u2026 }}`) rendered by the runner, with every interpolated value quoted for the shell. The runner reads the file from the project root whenever it exists, and a `CUSTOM` workflow tool requires it",
       "why": "A target or workspace name can never become shell syntax",
       "impact": "Custom workflow files are rewritten in the text-template form and moved to `.infraweave/workflow.yml` in each stack's project root",
       "source": "[0024 Rationale](../research/decisions/0024-expression-language.md#rationale)"
@@ -1372,11 +1372,11 @@
     {
       "id": "DV-136",
       "group": "Runs, workers and policies: decisions 0008 and 0009",
-      "spacelift": "TASK policy documentation marks the type deprecated and recommends approval policies, but supplies no deprecation start date.",
-      "infraweave": "TASK enforcement is deprecated from its infraweave introduction on 2026-11-21 UTC. Known TASK policy responses use RFC 9745 Deprecation: @1795219200 and link to the scope/migration note; this timestamp is not presented as an upstream date.",
+      "spacelift": "TASK and INITIALIZATION policies remain in the live schema and are marked deprecated in policy documentation; the captured schema does not supply a start date.",
+      "infraweave": "TASK and server-side INITIALIZATION enforcement are deprecated from their infraweave introduction on 2026-11-21 UTC. Known management responses, TASK admission answers and single-run reads with INITIALIZATION receipts use RFC 9745 Deprecation: @1795219200 and link to the corresponding migration note; this timestamp is not presented as an upstream date.",
       "why": "A standards-compliant dated notice is required by the API contract; unavailable upstream chronology must not be fabricated.",
       "impact": "Clients receive an explicit project-owned deprecation date. No Sunset or removal deadline is announced; ordinary tasks without TASK policies stay supported.",
-      "source": "[#659 implementation and deprecation notice](../implementation/task-policy-verification.md#deprecation-notice); [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745.html#section-2.1); [upstream TASK documentation](https://docs.spacelift.io/concepts/policy/deprecated/task-run-policy)"
+      "source": "[#659 implementation and deprecation notice](../implementation/task-policy-verification.md#deprecation-notice); [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745.html#section-2.1); [upstream TASK documentation](https://docs.spacelift.io/concepts/policy/deprecated/task-run-policy); [#660 server initialization notice](../implementation/initialization-policy-verification.md#deprecation-notice)"
     }
   ]
 }
