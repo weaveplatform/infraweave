@@ -1,0 +1,398 @@
+{
+  "sourceIssue": 740,
+  "sourceRevision": "af9c8ab4",
+  "contract": "worker-pool-contracts.md",
+  "status": "specified-not-runtime-delivered",
+  "referenceEvidence": "worker-pool-reference-observations.json",
+  "architectureDecisions": [
+    "0004",
+    "0007",
+    "0008",
+    "0009",
+    "0013",
+    "0016",
+    "0020",
+    "0021",
+    "0022"
+  ],
+  "identityKinds": [
+    "terraform-provisioner",
+    "controller-management",
+    "pool-protocol",
+    "run-credential"
+  ],
+  "requirements": [
+    {
+      "id": "public-pool-identity",
+      "source": "P14.1",
+      "owners": [
+        742
+      ],
+      "domain": "workers",
+      "contract": "Stable installation ULID, CSR certificate/token, no private-worker quota or fabricated tenant",
+      "requiredEvidence": "Real operator create/read/reset and worker credential-audience acceptance",
+      "delivery": "unproven"
+    },
+    {
+      "id": "public-claim-limits",
+      "source": "P14.1",
+      "owners": [
+        743
+      ],
+      "domain": "runs",
+      "contract": "Organization+account quota lock, queue beyond capacity, FIFO public ordering and stack fences",
+      "requiredEvidence": "Concurrent real claims across accounts, organizations and replicas",
+      "delivery": "unproven"
+    },
+    {
+      "id": "public-restrictions",
+      "source": "P14.1",
+      "owners": [
+        743
+      ],
+      "domain": "runs",
+      "contract": "No priority/scheduled/drift; final resolved-image allowlist",
+      "requiredEvidence": "Normal admission/update failure plus no forbidden assignment",
+      "delivery": "unproven"
+    },
+    {
+      "id": "public-quota-projection",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "domain": "workers",
+      "contract": "Required nullable int64 account share, null unbounded, physical capacity separate",
+      "requiredEvidence": "Free/Starter/Business/Enterprise/grant/billing-off/lower-account real API cases",
+      "delivery": "unproven"
+    },
+    {
+      "id": "public-default-image-egress",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "domain": "workers",
+      "contract": "New default-public image and outgoing-ip-address reads; configured egress only",
+      "requiredEvidence": "Normal SDK success/403/failure with actual configuration",
+      "delivery": "unproven"
+    },
+    {
+      "id": "public-queue-users",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "domain": "runs",
+      "contract": "Explicit literal public selector paths; visible queue/user counts and suggestions",
+      "requiredEvidence": "Real account/space isolation, filters, positions and C292 partial REST replay",
+      "delivery": "unproven"
+    },
+    {
+      "id": "worker-usage",
+      "source": "P14.1",
+      "owners": [
+        744,
+        753
+      ],
+      "domain": "workers",
+      "contract": "Existing sample windows and account-only public usage",
+      "requiredEvidence": "Real samples/window/authorization failures",
+      "delivery": "unproven"
+    },
+    {
+      "id": "managed-pool-ownership",
+      "source": "P14.2",
+      "owners": [
+        745
+      ],
+      "domain": "workers",
+      "contract": "Managed/Existing modes, immutable remote management identity and durable unique lookup",
+      "requiredEvidence": "Duplicate reconciles, ownership conflict, lost status, no name adoption",
+      "delivery": "unproven"
+    },
+    {
+      "id": "controller-resources",
+      "source": "P14.2",
+      "owners": [
+        745
+      ],
+      "domain": "agent",
+      "contract": "Namespaced WorkerPool/Worker strict CRDs, deterministic slots, Lease leader, restricted management role",
+      "requiredEvidence": "Real Kubernetes resources/API role success/403/failure and leader handover",
+      "delivery": "unproven"
+    },
+    {
+      "id": "capacity-finalizers",
+      "source": "P14.2",
+      "owners": [
+        745,
+        747
+      ],
+      "domain": "agent",
+      "contract": "Configured capacity, aggregate registration limits, retiring slots, finalizers/readback",
+      "requiredEvidence": "Scale/drain/cycle/reset/cleanup failures and recovery",
+      "delivery": "unproven"
+    },
+    {
+      "id": "portable-preparation",
+      "source": "P14.2",
+      "owners": [
+        746
+      ],
+      "domain": "agent",
+      "contract": "Separate bounded workspace+verified executable stream assets; Docker retained",
+      "requiredEvidence": "Real Docker+k3s source/restore/bootstrap/checksum/path/boundary cases",
+      "delivery": "unproven"
+    },
+    {
+      "id": "private-handoff",
+      "source": "P14.2",
+      "owners": [
+        746
+      ],
+      "domain": "agent",
+      "contract": "64 MiB JSON stdin to exact main Pod, never persistent API object or PodSpec secret",
+      "requiredEvidence": "Captured PodSpecs/status/logs/evidence absence assertions and partial handoff failures",
+      "delivery": "unproven"
+    },
+    {
+      "id": "execution-deadlines",
+      "source": "P14.2",
+      "owners": [
+        746,
+        747
+      ],
+      "domain": "runs",
+      "contract": "Issued preparingDeadline shared by server/controller; run timer and absolute watchdog",
+      "requiredEvidence": "Clock-controlled pending/preparation/run/restart timing with real runtime",
+      "delivery": "unproven"
+    },
+    {
+      "id": "pod-recovery-signals",
+      "source": "P14.2",
+      "owners": [
+        747
+      ],
+      "domain": "agent",
+      "contract": "Exact owned Pod UID+assignment version, no replay, SIGINT/SIGKILL/exit acknowledgement",
+      "requiredEvidence": "Crash boundaries, missing/OOM/eviction/stop/kill, server outage and duplicate leaders",
+      "delivery": "unproven"
+    },
+    {
+      "id": "worker-artifacts",
+      "source": "P14.2",
+      "owners": [
+        748
+      ],
+      "domain": "deployment",
+      "contract": "Worker-controller command, one strict cloud-neutral chart, same-version bootstrap",
+      "requiredEvidence": "Chart schema/render/install/lifecycle with actual images and Kubernetes",
+      "delivery": "unproven"
+    },
+    {
+      "id": "worker-policy-runtime",
+      "source": "P14.3",
+      "owners": [
+        749
+      ],
+      "domain": "agent",
+      "contract": "Version1 complete input,60-second worker budget, cache isolation; server exec forbidden",
+      "requiredEvidence": "Real OPA V0/V1 compile/deny/error/budget and server simulation exec refusal",
+      "delivery": "unproven"
+    },
+    {
+      "id": "isolated-policy-exec",
+      "source": "P14.3",
+      "owners": [
+        750
+      ],
+      "domain": "agent",
+      "contract": "Private argv frame,8 calls,4 MiB aggregate output,1 MiB per-stream per-call,60-second total",
+      "requiredEvidence": "Real Docker+k3s helper output/argv/budget/cancellation/secret absence cases",
+      "delivery": "unproven"
+    },
+    {
+      "id": "signed-run-admission",
+      "source": "P14.3",
+      "owners": [
+        751
+      ],
+      "domain": "agent",
+      "contract": "Bare runner JWT verification and independent user-metadata signature admission",
+      "requiredEvidence": "Actual signed/forged/expired/wrongissuer/audience/run and stack/commit mismatch cases",
+      "delivery": "unproven"
+    },
+    {
+      "id": "availability",
+      "source": "P14.4",
+      "owners": [
+        744,
+        747
+      ],
+      "domain": "workers",
+      "contract": "Reuse existing available_at and sample ownership",
+      "requiredEvidence": "Real idle/busy/drained/offline/recovery projection changes",
+      "delivery": "unproven"
+    },
+    {
+      "id": "stage-inputs",
+      "source": "P14.5",
+      "owners": [
+        752
+      ],
+      "domain": "agent",
+      "contract": "Explicit ro_/wo_/all exposure, phase table and typed portable mounts",
+      "requiredEvidence": "Real plan/apply/TASK/after_run and restore secret-positive/negative assertions",
+      "delivery": "unproven"
+    },
+    {
+      "id": "vendor-reporting",
+      "source": "P14.5",
+      "owners": [
+        752
+      ],
+      "domain": "agent",
+      "contract": "Actual implemented vendor/runtime signals only; no image-only backend claim",
+      "requiredEvidence": "Executed per-vendor actual signal availability matrix",
+      "delivery": "unproven"
+    },
+    {
+      "id": "api-local-final-proof",
+      "source": "P14.exit",
+      "owners": [
+        753
+      ],
+      "domain": "acceptance",
+      "contract": "Every served operation classified; real success/403/failure and exact revision gates",
+      "requiredEvidence": "Native/OS/lint/FIPS,95 percent total90 percent per package",
+      "delivery": "unproven"
+    },
+    {
+      "id": "local-terraform-lab",
+      "source": "P14.extension",
+      "owners": [
+        741
+      ],
+      "domain": "acceptance",
+      "contract": "Existing infraweave-lab owns isolated k3s infrastructure and teardown",
+      "requiredEvidence": "Actual Terraform up/run/destroy/readback; second owner preserved",
+      "delivery": "unproven"
+    },
+    {
+      "id": "shared-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        754
+      ],
+      "domain": "deployment",
+      "contract": "Worker-hosting modules only; four identities separate; no workload credentials or server deployment",
+      "requiredEvidence": "Static module/chart contract plus live hosting cases downstream",
+      "delivery": "unproven"
+    },
+    {
+      "id": "eks-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        755
+      ],
+      "domain": "deployment",
+      "contract": "Terraform EKS Auto Mode root test/terraform/cloud/workers/aws",
+      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "delivery": "unproven"
+    },
+    {
+      "id": "aks-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        756
+      ],
+      "domain": "deployment",
+      "contract": "Terraform AKS root test/terraform/cloud/workers/azure",
+      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "delivery": "unproven"
+    },
+    {
+      "id": "gke-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        757
+      ],
+      "domain": "deployment",
+      "contract": "Terraform GKE Autopilot root test/terraform/cloud/workers/google",
+      "requiredEvidence": "Real managed cloud admission/execution/teardown",
+      "delivery": "unproven"
+    },
+    {
+      "id": "cloud-lab-lifecycle",
+      "source": "P14.extension",
+      "owners": [
+        758
+      ],
+      "domain": "acceptance",
+      "contract": "Existing lab owner/state/namespace/evidence lifecycle across clouds",
+      "requiredEvidence": "Actual failure cleanup and two-owner isolation",
+      "delivery": "unproven"
+    },
+    {
+      "id": "concurrent-cloud-proof",
+      "source": "P14.extension",
+      "owners": [
+        759
+      ],
+      "domain": "acceptance",
+      "contract": "Distinct stable pools concurrently AWS/Azure/Google, same-tier quotas, no silent fallback",
+      "requiredEvidence": "Real simultaneous selected-pool execution and cloud API absence after teardown",
+      "delivery": "unproven"
+    }
+  ],
+  "captureGaps": [
+    {
+      "id": "C21",
+      "status": "unavailable",
+      "resolved": false
+    },
+    {
+      "id": "C66",
+      "status": "unavailable",
+      "resolved": false
+    },
+    {
+      "id": "C67",
+      "status": "unavailable",
+      "resolved": false
+    },
+    {
+      "id": "C68",
+      "status": "unavailable",
+      "resolved": false
+    },
+    {
+      "id": "C69",
+      "status": "unavailable",
+      "resolved": false
+    },
+    {
+      "id": "C292",
+      "status": "partial",
+      "resolved": false
+    }
+  ],
+  "exclusions": [
+    "full-server-cloud-deployment",
+    "workload-cloud-credential-integrations",
+    "queue-driven-cross-cloud-autoscaler"
+  ],
+  "gates": {
+    "coverageTotalPercent": 95,
+    "coveragePerPackagePercent": 90,
+    "required": [
+      "native-acceptance",
+      "os-matrices",
+      "configured-golangci-lint",
+      "certified-fips",
+      "exact-revision-evidence",
+      "verified-resource-cleanup"
+    ]
+  }
+}

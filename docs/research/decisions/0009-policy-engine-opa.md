@@ -265,19 +265,29 @@ Who calls the engine, when, and what the result does to the run of decision
 
 ### The worker-side initialization policy
 
-- The launcher (decision [0008](0008-run-execution-and-worker-protocol.md)) links the same
-  `internal/platform/rego` engine. It reads the policy file named by its configuration, compiles it
-  at start with the initialization preamble, and refuses to start when the file does not
-  compile ([10 section 10](../reference/10-workers-and-execution.md#10-signed-runs-and-worker-side-policy)).
-- It evaluates the policy during the handover, before it starts the run container, as
-  decision [0008](0008-run-execution-and-worker-protocol.md) describes. The input carries
-  at least `run.user_provided_metadata`, `run.commit`, `run.type` and
-  `static_run_environment` (stack slug, space, pool).
-- `exec` runs the command in a short-lived container of the run's runner image, so a
-  verifier binary shipped in the image can be called before the run starts. Each call has
-  a 60 s deadline, and its stdout and stderr are each capped at 1 MiB.
-- A `deny` fails the run from `PREPARING` (T11) with the messages written to the
-  preparing log. The server never sees the policy body.
+The launcher compiles its configured policy at startup and evaluates before
+source/restore or requested-tool downloads. The complete version-1 input,
+argv/result frames, masking and budgets are the [worker pool contract](../../implementation/worker-pool-contracts.md#worker-initialization-and-signed-runs).
+It includes the bare server run JWT and trusted static assignment environment;
+optional user-provided metadata signatures remain a separate admission rule.
+C68 is still missing vendor input evidence, not permission to leave the
+infraweave input unspecified.
+
+Worker initialization has an explicitly separate capability scope and default
+60-second total deadline under remaining preparation; server INITIALIZATION
+keeps its 5-second budget. Only the worker scope binds `exec(argv)` in a fresh
+run-image helper with private bounded stdin arguments/output. Per call stdout
+and stderr each cap at 1 MiB; max eight calls and 4 MiB combined output per
+evaluation, one call in flight, each under 60 seconds and the remaining total.
+No automatic workspace/override mounts or opened run-secret environment reaches
+the verifier. Explicit signature/verifier argv is allowed through the private
+frame and masked before diagnostics. No server policy/simulation can compile or
+invoke exec; a worker mode cannot mutate the global capability registry.
+
+Retain bounded cache/concurrency/input/policy/print/messages; cached modules hold
+no credentials/input or pool-bound executor closure. Deny/error/timeout fails the
+assignment's preparing state with sanitized reasons before user hooks; invalid
+policy stops startup. These are intended P14 additions, not delivered runtime.
 
 ### Receipts, flags and sampling
 

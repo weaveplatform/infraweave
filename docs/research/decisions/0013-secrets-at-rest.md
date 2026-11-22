@@ -43,6 +43,14 @@ in Go's FIPS 140-3 mode, including its strictest setting.
 
 ## Decision
 
+The [portable worker handoff contract](../../implementation/worker-pool-contracts.md#portable-preparation-handoff-and-recovery)
+keeps pool private keys/controller credentials outside run/helper pods. Opened
+run secrets use bounded in-memory stdin, never PodSpec env/args, ConfigMap,
+Secret/status or evidence. Pod-local volumes and TLS do not protect workload
+secrets from cluster/node administrators or authorized attach/exec operators.
+Phase exposure controls managed injection paths; arbitrary copies made by a
+command already authorized a secret are outside that removal guarantee.
+
 ### FIPS 140-3
 
 - **Release builds use the validated module.** Every release binary and image

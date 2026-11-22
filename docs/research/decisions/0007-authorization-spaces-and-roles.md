@@ -253,6 +253,12 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
   | `worker-pool-controller` | `SPACE_READ`, `WORKER_POOL_CREATE`, `WORKER_POOL_UPDATE`, `WORKER_POOL_DELETE` |
   | `drift-detection-manager` | `SPACE_READ` and the three `DRIFT_DETECTION_INTEGRATION_*` actions |
 
+  The controller receives no RESET/CYCLE/account-admin/operator grant. Managed
+  ownership and protocol bind/release follow the [worker pool contract](../../implementation/worker-pool-contracts.md#controller-and-resources);
+  certificate resets remain a separately authorized WORKER_POOL_RESET account
+  principal (or the operator for the installation public singleton). Explicit
+  reset is the managed-update exception, never automatic reconciliation.
+
 ### Bindings
 
 - **Table** `role_bindings(account_id, id, actor_kind, actor_id, role_id,
