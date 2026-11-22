@@ -70,6 +70,20 @@ LOGIN and other valid-but-unserved policy types return empty filtered results.
   V0 notification example and the renamed PLAN input namespace.
 - Focused runtime/storage proof uses race detection, shuffled order and
   `GOFIPS140=certified GODEBUG=fips140=only`.
+- The metadata replacement acceptance test uses the served, pinned PLAN origin
+  `01HRPFBHSKXXMNNMHMNQ2J58F0` and preserves its immutable origin, type and
+  creation timestamp after replacement. Real PostgreSQL reproduced rejection of
+  its former invented origin, then passed with the served origin; origin
+  validation remains unchanged.
+- Git checkout filtering with `core.autocrlf=true` preserves the exact stored
+  bytes of all 205 manifest files. The embedded upstream tree is marked
+  `-text`, preventing Windows checkout conversion from changing the pinned
+  checksums or the served Rego bodies. No original source bytes or checksums
+  are normalized or replaced.
+- The complete policy domain's unit and native acceptance suites pass with
+  certified FIPS, race detection and shuffled test order. Metadata replacement
+  and complete catalogue pagination also pass on the pinned next PostgreSQL
+  major.
 
 Configured lint, generated/reference/parity checks, final coverage and the full
 certified-FIPS repository acceptance run remain merge gates. #663 is the direct
