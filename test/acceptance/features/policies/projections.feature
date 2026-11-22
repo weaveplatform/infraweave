@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @policy-phase
+@postgres @objectstore @vcs @policies
 Feature: Policy page projections compose served public operations
   Safe evaluation metadata is readable without opening sealed objects. Raw sample,
   print and capture inputs require root-space administration, including through

@@ -352,9 +352,9 @@ func keyRefs(ids []kernel.ULID) []api.ApiKeyRef {
 	return out
 }
 
-// user is the part of the User shape the principal alone decides. The
-// lists userOf fills, and the security keys that arrive with a later
-// phase, are empty, never absent, as the shape requires.
+// user is the part of the User shape the principal alone decides. Lists
+// populated by userOf and security keys start empty, never absent, as the
+// shape requires.
 func user(p kernel.Principal, token string, until time.Time) api.User {
 	id := p.Login
 	if p.Kind == kernel.PrincipalAPIKey {

@@ -32,7 +32,6 @@ type catalogueFeature struct {
 	LowestTier string           `json:"lowestTier"`
 	Values     map[string]int64 `json:"values"`
 	Requires   []string         `json:"requires"`
-	Phase      string           `json:"phase"`
 }
 
 // tierFeature is a tier-feature record of capabilities.json: a
@@ -83,7 +82,7 @@ func WriteCatalogue(dataDir, out string) error {
 
 // Catalogue returns internal/features/catalogue.gen.go for the two
 // registers: every feature in name order, with its kind, lowest seeded
-// tier, requirements, seeded limit values by tier name, phase, and the
+// tier, requirements, seeded limit values by tier name, and the
 // BillingTierFeature values the tier-feature records say it covers.
 func Catalogue(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 	var fs struct {
@@ -132,7 +131,7 @@ func Catalogue(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 				return nil, fmt.Errorf("%w: %s requires %q", ErrUnknownRequirement, f.ID, r)
 			}
 		}
-		fmt.Fprintf(&b, "\t{Name: %q, Kind: %q, Phase: %q", f.ID, f.Kind, f.Phase)
+		fmt.Fprintf(&b, "\t{Name: %q, Kind: %q", f.ID, f.Kind)
 		if f.LowestTier != "" {
 			fmt.Fprintf(&b, ", LowestTier: %q", f.LowestTier)
 		}

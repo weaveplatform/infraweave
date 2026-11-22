@@ -56,7 +56,7 @@ coverage of the reference only goes up. `make verify-parity` runs the same
 check and also fails when `docs/data/capabilities.json` claims a state the
 acceptance results do not show.
 
-One document holds Deploy and, from P18c, Flows under `/api/v1/flows/`
+One API document describes Deploy and the Flows namespace at `/api/v1/flows/`
 ([decision 0018](docs/research/decisions/0018-flows-runtime.md#api-and-clients)).
 `make generate` turns it into the strict server in
 `internal/platform/gen/api` and the client in `pkg/client/api`, and the

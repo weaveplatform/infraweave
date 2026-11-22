@@ -1,0 +1,6 @@
+{"records": [
+  {"id": "tag:Stacks", "kind": "tag", "infraweave": {"phase": "P5"}},
+  {"id": "tier-feature:DRIFT_DETECTION", "kind": "tier-feature", "infraweave": {"feature": "`drift`"}},
+  {"id": "tier-feature:PRIVATE_WORKERS", "kind": "tier-feature", "infraweave": {"feature": "`pools` and `drift`: both, as `stacks` notes"}},
+  {"id": "tier-feature:SSO", "kind": "tier-feature", "infraweave": {"feature": "none: superseded"}}
+]}

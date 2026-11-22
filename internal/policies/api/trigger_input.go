@@ -4,7 +4,7 @@ import "github.com/weaveplatform/infraweave/internal/kernel"
 
 // TriggerContext contains owner-supplied terminal-run and target facts. A known
 // absent trigger is distinct from unavailable ancestry. Workflow graphs and
-// module-release inputs are supplied by their owning implementation phases.
+// module-release inputs are supplied by their owning workflow and module services.
 type TriggerContext struct {
 	Priority      kernel.RunPriority
 	TriggerAbsent bool

@@ -1,4 +1,4 @@
-@postgres @policy-phase
+@postgres @policies
 Feature: The pinned policy template catalogue is available to authorized authors
   Catalogue membership and bodies come from the pinned MIT source, with LOGIN
   templates retained only in compatibility tests. Import preserves origin.

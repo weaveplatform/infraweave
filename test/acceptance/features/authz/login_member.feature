@@ -2,7 +2,7 @@
 Feature: Authenticated identities enter only accounts whose LOGIN policies admit them
   The identity-session harness supplies original upstream facts. Account entry,
   account lists, policy execution and issued CLI tokens use real services.
-  This does not claim a live organization IdP sign-in, which belongs to P23.
+  Organization IdP sign-in is a separate integration from account admission.
   ref: decisions 0006, 0007 and 0009; #658
 
   Background:

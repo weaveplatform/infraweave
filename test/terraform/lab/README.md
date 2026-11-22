@@ -37,7 +37,7 @@ and fixture namespace, including nested capture replays.
 
 | Batch | Existing Gherkin selection |
 |---|---|
-| `policies` | `@policy-phase` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
+| `policies` | `@policies` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
 | `core`, `terraform-plans`, `terraform-vcs`, `terraform`, `runs`, `integrations` | The named existing Cucumber partition |
 | `vcs` | The existing real-provider partition, narrowed with `--tags '@lab:github'` and `--features features/vcs/feedback.feature` |
 

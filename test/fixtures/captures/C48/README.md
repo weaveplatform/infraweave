@@ -42,7 +42,7 @@ resource names to a C48 test prefix, and root space to the seeded `acme` space.
 It reads back the stored body, type and REGO_V1 dialect. Eight relations across
 PLAN, APPROVAL, GIT_PUSH, TRIGGER, INITIALIZATION and TASK are created and read.
 INTENT is created but its upstream stack attachment is not replayed: infraweave
-reserves INTENT attachments for Intent projects in P25 (ADR 0009). The existing
+reserves INTENT attachments for Intent projects (ADR 0009). The existing
 attachment acceptance suite verifies that chosen stack-attachment refusal.
 Inventory comparison preserves unrelated seeded objects; it does not assert
 that the entire infraweave account started empty. Bounded fallback cleanup also

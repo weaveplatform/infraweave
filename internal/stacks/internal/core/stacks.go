@@ -31,8 +31,8 @@ func (e *SlugTaken) Error() string { return fmt.Sprintf("stacks: slug %q is take
 // asked, those of the spaces below it; vendor, the vendorConfig member it
 // sets; locked, whether anyone holds its lock; starred, whether the
 // caller has starred it; and state, its tracked run's state. A search
-// that names no order reads by id. The fields of data later phases own,
-// such as a stack's commit and drift, join with those phases.
+// that names no order reads by id. Commit and drift metadata are not
+// searchable through these fields.
 var Fields = []search.Field{
 	{Name: "id", Type: search.String, Orderable: true},
 	{Name: "name", Type: search.String, Orderable: true},

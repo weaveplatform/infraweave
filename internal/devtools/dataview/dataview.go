@@ -216,8 +216,8 @@ func limits(b *bytes.Buffer, all []feature) error {
 
 var phaseName = regexp.MustCompile(`^P(\d+)([a-z]?)$`)
 
-// phaseOrder sorts phases as the plan numbers them, P3 before P3b before
-// P10, and anything else after them.
+// phaseOrder sorts document ownership labels by number and then suffix,
+// placing unnumbered labels last.
 func phaseOrder(a, b string) int {
 	key := func(p string) (int, string) {
 		m := phaseName.FindStringSubmatch(p)

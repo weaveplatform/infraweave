@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @policy-phase
+@postgres @objectstore @vcs @policies
 Feature: Simulation preserves existing retained policy evidence and permissions
   An edited decision may request samples or administrator access, but simulation
   never applies either request or changes a previously published capture.

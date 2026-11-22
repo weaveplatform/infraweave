@@ -14,7 +14,7 @@ The final exchange verifies cleanup. The `policy-current-owner-reset` subset
 replays creation, real tracked planning, historical flag retention, current
 flag reset, review rejection and verified cleanup. The captured sample input
 after reset stays explicitly deferred to #662; its public read surface belongs
-to P13b. This subset does not supply the missing legacy-policy comparison.
+to sampling and policy tooling. This subset does not supply the missing legacy-policy comparison.
 
 Maintainer decision, 2026-11-19: use labelled inference for the missing case,
 as specified in ADR 0009. Implementation is unblocked; the absent upstream

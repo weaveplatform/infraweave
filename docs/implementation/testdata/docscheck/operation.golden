@@ -1,0 +1,2 @@
+{"$schema": "schema/capabilities.schema.json", "records": [
+  {"id": "operation:x", "kind": "operation", %s"infraweave": {"feature": "x", "lowestTier": "Free", "phase": "P0"}}]}

@@ -18,8 +18,8 @@
 // /readyz answer 200 or 503 from the checks, as ok or fail or, with
 // ?verbose, as JSON; every other path or method is a problem detail.
 // WebhookRejected records refused VCS signatures through an OpenTelemetry
-// meter, with the provider and fixed refusal reason as attributes. Exporter
-// configuration and /metrics join it with P18b; the caller supplies the meter.
+// meter, with the provider and fixed refusal reason as attributes. The caller
+// supplies the meter and owns exporter configuration.
 //
 // ref: decision 0017
 //

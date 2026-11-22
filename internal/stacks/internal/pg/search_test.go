@@ -32,7 +32,7 @@ func FuzzStackSearch(f *testing.F) {
 }
 
 // TestUnitStackFields holds core.Fields to the filters the reference's
-// Terraform provider sends that this phase holds data for, and maps each
+// Terraform provider sends for supported stack fields, and maps each
 // field to SQL that answers it: a column for every field, a cast for every
 // order, and the space tree for space.
 func TestUnitStackFields(t *testing.T) {

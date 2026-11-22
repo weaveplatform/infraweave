@@ -1,4 +1,4 @@
-@identity @postgres @objectstore @policy-login @policy-phase
+@identity @postgres @objectstore @policy-login @policies
 Feature: Both Rego dialects drive real LOGIN admission and default evidence
   Authored programs exercise helper rules, comprehensions and partial objects/sets.
   Their results grant actual permissions; flags create no run-owned state. The

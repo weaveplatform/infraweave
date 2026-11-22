@@ -1,4 +1,4 @@
-@policy-phase @postgres @vcs @policy-approval
+@policies @postgres @vcs @policy-approval
 Feature: Concurrent public reviews keep independent Rego execution state
   Eight separate stack owners allow pairs of concurrent reviews on each replica. Both
   stored dialects reuse helper names and partial objects while

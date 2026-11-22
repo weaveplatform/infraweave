@@ -6,9 +6,9 @@ cloud. They are the observed counterpart of each vendor's contract in
 [report 33](../../../docs/research/reference/33-vendor-tool-documents.md):
 the plan document a runner reads, the outputs it reads, and how each tool
 writes a secret. Each vendor parses them in its `iactest` plan cases and
-sanitization tests (P13 and P20), P16 reads the drift plans, P17 the test
-stream, P13's engine tests compare `opa/` with the recorded decisions, and
-P20b's Ansible callback tests run `ansible/project` and compare their
+sanitization tests. Drift detection reads the drift plans, module execution
+reads the test stream, policy engine tests compare `opa/` with the recorded
+decisions, and Ansible callback tests run `ansible/project` and compare their
 records with the ones here.
 
 Every name is a placeholder (`example`, `example-dev`, `localhost`,

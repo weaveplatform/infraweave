@@ -1,4 +1,4 @@
-@postgres @policy-phase @policy-evidence
+@postgres @policies @policy-evidence
 Feature: Policy sample and capture APIs enforce evidence ownership
   Public readers must distinguish safe metadata from private input and print.
   Root administration is required for captured input, even when a caller

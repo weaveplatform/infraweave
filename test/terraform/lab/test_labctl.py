@@ -91,7 +91,7 @@ class BatchTests(unittest.TestCase):
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_definitions_are_bounded_and_immutable(self):
-        self.assertEqual(lab.batch("policies")["tags"], "@policy-phase")
+        self.assertEqual(lab.batch("policies")["tags"], "@policies")
         self.assertEqual(lab.batch("vcs")["partition"], "vcs-lab")
         with self.assertRaises(ValueError):
             lab.batch("../outside")

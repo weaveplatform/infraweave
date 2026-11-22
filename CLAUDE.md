@@ -28,7 +28,7 @@ These apply to every weaveplatform repository created from this template.
 - **Builds** run with `GOWORK=off` so a local `go.work` never hides a missing
   dependency that CI would catch.
 - **Commits and PR titles** follow Conventional Commits; release-please derives
-  versions and the changelog from them.
+  versions and the changelog from them. Merge pull requests with squash only.
 
 ## Comments
 
@@ -38,3 +38,11 @@ match something elsewhere. Do not restate what the code says, and do not
 narrate history (what changed, what used to happen, how a bug was found):
 comments describe the code as it is, in the present tense. History belongs
 in commit messages.
+
+## Product vocabulary
+
+Name code, files, tests, configuration and acceptance selectors for product
+capabilities, architecture, frameworks or design. Keep roadmap identifiers and
+implementation ownership in `docs/`; documentation tools read their planning
+examples from fixtures there. Describe current behavior in comments, including
+which domain supplies an optional projection or input.

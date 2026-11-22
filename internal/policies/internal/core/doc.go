@@ -15,7 +15,7 @@
 // update's transaction. Evaluation selects immutable effective versions, lazily
 // builds typed inputs, combines native OPA decisions and appends safe outbox
 // metadata in the caller's transaction. Runs owns receipt/flag persistence;
-// sealed sample storage and delivery belong to their owning later phases.
+// policy sampling owns sealed input storage, and workflow services own delivery.
 //
 // # Dependencies
 //

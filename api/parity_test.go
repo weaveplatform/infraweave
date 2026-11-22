@@ -106,10 +106,9 @@ func checkParity(t *testing.T, p parityProduct) {
 // TestUnitAPIParity checks the API against the Deploy reference.
 func TestUnitAPIParity(t *testing.T) { checkParity(t, deployParity) }
 
-// TestUnitFlowsParity checks the API against the Flows reference. Nothing
-// Flows is served before P18c, so the baseline accepts every operation as
-// missing; the test-scenario operations stay accepted until the design of
-// Flows test scenarios is decided.
+// TestUnitFlowsParity checks the API against the Flows reference. The baseline
+// records unimplemented Flows operations; test-scenario operations retain the
+// explicit control decision until their API contract is settled.
 //
 // ref: PD-16
 func TestUnitFlowsParity(t *testing.T) {

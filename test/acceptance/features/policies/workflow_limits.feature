@@ -1,4 +1,4 @@
-@policy-phase @postgres @vcs @policy-approval
+@policies @postgres @vcs @policy-approval
 Feature: Public reviews retain safe policy execution failures
   Real typed workflow inputs obey the configured execution limit. Malformed
   results and conflicting booleans cannot release a queued run or commit flags
