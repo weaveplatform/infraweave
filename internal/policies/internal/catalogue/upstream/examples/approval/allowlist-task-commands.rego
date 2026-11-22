@@ -1,0 +1,26 @@
+package spacelift
+
+# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.
+import rego.v1
+
+# Define what commands are allowed
+allowlist := ["ls", "ps"]
+
+# Approve when not a task.
+approve if {
+	input.run.type != "TASK"
+}
+
+# Approve when allowlisted.
+approve if {
+	some input.run.command in allowlist
+}
+
+# Approve with two or more approvals.
+approve if {
+	count(input.reviews.current.approvals) > 1
+}
+
+# Learn more about sampling policy evaluations here:
+# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs
+sample := true

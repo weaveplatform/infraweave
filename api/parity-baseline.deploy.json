@@ -273,10 +273,7 @@
       "policyIntentProjectAttach",
       "policyIntentProjectDetach",
       "policySearchEvaluationRecordSuggestions",
-      "policySearchEvaluationRecords",
-      "policySimulatev2",
-      "policyTemplate",
-      "searchPolicyTemplates"
+      "policySearchEvaluationRecords"
     ],
     "Repos": [
       "repo",
@@ -366,7 +363,6 @@
       "searchModulesSuggestions",
       "searchNamedWebhooksIntegrationsSuggestions",
       "searchNotificationsSuggestions",
-      "searchPolicyTemplatesSuggestions",
       "searchRepoCommitsSuggestions",
       "searchRepoFilesSuggestions",
       "searchReposSuggestions"

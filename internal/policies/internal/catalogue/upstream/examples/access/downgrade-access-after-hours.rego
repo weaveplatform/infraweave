@@ -1,0 +1,40 @@
+package spacelift
+
+# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.
+import rego.v1
+
+# When things go wrong it's usually because someone did something, like an infra deployment.
+# Let's try to make sure they're in the office when doing so and restrict write access to business hours
+# and office IP range.
+#
+# This policy is best combined with one that gives read access.
+
+now := input.request.timestamp_ns
+
+clock := time.clock([now, "America/Los_Angeles"])
+
+weekend := {"Saturday", "Sunday"}
+
+weekday := time.weekday(now)
+
+ip := input.request.remote_ip
+
+write if {
+	"Product team" in input.session.teams
+}
+
+deny_write if {
+	weekend[weekday]
+}
+
+deny_write if {
+	clock[0] < 9
+}
+
+deny_write if {
+	clock[0] > 17
+}
+
+deny_write if {
+	not net.cidr_contains("12.34.56.0/24", ip)
+}

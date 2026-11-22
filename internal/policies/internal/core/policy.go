@@ -88,6 +88,7 @@ type Deps struct {
 	Now          func() time.Time
 	LoginChanges accessapi.LoginPolicyChanges
 	Sampling     *sampling.Service
+	Catalogue    CatalogueStore
 }
 
 // Events appends policy changes in the transaction carried by the context.
@@ -114,6 +115,9 @@ func (e *Missing) Error() string { return fmt.Sprintf("policies: no %s %q", e.Ki
 // Create compiles a new policy, holds its space and persists the policy atomically.
 func (s *Service) Create(ctx context.Context, p kernel.Principal, in Input) (Policy, error) {
 	if err := checkInput(in); err != nil {
+		return Policy{}, err
+	}
+	if err := checkTemplateOrigin(in); err != nil {
 		return Policy{}, err
 	}
 	if in.Engine == "" {
