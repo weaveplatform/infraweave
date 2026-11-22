@@ -67,15 +67,17 @@ Feature: Kubernetes worker controller
 
   @op:workerPoolCreate @op:workerPoolBind @case:denial
   Scenario: A controller cannot use another account, a space its key cannot write, or a pool another owner holds
-    Given a controller namespace "member" holds the member management key
+    Given the member key is exchanged through B for token "m"
+    And a controller namespace "member" holds the member management key
     And a certificate signing request for a P-256 key is kept as "csr"
     And token "h" sends "POST /api/v1/worker-pools" with '{"name":"Taken","space":"{team}","certificateSigningRequest":"{csr}"}' through A
-    And the answer's pool token names the pool "taken" and chains to the pool CA, its serial kept as "taken"
-    And the owner "other" binds the pool of the certificate "taken" with the key of "csr" through B
+    And the answer's id names "taken"
+    And the answer's pool token names the pool "taken" and chains to the pool CA, its serial kept as "takencert"
+    And the owner "other" binds the pool of the certificate "takencert" with the key of "csr" through B
     And 1 worker controller watch the controller namespaces
     When the Managed WorkerPool "elsewhere" of capacity 1 in the space "team" is applied in "home" for another account
     And the Managed WorkerPool "unwritable" of capacity 1 in the space "team" is applied in "member"
-    And the Existing WorkerPool "steal" of capacity 1 over the pool of the certificate "taken" with the key of "csr" in the space "team" is applied in "home"
+    And the Existing WorkerPool "steal" of capacity 1 over the pool of the certificate "takencert" with the key of "csr" in the space "team" is applied in "home"
     Then the WorkerPool "elsewhere" eventually reports Bound False "AccountMismatch"
     And the WorkerPool "unwritable" eventually reports Bound False "Refused"
     And the WorkerPool "steal" eventually reports Bound False "OwnershipConflict"

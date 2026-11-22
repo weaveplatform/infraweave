@@ -73,13 +73,14 @@ func fail(reason, message string, err error) *fault {
 
 // remoteFault classifies err, a call to the installation, by its status:
 // a refused credential, a missing permission, an ownership conflict, a
-// refusal of the request, or an outage that the next pass retries.
+// refusal of the request, or an outage that the next pass retries. A
+// refusal's message names its call; op names a call that never answered.
 func remoteFault(op string, err error) *fault {
 	var e *client.Error
 	if !errors.As(err, &e) {
 		return fail(ReasonUnavailable, op+": the installation is unreachable.", err)
 	}
-	message := op + ": " + e.Error()
+	message := e.Error()
 	switch {
 	case e.Status == http.StatusUnauthorized:
 		return fail(ReasonCredentialsRejected, message, err)
