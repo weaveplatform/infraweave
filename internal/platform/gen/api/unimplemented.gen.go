@@ -806,6 +806,18 @@ func (UnimplementedStrict) PolicyRuntime(context.Context, PolicyRuntimeRequestOb
 	return nil, &problem.NotImplementedError{OperationID: "policyRuntime", Route: "GET /policy-runtime"}
 }
 
+func (UnimplementedStrict) SearchPolicyTemplates(context.Context, SearchPolicyTemplatesRequestObject) (SearchPolicyTemplatesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPolicyTemplates", Route: "POST /policy-templates/search"}
+}
+
+func (UnimplementedStrict) SearchPolicyTemplatesSuggestions(context.Context, SearchPolicyTemplatesSuggestionsRequestObject) (SearchPolicyTemplatesSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "searchPolicyTemplatesSuggestions", Route: "POST /policy-templates/search/suggestions"}
+}
+
+func (UnimplementedStrict) PolicyTemplate(context.Context, PolicyTemplateRequestObject) (PolicyTemplateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "policyTemplate", Route: "GET /policy-templates/{policyTemplateId}"}
+}
+
 func (UnimplementedStrict) PublicWorkerPool(context.Context, PublicWorkerPoolRequestObject) (PublicWorkerPoolResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPool", Route: "GET /public-worker-pool"}
 }

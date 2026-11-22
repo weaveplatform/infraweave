@@ -1,0 +1,44 @@
+package spacelift
+
+# This import is required for Rego v0 compatibility and can be removed if you are only using Rego v1.
+import rego.v1
+
+# This rule will copy each of the existing teams to the new modified list.
+# Remove it if you want to start from scratch.
+team contains input.session.teams[_]
+
+# In addition to boolean rules regulating access to your Spacelift account, the login
+# policy exposes the team rule, which allows one to dynamically rewrite the list of teams
+# received from the identity provider. This operation allows one to define Spacelift roles
+# independent of the identity provider. To illustrate this use case, let's imagine you want
+# to define a Superwriter role for someone who's:
+# - logging in from an office VPN;
+# - is a member of the DevOps team, as defined by your IdP;
+# - is not a member of the Contractors team, as defined by your IdP;
+
+team contains "Superwriter" if {
+	office_vpn
+	devops
+	not contractor
+}
+
+contractor if {
+	"Contractors" in input.session.teams
+}
+
+devops if {
+	"DevOps" in input.session.teams
+}
+
+office_vpn if {
+	net.cidr_contains("12.34.56.0/24", input.request.remote_ip)
+}
+
+# What's important here is that the team rule overwrites the original list of teams,
+# meaning that if it evaluates to a non-empty collection, it will replace the original list
+# of teams in the session. In the above example, the Superadmin role will become the only
+# team for the evaluated user session.
+
+# Learn more about sampling policy evaluations here:
+# https://docs.spacelift.io/concepts/policy#sampling-policy-inputs
+sample := true

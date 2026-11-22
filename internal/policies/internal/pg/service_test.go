@@ -11,13 +11,18 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/catalogue"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/core"
 )
 
 func TestAccPolicyMetadataSurvivesReplacement(t *testing.T) {
 	f := newFixture(t)
 	ctx := kernel.WithPrincipal(t.Context(), f.principal)
-	origin := kernel.NewULID().String()
+	template, err := catalogue.Get("01HRPFBHSKXXMNNMHMNQ2J58F0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := template.ID
 	created, err := f.http.PolicyCreatev2(ctx, api.PolicyCreatev2RequestObject{Body: &api.PolicyCreateInput{
 		Name: "Metadata", Type: api.PolicyTypePLAN, Body: "package infraweave\n",
 		Description: new("original"), Labels: &[]string{"prod", "eu"}, PolicyTemplateULID: &origin,
