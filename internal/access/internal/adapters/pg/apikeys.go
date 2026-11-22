@@ -455,6 +455,9 @@ func (s *Store) revokeKey(
 	)
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
+		if _, err := lockAccount(ctx, q, acct); err != nil {
+			return err
+		}
 		if err := lockKey(ctx, q, acct, id, expect); err != nil {
 			return err
 		}

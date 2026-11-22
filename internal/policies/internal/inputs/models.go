@@ -5,16 +5,16 @@ import "encoding/json"
 
 // Commit is a typed policy contract object.
 type Commit struct {
-	Author               Field[string]   `json:"author,omitzero"                  contract:"required"`
+	Author               Field[string]   `json:"author,omitzero"                  contract:"required" capture:"sensitive"`
 	Branch               Field[string]   `json:"branch,omitzero"                  contract:"required"`
 	CreatedAt            Field[int64]    `json:"created_at,omitzero"              contract:"required"`
 	ExistOnTrackedBranch Field[bool]     `json:"exist_on_tracked_branch,omitzero" contract:"nullable"`
 	Hash                 Field[string]   `json:"hash,omitzero"                    contract:""`
-	Message              Field[string]   `json:"message,omitzero"                 contract:"required"`
+	Message              Field[string]   `json:"message,omitzero"                 contract:"required" capture:"sensitive"`
 	PullRequestID        Field[int64]    `json:"pull_request_id,omitzero"         contract:"nullable"`
 	Tag                  Field[string]   `json:"tag,omitzero"                     contract:""`
 	URL                  Field[string]   `json:"url,omitzero"                     contract:""`
-	AuthorIdentity       Field[Identity] `json:"author_identity,omitzero"         contract:""`
+	AuthorIdentity       Field[Identity] `json:"author_identity,omitzero"         contract:""         capture:"sensitive"`
 }
 
 // IntentReview is a typed policy contract object.
@@ -44,33 +44,33 @@ type Module struct {
 type Push struct {
 	AffectedFiles       Field[[]string]     `json:"affected_files,omitzero"        contract:"required"`
 	AffectedStacksCount Field[int64]        `json:"affected_stacks_count,omitzero" contract:"required"`
-	Author              Field[string]       `json:"author,omitzero"                contract:"required"`
+	Author              Field[string]       `json:"author,omitzero"                contract:"required" capture:"sensitive"`
 	Branch              Field[string]       `json:"branch,omitzero"                contract:"required"`
 	Commits             Field[[]PushCommit] `json:"commits,omitzero"               contract:""`
 	CreatedAt           Field[int64]        `json:"created_at,omitzero"            contract:"required"`
 	Hash                Field[string]       `json:"hash,omitzero"                  contract:"required"`
-	Message             Field[string]       `json:"message,omitzero"               contract:"required"`
+	Message             Field[string]       `json:"message,omitzero"               contract:"required" capture:"sensitive"`
 	Tag                 Field[string]       `json:"tag,omitzero"                   contract:""`
 }
 
 // PushCommit is a typed policy contract object.
 type PushCommit struct {
-	Author               Field[string]   `json:"author,omitzero"                  contract:"required"`
+	Author               Field[string]   `json:"author,omitzero"                  contract:"required" capture:"sensitive"`
 	Branch               Field[string]   `json:"branch,omitzero"                  contract:"required"`
 	CreatedAt            Field[int64]    `json:"created_at,omitzero"              contract:"required"`
 	ExistOnTrackedBranch Field[bool]     `json:"exist_on_tracked_branch,omitzero" contract:"nullable"`
 	Hash                 Field[string]   `json:"hash,omitzero"                    contract:""`
-	Message              Field[string]   `json:"message,omitzero"                 contract:"required"`
+	Message              Field[string]   `json:"message,omitzero"                 contract:"required" capture:"sensitive"`
 	PullRequestID        Field[int64]    `json:"pull_request_id,omitzero"         contract:"nullable"`
 	Tag                  Field[string]   `json:"tag,omitzero"                     contract:""`
 	URL                  Field[string]   `json:"url,omitzero"                     contract:""`
-	AuthorIdentity       Field[Identity] `json:"author_identity,omitzero"         contract:""`
+	AuthorIdentity       Field[Identity] `json:"author_identity,omitzero"         contract:""         capture:"sensitive"`
 	AffectedFiles        Field[[]string] `json:"affected_files,omitzero"          contract:"required"`
 }
 
 // Request is a typed policy contract object.
 type Request struct {
-	RemoteIP    Field[string] `json:"remote_ip,omitzero"    contract:""`
+	RemoteIP    Field[string] `json:"remote_ip,omitzero"    contract:"" capture:"sensitive"`
 	TimestampNS Field[int64]  `json:"timestamp_ns,omitzero" contract:""`
 }
 
@@ -94,20 +94,20 @@ type RunTriggerStack struct {
 // Session is a typed policy contract object.
 type Session struct {
 	Admin      Field[Admin]    `json:"admin,omitzero"       contract:""`
-	CreatorIP  Field[string]   `json:"creator_ip,omitzero"  contract:""`
-	IDPSubject Field[string]   `json:"idp_subject,omitzero" contract:""`
-	Login      Field[string]   `json:"login,omitzero"       contract:""`
+	CreatorIP  Field[string]   `json:"creator_ip,omitzero"  contract:""                  capture:"sensitive"`
+	IDPSubject Field[string]   `json:"idp_subject,omitzero" contract:""                  capture:"sensitive"`
+	Login      Field[string]   `json:"login,omitzero"       contract:""                  capture:"sensitive"`
 	Machine    Field[bool]     `json:"machine,omitzero"     contract:"required"`
-	Name       Field[string]   `json:"name,omitzero"        contract:""`
+	Name       Field[string]   `json:"name,omitzero"        contract:""                  capture:"sensitive"`
 	StackID    Field[string]   `json:"stack_id,omitzero"    contract:"nullable"`
 	Teams      Field[[]string] `json:"teams,omitzero"       contract:"required,nullable"`
-	Identity   Field[Identity] `json:"identity,omitzero"    contract:""`
+	Identity   Field[Identity] `json:"identity,omitzero"    contract:""                  capture:"sensitive"`
 }
 
 // Slack is a typed policy contract object.
 type Slack struct {
 	Channel Field[SlackChannel] `json:"channel,omitzero" contract:"required"`
-	Command Field[string]       `json:"command,omitzero" contract:"required"`
+	Command Field[string]       `json:"command,omitzero" contract:"required" capture:"sensitive"`
 	Team    Field[SlackTeam]    `json:"team,omitzero"    contract:"required"`
 	User    Field[SlackUser]    `json:"user,omitzero"    contract:"required"`
 }
@@ -260,18 +260,18 @@ type PullRequest struct {
 // RuntimeConfig is a typed policy contract object.
 type RuntimeConfig struct {
 	GitSparseCheckoutPaths Field[[]string]          `json:"git_sparse_checkout_paths,omitzero" contract:"nullable"`
-	AfterApply             Field[[]string]          `json:"after_apply,omitzero"               contract:"nullable"`
-	AfterDestroy           Field[[]string]          `json:"after_destroy,omitzero"             contract:"nullable"`
-	AfterInit              Field[[]string]          `json:"after_init,omitzero"                contract:"nullable"`
-	AfterPerform           Field[[]string]          `json:"after_perform,omitzero"             contract:"nullable"`
-	AfterPlan              Field[[]string]          `json:"after_plan,omitzero"                contract:"nullable"`
-	AfterRun               Field[[]string]          `json:"after_run,omitzero"                 contract:"nullable"`
-	BeforeApply            Field[[]string]          `json:"before_apply,omitzero"              contract:"nullable"`
-	BeforeDestroy          Field[[]string]          `json:"before_destroy,omitzero"            contract:"nullable"`
-	BeforeInit             Field[[]string]          `json:"before_init,omitzero"               contract:"nullable"`
-	BeforePerform          Field[[]string]          `json:"before_perform,omitzero"            contract:"nullable"`
-	BeforePlan             Field[[]string]          `json:"before_plan,omitzero"               contract:"nullable"`
-	Environment            Field[map[string]string] `json:"environment,omitzero"               contract:"required"`
+	AfterApply             Field[[]string]          `json:"after_apply,omitzero"               contract:"nullable"          capture:"sensitive"`
+	AfterDestroy           Field[[]string]          `json:"after_destroy,omitzero"             contract:"nullable"          capture:"sensitive"`
+	AfterInit              Field[[]string]          `json:"after_init,omitzero"                contract:"nullable"          capture:"sensitive"`
+	AfterPerform           Field[[]string]          `json:"after_perform,omitzero"             contract:"nullable"          capture:"sensitive"`
+	AfterPlan              Field[[]string]          `json:"after_plan,omitzero"                contract:"nullable"          capture:"sensitive"`
+	AfterRun               Field[[]string]          `json:"after_run,omitzero"                 contract:"nullable"          capture:"sensitive"`
+	BeforeApply            Field[[]string]          `json:"before_apply,omitzero"              contract:"nullable"          capture:"sensitive"`
+	BeforeDestroy          Field[[]string]          `json:"before_destroy,omitzero"            contract:"nullable"          capture:"sensitive"`
+	BeforeInit             Field[[]string]          `json:"before_init,omitzero"               contract:"nullable"          capture:"sensitive"`
+	BeforePerform          Field[[]string]          `json:"before_perform,omitzero"            contract:"nullable"          capture:"sensitive"`
+	BeforePlan             Field[[]string]          `json:"before_plan,omitzero"               contract:"nullable"          capture:"sensitive"`
+	Environment            Field[map[string]string] `json:"environment,omitzero"               contract:"required"          capture:"sensitive"`
 	ProjectRoot            Field[string]            `json:"project_root,omitzero"              contract:"required"`
 	RunnerImage            Field[string]            `json:"runner_image,omitzero"              contract:"required"`
 	TerraformVersion       Field[string]            `json:"terraform_version,omitzero"         contract:"required,nullable"`
@@ -317,7 +317,7 @@ type ApprovalRun struct {
 	BasedOnLocalWorkspace          Field[bool]          `json:"based_on_local_workspace,omitzero"          contract:""`
 	Branch                         Field[string]        `json:"branch,omitzero"                            contract:""`
 	Changes                        Field[[]Change]      `json:"changes,omitzero"                           contract:""`
-	Command                        Field[string]        `json:"command,omitzero"                           contract:"nullable"`
+	Command                        Field[string]        `json:"command,omitzero"                           contract:"nullable"                                                  capture:"sensitive"`
 	Commit                         Field[Commit]        `json:"commit,omitzero"                            contract:""`
 	CreatedAt                      Field[int64]         `json:"created_at,omitzero"                        contract:"required"`
 	CreatorSession                 Field[Session]       `json:"creator_session,omitzero"                   contract:""`
@@ -332,7 +332,7 @@ type ApprovalRun struct {
 	TriggeredBy                    Field[string]        `json:"triggered_by,omitzero"                      contract:"required,nullable"`
 	Type                           Field[string]        `json:"type,omitzero"                              contract:"required,enum=PROPOSED,TRACKED,TASK,TESTING,DESTROY,PARSE"`
 	UpdatedAt                      Field[int64]         `json:"updated_at,omitzero"                        contract:"required"`
-	UserProvidedMetadata           Field[[]string]      `json:"user_provided_metadata,omitzero"            contract:""`
+	UserProvidedMetadata           Field[[]string]      `json:"user_provided_metadata,omitzero"            contract:""                                                          capture:"sensitive"`
 }
 
 // PlanRun is a typed policy contract object.
@@ -340,7 +340,7 @@ type PlanRun struct {
 	BasedOnLocalWorkspace Field[bool]          `json:"based_on_local_workspace,omitzero" contract:""`
 	Branch                Field[string]        `json:"branch,omitzero"                   contract:""`
 	Changes               Field[[]Change]      `json:"changes,omitzero"                  contract:""`
-	Command               Field[string]        `json:"command,omitzero"                  contract:"nullable"`
+	Command               Field[string]        `json:"command,omitzero"                  contract:"nullable"                                                  capture:"sensitive"`
 	Commit                Field[Commit]        `json:"commit,omitzero"                   contract:""`
 	CreatedAt             Field[int64]         `json:"created_at,omitzero"               contract:"required"`
 	CreatorSession        Field[Session]       `json:"creator_session,omitzero"          contract:""`
@@ -355,7 +355,7 @@ type PlanRun struct {
 	TriggeredBy           Field[string]        `json:"triggered_by,omitzero"             contract:"required,nullable"`
 	Type                  Field[string]        `json:"type,omitzero"                     contract:"required,enum=PROPOSED,TRACKED,TASK,TESTING,DESTROY,PARSE"`
 	UpdatedAt             Field[int64]         `json:"updated_at,omitzero"               contract:"required"`
-	UserProvidedMetadata  Field[[]string]      `json:"user_provided_metadata,omitzero"   contract:""`
+	UserProvidedMetadata  Field[[]string]      `json:"user_provided_metadata,omitzero"   contract:""                                                          capture:"sensitive"`
 }
 
 // NotificationRun is a typed policy contract object.
@@ -363,7 +363,7 @@ type NotificationRun struct {
 	BasedOnLocalWorkspace Field[bool]              `json:"based_on_local_workspace,omitzero" contract:""`
 	Branch                Field[string]            `json:"branch,omitzero"                   contract:""`
 	Changes               Field[[]Change]          `json:"changes,omitzero"                  contract:""`
-	Command               Field[string]            `json:"command,omitzero"                  contract:"nullable"`
+	Command               Field[string]            `json:"command,omitzero"                  contract:"nullable"                                                  capture:"sensitive"`
 	Commit                Field[Commit]            `json:"commit,omitzero"                   contract:""`
 	CreatedAt             Field[int64]             `json:"created_at,omitzero"               contract:"required"`
 	CreatorSession        Field[Session]           `json:"creator_session,omitzero"          contract:""`
@@ -379,7 +379,7 @@ type NotificationRun struct {
 	TriggeredBy           Field[string]            `json:"triggered_by,omitzero"             contract:"required,nullable"`
 	Type                  Field[string]            `json:"type,omitzero"                     contract:"required,enum=PROPOSED,TRACKED,TASK,TESTING,DESTROY,PARSE"`
 	UpdatedAt             Field[int64]             `json:"updated_at,omitzero"               contract:"required"`
-	UserProvidedMetadata  Field[[]string]          `json:"user_provided_metadata,omitzero"   contract:""`
+	UserProvidedMetadata  Field[[]string]          `json:"user_provided_metadata,omitzero"   contract:""                                                          capture:"sensitive"`
 }
 
 // TriggerRun is a typed policy contract object.
@@ -387,7 +387,7 @@ type TriggerRun struct {
 	BasedOnLocalWorkspace Field[bool]              `json:"based_on_local_workspace,omitzero" contract:""`
 	Branch                Field[string]            `json:"branch,omitzero"                   contract:""`
 	Changes               Field[[]Change]          `json:"changes,omitzero"                  contract:""`
-	Command               Field[string]            `json:"command,omitzero"                  contract:"nullable"`
+	Command               Field[string]            `json:"command,omitzero"                  contract:"nullable"                                                         capture:"sensitive"`
 	Commit                Field[Commit]            `json:"commit,omitzero"                   contract:""`
 	CreatedAt             Field[int64]             `json:"created_at,omitzero"               contract:"required"`
 	CreatorSession        Field[Session]           `json:"creator_session,omitzero"          contract:""`
@@ -404,14 +404,14 @@ type TriggerRun struct {
 	TriggeredBy           Field[string]            `json:"triggered_by,omitzero"             contract:"required,nullable"`
 	Type                  Field[string]            `json:"type,omitzero"                     contract:"required,enum=PROPOSED,TRACKED,TASK,TESTING,DESTROY,PARSE"`
 	UpdatedAt             Field[int64]             `json:"updated_at,omitzero"               contract:"required"`
-	UserProvidedMetadata  Field[[]string]          `json:"user_provided_metadata,omitzero"   contract:""`
+	UserProvidedMetadata  Field[[]string]          `json:"user_provided_metadata,omitzero"   contract:""                                                                 capture:"sensitive"`
 }
 
 // InProgressRun is a typed policy contract object.
 type InProgressRun struct {
 	BasedOnLocalWorkspace Field[bool]        `json:"based_on_local_workspace,omitzero" contract:""`
 	Branch                Field[string]      `json:"branch,omitzero"                   contract:""`
-	Command               Field[string]      `json:"command,omitzero"                  contract:"nullable"`
+	Command               Field[string]      `json:"command,omitzero"                  contract:"nullable"                                                  capture:"sensitive"`
 	Commit                Field[Commit]      `json:"commit,omitzero"                   contract:""`
 	CreatedAt             Field[int64]       `json:"created_at,omitzero"               contract:"required"`
 	DriftDetection        Field[bool]        `json:"drift_detection,omitzero"          contract:""`
@@ -422,7 +422,7 @@ type InProgressRun struct {
 	TriggeredBy           Field[string]      `json:"triggered_by,omitzero"             contract:"required,nullable"`
 	Type                  Field[string]      `json:"type,omitzero"                     contract:"required,enum=PROPOSED,TRACKED,TASK,TESTING,DESTROY,PARSE"`
 	UpdatedAt             Field[int64]       `json:"updated_at,omitzero"               contract:"required"`
-	UserProvidedMetadata  Field[[]string]    `json:"user_provided_metadata,omitzero"   contract:""`
+	UserProvidedMetadata  Field[[]string]    `json:"user_provided_metadata,omitzero"   contract:""                                                          capture:"sensitive"`
 }
 
 // Entity is a typed policy contract object.
@@ -447,18 +447,18 @@ type EntityData struct {
 	LogicalResourceID  Field[string]          `json:"logical_resource_id,omitzero"  contract:""`
 	Mode               Field[string]          `json:"mode,omitzero"                 contract:""`
 	Module             Field[string]          `json:"module,omitzero"               contract:""`
-	Outputs            Field[Object]          `json:"outputs,omitzero"              contract:""`
+	Outputs            Field[Object]          `json:"outputs,omitzero"              contract:""         capture:"sensitive"`
 	OutputsHash        Field[int64]           `json:"outputs_hash,omitzero"         contract:""`
 	Parent             Field[string]          `json:"parent,omitzero"               contract:""`
 	PhysicalResourceID Field[string]          `json:"physical_resource_id,omitzero" contract:""`
 	Provider           Field[string]          `json:"provider,omitzero"             contract:""`
 	Sensitive          Field[bool]            `json:"sensitive,omitzero"            contract:""`
 	Tainted            Field[bool]            `json:"tainted,omitzero"              contract:""`
-	Template           Field[json.RawMessage] `json:"template,omitzero"             contract:"nullable"`
+	Template           Field[json.RawMessage] `json:"template,omitzero"             contract:"nullable" capture:"sensitive"`
 	Urn                Field[string]          `json:"urn,omitzero"                  contract:""`
-	Value              Field[string]          `json:"value,omitzero"                contract:""`
+	Value              Field[string]          `json:"value,omitzero"                contract:""         capture:"sensitive"`
 	ValueHash          Field[int64]           `json:"value_hash,omitzero"           contract:""`
-	Values             Field[Object]          `json:"values,omitzero"               contract:""`
+	Values             Field[Object]          `json:"values,omitzero"               contract:""         capture:"sensitive"`
 	ValuesHash         Field[int64]           `json:"values_hash,omitzero"          contract:""`
 }
 
@@ -494,28 +494,28 @@ type ResourceChange struct {
 type ResourceDelta struct {
 	ReplacePaths    Field[[][]PathStep]             `json:"replace_paths,omitzero"    contract:""`
 	Importing       Field[Importing]                `json:"importing,omitzero"        contract:"nullable"`
-	GeneratedConfig Field[string]                   `json:"generated_config,omitzero" contract:""`
-	BeforeIdentity  Field[Object]                   `json:"before_identity,omitzero"  contract:"nullable"`
-	AfterIdentity   Field[Object]                   `json:"after_identity,omitzero"   contract:"nullable"`
+	GeneratedConfig Field[string]                   `json:"generated_config,omitzero" contract:""         capture:"sensitive"`
+	BeforeIdentity  Field[Object]                   `json:"before_identity,omitzero"  contract:"nullable" capture:"sensitive"`
+	AfterIdentity   Field[Object]                   `json:"after_identity,omitzero"   contract:"nullable" capture:"sensitive"`
 	Actions         Field[[]string]                 `json:"actions,omitzero"          contract:""`
-	After           Field[Object]                   `json:"after,omitzero"            contract:"nullable"`
+	After           Field[Object]                   `json:"after,omitzero"            contract:"nullable" capture:"sensitive"`
 	AfterUnknown    Field[map[string]SensitiveMask] `json:"after_unknown,omitzero"    contract:""`
-	Before          Field[Object]                   `json:"before,omitzero"           contract:"nullable"`
+	Before          Field[Object]                   `json:"before,omitzero"           contract:"nullable" capture:"sensitive"`
 	BeforeSensitive Field[SensitiveMask]            `json:"before_sensitive,omitzero" contract:""`
 	AfterSensitive  Field[SensitiveMask]            `json:"after_sensitive,omitzero"  contract:""`
 }
 
 // Importing retains tool-written import metadata. Identity keys belong to the provider.
 type Importing struct {
-	ID       Field[string] `json:"id,omitzero"       contract:""`
+	ID       Field[string] `json:"id,omitzero"       contract:""         capture:"sensitive"`
 	Unknown  Field[bool]   `json:"unknown,omitzero"  contract:""`
-	Identity Field[Object] `json:"identity,omitzero" contract:"nullable"`
+	Identity Field[Object] `json:"identity,omitzero" contract:"nullable" capture:"sensitive"`
 }
 
 // StateTransition is a typed policy contract object.
 type StateTransition struct {
 	NewState Field[string] `json:"new_state,omitzero" contract:""`
-	Note     Field[string] `json:"note,omitzero"      contract:""`
+	Note     Field[string] `json:"note,omitzero"      contract:"" capture:"sensitive"`
 	Username Field[string] `json:"username,omitzero"  contract:""`
 }
 
@@ -663,14 +663,14 @@ type LoginInput struct {
 // LoginSession is a typed policy contract object.
 type LoginSession struct {
 	Admin      Field[Admin]    `json:"admin,omitzero"       contract:""`
-	CreatorIP  Field[string]   `json:"creator_ip,omitzero"  contract:""`
-	IDPSubject Field[string]   `json:"idp_subject,omitzero" contract:""`
-	Login      Field[string]   `json:"login,omitzero"       contract:""`
+	CreatorIP  Field[string]   `json:"creator_ip,omitzero"  contract:""                  capture:"sensitive"`
+	IDPSubject Field[string]   `json:"idp_subject,omitzero" contract:""                  capture:"sensitive"`
+	Login      Field[string]   `json:"login,omitzero"       contract:""                  capture:"sensitive"`
 	Machine    Field[bool]     `json:"machine,omitzero"     contract:"required"`
-	Name       Field[string]   `json:"name,omitzero"        contract:""`
+	Name       Field[string]   `json:"name,omitzero"        contract:""                  capture:"sensitive"`
 	StackID    Field[string]   `json:"stack_id,omitzero"    contract:"nullable"`
 	Teams      Field[[]string] `json:"teams,omitzero"       contract:"required,nullable"`
-	Identity   Field[Identity] `json:"identity,omitzero"    contract:""`
+	Identity   Field[Identity] `json:"identity,omitzero"    contract:""                  capture:"sensitive"`
 	Member     Field[bool]     `json:"member,omitzero"      contract:"required"`
 }
 
@@ -703,8 +703,8 @@ type NotificationInput struct {
 
 // InternalError is a typed policy contract object.
 type InternalError struct {
-	Error    Field[string] `json:"error,omitzero"    contract:"required"`
-	Message  Field[string] `json:"message,omitzero"  contract:"required"`
+	Error    Field[string] `json:"error,omitzero"    contract:"required" capture:"sensitive"`
+	Message  Field[string] `json:"message,omitzero"  contract:"required" capture:"sensitive"`
 	Severity Field[string] `json:"severity,omitzero" contract:"required"`
 }
 
@@ -812,13 +812,13 @@ type WebhookMessage struct {
 type PlanInput struct {
 	Ansible            Field[AnsiblePlan]                  `json:"ansible,omitzero"              contract:"nullable"`
 	Cloudformation     Field[CloudFormationPlan]           `json:"cloudformation,omitzero"       contract:"nullable"`
-	Kubernetes         Field[KubernetesPlan]               `json:"kubernetes,omitzero"           contract:"nullable"`
+	Kubernetes         Field[KubernetesPlan]               `json:"kubernetes,omitzero"           contract:"nullable" capture:"sensitive"`
 	Opentofu           Field[OpenTofuPlan]                 `json:"opentofu,omitzero"             contract:"nullable"`
 	Pulumi             Field[PulumiPlan]                   `json:"pulumi,omitzero"               contract:"nullable"`
 	Infraweave         Field[PlanContext]                  `json:"infraweave,omitzero"           contract:"required"`
 	Terraform          Field[TerraformPlan]                `json:"terraform,omitzero"            contract:"nullable"`
 	Terragrunt         Field[map[string]TerragruntProject] `json:"terragrunt,omitzero"           contract:"nullable"`
-	ThirdPartyMetadata Field[ThirdPartyMetadata]           `json:"third_party_metadata,omitzero" contract:"nullable"`
+	ThirdPartyMetadata Field[ThirdPartyMetadata]           `json:"third_party_metadata,omitzero" contract:"nullable" capture:"sensitive"`
 }
 
 // AnsiblePlan is a typed policy contract object.
@@ -873,7 +873,7 @@ type CloudFormationTarget struct {
 
 // OpenTofuPlan is a typed policy contract object.
 type OpenTofuPlan struct {
-	Checks          Field[[]PlanCheck]      `json:"checks,omitzero"           contract:""`
+	Checks          Field[[]PlanCheck]      `json:"checks,omitzero"           contract:""         capture:"sensitive"`
 	OpentofuVersion Field[string]           `json:"opentofu_version,omitzero" contract:""`
 	ResourceChanges Field[[]ResourceChange] `json:"resource_changes,omitzero" contract:"nullable"`
 }
@@ -903,8 +903,8 @@ type PulumiState struct {
 	Delete   Field[bool]   `json:"delete,omitzero"   contract:""`
 	External Field[bool]   `json:"external,omitzero" contract:""`
 	ID       Field[string] `json:"id,omitzero"       contract:""`
-	Inputs   Field[Object] `json:"inputs,omitzero"   contract:""`
-	Outputs  Field[Object] `json:"outputs,omitzero"  contract:""`
+	Inputs   Field[Object] `json:"inputs,omitzero"   contract:"" capture:"sensitive"`
+	Outputs  Field[Object] `json:"outputs,omitzero"  contract:"" capture:"sensitive"`
 	Parent   Field[string] `json:"parent,omitzero"   contract:""`
 	Protect  Field[bool]   `json:"protect,omitzero"  contract:""`
 	Provider Field[string] `json:"provider,omitzero" contract:""`
@@ -935,7 +935,7 @@ type PlanRequest struct {
 
 // TerraformPlan is a typed policy contract object.
 type TerraformPlan struct {
-	Checks           Field[[]PlanCheck]      `json:"checks,omitzero"            contract:""`
+	Checks           Field[[]PlanCheck]      `json:"checks,omitzero"            contract:""         capture:"sensitive"`
 	ResourceChanges  Field[[]ResourceChange] `json:"resource_changes,omitzero"  contract:"nullable"`
 	TerraformVersion Field[string]           `json:"terraform_version,omitzero" contract:""`
 }
@@ -973,8 +973,8 @@ type TaskInput struct {
 
 // TaskInputRequest is a typed policy contract object.
 type TaskInputRequest struct {
-	Command     Field[string] `json:"command,omitzero"      contract:"required"`
-	RemoteIP    Field[string] `json:"remote_ip,omitzero"    contract:""`
+	Command     Field[string] `json:"command,omitzero"      contract:"required" capture:"sensitive"`
+	RemoteIP    Field[string] `json:"remote_ip,omitzero"    contract:""         capture:"sensitive"`
 	TimestampNS Field[int64]  `json:"timestamp_ns,omitzero" contract:"required"`
 }
 

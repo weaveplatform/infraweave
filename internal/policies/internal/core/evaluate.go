@@ -15,6 +15,7 @@ import (
 	policyapi "github.com/weaveplatform/infraweave/internal/policies/api"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/combine"
 	"github.com/weaveplatform/infraweave/internal/policies/internal/inputs"
+	"github.com/weaveplatform/infraweave/internal/policies/internal/sampling"
 )
 
 // Evaluate joins the caller's transition. Engine failures become fail-closed
@@ -85,6 +86,27 @@ func (s *Service) Evaluate(ctx context.Context, req policyapi.EvaluationRequest)
 			}
 		}
 		out = combineDecisions(req.Type, receipts)
+		if s.deps.Sampling != nil {
+			records := make([]sampling.Evaluation, len(out.Receipts))
+			for i, receipt := range out.Receipts {
+				records[i] = sampling.Evaluation{
+					Receipt:        receipt,
+					Body:           rows[i].Body,
+					Input:          documents[i],
+					Print:          results[i].Result.Print,
+					PrintTruncated: results[i].Result.PrintTruncated,
+				}
+			}
+			linked, err := s.deps.Sampling.Record(ctx, req, space, records)
+			if err != nil {
+				return fmt.Errorf("policies: retain evaluated evidence: %w", err)
+			}
+			for i := range out.Receipts {
+				if id, ok := linked[out.Receipts[i].ID]; ok {
+					out.Receipts[i].SampleEvaluation = &id
+				}
+			}
+		}
 		for i, receipt := range out.Receipts {
 			if receipt.Sample {
 				out.Samples = append(

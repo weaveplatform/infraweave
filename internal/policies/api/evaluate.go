@@ -97,6 +97,9 @@ type Receipt struct {
 	Sample        bool            `json:"sample"`
 	Failure       *Failure        `json:"failure,omitempty"`
 	CreatedAt     time.Time       `json:"createdAt"`
+	// SampleEvaluation identifies a requested sealed object, not a retained one.
+	// Its owner supplies publication/expiry status to historical run projections.
+	SampleEvaluation *kernel.ULID `json:"-"`
 }
 
 // PlanDecision separates failure, review warnings and informational messages.

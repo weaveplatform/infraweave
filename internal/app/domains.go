@@ -70,6 +70,7 @@ type Objects interface {
 	runsassembly.Objects
 	stateassembly.Objects
 	vcsassembly.Objects
+	policiesassembly.Objects
 }
 
 // newDomains constructs every domain on db, sealing under keys and signing
@@ -155,15 +156,19 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	}
 	policies := policiesassembly.New(
 		policiesassembly.Deps{
-			DB:      db.Primary(),
-			Spaces:  access.Spaces(),
-			Authz:   access.Authorizer(),
-			Runtime: policyRuntime,
-			Events:  events,
-			Stacks:  stacks.Stacks(),
-			Targets: stacks.AttachmentTargets(),
+			LoginChanges: access.LoginPolicyChanges(),
+			DB:           db.Primary(),
+			Spaces:       access.Spaces(),
+			Authz:        access.Authorizer(),
+			Runtime:      policyRuntime,
+			Events:       events,
+			Stacks:       stacks.Stacks(),
+			Targets:      stacks.AttachmentTargets(),
+			Keys:         keys,
+			Objects:      objects,
 		},
 	)
+	access.BindLoginEvaluator(policies.LoginEvaluator())
 	access.ResolveSubjects(policiesassembly.Entity, policies.SpaceOf())
 	access.ResolveSubjects(policiesassembly.AttachmentEntity, policies.AttachmentSpaceOf())
 	stacks.BindPolicies(policies.StackPolicies())
@@ -172,6 +177,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	runs := runsassembly.New(runsassembly.Deps{
 		PolicyTaskInputs: policies.TaskInputBuilder(),
 		PolicyIdentities: policies.Identities(),
+		PolicySamples:    policies.SampleRetentions(),
 		PolicyEvaluator:  policies.Evaluator(),
 		PolicySelection:  policies.Selection(),
 		PolicyInputs:     policies.RunInputBuilder(),
@@ -355,5 +361,5 @@ func newKinds() *outbox.Kinds {
 // over q, which the scheduler role runs, logging to log.
 func (d Domains) cron(q tx.Querier, log *slog.Logger) []cron.Task {
 	return slices.Concat(d.Access.Cron(), d.Vendors.Cron(log), d.Workers.Cron(),
-		d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), d.Events.Cron(), []cron.Task{orphansTask(q, log)})
+		d.Policies.Cron(), d.Runs.Cron(log), d.State.Cron(log), d.VCS.Cron(), d.Events.Cron(), []cron.Task{orphansTask(q, log)})
 }

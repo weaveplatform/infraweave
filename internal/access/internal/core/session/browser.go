@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
@@ -18,6 +19,17 @@ const CookieName = "__Host-infraweave_session"
 
 // secretLen is the cookie secret's length in bytes before encoding.
 const secretLen = 32
+
+// ErrNotAdmitted identifies a refused account entry without revealing whether
+// that account exists. Switchers suppress its account-specific policy detail.
+var ErrNotAdmitted = errors.New("not admitted")
+
+// LoginDenied is an evaluated refusal whose evidence has already committed.
+type LoginDenied struct{ Message string }
+
+func (e *LoginDenied) Error() string { return e.Message }
+
+func (e *LoginDenied) Is(target error) bool { return target == ErrNotAdmitted }
 
 // NewSecret is a browser session's cookie value, 32 random bytes in
 // unpadded base64url, and the SHA-256 the session row stores.

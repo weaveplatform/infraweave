@@ -72,6 +72,10 @@ CREATE TABLE sessions (
     email                text        NOT NULL DEFAULT '',
     admin                boolean     NOT NULL DEFAULT false,
     teams                text[]      NOT NULL DEFAULT '{}',
+    -- Preserve upstream facts independently from account policy output.
+    original_member      boolean,
+    original_teams_known boolean     NOT NULL DEFAULT false,
+    original_teams       text[]      CHECK (original_teams_known OR original_teams IS NULL),
     identity_provider_id uuid,
     idp_subject          text,
     oauth_client_id      text,

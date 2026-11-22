@@ -39,6 +39,11 @@ CREATE TABLE oauth_requests (
     member_id       uuid,
     code_hash       bytea       CHECK (octet_length(code_hash) = 32),
     code_expires_at timestamptz,
+    original_member boolean,
+    original_teams_known boolean NOT NULL DEFAULT false,
+    original_teams text[] CHECK (original_teams_known OR original_teams IS NULL),
+    identity_provider_id uuid,
+    idp_subject text,
     redeemed_at     timestamptz,
     session_id      uuid        REFERENCES sessions ON DELETE SET NULL,
     CHECK (code_hash IS NULL OR decided_at IS NOT NULL AND account_id IS NOT NULL
