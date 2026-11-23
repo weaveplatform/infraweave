@@ -220,7 +220,7 @@ verify-parity:
 parity-baseline:
 	@for p in $(PRODUCTS); do $(GO) run ./tools/specref parity --product $$p --write-baseline || exit 1; done
 
-## labs-cloud: terraform validate each cloud-platform lab root under test/terraform/cloud (objectstore-cloud, the KMS live tests and each managed cloud worker stage)
+## labs-cloud: terraform validate each cloud-platform lab root under test/terraform/cloud (objectstore-cloud, the KMS live tests, the managed cloud worker identities and each managed cloud worker stage)
 ## labs-vcs: terraform validate each VCS lab root under test/terraform/vcs (vcs-lab)
 # Each root initializes without its backend and against its committed lock
 # file, which init must not change, so a provider bump missing from a lock

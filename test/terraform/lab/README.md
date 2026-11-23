@@ -308,7 +308,9 @@ GitHub's OIDC token is federated to each cloud. The environment's secrets are
 `WORKERS_AZURE_TENANT_ID`, `WORKERS_AZURE_SUBSCRIPTION_ID`,
 `WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `WORKERS_GOOGLE_SERVICE_ACCOUNT`
 and one `WORKERS_<CLOUD>_INPUTS` inputs file per cloud. The AWS role must
-allow four-hour sessions. A selected cloud without its secrets fails
+allow four-hour sessions. The `workers-identity` roots of
+[the cloud labs](../cloud/README.md) provision these identities and map
+their outputs to the secrets. A selected cloud without its secrets fails
 preflight. Only `evidence/` is uploaded.
 
 ### Scope

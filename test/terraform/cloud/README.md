@@ -11,6 +11,9 @@ no stored key.
 | `objectstore/google` | `objectstore-cloud` | a bucket that deletes objects after a day; a workload identity pool and provider admitting only this repository's `objectstore-cloud.yml` on `main`; writer and deleter service accounts with decision 0020's custom roles |
 | `objectstore/aws` | `objectstore-cloud` | a bucket that deletes objects (and incomplete multipart uploads) after a day; the GitHub OIDC provider, unless the account has one; writer and deleter roles with decision 0020's grants, assumable only from the repository's `objectstore-cloud` environment |
 | `objectstore/azure` | `objectstore-cloud` | a resource group with a storage account that allows no shared keys and deletes blobs after a day; writer and deleter user-assigned identities with decision 0020's custom roles on the account, whose federated credentials admit only the repository's `objectstore-cloud` environment; nothing is registered in the tenant's directory |
+| `workers-identity/aws` | `managed-cloud-workers` | the GitHub OIDC provider, unless the account has one; a role assumable only from the repository's `workers-cloud` environment, for four-hour sessions, that builds EKS clusters, their VPC networking and log groups, and IAM roles under one path and name prefix that must carry the root's permissions boundary, in one region, and reads the quotas and owner tags preflight and cleanup check |
+| `workers-identity/azure` | `managed-cloud-workers` | a resource group for the worker stages; a user-assigned identity, in a resource group of its own, whose federated credential admits only the repository's `workers-cloud` environment, with Contributor on the worker group, the right to assign AKS's roles there to managed identities, and quota, inventory and cluster reads on the subscription; nothing is registered in the tenant's directory |
+| `workers-identity/google` | `managed-cloud-workers` | a workload identity pool and provider admitting only this repository's `managed-cloud-workers.yml` on `main` in the `workers-cloud` environment; a service account with GKE, network and asset inventory roles on the project that may act only as the node service account the root also creates |
 | `kek/google` | the `gcpkms` KEK and signing live tests, run by a maintainer | a key ring, `infraweave-ci`, with a symmetric CryptoKey, `kek`, and an `EC_SIGN_P256_SHA256` CryptoKey, `signing`, whose versions are destroyed a day after the key is; Cloud KMS never deletes a key ring, so a later apply adopts it |
 | `kek/azure` | the `azurekv` KEK and signing live tests, run by a maintainer | a resource group with a vault that authorizes through Azure RBAC and is purged when destroyed, an RSA key, `kek`, an EC key on P-256, `signing`, and Key Vault Crypto Officer on the vault for whoever applies the root |
 | `kek/aws` | the `awskms` signing live test, run by a maintainer | an `ECC_NIST_P256` KMS key for `SIGN_VERIFY`, deleted seven days after it is destroyed |
@@ -19,8 +22,9 @@ Each root takes the lab project, account or subscription from its
 provider's own credentials (`gcloud auth application-default login`, an
 AWS profile, `az login`) and from a `terraform.tfvars` that stays out of
 the repository: Google's `project_id`, Azure's `subscription_id`, and on
-AWS, for `objectstore/aws`, the ARN of an existing GitHub OIDC provider, if
-the account has one. State is local and ignored; the provider lock files are
+AWS, for `objectstore/aws` and `workers-identity/aws`, the ARN of an
+existing GitHub OIDC provider, if the account has one, including one the
+other root created. State is local and ignored; the provider lock files are
 committed, so every machine resolves the same provider builds.
 
 ```sh
@@ -54,6 +58,34 @@ deployment branch rule that admits only `main`. Each cloud runs the
 contract as the writer, with the delete case replaced by one that asserts
 the cloud refuses it, then as the deleter, which removes what it wrote;
 the lifecycle rule clears the writer's objects.
+
+The `workers-identity` roots' outputs are the secrets of
+`managed-cloud-workers.yml`'s `workers-cloud` environment, set with `gh
+secret set --env workers-cloud`. A batch that selects a cloud with any of
+these secrets unset fails preflight; no cloud is skipped.
+
+| Root | Output | Secret |
+|---|---|---|
+| `workers-identity/aws` | `role_arn`, `region` | `WORKERS_AWS_ROLE`, `WORKERS_AWS_REGION` |
+| `workers-identity/azure` | `client_id`, `tenant_id` | `WORKERS_AZURE_CLIENT_ID`, `WORKERS_AZURE_TENANT_ID` |
+| | `subscription_id` | `WORKERS_AZURE_SUBSCRIPTION_ID` |
+| `workers-identity/google` | `workload_identity_provider`, `service_account` | `WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `WORKERS_GOOGLE_SERVICE_ACCOUNT` |
+
+Their other outputs are the bounds the worker stages build within, and go
+into each cloud's `WORKERS_<CLOUD>_INPUTS` file rather than a secret of
+their own. On AWS, `stage_scope` names the prefix every EKS cluster, IAM
+role and IAM policy, and every log group under `/aws/eks/`, must start
+with, the path every role and policy must sit under, and the permissions
+boundary every role must carry; the role creates no cluster without the
+`io.infraweave.lab.owner` tag and deletes no VPC resource without it. On
+Azure, `resource_group_name` and `location` are the stage identifiers; the
+identity changes nothing outside that group, and the stages' provider
+registers no resource providers, which applying the root does instead. On
+Google, `node_service_account` is the account stage clusters run their
+nodes as; the service account may act as no other, so a cluster that
+names none is refused. Setting `grantable_roles` lets a stage grant those
+project roles, and no others, to Kubernetes service accounts through
+Workload Identity Federation for GKE.
 
 The `kek` roots' outputs are the live tests' variables:
 
