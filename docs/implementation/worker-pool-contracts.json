@@ -189,7 +189,7 @@
       "domain": "deployment",
       "contract": "Worker-controller command, one strict cloud-neutral chart, same-version bootstrap",
       "requiredEvidence": "Chart schema/render/install/lifecycle with actual images and Kubernetes",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "worker-policy-runtime",

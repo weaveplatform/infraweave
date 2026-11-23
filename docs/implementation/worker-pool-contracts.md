@@ -148,7 +148,7 @@ Strict `worker_controller` YAML/configuration keys:
 | `watch_namespaces` | Required nonempty unique namespace list; no wildcard default. |
 | `cluster_id` | Required stable installation-assigned string, 1..63 DNS-label characters. |
 | `management_credentials_ref` | Optional `{name, id_key, secret_key}` reference to distinct keys in a same-namespace Secret; required for Managed resources; resolved per watched namespace. |
-| `leader_election` | Required enabled; Lease name `infraweave-worker-controller`, namespace explicitly configured, timings above. |
+| `leader_election` | Required enabled; Lease name and namespace explicitly configured, timings above. The chart's release creates its Lease, `<release>-worker-controller` in the release namespace. |
 | `bootstrap_image` | Required immutable digest of same-version multi-architecture infraweave image; runner binary copied from it. |
 | `cache_dir` | Slot-private ephemeral staging/cache root, default `/var/cache/infraweave`; no hostPath. |
 | `ca_file` | Optional mounted PEM trust bundle for private application endpoints; no insecure TLS switch. |
@@ -302,8 +302,8 @@ that may leave resources and must be followed by verified cleanup.
 
 Controller RBAC is namespaced: CRD get/list/watch/status/finalizer updates,
 owned Pod create/get/list/watch/delete/log/attach/exec, referenced credential
-Secret reads, Managed token-key patch on that existing Secret, and Lease
-operations. The controller patches only token and preserves externally managed
+Secret reads by name (never a list), Managed token-key patch on that existing
+Secret, and get/update of its release's Lease, which the release creates. The controller patches only token and preserves externally managed
 privateKey; it creates no credential Secret implicitly. Install-time CRD/ClusterRole authority is separate.
 Run/helper Pods have `automountServiceAccountToken: false`, no API permissions,
 no shared process namespace and no management credentials. Workload admission
@@ -611,7 +611,8 @@ backend proof. No claim of captured Spacelift vendor parity is made for C69.
 
 One `deploy/helm/infraweave-workers` chart installs CRDs, controller Deployment,
 Lease/RBAC/probes/NetworkPolicy and typed WorkerPool resources. Its strict
-`values.schema.json` rejects unknown keys. Values cover controller image digest,
+`values.schema.json` rejects unknown keys; its `workerPoolSpec` is generated
+from the WorkerPool CRD (`make generate`). Values cover controller image digest,
 bootstrap image digest, replicas (2), watch namespaces, cluster ID, existing
 management/pool/policy/CA secret references, explicit pool IDs/mode/capacity,
 resource/storage budgets and imagePullSecret refs. All chart images use immutable
@@ -620,6 +621,62 @@ images. It does not put secret values in rendered ConfigMaps or accept arbitrary
 PodSpecs that evade security. Run namespace egress must reach the configured
 API/store/source/tool mirror and declared verifier hosts; DNS/network policy
 allowances are explicit and may be restricted further by operators.
+
+Each release names its own objects after itself, so releases share a namespace;
+the controller's Role in each watch namespace has a fixed name, so Helm refuses a
+second release that watches a namespace another release watches. An install
+fails before creating anything on a value the schema refuses, a pool outside the
+watch namespaces, a Managed pool without a management key reference, or, when
+Helm reaches the cluster, a referenced Secret, ConfigMap or key that does not
+exist. A replica is ready once the API server answers its Lease and, on the
+leader, once a pass has read every watch namespace and reached every pool's
+installation; liveness is the admin listener alone. Upgrades roll one replica at
+a time with a replacement ready first, and the successor resumes each slot from
+its Worker status. Uninstalling runs a pre-delete Job,
+`infraweave worker-controller uninstall`, that deletes the release's WorkerPools
+and waits while the still-running controller finalizes them, so runs end and
+workers deregister before Helm deletes the controller; it refuses while a watch
+namespace holds a WorkerPool the release does not own, and a timeout fails the
+uninstall naming each remaining pool. Helm never deletes CRDs; installations that
+share a cluster install them once and the others pass `--skip-crds`.
+
+### Worker artifacts
+
+A release publishes, through `worker-artifacts.yml` on `main`:
+
+| Artifact | Reference | Provenance |
+|---|---|---|
+| Worker image | `ghcr.io/weaveplatform/infraweave-worker:<version>@sha256:…`, linux/amd64 and linux/arm64; the controller's image and the run Pods' bootstrap image | `GOFIPS140=certified` static build stamped with version and commit, SLSA provenance (mode=max) and SPDX SBOM attestations, labels `org.opencontainers.image.revision` and `io.infraweave.recipe` |
+| Chart | `oci://ghcr.io/weaveplatform/charts/infraweave-workers:<version>@sha256:…`, `version` = `appVersion` | Default values pin the worker image's digest |
+| Binaries | `SHA256SUMS` of the image's `infraweave-linux-{amd64,arm64}` | Release asset |
+
+The image and chart are signed keylessly; verification pins the certificate
+identity `https://github.com/weaveplatform/infraweave/.github/workflows/worker-artifacts.yml@refs/heads/main`
+and the issuer `https://token.actions.githubusercontent.com`. The release's
+`worker-artifacts.json` asset is the contract cloud modules consume:
+
+```json
+{"schema": 1, "kind": "worker-artifacts", "version": "…", "revision": "<commit>",
+ "controller_image": "ghcr.io/weaveplatform/infraweave-worker@sha256:…",
+ "bootstrap_image": "ghcr.io/weaveplatform/infraweave-worker@sha256:…",
+ "platforms": {"linux/amd64": "sha256:…", "linux/arm64": "sha256:…"},
+ "binaries": {"linux/amd64": "sha256:…", "linux/arm64": "sha256:…"},
+ "fips": {"build": "GOFIPS140=certified", "default_mode": "on"},
+ "chart": {"source": "oci://ghcr.io/weaveplatform/charts/infraweave-workers", "version": "…",
+           "digest": "sha256:…", "sha256": "sha256:…"},
+ "runner_images": {"<kind>": "ghcr.io/weaveplatform/infraweave-runner-<kind>@sha256:…"},
+ "signature": {"identity": "…/worker-artifacts.yml@refs/heads/main",
+               "issuer": "https://token.actions.githubusercontent.com"}}
+```
+
+A module installs `chart.source` at `chart.version`, checks the pulled package
+against `chart.digest`, and passes `controller_image` as `controller.image`;
+`runner_images` are the digests the release's server pins. Each pull request
+builds the image without pushing, runs each platform's build, which must report
+its commit and the certified module in FIPS 140-3 mode, and packages and lints
+the chart pinned to a digest. The worker artifacts publish independently of the
+server image; `deploy/infraweave-image/build.py` builds the certified binaries,
+image and checks any infraweave image reuses.
 
 The detailed [managed Kubernetes hosting contract](worker-hosting-contracts.md)
 defines common typed semantic inputs/outputs, explicit three-cloud identifiers,
