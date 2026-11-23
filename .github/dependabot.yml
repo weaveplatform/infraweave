@@ -34,7 +34,7 @@ updates:
   # provider, and each managed cloud worker stage; each PR moves versions.tf
   # and the lock file together.
   - package-ecosystem: "terraform"
-    directories: ["/test/terraform/platform/*/*", "/test/terraform/platform/workers/*/*", "/test/terraform/vcs/*", "/test/terraform/lab/services"]
+    directories: ["/test/terraform/platform/*", "/test/terraform/platform/*/*", "/test/terraform/platform/workers/*/*", "/test/terraform/vcs/*", "/test/terraform/lab/services"]
     schedule:
       interval: "daily"
     groups:

@@ -226,7 +226,7 @@ parity-baseline:
 # file, which init must not change, so a provider bump missing from a lock
 # fails here. The roots share one plugin cache. Managed cloud worker roots
 # nest a cluster/ and a deployment/ stage under each cloud.
-LAB_ROOTS_CLOUD = $(sort $(dir $(wildcard test/terraform/platform/*/*/versions.tf test/terraform/platform/workers/*/*/versions.tf)))
+LAB_ROOTS_CLOUD = $(sort $(dir $(wildcard test/terraform/platform/*/versions.tf test/terraform/platform/*/*/versions.tf test/terraform/platform/workers/*/*/versions.tf)))
 LAB_ROOTS_VCS = $(sort $(dir $(wildcard test/terraform/vcs/*/versions.tf)))
 TF_PLUGIN_CACHE_DIR ?= $(CURDIR)/.terraform.d/plugin-cache
 export TF_PLUGIN_CACHE_DIR
