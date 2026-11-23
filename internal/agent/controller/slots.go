@@ -184,8 +184,17 @@ func (s *slot) assignment() *AssignmentStatus {
 		a.RunDeadline = metaTime(st.Started.Add(s.runTimeout))
 	}
 	if o := s.obs; o.Run == st.Run && o.Pod == kubernetes.PodName(st.Run, st.StateVersion) {
-		a.PodName, a.PodUID, a.HandoffPhase = o.Pod, string(o.UID), string(o.Phase)
-		a.HandoffAcknowledged = o.Phase == kubernetes.PhaseAcknowledged || o.Phase == kubernetes.PhaseFinished
+		phase := o.Phase
+		// The acknowledged handoff starts the run timeout, whose start the
+		// launcher records once the executor's Start returns, after the
+		// executor observed the acknowledgement. Until the launcher records
+		// the start, or the run's exit, the handoff shows as staged, so no
+		// status acknowledges a handoff without its start and run deadline.
+		if phase == kubernetes.PhaseAcknowledged && st.Started.IsZero() && st.Exit == nil {
+			phase = kubernetes.PhaseStaged
+		}
+		a.PodName, a.PodUID, a.HandoffPhase = o.Pod, string(o.UID), string(phase)
+		a.HandoffAcknowledged = phase == kubernetes.PhaseAcknowledged || phase == kubernetes.PhaseFinished
 	}
 	if st.Exit != nil {
 		code := st.Exit.Code
