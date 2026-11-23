@@ -35,7 +35,8 @@ type recorder struct {
 	watching sync.WaitGroup
 }
 
-// watchPods starts recording the run Pods of every scenario namespace.
+// watchPods starts recording the run and initialization command helper
+// Pods of every scenario namespace.
 func (c *controllerSteps) watchPods(ctx context.Context) {
 	if c.cancel != nil {
 		return
@@ -44,17 +45,20 @@ func (c *controllerSteps) watchPods(ctx context.Context) {
 	wctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	c.cancel = cancel
 	for _, ns := range c.order {
-		c.watching.Go(func() { c.record(wctx, ns) })
+		for _, selector := range []string{kubernetes.LabelRun, kubernetes.LabelCommandRun} {
+			c.watching.Go(func() { c.record(wctx, ns, selector) })
+		}
 	}
 }
 
-// record records the run Pods of ns until ctx ends, watching again from
-// the last version it saw each time the API server ends a watch.
-func (c *controllerSteps) record(ctx context.Context, ns string) {
+// record records the Pods of ns that selector selects until ctx ends,
+// watching again from the last version it saw each time the API server
+// ends a watch.
+func (c *controllerSteps) record(ctx context.Context, ns, selector string) {
 	version := ""
 	for ctx.Err() == nil {
 		w, err := c.core.Pods(ns).Watch(ctx, metav1.ListOptions{
-			LabelSelector: kubernetes.LabelRun, ResourceVersion: version, AllowWatchBookmarks: true,
+			LabelSelector: selector, ResourceVersion: version, AllowWatchBookmarks: true,
 		})
 		if err != nil {
 			version = ""
@@ -89,14 +93,20 @@ func (c *controllerSteps) stopWatch() {
 	}
 }
 
-// recorded is every run Pod recorded of run, or of every run when run is
-// empty.
+// recorded is every run Pod recorded of run, or every Pod recorded, run
+// and helper Pods alike, when run is empty.
 func (c *controllerSteps) recorded(run string) []*corev1.Pod {
+	return c.recordedBy(kubernetes.LabelRun, run)
+}
+
+// recordedBy is every Pod recorded whose label holds run, or every Pod
+// recorded when run is empty.
+func (c *controllerSteps) recordedBy(label, run string) []*corev1.Pod {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var out []*corev1.Pod
 	for _, p := range c.seen {
-		if run == "" || p.Labels[kubernetes.LabelRun] == run {
+		if run == "" || p.Labels[label] == run {
 			out = append(out, p)
 		}
 	}
@@ -188,24 +198,24 @@ func (c *controllerSteps) ran(ctx context.Context, run, pool, image, secret stri
 			return fmt.Errorf("%w: the Pod %s in %s is owned by %+v, not a Worker of %s", harness.ErrStep,
 				p.Name, p.Namespace, refs, pool)
 		}
-		if why := hardened(p, c.w.Resolve(image)); why != "" {
+		if why := hardened(p, c.w.Resolve(image), kubernetes.RunnerContainer); why != "" {
 			return fmt.Errorf("%w: the Pod %s %s", harness.ErrStep, p.Name, why)
 		}
 	}
 	return nil
 }
 
-// hardened is why p is not a run Pod as the executor builds it, or "":
-// its runner started from image, no service account token, host
-// namespace or host path, a fixed non-root user, the runtime's seccomp
-// profile, and containers that drop every capability, cannot escalate
-// and take nothing from the environment or arguments but the run's
-// identity.
-func hardened(p *corev1.Pod, image string) string {
+// hardened is why p is not a run or helper Pod as the executor builds
+// it, or "": its one container, named container, started from image, no
+// service account token, host namespace or host path, a fixed non-root
+// user, the runtime's seccomp profile, and containers that drop every
+// capability, cannot escalate and take nothing from the environment or
+// arguments but the run's identity.
+func hardened(p *corev1.Pod, image, container string) string {
 	s := p.Spec
 	switch {
-	case len(s.Containers) != 1 || s.Containers[0].Name != kubernetes.RunnerContainer:
-		return "has containers other than the runner"
+	case len(s.Containers) != 1 || s.Containers[0].Name != container:
+		return "has containers other than the " + container
 	case s.Containers[0].Image != image:
 		return "runs " + s.Containers[0].Image + ", not " + image
 	case len(s.InitContainers) != 1 || s.InitContainers[0].Name != kubernetes.BootstrapContainer:
@@ -315,4 +325,96 @@ func (c *controllerSteps) evidence() error {
 	pods, jsonErr := json.MarshalIndent(c.recorded(""), "", "  ")
 	err = errors.Join(err, jsonErr, os.MkdirAll(dir, 0o750))
 	return errors.Join(err, os.WriteFile(filepath.Join(dir, "run-pods.json"), pods, 0o600))
+}
+
+// helpers checks the initialization command helper Pods recorded of the
+// run kept as run: exactly n, one per call, each in the namespace of the
+// WorkerPool pool, owned by one of its Workers, its helper started from
+// image with the fixed entrypoint and no arguments, hardened as a run
+// Pod, holding secret nowhere and never labelled as a run Pod.
+func (c *controllerSteps) helpers(ctx context.Context, run string, n int, pool, image, secret string) error {
+	wp, err := c.find(ctx, pool)
+	if err != nil {
+		return err
+	}
+	workers, err := c.slots(ctx, wp)
+	if err != nil {
+		return err
+	}
+	owners := map[types.UID]bool{}
+	for _, w := range workers {
+		owners[w.UID] = true
+	}
+	pods := c.recordedBy(kubernetes.LabelCommandRun, c.w.IDs[run])
+	if len(pods) != n {
+		return fmt.Errorf("%w: %d helper Pods of the run %s were recorded, not %d", harness.ErrStep, len(pods), run, n)
+	}
+	for _, p := range pods {
+		raw, err := json.Marshal(p)
+		if err != nil {
+			return fmt.Errorf("encode Pod %s: %w", p.Name, err)
+		}
+		refs := p.OwnerReferences
+		switch {
+		case bytes.Contains(raw, []byte(secret)):
+			return fmt.Errorf("%w: the helper Pod %s holds %q", harness.ErrStep, p.Name, secret)
+		case p.Namespace != wp.Namespace || len(refs) != 1 || refs[0].Kind != "Worker" || !owners[refs[0].UID]:
+			return fmt.Errorf("%w: the helper Pod %s in %s is owned by %+v, not a Worker of %s", harness.ErrStep, p.Name, p.Namespace, refs, pool)
+		case p.Labels[kubernetes.LabelRun] != "" || p.Labels[kubernetes.LabelWorker] != "":
+			return fmt.Errorf("%w: the helper Pod %s is labelled as a run Pod", harness.ErrStep, p.Name)
+		case !slices.Equal(p.Spec.Containers[0].Command, kubernetes.CommandCommand):
+			return fmt.Errorf("%w: the helper Pod %s starts %q", harness.ErrStep, p.Name, p.Spec.Containers[0].Command)
+		case len(p.Spec.Containers[0].VolumeMounts) != 1 || !p.Spec.Containers[0].VolumeMounts[0].ReadOnly:
+			return fmt.Errorf("%w: the helper Pod %s mounts more than its read-only executable", harness.ErrStep, p.Name)
+		}
+		if why := hardened(p, c.w.Resolve(image), kubernetes.CommandContainer); why != "" {
+			return fmt.Errorf("%w: the helper Pod %s %s", harness.ErrStep, p.Name, why)
+		}
+	}
+	return nil
+}
+
+// helperRuns waits until a helper Pod of the run kept as run runs its
+// command.
+func (c *controllerSteps) helperRuns(ctx context.Context, run string) error {
+	//nolint:wrapcheck // names what it waited for
+	return deps.Eventually(ctx, "an initialization command Pod of "+run+" to run", func(ctx context.Context) (bool, error) {
+		for _, ns := range c.order {
+			list, err := c.core.Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: kubernetes.LabelCommandRun + "=" + c.w.IDs[run]})
+			if err != nil {
+				return false, fmt.Errorf("list Pods: %w", err)
+			}
+			for _, p := range list.Items {
+				for _, s := range p.Status.ContainerStatuses {
+					if s.Name == kubernetes.CommandContainer && s.State.Running != nil {
+						return true, nil
+					}
+				}
+			}
+		}
+		return false, nil
+	})
+}
+
+// noHelper waits until no helper Pod of the run kept as run is left in
+// the scenario's namespaces.
+func (c *controllerSteps) noHelper(ctx context.Context, run string) error {
+	var left []string
+	err := deps.Eventually(ctx, "the run "+run+" to have no initialization command Pod", func(ctx context.Context) (bool, error) {
+		left = nil
+		for _, ns := range c.order {
+			list, err := c.core.Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: kubernetes.LabelCommandRun + "=" + c.w.IDs[run]})
+			if err != nil {
+				return false, fmt.Errorf("list Pods: %w", err)
+			}
+			for _, p := range list.Items {
+				left = append(left, p.Name)
+			}
+		}
+		return len(left) == 0, nil
+	})
+	if err != nil {
+		return fmt.Errorf("%w (left %s)", err, strings.Join(left, ", "))
+	}
+	return nil
 }

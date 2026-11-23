@@ -76,6 +76,10 @@ type controllerSteps struct {
 	running []*harness.Server
 	started int
 	kept    map[string][]string
+	// initialization is the local policy the controllers started from now
+	// on evaluate, and initializationTimeout its budget when set.
+	initialization        string
+	initializationTimeout string
 }
 
 func (c *controllerSteps) register(sc *godog.ScenarioContext) {
@@ -102,6 +106,16 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the run "(\w+)" ran in Pods of the WorkerPool "(\w+)" from the image "([^"]+)", each hardened and holding no "([^"]+)"$`, c.ran)
 	sc.Step(`^no run Pod, Worker resource or worker controller log line holds "([^"]+)"$`, c.clean)
 	sc.Step(`^the run "(\w+)" eventually has no Pod$`, c.noPod)
+	sc.Step(`^the worker controllers started from now on evaluate the initialization policy(?: within (\d+s))?:$`,
+		func(timeout string, body *godog.DocString) {
+			c.initialization, c.initializationTimeout = body.Content, timeout
+		})
+	sc.Step(
+		`^the run "(\w+)" ran (\d+) initialization commands? in helper Pods of the WorkerPool "(\w+)" from the image "([^"]+)", each hardened and holding no "([^"]+)"$`,
+		c.helpers,
+	)
+	sc.Step(`^the run "(\w+)" eventually runs an initialization command Pod$`, c.helperRuns)
+	sc.Step(`^the run "(\w+)" eventually has no initialization command Pod$`, c.noHelper)
 	sc.After(c.cleanup)
 }
 
@@ -272,6 +286,16 @@ func (c *controllerSteps) launch(ctx context.Context) error {
 		"admin_listen":    "127.0.0.1:0",
 		"cleanup_timeout": "30s",
 		"log":             map[string]any{"format": "json"},
+	}
+	if c.initialization != "" {
+		path := filepath.Join(dir, "initialization.rego")
+		if err := os.WriteFile(path, []byte(c.initialization), 0o600); err != nil {
+			return fmt.Errorf("write the controller's initialization policy: %w", err)
+		}
+		settings["initialization_policy"] = path
+		if c.initializationTimeout != "" {
+			settings["initialization_timeout"] = c.initializationTimeout
+		}
 	}
 	if err := c.trust(); err != nil {
 		return err
