@@ -2996,6 +2996,17 @@
       ]
     },
     {
+      "id": "C312",
+      "kind": "capture",
+      "area": "Spaces, RBAC and identity (report 14)",
+      "question": "Which legacy fallback applies to `RUN_DESTROY_TRIGGER`, which the docs' action tables omit (read 2026-11-23)?",
+      "howToCapture": "Test with a Writer-level user triggering a destroy run on a stack",
+      "blocks": "the fallback table",
+      "reports": [
+        "docs/research/reference/14-spaces-rbac-and-identity.md"
+      ]
+    },
+    {
       "id": "C243",
       "kind": "capture",
       "area": "Self-hosted (report 24)",

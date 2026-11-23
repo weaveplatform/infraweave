@@ -102,8 +102,8 @@ operations:
     method: POST
     path: /stacks/{stackId}/tofu-workspaces/unlock
   # Starting a scan coverage report creates one; GET /scan-coverage reads
-  # the latest. No Bruno request names either, so each carries the tag of
-  # the scans whose coverage it reports.
+  # the latest. No Bruno request names these or the resource stats, so each
+  # carries the tag of the scans it reports on.
   scanCoverage:
     method: GET
     path: /scan-coverage
@@ -111,6 +111,10 @@ operations:
   scanCoverageGenerate:
     method: POST
     path: /scan-coverage
+    tag: Scans
+  scanResourceStats:
+    method: GET
+    path: /scan-resource-stats
     tag: Scans
   vcsIntegrationTest:
     method: GET
@@ -173,6 +177,18 @@ operations:
   completeGenericForm:
     method: PUT
     path: /generic-forms/{name}
+  # Feature previews: one object holding the organization's opt-in, which
+  # accountSetFeaturePreviewsEnabled sets as the other /account/set-*
+  # settings, and the signed-in user's own, which is its personal part. No
+  # Bruno request names them, so they carry the account settings' tag.
+  featurePreview:
+    method: GET
+    path: /feature-preview
+    tag: Account Settings
+  featurePreviewSetPersonalEnabled:
+    method: PUT
+    path: /feature-preview/personal
+    tag: Account Settings
 
   # --- Notifications. Dismissal is a state change, not a deletion.
   dismissNotifications:
@@ -232,6 +248,16 @@ operations:
     method: POST
     path: /stacks/{stackId}/local-workspace-uploads
     params: {stackId: stack}
+    created: true
+  # Destroy runs are a collection of the stack's, as proposed runs are:
+  # each trigger creates one, since upstream refuses a second while one is
+  # unfinished, so it answers 201. No Bruno request names it, so it
+  # carries the runs' tag.
+  runDestroyTrigger:
+    method: POST
+    path: /stacks/{stackId}/destroy-runs
+    params: {stackId: stack}
+    tag: Runs
     created: true
   runTriggerBatch:
     method: POST

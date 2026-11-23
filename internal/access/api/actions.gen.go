@@ -62,6 +62,7 @@ const (
 	ActionRunCancelBlocking                        Action = "RUN_CANCEL_BLOCKING"
 	ActionRunComment                               Action = "RUN_COMMENT"
 	ActionRunConfirm                               Action = "RUN_CONFIRM"
+	ActionRunDestroyTrigger                        Action = "RUN_DESTROY_TRIGGER"
 	ActionRunDiscard                               Action = "RUN_DISCARD"
 	ActionRunPrioritizeSet                         Action = "RUN_PRIORITIZE_SET"
 	ActionRunPromote                               Action = "RUN_PROMOTE"
@@ -236,6 +237,7 @@ var catalogue = []ActionInfo{
 	{Action: ActionRunCancelBlocking, Subject: "run", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionRunComment, Subject: "run", Fallback: FallbackReader, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionRunConfirm, Subject: "run", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
+	{Action: ActionRunDestroyTrigger, Subject: "run", Fallback: FallbackAdmin, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionRunDiscard, Subject: "run", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionRunPrioritizeSet, Subject: "run", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},
 	{Action: ActionRunPromote, Subject: "run", Fallback: FallbackWriter, Disabled: false, Deprecated: false, Infraweave: false, Anywhere: false},

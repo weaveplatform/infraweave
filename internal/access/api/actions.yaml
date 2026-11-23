@@ -16,6 +16,11 @@
 # BLUEPRINT_DEPLOYMENT_TASK_CREATE's fallback is undocumented; it takes
 # admin, as the other template deployment actions do.
 # ref: report 14 C272
+#
+# RUN_DESTROY_TRIGGER's fallback is undocumented; it takes admin, as
+# STACK_DISABLE and STACK_DELETE do, since a destroy run removes the
+# stack's resources and leaves the stack disabled.
+# ref: report 14 C312
 AZURE_INTEGRATION_CLEAR_CONSENT: {subject: azure_integration, fallback: admin}
 AZURE_INTEGRATION_CONFIRM_CONSENT: {subject: azure_integration, fallback: admin}
 CONTEXT_CREATE: {subject: context, fallback: admin}
@@ -74,6 +79,7 @@ RUN_CANCEL: {subject: run, fallback: reader}
 RUN_CANCEL_BLOCKING: {subject: run, fallback: writer}
 RUN_COMMENT: {subject: run, fallback: reader}
 RUN_CONFIRM: {subject: run, fallback: writer}
+RUN_DESTROY_TRIGGER: {subject: run, fallback: admin}
 RUN_DISCARD: {subject: run, fallback: writer}
 RUN_PRIORITIZE_SET: {subject: run, fallback: writer}
 RUN_PROMOTE: {subject: run, fallback: writer}

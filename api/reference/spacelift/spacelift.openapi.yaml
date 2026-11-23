@@ -311,6 +311,15 @@ components:
         - region
       type: object
       x-graphql-type: AWSScanSettingsInput
+    AccountSetFeaturePreviewsEnabledRequest:
+      description: The arguments of accountSetFeaturePreviewsEnabled not carried in the path.
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-args-of: accountSetFeaturePreviewsEnabled
     AccountSetInfraAssistantBuildModeEnabledRequest:
       description: The arguments of accountSetInfraAssistantBuildModeEnabled not carried in the path.
       properties:
@@ -513,6 +522,7 @@ components:
         - RUN_CANCEL_BLOCKING
         - RUN_COMMENT
         - RUN_CONFIRM
+        - RUN_DESTROY_TRIGGER
         - RUN_DISCARD
         - RUN_PRIORITIZE_SET
         - RUN_PROMOTE
@@ -1690,6 +1700,12 @@ components:
           description: RemoteIP is the IP address of the user who triggered the event
           nullable: true
           type: string
+        sessionId:
+          description: SessionId is the ID of the session that performed the action, null when no session did.
+          nullable: true
+          type: string
+        surface:
+          $ref: '#/components/schemas/AuditTrailSurface'
         updatedAt:
           description: UpdatedAt is unix timestamp (in seconds) at which the entry was updated
           format: int32
@@ -2524,6 +2540,17 @@ components:
         - stackName
       type: object
       x-graphql-type: AuditTrailStackRoleBindingMetadata
+    AuditTrailSurface:
+      enum:
+        - GRAPHQL
+        - MCP
+        - SCIM
+      type: string
+      x-enum-descriptions:
+        GRAPHQL: The GraphQL API, used by the web UI and direct API calls.
+        MCP: The MCP server.
+        SCIM: The SCIM API.
+      x-graphql-type: AuditTrailSurface
     AuditTrailTaskMetadata:
       properties:
         id:
@@ -6496,6 +6523,84 @@ components:
         - name
       type: object
       x-graphql-type: FeatureFlagIntEvaluation
+    FeaturePreview:
+      properties:
+        features:
+          description: Every preview, in display order.
+          items:
+            $ref: '#/components/schemas/FeaturePreviewFeature'
+          type: array
+        organization:
+          $ref: '#/components/schemas/FeaturePreviewOrganizationSettings'
+        personal:
+          $ref: '#/components/schemas/FeaturePreviewPersonalSettings'
+        visible:
+          description: False until the first preview is available. Both settings pages stay hidden while false.
+          type: boolean
+      required:
+        - features
+        - organization
+        - visible
+      type: object
+      x-graphql-type: FeaturePreview
+    FeaturePreviewFeature:
+      properties:
+        active:
+          description: |-
+            Whether the preview is on for the current user: the organization opted in, the user did not
+            opt out, and the Spacelift Intelligence and billing checks it needs pass.
+          type: boolean
+        description:
+          type: string
+        docsUrl:
+          type: string
+        imageUrl:
+          description: Optional screenshot for the settings list.
+          nullable: true
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+      required:
+        - active
+        - description
+        - docsUrl
+        - key
+        - name
+      type: object
+      x-graphql-type: FeaturePreviewFeature
+    FeaturePreviewOrganizationSettings:
+      properties:
+        canManage:
+          description: Whether the current session may change enabled. Root admins only.
+          type: boolean
+        enabled:
+          description: Whether the organization opted in to feature previews.
+          type: boolean
+      required:
+        - canManage
+        - enabled
+      type: object
+      x-graphql-type: FeaturePreviewOrganizationSettings
+    FeaturePreviewPersonalSettings:
+      properties:
+        enabled:
+          description: False while the current user has opted out of feature previews.
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-type: FeaturePreviewPersonalSettings
+    FeaturePreviewSetPersonalEnabledRequest:
+      description: The arguments of featurePreviewSetPersonalEnabled not carried in the path.
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-args-of: featurePreviewSetPersonalEnabled
     FederationProvider:
       description: All supported federation providers.
       enum:
@@ -10261,9 +10366,9 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).
+            OpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.
             Requires OpenTofu 1.7+ at runtime; the flag is silently omitted on older versions.
-            If you're running OpenTofu 1.10+, concise flag will be also used in apply.
           type: boolean
         enableCPUProfiling:
           description: |-
@@ -10782,6 +10887,8 @@ components:
           type: string
         spaceDetails:
           $ref: '#/components/schemas/SpaceRef'
+        template:
+          $ref: '#/components/schemas/PolicyTemplateRef'
         type:
           $ref: '#/components/schemas/PolicyType'
         updatedAt:
@@ -14914,6 +15021,60 @@ components:
         - node
       type: object
       x-graphql-type: ScanResourceConnection
+    ScanResourceStats:
+      description: |-
+        ScanResourceStats sums the latest finished run of each scan. A resource found
+        by two scans counts twice. Ignored resources count only towards ignored.
+      properties:
+        bySubcategory:
+          description: Sorted by name. Types the provider docs don't group are "Ungrouped".
+          items:
+            $ref: '#/components/schemas/ScanResourceSubcategoryCount'
+          type: array
+        ignored:
+          format: int32
+          type: integer
+        managed:
+          format: int32
+          type: integer
+        total:
+          format: int32
+          type: integer
+        unmanaged:
+          format: int32
+          type: integer
+      required:
+        - bySubcategory
+        - ignored
+        - managed
+        - total
+        - unmanaged
+      type: object
+      x-graphql-type: ScanResourceStats
+    ScanResourceSubcategoryCount:
+      properties:
+        ignored:
+          format: int32
+          type: integer
+        managed:
+          format: int32
+          type: integer
+        subcategory:
+          type: string
+        total:
+          format: int32
+          type: integer
+        unmanaged:
+          format: int32
+          type: integer
+      required:
+        - ignored
+        - managed
+        - subcategory
+        - total
+        - unmanaged
+      type: object
+      x-graphql-type: ScanResourceSubcategoryCount
     ScanResourceType:
       description: |-
         ScanResourceType is one resource type a provider can be asked to scan: what
@@ -17683,6 +17844,8 @@ components:
           description: Free-form stack description for the users, supports Markdown.
           nullable: true
           type: string
+        destroyedByRun:
+          $ref: '#/components/schemas/RunRef'
         driftDetectedBy:
           description: |-
             ULID of the run that detected drift on this stack.
@@ -18294,9 +18457,9 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).
+            OpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.
             Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
-            If you're running OpenTofu 1.10+, concise flag will be also used in apply.
           type: boolean
         effectiveVersion:
           description: |-
@@ -18353,9 +18516,9 @@ components:
       properties:
         concise:
           description: |-
-            When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress "Refreshing state..." progress output.
+            When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).
+            OpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.
             Requires OpenTofu 1.7+. A stack on an older version cannot enable it.
-            If you're running OpenTofu 1.10+, concise flag will be also used in apply.
             When unset on create, defaults to true on OpenTofu 1.7+ and to false on older versions.
           nullable: true
           type: boolean
@@ -19466,6 +19629,10 @@ components:
           type: array
         policyName:
           description: Name of the attached Policy.
+          type: string
+        policyTemplateSlug:
+          description: Slug of the library template the attached Policy was created from, if any.
+          nullable: true
           type: string
         policyType:
           $ref: '#/components/schemas/PolicyType'
@@ -22901,7 +23068,7 @@ components:
           format: int32
           type: integer
         pendingRuns:
-          description: Number of runs ready for processing by this WorkerPool.
+          description: Number of runs and discovery scan runs ready for processing by this WorkerPool.
           format: int32
           type: integer
         preparingTimeoutSeconds:
@@ -23302,19 +23469,19 @@ components:
 info:
   description: The Spacelift GraphQL API projected onto resource-oriented REST routes. Generated by `specref generate` from the pinned introspection snapshot, the spacelift-api-bruno collection and the Spacelift Terraform provider; see docs/research/reference/02-graphql-to-rest-mapping.md. Every operation names the GraphQL field it stands for in `x-graphql`.
   title: Spacelift API reference (REST projection)
-  version: schema-97187ac2bca2
+  version: schema-82108d354b04
   x-sources:
     bruno:
-      ref: d4d77d9333d99f69aa7fdaa96865864d9ec13b39
+      ref: bb9ee53ee694cfb20e1a1ee310846af9286b7b77
       repository: spacelift-io/spacelift-api-bruno
-      sha256: 6e0e62ea8c7000cc9b03d6c29442159e06673daf650e1681dfae798da0bfbdda
+      sha256: 817063417c689a8529a56519905968a30a8f373de67c2fe046403d1703b06bb6
     introspection:
       endpoint: https://demo.app.spacelift.io/graphql
-      sha256: 97187ac2bca25dad724b541e1e14da0fa2c9ca155cea3aa0982709c2a21119f8
+      sha256: 82108d354b04f2bdbd822ccf66c3916830c355a126252dfe4458cde39ca04361
     provider:
-      ref: v1.60.0
+      ref: v1.60.1
       repository: spacelift-io/terraform-provider-spacelift
-      sha256: 18a2b9a185a05d95907df736407323e3693a1cfdd66906576f7cc9696690ad52
+      sha256: 0a5d117eec6349c1a11b6fd27e7e2d46d36847b87e1a14903dbc365be255c059
 openapi: 3.0.3
 paths:
   /account/api-key-non-root-managers:
@@ -23459,6 +23626,33 @@ paths:
       x-bruno: Advanced/Account Settings/Account Request Personal Api Keys Enabling.bru
       x-graphql:
         field: accountRequestPersonalApiKeysEnabling
+        operation: mutation
+        type: Mutation
+      x-rest-style: singleton
+  /account/set-feature-previews-enabled:
+    post:
+      description: Opts the organization in to feature previews, or out of them. Root admins only.
+      operationId: accountSetFeaturePreviewsEnabled
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountSetFeaturePreviewsEnabledRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The accountSetFeaturePreviewsEnabled result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account set feature previews enabled
+      tags:
+        - Account Settings
+      x-graphql:
+        field: accountSetFeaturePreviewsEnabled
         operation: mutation
         type: Mutation
       x-rest-style: singleton
@@ -28962,6 +29156,56 @@ paths:
         operation: query
         type: Query
       x-rest-style: item
+  /feature-preview:
+    get:
+      description: |-
+        Features the organization can opt in to before they are generally available, with the
+        organization's and the current user's settings.
+      operationId: featurePreview
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The featurePreview result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Feature preview
+      tags:
+        - Account Settings
+      x-graphql:
+        field: featurePreview
+        operation: query
+        type: Query
+      x-rest-style: override
+  /feature-preview/personal:
+    put:
+      description: Opts the current user out of feature previews, or back in. Refused where personal is null.
+      operationId: featurePreviewSetPersonalEnabled
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeaturePreviewSetPersonalEnabledRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The featurePreviewSetPersonalEnabled result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Feature preview set personal enabled
+      tags:
+        - Account Settings
+      x-graphql:
+        field: featurePreviewSetPersonalEnabled
+        operation: mutation
+        type: Mutation
+      x-rest-style: override
   /flows-instances:
     get:
       description: Returns all configured Flows instances available for linking.
@@ -38010,6 +38254,27 @@ paths:
         operation: query
         type: Query
       x-rest-style: read
+  /scan-resource-stats:
+    get:
+      description: Resources found by the latest finished run of each scan the caller can read.
+      operationId: scanResourceStats
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResourceStats'
+          description: The scanResourceStats result.
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Scan resource stats
+      tags:
+        - Scans
+      x-graphql:
+        field: scanResourceStats
+        operation: query
+        type: Query
+      x-rest-style: override
   /scan-runs/{scanRunId}:
     get:
       description: Details of a single ScanRun.
@@ -41105,6 +41370,45 @@ paths:
         operation: query
         type: Stack
       x-rest-style: field
+  /stacks/{stackId}/destroy-runs:
+    post:
+      description: |-
+        Trigger a destroy run. It plans the destroy first, so plan policies can
+        pause it for review or deny it, then destroys the Stack's resources and
+        leaves the Stack disabled. It uses the commit currently tracked by the
+        Stack or, if the Stack is not yet tracking any commit, the HEAD of its
+        tracked branch.
+        Fails if the Stack is being deleted, is protected from deletion, has
+        dependents, has a destroy run not yet finished, manages no resources, or
+        uses a vendor that can't plan a destroy. On a busy Stack, the run queues
+        behind the runs already there.
+      operationId: runDestroyTrigger
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: Created.
+        "404":
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run destroy trigger
+      tags:
+        - Runs
+      x-graphql:
+        field: runDestroyTrigger
+        operation: mutation
+        type: Mutation
+      x-rest-style: override
   /stacks/{stackId}/disable:
     post:
       description: Disable the stack, so it cannot create new runs.

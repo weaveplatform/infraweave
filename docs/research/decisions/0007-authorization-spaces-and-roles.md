@@ -206,7 +206,7 @@ glossary's sense ([GLOSSARY](../../../GLOSSARY.md)).
 ### Roles and the action catalogue
 
 - **Source.** The action catalogue is the `Action` enum of the committed
-  introspection snapshot (155 values), then infraweave's own account actions.
+  introspection snapshot (156 values), then infraweave's own account actions.
   `specref` generates `internal/access/api/actions.gen.go` from it, and a
   hand-maintained `internal/access/api/actions.yaml` gives each value its
   subject, legacy fallback (`reader`, `writer`, `admin`), and `disabled` and
