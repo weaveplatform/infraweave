@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 }
 
 // run is the command: echo its arguments to stdout and stderr, exit with
-// a code, write n bytes to a stream, or sleep.
+// a code, write n bytes to a stream, sleep, or say it is ready and sleep.
 func run(args []string) int {
 	switch args[0] {
 	case "echo":
@@ -48,6 +48,9 @@ func run(args []string) int {
 		_, _ = w.Write(bytes.Repeat([]byte("x"), n))
 		return 0
 	case "sleep":
+		<-time.After(time.Minute)
+	case "ready":
+		fmt.Fprint(os.Stdout, "ready")
 		<-time.After(time.Minute)
 	}
 	return 2
@@ -121,6 +124,43 @@ func TestUnitServeEndsACommandAtItsBounds(t *testing.T) {
 	o, err = serve(t, []byte("\x00\x00\x00\x02{}"))
 	if !errors.Is(err, ErrFrame) || o.result.Status != StatusRefused {
 		t.Fatalf("a refused request: %+v, %v", o.result, err)
+	}
+}
+
+// stopper is a helper's standard output that stops the helper, as its
+// container's runtime does, once the command has written its first frame.
+type stopper struct {
+	bytes.Buffer
+	stop context.CancelFunc
+}
+
+func (s *stopper) Write(p []byte) (int, error) {
+	s.stop()
+	return s.Buffer.Write(p) //nolint:wrapcheck // a bytes.Buffer
+}
+
+// TestUnitServeNeverAnswersAStoppedCommandAsAnExit checks that a command
+// the helper's stop kills, or never starts, is StatusStopped: a killed
+// command's -1, or the 127 of one that cannot start, would reach a policy
+// that denies only on a zero status as an ordinary exit.
+func TestUnitServeNeverAnswersAStoppedCommandAsAnExit(t *testing.T) {
+	ctx, stop := context.WithCancel(t.Context())
+	out := &stopper{stop: stop}
+	if err := Serve(ctx, bytes.NewReader(request(t, 1, self(t, "ready"), time.Minute)), out); err != nil {
+		t.Fatal(err)
+	}
+	o, err := readOutput(&out.Buffer, 1, MaxCombined)
+	if err != nil || *o.result != (Result{Call: 1, Status: StatusStopped}) || o.stdout.String() != "ready" {
+		t.Fatalf("a command stopped while it runs: %+v %q, %v", o.result, o.stdout.String(), err)
+	}
+
+	var b bytes.Buffer
+	if err := Serve(ctx, bytes.NewReader(request(t, 1, self(t, "exit", "0"), time.Minute)), &b); err != nil {
+		t.Fatal(err)
+	}
+	o, err = readOutput(&b, 1, MaxCombined)
+	if err != nil || *o.result != (Result{Call: 1, Status: StatusStopped}) {
+		t.Fatalf("a command of a stopped helper: %+v, %v", o.result, err)
 	}
 }
 
@@ -337,6 +377,9 @@ func TestUnitSessionFailsClosedAtItsBounds(t *testing.T) {
 		"helper output": {func(_ context.Context, c executor.Command) error {
 			return WriteResult(c.Output, Result{Call: c.Call, Status: StatusOutput})
 		}, ErrOutput},
+		"stopped helper": {func(_ context.Context, c executor.Command) error {
+			return WriteResult(c.Output, Result{Call: c.Call, Status: StatusStopped})
+		}, ErrHelper},
 		"refused": {func(_ context.Context, c executor.Command) error {
 			return WriteResult(c.Output, Result{Call: c.Call, Status: StatusRefused, Reason: "invalid request"})
 		}, ErrHelper},
@@ -363,5 +406,24 @@ func TestUnitSessionCancellationEndsTheHelper(t *testing.T) {
 	_, err := NewSession(h, executor.Command{}).Exec(ctx, []string{"x"})
 	if !errors.Is(err, ErrCancelled) || len(h.done) != 1 || h.done[0] == nil {
 		t.Fatalf("a cancelled call: %v, helper ended %v", err, h.done)
+	}
+}
+
+// TestUnitSessionFailsACallItsHelperStopped checks that a call whose
+// helper is stopped while its command runs, as a Pod's active deadline
+// stops it, fails the evaluation instead of answering the killed
+// command's status to the policy.
+func TestUnitSessionFailsACallItsHelperStopped(t *testing.T) {
+	h := &helper{hook: func(ctx context.Context, c executor.Command) error {
+		hctx, stop := context.WithCancel(ctx)
+		defer stop()
+		out := &stopper{stop: stop}
+		err := Serve(hctx, bytes.NewReader(c.Request), out)
+		_, _ = c.Output.Write(out.Bytes())
+		return err
+	}}
+	got, err := NewSession(h, executor.Command{}).Exec(t.Context(), self(t, "ready"))
+	if !errors.Is(err, ErrHelper) || got.Status != 0 || got.Stdout != "" {
+		t.Fatalf("a call whose helper stopped = %+v, %v", got, err)
 	}
 }

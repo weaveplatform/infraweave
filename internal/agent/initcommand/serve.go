@@ -22,7 +22,9 @@ const waitDelay = 2 * time.Second
 // frames, and ends them with the result. A command that outlasts its
 // request's deadline, or writes more than MaxOutput to either stream, is
 // killed and its result says so; output beyond the bound is not written.
-// A refused request still gets a result, and Serve then fails.
+// A command ctx ends, as the helper's container stops, is killed and its
+// result is StatusStopped, never an exit. A refused request still gets a
+// result, and Serve then fails.
 func Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	f := &frames{w: out}
 	req, err := ReadRequest(in)
@@ -47,6 +49,12 @@ func execute(ctx context.Context, req Request, f *frames) Result {
 		return Result{Call: req.Call, Status: StatusOutput}
 	case errors.Is(ctx.Err(), context.DeadlineExceeded):
 		return Result{Call: req.Call, Status: StatusTimeout}
+	case ctx.Err() != nil:
+		// The helper's container is stopping, as when its Pod's active
+		// deadline ends it: the command, killed or never started, did not
+		// end by itself, and its exit code reaching the policy would admit
+		// a run a deny on a zero status means to refuse.
+		return Result{Call: req.Call, Status: StatusStopped}
 	case errors.As(err, &exit):
 		return Result{Call: req.Call, Status: StatusExited, ExitCode: exit.ExitCode()}
 	case err != nil && cmd.Process == nil:
