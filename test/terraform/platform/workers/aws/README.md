@@ -64,6 +64,7 @@ names the account and holds no credential. The coordinator adds `ownership`,
 
 ```json
 {
+  "setup": {"management_credentials": "/private/tmp/management.json"},
   "cloud": {"provider": "aws", "identifiers": {"account_id": "<lab account>", "region": "eu-north-1"}},
   "cluster": {
     "cluster": {"mode": "create", "name": "iw-workers-lab", "kubernetes_version": "1.37"},
@@ -113,18 +114,28 @@ shows.
 ## Setup between the stages
 
 The deployment stage consumes a namespace and Secrets that already exist;
-it never reads Secret data or generates a key. After `cluster/`, the setup
-owner creates them from private files without printing them:
+it never reads Secret data or generates a key. With a `setup` section in the
+inputs, the coordinator creates them between the stages and removes them
+before destroying the cluster, as the
+[lab README](../../../lab/README.md#setup-between-the-stages) describes:
+
+```json
+{"setup": {"management_credentials": "/private/tmp/management.json"}}
+```
+
+where `management.json` (0600) holds `{"id": ..., "secret": ...}`, the
+worker-pool-controller API key of the account the pools serve. Each Managed
+pool gets a fresh P-256 key in its `credentials_ref` Secret; the controller
+registers its public half. By hand, the same objects, from private files and
+without printing them:
 
 ```sh
 aws eks update-kubeconfig --name iw-workers-lab --region eu-north-1 --kubeconfig "$private/kubeconfig"
 export KUBECONFIG="$private/kubeconfig"
 kubectl create namespace iw-workers
 kubectl label namespace iw-workers io.infraweave.lab.owner="$owner"
-# The worker-pool-controller API key, created through the platform's API.
 kubectl -n iw-workers create secret generic management \
   --from-file=id="$private/management-id" --from-file=secret="$private/management-secret"
-# One P-256 private key per Managed pool; the controller registers its public half.
 kubectl -n iw-workers create secret generic build-credentials --from-file=privateKey="$private/build.pem"
 kubectl -n iw-workers create secret generic deploy-credentials --from-file=privateKey="$private/deploy.pem"
 ```

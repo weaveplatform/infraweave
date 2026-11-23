@@ -274,6 +274,32 @@ validates it before any scenario. The Go harness reads it through
 manifest. Owned cloud resources carry `io.infraweave.lab.owner`; Google labels,
 which admit no dots, carry `io_infraweave_lab_owner`.
 
+### Setup between the stages
+
+An inputs file's optional `setup` section makes the coordinator create what
+the deployment stage only names, once the cluster API passes its TLS check:
+the namespace `deployment.namespace` names, labelled with the owner, when
+`setup_owned` is true, or a read of the delegated one otherwise; the
+`management_credentials_ref` Secret from the private
+`setup.management_credentials` file (`{"id", "secret"}`, the
+worker-pool-controller API key); a freshly generated P-256 `privateKey` for
+each Managed pool's `credentials_ref`; and each Existing or Public pool's
+`token` and `privateKey` from its `setup.pool_credentials` file. Every
+setup file must be a private (0600) JSON file of at most 16 KiB.
+
+```json
+{"setup": {"management_credentials": "/private/tmp/management.json"}}
+```
+
+kubectl reaches the cluster through a private kubeconfig that trusts only
+the cluster stage's CA and asks the cloud CLI for a token on each call
+(only AWS so far). Secret documents go to `kubectl apply` on standard input,
+so no value reaches a command line, the journal or the evidence. Cleanup
+removes them after the deployment stage and before the cluster stage: the
+whole setup-owned namespace, or only the Secrets it created in a delegated
+one, reading each back as absent. An unverified removal keeps the cluster
+for a retry from the same journal.
+
 ### Parallel apply and cleanup
 
 The platform deployment comes first, then up to `parallelism` clouds apply
