@@ -38,6 +38,21 @@ const (
 	LabelRun    = "io.infraweave.run"
 )
 
+// The labels of an initialization command's helper: the worker and run
+// it serves. They differ from a run container's, so Find never answers a
+// helper as a run, and Find removes a worker's helpers a stopped launcher
+// left.
+const (
+	LabelCommandWorker = "io.infraweave.command-worker"
+	LabelCommandRun    = "io.infraweave.command-run"
+)
+
+// An initialization command helper's memory and process bounds.
+const (
+	commandMemory = 1 << 30
+	commandPids   = 512
+)
+
 // Config is how the executor starts containers.
 type Config struct {
 	// Binary is the executable mounted at BinaryPath: the launcher's own
@@ -213,13 +228,21 @@ func (e *Executor) image(ctx context.Context, ref string) error {
 	}
 	pull, err := e.cli.ImagePull(ctx, ref, client.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("docker: pull image %s: %w", ref, err)
+		return pullError{fmt.Errorf("docker: pull image %s: %w", ref, err)}
 	}
 	if err := pull.Wait(ctx); err != nil {
-		return fmt.Errorf("docker: pull image %s: %w", ref, err)
+		return pullError{fmt.Errorf("docker: pull image %s: %w", ref, err)}
 	}
 	return nil
 }
+
+// pullError is an image the daemon could not pull, which is
+// executor.ErrImage while keeping the daemon's own message.
+type pullError struct{ err error }
+
+func (p pullError) Error() string        { return p.err.Error() }
+func (p pullError) Unwrap() error        { return p.err }
+func (p pullError) Is(target error) bool { return target == executor.ErrImage } //nolint:errorlint // a sentinel
 
 // Find answers worker's newest container, running or ended, copying what
 // it writes from now on to out. It follows from the daemon's current end
@@ -227,6 +250,9 @@ func (e *Executor) image(ctx context.Context, ref string) error {
 // this clock, and the daemon drops each line it stamped earlier by its
 // own, which can trail this one.
 func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
+	if err := e.sweep(ctx, worker); err != nil {
+		return nil, false, err
+	}
 	list, err := e.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true, Filters: client.Filters{}.Add("label", LabelWorker+"="+worker),
 	})
@@ -256,6 +282,24 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 	}
 	c.copied = copyOutput(out, logs, func() { _ = logs.Close() })
 	return c, true, nil
+}
+
+// sweep removes worker's initialization command helpers that a launcher
+// stopped mid-call left behind; no helper outlives its call otherwise.
+func (e *Executor) sweep(ctx context.Context, worker string) error {
+	list, err := e.cli.ContainerList(ctx, client.ContainerListOptions{
+		All: true, Filters: client.Filters{}.Add("label", LabelCommandWorker+"="+worker),
+	})
+	if err != nil {
+		return fmt.Errorf("docker: list worker %s's initialization commands: %w", worker, err)
+	}
+	for _, c := range list.Items {
+		_, err := e.cli.ContainerRemove(ctx, c.ID, client.ContainerRemoveOptions{Force: true})
+		if err != nil && !cerrdefs.IsNotFound(err) {
+			return fmt.Errorf("docker: remove worker %s's initialization command: %w", worker, err)
+		}
+	}
+	return nil
 }
 
 // endedBeforeFollow checks the list/log-follow race. A conflict alone is

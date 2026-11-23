@@ -343,12 +343,17 @@ func (e *Executor) abandon(ctx context.Context, r *run, err error) error {
 }
 
 // Find answers worker's newest run Pod, running or ended but not removed,
-// copying what its runner writes from now on to out. A Pod that was never
+// copying what its runner writes from now on to out, once it has deleted
+// any initialization command helper Pod of worker a stopped controller
+// left. A Pod that was never
 // handed its handoff cannot be resumed, since only the executor that
 // prepared it held the handoff: it is deleted and answered as a missing
 // container.
 func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
 	c := e.config()
+	if err := e.sweep(ctx, c, worker); err != nil {
+		return nil, false, err
+	}
 	list, err := e.core.Pods(c.Namespace).List(ctx, metav1.ListOptions{LabelSelector: LabelWorker + "=" + worker})
 	if err != nil {
 		return nil, false, fmt.Errorf("kubernetes: list worker %s's Pods: %w", worker, err)
@@ -449,13 +454,25 @@ func running(container string) func(*corev1.Pod) (bool, error) {
 			t := s.State.Terminated
 			return false, fmt.Errorf("%w: %s exited %d before its stream: %s", ErrPreparation, container, t.ExitCode, truncate(t.Message))
 		case s.State.Waiting != nil && slices.Contains(pullFailures, s.State.Waiting.Reason):
-			return false, fmt.Errorf("%w: the %s image %s cannot be pulled: %s: %s", ErrPreparation, container, s.Image, s.State.Waiting.Reason, truncate(s.State.Waiting.Message))
+			err := fmt.Errorf("%w: the %s image %s cannot be pulled: %s: %s", ErrPreparation, container, s.Image, s.State.Waiting.Reason, truncate(s.State.Waiting.Message))
+			if container == BootstrapContainer {
+				return false, err
+			}
+			return false, pullError{err}
 		case s.State.Waiting != nil && slices.Contains(startFailures, s.State.Waiting.Reason):
 			return false, fmt.Errorf("%w: %s cannot start: %s: %s", ErrPreparation, container, s.State.Waiting.Reason, truncate(s.State.Waiting.Message))
 		}
 		return false, nil
 	}
 }
+
+// pullError is a run's image that cannot be pulled, which is
+// executor.ErrImage while keeping the kubelet's own message.
+type pullError struct{ err error }
+
+func (p pullError) Error() string        { return p.err.Error() }
+func (p pullError) Unwrap() error        { return p.err }
+func (p pullError) Is(target error) bool { return target == executor.ErrImage } //nolint:errorlint // a sentinel
 
 // status is container's status in p, nil before the kubelet reports it.
 func status(p *corev1.Pod, container string) *corev1.ContainerStatus {

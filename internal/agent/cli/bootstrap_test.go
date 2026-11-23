@@ -10,6 +10,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/bootstrap"
 	"github.com/weaveplatform/infraweave/internal/agent/cli"
+	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 )
 
 func TestUnitRunnerBootstrapReceivesItsStream(t *testing.T) {
@@ -82,5 +83,39 @@ func TestUnitRunnerSignalInterruptsProcessOne(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 	if err := cmd.ExecuteContext(t.Context()); err == nil || len(got) != 1 {
 		t.Fatalf("sent another signal: %v", err)
+	}
+}
+
+func TestUnitRunnerCommandServesItsPrivateRequest(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The test binary, run with no matching test, exits 0 having printed
+	// its verdict to standard output.
+	req, err := initcommand.EncodeRequest(initcommand.Request{
+		Version: initcommand.Version, Call: 1, Argv: []string{exe, "-test.run=^$"}, TimeoutMillis: 60000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	cmd := cli.PodRunnerCmd(bootstrap.PodPaths, nil)
+	cmd.SetIn(bytes.NewReader(req))
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"command"})
+	if err := cmd.ExecuteContext(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"status":"exited","exitCode":0`) || !strings.Contains(out.String(), "PASS") {
+		t.Fatalf("frames %q", out.String())
+	}
+	cmd = cli.PodRunnerCmd(bootstrap.PodPaths, nil)
+	cmd.SetIn(strings.NewReader("not a frame"))
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"command"})
+	if err := cmd.ExecuteContext(t.Context()); !errors.Is(err, initcommand.ErrFrame) {
+		t.Fatalf("a refused request: %v", err)
 	}
 }

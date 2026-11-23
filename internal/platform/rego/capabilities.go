@@ -13,6 +13,14 @@ import (
 
 func capabilities() *ast.Capabilities { return capabilitiesFor(fips140.Enforced()) }
 
+// workerCapabilities are the server's plus the worker-only exec built-in.
+// Each call builds its own set, so no server capability list can gain exec.
+func workerCapabilities() *ast.Capabilities {
+	caps := capabilities()
+	caps.Builtins = append(caps.Builtins, &ast.Builtin{Name: commandName, Decl: commandDecl(), Nondeterministic: true})
+	return caps
+}
+
 func capabilitiesFor(fips bool) *ast.Capabilities {
 	caps := ast.CapabilitiesForThisVersion()
 	// A library upgrade must not give an existing future.keywords wildcard

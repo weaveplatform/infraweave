@@ -18,6 +18,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
+	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/runner"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -172,6 +173,14 @@ func runnerCmd(doer func(*x509.CertPool) wire.HttpRequestDoer, paths bootstrap.P
 		Short: "Open the workspace of a run whose container ended first to the launcher's user",
 		Args:  cobra.NoArgs,
 		RunE:  func(*cobra.Command, []string) error { return runner.HandBack() },
+	})
+	cmd.AddCommand(&cobra.Command{
+		Use:   "command",
+		Short: "Execute an initialization policy's command from the private request on standard input",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return initcommand.Serve(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout()) //nolint:wrapcheck // initcommand names the step
+		},
 	})
 	cmd.AddCommand(bootstrapCmd(paths), &cobra.Command{
 		Use:       "signal interrupt",

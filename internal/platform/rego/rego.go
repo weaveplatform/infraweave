@@ -34,6 +34,9 @@ type Request struct {
 	// Redact is evaluation-local and runs before diagnostic text is bounded.
 	// It is never retained by a prepared query.
 	Redact func(string) string
+	// Commands runs a worker initialization evaluation's exec calls; it is
+	// evaluation-local too. A server engine refuses a request that sets it.
+	Commands Commands
 }
 
 // Result is the preamble's bounded raw decision and captured print text.
@@ -84,13 +87,15 @@ func New(settings Settings) (*Engine, error) {
 }
 
 // NewWorker constructs an initialization-only engine with a distinct prepared
-// query identity. It cannot enable commands in server engines or their caches.
+// query identity whose capabilities add exec. Its capability set and cache
+// keys are its own, so no server engine compiles or reuses a query with exec.
 func NewWorker(settings Settings) (*Engine, error) {
 	e, err := New(settings)
 	if err != nil {
 		return nil, err
 	}
 	e.scope = "worker-initialization"
+	e.capabilities = workerCapabilities
 	return e, nil
 }
 
@@ -168,13 +173,17 @@ func (e *Engine) prepare(ctx context.Context, p Policy) (oparego.PreparedEvalQue
 	if err != nil {
 		return oparego.PreparedEvalQuery{}, compileError(err)
 	}
-	query, err := oparego.New(
+	options := []func(*oparego.Rego){
 		oparego.Query("data.infraweave.result"),
 		oparego.ParsedModule(pre), oparego.ParsedModule(user),
 		oparego.Capabilities(caps), oparego.SetRegoVersion(ast.RegoV1),
 		oparego.EnablePrintStatements(true),
 		oparego.Function1(&oparego.Function{Name: "sanitized", Decl: sanitizedDecl()}, sanitized),
-	).PrepareForEval(ctx)
+	}
+	if e.scope != "" {
+		options = append(options, oparego.Function1(&oparego.Function{Name: commandName, Decl: commandDecl(), Nondeterministic: true}, command))
+	}
+	query, err := oparego.New(options...).PrepareForEval(ctx)
 	if err != nil {
 		return oparego.PreparedEvalQuery{}, compileError(err)
 	}
@@ -198,8 +207,16 @@ func (e *Engine) Evaluate(ctx context.Context, req Request) (Result, error) {
 	if int64(len(req.Input)) > limit {
 		return Result{}, fmt.Errorf("%w: policy input exceeds %d bytes", ErrLimit, limit)
 	}
+	if req.Commands != nil && e.scope == "" {
+		return Result{}, fmt.Errorf("%w: commands are available to worker initialization alone", ErrPolicy)
+	}
 	ctx, cancel := context.WithTimeout(ctx, e.settings.timeout(req.Policy.Type))
 	defer cancel()
+	var scope *commandScope
+	if e.scope != "" {
+		scope = &commandScope{commands: req.Commands}
+		ctx = context.WithValue(ctx, commandKey{}, scope)
+	}
 	if err := e.acquire(ctx); err != nil {
 		return Result{}, err
 	}
@@ -221,6 +238,9 @@ func (e *Engine) Evaluate(ctx context.Context, req Request) (Result, error) {
 	printed := &printBuffer{redact: req.Redact}
 	results, err := query.Eval(ctx, oparego.EvalInput(input), oparego.EvalPrintHook(printed))
 	if err != nil {
+		if failed := scope.failure(); failed != nil {
+			return Result{}, failed
+		}
 		if ctx.Err() != nil {
 			return Result{}, fmt.Errorf("policy execution: %w", ctx.Err())
 		}

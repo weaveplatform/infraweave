@@ -1,7 +1,9 @@
 package docker_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"iter"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
+	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/jsonstream"
 	"github.com/moby/moby/client"
@@ -41,6 +44,12 @@ type daemon struct {
 	removed  int
 	stdin    net.Conn
 	followed client.ContainerLogsOptions
+	// output, when set, is what an attached container writes to its
+	// standard output before it ends; hold keeps it running instead.
+	output    []byte
+	hold      bool
+	got       bytes.Buffer
+	requested chan struct{}
 }
 
 func (d *daemon) err(call string) error {
@@ -89,20 +98,64 @@ func (d *daemon) ContainerAttach(context.Context, string, client.ContainerAttach
 	}
 	ours, theirs := net.Pipe()
 	d.stdin = theirs
-	if d.err("write") != nil {
+	switch {
+	case d.err("write") != nil:
 		_ = theirs.Close()
-	} else {
+	case d.output != nil || d.hold:
+		go func() {
+			buf := make([]byte, 4096)
+			for {
+				n, err := theirs.Read(buf)
+				d.mu.Lock()
+				d.got.Write(buf[:n])
+				if n > 0 && d.requested != nil {
+					close(d.requested)
+					d.requested = nil
+				}
+				d.mu.Unlock()
+				if err != nil {
+					return
+				}
+			}
+		}()
+		if !d.hold {
+			go func() {
+				_, _ = theirs.Write(multiplexed(stdcopy.Stdout, d.output))
+				_, _ = theirs.Write(multiplexed(stdcopy.Stderr, []byte("helper diagnostics")))
+				_ = theirs.Close()
+			}()
+		}
+	default:
 		go func() { _, _ = io.Copy(io.Discard, theirs) }()
 	}
 	return client.ContainerAttachResult{HijackedResponse: client.NewHijackedResponse(ours, "")}, nil
+}
+
+// multiplexed is p as one frame of the daemon's attach stream.
+func multiplexed(stream stdcopy.StdType, p []byte) []byte {
+	return append(binary.BigEndian.AppendUint32([]byte{byte(stream), 0, 0, 0}, uint32(len(p))), p...) //nolint:gosec // test sizes
 }
 
 func (d *daemon) ContainerStart(context.Context, string, client.ContainerStartOptions) (client.ContainerStartResult, error) {
 	return client.ContainerStartResult{}, d.err("start")
 }
 
-func (d *daemon) ContainerList(context.Context, client.ContainerListOptions) (client.ContainerListResult, error) {
-	return client.ContainerListResult{Items: d.items}, d.err("list")
+// ContainerList answers the items whose labels match every label filter.
+func (d *daemon) ContainerList(_ context.Context, o client.ContainerListOptions) (client.ContainerListResult, error) {
+	var items []container.Summary
+	for _, item := range d.items {
+		match := true
+		for filter := range o.Filters["label"] {
+			key, value, _ := strings.Cut(filter, "=")
+			if item.Labels[key] != value {
+				match = false
+			}
+		}
+		if match {
+			items = append(items, item)
+		}
+	}
+	return client.ContainerListResult{Items: items}, d.err("list")
 }
 
 func (d *daemon) ContainerLogs(_ context.Context, _ string, o client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
@@ -184,7 +237,7 @@ func TestUnitDockerExecutorFindRemoval(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := &daemon{
-				items: []container.Summary{{ID: "c", Labels: map[string]string{docker.LabelRun: "r"}}},
+				items: []container.Summary{{ID: "c", Labels: map[string]string{docker.LabelWorker: "w", docker.LabelRun: "r"}}},
 				errs:  map[string]error{"logs": tc.logs, "inspect": tc.inspect}, state: tc.state,
 				wait: container.WaitResponse{StatusCode: int64(tc.exit.Code)}, waitErr: tc.wait,
 			}
@@ -423,8 +476,8 @@ func TestUnitDockerExecutorHandBack(t *testing.T) {
 func TestUnitDockerExecutorFind(t *testing.T) {
 	ctx := t.Context()
 	items := []container.Summary{
-		{ID: "old", Created: 1, Labels: map[string]string{docker.LabelRun: "r1"}},
-		{ID: "new", Created: 2, Labels: map[string]string{docker.LabelRun: "r2"}},
+		{ID: "old", Created: 1, Labels: map[string]string{docker.LabelWorker: "w", docker.LabelRun: "r1"}},
+		{ID: "new", Created: 2, Labels: map[string]string{docker.LabelWorker: "w", docker.LabelRun: "r2"}},
 	}
 	follow, _ := io.Pipe()
 	d := &daemon{items: items, logs: follow}

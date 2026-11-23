@@ -20,7 +20,8 @@
 // Executor is a fake executor.Executor whose containers run until the
 // test ends them, or fails their wait, print the lines the test gives
 // them to the output their launcher follows, refuse kills when told to,
-// and which a restarted launcher finds again.
+// and which a restarted launcher finds again; it records each
+// initialization command helper and runs the behaviour the test gives it.
 //
 // # Input and output
 //

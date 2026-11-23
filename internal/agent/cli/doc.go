@@ -15,7 +15,10 @@
 // preparation stream on standard input into the Pod's volumes, for the
 // run, state version and worker its flags name, and logs only the
 // stream's shape; its signal interrupt subcommand sends the run
-// container's PID 1, the runner, SIGINT.
+// container's PID 1, the runner, SIGINT; and its command subcommand, the
+// fixed entrypoint of an initialization command's helper container,
+// serves the private request on standard input through
+// internal/agent/initcommand.
 //
 // WorkerController loads the worker_controller configuration the same
 // strict way, from its flags, the INFRAWEAVE_WORKER_CONTROLLER_*
@@ -36,7 +39,7 @@
 // # Dependencies
 //
 // It imports cobra, client-go's rest and clientcmd, internal/agent/bootstrap,
-// config, controller, executor, executor/docker, launcher, runner and wire, and
+// config, controller, executor, executor/docker, initcommand, launcher, runner and wire, and
 // platform/buildinfo, httpkit/serve and observe; no server package.
 // cmd/infraweave adds its commands.
 package cli

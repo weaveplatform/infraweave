@@ -17,6 +17,11 @@
 // invocation-local redactor before print/message truncation. No input or
 // redactor closure enters the cache. Capabilities exclude network, process and nondeterministic
 // built-ins; FIPS enforcement removes MD5/SHA-1 built-ins before compilation.
+// The worker engine alone adds exec, whose calls go to the Commands each
+// worker request carries through its evaluation's context: the prepared query
+// holds no executor, a failed call halts the evaluation instead of leaving a
+// rule undefined, and a server engine neither compiles exec nor accepts
+// Commands, whatever a worker engine cached first.
 //
 // # Dependencies
 //
