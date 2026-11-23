@@ -10,6 +10,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	"github.com/weaveplatform/infraweave/pkg/sdk"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -32,6 +33,10 @@ func (s *settingsSteps) register(sc *godog.ScenarioContext) {
 		`^"GET ([^"]+)" through ([AB]) with token "(\w+)" answers a time within the last minute$`,
 		s.recent,
 	)
+	sc.Step(
+		`^token "(\w+)" sends "([A-Z]+) ([^"]+)" with '([^']*)' and the idempotency key "([^"]+)" through ([AB])$`,
+		s.keyed,
+	)
 	sc.Step(`^the problem's detail names "([^"]+)"$`, s.detailNames)
 	sc.Step(`^the (home) account's audit trail holds "([a-z_.]+)"$`, s.trailHolds)
 	sc.Step(
@@ -46,6 +51,14 @@ func (s *settingsSteps) answers(ctx context.Context, method, path, replica, tok,
 		return err
 	}
 	return harness.Answered(r, method+" "+path, want)
+}
+
+// keyed sends a setting's request under an Idempotency-Key, leaving its
+// answer for the steps that follow to check.
+func (s *settingsSteps) keyed(ctx context.Context, tok, method, path, raw, key, replica string) error {
+	_, err := s.w.Do(ctx, replica, tok, method, path, harness.Body(raw),
+		sdk.Header{Name: sdk.IdempotencyKeyHeader, Value: key})
+	return err
 }
 
 func (s *settingsSteps) browserAnswers(ctx context.Context, method, path, replica, want string) error {

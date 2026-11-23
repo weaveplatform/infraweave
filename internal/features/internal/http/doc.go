@@ -16,7 +16,12 @@
 // the seats in use counted through the SeatCounter it is given;
 // billedExternally answers true, billingSubscription and onTrialUntil
 // null, the add-on and plan lists and evaluateFeatureFlags nothing, and
-// the five subscription mutations 403 installation-unsupported.
+// the five subscription mutations 403 installation-unsupported. Its
+// featurePreview, accountSetFeaturePreviewsEnabled and
+// featurePreviewSetPersonalEnabled answer the caller's feature previews,
+// with canManage from the principal's admin and personal only for a
+// principal that names a member; the personal write answers 403 forbidden
+// to any other.
 //
 // # Input and output
 //

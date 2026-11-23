@@ -375,8 +375,8 @@ func TestUnitPreviewSettingsFailures(t *testing.T) {
 }
 
 // TestUnitPreviewSnapshot checks that the replica reads an account's
-// opt-in once, until its payload, a missed notification or the account's
-// own write's notification drops it.
+// opt-in once, until its payload, a missed notification or a write of it
+// on this replica drops it.
 func TestUnitPreviewSnapshot(t *testing.T) {
 	s := &store{}
 	var n int
@@ -393,14 +393,15 @@ func TestUnitPreviewSnapshot(t *testing.T) {
 		{"cached", func() {}, 1, false},
 		{"another account", func() { svc.Invalidate(core.AccountKey(other)) }, 1, false},
 		{"an organization", func() { svc.Invalidate(core.InvalidateKey(org)) }, 1, false},
-		{"written but not yet notified", func() {
+		{"written on this replica", func() {
 			if err := svc.SetFeaturePreviewsEnabled(ctx, acct, true); err != nil {
 				t.Fatal(err)
 			}
-		}, 1, false},
-		{"this account", func() { svc.Invalidate(core.AccountKey(acct)) }, 2, true},
-		{"an account payload that names none", func() { svc.Invalidate("features:account:x") }, 3, true},
-		{"a missed notification", svc.Flush, 4, true},
+		}, 2, true},
+		{"cached after the write", func() {}, 2, true},
+		{"this account", func() { svc.Invalidate(core.AccountKey(acct)) }, 3, true},
+		{"an account payload that names none", func() { svc.Invalidate("features:account:x") }, 4, true},
+		{"a missed notification", svc.Flush, 5, true},
 	} {
 		step.invalidate()
 		got, err := svc.FeaturePreviewsEnabled(ctx, acct)
@@ -412,5 +413,75 @@ func TestUnitPreviewSnapshot(t *testing.T) {
 	s.previewErr = errStore
 	if err := svc.SetFeaturePreviewsEnabled(ctx, acct, false); !errors.Is(err, errStore) {
 		t.Errorf("a failed write = %v", err)
+	}
+}
+
+// TestUnitPreviewSettingWrites checks that each write answers the
+// previews with the write applied, that a principal naming no member has
+// no personal setting to write, and that each write fails with the store.
+func TestUnitPreviewSettingWrites(t *testing.T) {
+	ctx := t.Context()
+	acct := kernel.NewAccountID()
+	member := kernel.Principal{
+		OrganizationID: kernel.NewOrganizationID(), AccountID: acct, MemberID: kernel.NewMemberID(),
+	}
+	key := kernel.Principal{OrganizationID: member.OrganizationID, AccountID: acct}
+	active := func(v core.Previews) []bool {
+		out := make([]bool, 0, len(v.Features))
+		for _, f := range v.Features {
+			out = append(out, f.Active)
+		}
+		return out
+	}
+	s := &store{}
+	var n int
+	svc := core.New(s, inTx(&n), nil).WithPreviews(testPreviews)
+	if v, err := svc.FeaturePreviews(ctx, key); err != nil || v.Account || v.Personal != nil {
+		t.Fatalf("before = %+v, %v", v, err)
+	}
+	v, err := svc.SetAccountFeaturePreviews(ctx, key, true)
+	if err != nil || !v.Account || v.Personal != nil || !slices.Equal(active(v), []bool{true, true}) {
+		t.Errorf("an API key opts in = %+v, %v", v, err)
+	}
+	if _, err := svc.SetPersonalFeaturePreviews(ctx, key, false); !errors.Is(err, core.ErrNoMember) {
+		t.Errorf("an API key's personal write = %v", err)
+	}
+	v, err = svc.SetPersonalFeaturePreviews(ctx, member, false)
+	if err != nil || !v.Account || v.Personal == nil || *v.Personal ||
+		!slices.Equal(active(v), []bool{false, false}) {
+		t.Errorf("a member opts out = %+v, %v", v, err)
+	}
+	v, err = svc.SetAccountFeaturePreviews(ctx, member, false)
+	if err != nil || v.Account || v.Personal == nil || *v.Personal {
+		t.Errorf("a member opts the account out = %+v, %v", v, err)
+	}
+	if v, err := svc.FeaturePreviews(ctx, member); err != nil || v.Account || *v.Personal {
+		t.Errorf("after = %+v, %v", v, err)
+	}
+	for name, c := range map[string]struct {
+		s     *store
+		write func(*core.Service) error
+	}{
+		"opt-in unwritable": {&store{previewErr: errStore}, func(svc *core.Service) error {
+			_, err := svc.SetAccountFeaturePreviews(ctx, member, true)
+			return err
+		}},
+		"personal unreadable after the opt-in": {&store{personalErr: errStore}, func(svc *core.Service) error {
+			_, err := svc.SetAccountFeaturePreviews(ctx, member, true)
+			return err
+		}},
+		"personal unwritable": {&store{personalErr: errStore}, func(svc *core.Service) error {
+			_, err := svc.SetPersonalFeaturePreviews(ctx, member, true)
+			return err
+		}},
+		"opt-in unreadable after the personal write": {&store{previewErr: errStore}, func(svc *core.Service) error {
+			_, err := svc.SetPersonalFeaturePreviews(ctx, member, true)
+			return err
+		}},
+	} {
+		var n int
+		if err := c.write(core.New(c.s, inTx(&n), nil).WithPreviews(testPreviews)); !errors.Is(err, errStore) {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }
