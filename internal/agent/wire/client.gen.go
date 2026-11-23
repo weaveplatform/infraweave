@@ -60,6 +60,7 @@ func (e AssignmentState) Valid() bool {
 
 // Defines values for ContainerExitReason.
 const (
+	Evicted     ContainerExitReason = "evicted"
 	Exited      ContainerExitReason = "exited"
 	Killed      ContainerExitReason = "killed"
 	LogTimeout  ContainerExitReason = "log-timeout"
@@ -71,6 +72,8 @@ const (
 // Valid indicates whether the value is a known member of the ContainerExitReason enum.
 func (e ContainerExitReason) Valid() bool {
 	switch e {
+	case Evicted:
+		return true
 	case Exited:
 		return true
 	case Killed:
@@ -416,6 +419,9 @@ type ArtifactsRequest struct {
 
 // Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
 type Assignment struct {
+	// PreparingDeadline When the run's preparation must have ended with its started report, in Unix seconds: the claim's time plus the pool's preparing timeout, rounded down to the second. It is fixed for this assignment; a later change of the pool's timeout does not move it, and the server fails the run once it passes in a preparing state.
+	PreparingDeadline int64 `json:"preparingDeadline"`
+
 	// Run The run's ID.
 	Run string `json:"run"`
 
@@ -440,11 +446,11 @@ type ContainerExit struct {
 	// Code The exit code of the container's root process.
 	Code int32 `json:"code"`
 
-	// Reason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
+	// Reason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; evicted when the cluster evicted or preempted the container's Pod; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
 	Reason ContainerExitReason `json:"reason"`
 }
 
-// ContainerExitReason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
+// ContainerExitReason exited when the runner ended by itself; killed when the launcher killed it on a kill signal; out-of-memory when the host killed it for its memory; missing when the container is gone, such as after the host restarted; evicted when the cluster evicted or preempted the container's Pod; run-timeout when the launcher killed it for running longer than its run timeout; log-timeout when the launcher killed it for writing no output line for its log timeout.
 type ContainerExitReason string
 
 // LogChunk An uploaded log chunk.
@@ -541,7 +547,7 @@ type PollResult struct {
 	// Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
 	Assignment *Assignment `json:"assignment,omitempty"`
 
-	// Drained Whether the worker is drained: it takes no new run and finishes its current one.
+	// Drained Whether the worker is drained: it takes no new run and finishes its current one. Answered when the worker is drained, or when the poll's flag was true and the worker is no longer drained.
 	Drained *bool `json:"drained,omitempty"`
 
 	// SessionExpiresAt When the renewed session token expires, in Unix seconds.

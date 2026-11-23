@@ -123,6 +123,26 @@ func (c *Controller) setStatus(ctx context.Context, gvr schema.GroupVersionResou
 	return nil
 }
 
+// setWorkerStatus writes the fields of w's status the reconciliation
+// owns: its observed generation, worker ID and conditions. A merge patch
+// leaves the assignment, which the slot's launcher writes, as it is; it
+// carries w's UID, so it never reaches a replacement of the same name.
+func (c *Controller) setWorkerStatus(ctx context.Context, w Worker) error {
+	status := map[string]any{"observedGeneration": w.Status.ObservedGeneration, "conditions": w.Status.Conditions}
+	if w.Status.WorkerID != "" {
+		status["workerID"] = w.Status.WorkerID
+	}
+	patch, err := json.Marshal(map[string]any{"metadata": map[string]any{"uid": w.UID}, "status": status})
+	if err != nil {
+		return fmt.Errorf("worker controller: status patch: %w", err)
+	}
+	_, err = c.kube.Dynamic.Resource(WorkerResource).Namespace(w.Namespace).Patch(ctx, w.Name, types.MergePatchType, patch, metav1.PatchOptions{FieldValidation: strict}, "status")
+	if err != nil {
+		return fmt.Errorf("worker controller: update status of workers %s/%s: %w", w.Namespace, w.Name, err)
+	}
+	return nil
+}
+
 func (c *Controller) createWorker(ctx context.Context, w Worker) (Worker, error) {
 	u, err := encode("Worker", &w)
 	if err != nil {

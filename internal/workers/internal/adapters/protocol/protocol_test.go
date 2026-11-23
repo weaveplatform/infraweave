@@ -349,6 +349,13 @@ func TestUnitProtocol(t *testing.T) {
 		signals[0] != "cycle" || body["drained"] != true || body["sessionToken"] != nil {
 		t.Errorf("cycled poll = %d %v", code, body)
 	}
+	// An undrained worker's launcher that holds it drained learns so.
+	w.Cycle, w.Drained = false, false
+	f.store.workers[u] = w
+	code, body = f.call(t, "/poll", token, map[string]any{"busy": true, "drained": true, "wait": 5})
+	if code != http.StatusOK || body["drained"] != false {
+		t.Errorf("undrained poll = %d %v", code, body)
+	}
 	f.tokens.expires[token] = time.Now().Add(time.Minute)
 	code, body = f.call(t, "/poll", token, map[string]any{"busy": false, "wait": 5})
 	if code != http.StatusOK || body["sessionToken"] == nil || body["sessionExpiresAt"] == nil {
@@ -414,11 +421,12 @@ func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
 }
 
 // TestUnitProtocolAssignment checks that a poll that claims a run
-// answers it with its state and run token.
+// answers it with its state, run token and preparing deadline.
 func TestUnitProtocolAssignment(t *testing.T) {
 	f := newFixture(t)
 	a := workersapi.Assignment{
 		Run: kernel.NewULID(), State: kernel.RunStatePreparingApply, StateVersion: 7,
+		PreparingDeadline: time.Unix(1_900_000_000, 0),
 	}
 	f.svc.BindScheduler(&scheduler{run: &a})
 	w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
@@ -431,6 +439,7 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	want := map[string]any{
 		"run": a.Run.String(), "state": "PREPARING_APPLY", "stateVersion": float64(7),
 		"runToken": "run." + a.Run.String(), "runTokenExpiresAt": float64(1e9),
+		"preparingDeadline": float64(1_900_000_000),
 	}
 	if got, _ := body["assignment"].(map[string]any); code != http.StatusOK ||
 		!maps.Equal(got, want) {

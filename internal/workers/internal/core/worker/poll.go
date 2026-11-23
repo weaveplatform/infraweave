@@ -41,15 +41,16 @@ type PollResult struct {
 }
 
 // Assignment is a run a poll claimed, the preparing state the claim moved
-// it to, the run's state version after it, and the run token its launcher
-// and runner carry.
+// it to, the run's state version after it, the preparing deadline the
+// claim issued, and the run token its launcher and runner carry.
 type Assignment struct {
-	Retry        bool
-	RetryAfter   time.Duration
-	Run          kernel.ULID
-	State        kernel.RunState
-	StateVersion int64
-	Token        accessapi.Token
+	Retry             bool
+	RetryAfter        time.Duration
+	Run               kernel.ULID
+	State             kernel.RunState
+	StateVersion      int64
+	PreparingDeadline time.Time
+	Token             accessapi.Token
 }
 
 func result(w Worker) PollResult {
@@ -278,7 +279,10 @@ func (s *Service) claim(ctx context.Context, w Worker, b accessapi.Bearer) (Assi
 				return err //nolint:wrapcheck // the store names the read
 			}
 		}
-		c := workersapi.Claim{Account: cur.Account, Pool: cur.Pool, Worker: cur.ID, Public: cur.Public}
+		c := workersapi.Claim{
+			Account: cur.Account, Pool: cur.Pool, Worker: cur.ID, Public: cur.Public,
+			Preparing: s.preparing(p, cur.Public),
+		}
 		if p.DriftDetectionRunLimit != nil {
 			limit := int(*p.DriftDetectionRunLimit)
 			c.DriftLimit = &limit
@@ -296,7 +300,10 @@ func (s *Service) claim(ctx context.Context, w Worker, b accessapi.Bearer) (Assi
 		if err != nil {
 			return err //nolint:wrapcheck // the access domain names the mint
 		}
-		out = &Assignment{Run: a.Run, State: a.State, StateVersion: a.StateVersion, Token: t}
+		out = &Assignment{
+			Run: a.Run, State: a.State, StateVersion: a.StateVersion,
+			PreparingDeadline: a.PreparingDeadline, Token: t,
+		}
 		return nil
 	})
 	if err == nil && retry {
@@ -306,6 +313,19 @@ func (s *Service) claim(ctx context.Context, w Worker, b accessapi.Bearer) (Assi
 		return Assignment{}, false, s.unauthenticated(err)
 	}
 	return *out, true, nil
+}
+
+// preparing is the preparing timeout a claim for a worker of p issues
+// its run's deadline from: the public pool's, or p's own, or the
+// installation's default for a pool that sets none.
+func (s *Service) preparing(p pool.Pool, public bool) time.Duration {
+	switch {
+	case public:
+		return s.clocks.publicPreparing
+	case p.PreparingTimeout > 0:
+		return p.PreparingTimeout
+	}
+	return s.clocks.preparing
 }
 
 // deliver answers the stop or kill of the run w holds through the signals

@@ -423,16 +423,20 @@ func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
 func (s *scheduler) wait() workersapi.Assignment {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	a := workersapi.Assignment{Run: kernel.NewULID(), State: kernel.RunStatePreparing}
+	a := workersapi.Assignment{
+		Run: kernel.NewULID(), State: kernel.RunStatePreparing,
+		PreparingDeadline: time.Now().Add(pool.DefaultPreparingTimeout).Truncate(time.Second),
+	}
 	s.runs = append(s.runs, a)
 	return a
 }
 
-// claimed reports whether h is an answer with a, with its run token.
+// claimed reports whether h is an answer with a, with its preparing
+// deadline and run token.
 func claimed(h held, a workersapi.Assignment) bool {
 	got := h.got.Assignment
 	return h.err == nil && got != nil && got.Run == a.Run && got.State == a.State &&
-		got.Token.Raw == "run "+a.Run.String()
+		got.PreparingDeadline.Equal(a.PreparingDeadline) && got.Token.Raw == "run "+a.Run.String()
 }
 
 // TestUnitWorkerPollClaim checks that an idle, undrained worker's poll
@@ -457,7 +461,9 @@ func TestUnitWorkerPollClaim(t *testing.T) {
 		if !f.store.workers[w.ID].Busy {
 			t.Error("the claim left the worker idle")
 		}
-		want := workersapi.Claim{Account: w.Account, Pool: w.Pool, Worker: w.ID}
+		want := workersapi.Claim{
+			Account: w.Account, Pool: w.Pool, Worker: w.ID, Preparing: pool.DefaultPreparingTimeout,
+		}
 		if len(sch.claims) != 1 || sch.claims[0].DriftLimit == nil ||
 			*sch.claims[0].DriftLimit != 2 {
 			t.Fatalf("claims = %+v", sch.claims)
@@ -487,6 +493,36 @@ func TestUnitWorkerPollClaim(t *testing.T) {
 		}
 		if len(sch.claims) != 0 {
 			t.Errorf("claims of a worker that may not claim = %+v", sch.claims)
+		}
+	})
+}
+
+// TestUnitWorkerPollClaimPreparing checks that a claim issues its run's
+// preparing deadline from the pool's own preparing timeout, or else the
+// installation's default.
+func TestUnitWorkerPollClaimPreparing(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t, worker.Deps{PreparingTimeout: 7 * time.Minute})
+		sch := &scheduler{}
+		f.svc.BindScheduler(sch)
+		_, b := f.add()
+		sch.wait()
+		if h := <-f.poll(b, worker.PollInput{}); h.err != nil || len(sch.claims) != 1 ||
+			sch.claims[0].Preparing != 7*time.Minute {
+			t.Errorf("the default's claim = %+v, %+v", h, sch.claims)
+		}
+
+		f = newFixture(t, worker.Deps{PreparingTimeout: 7 * time.Minute})
+		p := f.pool
+		p.PreparingTimeout = 90 * time.Second
+		f.store.pools[p.ID] = p
+		sch = &scheduler{}
+		f.svc.BindScheduler(sch)
+		_, b = f.add()
+		sch.wait()
+		if h := <-f.poll(b, worker.PollInput{}); h.err != nil || len(sch.claims) != 1 ||
+			sch.claims[0].Preparing != 90*time.Second {
+			t.Errorf("the pool's own claim = %+v, %+v", h, sch.claims)
 		}
 	})
 }

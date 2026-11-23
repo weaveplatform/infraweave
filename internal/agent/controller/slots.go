@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -11,12 +12,14 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/kubernetes"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 )
@@ -40,29 +43,200 @@ const ReasonExecutorRunning = "LauncherRunning"
 
 // slot is a Worker resource's launcher, which polls for runs and executes
 // each through its Kubernetes executor, until its context is cancelled.
+// The slot is its launcher's launcher.Store: it keeps the launcher's
+// state, with its executor's last observation of the run's Pod, in the
+// Worker's status.assignment, which the replica that next leads loads.
 type slot struct {
-	pool   types.UID
-	key    string
-	l      *launcher.Launcher
-	exec   *kubernetes.Executor
-	cancel context.CancelFunc
-	done   chan struct{}
-	err    error
+	c          *Controller
+	pool       types.UID
+	worker     metav1.ObjectMeta
+	key        string
+	runTimeout time.Duration
+	l          *launcher.Launcher
+	exec       *kubernetes.Executor
+	cancel     context.CancelFunc
+	done       chan struct{}
+	err        error
 
-	mu  sync.Mutex
-	obs kubernetes.Observation
+	// mu serializes the writes of the Worker's assignment, and guards
+	// what they write and last wrote.
+	mu      sync.Mutex
+	st      launcher.State
+	obs     kubernetes.Observation
+	written *AssignmentStatus
+	loaded  bool
 }
 
+var _ launcher.Store = (*slot)(nil)
+
+// errReplaced is a slot whose Worker resource was replaced by another of
+// its name, whose assignment it neither reads nor writes.
+var errReplaced = errors.New("worker controller: the slot's Worker resource was replaced")
+
+// Load reads the Worker's worker ID and the assignment the last launcher
+// of its slot recorded, on whichever replica it ran.
+func (s *slot) Load(ctx context.Context) (launcher.State, error) {
+	u, err := s.c.kube.Dynamic.Resource(WorkerResource).Namespace(s.worker.Namespace).Get(ctx, s.worker.Name, metav1.GetOptions{})
+	if err != nil {
+		return launcher.State{}, fmt.Errorf("worker controller: read worker %s/%s: %w", s.worker.Namespace, s.worker.Name, err)
+	}
+	w, err := decode[Worker](u)
+	if err != nil {
+		return launcher.State{}, err
+	}
+	if w.UID != s.worker.UID {
+		return launcher.State{}, errReplaced
+	}
+	st := launcher.State{Pool: w.Spec.PoolID, Worker: w.Status.WorkerID}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if a := w.Status.Assignment; a != nil {
+		st.Run, st.Assigned, st.StateVersion = a.RunID, wire.AssignmentState(a.State), a.StateVersion
+		st.PreparingDeadline, st.Started, st.Kill = timeOf(a.PreparationDeadline), timeOf(a.StartedAt), a.KillRequested
+		if a.ExitReason != "" && a.ExitCode != nil {
+			st.Exit = &wire.ContainerExit{Code: *a.ExitCode, Reason: wire.ContainerExitReason(a.ExitReason)}
+		}
+		if a.PodName != "" {
+			s.obs = kubernetes.Observation{Run: a.RunID, Pod: a.PodName, UID: types.UID(a.PodUID), Phase: kubernetes.Phase(a.HandoffPhase)}
+		}
+		written := *a
+		s.written = &written
+	}
+	s.st, s.loaded = st, true
+	return st, nil
+}
+
+// Save records st in the Worker's status.
+func (s *slot) Save(ctx context.Context, st launcher.State) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.st = st
+	return s.write(ctx)
+}
+
+// Forget removes the assignment from the Worker's status.
+func (s *slot) Forget(ctx context.Context) error {
+	return s.Save(ctx, launcher.State{Pool: s.st.Pool, Worker: s.st.Worker})
+}
+
+// observe records the executor's observation of the run's Pod in the
+// Worker's status, within requestTimeout, logging a failed write: the
+// launcher's next save writes it again.
 func (s *slot) observe(o kubernetes.Observation) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.obs = o
+	if !s.loaded {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	if err := s.write(ctx); err != nil {
+		s.c.log.WarnContext(ctx, "record the run Pod's phase", "namespace", s.worker.Namespace,
+			"worker", s.worker.Name, "error", err.Error())
+	}
 }
 
-func (s *slot) observed() kubernetes.Observation {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.obs
+// write patches the Worker's status with the assignment s holds, unless
+// it is the one last written. Every field of the assignment is written,
+// absent ones as null, so the patch replaces the whole object, and the
+// patch carries the Worker's UID, so it never reaches a replacement of
+// the same name.
+func (s *slot) write(ctx context.Context) error {
+	a := s.assignment()
+	if equality.Semantic.DeepEqual(a, s.written) {
+		return nil
+	}
+	status := map[string]any{"assignment": assignmentPatch(a)}
+	if s.st.Worker != "" {
+		status["workerID"] = s.st.Worker
+	}
+	patch, err := json.Marshal(map[string]any{"metadata": map[string]any{"uid": s.worker.UID}, "status": status})
+	if err != nil {
+		return fmt.Errorf("worker controller: assignment patch: %w", err)
+	}
+	_, err = s.c.kube.Dynamic.Resource(WorkerResource).Namespace(s.worker.Namespace).Patch(ctx, s.worker.Name,
+		types.MergePatchType, patch, metav1.PatchOptions{FieldValidation: strict}, "status")
+	if err != nil {
+		return fmt.Errorf("worker controller: record the assignment of worker %s/%s: %w", s.worker.Namespace, s.worker.Name, err)
+	}
+	s.written = a
+	return nil
+}
+
+// assignment is the Worker status of what s executes, nil when it is
+// idle: the claimed run, its state and version, the preparing deadline
+// its claim issued, when its runner started and the run timeout's end,
+// whether a kill was asked of it, its Pod and preparation phase, and its
+// exit until the server took it.
+func (s *slot) assignment() *AssignmentStatus {
+	st := s.st
+	if st.Run == "" || st.StateVersion == 0 {
+		return nil
+	}
+	a := &AssignmentStatus{
+		RunID: st.Run, State: string(st.Assigned), StateVersion: st.StateVersion,
+		PreparationDeadline: metaTime(st.PreparingDeadline), StartedAt: metaTime(st.Started),
+		KillRequested: st.Kill,
+	}
+	if !st.Started.IsZero() {
+		a.RunDeadline = metaTime(st.Started.Add(s.runTimeout))
+	}
+	if o := s.obs; o.Run == st.Run && o.Pod == kubernetes.PodName(st.Run, st.StateVersion) {
+		a.PodName, a.PodUID, a.HandoffPhase = o.Pod, string(o.UID), string(o.Phase)
+		a.HandoffAcknowledged = o.Phase == kubernetes.PhaseAcknowledged || o.Phase == kubernetes.PhaseFinished
+	}
+	if st.Exit != nil {
+		code := st.Exit.Code
+		a.ExitCode, a.ExitReason = &code, string(st.Exit.Reason)
+	}
+	return a
+}
+
+// assignmentFields are the JSON names of AssignmentStatus's fields,
+// every one of which a merge patch names, so none survives from the
+// assignment it replaces.
+var assignmentFields = []string{
+	"runID", "podUID", "podName", "state", "stateVersion", "preparationDeadline", "runDeadline",
+	"logDeadline", "startedAt", "handoffPhase", "exitCode", "exitReason", "handoffAcknowledged",
+	"killRequested",
+}
+
+// assignmentPatch is a as a merge patch's value: nil, which removes the
+// assignment, or every field, absent ones as null.
+func assignmentPatch(a *AssignmentStatus) any {
+	if a == nil {
+		return nil
+	}
+	b, err := json.Marshal(a)
+	out := map[string]any{}
+	if err == nil {
+		err = json.Unmarshal(b, &out)
+	}
+	if err != nil {
+		return nil
+	}
+	for _, f := range assignmentFields {
+		if _, ok := out[f]; !ok {
+			out[f] = nil
+		}
+	}
+	return out
+}
+
+func metaTime(t time.Time) *metav1.Time {
+	if t.IsZero() {
+		return nil
+	}
+	v := metav1.NewTime(t.Truncate(time.Second))
+	return &v
+}
+
+func timeOf(t *metav1.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return t.Time
 }
 
 // alive reports whether the slot's launcher still runs.
@@ -125,7 +299,6 @@ func (c *Controller) slotDir(uid types.UID) string {
 // settings.
 func (c *Controller) executorConfig(wp WorkerPool, w Worker, lc config.Launcher, s *slot) kubernetes.Config {
 	pod := wp.Spec.Pod
-	prep := preparing(wp)
 	return kubernetes.Config{
 		Namespace: w.Namespace,
 		Owner: metav1.OwnerReference{
@@ -139,8 +312,8 @@ func (c *Controller) executorConfig(wp WorkerPool, w Worker, lc config.Launcher,
 		ImagePullSecrets: pod.ImagePullSecrets,
 		Staging:          filepath.Join(lc.CacheDir, "staging"),
 		Arch:             c.arch,
-		ActiveDeadline:   prep + lc.RunTimeout + c.settings.CleanupTimeout,
-		Preparation:      prep,
+		Execution:        lc.RunTimeout + c.settings.CleanupTimeout,
+		Preparation:      preparing(wp),
 		Interval:         c.interval,
 		Observe:          s.observe,
 	}
@@ -150,7 +323,10 @@ func (c *Controller) executorConfig(wp WorkerPool, w Worker, lc config.Launcher,
 // controller stops leading.
 func (c *Controller) start(ctx context.Context, wp WorkerPool, h hosted, w Worker) (*slot, error) {
 	lc := c.launcherConfig(h, w)
-	s := &slot{pool: wp.UID, key: slotKey(h, wp.Spec.Endpoint), done: make(chan struct{})}
+	s := &slot{
+		c: c, pool: wp.UID, worker: w.ObjectMeta, key: slotKey(h, wp.Spec.Endpoint),
+		runTimeout: lc.RunTimeout, done: make(chan struct{}),
+	}
 	s.exec = kubernetes.New(c.kube.Core, c.streams, c.executorConfig(wp, w, lc, s))
 	slotNumber := w.Spec.Slot
 	owner := h.owner
@@ -160,7 +336,7 @@ func (c *Controller) start(ctx context.Context, wp WorkerPool, h hosted, w Worke
 		Config: lc, Doer: c.slotDoer, Executor: s.exec, Tools: c.tools, Sources: c.sources,
 		Log: c.log.With("namespace", w.Namespace, "worker", w.Name),
 		Now: c.now, Version: c.version, OS: podOS, Arch: c.arch,
-		Endpoint: wp.Spec.Endpoint, Owner: &owner, Slot: &slotNumber, Retain: true,
+		Endpoint: wp.Spec.Endpoint, Owner: &owner, Slot: &slotNumber, Retain: true, Store: s,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("worker controller: the slot's launcher: %w", err)
@@ -222,16 +398,31 @@ var errBusy = errors.New("worker controller: the slot's run executes")
 
 // release ends w's launcher before its worker is deregistered: an idle
 // launcher at once, a busy one once its run ends, which errBusy reports
-// meanwhile; the launcher claims no run after it.
-func (c *Controller) release(w Worker) error {
+// meanwhile; the launcher claims no run after it. A Worker whose status
+// records an assignment but has no launcher on this replica, as after a
+// change of leader, gets one, which resumes the run to its end before
+// the slot retires. h is nil when the remote pool is gone, and so is the
+// run's worker.
+func (c *Controller) release(ctx context.Context, wp WorkerPool, h *hosted, w Worker) error {
 	c.starting.Lock()
-	defer c.starting.Unlock()
 	c.mu.Lock()
 	s := c.slots[w.UID]
 	c.mu.Unlock()
 	if s == nil {
-		return nil
+		c.starting.Unlock()
+		if w.Status.Assignment == nil || h == nil || c.streams == nil {
+			return nil
+		}
+		// The launcher outlives this pass's context, which a pool's cleanup
+		// bounds; losing the lead or the pool ends it.
+		s, err := c.running(context.WithoutCancel(ctx), wp, *h, w)
+		if err != nil {
+			return err
+		}
+		s.l.Retire()
+		return errBusy
 	}
+	defer c.starting.Unlock()
 	if s.alive() && s.l.Status().Run != "" {
 		s.l.Retire()
 		return errBusy
@@ -262,37 +453,4 @@ func (c *Controller) stopSlots(keep func(*slot) bool) {
 	for _, s := range stopping {
 		s.stop()
 	}
-}
-
-// assignment is the Worker status of what s executes, nil when it is
-// idle: the claimed run, its Pod and preparation phase, its deadlines,
-// and its exit until the server took it.
-func (c *Controller) assignment(wp WorkerPool, s *slot) *AssignmentStatus {
-	st := s.l.Status()
-	if st.Run == "" || st.StateVersion == 0 {
-		return nil
-	}
-	at := func(t time.Time) *metav1.Time {
-		if t.IsZero() {
-			return nil
-		}
-		v := metav1.NewTime(t.Truncate(time.Second))
-		return &v
-	}
-	a := &AssignmentStatus{
-		RunID: st.Run, State: string(st.State), StateVersion: st.StateVersion,
-		PreparationDeadline: at(st.Assigned.Add(preparing(wp))), StartedAt: at(st.Started),
-	}
-	if !st.Started.IsZero() {
-		a.RunDeadline = at(st.Started.Add(config.Defaults().Launcher.RunTimeout))
-	}
-	if o := s.observed(); o.Run == st.Run && o.Pod == kubernetes.PodName(st.Run, st.StateVersion) {
-		a.PodName, a.PodUID, a.HandoffPhase = o.Pod, string(o.UID), string(o.Phase)
-		a.HandoffAcknowledged = o.Phase == kubernetes.PhaseAcknowledged || o.Phase == kubernetes.PhaseFinished
-	}
-	if st.Exit != nil {
-		code := st.Exit.Code
-		a.ExitCode, a.ExitReason = &code, string(st.Exit.Reason)
-	}
-	return a
 }

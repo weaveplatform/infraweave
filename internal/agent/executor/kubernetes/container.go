@@ -46,9 +46,12 @@ type run struct {
 	uid  types.UID
 	run  string
 	// gone marks a Pod deleted before it was handed off, which ends as
-	// missing.
-	gone   bool
-	killed atomic.Bool
+	// missing. killed holds once Kill deleted the Pod, and evicted once
+	// the cluster marked it for eviction or preemption, which it may then
+	// delete before its end is read.
+	gone    bool
+	killed  atomic.Bool
+	evicted atomic.Bool
 
 	mu     sync.Mutex
 	copied chan struct{}
@@ -70,15 +73,23 @@ func (r *run) observe(p Phase) {
 
 // Wait reads the Pod each interval until its runner ends, then waits for
 // its output, and answers the runner's exit: killed after Kill,
-// out-of-memory when the kubelet ended it for memory, run-timeout when
-// the Pod's active deadline ended it, and missing when the Pod is gone
-// or ended before its runner did.
+// run-timeout when the Pod's active deadline ended it, evicted when the
+// kubelet evicted the Pod or the cluster marked it as a disruption
+// target, such as an eviction through the API, a preemption or a node's
+// taint, out-of-memory when the kubelet ended the runner for memory, and
+// missing when the Pod is gone or ended before its runner did. A watch
+// beside the reads catches a disruption the Pod shows only between its
+// eviction and its deletion, which can be shorter than an interval.
 func (r *run) Wait(ctx context.Context) (executor.Exit, error) {
 	if r.gone {
 		return executor.Exit{Code: executor.MissingCode, Reason: wire.Missing}, nil
 	}
 	t := time.NewTicker(r.c.Interval)
 	defer t.Stop()
+	wctx, stop := context.WithCancel(ctx)
+	defer stop()
+	wake := make(chan struct{}, 1)
+	go r.follow(wctx, wake)
 	for {
 		exit, done, err := r.ended(ctx)
 		if err != nil {
@@ -93,6 +104,32 @@ func (r *run) Wait(ctx context.Context) (executor.Exit, error) {
 		case <-ctx.Done():
 			return executor.Exit{}, fmt.Errorf("kubernetes: wait for run %s: %w", r.run, context.Cause(ctx))
 		case <-t.C:
+		case <-wake:
+		}
+	}
+}
+
+// follow watches the Pod until ctx ends, marking it evicted from the
+// first update that shows a disruption and waking Wait on each update. A
+// watch that cannot open, or that ends, opens again after an interval.
+func (r *run) follow(ctx context.Context, wake chan<- struct{}) {
+	for ctx.Err() == nil {
+		w, err := r.e.core.Pods(r.c.Namespace).Watch(ctx, metav1.ListOptions{FieldSelector: "metadata.name=" + r.name})
+		if err == nil {
+			for ev := range w.ResultChan() {
+				if p, ok := ev.Object.(*corev1.Pod); ok && p.UID == r.uid && disrupted(p) {
+					r.evicted.Store(true)
+				}
+				select {
+				case wake <- struct{}{}:
+				default:
+				}
+			}
+			w.Stop()
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(r.c.Interval):
 		}
 	}
 }
@@ -102,8 +139,11 @@ func (r *run) ended(ctx context.Context) (executor.Exit, bool, error) {
 	p, err := r.e.core.Pods(r.c.Namespace).Get(ctx, r.name, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err) || err == nil && p.UID != r.uid:
-		if r.killed.Load() {
+		switch {
+		case r.killed.Load():
 			return executor.Exit{Code: killedCode, Reason: wire.Killed}, true, nil
+		case r.evicted.Load():
+			return executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}, true, nil
 		}
 		return executor.Exit{Code: executor.MissingCode, Reason: wire.Missing}, true, nil
 	case err != nil && ctx.Err() != nil:
@@ -112,12 +152,17 @@ func (r *run) ended(ctx context.Context) (executor.Exit, bool, error) {
 		// A read the API server refused is retried at the next interval.
 		return executor.Exit{}, false, nil
 	}
+	if disrupted(p) {
+		r.evicted.Store(true)
+	}
 	reason := func(fallback wire.ContainerExitReason) wire.ContainerExitReason {
 		switch {
 		case r.killed.Load():
 			return wire.Killed
 		case p.Status.Reason == "DeadlineExceeded":
 			return wire.RunTimeout
+		case r.evicted.Load():
+			return wire.Evicted
 		}
 		return fallback
 	}
@@ -137,6 +182,20 @@ func (r *run) ended(ctx context.Context) (executor.Exit, bool, error) {
 		return executor.Exit{Code: code, Reason: reason(wire.Missing)}, true, nil
 	}
 	return executor.Exit{}, false, nil
+}
+
+// disrupted reports whether the cluster evicted p, or marked it as a
+// disruption target it is about to delete.
+func disrupted(p *corev1.Pod) bool {
+	if p.Status.Reason == "Evicted" {
+		return true
+	}
+	for _, c := range p.Status.Conditions {
+		if c.Type == corev1.DisruptionTarget && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 // drain waits for the runner's output to be copied, at most drainOutput,

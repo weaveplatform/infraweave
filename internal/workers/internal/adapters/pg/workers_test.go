@@ -318,9 +318,8 @@ func TestAccWorkersUnavailable(t *testing.T) {
 			_, err := s.SuggestWorkers(ctx, acct, p.ID, p.Space, search.SuggestionsInput{})
 			return err
 		}(),
-		"MarkOffline":  func() error { _, err := s.MarkOffline(ctx, time.Now()); return err }(),
-		"Lost":         func() error { _, _, err := s.Lost(ctx, time.Now()); return err }(),
-		"PoolTimeouts": func() error { _, err := s.PoolTimeouts(ctx); return err }(),
+		"MarkOffline": func() error { _, err := s.MarkOffline(ctx, time.Now()); return err }(),
+		"Lost":        func() error { _, _, err := s.Lost(ctx, time.Now()); return err }(),
 	} {
 		if err == nil || errors.Is(err, worker.ErrNotFound) || errors.Is(err, pool.ErrNotFound) {
 			t.Errorf("%s on a closed pool = %v", name, err)
@@ -422,11 +421,5 @@ func TestAccWorkerReap(t *testing.T) {
 		if _, _, err := f.store.Worker(ctx, id, false); !errors.Is(err, worker.ErrNotFound) {
 			t.Errorf("lost worker %s: %v", id, err)
 		}
-	}
-
-	timeouts, err := f.store.PoolTimeouts(ctx)
-	if err != nil || len(timeouts) != 1 || timeouts[0].Pool != p.ID ||
-		timeouts[0].Timeout != 5*time.Minute {
-		t.Errorf("PoolTimeouts = %+v, %v", timeouts, err)
 	}
 }

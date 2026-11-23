@@ -63,7 +63,7 @@ func (s *publicStore) PublicUsage(context.Context, kernel.OrganizationID, kernel
 	return featuresapi.Usage{}, s.stage("usage")
 }
 
-func (s *publicStore) AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID) error {
+func (s *publicStore) AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID, time.Time) error {
 	return s.stage("assign")
 }
 

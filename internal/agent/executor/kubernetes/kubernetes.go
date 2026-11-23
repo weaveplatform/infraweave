@@ -50,11 +50,13 @@ type Observation struct {
 // pool's resources, workspace storage, placement and pull secrets; with
 // tools of Arch, whose nodes a Pod that streams tools selects. Staging
 // is a directory private to the worker where a workspace is packed
-// before it is streamed. ActiveDeadline is the Pod's own cap, counted by
-// Kubernetes from its start; Preparation bounds scheduling, image pulls,
-// the stream and the handoff together; Interval is how often a Pod's
-// status is read, a second when zero. Observe, when set, is told each
-// phase.
+// before it is streamed. The job's preparing deadline bounds scheduling,
+// image pulls, the stream and the handoff together, or Preparation from
+// the Pod's creation for a job with none. Execution is the run timeout and cleanup
+// time after that deadline, which with the preparation left makes the
+// Pod's own active deadline, counted by Kubernetes from its start.
+// Interval is how often a Pod's status is read, a second when zero.
+// Observe, when set, is told each phase.
 type Config struct {
 	Namespace        string
 	Owner            metav1.OwnerReference
@@ -66,7 +68,7 @@ type Config struct {
 	ImagePullSecrets []corev1.LocalObjectReference
 	Staging          string
 	Arch             string
-	ActiveDeadline   time.Duration
+	Execution        time.Duration
 	Preparation      time.Duration
 	Interval         time.Duration
 	Observe          func(Observation)
@@ -136,8 +138,9 @@ func tools(j executor.Job) ([]executor.Tool, error) {
 // Start packs j's workspace, creates its Pod, streams the workspace and
 // tools to the Pod's bootstrap container, and once that has exited 0
 // hands the runner j.Handoff on its standard input, whose output then
-// goes to j.Output. A Pod whose preparation fails is deleted, so no
-// prepared Pod is left without its runner.
+// goes to j.Output, all before j's preparing deadline. A Pod whose
+// preparation fails is deleted, so no prepared Pod is left without its
+// runner.
 func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Container, error) {
 	c := e.config()
 	ts, err := tools(j)
@@ -161,14 +164,27 @@ func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Containe
 		}
 		m.Tools = append(m.Tools, d)
 	}
-	p, err := e.core.Pods(c.Namespace).Create(ctx, pod(c, j, ts), metav1.CreateOptions{FieldValidation: metav1.FieldValidationStrict})
+	// A job with no issued deadline has the configured bound from its
+	// Pod's creation.
+	deadline := j.PreparingDeadline
+	if deadline.IsZero() {
+		deadline = time.Now().Add(c.Preparation)
+	}
+	pctx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	if pctx.Err() != nil {
+		return nil, fmt.Errorf("%w: run %s's preparing deadline passed before its Pod was created", ErrPreparation, j.Run)
+	}
+	var active time.Duration
+	if c.Execution > 0 {
+		active = time.Until(deadline) + c.Execution
+	}
+	p, err := e.core.Pods(c.Namespace).Create(ctx, pod(c, j, ts, active), metav1.CreateOptions{FieldValidation: metav1.FieldValidationStrict})
 	if err != nil {
 		return nil, fmt.Errorf("kubernetes: create run %s's Pod: %w", j.Run, err)
 	}
 	r := &run{e: e, c: c, name: p.Name, uid: p.UID, run: j.Run, copied: closed()}
 	r.observe(PhasePending)
-	pctx, cancel := context.WithTimeout(ctx, c.Preparation)
-	defer cancel()
 	if err := e.prepare(pctx, r, m, staged, ts); err != nil {
 		return nil, e.abandon(ctx, r, err)
 	}
@@ -345,10 +361,13 @@ func (e *Executor) abandon(ctx context.Context, r *run, err error) error {
 // Find answers worker's newest run Pod, running or ended but not removed,
 // copying what its runner writes from now on to out, once it has deleted
 // any initialization command helper Pod of worker a stopped controller
-// left. A Pod that was never
-// handed its handoff cannot be resumed, since only the executor that
-// prepared it held the handoff: it is deleted and answered as a missing
-// container.
+// left. Only a Pod that carries the worker's label and is controlled by
+// the executor's owner, the worker's resource, is the worker's: a Pod of
+// the same label that another resource controls is neither answered nor
+// deleted. The worker's older Pods, whose removal failed before, are
+// deleted. A Pod that was never handed its handoff cannot be resumed,
+// since only the executor that prepared it held the handoff: it is
+// deleted and answered as a missing container.
 func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (executor.Container, bool, error) {
 	c := e.config()
 	if err := e.sweep(ctx, c, worker); err != nil {
@@ -358,12 +377,20 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 	if err != nil {
 		return nil, false, fmt.Errorf("kubernetes: list worker %s's Pods: %w", worker, err)
 	}
-	if len(list.Items) == 0 {
+	owned := slices.DeleteFunc(list.Items, func(p corev1.Pod) bool { return !controlled(&p, c) })
+	if len(owned) == 0 {
 		return nil, false, nil
 	}
-	p := slices.MaxFunc(list.Items, func(a, b corev1.Pod) int {
-		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
+	slices.SortFunc(owned, func(a, b corev1.Pod) int {
+		return b.CreationTimestamp.Compare(a.CreationTimestamp.Time)
 	})
+	p := owned[0]
+	for _, stale := range owned[1:] {
+		old := &run{e: e, c: c, name: stale.Name, uid: stale.UID, run: stale.Labels[LabelRun]}
+		if err := old.delete(ctx, killGrace); err != nil {
+			return nil, false, err
+		}
+	}
 	r := &run{e: e, c: c, name: p.Name, uid: p.UID, run: p.Labels[LabelRun], copied: closed()}
 	if p.Annotations[AnnotationHandoff] != handedOff {
 		r.gone = true
@@ -372,6 +399,7 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 		}
 		return r, true, nil
 	}
+	r.observe(PhaseAcknowledged)
 	if out == nil {
 		out = io.Discard
 	}
@@ -394,6 +422,13 @@ func (e *Executor) Find(ctx context.Context, worker string, out io.Writer) (exec
 	}()
 	r.copied, r.stop = copied, cancel
 	return r, true, nil
+}
+
+// controlled reports whether c's owner, the worker's resource, controls
+// p: only such a Pod is the worker's to adopt or delete.
+func controlled(p *corev1.Pod, c Config) bool {
+	ref := metav1.GetControllerOfNoCopy(p)
+	return ref != nil && c.Owner.UID != "" && ref.UID == c.Owner.UID
 }
 
 func closed() chan struct{} {

@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -27,8 +26,9 @@ const (
 // where it stopped.
 const ReapBatch = 100
 
-// clocks are the reap's: when a worker is offline and when lost, and the
-// preparing timeout of a pool that sets none.
+// clocks are the reap's: when a worker is offline and when lost; and the
+// claim's: the preparing timeout of a private pool that sets none, and
+// the public pool's.
 type clocks struct {
 	offlineAfter, lostAfter, preparing time.Duration
 	publicPreparing                    time.Duration
@@ -65,8 +65,8 @@ type Reaped struct {
 // it held with the note "worker lost", so a poll that finds its worker
 // gone answers 401 and no run outlives its worker's row. Then it fails
 // the runs a claim moved to a preparing state that no started report
-// moved on within their pool's preparing timeout. Until the runs domain's
-// liveness is bound, it fails no run.
+// moved on before the preparing deadline the claim issued. Until the runs
+// domain's liveness is bound, it fails no run.
 //
 // ref: decision 0008 § "Liveness: offline workers and lost runs"
 // ref: decision 0008 § "Timeouts and timers"
@@ -91,19 +91,8 @@ func (s *Service) Reap(ctx context.Context) (Reaped, error) {
 	if s.liveness == nil {
 		return out, nil
 	}
-	timeouts, err := s.store.PoolTimeouts(ctx)
-	if err != nil {
-		return out, err //nolint:wrapcheck // the store names the read
-	}
-	public, err := s.store.Public(ctx, false)
-	if err != nil && !errors.Is(err, pool.ErrNotFound) {
-		return out, err //nolint:wrapcheck // the store names the read
-	}
-	if err == nil {
-		timeouts = append(timeouts, workersapi.PoolTimeout{Pool: public.ID, Timeout: s.clocks.publicPreparing})
-	}
 	err = tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
-		out.Overdue, err = s.liveness.Overdue(ctx, now, timeouts, s.clocks.preparing, ReapBatch)
+		out.Overdue, err = s.liveness.Overdue(ctx, now, ReapBatch)
 		return err //nolint:wrapcheck // the runs domain names the move
 	})
 	return out, err //nolint:wrapcheck // the runs domain's or the transaction's

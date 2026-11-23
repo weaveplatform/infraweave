@@ -186,6 +186,9 @@ func (e *Executor) sweep(ctx context.Context, c Config, worker string) error {
 		return fmt.Errorf("kubernetes: list worker %s's initialization commands: %w", worker, err)
 	}
 	for _, p := range list.Items {
+		if !controlled(&p, c) {
+			continue
+		}
 		r := &run{e: e, c: c, name: p.Name, uid: p.UID, run: p.Labels[LabelCommandRun]}
 		if err := r.delete(ctx, 0); err != nil {
 			return err

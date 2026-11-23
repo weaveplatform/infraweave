@@ -70,10 +70,12 @@ type controllerSteps struct {
 	ln         net.Listener
 	front      *http.Server
 	frontAt    string
+	cut        atomic.Bool
 	ca         []byte
 	caFile     string
 	recorder
 	running []*harness.Server
+	killed  []*harness.Server
 	started int
 	kept    map[string][]string
 	// initialization is the local policy the controllers started from now
@@ -87,6 +89,7 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^a controller namespace "(\w+)" holds the (home|member) management key$`, c.namespace)
 	sc.Step(`^(\d+) worker controllers? watch the controller namespaces$`, c.start)
 	sc.Step(`^the leading worker controller is replaced$`, c.replace)
+	c.registerRecovery(sc)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)" is applied in "(\w+)"( for another account)?$`, c.managed)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)", whose Pods select "(\w+)" nodes, is applied in "(\w+)"$`, c.selecting)
 	sc.Step(
@@ -248,7 +251,15 @@ func (c *controllerSteps) frontURL(ctx context.Context) (string, error) {
 		srv := servers[next.Add(1)%uint64(len(servers))]
 		pr.SetURL(&url.URL{Scheme: "http", Host: srv.API})
 	}}
-	c.front = &http.Server{Handler: proxy, ReadHeaderTimeout: 10 * time.Second}
+	// While cut, the front answers as a gateway that lost its servers.
+	front := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if c.cut.Load() {
+			http.Error(w, "the installation is unreachable", http.StatusBadGateway)
+			return
+		}
+		proxy.ServeHTTP(w, r)
+	})
+	c.front = &http.Server{Handler: front, ReadHeaderTimeout: 10 * time.Second}
 	go func() { _ = c.front.Serve(c.ln) }()
 	return c.frontAt, nil
 }
@@ -323,6 +334,19 @@ func (c *controllerSteps) launch(ctx context.Context) error {
 // replace stops the controller that leads, which releases its Lease, and
 // starts another in its place.
 func (c *controllerSteps) replace(ctx context.Context) error {
+	leader, err := c.leader(ctx)
+	if err != nil {
+		return err
+	}
+	c.running = slices.DeleteFunc(c.running, func(s *harness.Server) bool { return s == leader })
+	if err := leader.Stop(ctx); err != nil {
+		return err //nolint:wrapcheck // names the process
+	}
+	return c.launch(ctx)
+}
+
+// leader waits for the running controller that leads.
+func (c *controllerSteps) leader(ctx context.Context) (*harness.Server, error) {
 	var leader *harness.Server
 	err := deps.Eventually(ctx, "a worker controller to lead", func(context.Context) (bool, error) {
 		for _, srv := range c.running {
@@ -334,13 +358,9 @@ func (c *controllerSteps) replace(ctx context.Context) error {
 		return false, nil
 	})
 	if err != nil {
-		return err //nolint:wrapcheck // names what it waited for
+		return nil, err //nolint:wrapcheck // names what it waited for
 	}
-	c.running = slices.DeleteFunc(c.running, func(s *harness.Server) bool { return s == leader })
-	if err := leader.Stop(ctx); err != nil {
-		return err //nolint:wrapcheck // names the process
-	}
-	return c.launch(ctx)
+	return leader, nil
 }
 
 // frontCertificate is a self-signed P-256 certificate for 127.0.0.1 and
@@ -412,16 +432,20 @@ func (c *controllerSteps) apply(ctx context.Context, u *unstructured.Unstructure
 // managed applies a Managed WorkerPool whose credential Secret holds only
 // a fresh private key, for the home account or another one.
 func (c *controllerSteps) managed(ctx context.Context, name string, capacity int64, space, in, other string) error {
-	return c.managedOn(ctx, name, capacity, space, in, other, "")
+	return c.managedOn(ctx, name, capacity, space, in, other, nil)
 }
 
 // selecting applies a Managed WorkerPool as managed does, whose Pods
 // select nodes of the architecture arch.
 func (c *controllerSteps) selecting(ctx context.Context, name string, capacity int64, space, arch, in string) error {
-	return c.managedOn(ctx, name, capacity, space, in, "", arch)
+	return c.managedOn(ctx, name, capacity, space, in, "", func(_, pod map[string]any) {
+		pod["nodeSelector"] = map[string]any{corev1.LabelArchStable: arch}
+	})
 }
 
-func (c *controllerSteps) managedOn(ctx context.Context, name string, capacity int64, space, in, other, arch string) error {
+// managedOn applies a Managed WorkerPool, for another account when other
+// is set, whose spec and pod settings change edits when it is set.
+func (c *controllerSteps) managedOn(ctx context.Context, name string, capacity int64, space, in, other string, change func(spec, pod map[string]any)) error {
 	ns := c.namespaces[in]
 	_, key, err := newPoolKey()
 	if err != nil {
@@ -439,9 +463,8 @@ func (c *controllerSteps) managedOn(ctx context.Context, name string, capacity i
 	if other != "" {
 		spec["account"] = kernel.NewAccountID().String()
 	}
-	if arch != "" {
-		pod := spec["pod"].(map[string]any) //nolint:forcetypeassert // built by pool
-		pod["nodeSelector"] = map[string]any{corev1.LabelArchStable: arch}
+	if change != nil {
+		change(spec, spec["pod"].(map[string]any)) //nolint:forcetypeassert // built by pool
 	}
 	return c.apply(ctx, u)
 }

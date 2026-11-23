@@ -46,13 +46,28 @@
 // The launcher kills a run's container that runs longer than
 // launcher.run_timeout from its start, or writes no output line for
 // launcher.log_timeout, and reports its exit with the reason run-timeout
-// or log-timeout; a kill the host refuses is tried again at the next poll.
+// or log-timeout; a kill the host refuses is tried again before the next
+// poll. Each assignment carries the preparing deadline its claim issued:
+// preparation, the container's start included, is cut off when it
+// passes, failing the run with a note that names it, and the executor
+// gets it as the job's PreparingDeadline. The server fails a run still
+// preparing past it whatever the launcher does.
 //
-// The cache directory's worker.json keeps the pool's worker, the run it
-// executes and when that run's container started, so a restarted launcher
-// resumes the worker, finds the run's container by its labels, keeps its
-// run timeout from that start, starts its no-log timeout afresh, and
-// reports its exit, or reports it missing when it is gone. A refused session registers again: the same worker
+// A Store keeps the launcher's State, saved before each effect a restart
+// must know of: the pool's worker; the run it executes, with the
+// assignment's state, state version and preparing deadline, saved before
+// the run is prepared; when its container started; a kill a signal asked
+// for, saved before the container is killed; and the container's exit
+// until the server took it. FileStore, the default, keeps it in the
+// cache directory's worker.json, written through a rename. A restarted
+// launcher resumes the worker, finds the run's container through the
+// executor, keeps its run timeout from that start, starts its no-log
+// timeout afresh, kills it again when a kill was saved, and reports its
+// exit; a container that is gone is reported killed when a kill was
+// saved and missing otherwise, and a container of another run is killed
+// and removed. A store that cannot be read ends Run with an error, and
+// an assignment it cannot save fails the run unprepared, so no container
+// runs that a restart would not find. A refused session registers again: the same worker
 // keeps its run, and a new one means the server lost the old worker and
 // failed its run, whose container is removed. A refused registration,
 // such as after a pool reset, ends Run with an error; other failures are
@@ -66,8 +81,11 @@
 // token's, registers with the hosting owner and slot so registering again
 // resumes the slot's worker, and retains its worker when Run ends idle,
 // for the controller to deregister. Retire makes Run end once the
-// launcher is idle, and Status answers the worker and the assignment it
-// executes, with no token, for the controller's resources.
+// launcher is idle, and Status answers the worker, whether it is
+// drained, and the assignment it executes, with no token, for the
+// controller's resources. The controller is the launcher's Store, keeping
+// its State in the slot's Worker resource, where the replica that next
+// leads finds it.
 //
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0008 § "Runner images"
@@ -80,10 +98,10 @@
 // the system's roots and launcher.ca_file's, fetches Git sources from
 // their providers over the same roots, reads launcher.ca_file, whose
 // bundle each handoff carries to the runner, starts and waits on
-// containers through the executor, and reads and writes
-// worker.json, the tool binaries and the runs' workspaces in
-// launcher.cache_dir. It logs registration, each run's
-// start, signals, timeout kills and end, each line of the runner's output
+// containers through the executor, reads and writes its State through
+// its Store, by default worker.json in launcher.cache_dir, and the tool
+// binaries and the runs' workspaces there. It logs registration, each
+// run's start, signals, drain changes, timeout kills and end, each line of the runner's output
 // as "runner output", each workspace it cannot remove, each failed call
 // with its retry, and each signed URL the store refuses with its retry.
 //

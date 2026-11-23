@@ -119,9 +119,12 @@ spec:
                     - killed
                     - out-of-memory
                     - missing
+                    - evicted
                     - run-timeout
                     - log-timeout
                   handoffAcknowledged:
+                    type: boolean
+                  killRequested:
                     type: boolean
                 required:
                 - runID

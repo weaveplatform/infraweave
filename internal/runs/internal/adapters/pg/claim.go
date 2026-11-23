@@ -174,10 +174,11 @@ func (s *Store) CandidateAttempt(ctx context.Context, fn func(context.Context) (
 	return held, err
 }
 
-// Assign writes worker as run's worker.
-func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error {
-	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET worker_id = $3
-		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, worker)
+// Assign writes worker as run's worker and deadline as its preparing
+// deadline.
+func (s *Store) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID, deadline time.Time) error {
+	_, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET worker_id = $3, preparing_deadline = $4
+		WHERE account_id = $1 AND id = $2`, run.Account, run.ID, worker, deadline)
 	if err != nil {
 		return fmt.Errorf("runs: assign run %s to worker %s: %w", run.ID, worker,
 			sql.Unavailable(err))
@@ -239,21 +240,15 @@ var preparing = []string{
 	string(kernel.RunStatePreparingReplan),
 }
 
-// Overdue reads and locks the runs left in preparation past their pool's
-// preparing timeout. The partial index runs_preparing serves it.
-func (s *Store) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error) {
-	pools := make([]kernel.ULID, 0, len(timeouts))
-	micros := make([]int64, 0, len(timeouts))
-	for _, t := range timeouts {
-		pools, micros = append(pools, t.Pool), append(micros, t.Timeout.Microseconds())
-	}
+// Overdue reads and locks the runs left in preparation past the preparing
+// deadline their claim issued. The partial index runs_preparing serves
+// it.
+func (s *Store) Overdue(ctx context.Context, now time.Time, batch int) ([]lifecycle.Run, error) {
 	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT `+runColumns+` FROM runs
-		WHERE state = ANY($1) AND state_changed_at < $2::timestamptz -
-			coalesce((SELECT t.micros FROM unnest($3::uuid[], $4::bigint[]) AS t(pool, micros)
-				WHERE t.pool = coalesce(runs.worker_pool_id,runs.public_worker_pool_id)), $5) * interval '1 microsecond'
-		ORDER BY state_changed_at, id
-		LIMIT $6 FOR UPDATE SKIP LOCKED`,
-		preparing, now, pools, micros, fallback.Microseconds(), batch)
+		WHERE state = ANY($1) AND preparing_deadline < $2
+		ORDER BY preparing_deadline, id
+		LIMIT $3 FOR UPDATE SKIP LOCKED`,
+		preparing, now, batch)
 	if err != nil {
 		return nil, fmt.Errorf("runs: read the overdue preparations: %w", sql.Unavailable(err))
 	}

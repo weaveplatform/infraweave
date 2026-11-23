@@ -99,11 +99,11 @@ func (s *Store) PublicUsage(ctx context.Context, org kernel.OrganizationID, acco
 
 // AssignPublic fixes the installation pool on first assignment and preserves it
 // across every apply/replan, independently of mutable stack configuration.
-func (s *Store) AssignPublic(ctx context.Context, run lifecycle.Run, worker, pool kernel.ULID) error {
+func (s *Store) AssignPublic(ctx context.Context, run lifecycle.Run, worker, pool kernel.ULID, deadline time.Time) error {
 	tag, err := tx.Q(ctx, s.db).Exec(ctx, `UPDATE runs SET worker_id=$3,
-		public_worker_pool_id=coalesce(public_worker_pool_id,$4)
+		public_worker_pool_id=coalesce(public_worker_pool_id,$4), preparing_deadline=$5
 		WHERE account_id=$1 AND id=$2 AND worker_pool_id IS NULL
-		AND (public_worker_pool_id IS NULL OR public_worker_pool_id=$4)`, run.Account, run.ID, worker, pool)
+		AND (public_worker_pool_id IS NULL OR public_worker_pool_id=$4)`, run.Account, run.ID, worker, pool, deadline)
 	if err != nil {
 		return fmt.Errorf("runs: bind public execution pool: %w", sql.Unavailable(err))
 	}

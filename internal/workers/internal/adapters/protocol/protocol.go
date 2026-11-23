@@ -164,7 +164,8 @@ func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject)
 	if a := got.Assignment; a != nil {
 		out.Assignment = &gen.Assignment{
 			Run: a.Run.String(), State: gen.AssignmentState(a.State), StateVersion: a.StateVersion,
-			RunToken: a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
+			PreparingDeadline: a.PreparingDeadline.Unix(),
+			RunToken:          a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
 		}
 	}
 	if len(got.Signals) > 0 {
@@ -174,7 +175,9 @@ func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject)
 		}
 		out.Signals = &signals
 	}
-	if got.Drained {
+	// An undrained worker's flag is answered only to a launcher that
+	// still holds it drained, which learns of the undrain no other way.
+	if got.Drained || in.Drained {
 		out.Drained = &got.Drained
 	}
 	if got.Token != nil {

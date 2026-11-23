@@ -16,7 +16,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	sqlsearch "github.com/weaveplatform/infraweave/internal/platform/sql/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
@@ -285,31 +284,6 @@ func (s *Store) Lost(ctx context.Context, before time.Time) (kernel.ULID, bool, 
 			sql.Unavailable(err))
 	}
 	return id, true, nil
-}
-
-// PoolTimeouts reads the pools that set their own preparing timeout, of
-// every account.
-func (s *Store) PoolTimeouts(ctx context.Context) ([]workersapi.PoolTimeout, error) {
-	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT id, preparing_timeout_seconds
-		FROM worker_pools WHERE preparing_timeout_seconds IS NOT NULL`)
-	if err != nil {
-		return nil, fmt.Errorf("workers: read the pools' preparing timeouts: %w",
-			sql.Unavailable(err))
-	}
-	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (workersapi.PoolTimeout, error) {
-		var (
-			t       workersapi.PoolTimeout
-			seconds int32
-		)
-		err := r.Scan(&t.Pool, &seconds)
-		t.Timeout = time.Duration(seconds) * time.Second
-		return t, err //nolint:wrapcheck // named below
-	})
-	if err != nil {
-		return nil, fmt.Errorf("workers: read the pools' preparing timeouts: %w",
-			sql.Unavailable(err))
-	}
-	return out, nil
 }
 
 // wake notifies every replica's held polls of pool, on commit when ctx

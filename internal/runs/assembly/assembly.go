@@ -48,9 +48,9 @@ func Stream() migrate.Stream { return pg.Stream() }
 // Settings are the run settings: LostAfter, how long a worker goes unseen
 // before its run is a lost run and fails, run.lost_after, and
 // PreparingTimeoutDefault, the preparing timeout of a pool that sets
-// none, run.preparing_timeout_default, which the workers domain's reap
-// applies, so internal/app hands them to it; and Timers, run.timers,
-// which end the runs nobody moves.
+// none, run.preparing_timeout_default, which the workers domain's claims
+// issue preparing deadlines from, so internal/app hands them to it; and
+// Timers, run.timers, which end the runs nobody moves.
 //
 // ref: decision 0008 § "Configuration"
 type Settings struct {

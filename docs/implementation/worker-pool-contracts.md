@@ -415,8 +415,9 @@ no-log default remains 7 minutes. Persist original execution start for recovery.
 Controller also maintains absolute `hardDeadline = preparingDeadline +
 runTimeout + cleanup_timeout` (cleanup_timeout default 120 seconds). It enforces
 preparation and hard deadline even while Pod is Pending. Pod
-`activeDeadlineSeconds = ceil(effectivePreparingTimeout + runTimeout +
-cleanup_timeout)` is a secondary cap: defaults 900+4200+120=**5220 seconds**.
+`activeDeadlineSeconds = ceil(remaining preparation at creation + runTimeout +
+cleanup_timeout)` is a secondary cap, at most 900+4200+120=**5220 seconds** with
+the defaults; it ends no earlier than `hardDeadline`, since StartTime follows creation.
 Kubernetes measures this from Pod StartTime, so it cannot replace the controller's
 absolute scheduling/preparation watchdog. Neither cap resets on failover. The
 120-second margin is an explicit infraweave operational choice, not an observed

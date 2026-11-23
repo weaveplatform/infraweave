@@ -34,6 +34,15 @@ const (
 	ConditionExecutor = "ExecutorAvailable"
 	// ConditionTerminating reports the cleanup of a deleted pool or slot.
 	ConditionTerminating = "Terminating"
+	// ConditionConnected is True on a Worker while the installation
+	// answers its slot's launcher's polls, and False once it has answered
+	// none within three poll timeouts: the run's Pod goes on while the
+	// launcher retries, until the server's run.lost_after fails the run as
+	// worker lost.
+	ConditionConnected = "Connected"
+	// ConditionDrained is True on a Worker while the installation drains
+	// it: it finishes its run and claims no other.
+	ConditionDrained = "Drained"
 )
 
 // The reasons a condition carries.
@@ -55,6 +64,10 @@ const (
 	ReasonExecutorUnavailable = "ExecutorUnavailable"
 	ReasonCleaning            = "Cleaning"
 	ReasonCleanupBlocked      = "CleanupBlocked"
+	ReasonPolling             = "Polling"
+	ReasonServerUnreachable   = "ServerUnreachable"
+	ReasonDrained             = "Drained"
+	ReasonAccepting           = "AcceptingRuns"
 )
 
 // fault is a reconciliation failure as a condition reports it.
@@ -416,7 +429,7 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 		byName[w.Name] = w
 	}
 	var errs []error
-	registered, retiring, busy, created := int32(0), int32(0), int32(0), 0
+	registered, retiring, busy, drained, created := int32(0), int32(0), int32(0), int32(0), 0
 	var limited *fault
 	for slot := int32(0); slot < wp.Spec.Capacity; slot++ {
 		name := SlotName(string(wp.UID), slot)
@@ -434,29 +447,32 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 		}
 		if w.DeletionTimestamp != nil {
 			retiring++
-			errs = append(errs, c.retire(ctx, &h, w))
+			errs = append(errs, c.retire(ctx, *wp, &h, w))
 			continue
 		}
-		ok, working, f, err := c.keep(ctx, *wp, h, w, limited == nil)
+		k, f, err := c.keep(ctx, *wp, h, w, limited == nil)
 		errs = append(errs, err)
-		if ok {
+		if k.registered {
 			registered++
 		} else if f != nil && f.reason == ReasonLimitReached {
 			limited = f
 		}
-		if working {
+		switch {
+		case k.busy:
 			busy++
+		case k.drained:
+			drained++
 		}
 	}
 	for _, w := range byName {
 		retiring++
-		errs = append(errs, c.retire(ctx, &h, w))
+		errs = append(errs, c.retire(ctx, *wp, &h, w))
 	}
 	status := &wp.Status
 	status.Registered, status.Retiring, status.Busy = registered, retiring, busy
 	status.Ready = 0
 	if c.streams != nil {
-		status.Ready = registered - busy
+		status.Ready = registered - busy - drained
 	}
 	switch {
 	case registered == wp.Spec.Capacity:
@@ -472,13 +488,20 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 	return errors.Join(errs...)
 }
 
+// kept is what keep found of a slot: whether its worker is registered,
+// whether it executes a run, and whether the installation drains it.
+type kept struct {
+	registered, busy, drained bool
+}
+
 // keep registers w's worker when it has none or its last registration is
 // a heartbeat old, unless its slot's launcher runs, which registers and
-// polls for itself; starts that launcher; and records the outcome on w,
-// with the assignment the launcher executes. A new registration is only
-// attempted when admit is set. It answers whether the worker is
-// registered and whether it executes a run.
-func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker, admit bool) (bool, bool, *fault, error) {
+// polls for itself; starts that launcher, which resumes the assignment
+// w's status records; and records the outcome on w's conditions: the
+// launcher's executor, whether the installation answers its polls and
+// whether it drains the worker. The assignment itself is the launcher's
+// to write. A new registration is only attempted when admit is set.
+func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker, admit bool) (kept, *fault, error) {
 	before := *w.Status.DeepCopy()
 	c.mu.Lock()
 	last, seen := c.seen[w.UID]
@@ -489,7 +512,7 @@ func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker
 		live = nil
 	}
 	if w.Status.WorkerID == "" && !admit && live == nil {
-		return false, false, nil, nil
+		return kept{}, nil, nil
 	}
 	w.Status.ObservedGeneration = w.Generation
 	var f *fault
@@ -510,23 +533,23 @@ func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker
 			w.Status.WorkerID = id
 		}
 	}
-	busy := false
+	var k kept
 	if f == nil {
+		k.registered = true
 		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionRegistered, true, ReasonRegistered, "The slot's worker is registered.", w.Generation))
 		s, serr := c.running(ctx, wp, h, w)
 		switch {
 		case serr == nil:
-			if id := s.l.Status().Worker; id != "" {
-				w.Status.WorkerID = id
+			st := s.l.Status()
+			if st.Worker != "" {
+				w.Status.WorkerID = st.Worker
 			}
-			w.Status.Assignment = c.assignment(wp, s)
-			busy = w.Status.Assignment != nil
+			k.busy, k.drained = st.Run != "", st.Drained
 			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, true, ReasonExecutorRunning, executorRunning, w.Generation))
+			c.connection(ctx, s, &w)
 		case errors.Is(serr, errNoExecutor):
-			w.Status.Assignment = nil
 			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, noStreams, w.Generation))
 		default:
-			w.Status.Assignment = nil
 			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, truncate(serr.Error()), w.Generation))
 			err = errors.Join(err, serr)
 		}
@@ -538,9 +561,33 @@ func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker
 		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, why, w.Generation))
 	}
 	if !equality.Semantic.DeepEqual(before, w.Status) {
-		err = errors.Join(err, c.setStatus(ctx, WorkerResource, w.ObjectMeta, w.Status))
+		err = errors.Join(err, c.setWorkerStatus(ctx, w))
 	}
-	return f == nil, busy, f, err
+	return k, f, err
+}
+
+// connection records on w whether the installation answers its slot's
+// launcher's polls, and whether it drains the worker, once the launcher
+// registered.
+func (c *Controller) connection(ctx context.Context, s *slot, w *Worker) {
+	st := s.l.Status()
+	if st.Worker == "" {
+		return
+	}
+	if err := s.l.Ready(ctx); err != nil {
+		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionConnected, false, ReasonServerUnreachable,
+			"The installation answered none of the slot's polls within three poll timeouts; its run, if any, goes on while the launcher retries.", w.Generation))
+	} else {
+		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionConnected, true, ReasonPolling, "The installation answers the slot's polls.", w.Generation))
+	}
+	if st.Drained {
+		meta.SetStatusCondition(
+			&w.Status.Conditions,
+			condition(ConditionDrained, true, ReasonDrained, "The installation drains the worker: it finishes its run and claims no other.", w.Generation),
+		)
+	} else {
+		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionDrained, false, ReasonAccepting, "The worker claims runs.", w.Generation))
+	}
 }
 
 // maxMessage bounds a condition's message, which Kubernetes caps at 32768
@@ -563,13 +610,13 @@ func truncate(s string) string {
 // worker, so a worker whose ID never reached w's status is deregistered
 // too; a slot the limit refuses has no worker to deregister. With no
 // hosted pool, as when the remote pool is gone, there is none either.
-func (c *Controller) retire(ctx context.Context, h *hosted, w Worker) error {
+func (c *Controller) retire(ctx context.Context, wp WorkerPool, h *hosted, w Worker) error {
 	if w.DeletionTimestamp == nil {
 		if err := c.deleteWorker(ctx, w); err != nil {
 			return err
 		}
 	}
-	if err := c.release(w); err != nil {
+	if err := c.release(ctx, wp, h, w); err != nil {
 		return c.blocked(ctx, w, fail(ReasonCleanupBlocked, "The slot's run executes; the slot retires once it ends.", err))
 	}
 	if !hasFinalizer(w.ObjectMeta) {
@@ -598,7 +645,7 @@ func (c *Controller) retire(ctx context.Context, h *hosted, w Worker) error {
 // blocked records on w why its cleanup cannot finish yet.
 func (c *Controller) blocked(ctx context.Context, w Worker, f *fault) error {
 	meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionTerminating, false, ReasonCleanupBlocked, f.message, w.Generation))
-	return errors.Join(f, c.setStatus(ctx, WorkerResource, w.ObjectMeta, w.Status))
+	return errors.Join(f, c.setWorkerStatus(ctx, w))
 }
 
 // finalize retires a deleted pool's workers, then deletes its Managed
@@ -649,7 +696,7 @@ func (c *Controller) cleanup(ctx context.Context, wp WorkerPool) error {
 		// No remote pool, so no registered worker: only the resources'
 		// finalizers remain.
 		for _, w := range workers {
-			if err := c.retire(ctx, nil, w); err != nil {
+			if err := c.retire(ctx, wp, nil, w); err != nil {
 				return err
 			}
 		}
@@ -661,7 +708,7 @@ func (c *Controller) cleanup(ctx context.Context, wp WorkerPool) error {
 	}
 	var errs []error
 	for _, w := range workers {
-		errs = append(errs, c.retire(ctx, &h, w))
+		errs = append(errs, c.retire(ctx, wp, &h, w))
 	}
 	if err := errors.Join(errs...); err != nil {
 		return fail(ReasonCleanupBlocked, "Workers remain registered.", err)

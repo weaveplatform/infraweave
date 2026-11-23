@@ -114,12 +114,13 @@ components:
           description: The exit code of the container's root process.
         reason:
           type: string
-          enum: [exited, killed, out-of-memory, missing, run-timeout, log-timeout]
+          enum: [exited, killed, out-of-memory, missing, evicted, run-timeout, log-timeout]
           description: >-
             exited when the runner ended by itself; killed when the launcher
             killed it on a kill signal; out-of-memory when the host killed it
             for its memory; missing when the container is gone, such as after
-            the host restarted; run-timeout when the launcher killed it for
+            the host restarted; evicted when the cluster evicted or preempted
+            the container's Pod; run-timeout when the launcher killed it for
             running longer than its run timeout; log-timeout when the launcher
             killed it for writing no output line for its log timeout.
     Signal:
@@ -133,7 +134,7 @@ components:
         A run the poll claimed for the worker, which the launcher prepares
         and executes.
       type: object
-      required: [run, state, stateVersion, runToken, runTokenExpiresAt]
+      required: [run, state, stateVersion, preparingDeadline, runToken, runTokenExpiresAt]
       properties:
         run:
           type: string
@@ -151,6 +152,16 @@ components:
             The state the claim moved the run to: PREPARING for a run that
             plans or performs, PREPARING_APPLY for a confirmed run that
             applies, PREPARING_REPLAN for a run that plans again.
+        preparingDeadline:
+          type: integer
+          format: int64
+          description: >-
+            When the run's preparation must have ended with its started
+            report, in Unix seconds: the claim's time plus the pool's
+            preparing timeout, rounded down to the second. It is fixed for
+            this assignment; a later change of the pool's timeout does not
+            move it, and the server fails the run once it passes in a
+            preparing state.
         runToken:
           type: string
           description: >-
@@ -177,7 +188,8 @@ components:
           type: boolean
           description: >-
             Whether the worker is drained: it takes no new run and finishes
-            its current one.
+            its current one. Answered when the worker is drained, or when
+            the poll's flag was true and the worker is no longer drained.
         sessionToken:
           type: string
           description: >-

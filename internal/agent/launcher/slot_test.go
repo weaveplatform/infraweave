@@ -86,7 +86,7 @@ func TestUnitLauncherServesAControllerSlot(t *testing.T) {
 		w.assign(t, "run-1", wire.AssignmentStatePREPARING, "")
 		s := l.Status()
 		if s.Run != "run-1" || s.State != wire.AssignmentStatePREPARING || s.StateVersion != 4 ||
-			s.Assigned.IsZero() || s.Started.IsZero() || s.Exit != nil {
+			s.PreparingDeadline.IsZero() || s.Started.IsZero() || s.Exit != nil {
 			t.Fatalf("status of a run: %+v", s)
 		}
 		h, err := handoff.Read(bytes.NewReader(w.exec.Jobs()[0].Handoff))

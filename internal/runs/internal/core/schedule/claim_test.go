@@ -24,8 +24,9 @@ import (
 // skips.
 type store struct {
 	lifecycle.Store
-	runs   []lifecycle.Run
-	locked map[kernel.ULID]bool
+	runs      []lifecycle.Run
+	locked    map[kernel.ULID]bool
+	deadlines map[kernel.ULID]time.Time
 }
 
 func (s *store) find(id kernel.ULID) *lifecycle.Run {
@@ -110,8 +111,12 @@ func (s *store) Waiting(_ context.Context, states []kernel.RunState) (map[kernel
 	return out, nil
 }
 
-func (s *store) Assign(_ context.Context, run lifecycle.Run, w kernel.ULID) error {
+func (s *store) Assign(_ context.Context, run lifecycle.Run, w kernel.ULID, deadline time.Time) error {
 	s.find(run.ID).Worker = &w
+	if s.deadlines == nil {
+		s.deadlines = map[kernel.ULID]time.Time{}
+	}
+	s.deadlines[run.ID] = deadline
 	return nil
 }
 
@@ -199,6 +204,7 @@ func TestUnitClaimOrder(t *testing.T) {
 			var err error
 			a, ok, err = c.Claim(ctx, workersapi.Claim{
 				Account: acct, Pool: pool, Worker: worker, DriftLimit: limit,
+				Preparing: 90*time.Second + 500*time.Millisecond,
 			})
 			return err
 		}); err != nil {
@@ -206,6 +212,10 @@ func TestUnitClaimOrder(t *testing.T) {
 		}
 		if ok && (a.State != kernel.RunStatePreparing || a.StateVersion != 2) {
 			t.Errorf("run %s claimed into %s at %d", a.Run, a.State, a.StateVersion)
+		}
+		if ok && (!a.PreparingDeadline.Equal(s.deadlines[a.Run]) || a.PreparingDeadline.Nanosecond() != 0 ||
+			time.Until(a.PreparingDeadline) > 91*time.Second || time.Until(a.PreparingDeadline) < 80*time.Second) {
+			t.Errorf("run %s's preparing deadline %v, recorded %v", a.Run, a.PreparingDeadline, s.deadlines[a.Run])
 		}
 		return a.Run, ok
 	}

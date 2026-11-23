@@ -83,28 +83,33 @@ type Users interface {
 }
 
 // Claim is a worker's claim of a run: the worker, its account and pool,
-// and DriftLimit, the pool's drift detection run limit, nil or negative
-// for none.
+// DriftLimit, the pool's drift detection run limit, nil or negative for
+// none, and Preparing, the pool's effective preparing timeout, which
+// fixes the claimed run's preparing deadline.
 type Claim struct {
 	Public     bool
 	Account    kernel.AccountID
 	Pool       kernel.ULID
 	Worker     kernel.ULID
 	DriftLimit *int
+	Preparing  time.Duration
 }
 
 // Assignment is a claimed run, the state the claim moved it to,
-// PREPARING, PREPARING_APPLY or PREPARING_REPLAN, and its state version
-// after the claim.
+// PREPARING, PREPARING_APPLY or PREPARING_REPLAN, its state version after
+// the claim, and its preparing deadline: the claim's time plus the
+// claim's preparing timeout, rounded down to the second, which the claim
+// records with the run.
 type Assignment struct {
 	// Retry requests fresh selection after the current transaction ends.
 	// No run was assigned. Refusal retries are immediate; lock contention
 	// supplies RetryAfter so an idle poll waits without a pooled connection.
-	Retry        bool
-	RetryAfter   time.Duration
-	Run          kernel.ULID
-	State        kernel.RunState
-	StateVersion int64
+	Retry             bool
+	RetryAfter        time.Duration
+	Run               kernel.ULID
+	State             kernel.RunState
+	StateVersion      int64
+	PreparingDeadline time.Time
 }
 
 // ErrNotOnWorker reports a run that is not on a private pool's worker, or
@@ -503,13 +508,15 @@ type ExitReason string
 
 // The exit reasons: the runner ended by itself, the launcher killed it on
 // a kill signal, the host killed it for its memory, the container is
-// gone, such as after the host restarted, or the launcher killed it on
-// its run timeout or its no-log timeout.
+// gone, such as after the host restarted, the cluster evicted or
+// preempted its Pod, or the launcher killed it on its run timeout or its
+// no-log timeout.
 const (
 	ExitExited      ExitReason = "exited"
 	ExitKilled      ExitReason = "killed"
 	ExitOutOfMemory ExitReason = "out-of-memory"
 	ExitMissing     ExitReason = "missing"
+	ExitEvicted     ExitReason = "evicted"
 	ExitRunTimeout  ExitReason = "run-timeout"
 	ExitLogTimeout  ExitReason = "log-timeout"
 )
@@ -519,12 +526,6 @@ const (
 type Exit struct {
 	Code   int
 	Reason ExitReason
-}
-
-// PoolTimeout is a pool that sets its own preparing timeout.
-type PoolTimeout struct {
-	Pool    kernel.ULID
-	Timeout time.Duration
 }
 
 // Liveness is the runs domain's side of a worker that stops polling, of a
@@ -542,11 +543,11 @@ type Liveness interface {
 	// still holds it, and reports whether it failed it: a report that
 	// ended the run first leaves nothing to fail.
 	Ended(ctx context.Context, worker, run kernel.ULID, exit Exit) (bool, error)
-	// Overdue fails up to batch runs that entered a preparing state before
-	// now less their pool's preparing timeout, the one timeouts names or
-	// else fallback, with the note "preparing timeout", skipping runs
-	// another transaction holds, and answers how many it failed.
-	Overdue(ctx context.Context, now time.Time, timeouts []PoolTimeout, fallback time.Duration, batch int) (int, error)
+	// Overdue fails up to batch runs in a preparing state whose claim's
+	// preparing deadline is before now, with the note "preparing
+	// timeout", skipping runs another transaction holds, and answers how
+	// many it failed.
+	Overdue(ctx context.Context, now time.Time, batch int) (int, error)
 }
 
 // Signal is what a caller asks of a run's worker through its poll.

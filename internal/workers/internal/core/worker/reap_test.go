@@ -14,16 +14,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
-	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
 )
 
 // overdueCall is one call of liveness.Overdue.
 type overdueCall struct {
-	now      time.Time
-	timeouts []workersapi.PoolTimeout
-	fallback time.Duration
-	batch    int
+	now   time.Time
+	batch int
 }
 
 // liveness is the runs domain's side of the reap: held is each worker's
@@ -84,13 +81,13 @@ func (l *liveness) Ended(ctx context.Context, w, run kernel.ULID, exit workersap
 	return true, nil
 }
 
-func (l *liveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) (int, error) {
+func (l *liveness) Overdue(ctx context.Context, now time.Time, batch int) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if err := l.check(ctx, "Overdue"); err != nil {
 		return 0, err
 	}
-	l.overdue = append(l.overdue, overdueCall{now, timeouts, fallback, batch})
+	l.overdue = append(l.overdue, overdueCall{now, batch})
 	return l.overdueRuns, nil
 }
 
@@ -162,8 +159,7 @@ func TestUnitWorkerReap(t *testing.T) {
 }
 
 // TestUnitWorkerReapClocks checks that the reap takes its settings, and
-// fails overdue preparations with each pool's own preparing timeout, the
-// default one for the rest, at the reap's time.
+// fails the preparations overdue at the reap's time.
 func TestUnitWorkerReapClocks(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFixture(t, worker.Deps{
@@ -173,8 +169,6 @@ func TestUnitWorkerReapClocks(t *testing.T) {
 		l := newLiveness()
 		l.overdueRuns = 3
 		f.svc.BindLiveness(l)
-		own := pool.Pool{ID: kernel.NewULID(), PreparingTimeout: 5 * time.Minute}
-		f.store.pools[own.ID] = own
 		w, _ := f.add()
 		seen := f.store.workers[w.ID]
 		seen.LastSeenAt = time.Now()
@@ -188,20 +182,9 @@ func TestUnitWorkerReapClocks(t *testing.T) {
 		if r := f.reap(t); r != (worker.Reaped{Offline: 1, Lost: 1, Overdue: 3}) {
 			t.Errorf("past lost_after: %+v", r)
 		}
-		want := []workersapi.PoolTimeout{{Pool: own.ID, Timeout: 5 * time.Minute}}
 		last := l.overdue[len(l.overdue)-1]
-		if len(l.overdue) != 2 || !last.now.Equal(time.Now()) ||
-			!slices.Equal(last.timeouts, want) || last.fallback != 7*time.Minute ||
-			last.batch != worker.ReapBatch {
+		if len(l.overdue) != 2 || !last.now.Equal(time.Now()) || last.batch != worker.ReapBatch {
 			t.Errorf("Overdue calls %+v", l.overdue)
-		}
-
-		f = newFixture(t, worker.Deps{})
-		l = newLiveness()
-		f.svc.BindLiveness(l)
-		f.reap(t)
-		if len(l.overdue) != 1 || l.overdue[0].fallback != pool.DefaultPreparingTimeout {
-			t.Errorf("the default preparing timeout: %+v", l.overdue)
 		}
 	})
 }
@@ -223,11 +206,10 @@ func TestUnitWorkerReapBatch(t *testing.T) {
 }
 
 // TestUnitWorkerReapUnbound checks that a reap with no liveness bound
-// deletes lost workers and fails no run, reading no pool's timeout.
+// deletes lost workers and fails no run.
 func TestUnitWorkerReapUnbound(t *testing.T) {
 	f := newFixture(t, worker.Deps{})
 	f.add()
-	f.store.fail = "PoolTimeouts"
 	if r := f.reap(t); r != (worker.Reaped{Offline: 1, Lost: 1}) {
 		t.Errorf("Reap = %+v", r)
 	}
@@ -236,7 +218,7 @@ func TestUnitWorkerReapUnbound(t *testing.T) {
 // TestUnitWorkerReapFailures checks that a failing store or liveness
 // fails the reap.
 func TestUnitWorkerReapFailures(t *testing.T) {
-	for _, fail := range []string{"MarkOffline", "Lost", "PoolTimeouts"} {
+	for _, fail := range []string{"MarkOffline", "Lost"} {
 		f := newFixture(t, worker.Deps{})
 		f.svc.BindLiveness(newLiveness())
 		f.add()
