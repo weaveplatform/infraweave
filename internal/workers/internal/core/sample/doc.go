@@ -7,6 +7,8 @@
 // worker.samples.retention, a bounded number a pass. SamplesBetween
 // answers a pool's samples in a window, oldest first, which the usage
 // assessment and the usage read models read through workersapi.Samples.
+// Cycles lists the billing cycles, calendar months in UTC, that a usage
+// read may select while the retention still covers them.
 //
 // ref: decision 0008 § "Pool samples"
 //

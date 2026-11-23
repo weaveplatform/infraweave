@@ -28,13 +28,14 @@ type Server struct {
 	workers *worker.Service
 	authz   accessapi.Authorizer
 	spaces  accessapi.Spaces
+	proj    *projections
 }
 
 // New returns the partial over the pools', the runner images' and the
 // workers' services, deciding allowedActions with authz and naming
 // spaces through spaces.
 func New(svc *pool.Service, img *images.Service, wk *worker.Service, authz accessapi.Authorizer, spaces accessapi.Spaces) Server {
-	return Server{svc: svc, images: img, workers: wk, authz: authz, spaces: spaces}
+	return Server{svc: svc, images: img, workers: wk, authz: authz, spaces: spaces, proj: &projections{}}
 }
 
 // WorkerPools lists the pools of the caller's account in the spaces it
@@ -413,6 +414,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...pool.Pool)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
+	queued, users, err := s.counts(ctx, p, ids)
+	if err != nil {
+		return nil, err
+	}
 	held := map[kernel.ULID][]api.Action{}
 	for _, wp := range all {
 		if _, ok := held[wp.Space]; ok {
@@ -446,11 +451,19 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...pool.Pool)
 			UpdatedAt:              unix(wp.UpdatedAt.Unix()),
 			IntentProjects:         []api.IntentProjectReference{},
 			Scans:                  []api.WorkerPoolScanReference{},
-			Users:                  []api.WorkerPoolUser{},
+			Users:                  make([]api.WorkerPoolUser, 0, len(users[wp.ID])),
 			Workers:                make([]api.Worker, 0, len(workers[wp.ID])),
 			WorkersCount:           int32(len(workers[wp.ID])), //nolint:gosec // limited by private-workers
 			Management:             ownerView(wp.Management),
 			ManagedByK8sController: wp.Management != nil,
+			PendingRuns:            count(queued[wp.ID].Pending),
+			SchedulableRunsCount:   count(queued[wp.ID].Schedulable),
+			UsersCount:             count(len(users[wp.ID])),
+		}
+		for _, u := range users[wp.ID] {
+			v.Users = append(v.Users, api.WorkerPoolUser{
+				StackId: u.Slug, StackName: u.Name, SpaceDetails: api.SpaceRef{Id: slugs[u.Space]},
+			})
 		}
 		for _, w := range workers[wp.ID] {
 			v.Workers = append(v.Workers, workerView(w))

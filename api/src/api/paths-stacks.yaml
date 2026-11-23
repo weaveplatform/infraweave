@@ -6618,7 +6618,9 @@ components:
           format: int32
           type: integer
         pendingRuns:
-          description: Number of runs ready for processing by this WorkerPool.
+          description: |-
+            Number of runs waiting for a worker of this WorkerPool, among the runs of
+            stacks in the spaces the caller may read.
           format: int32
           type: integer
         preparingTimeoutSeconds:
@@ -6640,7 +6642,9 @@ components:
           format: int32
           type: integer
         schedulableRunsCount:
-          description: Count of schedulable runs on the worker pool workers for this account.
+          description: |-
+            Count of the pending runs a worker of this WorkerPool may claim: the runs
+            `GET /worker-pools/{workerPoolId}/search-schedulable-runs` lists.
           format: int32
           type: integer
         space:
@@ -6654,13 +6658,13 @@ components:
           type: integer
         users:
           description: |-
-            List of users (modules or stacks) of this WorkerPool.
-            It will return an empty result for the public worker pool.
+            List of users (modules or stacks) of this WorkerPool, in the spaces the
+            caller may read, by slug.
           items:
             $ref: '#/components/schemas/WorkerPoolUser'
           type: array
         usersCount:
-          description: Count of users on the public worker pool workers for this account.
+          description: Count of the stacks that select this WorkerPool, in the spaces the caller may read.
           format: int32
           type: integer
         workerPool:

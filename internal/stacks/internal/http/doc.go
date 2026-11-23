@@ -36,7 +36,8 @@
 // If-Match 412. A stack's run and task lists answer empty pages, refusing
 // a cursor of another list as 400 invalid-cursor and a runsInRange span
 // that is not Unix seconds at most eight days wide as 422, and a run by
-// ID answers 404, until the runs domain serves them.
+// ID answers 404, until the runs domain serves them. It searches and
+// suggests the stacks that select a private pool or the public pool.
 //
 // # Input and output
 //

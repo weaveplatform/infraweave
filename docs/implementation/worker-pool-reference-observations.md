@@ -114,11 +114,11 @@ Supporting primary sources remain useful without changing that classification:
 5. Omit authentication/telemetry, consistently redact account identity and save
    snapshots plus exact field values. Compare the final resource inventory.
 6. Run the existing capture loader, redaction and recorded-observation checks.
-   `TestAccCaptures` must use real PostgreSQL; its C292 REST replay remains an
-   explicit deferral to #744. That skip is not completed REST parity.
+   `TestAccCaptures` uses real PostgreSQL and replays C292's public
+   observations as the REST subset `worker-pool-public-projections`.
 
-#744 must replace the deferral with real public-path assertions once its
-projections exist, while preserving the fact that private priority is missing.
-#753 audits API and local worker proof, and #759 owns concurrent EKS/AKS/GKE plus
+The subset classifies parallelism and the runner-image defaults as deviations,
+and the tier and stack inventory as upstream, while private priority stays
+missing. #753 audits API and local worker proof, and #759 owns concurrent EKS/AKS/GKE plus
 native-provider regression and cloud teardown. No passing documentation check
 alone proves any of those downstream behaviors.

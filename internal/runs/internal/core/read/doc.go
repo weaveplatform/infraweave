@@ -11,7 +11,11 @@
 // the control package checks again before it acts. SpaceOf finds a run's
 // space for the route's decision, StackOf a run's stack, and RunAccess a
 // run's stack, space and whether it plans, applies or performs, for its
-// in-run API token's authentication. Store is its storage port.
+// in-run API token's authentication. SearchQueue and SuggestQueue read a
+// private pool's or the public pool's queue of claimable runs, each at its
+// position in the claim's order, and PoolQueues and PublicQueue count them
+// for the workers domain as workersapi.Queues. Store and QueueStore are its
+// storage ports.
 // Standalone run projections read their base rows, related evidence and
 // guards in one serializable transaction; transactional callers retain
 // their existing transaction.
@@ -24,7 +28,7 @@
 //
 // # Dependencies
 //
-// It imports accessapi, stacksapi, the domain's lifecycle and machine,
+// It imports accessapi, stacksapi, workersapi, the domain's lifecycle and machine,
 // internal/kernel, kernel/search, internal/platform/sql and
 // internal/platform/tx. The runs domain's assembly constructs it.
 package read

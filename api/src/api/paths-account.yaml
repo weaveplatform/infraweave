@@ -63,6 +63,50 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /default-public-worker-pool-runner-image:
+    get:
+      description: >-
+        The account's default runner image for the public worker pool, as
+        accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave
+        Terraform runner image when the account sets none. A run without an
+        account default uses its vendor's infraweave runner image, and a public
+        launcher's own default runner image overrides those vendor defaults.
+      operationId: defaultPublicWorkerPoolRunnerImage
+      x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The defaultPublicWorkerPoolRunnerImage result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Default Public Worker Pool Runner Image
+      tags:
+        - Account
+      x-bruno: Account/Get Default Public Worker Pool Runner Image.bru
+      x-graphql:
+        field: defaultPublicWorkerPoolRunnerImage
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /id:
     get:
       description: The ID of the caller's account.
@@ -135,6 +179,51 @@ paths:
       x-bruno: Advanced/Account/Name.bru
       x-graphql:
         field: name
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /outgoing-ip-addresses:
+    get:
+      description: >-
+        The addresses the installation's operator declares public worker
+        pool traffic leaves from, as canonical IPv4 and IPv6 literals. The
+        list is empty while public execution is switched off or the operator
+        declares none. It never names the addresses of private workers.
+      operationId: outgoingIPAddresses
+      x-infraweave-feature: worker-pools
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: The outgoingIPAddresses result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Outgoing IP Addresses
+      tags:
+        - Account
+      x-bruno: Account/List Outgoing IP Addresses.bru
+      x-graphql:
+        field: outgoingIPAddresses
         operation: query
         type: Query
       x-infraweave-cost: standard

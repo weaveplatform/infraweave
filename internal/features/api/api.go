@@ -62,6 +62,16 @@ type Usage struct {
 	Account      int64
 }
 
+// Quota is an account's effective value of a limit: Value, the lower of
+// its organization's pool and its own ceiling, nil when neither bounds it,
+// when the organization has no entitlement, or while billing is off; and
+// Pooled, whether the organization's pool is that value, so other accounts
+// draw on it too.
+type Quota struct {
+	Value  *int64
+	Pooled bool
+}
+
 // Scope is where a limit was reached.
 type Scope string
 
@@ -154,6 +164,9 @@ type Entitlements interface {
 	AccountLimits(ctx context.Context, acct kernel.AccountID) (map[string]int64, error)
 	// Entitlement reads org's entitlement.
 	Entitlement(ctx context.Context, org kernel.OrganizationID) (Entitlement, error)
+	// Quota is acct's effective value of limit now, as CheckLimit would
+	// apply it.
+	Quota(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string) (Quota, error)
 	// CheckLimit admits the creation of one more limit in acct: it locks
 	// org's entitlement, counts with count while holding the lock, and
 	// answers a *LimitError when one more would pass the organization's

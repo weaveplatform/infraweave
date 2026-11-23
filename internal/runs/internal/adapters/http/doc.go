@@ -17,7 +17,8 @@
 // states, run types, stack states and run priorities to the API's enums,
 // RunCommentRequest.body's bounds to control.MaxComment and
 // RunTargetedReplanRequest.targets' to kernel.MaxTargets and
-// kernel.MaxTarget.
+// kernel.MaxTarget. It searches and suggests a private pool's and the
+// public pool's queues of runs waiting for a worker.
 //
 // # Input and output
 //

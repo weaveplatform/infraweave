@@ -97,16 +97,20 @@ func derefOr[T any](p *[]T) []T {
 }
 
 // Suggestions is s as the reference's SearchSuggestionsOutput: every
-// field filters, and a field's values are listed only when asked for.
+// field but an ordering one filters, and a filtering field's values are
+// listed only when asked for. An ordering field has no type.
 func Suggestions(s search.Suggestions) api.SearchSuggestionsOutput {
 	out := api.SearchSuggestionsOutput{
 		FilteredCount: count(s.Count), Fields: []api.SearchSuggestionsField{},
 	}
 	for _, sg := range s.Fields {
-		t := api.SearchSuggestionsFieldType(sg.Field.Type)
-		f := api.SearchSuggestionsField{
-			Name: sg.Field.Name, Filterable: true, Orderable: sg.Field.Orderable, Type: &t,
+		f := api.SearchSuggestionsField{Name: sg.Field.Name, Orderable: sg.Field.Orderable}
+		if sg.Field.Type == search.Ordering {
+			out.Fields = append(out.Fields, f)
+			continue
 		}
+		t := api.SearchSuggestionsFieldType(sg.Field.Type)
+		f.Filterable, f.Type = true, &t
 		if sg.Listed {
 			n := counts(sg.Counts)
 			switch sg.Field.Type {

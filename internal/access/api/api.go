@@ -97,7 +97,9 @@ type Requirer interface {
 
 // SpaceOf finds the space of one kind of entity by the ID a request
 // names, for a path or body subject: ErrNoSubject when the account holds
-// no such entity. A domain registers one for each kind it owns.
+// no such entity, and a *kernel.Invalid, answered as validation-failed,
+// for an ID the kind reserves. A domain registers one for each kind it
+// owns.
 type SpaceOf func(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error)
 
 // ErrNoSubject is a subject the account does not hold.

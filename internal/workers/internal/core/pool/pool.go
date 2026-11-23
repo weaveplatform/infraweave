@@ -247,10 +247,24 @@ func (s *Service) PreparingTimeout(p Pool) time.Duration {
 	return s.preparing
 }
 
+// PublicSelector is the path segment that names the public pool, which
+// the public pool's search routes take literally and no private pool's
+// route accepts.
+const PublicSelector = "public"
+
 // SpaceOf is the space of acct's pool id, which the access domain's
 // middleware decides a pool's operations on; accessapi.ErrNoSubject when
-// acct lacks it.
+// acct lacks it, and a *kernel.Invalid for PublicSelector.
 func (s *Service) SpaceOf(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error) {
+	if id == PublicSelector {
+		return kernel.ULID{}, &kernel.Invalid{
+			Detail: "The public worker pool is not a private pool.",
+			Errors: []kernel.FieldError{{
+				Pointer: "#/path/workerPoolId", Reason: kernel.ReasonRule,
+				Message: "public names the public worker pool, which only its own search routes read.",
+			}},
+		}
+	}
 	p, err := s.Read(ctx, acct, id)
 	if errors.Is(err, ErrNotFound) {
 		return kernel.ULID{}, accessapi.ErrNoSubject

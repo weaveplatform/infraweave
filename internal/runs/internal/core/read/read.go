@@ -129,6 +129,11 @@ type Deps struct {
 	Reviews      review.Store
 	Approvals    evidence.ApprovalStore
 	Plans        evidence.PlanStore
+	// Queue reads the runs waiting for a worker; PublicPoolEnabled is
+	// worker.public_pool.enabled, without which no worker claims a run of
+	// the public pool's queue.
+	Queue             QueueStore
+	PublicPoolEnabled bool
 }
 
 // Service reads runs as the API answers them.

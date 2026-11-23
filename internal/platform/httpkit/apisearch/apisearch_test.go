@@ -111,3 +111,14 @@ func TestUnitPageInfo(t *testing.T) {
 		t.Errorf("PageInfo = %+v", got)
 	}
 }
+
+// TestUnitSuggestionsOrdering lists an ordering field as orderable alone,
+// with no type and no values.
+func TestUnitSuggestionsOrdering(t *testing.T) {
+	got := Suggestions(search.Suggestions{Fields: []search.Suggestion{
+		{Field: search.Field{Name: "position", Type: search.Ordering, Orderable: true}, Listed: true},
+	}})
+	if f := got.Fields; len(f) != 1 || f[0].Name != "position" || !f[0].Orderable || f[0].Filterable || f[0].Type != nil {
+		t.Errorf("suggestions = %+v", got)
+	}
+}

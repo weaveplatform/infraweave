@@ -22,7 +22,8 @@ const (
 )
 
 var captureSubsetReplayers = map[string]func(*testing.T, *sdk.Client) []string{
-	"policy-free-tier-management": replayFreeTierManagement,
+	"policy-free-tier-management":    replayFreeTierManagement,
+	"worker-pool-public-projections": replayPublicPoolProjections,
 }
 
 func validateCaptureSubsetReplayers(captures []harness.Capture, registry map[string]func(*testing.T, *sdk.Client) []string) error {

@@ -48,7 +48,8 @@ policy and retains its existing image behavior.
 The preparation timeout must be positive whole seconds. Outgoing addresses are
 an operator assertion of canonical IPv4/IPv6 literals, with no duplicates or
 IPv4-mapped/zone-qualified forms; configuration does not provision or verify NAT.
-Public egress/default-image/search projections are delivered separately.
+`GET /outgoing-ip-addresses` answers these addresses while public execution is
+enabled and none while it is disabled.
 
 ## Credentials and rotation
 
@@ -92,9 +93,8 @@ First assignment fixes the installation pool ID on the run; subsequent
 apply/replan, handover, reporting, signalling and preparation reap use that
 binding. It remains distinct from the selected private pool. Disabling public
 capacity refuses new public registration/claims and does not redirect work to a
-private pool. Public queue/user projections, samples and Kubernetes hosting
-retain their own implementation owners in the
-[delivery register](worker-pool-contracts.json).
+private pool. Samples and Kubernetes hosting retain their own implementation
+owners in the [delivery register](worker-pool-contracts.json).
 
 ## Execution restrictions
 
@@ -129,10 +129,17 @@ for reused runs. Real public refusal and private timed firing acceptance remain
 required before the schedule criterion is complete; no unused scheduled
 provenance or producer execution is claimed here.
 
-Public read projections, including required nullable int64
-`PublicWorkerPool.parallelism`, literal public queue/user selectors and
-egress/default-image reads, remain owned by #744. Admission uses existing int64
-quota values without claiming those separate read shapes.
+## Read projections
+
+`PublicWorkerPool.parallelism` is a required nullable int64: the account's
+effective public-worker-slots quota, the lower of the organization's pool and
+the account's ceiling, null while billing is off or neither bounds it. The
+literal `/worker-pools/public/search-schedulable-runs` and
+`/worker-pools/public/search-users` paths, with their suggestions, read the
+account's queue and users over the caller's readable spaces. The default public
+runner image answers the account's own default, else the built-in Terraform
+runner image; it is a display default and does not change a run's image
+precedence.
 
 ## Verification
 
@@ -158,5 +165,12 @@ cover priority refusal, authorization order and account ceilings through the
 normal API. Real PostgreSQL tests claim with fifty concurrent public workers
 across two replicas, two accounts of one organization and a second organization,
 with billing on and off, and release capacity through failed assignments,
-terminal reports, duplicate reports and worker loss. Cloud/controller and
-public projection gates remain open.
+terminal reports, duplicate reports and worker loss. Cloud/controller gates
+remain open.
+
+`pool_projections.feature` and `pool_queues.feature` read the projections
+through two replicas: users, queues with their positions and busy public
+workers across readable spaces and another account, billing-off and Business
+quotas, egress, the public runner image and usage cycles, tier refusals, stale
+cursors, ordering-only filters and the reserved `public` selector.
+`TestAccCaptures` replays C292's public observations as a REST subset.

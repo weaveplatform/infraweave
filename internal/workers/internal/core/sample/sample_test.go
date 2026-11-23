@@ -241,3 +241,35 @@ func TestUnitWorkerPoolSampleFailures(t *testing.T) {
 		t.Errorf("Between failing = %v", err)
 	}
 }
+
+// TestUnitCycles lists the calendar months a usage read selects: as far
+// back as the retention still covers a minute of, and five at most.
+func TestUnitCycles(t *testing.T) {
+	month := func(y int, m time.Month) time.Time { return time.Date(y, m, 1, 0, 0, 0, 0, time.UTC) }
+	for _, c := range []struct {
+		name      string
+		now       time.Time
+		retention time.Duration
+		oldest    time.Time
+	}{
+		{"a month back", time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC), 35 * 24 * time.Hour, month(2026, 10)},
+		{"two months back", time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC), 35 * 24 * time.Hour, month(2026, 10)},
+		{"the current month alone", time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC), time.Hour, month(2026, 11)},
+		{"five back across a year", time.Date(2027, 2, 10, 0, 0, 0, 0, time.FixedZone("CET", 3600)), 365 * 24 * time.Hour, month(2026, 9)},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			svc := sample.New(sample.Deps{Retention: c.retention, Now: func() time.Time { return c.now }})
+			got := svc.Cycles()
+			last := got[len(got)-1]
+			if !got[0].Start.Equal(month(c.now.UTC().Year(), c.now.UTC().Month())) || !last.Start.Equal(c.oldest) ||
+				last.CyclesAgo != len(got)-1 || len(got) > sample.MaxCyclesAgo+1 {
+				t.Fatalf("Cycles = %+v", got)
+			}
+			for i := 1; i < len(got); i++ {
+				if !got[i].End.Equal(got[i-1].Start) || got[i].CyclesAgo != i {
+					t.Errorf("cycle %d = %+v after %+v", i, got[i], got[i-1])
+				}
+			}
+		})
+	}
+}

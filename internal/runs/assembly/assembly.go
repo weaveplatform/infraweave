@@ -216,6 +216,9 @@ func New(d Deps) *Domain {
 			Reviews:      store,
 			Approvals:    store,
 			Plans:        store,
+			Queue:        store,
+
+			PublicPoolEnabled: d.PublicPoolEnabled,
 		},
 	)
 	scheduler := schedule.New(schedule.Deps{DB: d.DB, Store: store, Stacks: d.Stacks, Lifecycle: lc, Queue: d.Jobs, Spaces: d.Spaces})
@@ -301,6 +304,10 @@ func New(d Deps) *Domain {
 
 // PoolAssignments supplies the ownership release and reset guard of pools.
 func (d *Domain) PoolAssignments() workersapi.PoolAssignments { return d.store }
+
+// Queues counts the runs waiting for each pool as a caller may read them,
+// which internal/app binds into the workers domain's pool projections.
+func (d *Domain) Queues() workersapi.Queues { return d.read }
 
 // SpaceOf finds the space of a run's stack by the run's ID, which
 // internal/app registers with the access domain for Entity.

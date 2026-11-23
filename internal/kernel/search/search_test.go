@@ -158,3 +158,18 @@ func TestUnitLookup(t *testing.T) {
 		t.Error("Lookup(nope) found a field")
 	}
 }
+
+// TestUnitCheckOrdering orders by an ordering field and refuses a
+// predicate on one.
+func TestUnitCheckOrdering(t *testing.T) {
+	fields := []Field{{Name: "position", Type: Ordering, Orderable: true}}
+	if err := Check(fields, Input{OrderBy: []Order{{Field: "position", Desc: true}}}); err != nil {
+		t.Errorf("an order by position = %v", err)
+	}
+	err := Check(fields, Input{Predicates: []Predicate{{
+		Field: "position", Constraint: Constraint{StringEquals: []string{"1"}},
+	}}})
+	if inv, ok := errors.AsType[*Invalid](err); !ok || len(inv.Errors) != 1 || inv.Errors[0].Reason != ReasonRule {
+		t.Errorf("a predicate on position = %v", err)
+	}
+}

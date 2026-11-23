@@ -171,6 +171,12 @@ func TestUnitRequire(t *testing.T) {
 			Action: accessapi.ActionStackLock, Subject: stack("stackId"),
 			Params: map[string]string{"stackId": "mine"},
 		}, code: http.StatusServiceUnavailable, typ: problem.ServiceUnavailable},
+		{name: "path reserved", lookup: &kernel.Invalid{Detail: "reserved", Errors: []kernel.FieldError{{
+			Pointer: "#/path/stackId", Reason: kernel.ReasonRule, Message: "reserved",
+		}}}, req: accessapi.Required{
+			Action: accessapi.ActionStackLock, Subject: stack("stackId"),
+			Params: map[string]string{"stackId": "public"},
+		}, code: http.StatusUnprocessableEntity, typ: problem.ValidationFailed},
 		{name: "unregistered", req: accessapi.Required{
 			Action: accessapi.ActionStackLock,
 			Subject: accessapi.Subject{

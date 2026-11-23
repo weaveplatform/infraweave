@@ -494,7 +494,7 @@ func Suggest(ctx context.Context, q tx.Querier, e Entity, s Scope, in kernelsear
 		}
 		var err error
 		switch {
-		case !sg.Listed || c.Type == kernelsearch.Time:
+		case !sg.Listed || c.Type == kernelsearch.Time || c.Type == kernelsearch.Ordering:
 		case c.Type == kernelsearch.Hierarchy:
 			err = nodes(ctx, q, e, s, c, where, a, &sg)
 		default:

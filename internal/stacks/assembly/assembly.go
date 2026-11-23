@@ -67,7 +67,7 @@ func New(d Deps) *Domain {
 	store := pg.New(d.DB)
 	svc := core.New(core.Deps{
 		Store: store, DB: d.DB, Spaces: d.Spaces, Authz: d.Authz, Bindings: d.Bindings,
-		Grants: d.Grants, Pools: d.Pools, Events: d.Events, Now: d.Now,
+		Grants: d.Grants, Pools: d.Pools, Users: store, Events: d.Events, Now: d.Now,
 	})
 	return &Domain{stacks: svc, store: store, api: http.New(svc, d.Authz, d.Spaces, d.Catalog)}
 }
@@ -98,6 +98,11 @@ func RegisterEvents(kinds *outbox.Kinds) error {
 
 // Stacks is what other domains call of this one.
 func (d *Domain) Stacks() stacksapi.Stacks { return d.stacks }
+
+// PoolUsers reads the stacks that select each pool as a caller may read
+// them, which internal/app binds into the workers domain's pool
+// projections.
+func (d *Domain) PoolUsers() workersapi.Users { return d.stacks }
 
 // ClaimTargets supplies nonblocking assignment fences in the caller transaction.
 func (d *Domain) ClaimTargets() stacksapi.ClaimTargets { return d.stacks }

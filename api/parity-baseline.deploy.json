@@ -8,8 +8,6 @@
       "aiIntegrations"
     ],
     "Account": [
-      "defaultPublicWorkerPoolRunnerImage",
-      "outgoingIPAddresses",
       "spaceliftAwsAccountId"
     ],
     "Account Settings": [
