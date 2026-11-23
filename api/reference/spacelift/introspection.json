@@ -1241,6 +1241,12 @@
               "deprecationReason": ""
             },
             {
+              "name": "RUN_DESTROY_TRIGGER",
+              "description": "",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "RUN_DISCARD",
               "description": "",
               "isDeprecated": false,
@@ -4780,6 +4786,30 @@
               },
               "isDeprecated": false,
               "deprecationReason": ""
+            },
+            {
+              "name": "sessionId",
+              "description": "SessionId is the ID of the session that performed the action, null when no session did.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "surface",
+              "description": "Surface is the endpoint the action came through, null when not tied to one.",
+              "args": [],
+              "type": {
+                "kind": "ENUM",
+                "name": "AuditTrailSurface",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
             }
           ],
           "inputFields": null,
@@ -6953,6 +6983,35 @@
           "inputFields": null,
           "interfaces": [],
           "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "ENUM",
+          "name": "AuditTrailSurface",
+          "description": "",
+          "fields": null,
+          "inputFields": null,
+          "interfaces": null,
+          "enumValues": [
+            {
+              "name": "GRAPHQL",
+              "description": "The GraphQL API, used by the web UI and direct API calls.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "MCP",
+              "description": "The MCP server.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "SCIM",
+              "description": "The SCIM API.",
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
           "possibleTypes": null
         },
         {
@@ -18753,6 +18812,258 @@
             }
           ],
           "interfaces": null,
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "FeaturePreview",
+          "description": "",
+          "fields": [
+            {
+              "name": "visible",
+              "description": "False until the first preview is available. Both settings pages stay hidden while false.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "organization",
+              "description": "Set by a root admin, applies to every user.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "FeaturePreviewOrganizationSettings",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "personal",
+              "description": "Set by the current user. Null for sessions that are not a person with an identity, such as\nmachine API keys.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "FeaturePreviewPersonalSettings",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "features",
+              "description": "Every preview, in display order.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "FeaturePreviewFeature",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "FeaturePreviewFeature",
+          "description": "",
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "name",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "description",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "docsUrl",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "imageUrl",
+              "description": "Optional screenshot for the settings list.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "active",
+              "description": "Whether the preview is on for the current user: the organization opted in, the user did not\nopt out, and the Spacelift Intelligence and billing checks it needs pass.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "FeaturePreviewOrganizationSettings",
+          "description": "",
+          "fields": [
+            {
+              "name": "enabled",
+              "description": "Whether the organization opted in to feature previews.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "canManage",
+              "description": "Whether the current session may change enabled. Root admins only.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "FeaturePreviewPersonalSettings",
+          "description": "",
+          "fields": [
+            {
+              "name": "enabled",
+              "description": "False while the current user has opted out of feature previews.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
           "enumValues": null,
           "possibleTypes": null
         },
@@ -32914,6 +33225,68 @@
               "deprecationReason": ""
             },
             {
+              "name": "accountSetFeaturePreviewsEnabled",
+              "description": "Opts the organization in to feature previews, or out of them. Root admins only.",
+              "args": [
+                {
+                  "name": "enabled",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "Boolean",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "FeaturePreview",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "featurePreviewSetPersonalEnabled",
+              "description": "Opts the current user out of feature previews, or back in. Refused where personal is null.",
+              "args": [
+                {
+                  "name": "enabled",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "Boolean",
+                      "ofType": null
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "FeaturePreview",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "flowsProjectRoleBindingBatchCreate",
               "description": "Assigns a batch of (space, role) bindings to Flows projects. Requires admin\naccess to every target space. Returns the created bindings.",
               "args": [
@@ -37446,6 +37819,37 @@
                           "ofType": null
                         }
                       }
+                    }
+                  },
+                  "defaultValue": null
+                }
+              ],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "Run",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "runDestroyTrigger",
+              "description": "Trigger a destroy run. It plans the destroy first, so plan policies can\npause it for review or deny it, then destroys the Stack's resources and\nleaves the Stack disabled. It uses the commit currently tracked by the\nStack or, if the Stack is not yet tracking any commit, the HEAD of its\ntracked branch.\nFails if the Stack is being deleted, is protected from deletion, has\ndependents, has a destroy run not yet finished, manages no resources, or\nuses a vendor that can't plan a destroy. On a busy Stack, the run queues\nbehind the runs already there.",
+              "args": [
+                {
+                  "name": "stack",
+                  "description": "",
+                  "type": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "SCALAR",
+                      "name": "ID",
+                      "ofType": null
                     }
                   },
                   "defaultValue": null
@@ -47438,7 +47842,7 @@
             },
             {
               "name": "concise",
-              "description": "When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress \"Refreshing state...\" progress output.\nRequires OpenTofu 1.7+ at runtime; the flag is silently omitted on older versions.\nIf you're running OpenTofu 1.10+, concise flag will be also used in apply.",
+              "description": "When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).\nOpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.\nRequires OpenTofu 1.7+ at runtime; the flag is silently omitted on older versions.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -48943,6 +49347,18 @@
               "type": {
                 "kind": "OBJECT",
                 "name": "Plugin",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "template",
+              "description": "Library template the policy was created from, if any.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "PolicyTemplate",
                 "ofType": null
               },
               "isDeprecated": false,
@@ -53266,6 +53682,22 @@
               "deprecationReason": ""
             },
             {
+              "name": "featurePreview",
+              "description": "Features the organization can opt in to before they are generally available, with the\norganization's and the current user's settings.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "FeaturePreview",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "flowsIntegration",
               "description": "Returns the Flows integration for the current account, if linked.",
               "args": [],
@@ -56237,6 +56669,22 @@
                 "ofType": {
                   "kind": "OBJECT",
                   "name": "ScanCoverage",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "scanResourceStats",
+              "description": "Resources found by the latest finished run of each scan the caller can read.",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "OBJECT",
+                  "name": "ScanResourceStats",
                   "ofType": null
                 }
               },
@@ -70819,6 +71267,196 @@
         },
         {
           "kind": "OBJECT",
+          "name": "ScanResourceStats",
+          "description": "ScanResourceStats sums the latest finished run of each scan. A resource found\nby two scans counts twice. Ignored resources count only towards ignored.",
+          "fields": [
+            {
+              "name": "total",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "managed",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "unmanaged",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ignored",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "bySubcategory",
+              "description": "Sorted by name. Types the provider docs don't group are \"Ungrouped\".",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "LIST",
+                  "name": "",
+                  "ofType": {
+                    "kind": "NON_NULL",
+                    "name": "",
+                    "ofType": {
+                      "kind": "OBJECT",
+                      "name": "ScanResourceSubcategoryCount",
+                      "ofType": null
+                    }
+                  }
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
+          "name": "ScanResourceSubcategoryCount",
+          "description": "",
+          "fields": [
+            {
+              "name": "subcategory",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "total",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "managed",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "unmanaged",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "ignored",
+              "description": "",
+              "args": [],
+              "type": {
+                "kind": "NON_NULL",
+                "name": "",
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Int",
+                  "ofType": null
+                }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            }
+          ],
+          "inputFields": null,
+          "interfaces": [],
+          "enumValues": null,
+          "possibleTypes": null
+        },
+        {
+          "kind": "OBJECT",
           "name": "ScanResourceType",
           "description": "ScanResourceType is one resource type a provider can be asked to scan: what\nits list call accepts, and what a filter on the listed resources can name.",
           "fields": [
@@ -79922,6 +80560,18 @@
               "deprecationReason": ""
             },
             {
+              "name": "destroyedByRun",
+              "description": "The destroy run that left the stack destroyed: disabled, with no managed\nresources. Null when the stack isn't destroyed.",
+              "args": [],
+              "type": {
+                "kind": "OBJECT",
+                "name": "Run",
+                "ofType": null
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
               "name": "afterApply",
               "description": "List of after-apply scripts.",
               "args": [],
@@ -82875,7 +83525,7 @@
             },
             {
               "name": "concise",
-              "description": "When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress \"Refreshing state...\" progress output.\nRequires OpenTofu 1.7+. A stack on an older version cannot enable it.\nIf you're running OpenTofu 1.10+, concise flag will be also used in apply.",
+              "description": "When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).\nOpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.\nRequires OpenTofu 1.7+. A stack on an older version cannot enable it.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
@@ -82999,7 +83649,7 @@
             },
             {
               "name": "concise",
-              "description": "When enabled, Spacelift passes -concise to tofu plan/apply/refresh to suppress \"Refreshing state...\" progress output.\nRequires OpenTofu 1.7+. A stack on an older version cannot enable it.\nIf you're running OpenTofu 1.10+, concise flag will be also used in apply.\nWhen unset on create, defaults to true on OpenTofu 1.7+ and to false on older versions.",
+              "description": "When enabled, Spacelift passes -concise to tofu plan (OpenTofu 1.7+) and to tofu apply and destroy (OpenTofu 1.10+).\nOpenTofu then omits its per-resource progress messages and provisioner output; the plan diff, summaries, outputs, warnings and errors still show.\nRequires OpenTofu 1.7+. A stack on an older version cannot enable it.\nWhen unset on create, defaults to true on OpenTofu 1.7+ and to false on older versions.",
               "type": {
                 "kind": "SCALAR",
                 "name": "Boolean",
@@ -85570,6 +86220,18 @@
                     }
                   }
                 }
+              },
+              "isDeprecated": false,
+              "deprecationReason": ""
+            },
+            {
+              "name": "policyTemplateSlug",
+              "description": "Slug of the library template the attached Policy was created from, if any.",
+              "args": [],
+              "type": {
+                "kind": "SCALAR",
+                "name": "String",
+                "ofType": null
               },
               "isDeprecated": false,
               "deprecationReason": ""
@@ -95963,7 +96625,7 @@
             },
             {
               "name": "pendingRuns",
-              "description": "Number of runs ready for processing by this WorkerPool.",
+              "description": "Number of runs and discovery scan runs ready for processing by this WorkerPool.",
               "args": [],
               "type": {
                 "kind": "NON_NULL",
