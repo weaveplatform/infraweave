@@ -34,12 +34,14 @@ func (c *clockSteps) register(sc *godog.ScenarioContext) {
 }
 
 // run ages the run kept as key by span: its creation, its state's last
-// change, and each of its transitions' times.
+// change, the preparing deadline its claim issued, and each of its
+// transitions' times.
 func (c *clockSteps) run(ctx context.Context, span, key string) error {
 	var runs, transitions int
 	if err := c.w.Row(ctx, `WITH r AS (
 			UPDATE runs SET created_at = created_at - $2::interval,
-				state_changed_at = state_changed_at - $2::interval
+				state_changed_at = state_changed_at - $2::interval,
+				preparing_deadline = preparing_deadline - $2::interval
 			WHERE id = $1 RETURNING 1),
 		t AS (
 			UPDATE run_state_transitions SET timestamp = timestamp - $2::interval,
