@@ -42,8 +42,9 @@ type ClaimStore interface {
 	// CandidateAttempt rolls back all candidate locks when fn answers false
 	// or fails. It retains them on true. fn must make no writes or callbacks.
 	CandidateAttempt(ctx context.Context, fn func(context.Context) (bool, error)) (bool, error)
-	// Assign writes worker as run's worker.
-	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error
+	// Assign writes worker as run's worker and deadline as its preparing
+	// deadline.
+	Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID, deadline time.Time) error
 	// Waiting counts the runs in one of states of each private pool, of
 	// every account; a pool with none is absent.
 	Waiting(ctx context.Context, states []kernel.RunState) (map[kernel.ULID]int, error)
@@ -152,11 +153,23 @@ func (s *Claims) Claim(ctx context.Context, c workersapi.Claim) (workersapi.Assi
 	if err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the lifecycle names the move
 	}
-	if err := s.store.Assign(ctx, moved, c.Worker); err != nil {
+	deadline := PreparingDeadline(moved, c.Preparing)
+	if err := s.store.Assign(ctx, moved, c.Worker, deadline); err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the write
 	}
-	return workersapi.Assignment{Run: moved.ID, State: moved.State, StateVersion: moved.Version},
-		true, nil
+	return workersapi.Assignment{
+		Run: moved.ID, State: moved.State, StateVersion: moved.Version, PreparingDeadline: deadline,
+	}, true, nil
+}
+
+// PreparingDeadline is the preparing deadline a claim that moved run
+// issues: the claim's state change plus timeout, rounded down to the
+// second the worker API carries. It is fixed for the attempt, so a later
+// change of the pool's timeout neither shortens nor extends it.
+//
+// ref: docs/implementation/worker-pool-contracts.md § "Shared deadlines"
+func PreparingDeadline(run lifecycle.Run, timeout time.Duration) time.Time {
+	return run.StateChangedAt.Add(timeout).Truncate(time.Second)
 }
 
 func (s *Claims) initialize(ctx context.Context, run lifecycle.Run) (bool, error) {

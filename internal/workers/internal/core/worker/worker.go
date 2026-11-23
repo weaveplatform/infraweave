@@ -181,9 +181,6 @@ type Store interface {
 	// before, of every account, skipping workers another transaction
 	// locks, and answers its ID; false when none is left.
 	Lost(ctx context.Context, before time.Time) (kernel.ULID, bool, error)
-	// PoolTimeouts reads the pools that set their own preparing timeout,
-	// of every account.
-	PoolTimeouts(ctx context.Context) ([]workersapi.PoolTimeout, error)
 	// Drain sets the drain flag of acct's worker id of pool and wakes the
 	// pool's held polls; ErrNotFound when the pool has no such worker.
 	Drain(ctx context.Context, acct kernel.AccountID, pool, id kernel.ULID, drain bool) (Worker, error)

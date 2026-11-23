@@ -414,11 +414,12 @@ func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
 }
 
 // TestUnitProtocolAssignment checks that a poll that claims a run
-// answers it with its state and run token.
+// answers it with its state, run token and preparing deadline.
 func TestUnitProtocolAssignment(t *testing.T) {
 	f := newFixture(t)
 	a := workersapi.Assignment{
 		Run: kernel.NewULID(), State: kernel.RunStatePreparingApply, StateVersion: 7,
+		PreparingDeadline: time.Unix(1_900_000_000, 0),
 	}
 	f.svc.BindScheduler(&scheduler{run: &a})
 	w := worker.Worker{ID: kernel.NewULID(), Pool: f.store.pool.ID, Serial: 1}
@@ -431,6 +432,7 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	want := map[string]any{
 		"run": a.Run.String(), "state": "PREPARING_APPLY", "stateVersion": float64(7),
 		"runToken": "run." + a.Run.String(), "runTokenExpiresAt": float64(1e9),
+		"preparingDeadline": float64(1_900_000_000),
 	}
 	if got, _ := body["assignment"].(map[string]any); code != http.StatusOK ||
 		!maps.Equal(got, want) {

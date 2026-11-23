@@ -55,10 +55,22 @@ func (w *world) take(t *testing.T, c *schedule.Claims, pool, worker kernel.ULID,
 		var err error
 		a, ok, err = c.Claim(ctx, workersapi.Claim{
 			Account: w.acct, Pool: pool, Worker: worker, DriftLimit: limit,
+			Preparing: 5 * time.Minute,
 		})
 		return err
 	})
 	return a, ok, err
+}
+
+// deadline reads run's preparing deadline and when its state changed.
+func (w *world) deadline(t *testing.T, run kernel.ULID) (time.Time, time.Time) {
+	t.Helper()
+	var deadline, changed time.Time
+	if err := w.db.QueryRow(t.Context(), `SELECT preparing_deadline, state_changed_at FROM runs
+		WHERE id = $1`, run).Scan(&deadline, &changed); err != nil {
+		t.Fatal(err)
+	}
+	return deadline, changed
 }
 
 // held reads run's state and worker.
@@ -126,8 +138,14 @@ func TestAccClaim(t *testing.T) {
 	} {
 		worker := kernel.NewULID()
 		got, ok, err := w.take(t, c, pool, worker, &none)
+		issued := got.PreparingDeadline
+		got.PreparingDeadline = time.Time{}
 		if err != nil || !ok || got != want {
 			t.Errorf("claim %d = %+v, %v, %v, want %+v", i, got, ok, err, want)
+		}
+		if deadline, changed := w.deadline(t, want.Run); !deadline.Equal(issued) ||
+			!issued.Equal(changed.Add(5*time.Minute).Truncate(time.Second)) {
+			t.Errorf("claim %d issued %v, recorded %v, its state changed at %v", i, issued, deadline, changed)
 		}
 		if state, by := w.held(t, want.Run); state != want.State || by == nil || *by != worker {
 			t.Errorf("claim %d left run %s %s by %v", i, want.Run, state, by)
@@ -320,11 +338,11 @@ func (*world) HoldClaim(context.Context, kernel.AccountID, kernel.ULID) (bool, e
 	return true, nil
 }
 
-func (f failingClaims) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID) error {
+func (f failingClaims) Assign(ctx context.Context, run lifecycle.Run, worker kernel.ULID, deadline time.Time) error {
 	if f.fail == "Assign" {
 		return errInjected
 	}
-	return f.ClaimStore.Assign(ctx, run, worker)
+	return f.ClaimStore.Assign(ctx, run, worker, deadline)
 }
 
 // TestAccClaimFailures fails each call a claim makes, and checks that the
@@ -428,7 +446,7 @@ func TestAccClaimStoreUnavailable(t *testing.T) {
 	for name, err := range map[string]error{
 		"Holding": holdingErr, "Drifting": driftingErr, "Next": nextErr, "Waiting": waitingErr,
 		"LockCandidate": candidateErr,
-		"TakeDrift":     s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id),
+		"TakeDrift":     s.TakeDrift(ctx, acct, id), "Assign": s.Assign(ctx, run, id, time.Now()),
 		"Announce": s.Announce(ctx, run),
 	} {
 		if err == nil {

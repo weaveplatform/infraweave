@@ -151,7 +151,7 @@ func TestAccPublicClaimSkipsLockedRunAndRetriesAfterRelease(t *testing.T) {
 
 type refusingPublicAssignment struct{ schedule.PublicClaimStore }
 
-func (refusingPublicAssignment) AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID) error {
+func (refusingPublicAssignment) AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID, time.Time) error {
 	return errInjected
 }
 

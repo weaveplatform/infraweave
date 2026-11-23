@@ -18,11 +18,10 @@ type LivenessStore interface {
 	// Held reads the runs worker holds, the ones it claimed last that are
 	// in a state on a worker, and locks their rows FOR UPDATE.
 	Held(ctx context.Context, worker kernel.ULID) ([]lifecycle.Run, error)
-	// Overdue reads up to batch runs in a preparing state whose state
-	// changed before now less their pool's preparing timeout, the one
-	// timeouts names or else fallback, oldest first, among the rows no
-	// other transaction locks, and locks them FOR UPDATE.
-	Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error)
+	// Overdue reads up to batch runs in a preparing state whose claim's
+	// preparing deadline is before now, earliest deadline first, among
+	// the rows no other transaction locks, and locks them FOR UPDATE.
+	Overdue(ctx context.Context, now time.Time, batch int) ([]lifecycle.Run, error)
 }
 
 // The notes of the runs the liveness fails.
@@ -93,11 +92,11 @@ func (s *Liveness) Ended(ctx context.Context, worker, run kernel.ULID, exit work
 
 // Overdue fails the runs left in preparation too long, as
 // workersapi.Liveness says.
-func (s *Liveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) (int, error) {
+func (s *Liveness) Overdue(ctx context.Context, now time.Time, batch int) (int, error) {
 	if !tx.In(ctx) {
 		return 0, lifecycle.ErrNoTransaction
 	}
-	runs, err := s.store.Overdue(ctx, now, timeouts, fallback, batch)
+	runs, err := s.store.Overdue(ctx, now, batch)
 	if err != nil {
 		return 0, err //nolint:wrapcheck // the store names the read
 	}
@@ -134,6 +133,8 @@ func exitNote(e workersapi.Exit) string {
 		return "container out of memory"
 	case workersapi.ExitMissing:
 		return "container missing"
+	case workersapi.ExitEvicted:
+		return "container evicted"
 	case workersapi.ExitRunTimeout:
 		return NoteRunTimeout
 	case workersapi.ExitLogTimeout:

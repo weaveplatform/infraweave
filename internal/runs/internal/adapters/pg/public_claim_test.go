@@ -32,10 +32,10 @@ func TestAccPublicClaimStorage(t *testing.T) {
 		if err != nil || !found {
 			t.Fatalf("lock candidate: %t %v", found, err)
 		}
-		if err := w.store.AssignPublic(ctx, run, worker, pool); err != nil {
+		if err := w.store.AssignPublic(ctx, run, worker, pool, w.now); err != nil {
 			return err
 		}
-		if err := w.store.AssignPublic(ctx, run, worker, kernel.NewULID()); !errors.Is(err, lifecycle.ErrRefused) {
+		if err := w.store.AssignPublic(ctx, run, worker, kernel.NewULID(), w.now); !errors.Is(err, lifecycle.ErrRefused) {
 			t.Fatalf("rebound public identity: %v", err)
 		}
 		return nil
@@ -44,6 +44,9 @@ func TestAccPublicClaimStorage(t *testing.T) {
 	}
 	if active, err := w.store.ActivePool(ctx, pool); err != nil || active {
 		t.Fatalf("waiting run counted active: %t %v", active, err)
+	}
+	if deadline, _ := w.deadline(t, first); !deadline.Equal(w.now.Truncate(time.Microsecond)) {
+		t.Errorf("the public assignment recorded the preparing deadline %v, want %v", deadline, w.now)
 	}
 	if _, err := w.db.Exec(ctx, `UPDATE runs SET state='PREPARING' WHERE id=$1`, first); err != nil {
 		t.Fatal(err)
@@ -141,7 +144,7 @@ func TestAccPublicClaimStorageUnavailable(t *testing.T) {
 	_, usage := w.store.PublicUsage(ctx, kernel.NewOrganizationID(), w.acct)
 	_, _, probe := w.store.ProbePublicCandidate(ctx, id, machine.Claimable(), nil, nil, nil, nil)
 	_, _, lock := w.store.LockPublicCandidate(ctx, run, id, machine.Claimable())
-	for name, err := range map[string]error{"holding": holding, "active": active, "usage": usage, "probe": probe, "lock": lock, "assign": w.store.AssignPublic(ctx, run, id, id)} {
+	for name, err := range map[string]error{"holding": holding, "active": active, "usage": usage, "probe": probe, "lock": lock, "assign": w.store.AssignPublic(ctx, run, id, id, time.Now())} {
 		if err == nil {
 			t.Errorf("%s on a closed pool succeeded", name)
 		}

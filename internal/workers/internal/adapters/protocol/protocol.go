@@ -164,7 +164,8 @@ func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject)
 	if a := got.Assignment; a != nil {
 		out.Assignment = &gen.Assignment{
 			Run: a.Run.String(), State: gen.AssignmentState(a.State), StateVersion: a.StateVersion,
-			RunToken: a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
+			PreparingDeadline: a.PreparingDeadline.Unix(),
+			RunToken:          a.Token.Raw, RunTokenExpiresAt: a.Token.Expires.Unix(),
 		}
 	}
 	if len(got.Signals) > 0 {

@@ -29,6 +29,10 @@
 -- 1 first, the order a pool's workers claim waiting runs in.
 -- worker_pool_id is the stack's private pool when the run was created,
 -- NULL for the public pool, and worker_id the worker that last claimed it.
+-- preparing_deadline is the deadline that claim issued, the claim's state
+-- change plus the pool's preparing timeout at the time, rounded down to
+-- the second; the reap fails a run still preparing after it, whatever the
+-- pool's timeout is now.
 -- Neither has a foreign key, because pools and workers belong to the
 -- workers domain, and neither is a held key: a run keeps the pool it
 -- waited in and the worker that ran it after either is gone.
@@ -76,6 +80,7 @@ CREATE TABLE runs (
     public_worker_pool_id uuid,
     CHECK (worker_pool_id IS NULL OR public_worker_pool_id IS NULL),
     worker_id        uuid,
+    preparing_deadline timestamptz,
     artifact_key_sealed bytea,
     env_overrides_sealed bytea,
     command          text,
@@ -136,10 +141,10 @@ CREATE INDEX runs_public_pool ON runs (public_worker_pool_id, state)
 CREATE INDEX runs_worker ON runs (worker_id, state) WHERE worker_id IS NOT NULL;
 CREATE INDEX runs_drift ON runs (worker_pool_id, state) WHERE drift_detection;
 
--- The reap reads the runs a claim moved to a preparing state, oldest
--- first, to fail those no started report moved on within their pool's
--- preparing timeout.
-CREATE INDEX runs_preparing ON runs (state_changed_at, id)
+-- The reap reads the runs a claim moved to a preparing state, earliest
+-- deadline first, to fail those no started report moved on before the
+-- preparing deadline their claim issued.
+CREATE INDEX runs_preparing ON runs (preparing_deadline, id)
     WHERE state IN ('PREPARING', 'PREPARING_APPLY', 'PREPARING_REPLAN');
 
 -- run.timers reads the runs in the states it ends, oldest state change

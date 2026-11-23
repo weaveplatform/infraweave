@@ -13,17 +13,20 @@
 // creation, of the runs waiting for a worker, skipping rows other claims
 // lock, and the drift detection runs of tiers 6 and 7 while the pool's
 // drift runs on workers reach its limit. It moves the run to its
-// preparing state through the lifecycle and records the worker. A worker
-// that holds a run claims none. ClaimStore is its storage port.
+// preparing state through the lifecycle and records the worker and the
+// run's preparing deadline, the claim's state change plus the claim's
+// preparing timeout rounded down to the second. A worker that holds a
+// run claims none. ClaimStore is its storage port.
 //
 // Liveness is the domain's workersapi.Liveness, which fails runs on a
 // worker through the liveness edge out of the state each is in: each run
 // a lost worker held, with the note "worker lost"; a run whose container
 // ended while its worker still held it, with a note of how it ended; and
 // the runs a claim moved to a preparing state that no started report
-// moved on within their pool's preparing timeout, with the note
-// "preparing timeout", oldest first, skipping rows another transaction
-// locks. A container the launcher killed on a kill signal fails its run
+// moved on before the preparing deadline the claim recorded, with the
+// note "preparing timeout", earliest deadline first, skipping rows
+// another transaction locks. A container the cluster evicted fails its
+// run with the note "container evicted". A container the launcher killed on a kill signal fails its run
 // with the note "killed", or the kill's own, in the killer's name, and
 // one it killed on its run or no-log timeout with the note "run timeout"
 // or "no log output".

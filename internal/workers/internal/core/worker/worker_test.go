@@ -23,7 +23,6 @@ import (
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
-	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/credential"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/images"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
@@ -250,22 +249,6 @@ func (s *store) Lost(_ context.Context, before time.Time) (kernel.ULID, bool, er
 		delete(s.workers, oldest.ID)
 	}
 	return oldest.ID, found, nil
-}
-
-// PoolTimeouts fails on "PoolTimeouts".
-func (s *store) PoolTimeouts(context.Context) ([]workersapi.PoolTimeout, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := s.down("PoolTimeouts"); err != nil {
-		return nil, err
-	}
-	var out []workersapi.PoolTimeout
-	for _, p := range s.pools {
-		if p.PreparingTimeout > 0 {
-			out = append(out, workersapi.PoolTimeout{Pool: p.ID, Timeout: p.PreparingTimeout})
-		}
-	}
-	return out, nil
 }
 
 func (s *store) Drain(_ context.Context, acct kernel.AccountID, p, id kernel.ULID, drain bool) (worker.Worker, error) {

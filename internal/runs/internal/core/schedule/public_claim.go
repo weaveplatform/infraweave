@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand/v2"
+	"time"
 
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -20,7 +21,7 @@ type PublicClaimStore interface {
 	ProbePublicCandidate(context.Context, kernel.ULID, []kernel.RunState, *ClaimCursor, []kernel.ULID, []kernel.OrganizationID, []kernel.AccountID) (lifecycle.Run, bool, error)
 	LockPublicCandidate(context.Context, lifecycle.Run, kernel.ULID, []kernel.RunState) (lifecycle.Run, bool, error)
 	PublicUsage(context.Context, kernel.OrganizationID, kernel.AccountID) (featuresapi.Usage, error)
-	AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID) error
+	AssignPublic(context.Context, lifecycle.Run, kernel.ULID, kernel.ULID, time.Time) error
 }
 
 // PublicLimits serializes organization/account admission with actual usage.
@@ -71,10 +72,13 @@ func (s *Claims) claimPublic(ctx context.Context, c workersapi.Claim) (workersap
 	if err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the lifecycle names the move
 	}
-	if err := s.publicStore.AssignPublic(ctx, moved, c.Worker, c.Pool); err != nil {
+	deadline := PreparingDeadline(moved, c.Preparing)
+	if err := s.publicStore.AssignPublic(ctx, moved, c.Worker, c.Pool, deadline); err != nil {
 		return workersapi.Assignment{}, false, err //nolint:wrapcheck // the store names the write
 	}
-	return workersapi.Assignment{Run: moved.ID, State: moved.State, StateVersion: moved.Version}, true, nil
+	return workersapi.Assignment{
+		Run: moved.ID, State: moved.State, StateVersion: moved.Version, PreparingDeadline: deadline,
+	}, true, nil
 }
 
 func (s *Claims) publicCandidate(ctx context.Context, c workersapi.Claim) (lifecycle.Run, bool, bool, error) {

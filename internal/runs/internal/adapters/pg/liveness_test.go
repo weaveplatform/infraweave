@@ -14,15 +14,29 @@ import (
 )
 
 // working inserts a run of w's stack of typ in state, of pool, held by
-// worker, its state changed at changed.
+// worker, its state changed at changed and its claim's preparing deadline
+// the default 15 minutes after.
 func (w *world) working(t *testing.T, typ kernel.RunType, state kernel.RunState, pool *kernel.ULID, worker kernel.ULID, changed time.Time) kernel.ULID {
 	t.Helper()
 	id := kernel.NewULID()
 	if _, err := w.db.Exec(t.Context(), `INSERT INTO runs (account_id, id, stack_id, type,
-		state, state_changed_at, commit, triggered_by, worker_pool_id, worker_id, command)
+		state, state_changed_at, commit, triggered_by, worker_pool_id, worker_id, command,
+		preparing_deadline)
 		VALUES ($1, $2, $3, $4, $5, $6, '{"hash":"abc"}', 'alice', $7, $8,
-			CASE WHEN $4 = 'TASK' THEN 'ls' END)`,
-		w.acct, id, w.stack, string(typ), string(state), changed, pool, worker); err != nil {
+			CASE WHEN $4 = 'TASK' THEN 'ls' END, $9)`,
+		w.acct, id, w.stack, string(typ), string(state), changed, pool, worker,
+		changed.Add(15*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// preparing inserts a run as working does, whose claim issued deadline.
+func (w *world) preparing(t *testing.T, typ kernel.RunType, state kernel.RunState, pool *kernel.ULID, worker kernel.ULID, changed, deadline time.Time) kernel.ULID {
+	t.Helper()
+	id := w.working(t, typ, state, pool, worker, changed)
+	if _, err := w.db.Exec(t.Context(), `UPDATE runs SET preparing_deadline = $2 WHERE id = $1`,
+		id, deadline); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -108,6 +122,7 @@ func TestAccLivenessEnded(t *testing.T) {
 		{Code: 137, Reason: workersapi.ExitKilled}:      schedule.NoteKilled,
 		{Code: 137, Reason: workersapi.ExitOutOfMemory}: "container out of memory",
 		{Reason: workersapi.ExitMissing}:                "container missing",
+		{Code: 137, Reason: workersapi.ExitEvicted}:     "container evicted",
 		{Code: 137, Reason: workersapi.ExitRunTimeout}:  schedule.NoteRunTimeout,
 		{Code: 137, Reason: workersapi.ExitLogTimeout}:  schedule.NoteLogTimeout,
 		{}: "container ended",
@@ -127,43 +142,42 @@ func TestAccLivenessEnded(t *testing.T) {
 }
 
 // TestAccLivenessOverdue checks that preparations fail with the note
-// "preparing timeout" once their pool's own timeout, or else the
-// fallback, passes, oldest first and batch at a time; that runs inside
-// their timeout and runs in other states do not; and that two reaps at
-// once fail each run once, the second skipping the rows the first holds.
+// "preparing timeout" once the deadline their claim issued passes,
+// earliest first and batch at a time, however long ago their state
+// changed; that runs before their deadline and runs in other states do
+// not; and that two reaps at once fail each run once, the second skipping
+// the rows the first holds.
 func TestAccLivenessOverdue(t *testing.T) {
 	w := newWorld(t)
 	l := schedule.NewLiveness(w.store, w.lc)
-	if _, err := l.Overdue(t.Context(), w.now, nil, time.Minute, 1); !errors.Is(
+	if _, err := l.Overdue(t.Context(), w.now, 1); !errors.Is(
 		err, lifecycle.ErrNoTransaction) {
 		t.Errorf("Overdue outside a transaction = %v", err)
 	}
 	custom, plain, worker := kernel.NewULID(), kernel.NewULID(), kernel.NewULID()
-	timeouts := []workersapi.PoolTimeout{{Pool: custom, Timeout: 5 * time.Minute}}
-	fallback := 15 * time.Minute
 	ago := func(d time.Duration) time.Time { return w.now.Add(-d) }
 	proposed, tracked := kernel.RunTypeProposed, kernel.RunTypeTracked
-	customLate := w.working(
-		t,
-		proposed,
-		kernel.RunStatePreparing,
-		&custom,
-		worker,
-		ago(6*time.Minute),
-	)
-	plainLate := w.working(t, tracked, kernel.RunStatePreparingReplan, &plain, worker,
-		ago(16*time.Minute))
-	publicLate := w.working(t, proposed, kernel.RunStatePreparing, nil, worker, ago(20*time.Minute))
+	customLate := w.preparing(t, proposed, kernel.RunStatePreparing, &custom, worker,
+		ago(6*time.Minute), ago(time.Minute))
+	plainLate := w.preparing(t, tracked, kernel.RunStatePreparingReplan, &plain, worker,
+		ago(16*time.Minute), ago(2*time.Minute))
+	publicLate := w.preparing(t, proposed, kernel.RunStatePreparing, nil, worker,
+		ago(20*time.Minute), ago(5*time.Minute))
 	inTime := []kernel.ULID{
-		w.working(t, tracked, kernel.RunStatePreparingApply, &custom, worker, ago(4*time.Minute)),
-		w.working(t, proposed, kernel.RunStatePreparing, &plain, worker, ago(14*time.Minute)),
-		w.working(t, proposed, kernel.RunStatePlanning, &plain, worker, ago(2*time.Hour)),
+		w.preparing(t, tracked, kernel.RunStatePreparingApply, &custom, worker,
+			ago(4*time.Minute), w.now.Add(time.Minute)),
+		w.preparing(t, proposed, kernel.RunStatePreparing, &plain, worker,
+			ago(2*time.Hour), w.now.Add(time.Second)),
+		w.preparing(t, proposed, kernel.RunStatePreparing, &plain, worker,
+			ago(time.Hour), w.now),
+		w.preparing(t, proposed, kernel.RunStatePlanning, &plain, worker,
+			ago(2*time.Hour), ago(time.Hour)),
 	}
 	overdue := func(batch int) (int, error) {
 		var n int
 		err := w.in(t, func(ctx context.Context) error {
 			var err error
-			n, err = l.Overdue(ctx, w.now, timeouts, fallback, batch)
+			n, err = l.Overdue(ctx, w.now, batch)
 			return err
 		})
 		return n, err
@@ -172,7 +186,7 @@ func TestAccLivenessOverdue(t *testing.T) {
 		t.Fatalf("the first batch = %d, %v, want 2", n, err)
 	}
 	if state, _ := w.held(t, customLate); state != kernel.RunStatePreparing {
-		t.Errorf("the newest overdue run failed in the first batch of two: %s", state)
+		t.Errorf("the latest overdue run failed in the first batch of two: %s", state)
 	}
 	if n, err := overdue(10); err != nil || n != 1 {
 		t.Errorf("the second batch = %d, %v, want 1", n, err)
@@ -185,7 +199,7 @@ func TestAccLivenessOverdue(t *testing.T) {
 	}
 	for _, run := range inTime {
 		if state, _ := w.held(t, run); state == kernel.RunStateFailed {
-			t.Errorf("run %s, in its timeout or past preparing, failed", run)
+			t.Errorf("run %s, before its deadline or past preparing, failed", run)
 		}
 	}
 
@@ -204,7 +218,7 @@ func TestAccLivenessOverdue(t *testing.T) {
 	took, release, done := make(chan int, 1), make(chan struct{}), make(chan error, 1)
 	go func() {
 		done <- w.in(t, func(ctx context.Context) error {
-			n, err := l.Overdue(ctx, w.now, timeouts, fallback, 1)
+			n, err := l.Overdue(ctx, w.now, 1)
 			took <- n
 			<-release
 			return err
@@ -237,11 +251,11 @@ func (f failingLiveness) Held(ctx context.Context, worker kernel.ULID) ([]lifecy
 	return f.LivenessStore.Held(ctx, worker)
 }
 
-func (f failingLiveness) Overdue(ctx context.Context, now time.Time, timeouts []workersapi.PoolTimeout, fallback time.Duration, batch int) ([]lifecycle.Run, error) {
+func (f failingLiveness) Overdue(ctx context.Context, now time.Time, batch int) ([]lifecycle.Run, error) {
 	if f.fail == "Overdue" {
 		return nil, errInjected
 	}
-	return f.LivenessStore.Overdue(ctx, now, timeouts, fallback, batch)
+	return f.LivenessStore.Overdue(ctx, now, batch)
 }
 
 // TestAccLivenessFailures fails the store's reads and the lifecycle's
@@ -269,7 +283,7 @@ func TestAccLivenessFailures(t *testing.T) {
 		},
 		"Overdue": func(l *schedule.Liveness) func(ctx context.Context) error {
 			return func(ctx context.Context) error {
-				_, err := l.Overdue(ctx, w.now, nil, time.Minute, 10)
+				_, err := l.Overdue(ctx, w.now, 10)
 				return err
 			}
 		},
@@ -309,7 +323,7 @@ func TestAccLivenessStoreUnavailable(t *testing.T) {
 	if _, err := s.Held(ctx, kernel.NewULID()); err == nil {
 		t.Error("Held on a closed pool succeeded")
 	}
-	if _, err := s.Overdue(ctx, time.Now(), nil, time.Minute, 1); err == nil {
+	if _, err := s.Overdue(ctx, time.Now(), 1); err == nil {
 		t.Error("Overdue on a closed pool succeeded")
 	}
 }

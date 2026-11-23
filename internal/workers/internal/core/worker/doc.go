@@ -17,8 +17,10 @@
 // DRAINED, BUSY or IDLE. Reap is worker.reap's pass: it marks workers
 // unseen for worker.offline_after offline, deletes each worker unseen for
 // run.lost_after in a transaction that fails the runs it held, and fails
-// the runs left in preparation past their pool's preparing timeout,
-// through the workersapi.Liveness BindLiveness binds. A busy worker's poll
+// the runs left in preparation past the preparing deadline their claim
+// issued, through the workersapi.Liveness BindLiveness binds. A claim
+// issues that deadline from the pool's own preparing timeout, the
+// installation's default or the public pool's. A busy worker's poll
 // delivers its run's stop or kill through the workersapi.Signals
 // BindSignals binds, in a transaction that records the delivery, and
 // answers at once with it. A poll that is not

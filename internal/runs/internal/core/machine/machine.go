@@ -35,7 +35,7 @@ const (
 	DriverTimers Driver = "timers"
 	// DriverLiveness fails a run on a worker that cannot end it with a
 	// report: the worker.reap periodic task, for a run its worker lost or
-	// one no started report moved on within its pool's preparing timeout,
+	// one no started report moved on before its claim's preparing deadline,
 	// and a poll that reports the run's container ended.
 	DriverLiveness Driver = "liveness"
 )
