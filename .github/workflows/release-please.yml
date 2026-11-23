@@ -11,6 +11,9 @@ permissions:
 jobs:
   release-please:
     name: '🔖 Release Please'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
     # The template does not release itself: repositories created from it copy
     # CHANGELOG.md and .release-please-manifest.json, and must start clean at
     # 0.0.0 so their first release is initial-version (0.1.0).
@@ -58,5 +61,18 @@ jobs:
       # release-please-config.json and .release-please-manifest.json. Setting
       # release-type here would select single-package mode and bypass them.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
         with:
           token: ${{ steps.app-token.outputs.token || secrets.RELEASE_PLEASE_PAT }}
+
+  # A release publishes its worker image and chart from the released commit.
+  worker-artifacts:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/worker-artifacts.yml
+    with:
+      version: ${{ needs.release-please.outputs.version }}
