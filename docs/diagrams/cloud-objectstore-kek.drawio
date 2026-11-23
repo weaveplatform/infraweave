@@ -55,7 +55,7 @@
         <mxCell id="mtn-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="maintainer" vertex="1">
           <mxGeometry height="22" width="81" x="1349.5" y="234" as="geometry" />
         </mxCell>
-        <mxCell id="mtn-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="applies cloud/objectstore and cloud/kek once with own sign-in; runs TestAcc*Live by hand" vertex="1">
+        <mxCell id="mtn-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="applies platform/objectstore and platform/kek once with own sign-in; runs TestAcc*Live by hand" vertex="1">
           <mxGeometry height="70" width="170" x="1305" y="262" as="geometry" />
         </mxCell>
         <mxCell id="aws" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#ec4899;strokeWidth=1.2;" value="" vertex="1">
@@ -67,14 +67,14 @@
         <mxCell id="aws-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="aws-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · cloud/objectstore/aws" vertex="1">
-          <mxGeometry height="22" width="235" x="502.5" y="149" as="geometry" />
+        <mxCell id="aws-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · platform/objectstore/aws" vertex="1">
+          <mxGeometry height="22" width="254" x="493" y="149" as="geometry" />
         </mxCell>
         <mxCell id="aws-kek" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="310" x="920" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="aws-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · cloud/kek/aws" vertex="1">
-          <mxGeometry height="22" width="137" x="1006.5" y="149" as="geometry" />
+        <mxCell id="aws-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · platform/kek/aws" vertex="1">
+          <mxGeometry height="22" width="155" x="997.5" y="149" as="geometry" />
         </mxCell>
         <mxCell id="aws-0" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#ec4899;strokeWidth=1.5;" value="" vertex="1">
           <mxGeometry height="56" width="56" x="402" y="192" as="geometry" />
@@ -155,14 +155,14 @@
         <mxCell id="azure-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="390" as="geometry" />
         </mxCell>
-        <mxCell id="azure-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · cloud/objectstore/azure" vertex="1">
-          <mxGeometry height="22" width="247" x="496.5" y="379" as="geometry" />
+        <mxCell id="azure-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · platform/objectstore/azure" vertex="1">
+          <mxGeometry height="22" width="266" x="487" y="379" as="geometry" />
         </mxCell>
         <mxCell id="azure-kek" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="310" x="920" y="390" as="geometry" />
         </mxCell>
-        <mxCell id="azure-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · cloud/kek/azure" vertex="1">
-          <mxGeometry height="22" width="149" x="1000.5" y="379" as="geometry" />
+        <mxCell id="azure-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · platform/kek/azure" vertex="1">
+          <mxGeometry height="22" width="167" x="991.5" y="379" as="geometry" />
         </mxCell>
         <mxCell id="azure-0" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#ec4899;strokeWidth=1.5;" value="" vertex="1">
           <mxGeometry height="56" width="56" x="402" y="422" as="geometry" />
@@ -243,14 +243,14 @@
         <mxCell id="google-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="620" as="geometry" />
         </mxCell>
-        <mxCell id="google-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · cloud/objectstore/google" vertex="1">
-          <mxGeometry height="22" width="254" x="493" y="609" as="geometry" />
+        <mxCell id="google-os-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="objectstore · platform/objectstore/google" vertex="1">
+          <mxGeometry height="22" width="272" x="484" y="609" as="geometry" />
         </mxCell>
         <mxCell id="google-kek" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="310" x="920" y="620" as="geometry" />
         </mxCell>
-        <mxCell id="google-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · cloud/kek/google" vertex="1">
-          <mxGeometry height="22" width="155" x="997.5" y="609" as="geometry" />
+        <mxCell id="google-kek-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3b82f6;align=center;verticalAlign=middle;spacing=2;" value="KEK · platform/kek/google" vertex="1">
+          <mxGeometry height="22" width="174" x="988" y="609" as="geometry" />
         </mxCell>
         <mxCell id="google-0" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#ec4899;strokeWidth=1.5;" value="" vertex="1">
           <mxGeometry height="56" width="56" x="402" y="652" as="geometry" />

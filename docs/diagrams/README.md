@@ -13,13 +13,14 @@ Each diagram is a draw.io source (`.drawio`) with its SVG export (`.drawio.svg`)
 ## Test infrastructure
 
 - [test-infrastructure-overview](test-infrastructure-overview.drawio.svg): every test scenario, from trigger and GitHub environment through its Terraform roots to its local or cloud target.
+- [test-terraform-layout](test-terraform-layout.drawio.svg): the `test/terraform` tree: the local lab, the VCS labs and the per-cloud roots under `platform/`.
 - [lab-platform-kubernetes](lab-platform-kubernetes.drawio.svg): the local platform lab and the k3s lab on a runner, with the batch lifecycle.
 - [vcs-labs](vcs-labs.drawio.svg): the five VCS providers, their roots and the webhook paths through the tunnel or the Docker bridge gateway.
 - [cloud-objectstore-kek](cloud-objectstore-kek.drawio.svg): the object store and KEK scenarios in the current AWS account, Azure subscription and Google project.
-- [managed-cloud-workers](managed-cloud-workers.drawio.svg): the dedicated worker account per cloud, its identity and the cluster and deployment stages.
-- [worker-server-endpoint-options](worker-server-endpoint-options.drawio): **proposal — choose one** of how worker Pods reach the server; one page per option:
-  - [A: tunnel from the runner](worker-server-endpoint-options-a.drawio.svg)
-  - [B: hub server in one cloud](worker-server-endpoint-options-b.drawio.svg)
-  - [C: per-cloud ingress relay](worker-server-endpoint-options-c.drawio.svg)
-- [multicloud-worker-batch](multicloud-worker-batch.drawio.svg): the concurrent three-cloud worker batch, from preflight to verified cleanup.
+- [cloud-platform](cloud-platform.drawio): the platform scenario, one infraweave platform behind public HTTPS in a cloud's dedicated account, with worker clusters on all three clouds attached; one page per cloud:
+  - [AWS: ALB, ECS Fargate, RDS for PostgreSQL, S3](cloud-platform-aws.drawio.svg)
+  - [Azure: Container Apps, PostgreSQL Flexible Server, Blob Storage](cloud-platform-azure.drawio.svg)
+  - [GCP: HTTPS load balancer, Cloud Run, Cloud SQL, GCS](cloud-platform-google.drawio.svg)
+- [managed-cloud-workers](managed-cloud-workers.drawio.svg): the dedicated account per cloud, its workers identity and the cluster and deployment stages.
+- [multicloud-worker-batch](multicloud-worker-batch.drawio.svg): the concurrent three-cloud worker batch against one platform scenario, from preflight to verified cleanup.
 - [infraweave-lab-test-architecture](infraweave-lab-test-architecture.drawio.svg): the batch lifecycle with its versioned inputs; lab-platform-kubernetes covers the same lab in more detail, so this one is a candidate for retirement.
