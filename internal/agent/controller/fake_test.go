@@ -22,8 +22,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-jose/go-jose/v4"
 
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/agent/wire/management"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
 
 // remotePool is a worker pool the fake installation holds.
@@ -62,6 +64,11 @@ type installation struct {
 	calls      map[string]int
 	ifMatch    []string
 	registered []claims
+	wake       chan struct{}                // closed and replaced when a run is queued
+	queued     map[string][]wire.Assignment // pool to its runs to assign
+	runs       map[string]wire.RunSpec      // run to its sealed specification
+	polls      []wire.PollRequest
+	reports    []wire.RunReport
 }
 
 func newInstallation(t *testing.T) *installation {
@@ -74,6 +81,7 @@ func newInstallation(t *testing.T) *installation {
 		t: t, ca: ca, keys: map[string]string{}, secrets: map[string]string{}, jwts: map[string]string{},
 		pools: map[string]*remotePool{}, idempotent: map[string]string{}, sessions: map[string]string{},
 		workers: map[string]string{}, limit: 100, refuse: map[string]int{}, calls: map[string]int{},
+		queued: map[string][]wire.Assignment{}, runs: map[string]wire.RunSpec{}, wake: make(chan struct{}),
 	}
 	r := chi.NewRouter()
 	r.Post("/api/v1/auth/token", in.exchange)
@@ -86,6 +94,9 @@ func newInstallation(t *testing.T) *installation {
 	r.Post("/worker/v1/pools/release", in.release)
 	r.Post("/worker/v1/register", in.register)
 	r.Post("/worker/v1/deregister", in.deregister)
+	r.Post("/worker/v1/poll", in.poll)
+	r.Get("/worker/v1/runs/{run}/spec", in.spec)
+	r.Post("/worker/v1/runs/{run}/reports", in.report)
 	in.srv = httptest.NewServer(r)
 	t.Cleanup(in.srv.Close)
 	return in
@@ -461,4 +472,96 @@ func (in *installation) deregister(w http.ResponseWriter, r *http.Request) {
 	}
 	delete(in.workers, worker)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// assign queues run of pool for the next idle poll of its workers, its
+// secrets sealed to the pool's key as the server seals them.
+func (in *installation) assign(pool string, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets) {
+	in.t.Helper()
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	pub, err := in.pools[pool].cert.PublicKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		in.t.Fatal(err)
+	}
+	plain, err := json.Marshal(secrets)
+	if err != nil {
+		in.t.Fatal(err)
+	}
+	if spec.Sealed, err = seal.SealEnvelope(pub, a.Run, a.StateVersion, plain); err != nil {
+		in.t.Fatal(err)
+	}
+	in.runs[a.Run] = spec
+	in.queued[pool] = append(in.queued[pool], a)
+	close(in.wake)
+	in.wake = make(chan struct{})
+}
+
+func (in *installation) pollRequests() []wire.PollRequest {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	return append([]wire.PollRequest(nil), in.polls...)
+}
+
+// poll answers an idle worker a queued run of its pool, holding the poll
+// until there is one or its wait passes.
+func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
+	if !in.enter(w, "poll") {
+		return
+	}
+	worker, ok := in.sessions[strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")]
+	pool := in.workers[worker]
+	var req wire.PollRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	in.polls = append(in.polls, req)
+	in.mu.Unlock()
+	if !ok || pool == "" {
+		problem(w, http.StatusUnauthorized, "", "session")
+		return
+	}
+	wait := time.Second
+	if req.Wait != nil {
+		wait = time.Duration(*req.Wait) * time.Second
+	}
+	hold := time.NewTimer(wait)
+	defer hold.Stop()
+	for {
+		in.mu.Lock()
+		if q := in.queued[pool]; !req.Busy && len(q) > 0 {
+			in.queued[pool] = q[1:]
+			in.mu.Unlock()
+			reply(w, http.StatusOK, wire.PollResult{Assignment: &q[0]})
+			return
+		}
+		wake := in.wake
+		in.mu.Unlock()
+		select {
+		case <-wake:
+		case <-hold.C:
+			reply(w, http.StatusOK, wire.PollResult{})
+			return
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
+func (in *installation) spec(w http.ResponseWriter, r *http.Request) {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	spec, ok := in.runs[chi.URLParam(r, "run")]
+	if !ok {
+		problem(w, http.StatusNotFound, "", "run")
+		return
+	}
+	reply(w, http.StatusOK, spec)
+}
+
+func (in *installation) report(w http.ResponseWriter, r *http.Request) {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	var rep wire.RunReport
+	_ = json.NewDecoder(r.Body).Decode(&rep)
+	in.reports = append(in.reports, rep)
+	reply(w, http.StatusOK, wire.NextStep{})
 }

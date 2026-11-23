@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"unicode/utf8"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,8 +28,9 @@ const (
 	// ConditionRegistered is True on a pool once every slot of its
 	// capacity holds a registered worker, and on a Worker once it does.
 	ConditionRegistered = "Registered"
-	// ConditionExecutor is False while the controller has no Kubernetes
-	// executor: registered slots claim no runs.
+	// ConditionExecutor is True on a pool while the controller can execute
+	// runs in Pods, and on a Worker while its slot's launcher polls for
+	// runs; False, registered slots claim no runs.
 	ConditionExecutor = "ExecutorAvailable"
 	// ConditionTerminating reports the cleanup of a deleted pool or slot.
 	ConditionTerminating = "Terminating"
@@ -54,9 +56,6 @@ const (
 	ReasonCleaning            = "Cleaning"
 	ReasonCleanupBlocked      = "CleanupBlocked"
 )
-
-// executorMessage explains ConditionExecutor's False status.
-const executorMessage = "This controller registers logical slots but runs no Kubernetes executor; its workers claim no runs."
 
 // fault is a reconciliation failure as a condition reports it.
 type fault struct {
@@ -113,10 +112,13 @@ func condition(typ string, ok bool, reason, message string, generation int64) me
 }
 
 // hosted is a pool the controller verified it may host: the remote, the
-// signing identity and the resource owner.
+// signing identity, the pool token and private key PEM it was read from,
+// which a slot's launcher registers with, and the resource owner.
 type hosted struct {
 	remote *remote
 	id     identity
+	token  string
+	key    []byte
 	owner  kernel.WorkerOwner
 	public bool
 }
@@ -300,6 +302,7 @@ func (c *Controller) host(ctx context.Context, wp WorkerPool, owner kernel.Worke
 			if err := c.saveToken(ctx, wp, got.Config); err != nil {
 				return hosted{}, err
 			}
+			token = got.Config
 		}
 	default:
 		if token == "" {
@@ -320,7 +323,7 @@ func (c *Controller) host(ctx context.Context, wp WorkerPool, owner kernel.Worke
 	if err := r.worker.Bind(ctx, proof); err != nil {
 		return hosted{}, remoteFault("bind the pool", err)
 	}
-	return hosted{remote: r, id: id, owner: owner, public: wp.Spec.Mode == Public}, nil
+	return hosted{remote: r, id: id, token: token, key: data[PrivateKeyKey], owner: owner, public: wp.Spec.Mode == Public}, nil
 }
 
 // saveToken patches only the token key of wp's credential Secret, keeping
@@ -353,7 +356,12 @@ func (c *Controller) reconcile(ctx context.Context, wp WorkerPool) error {
 	status.ObservedGeneration = wp.Generation
 	status.Desired = wp.Spec.Capacity
 	owner := wp.Owner(c.settings.ClusterID)
-	meta.SetStatusCondition(&status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, executorMessage, wp.Generation))
+	if c.streams == nil {
+		meta.SetStatusCondition(&status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, noStreams, wp.Generation))
+	} else {
+		meta.SetStatusCondition(&status.Conditions, condition(ConditionExecutor, true, ReasonExecutorRunning,
+			"Registered slots claim runs and execute each in a Pod of its runner image.", wp.Generation))
+	}
 	h, err := c.host(ctx, wp, owner)
 	if err != nil {
 		f := asFault(err)
@@ -381,7 +389,7 @@ func (c *Controller) registration(ctx context.Context, h hosted, w Worker) (stri
 	}
 	slot := w.Spec.Slot
 	jws, err := h.id.sign(claims{
-		Owner: h.owner, Slot: &slot, Capabilities: capabilities, Version: c.version, OS: c.os, Arch: c.arch,
+		Owner: h.owner, Slot: &slot, Capabilities: capabilities, Version: c.version, OS: podOS, Arch: c.arch,
 		Metadata: map[string]string{"kubernetes.namespace": w.Namespace, "kubernetes.worker": w.Name},
 	}, c.now())
 	if err != nil {
@@ -408,7 +416,7 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 		byName[w.Name] = w
 	}
 	var errs []error
-	registered, retiring, created := int32(0), int32(0), 0
+	registered, retiring, busy, created := int32(0), int32(0), int32(0), 0
 	var limited *fault
 	for slot := int32(0); slot < wp.Spec.Capacity; slot++ {
 		name := SlotName(string(wp.UID), slot)
@@ -429,12 +437,15 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 			errs = append(errs, c.retire(ctx, &h, w))
 			continue
 		}
-		ok, f, err := c.keep(ctx, h, w, limited == nil)
+		ok, working, f, err := c.keep(ctx, *wp, h, w, limited == nil)
 		errs = append(errs, err)
 		if ok {
 			registered++
 		} else if f != nil && f.reason == ReasonLimitReached {
 			limited = f
+		}
+		if working {
+			busy++
 		}
 	}
 	for _, w := range byName {
@@ -442,7 +453,11 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 		errs = append(errs, c.retire(ctx, &h, w))
 	}
 	status := &wp.Status
-	status.Registered, status.Retiring, status.Ready, status.Busy = registered, retiring, 0, 0
+	status.Registered, status.Retiring, status.Busy = registered, retiring, busy
+	status.Ready = 0
+	if c.streams != nil {
+		status.Ready = registered - busy
+	}
 	switch {
 	case registered == wp.Spec.Capacity:
 		meta.SetStatusCondition(&status.Conditions, condition(ConditionRegistered, true, ReasonRegistered, "Every slot holds a registered worker.", wp.Generation))
@@ -458,41 +473,89 @@ func (c *Controller) reconcileWorkers(ctx context.Context, wp *WorkerPool, h hos
 }
 
 // keep registers w's worker when it has none or its last registration is
-// a heartbeat old, and records the outcome on w. A new registration is
-// only attempted when admit is set.
-func (c *Controller) keep(ctx context.Context, h hosted, w Worker, admit bool) (bool, *fault, error) {
+// a heartbeat old, unless its slot's launcher runs, which registers and
+// polls for itself; starts that launcher; and records the outcome on w,
+// with the assignment the launcher executes. A new registration is only
+// attempted when admit is set. It answers whether the worker is
+// registered and whether it executes a run.
+func (c *Controller) keep(ctx context.Context, wp WorkerPool, h hosted, w Worker, admit bool) (bool, bool, *fault, error) {
 	before := *w.Status.DeepCopy()
 	c.mu.Lock()
 	last, seen := c.seen[w.UID]
+	live := c.slots[w.UID]
 	c.mu.Unlock()
 	due := !seen || c.now().Sub(last) >= c.heartbeat
-	if w.Status.WorkerID != "" && !due {
-		return true, nil, nil
+	if live != nil && (!live.alive() || live.l.Status().Worker == "") {
+		live = nil
 	}
-	if w.Status.WorkerID == "" && !admit {
-		return false, nil, nil
+	if w.Status.WorkerID == "" && !admit && live == nil {
+		return false, false, nil, nil
 	}
-	id, _, err := c.registration(ctx, h, w)
 	w.Status.ObservedGeneration = w.Generation
-	meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, executorMessage, w.Generation))
 	var f *fault
-	if err != nil {
-		f = remoteFault("register the worker", err)
-		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionRegistered, false, f.reason, f.message, w.Generation))
-		if f.reason == ReasonLimitReached {
-			err = nil
+	var err error
+	if live == nil && (w.Status.WorkerID == "" || due) {
+		var id string
+		id, _, err = c.registration(ctx, h, w)
+		if err != nil {
+			f = remoteFault("register the worker", err)
+			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionRegistered, false, f.reason, f.message, w.Generation))
+			if f.reason == ReasonLimitReached {
+				err = nil
+			}
+		} else {
+			c.mu.Lock()
+			c.seen[w.UID] = c.now()
+			c.mu.Unlock()
+			w.Status.WorkerID = id
+		}
+	}
+	busy := false
+	if f == nil {
+		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionRegistered, true, ReasonRegistered, "The slot's worker is registered.", w.Generation))
+		s, serr := c.running(ctx, wp, h, w)
+		switch {
+		case serr == nil:
+			if id := s.l.Status().Worker; id != "" {
+				w.Status.WorkerID = id
+			}
+			w.Status.Assignment = c.assignment(wp, s)
+			busy = w.Status.Assignment != nil
+			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, true, ReasonExecutorRunning, executorRunning, w.Generation))
+		case errors.Is(serr, errNoExecutor):
+			w.Status.Assignment = nil
+			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, noStreams, w.Generation))
+		default:
+			w.Status.Assignment = nil
+			meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, truncate(serr.Error()), w.Generation))
+			err = errors.Join(err, serr)
 		}
 	} else {
-		c.mu.Lock()
-		c.seen[w.UID] = c.now()
-		c.mu.Unlock()
-		w.Status.WorkerID = id
-		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionRegistered, true, ReasonRegistered, "The slot's worker is registered.", w.Generation))
+		why := noStreams
+		if c.streams != nil {
+			why = "The slot's worker is not registered."
+		}
+		meta.SetStatusCondition(&w.Status.Conditions, condition(ConditionExecutor, false, ReasonExecutorUnavailable, why, w.Generation))
 	}
 	if !equality.Semantic.DeepEqual(before, w.Status) {
 		err = errors.Join(err, c.setStatus(ctx, WorkerResource, w.ObjectMeta, w.Status))
 	}
-	return f == nil, f, err
+	return f == nil, busy, f, err
+}
+
+// maxMessage bounds a condition's message, which Kubernetes caps at 32768
+// bytes.
+const maxMessage = 1024
+
+func truncate(s string) string {
+	if len(s) <= maxMessage {
+		return s
+	}
+	n := maxMessage
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }
 
 // retire deletes w, deregisters its worker and then releases its
@@ -505,6 +568,9 @@ func (c *Controller) retire(ctx context.Context, h *hosted, w Worker) error {
 		if err := c.deleteWorker(ctx, w); err != nil {
 			return err
 		}
+	}
+	if err := c.release(w); err != nil {
+		return c.blocked(ctx, w, fail(ReasonCleanupBlocked, "The slot's run executes; the slot retires once it ends.", err))
 	}
 	if !hasFinalizer(w.ObjectMeta) {
 		return nil
@@ -638,7 +704,10 @@ func (c *Controller) verified(ctx context.Context, wp WorkerPool, owner kernel.W
 	if err != nil {
 		return hosted{}, fail(ReasonCredentialsInvalid, err.Error(), err)
 	}
-	return hosted{remote: c.remotes.at(wp.Spec.Endpoint), id: id, owner: owner, public: wp.Spec.Mode == Public}, nil
+	return hosted{
+		remote: c.remotes.at(wp.Spec.Endpoint), id: id, token: token, key: data[PrivateKeyKey], owner: owner,
+		public: wp.Spec.Mode == Public,
+	}, nil
 }
 
 // jsonPatchToken is the merge patch that sets a Secret's token key.

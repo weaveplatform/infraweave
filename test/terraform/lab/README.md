@@ -37,7 +37,7 @@ and fixture namespace, including nested capture replays.
 
 | Batch | Existing Gherkin selection |
 |---|---|
-| `kubernetes` | Required `kubernetes-lab` partition: real owned k3s API/node/namespace, the worker CRDs, and replicated `infraweave worker-controller` processes reconciling pools against two servers; the Pod executor remains separate |
+| `kubernetes` | Required `kubernetes-lab` partition: real owned k3s API/node/namespace, the worker CRDs, replicated `infraweave worker-controller` processes reconciling pools against two servers, and runs executed in Pods |
 | `policies` | `@policies` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
 | `core`, `terraform-plans`, `terraform-vcs`, `terraform`, `runs`, `integrations` | The named existing Cucumber partition |
 | `vcs` | The existing real-provider partition, narrowed with `--tags '@lab:github'` and `--features features/vcs/feedback.feature` |
@@ -154,8 +154,14 @@ CSR refusal. The worker CRD schemas are installed and exercised through real
 admission, and `kubernetes_controller.feature` runs replicated
 `infraweave worker-controller` processes in per-scenario namespaces against two
 servers behind an HTTPS front: managed and existing pools, leader replacement,
-ownership refusals, the private-workers limit and finalizer cleanup. They do
-not claim a Kubernetes Pod executor, managed cloud deployment or signed-run
+ownership refusals, the private-workers limit and finalizer cleanup.
+`kubernetes_execution.feature` executes OpenTofu and Terraform runs in Pods:
+the suite builds a bootstrap image of the current Linux `infraweave` and
+imports it into the node with `ctr`, and the node pulls the pinned runner
+images from GHCR. Pods reach the front at the lab network's gateway on Linux,
+or at `host.docker.internal` under Docker Desktop, where host processes reach
+the same address through a loopback proxy; coredns is disabled, so every
+address is an IP. They do not claim managed cloud deployment or signed-run
 admission, which are not implemented by this lab.
 Empty, skipped and undefined scenario reports still fail the controller census.
 

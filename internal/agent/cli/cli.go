@@ -2,10 +2,10 @@ package cli
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/weaveplatform/infraweave/internal/agent/bootstrap"
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/docker"
@@ -136,10 +137,13 @@ func launch(cmd *cobra.Command, d deps) error {
 // Runner is infraweave runner, the root process of a run's container,
 // which the launcher starts; it is hidden, as no one else runs it.
 func Runner() *cobra.Command {
-	return runnerCmd(&http.Client{Timeout: runnerTimeout})
+	return runnerCmd(runner.Client(runnerTimeout), bootstrap.PodPaths, runner.Interrupt)
 }
 
-func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
+// runnerCmd is infraweave runner calling the worker API through the
+// client doer makes, its
+// bootstrap writing to paths, and its signal sending through interrupt.
+func runnerCmd(doer func(*x509.CertPool) wire.HttpRequestDoer, paths bootstrap.Paths, interrupt func(int) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "runner",
 		Short:  "Execute a run's phase from the launcher's handoff on standard input",
@@ -169,5 +173,47 @@ func runnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE:  func(*cobra.Command, []string) error { return runner.HandBack() },
 	})
+	cmd.AddCommand(bootstrapCmd(paths), &cobra.Command{
+		Use:       "signal interrupt",
+		Short:     "Send the run container's runner, its process 1, SIGINT",
+		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		ValidArgs: []string{"interrupt"},
+		RunE:      func(*cobra.Command, []string) error { return interrupt(1) },
+	})
+	return cmd
+}
+
+// bootstrapCmd is infraweave runner bootstrap, a run Pod's init container,
+// which receives the Pod's preparation stream on standard input into paths.
+func bootstrapCmd(paths bootstrap.Paths) *cobra.Command {
+	var want bootstrap.Expect
+	cmd := &cobra.Command{
+		Use:   "bootstrap",
+		Short: "Receive a run Pod's workspace, tools and runner from standard input",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			self, err := os.Executable()
+			if err != nil {
+				return fmt.Errorf("bootstrap: find its own executable: %w", err)
+			}
+			m, err := bootstrap.Receive(cmd.InOrStdin(), paths, want, runtime.GOARCH, self)
+			if err != nil {
+				return err //nolint:wrapcheck // bootstrap names the step
+			}
+			// The Pod's log carries only the stream's shape, never its
+			// content.
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "received run %s at state version %d: workspace %d bytes, %d tools\n",
+				m.Run, m.StateVersion, m.Workspace.Size, len(m.Tools))
+			return err //nolint:wrapcheck // standard output's own error
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&want.Run, "run", "", "the run the stream must be for")
+	f.Int64Var(&want.StateVersion, "state-version", 0, "the run's state version the stream must be for")
+	f.StringVar(&want.Worker, "worker", "", "the worker the stream must be for")
+	for _, name := range []string{"run", "state-version", "worker"} {
+		// MarkFlagRequired fails only for a flag that does not exist.
+		_ = cmd.MarkFlagRequired(name)
+	}
 	return cmd
 }

@@ -2,11 +2,15 @@ package runner_test
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -51,7 +55,7 @@ func TestUnitRunnerExecutesTheRun(t *testing.T) {
 	if err := runner.Run(
 		t.Context(),
 		bytes.NewReader(h),
-		srv.Client(),
+		fixed(srv.Client()),
 		slog.New(slog.NewTextHandler(&log, nil)),
 		nil,
 	); err != nil {
@@ -84,7 +88,7 @@ func TestUnitRunnerFailures(t *testing.T) {
 	if err := runner.Run(
 		t.Context(),
 		strings.NewReader("{"),
-		nil,
+		fixed(nil),
 		log,
 		nil,
 	); !errors.Is(
@@ -96,7 +100,7 @@ func TestUnitRunnerFailures(t *testing.T) {
 	for n := range 2 {
 		srv, h := assigned(t)
 		d := &failAfter{n: n, next: srv.Client()}
-		if err := runner.Run(t.Context(), bytes.NewReader(h), d, log, nil); err == nil {
+		if err := runner.Run(t.Context(), bytes.NewReader(h), fixed(d), log, nil); err == nil {
 			t.Fatalf("report %d failed, and Run succeeded", n+1)
 		}
 	}
@@ -117,4 +121,77 @@ func (f *failAfter) Do(r *http.Request) (*http.Response, error) {
 	}
 	f.n--
 	return f.next.Do(r) //nolint:wrapcheck // a test double
+}
+
+// fixed makes d whatever the roots.
+func fixed(d wire.HttpRequestDoer) func(*x509.CertPool) wire.HttpRequestDoer {
+	return func(*x509.CertPool) wire.HttpRequestDoer { return d }
+}
+
+// TestUnitRunnerTrustsTheHandoffRoots checks that the runner's client
+// trusts the handoff's roots, and that roots holding no certificate fail
+// the runner before it calls the server.
+func TestUnitRunnerTrustsTheHandoffRoots(t *testing.T) {
+	tlsSrv := httptest.NewTLSServer(http.NotFoundHandler())
+	defer tlsSrv.Close()
+	bundle := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsSrv.Certificate().Raw})
+	handoffWith := func(roots []byte) []byte {
+		var b bytes.Buffer
+		if err := handoff.Write(&b, handoff.Handoff{
+			Endpoint: client.Base(agenttest.Endpoint), Run: "run-1", RunToken: "token",
+			Assigned: wire.AssignmentStatePREPARINGAPPLY, StateVersion: 5, Roots: roots,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return b.Bytes()
+	}
+	var got *x509.CertPool
+	doer := func(roots *x509.CertPool) wire.HttpRequestDoer {
+		got = roots
+		return &failAfter{}
+	}
+	log := slog.New(slog.DiscardHandler)
+	_ = runner.Run(t.Context(), bytes.NewReader(handoffWith(bundle)), doer, log, nil)
+	if got == nil {
+		t.Fatal("the runner's client trusts the system's roots alone")
+	}
+	if _, err := tlsSrv.Certificate().Verify(x509.VerifyOptions{Roots: got}); err != nil {
+		t.Fatalf("the handoff's root is not trusted: %v", err)
+	}
+	got = x509.NewCertPool()
+	_ = runner.Run(t.Context(), bytes.NewReader(handoffWith(nil)), doer, log, nil)
+	if got != nil {
+		t.Fatal("a handoff without roots changed the system's")
+	}
+	err := runner.Run(t.Context(), bytes.NewReader(handoffWith([]byte("not PEM"))), doer, log, nil)
+	if !errors.Is(err, runner.ErrRoots) {
+		t.Fatalf("roots without a certificate: %v", err)
+	}
+}
+
+// TestUnitClientTrustsItsRoots checks the runner's HTTP client against a
+// server a private authority certifies: trusted with its roots, refused
+// with the system's.
+func TestUnitClientTrustsItsRoots(t *testing.T) {
+	srv := httptest.NewTLSServer(http.NotFoundHandler())
+	defer srv.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(srv.Certificate())
+	get := func(d wire.HttpRequestDoer) error {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := d.Do(req)
+		if err == nil {
+			resp.Body.Close()
+		}
+		return err //nolint:wrapcheck // a test's own
+	}
+	if err := get(runner.Client(time.Second)(roots)); err != nil {
+		t.Fatalf("with its roots: %v", err)
+	}
+	if err := get(runner.Client(time.Second)(nil)); err == nil {
+		t.Fatal("the system's roots trusted a private authority")
+	}
 }

@@ -57,6 +57,14 @@
 // Registered reports a session, for /startupz, and Ready a session the
 // server answered within three poll timeouts, for /readyz.
 //
+// A worker controller runs a launcher per slot: it calls the worker API
+// at the pool resource's endpoint while the handoff gives the runner the
+// token's, registers with the hosting owner and slot so registering again
+// resumes the slot's worker, and retains its worker when Run ends idle,
+// for the controller to deregister. Retire makes Run end once the
+// launcher is idle, and Status answers the worker and the assignment it
+// executes, with no token, for the controller's resources.
+//
 // ref: decision 0008 § "The launcher and the runner"
 // ref: decision 0008 § "Runner images"
 // ref: decision 0008 § "Timeouts and timers"
@@ -66,8 +74,9 @@
 // It calls the worker API and downloads tool releases, source archives
 // and saved workspaces through the caller's HTTP client, or one trusting
 // the system's roots and launcher.ca_file's, fetches Git sources from
-// their providers over the same roots, reads launcher.ca_file, starts and
-// waits on containers through the executor, and reads and writes
+// their providers over the same roots, reads launcher.ca_file, whose
+// bundle each handoff carries to the runner, starts and waits on
+// containers through the executor, and reads and writes
 // worker.json, the tool binaries and the runs' workspaces in
 // launcher.cache_dir. It logs registration, each run's
 // start, signals, timeout kills and end, each line of the runner's output
@@ -77,7 +86,8 @@
 // # Dependencies
 //
 // It imports internal/agent/client, config, executor, handoff, initpolicy, source,
-// tools and wire, platform/seal to open specifications, and go-jose to sign
-// registrations; no server package. internal/agent/cli runs it as
-// infraweave launcher.
+// tools and wire, kernel's hosting owner, platform/seal to open
+// specifications, and go-jose to sign registrations; no server package.
+// internal/agent/cli runs it as infraweave launcher, and
+// internal/agent/controller per slot.
 package launcher

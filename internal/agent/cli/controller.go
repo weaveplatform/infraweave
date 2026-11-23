@@ -68,7 +68,7 @@ func workerControllerCmd(kube func() (*rest.Config, error)) *cobra.Command {
 			_, _ = rand.Read(suffix) // crypto/rand.Read never fails
 			c, err := controller.New(controller.Deps{
 				Settings: settings, Clients: clients, Log: log,
-				Version: buildinfo.Version(), OS: runtime.GOOS, Arch: runtime.GOARCH,
+				Version: buildinfo.Version(), Arch: runtime.GOARCH,
 				Identity: host + "-" + hex.EncodeToString(suffix),
 			})
 			if err != nil {

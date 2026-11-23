@@ -27,6 +27,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
@@ -38,6 +39,13 @@ import (
 // the system's roots and launcher.ca_file's when nil, Sources a
 // source.Fetcher trusting the same, and Tools a tools.Fetcher on the
 // cache directory and the tool mirror.
+//
+// A worker controller's slot sets the rest. Endpoint, when set, is where
+// the launcher and its runners call the worker API instead of the pool
+// token's endpoint. Owner and Slot name the
+// hosting owner and logical slot it registers, so registering again
+// resumes the slot's worker. Retain keeps the worker registered when Run
+// ends idle, for its controller to deregister.
 type Deps struct {
 	Config   config.Launcher
 	Doer     wire.HttpRequestDoer
@@ -49,6 +57,10 @@ type Deps struct {
 	Version  string
 	OS       string
 	Arch     string
+	Endpoint string
+	Owner    *kernel.WorkerOwner
+	Slot     *int32
+	Retain   bool
 }
 
 // Sources writes a run's workspace directory, which must not exist: its
@@ -93,19 +105,53 @@ type Launcher struct {
 	id     identity
 	api    *client.Client
 	policy *initpolicy.Policy
+	// endpoint is where the launcher and its runners reach the worker
+	// API; roots is launcher.ca_file's PEM bundle, which its runners
+	// trust too.
+	endpoint string
+	roots    []byte
 
 	// registered holds while the launcher has a session, and answered is
 	// when the server last answered it, in Unix nanoseconds.
 	registered atomic.Bool
 	answered   atomic.Int64
 
+	// retiring holds once Retire is called; status is what Status
+	// answers.
+	retiring atomic.Bool
+	mu       sync.Mutex
+	status   Status
+
 	// Run's goroutine alone touches the rest.
-	st      state
-	session string
-	cur     *running
-	ended   *wire.ContainerExit
-	drained bool
-	cycle   bool
+	st       state
+	session  string
+	cur      *running
+	ended    *wire.ContainerExit
+	drained  bool
+	cycle    bool
+	assigned *assigned
+}
+
+// assigned is the assignment the launcher executes and when it claimed
+// it.
+type assigned struct {
+	a  wire.Assignment
+	at time.Time
+}
+
+// Status is what a launcher shows of its worker: its ID, once registered,
+// and the run it executes or whose end it has not yet reported, with the
+// assignment's state and version and when it was claimed, when this
+// launcher claimed it, when the run's container started, and its exit
+// once it ended. It holds no token.
+type Status struct {
+	Worker       string
+	Run          string
+	State        wire.AssignmentState
+	StateVersion int64
+	Assigned     time.Time
+	Started      time.Time
+	Exit         *wire.ContainerExit
 }
 
 // running is the run container the launcher waits on. Its run timeout
@@ -175,7 +221,14 @@ func NewContext(ctx context.Context, d Deps) (*Launcher, error) {
 	if err != nil {
 		return nil, err //nolint:wrapcheck // initpolicy exposes only safe startup failures
 	}
-	return &Launcher{d: d, id: id, api: client.New(client.Base(id.endpoint), d.Doer), policy: policy}, nil
+	endpoint := id.endpoint
+	if d.Endpoint != "" {
+		endpoint = d.Endpoint
+	}
+	return &Launcher{
+		d: d, id: id, api: client.New(client.Base(endpoint), d.Doer), policy: policy,
+		endpoint: endpoint, roots: ca,
+	}, nil
 }
 
 // newClient is the launcher's HTTP client, trusting roots, or the
@@ -220,6 +273,34 @@ func (l *Launcher) Ready(ctx context.Context) error {
 	return nil
 }
 
+// Retire makes Run end once the launcher is idle: after the run it
+// executes, or the poll it holds, which executes a run it claims first.
+// A launcher that does not retain its worker deregisters it.
+func (l *Launcher) Retire() { l.retiring.Store(true) }
+
+// Status answers what the launcher last showed of its worker.
+func (l *Launcher) Status() Status {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	s := l.status
+	if s.Exit != nil {
+		exit := *s.Exit
+		s.Exit = &exit
+	}
+	return s
+}
+
+// publish records the state Status answers.
+func (l *Launcher) publish() {
+	s := Status{Worker: l.st.Worker, Run: l.st.Run, Started: l.st.Started, Exit: l.st.Exit}
+	if a := l.assigned; a != nil && a.a.Run == l.st.Run && l.st.Run != "" {
+		s.State, s.StateVersion, s.Assigned = a.a.State, a.a.StateVersion, a.at
+	}
+	l.mu.Lock()
+	l.status = s
+	l.mu.Unlock()
+}
+
 // Run registers the worker, resuming the one the cache directory names
 // and its run, and polls until ctx ends or a cycle ends it. Each poll
 // reports whether a run is executing, and the exit of a container that
@@ -245,6 +326,10 @@ func (l *Launcher) Run(ctx context.Context) error {
 	for {
 		if l.cycle && l.cur == nil && l.ended == nil {
 			l.deregister(ctx, "cycled")
+			return nil
+		}
+		if l.retiring.Load() && l.cur == nil && l.ended == nil {
+			l.stop(ctx)
 			return nil
 		}
 		p, err := l.poll(ctx)
@@ -349,7 +434,7 @@ func (l *Launcher) register(ctx context.Context) error {
 		jws, err := l.id.sign(claims{
 			Capabilities: []string{"plan-sanitization-v1", "public-pool-v1"},
 			Version:      l.d.Version, OS: l.d.OS, Arch: l.d.Arch, Metadata: l.d.Config.Metadata,
-			Worker: l.st.Worker,
+			Worker: l.st.Worker, Owner: l.d.Owner, Slot: l.d.Slot,
 		}, l.d.Now())
 		if err != nil {
 			return err
@@ -533,6 +618,7 @@ func (l *Launcher) signal(ctx context.Context, s wire.Signal) {
 // reports the run failed in its preparing state.
 func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 	l.st.Run = a.Run
+	l.assigned = &assigned{a: a, at: l.d.Now()}
 	l.saveOrLog(ctx)
 	out := &lines{log: l.d.Log, run: a.Run, now: l.d.Now}
 	c, err := l.prepare(ctx, a, out)
@@ -728,6 +814,7 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		return nil, errPublicRunnerImage
 	}
 	var mounts []executor.Mount
+	var verified []executor.Tool
 	for _, b := range binaries(spec) {
 		bin, err := l.d.Tools.Binary(ctx, tools.Release{
 			Tool: b.Tool, Version: b.Version, OS: toolOS, Arch: l.d.Arch,
@@ -738,11 +825,12 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 		mounts = append(mounts, executor.Mount{
 			Source: bin, Target: "/bin/" + string(b.Tool), ReadOnly: true,
 		})
+		verified = append(verified, executor.Tool{Name: string(b.Tool), Version: b.Version, Path: bin})
 	}
 	spec.Sealed = nil
 	var h bytes.Buffer
 	if err := handoff.Write(&h, handoff.Handoff{
-		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
+		Endpoint: client.Base(l.endpoint), Roots: l.roots, Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
 		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
 		SensitiveOutputUpload: l.d.Config.SensitiveOutputUpload,
@@ -754,8 +842,8 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 	}
 	defer clear(h.Bytes())
 	c, err := l.d.Executor.Start(ctx, executor.Job{
-		Worker: l.st.Worker, Run: a.Run, Image: image, Workspace: ws, Mounts: mounts,
-		Handoff: h.Bytes(), Output: out,
+		Worker: l.st.Worker, Run: a.Run, StateVersion: a.StateVersion, Image: image, Workspace: ws,
+		Mounts: mounts, Tools: verified, Handoff: h.Bytes(), Output: out,
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the executor names the step
@@ -840,11 +928,16 @@ func (l *Launcher) end(ctx context.Context, w waited) {
 	l.saveOrLog(ctx)
 }
 
-// stop ends Run: an idle launcher deregisters, and a busy one keeps its
-// worker, so a restart resumes its run.
+// stop ends Run: an idle launcher deregisters, unless it retains its
+// worker, and a busy one keeps its worker, so a restart resumes its run.
 func (l *Launcher) stop(ctx context.Context) {
 	if l.cur != nil || l.ended != nil {
 		l.d.Log.InfoContext(ctx, "stopping with a run; a restart resumes it", "run", l.st.Run)
+		return
+	}
+	if l.d.Retain {
+		l.registered.Store(false)
+		l.d.Log.InfoContext(ctx, "stopped; the worker stays registered for its controller", "worker", l.st.Worker)
 		return
 	}
 	l.deregister(ctx, "stopped")
@@ -865,7 +958,11 @@ func (l *Launcher) deregister(ctx context.Context, why string) {
 	l.d.Log.InfoContext(ctx, "deregistered", "worker", l.st.Worker, "why", why)
 }
 
-func (l *Launcher) save() error { return save(l.d.Config.CacheDir, l.st) }
+// save writes the state a restart resumes and publishes it to Status.
+func (l *Launcher) save() error {
+	l.publish()
+	return save(l.d.Config.CacheDir, l.st)
+}
 
 // saveOrLog saves the state, logging a failure: the launcher keeps
 // working, and only a restart would miss what it did not save.

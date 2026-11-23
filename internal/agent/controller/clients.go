@@ -15,10 +15,13 @@ var errKubernetesConfig = errors.New("worker controller needs Kubernetes client 
 // Clients shares transport across the dynamic CRDs, namespaced core resources
 // and Lease operations. It does not link the complete Kubernetes clientset or
 // grant permissions; the service account and configured namespaces scope calls.
+// Config is the API server configuration run Pods' attach and exec streams
+// are opened with.
 type Clients struct {
 	Dynamic      dynamic.Interface
 	Core         corev1.CoreV1Interface
 	Coordination coordinationv1.CoordinationV1Interface
+	Config       *rest.Config
 }
 
 func NewClients(config *rest.Config) (Clients, error) {
@@ -42,5 +45,5 @@ func NewClients(config *rest.Config) (Clients, error) {
 	if err != nil {
 		return Clients{}, fmt.Errorf("worker controller: Kubernetes Leases: %w", err)
 	}
-	return Clients{Dynamic: custom, Core: core, Coordination: coordination}, nil
+	return Clients{Dynamic: custom, Core: core, Coordination: coordination, Config: config}, nil
 }

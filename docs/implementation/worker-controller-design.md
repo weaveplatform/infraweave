@@ -1,11 +1,11 @@
 # Kubernetes worker controller implementation notes
 
 Status: implemented for #745 (pool and worker resources, ownership and
-registration). The accepted
+registration) and #746 (run execution in Pods). The accepted
 [worker contract](worker-pool-contracts.md#controller-and-resources) governs the
 public interface; this document records the concrete ownership and recovery
-choices behind it. Pod execution (#746), lifecycle recovery (#747) and the
-chart (#748) are separate deliveries.
+choices behind it. Lifecycle recovery (#747) and the chart (#748) are separate
+deliveries.
 
 ## Process and API boundaries
 
@@ -77,13 +77,15 @@ explicit watch namespaces. Server ownership and Kubernetes resource-version
 fences remain necessary during leader transitions. Never perform pool takeover,
 credential reset or namespace-wide sweeping as automatic recovery.
 
-The controller has a separate execution port. Until its concrete Pod executor
-is available, registration maintenance must not poll for/claim runs or report
-execution readiness. A missing executor is a visible unavailable condition,
-not successful capacity. Run/helper Pod execution, streamed preparation and
-issued deadlines are owned by #746; lifecycle adoption/cleanup proof by #747.
-This boundary lets #745 prove actual CRDs, ownership, registration and scoped
-management without dropping assignments into a placeholder executor.
+The controller has a separate execution port: each slot's launcher executes
+through the Kubernetes executor, `internal/agent/executor/kubernetes`. A
+controller without Kubernetes stream configuration has no executor; its
+registration maintenance neither polls for nor claims runs, and the missing
+executor is a visible unavailable condition, not successful capacity. The
+issued `preparingDeadline`, restart adoption of a handed-off Pod, persisted
+kill intent and drain are owned by #747; until then a slot's preparation
+timeout is its pool's, counted from the claim, and a busy slot's Pod is left
+for the next leader when leadership ends.
 
 ## Structural schema compatibility
 
@@ -147,8 +149,22 @@ reconciles every WorkerPool of its watch namespaces each five seconds:
   registers again every minute, well within the server's three-minute
   offline bound, which resumes its worker. A slot the private-workers limit
   refuses stays unregistered (`Registered=False`, `LimitReached`), and the
-  pass creates no later slot. No slot polls or claims runs:
-  `ExecutorAvailable=False` until #746 adds the executor.
+  pass creates no later slot. Each registered slot runs a launcher with the
+  pool's token and key, `spec.endpoint` and its own cache directory, which
+  polls, claims and executes one run at a time
+  (`ExecutorAvailable=True`, `LauncherRunning`); a slot of changed
+  credentials or endpoint starts again once idle. The Worker's status
+  carries the claimed run, its Pod, handoff phase, deadlines and exit.
+- **Execution.** A run Pod, named for its run and state version and owned
+  by its Worker, runs the `bootstrap` init container of `bootstrap_image`,
+  which receives the staged workspace, at most two verified tools and its
+  own executable through attached stdin, then the `runner` container of the
+  run's image, which receives the handoff through its own. Run Pods are
+  Linux; the slot fetches tools for the controller's architecture and
+  selects nodes of it. Stop executes the fixed signal helper; kill deletes
+  the Pod with a one-second grace. A preparation failure deletes the Pod.
+  The handoff carries `ca_file`'s bundle, so the runner and the run's tools
+  trust a privately certified `spec.endpoint`.
 - **Retirement and deletion.** A slot beyond capacity, or of a deleted pool,
   is deleted, its worker resumed and deregistered, and only then its
   finalizer released. A deleted Managed pool is then removed through the
@@ -161,4 +177,6 @@ reconciles every WorkerPool of its watch namespaces each five seconds:
 Real acceptance: `features/workers/hosting.feature` exercises binding,
 release, slots, managed lookup and the aggregate limit against PostgreSQL;
 `features/workers/kubernetes_controller.feature` runs replicated controller
-processes against the Terraform-owned k3s lab and two servers.
+processes against the Terraform-owned k3s lab and two servers;
+`features/workers/kubernetes_execution.feature` executes OpenTofu and
+Terraform runs, a local preview and failed preparations in the lab's Pods.

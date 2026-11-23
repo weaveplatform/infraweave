@@ -93,7 +93,7 @@ func (p *previewSteps) put(ctx context.Context, name string) error {
 	for _, h := range up.UploadHeaders.Entries {
 		req.Header.Set(h.Key, h.Value)
 	}
-	resp, err := store.Do(req)
+	resp, err := p.w.SignedClient().Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: put the workspace: %w", harness.ErrStep, err)
 	}
@@ -122,7 +122,7 @@ func (p *previewSteps) source(ctx context.Context, name string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
-	resp, err := store.Do(req)
+	resp, err := p.w.SignedClient().Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: get the archive: %w", harness.ErrStep, err)
 	}

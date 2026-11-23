@@ -69,6 +69,7 @@ type Launchers struct {
 	stopCaps context.CancelFunc
 	capped   sync.WaitGroup
 	capErrs  error
+	bootstrapState
 }
 
 // prepare builds what the launchers need into dir, from the module at

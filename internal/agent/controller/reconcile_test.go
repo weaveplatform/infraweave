@@ -140,7 +140,7 @@ func (e *env) controller(change ...func(*Settings)) *Controller {
 	}
 	c, err := New(Deps{
 		Settings: s, Clients: Clients{Dynamic: e.dyn, Core: e.core.CoreV1(), Coordination: e.core.CoordinationV1()},
-		HTTP: e.in.srv.Client(), Now: e.clock, Version: "test", OS: "linux", Arch: "arm64", Identity: "replica",
+		HTTP: e.in.srv.Client(), Now: e.clock, Version: "test", Arch: "arm64", Identity: "replica",
 		Resync: 10 * time.Millisecond,
 	})
 	if err != nil {
@@ -801,7 +801,7 @@ func TestUnitControllerPassSurvivesUnreadableNamespaces(t *testing.T) {
 }
 
 func TestUnitHTTPClientTrustsItsCAFile(t *testing.T) {
-	if _, err := httpClient(""); err != nil {
+	if _, err := httpClient("", requestTimeout); err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
@@ -814,13 +814,13 @@ func TestUnitHTTPClientTrustsItsCAFile(t *testing.T) {
 	if err := writeFile(path, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})); err != nil {
 		t.Fatal(err)
 	}
-	if c, err := httpClient(path); err != nil || c.Transport == nil {
+	if c, err := httpClient(path, requestTimeout); err != nil || c.Transport == nil {
 		t.Fatalf("ca_file = %v", err)
 	}
 	if err := writeFile(path, []byte("no PEM")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := httpClient(path); !errors.Is(err, ErrSettings) {
+	if _, err := httpClient(path, requestTimeout); !errors.Is(err, ErrSettings) {
 		t.Fatalf("empty ca_file = %v", err)
 	}
 }

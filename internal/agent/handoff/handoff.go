@@ -19,7 +19,11 @@ import (
 type Handoff struct {
 	// Endpoint is the worker API's base URL, as in https://host/worker/v1.
 	Endpoint string `json:"endpoint"`
-	Run      string `json:"run"`
+	// Roots is launcher.ca_file's PEM bundle, which the runner and the
+	// run's tools trust beside the run image's system roots, for an
+	// endpoint a private authority certifies.
+	Roots []byte `json:"roots,omitempty"`
+	Run   string `json:"run"`
 	// RunToken is the bearer token of the run's calls.
 	RunToken string `json:"runToken"`
 	// Assigned is the state the claim moved the run to, and StateVersion

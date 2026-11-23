@@ -5,8 +5,9 @@ Feature: Kubernetes worker controller
   database, which an HTTPS front balances. One controller leads its Lease;
   the others stand by. A Managed pool is created once for its resource,
   an Existing pool is bound to it, and each slot of its capacity holds one
-  registered worker that a replacement controller resumes. There is no
-  Kubernetes executor, so ExecutorAvailable is False. The home key is
+  registered worker that a replacement controller resumes, and whose
+  launcher polls for runs to execute in Pods, so ExecutorAvailable is
+  True. The home key is
   space-admin on the account's top space; the member key holds only the
   bindings a scenario gives it.
 
@@ -27,7 +28,7 @@ Feature: Kubernetes worker controller
     Then the WorkerPool "build" eventually has 2 registered slots, its pool kept as "build"
     And the WorkerPool "small" eventually has 1 registered slots, its pool kept as "small"
     And the WorkerPool "build" eventually reports Bound True "Bound"
-    And the WorkerPool "build" eventually reports ExecutorAvailable False "ExecutorUnavailable"
+    And the WorkerPool "build" eventually reports ExecutorAvailable True "LauncherRunning"
     And the WorkerPools "build" and "small" hold distinct pools and tokens
     When token "h" sends "GET /api/v1/worker-pools/{build}" through A
     Then the answer's workersCount is '2'

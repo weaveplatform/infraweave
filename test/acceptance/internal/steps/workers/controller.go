@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"net/http/httptest"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -48,8 +48,8 @@ import (
 // controllerCluster is the cluster ID every scenario's controllers name.
 const controllerCluster = "acceptance"
 
-// controllerBootstrapImage satisfies worker_controller.bootstrap_image,
-// which only a Kubernetes executor pulls.
+// controllerBootstrapImage satisfies worker_controller.bootstrap_image in
+// a scenario whose controllers execute no run, so no Pod pulls it.
 const controllerBootstrapImage = "ghcr.io/weaveplatform/infraweave@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
 // controllerSteps run real worker controllers against the owned cluster
@@ -66,11 +66,16 @@ type controllerSteps struct {
 	marker     string
 	namespaces map[string]string
 	order      []string
-	front      *httptest.Server
+	pods       *harness.PodNetwork
+	ln         net.Listener
+	front      *http.Server
+	frontAt    string
+	ca         []byte
 	caFile     string
-	running    []*harness.Server
-	started    int
-	kept       map[string][]string
+	recorder
+	running []*harness.Server
+	started int
+	kept    map[string][]string
 }
 
 func (c *controllerSteps) register(sc *godog.ScenarioContext) {
@@ -79,6 +84,7 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^(\d+) worker controllers? watch the controller namespaces$`, c.start)
 	sc.Step(`^the leading worker controller is replaced$`, c.replace)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)" is applied in "(\w+)"( for another account)?$`, c.managed)
+	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)", whose Pods select "(\w+)" nodes, is applied in "(\w+)"$`, c.selecting)
 	sc.Step(
 		`^the Existing WorkerPool "(\w+)" of capacity (\d+) over the pool of the certificate "(\w+)" with the key of "(\w+)" in the space "(\w+)" is applied in "(\w+)"$`,
 		c.existing,
@@ -92,6 +98,10 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the credential Secret of "(\w+)" holds a private key that is not PEM$`, c.corrupt)
 	sc.Step(`^the management Secret of "(\w+)" is removed$`, c.dropManagement)
 	sc.Step(`^the management Secret of "(\w+)" holds the (home|member) management key$`, c.management)
+	sc.Step(`^run Pods reach the scenario's servers, and the objects they sign, through the HTTPS front$`, c.signedThroughFront)
+	sc.Step(`^the run "(\w+)" ran in Pods of the WorkerPool "(\w+)" from the image "([^"]+)", each hardened and holding no "([^"]+)"$`, c.ran)
+	sc.Step(`^no run Pod, Worker resource or worker controller log line holds "([^"]+)"$`, c.clean)
+	sc.Step(`^the run "(\w+)" eventually has no Pod$`, c.noPod)
 	sc.After(c.cleanup)
 }
 
@@ -159,15 +169,64 @@ func (c *controllerSteps) secret(ctx context.Context, namespace, name string, da
 	return nil
 }
 
+// reserve binds the scenario's HTTPS front on first use, where run Pods
+// reach it, without serving yet, with a certificate of its own authority.
+func (c *controllerSteps) reserve(ctx context.Context) error {
+	if c.ln != nil {
+		return nil
+	}
+	if err := c.clients(ctx); err != nil {
+		return err
+	}
+	pods, err := harness.StartPodNetwork(ctx, c.cluster)
+	if err != nil {
+		return err //nolint:wrapcheck // names the network
+	}
+	c.pods = pods
+	cert, err := frontCertificate(net.ParseIP(pods.Host))
+	if err != nil {
+		return err
+	}
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", net.JoinHostPort(pods.Listen, "0"))
+	if err != nil {
+		return fmt.Errorf("the front's listener: %w", err)
+	}
+	_, port, _ := net.SplitHostPort(ln.Addr().String())
+	c.ln = tls.NewListener(ln, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12})
+	c.frontAt = "https://" + net.JoinHostPort(pods.Host, port)
+	c.ca = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
+	c.caFile = filepath.Join(c.w.Dir, "controller-ca.pem")
+	return nil
+}
+
+// trust writes the controllers' ca_file: the front's authority and the
+// scenario's fakes', such as Gitea's, whose repositories they fetch.
+func (c *controllerSteps) trust() error {
+	bundle := slices.Clone(c.ca)
+	if f := c.w.CAFile(); f != "" {
+		fakes, err := os.ReadFile(f)
+		if err != nil {
+			return fmt.Errorf("read the scenario's CA: %w", err)
+		}
+		bundle = append(bundle, fakes...)
+	}
+	if err := os.WriteFile(c.caFile, bundle, 0o600); err != nil {
+		return fmt.Errorf("write the controllers' CA: %w", err)
+	}
+	return nil
+}
+
 // frontURL starts the scenario's HTTPS front on first use: a reverse
-// proxy that sends each request to the next server, and whose
-// certificate the controllers trust through ca_file.
-func (c *controllerSteps) frontURL() (string, error) {
+// proxy that sends each request to the next of the servers running then.
+func (c *controllerSteps) frontURL(ctx context.Context) (string, error) {
 	if c.front != nil {
-		return c.front.URL, nil
+		return c.frontAt, nil
 	}
 	if len(c.w.Servers) == 0 {
 		return "", fmt.Errorf("%w: no server to front", harness.ErrStep)
+	}
+	if err := c.reserve(ctx); err != nil {
+		return "", err
 	}
 	var next atomic.Uint64
 	servers := slices.Clone(c.w.Servers)
@@ -175,25 +234,15 @@ func (c *controllerSteps) frontURL() (string, error) {
 		srv := servers[next.Add(1)%uint64(len(servers))]
 		pr.SetURL(&url.URL{Scheme: "http", Host: srv.API})
 	}}
-	cert, err := frontCertificate()
-	if err != nil {
-		return "", err
-	}
-	c.front = httptest.NewUnstartedServer(proxy)
-	c.front.TLS = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
-	c.front.StartTLS()
-	c.caFile = filepath.Join(c.w.Dir, "controller-ca.pem")
-	ca := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
-	if err := os.WriteFile(c.caFile, ca, 0o600); err != nil {
-		return "", fmt.Errorf("write the front's CA: %w", err)
-	}
-	return c.front.URL, nil
+	c.front = &http.Server{Handler: proxy, ReadHeaderTimeout: 10 * time.Second}
+	go func() { _ = c.front.Serve(c.ln) }()
+	return c.frontAt, nil
 }
 
 // start starts n worker controllers watching every namespace the
 // scenario created.
 func (c *controllerSteps) start(ctx context.Context, n int) error {
-	if _, err := c.frontURL(); err != nil {
+	if _, err := c.frontURL(ctx); err != nil {
 		return err
 	}
 	for range n {
@@ -207,10 +256,10 @@ func (c *controllerSteps) start(ctx context.Context, n int) error {
 func (c *controllerSteps) launch(ctx context.Context) error {
 	c.started++
 	dir := filepath.Join(c.w.Dir, fmt.Sprintf("worker-controller-%d", c.started))
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o750); err != nil {
 		return fmt.Errorf("controller dir: %w", err)
 	}
-	config, err := yaml.Marshal(map[string]any{"worker_controller": map[string]any{
+	settings := map[string]any{
 		"watch_namespaces": c.order,
 		"cluster_id":       controllerCluster,
 		"management_credentials_ref": map[string]any{
@@ -218,11 +267,19 @@ func (c *controllerSteps) launch(ctx context.Context) error {
 		},
 		"leader_election": map[string]any{"enabled": true, "name": "iw-" + c.marker, "namespace": c.order[0]},
 		"bootstrap_image": controllerBootstrapImage,
+		"cache_dir":       filepath.Join(dir, "cache"),
 		"ca_file":         c.caFile,
 		"admin_listen":    "127.0.0.1:0",
 		"cleanup_timeout": "30s",
 		"log":             map[string]any{"format": "json"},
-	}})
+	}
+	if err := c.trust(); err != nil {
+		return err
+	}
+	if err := c.executes(ctx, settings); err != nil {
+		return err
+	}
+	config, err := yaml.Marshal(map[string]any{"worker_controller": settings})
 	if err != nil {
 		return fmt.Errorf("controller config: %w", err)
 	}
@@ -230,7 +287,8 @@ func (c *controllerSteps) launch(ctx context.Context) error {
 	if err != nil {
 		return err //nolint:wrapcheck // names the build
 	}
-	srv, err := harness.StartWorkerController(ctx, bin, dir, c.w.Suite.CoverDir, config, c.cluster.Kubeconfig)
+	srv, err := harness.StartWorkerController(ctx, bin, dir, c.w.Suite.CoverDir, config, c.cluster.Kubeconfig,
+		c.pods.Environment()...)
 	if err != nil {
 		return err //nolint:wrapcheck // names the process
 	}
@@ -261,16 +319,16 @@ func (c *controllerSteps) replace(ctx context.Context) error {
 	return c.launch(ctx)
 }
 
-// frontCertificate is a self-signed P-256 certificate for 127.0.0.1, which
-// a FIPS 140-only process accepts.
-func frontCertificate() (tls.Certificate, error) {
+// frontCertificate is a self-signed P-256 certificate for 127.0.0.1 and
+// host, which a FIPS 140-only process accepts.
+func frontCertificate(host net.IP) (tls.Certificate, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("front key: %w", err)
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "infraweave acceptance front"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1)}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(24 * time.Hour),
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), host}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(24 * time.Hour),
 		KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true, IsCA: true,
 	}
@@ -293,8 +351,8 @@ func newPoolKey() (*ecdsa.PrivateKey, []byte, error) {
 	return key, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}), nil
 }
 
-func (c *controllerSteps) pool(name, namespace, mode string, capacity int64) (*unstructured.Unstructured, error) {
-	endpoint, err := c.frontURL()
+func (c *controllerSteps) pool(ctx context.Context, name, namespace, mode string, capacity int64) (*unstructured.Unstructured, error) {
+	endpoint, err := c.frontURL(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -330,6 +388,16 @@ func (c *controllerSteps) apply(ctx context.Context, u *unstructured.Unstructure
 // managed applies a Managed WorkerPool whose credential Secret holds only
 // a fresh private key, for the home account or another one.
 func (c *controllerSteps) managed(ctx context.Context, name string, capacity int64, space, in, other string) error {
+	return c.managedOn(ctx, name, capacity, space, in, other, "")
+}
+
+// selecting applies a Managed WorkerPool as managed does, whose Pods
+// select nodes of the architecture arch.
+func (c *controllerSteps) selecting(ctx context.Context, name string, capacity int64, space, arch, in string) error {
+	return c.managedOn(ctx, name, capacity, space, in, "", arch)
+}
+
+func (c *controllerSteps) managedOn(ctx context.Context, name string, capacity int64, space, in, other, arch string) error {
 	ns := c.namespaces[in]
 	_, key, err := newPoolKey()
 	if err != nil {
@@ -338,7 +406,7 @@ func (c *controllerSteps) managed(ctx context.Context, name string, capacity int
 	if err := c.secret(ctx, ns, name+"-credentials", map[string][]byte{controller.PrivateKeyKey: key}); err != nil {
 		return err
 	}
-	u, err := c.pool(name, ns, controller.Managed, capacity)
+	u, err := c.pool(ctx, name, ns, controller.Managed, capacity)
 	if err != nil {
 		return err
 	}
@@ -346,6 +414,10 @@ func (c *controllerSteps) managed(ctx context.Context, name string, capacity int
 	spec["space"], spec["name"] = c.w.Resolve("{"+space+"}"), "Controller "+name
 	if other != "" {
 		spec["account"] = kernel.NewAccountID().String()
+	}
+	if arch != "" {
+		pod := spec["pod"].(map[string]any) //nolint:forcetypeassert // built by pool
+		pod["nodeSelector"] = map[string]any{corev1.LabelArchStable: arch}
 	}
 	return c.apply(ctx, u)
 }
@@ -376,7 +448,7 @@ func (c *controllerSteps) existing(ctx context.Context, name string, capacity in
 	}); err != nil {
 		return err
 	}
-	u, err := c.pool(name, ns, controller.Existing, capacity)
+	u, err := c.pool(ctx, name, ns, controller.Existing, capacity)
 	if err != nil {
 		return err
 	}
@@ -552,8 +624,10 @@ func (c *controllerSteps) corrupt(ctx context.Context, name string) error {
 }
 
 // cleanup stops the scenario's controllers and its front, releases every
-// finalizer left in its namespaces, and deletes them.
-func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
+// finalizer left in its namespaces, and deletes them. A failed scenario
+// leaves each controller's output and the run Pods it recorded beside
+// its servers' evidence.
+func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, failed error) (context.Context, error) {
 	if c.api == nil {
 		return ctx, nil
 	}
@@ -563,9 +637,18 @@ func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, _ erro
 	for _, srv := range c.running {
 		result = errors.Join(result, srv.Stop(cleanup))
 	}
-	if c.front != nil {
-		c.front.Close()
+	if failed != nil {
+		result = errors.Join(result, c.evidence())
 	}
+	if c.front != nil {
+		result = errors.Join(result, c.front.Shutdown(cleanup))
+	} else if c.ln != nil {
+		result = errors.Join(result, c.ln.Close())
+	}
+	if c.pods != nil {
+		result = errors.Join(result, c.pods.Close(cleanup))
+	}
+	c.stopWatch()
 	release := []byte(`{"metadata":{"finalizers":null}}`)
 	for _, ns := range c.order {
 		for _, gvr := range []struct {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -43,6 +44,7 @@ type Settings struct {
 	LeaderElection           LeaderElection       `mapstructure:"leader_election"`
 	BootstrapImage           string               `mapstructure:"bootstrap_image"`
 	CacheDir                 string               `mapstructure:"cache_dir"`
+	ToolMirror               string               `mapstructure:"tool_mirror"`
 	CAFile                   string               `mapstructure:"ca_file"`
 	AdminListen              string               `mapstructure:"admin_listen"`
 	InitializationPolicy     string               `mapstructure:"initialization_policy"`
@@ -96,6 +98,9 @@ func (s Settings) Validate() error {
 	if !path.IsAbs(s.CacheDir) && !filepath.IsAbs(s.CacheDir) {
 		bad("worker_controller.cache_dir must be an absolute ephemeral path")
 	}
+	if !mirror(s.ToolMirror) {
+		bad("worker_controller.tool_mirror must be an absolute http or https URL")
+	}
 	if s.CleanupTimeout <= 0 {
 		bad("worker_controller.cleanup_timeout must be positive")
 	}
@@ -112,6 +117,16 @@ func (s Settings) Validate() error {
 		faults = append(faults, fmt.Errorf("%w: worker_controller.log: %w", ErrSettings, err))
 	}
 	return errors.Join(faults...)
+}
+
+// mirror reports whether a tool mirror is unset or an absolute HTTP or
+// HTTPS URL.
+func mirror(v string) bool {
+	if v == "" {
+		return true
+	}
+	u, err := url.Parse(v)
+	return err == nil && u.Host != "" && (u.Scheme == "https" || u.Scheme == "http")
 }
 
 // ConfigurationFlags binds only settings; --config and Cobra's --help are not
@@ -138,7 +153,7 @@ func LoadSettings(flags *pflag.FlagSet) (Settings, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	for _, key := range []string{
 		"watch_namespaces", "cluster_id", "management_credentials_ref.name", "management_credentials_ref.id_key", "management_credentials_ref.secret_key",
-		"leader_election.enabled", "leader_election.name", "leader_election.namespace", "bootstrap_image", "cache_dir", "ca_file", "admin_listen",
+		"leader_election.enabled", "leader_election.name", "leader_election.namespace", "bootstrap_image", "cache_dir", "tool_mirror", "ca_file", "admin_listen",
 		"initialization_policy", "initialization_timeout", "cleanup_timeout", "log.level", "log.format",
 	} {
 		_ = v.BindEnv("worker_controller." + key)

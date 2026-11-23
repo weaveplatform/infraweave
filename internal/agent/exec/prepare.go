@@ -96,6 +96,9 @@ func (r *run) setUp(ctx context.Context) string {
 	if err != nil {
 		return fmt.Sprintf("The state backend cannot be configured: %v.", err)
 	}
+	if r.temp, err = os.MkdirTemp("", "infraweave-run-"); err != nil {
+		return fmt.Sprintf("The runner cannot make its temporary directory: %v.", err)
+	}
 	if r.env, err = r.environment(creds); err != nil {
 		return fmt.Sprintf("The run environment cannot be configured: %v.", err)
 	}
@@ -104,9 +107,6 @@ func (r *run) setUp(ctx context.Context) string {
 		masked = append(masked, []byte(lookup(r.env, name)))
 	}
 	r.log.Add(masked...)
-	if r.temp, err = os.MkdirTemp("", "infraweave-run-"); err != nil {
-		return fmt.Sprintf("The runner cannot make its temporary directory: %v.", err)
-	}
 	var targets []string
 	if t := r.h.Spec.Targets; t != nil {
 		targets = *t
@@ -212,7 +212,8 @@ func readFile(dir, name string, limit int64) ([]byte, error) {
 // environment is the phase environment: the container's, the tool's
 // automation switches, for a Terragrunt run the tool Terragrunt drives
 // and Terragrunt's own switch, the runner's user agent and API endpoint,
-// the launcher's run settings, the specification's variables with the
+// the launcher's run settings, SSL_CERT_FILE trusting the handoff's roots
+// when it has any, the specification's variables with the
 // write-only values opened, then the in-run API token and the state
 // backend's credentials, which no variable of the stack overrides.
 //
@@ -235,6 +236,13 @@ func (r *run) environment(creds []string) ([]string, error) {
 		"INFRAWEAVE_SENSITIVE_OUTPUT_UPLOAD_ENABLED="+strconv.FormatBool(r.h.SensitiveOutputUpload),
 		"INFRAWEAVE_VENDOR_BINARY_CACHED="+strconv.FormatBool(r.h.Spec.Tool.Download),
 	)
+	if len(r.h.Roots) > 0 {
+		bundle, err := r.roots(env)
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, "SSL_CERT_FILE="+bundle)
+	}
 	for _, v := range r.h.Spec.Environment {
 		switch {
 		case v.WriteOnly:
@@ -270,6 +278,41 @@ func (r *run) toolPath() string {
 
 // lookup is name's value in env, the last entry winning as it does for a
 // process.
+// systemBundles are where Linux distributions keep their trusted roots,
+// in the order Go's crypto/x509 reads them.
+var systemBundles = []string{
+	"/etc/ssl/certs/ca-certificates.crt",
+	"/etc/pki/tls/certs/ca-bundle.crt",
+	"/etc/ssl/ca-bundle.pem",
+	"/etc/pki/tls/cacert.pem",
+	"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+	"/etc/ssl/cert.pem",
+}
+
+// roots writes the run image's trusted roots, SSL_CERT_FILE's in env or
+// the first system bundle it has, with the handoff's, to the runner's
+// temporary directory, and answers the file's path: the run's tools
+// read it as SSL_CERT_FILE, which replaces their default bundle.
+func (r *run) roots(env []string) (string, error) {
+	bundles := systemBundles
+	if f := lookup(env, "SSL_CERT_FILE"); f != "" {
+		bundles = []string{f}
+	}
+	var system []byte
+	for _, f := range bundles {
+		if b, err := os.ReadFile(f); err == nil {
+			system = b
+			break
+		}
+	}
+	path := filepath.Join(r.temp, "roots.pem")
+	bundle := append(append(system, '\n'), r.h.Roots...)
+	if err := os.WriteFile(path, bundle, 0o600); err != nil { //nolint:gosec // a fixed name in the runner's own temporary directory
+		return "", fmt.Errorf("the trusted roots: %w", err)
+	}
+	return path, nil
+}
+
 func lookup(env []string, name string) string {
 	for _, e := range slices.Backward(env) {
 		if v, ok := strings.CutPrefix(e, name+"="); ok {

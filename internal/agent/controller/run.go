@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +17,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+
+	"github.com/weaveplatform/infraweave/internal/agent/executor/kubernetes"
+	"github.com/weaveplatform/infraweave/internal/agent/launcher"
+	"github.com/weaveplatform/infraweave/internal/agent/tools"
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
 // The leadership bounds every replica of one watch scope shares.
@@ -40,21 +46,32 @@ const (
 // requestTimeout bounds each call to the installation.
 const requestTimeout = 30 * time.Second
 
-// Deps are what a Controller runs on. Identity names this replica in the
-// Lease; Resync, Heartbeat and Batch take their defaults when zero, and
-// HTTP, when nil, is a client trusting the system roots and ca_file's.
+// Deps are what a Controller runs on. Arch is the architecture its
+// workers register and fetch tools for, on Linux, which run Pods are.
+// Identity names this replica in the Lease; Resync, Heartbeat and Batch take their defaults when zero, and
+// HTTP, when nil, is a client trusting the system roots and ca_file's,
+// which bounds each call, while each slot's launcher, whose polls are
+// held, builds its own from ca_file. Streams opens run Pods' attach and
+// exec streams, through Clients.Config when nil; with neither, the
+// controller runs no executor and its slots claim no runs. Tools fetches
+// the verified tool binaries every slot shares, a tools.Fetcher under
+// cache_dir when nil. PollTimeout is how long a slot's poll is held, the
+// launcher's default when zero.
 type Deps struct {
-	Settings  Settings
-	Clients   Clients
-	HTTP      *http.Client
-	Log       *slog.Logger
-	Now       func() time.Time
-	Version   string
-	OS, Arch  string
-	Identity  string
-	Resync    time.Duration
-	Heartbeat time.Duration
-	Batch     int
+	Settings    Settings
+	Clients     Clients
+	HTTP        *http.Client
+	Log         *slog.Logger
+	Now         func() time.Time
+	Version     string
+	Arch        string
+	Identity    string
+	Resync      time.Duration
+	Heartbeat   time.Duration
+	Batch       int
+	Streams     kubernetes.Streams
+	Tools       launcher.Tools
+	PollTimeout time.Duration
 }
 
 // Controller reconciles the WorkerPool and Worker resources of its watch
@@ -66,16 +83,29 @@ type Controller struct {
 	log       *slog.Logger
 	now       func() time.Time
 	version   string
-	os, arch  string
+	arch      string
 	identity  string
 	resync    time.Duration
 	heartbeat time.Duration
 	batch     int
 
-	mu      sync.Mutex
-	seen    map[types.UID]time.Time
-	synced  atomic.Bool
-	leading atomic.Bool
+	streams     kubernetes.Streams
+	tools       launcher.Tools
+	slotDoer    wire.HttpRequestDoer
+	pollTimeout time.Duration
+	// sources and interval replace, when set, each slot's source fetcher
+	// and how often its executor reads its Pods.
+	sources  launcher.Sources
+	interval time.Duration
+
+	mu    sync.Mutex
+	seen  map[types.UID]time.Time
+	slots map[types.UID]*slot
+	// starting serializes starting and stopping slots, so two passes
+	// never start two launchers of one Worker.
+	starting sync.Mutex
+	synced   atomic.Bool
+	leading  atomic.Bool
 }
 
 // New is a Controller over d.
@@ -83,14 +113,30 @@ func New(d Deps) (*Controller, error) {
 	doer := d.HTTP
 	if doer == nil {
 		var err error
-		if doer, err = httpClient(d.Settings.CAFile); err != nil {
+		if doer, err = httpClient(d.Settings.CAFile, requestTimeout); err != nil {
 			return nil, err
 		}
 	}
 	c := &Controller{
 		settings: d.Settings, kube: d.Clients, log: d.Log, now: d.Now,
-		version: d.Version, os: d.OS, arch: d.Arch, identity: d.Identity,
+		version: d.Version, arch: d.Arch, identity: d.Identity,
 		resync: d.Resync, heartbeat: d.Heartbeat, batch: d.Batch, seen: map[types.UID]time.Time{},
+		streams: d.Streams, tools: d.Tools, pollTimeout: d.PollTimeout, slots: map[types.UID]*slot{},
+	}
+	if d.HTTP != nil {
+		c.slotDoer = d.HTTP
+	}
+	if c.streams == nil && d.Clients.Config != nil && d.Clients.Core != nil {
+		c.streams = kubernetes.NewStreams(d.Clients.Config, d.Clients.Core.RESTClient())
+	}
+	if c.tools == nil {
+		transfers, err := httpClient(d.Settings.CAFile, 0)
+		if err != nil {
+			return nil, err
+		}
+		c.tools = tools.New(tools.Config{
+			Dir: filepath.Join(d.Settings.CacheDir, "tools"), Mirror: d.Settings.ToolMirror, Doer: transfers,
+		})
 	}
 	if c.now == nil {
 		c.now = time.Now
@@ -112,8 +158,10 @@ func New(d Deps) (*Controller, error) {
 }
 
 // httpClient trusts the system roots and, when caFile is set, its PEM
-// certificates; there is no switch that skips verification.
-func httpClient(caFile string) (*http.Client, error) {
+// certificates; there is no switch that skips verification. Each request
+// is bounded by timeout, unless it is zero, as for downloads that take
+// their own contexts.
+func httpClient(caFile string, timeout time.Duration) (*http.Client, error) {
 	transport, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		return nil, errors.New("worker controller: the default HTTP transport is replaced") //nolint:err113 // a process misconfiguration
@@ -133,7 +181,7 @@ func httpClient(caFile string) (*http.Client, error) {
 		}
 		transport.TLSClientConfig.RootCAs = roots
 	}
-	return &http.Client{Transport: transport, Timeout: requestTimeout}, nil
+	return &http.Client{Transport: transport, Timeout: timeout}, nil
 }
 
 // Synced reports whether a pass has read the watched resources, for the
@@ -175,8 +223,10 @@ func (c *Controller) Run(ctx context.Context) error {
 	return nil
 }
 
-// lead reconciles every watched pool each resync until ctx ends.
+// lead reconciles every watched pool each resync until ctx ends, and then
+// ends every slot's launcher.
 func (c *Controller) lead(ctx context.Context) {
+	defer c.stopSlots(nil)
 	c.leading.Store(true)
 	c.log.InfoContext(ctx, "leading worker controller", "identity", c.identity)
 	ticker := time.NewTicker(c.resync)
@@ -193,16 +243,21 @@ func (c *Controller) lead(ctx context.Context) {
 
 // Pass reconciles every WorkerPool of the watch namespaces once, logging
 // each failure, which its resource's status also records.
+// A slot whose pool is no longer listed, as after its resources were
+// removed without the controller, has its launcher ended. Slot launchers
+// run under ctx.
 func (c *Controller) Pass(ctx context.Context) {
 	listed := true
+	pools := map[types.UID]bool{}
 	for _, namespace := range c.settings.WatchNamespaces {
-		pools, err := c.pools(ctx, namespace)
+		list, err := c.pools(ctx, namespace)
 		if err != nil {
 			listed = false
 			c.log.WarnContext(ctx, "worker pools unreadable", "namespace", namespace, "error", err.Error())
 			continue
 		}
-		for _, wp := range pools {
+		for _, wp := range list {
+			pools[wp.UID] = true
 			if err := c.reconcile(ctx, wp); err != nil && ctx.Err() == nil {
 				c.log.WarnContext(ctx, "worker pool reconciliation", "namespace", wp.Namespace, "name", wp.Name, "error", err.Error())
 			}
@@ -210,6 +265,7 @@ func (c *Controller) Pass(ctx context.Context) {
 	}
 	if listed {
 		c.synced.Store(true)
+		c.stopSlots(func(s *slot) bool { return pools[s.pool] })
 	}
 }
 
