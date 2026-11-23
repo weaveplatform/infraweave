@@ -1,0 +1,21 @@
+apiVersion: v2
+name: infraweave-workers
+description: >-
+  The infraweave Kubernetes worker controller, its WorkerPool and Worker
+  resource definitions, scoped RBAC and the WorkerPools it hosts.
+type: application
+# release-please sets version and appVersion to the release's version.
+version: 0.0.0
+appVersion: 0.0.0
+# The CRDs' validation rules need the CEL quantity library; the k3s lab
+# verifies the chart on Kubernetes 1.37.
+kubeVersion: ">=1.31.0-0"
+home: https://github.com/weaveplatform/infraweave
+sources:
+  - https://github.com/weaveplatform/infraweave/tree/main/deploy/helm/infraweave-workers
+keywords:
+  - infraweave
+  - workers
+  - terraform
+annotations:
+  artifacthub.io/license: MIT

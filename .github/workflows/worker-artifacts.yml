@@ -1,0 +1,159 @@
+name: images | Publish worker artifacts
+
+# Publishes the Kubernetes worker artifacts of one revision of main: the
+# infraweave-worker image, which is both the worker controller's image and
+# each run Pod's bootstrap image, and the infraweave-workers chart, whose
+# default values pin that image's digest. release-please.yml calls it with a
+# release's version; a dispatch on main publishes a preview of main's head.
+# Every artifact is pinned by digest, signed with this workflow's identity on
+# main, and recorded in worker-artifacts.json, the contract the managed
+# cloud worker modules consume. The server image is published separately.
+# ref: decision 0020
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: The release version, without its v
+        required: true
+        type: string
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-artifacts-publish
+  cancel-in-progress: false
+
+env:
+  GOWORK: 'off'
+  IMAGE: ghcr.io/weaveplatform/infraweave-worker
+  CHARTS: oci://ghcr.io/weaveplatform/charts
+
+jobs:
+  publish:
+    if: github.repository == 'weaveplatform/infraweave' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.version && format('v{0}', inputs.version) || github.sha }}
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
+        with:
+          version: v4.3.2
+      - name: Name the version
+        id: version
+        env:
+          RELEASE: ${{ inputs.version }}
+        run: |
+          revision=$(git rev-parse HEAD)
+          version="${RELEASE:-0.0.0-main.${revision:0:12}}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - name: Authenticate publisher
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build the certified FIPS binaries
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 deploy/infraweave-image/build.py binaries --version "$VERSION" --out dist
+      - name: Build and push the image with provenance and SPDX SBOM
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 deploy/infraweave-image/build.py build --repository "$IMAGE" --tag "$VERSION" \
+            --version "$VERSION" --context dist --push --metadata image.json
+          echo "reference=$IMAGE@$(jq -r '.["containerimage.digest"]' image.json)" >> "$GITHUB_ENV"
+      - name: Run both platforms' builds (ARM64 emulated)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for platform in linux/amd64 linux/arm64; do
+            docker pull --platform "$platform" "$reference"
+            python3 deploy/infraweave-image/build.py smoke "$reference" --platform "$platform" --version "$VERSION"
+          done
+      - name: Package and push the chart pinned to the image
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 deploy/infraweave-image/build.py chart --version "$VERSION" --image "$reference" --out charts
+          helm push "charts/infraweave-workers-$VERSION.tgz" "$CHARTS" 2>&1 | tee push.log
+          digest=$(sed -n 's/^Digest: *\(sha256:[0-9a-f]*\)$/\1/p' push.log)
+          test -n "$digest"
+          echo "chart_digest=$digest" >> "$GITHUB_ENV"
+      - name: Verify public visibility, repository association and anonymous pulls
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # First publication needs the documented one-time package-admin
+          # visibility change. Retry leaves time to perform that setup.
+          for package in infraweave-worker charts%2Finfraweave-workers; do
+            public=false
+            for attempt in $(seq 1 30); do
+              if gh api "orgs/weaveplatform/packages/container/$package" \
+                --jq '.visibility == "public" and .repository.full_name == "weaveplatform/infraweave"' | grep -qx true; then
+                public=true
+                break
+              fi
+              echo "Waiting for package-admin public visibility: $package"
+              sleep 20
+            done
+            [ "$public" = true ]
+          done
+          python3 deploy/infraweave-image/build.py verify "$reference" --context dist
+      - name: Sign and verify the image and chart with this workflow's OIDC identity
+        run: |
+          identity="https://github.com/$GITHUB_REPOSITORY/.github/workflows/worker-artifacts.yml@refs/heads/main"
+          chart="${CHARTS#oci://}/infraweave-workers@$chart_digest"
+          for ref in "$reference" "$chart"; do
+            cosign sign --yes "$ref"
+            cosign verify --certificate-identity "$identity" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com "$ref"
+          done
+      - name: Record the worker artifact contract
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 deploy/infraweave-image/build.py manifest --version "$VERSION" --image "$reference" --context dist \
+            --chart-source "$CHARTS/infraweave-workers" --chart-digest "$chart_digest" \
+            --chart-package "charts/infraweave-workers-$VERSION.tgz" --out worker-artifacts.json
+          cat worker-artifacts.json
+      - name: Attach the contract to the release
+        if: inputs.version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh release upload "v$VERSION" worker-artifacts.json dist/SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: worker-artifacts
+          path: worker-artifacts.json
+          retention-days: 90
+      - name: Publication summary
+        run: |
+          {
+            echo 'Verified worker artifacts (anonymous pulls, SPDX, provenance, Sigstore):'
+            jq -r '"- image: `\(.controller_image)`\n- chart: `\(.chart.source):\(.chart.version)@\(.chart.digest)`"' worker-artifacts.json
+          } >> "$GITHUB_STEP_SUMMARY"

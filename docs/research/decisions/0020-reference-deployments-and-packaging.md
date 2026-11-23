@@ -95,6 +95,7 @@ Listeners:
 |---|---|---|
 | Release archives | `infraweave` for `linux`, `darwin` and `windows` on `amd64` and `arm64` (the Makefile's `PLATFORMS`), `SHA256SUMS`, a Sigstore bundle per file | GitHub release assets |
 | Server image | `infraweave` on `gcr.io/distroless/static-debian12:nonroot`, user `65532`, read-only root file system, no shell; `ENTRYPOINT ["/infraweave"]` | `ghcr.io/weaveplatform/infraweave:<version>`, multi-arch |
+| Worker image | `infraweave` built with `GOFIPS140=certified` at `/usr/local/bin/infraweave` on `gcr.io/distroless/static-debian13:nonroot` pinned by digest, user `1983`, no shell; the worker controller's image and each run Pod's bootstrap image, built by `deploy/infraweave-image/build.py` | `ghcr.io/weaveplatform/infraweave-worker:<version>`, multi-arch |
 | Runner images | Built from the repository's runner image definitions under `deploy/images/`, one per vendor, whose contents decision 0008 defines: the tools a phase's shell needs and pinned verified Terraform/OpenTofu CLIs. The application and acceptance harness consume the same published immutable digests; explicit requested versions retain signed verified acquisition and read-only overrides (0016) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
 | First-party Flows apps | One OCI image per app version, a Go program on `pkg/flows/appsdk` that serves the `App` service ([0018](0018-flows-runtime.md)) | Multi-arch images under `ghcr.io/weaveplatform`, listed in infraweave's first-party app registry |
 | Helm chart | `infraweave` (`serve` and `scheduler`) and `infraweave-workers` (`infraweave worker-controller`) | `oci://ghcr.io/weaveplatform/charts/<chart>:<version>` |
@@ -108,6 +109,10 @@ Listeners:
   issuer to `https://token.actions.githubusercontent.com`. Runner environments use
   `runner-images.yml` on `main`; their bootstrap previews have a separately
   recorded feature-branch identity and are signed again by main before promotion.
+  The worker image and the `infraweave-workers` chart use `worker-artifacts.yml`
+  on `main`, which `release-please.yml` calls for each release; the release's
+  `worker-artifacts.json` asset records their digests, the binaries' SHA-256
+  and the runner image digests the release pins.
 - **Versioning.** release-please produces one version for the binary, the
   application image, both charts, the modules and the compose file. Runner
   environments release independently when their upstream tools, base or packages
@@ -119,8 +124,10 @@ Listeners:
   `version` equals its `appVersion`. Modules take the version through
   their Git `ref`, so no separate compatibility table between module and
   application versions exists.
-- **Image references.** The chart references images by tag and accepts
-  `image.digest`. When a digest is set, the tag is ignored.
+- **Image references.** The `infraweave` chart references images by tag and
+  accepts `image.digest`. When a digest is set, the tag is ignored. The
+  `infraweave-workers` chart takes digests only, and its published package's
+  default values carry the digest of its version's worker image.
 - **Additional tools.** A process mode that needs a binary beside `infraweave`, such
   as `git` for raw-git sources, gets it only if its owning decision names
   it. The image then switches to a distroless base that carries that tool,

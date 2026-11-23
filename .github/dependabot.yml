@@ -48,3 +48,16 @@ updates:
   # Runner bases, packages and tool cohorts are refreshed together by
   # runner-images-upstream.yml, from deploy/images/versions.json. Independent
   # Dockerfile updates would break that single source and revision contract.
+
+  # The infraweave image's distroless base, pinned by digest.
+  - package-ecosystem: "docker"
+    directory: "/deploy/infraweave-image"
+    schedule:
+      interval: "daily"
+    groups:
+      infraweave-image:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"

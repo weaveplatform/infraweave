@@ -1,0 +1,13 @@
+{{- /*
+The release's Lease, which its controller replicas elect their leader on.
+The release creates and deletes it, and the controller writes only its
+spec, which Helm leaves alone on an upgrade, as the manifest sets none.
+*/ -}}
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: {{ include "workers.leaseName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller

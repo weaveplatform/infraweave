@@ -214,6 +214,21 @@ reconciles every WorkerPool of its watch namespaces each five seconds:
   recorded as `Terminating=False` with its reason and retried next pass.
 - **Writes.** Finalizers and status are written with patches under strict
   field validation, so the controller never rewrites the user's spec.
+- **Readiness.** `/readyz` checks that the API server answered the
+  replica's Lease within the lease duration, that the leader's last pass
+  read every watch namespace, and that it reached every pool's
+  installation: a transport failure, a 5xx or an unanswered token exchange
+  makes the leader unready, while a refusal (4xx, including 429) does not.
+  `/livez` is the admin listener alone, so an outage never restarts it.
+  The controller logs its commit and FIPS 140-3 mode and module as it
+  starts.
+- **Uninstall.** `infraweave worker-controller uninstall --selector`
+  deletes the WorkerPools of the watch namespaces the selector matches, each
+  with a UID precondition, and waits while the running controller finalizes
+  them. It refuses an empty selector, or a watch namespace holding a
+  WorkerPool the selector does not match, and on timeout names each
+  remaining pool with its `Terminating` reason. The chart runs it as its
+  pre-delete hook.
 
 Real acceptance: `features/workers/hosting.feature` exercises binding,
 release, slots, managed lookup and the aggregate limit against PostgreSQL;
@@ -221,3 +236,8 @@ release, slots, managed lookup and the aggregate limit against PostgreSQL;
 processes against the Terraform-owned k3s lab and two servers;
 `features/workers/kubernetes_execution.feature` executes OpenTofu and
 Terraform runs, a local preview and failed preparations in the lab's Pods.
+`features/workers/kubernetes_chart.feature` installs two releases of the
+`infraweave-workers` chart through Helm's SDK with the imported image as the
+controller's, runs a local preview in a release's Pods, and checks RBAC
+denial, readiness through an outage, upgrade, restart, the draining
+uninstall and the values the chart refuses.

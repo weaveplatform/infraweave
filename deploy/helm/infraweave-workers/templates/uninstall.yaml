@@ -1,0 +1,144 @@
+{{- /*
+Uninstalling runs this Job before Helm deletes anything, while the
+controller still runs: it deletes the release's WorkerPools and waits for
+the controller to finalize each, so every run ends and every worker
+deregisters before the controller goes. It refuses while a watch namespace
+holds a WorkerPool the release does not own. A failure fails the
+uninstall and leaves the release in place to retry.
+*/ -}}
+{{- $hook := dict "helm.sh/hook" "pre-delete" "helm.sh/hook-delete-policy" "before-hook-creation,hook-succeeded" }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "workers.uninstallName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-uninstall
+  annotations:
+    {{- toYaml $hook | nindent 4 }}
+    helm.sh/hook-weight: "-10"
+automountServiceAccountToken: false
+{{- range .Values.watchNamespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "workers.uninstallName" $ }}
+  namespace: {{ . }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-uninstall
+  annotations:
+    {{- toYaml $hook | nindent 4 }}
+    helm.sh/hook-weight: "-10"
+rules:
+  - apiGroups: ["workers.infraweave.io"]
+    resources: ["workerpools"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "workers.uninstallName" $ }}
+  namespace: {{ . }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-uninstall
+  annotations:
+    {{- toYaml $hook | nindent 4 }}
+    helm.sh/hook-weight: "-5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "workers.uninstallName" $ }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "workers.uninstallName" $ }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "workers.uninstallName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-uninstall
+  annotations:
+    {{- toYaml $hook | nindent 4 }}
+    helm.sh/hook-weight: "0"
+spec:
+  backoffLimit: 0
+  # The command's own timeout ends it first, naming what remains.
+  activeDeadlineSeconds: {{ add (int .Values.uninstall.timeoutSeconds) 60 }}
+  template:
+    metadata:
+      labels:
+        {{- include "workers.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker-uninstall
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "workers.uninstallName" . }}
+      automountServiceAccountToken: true
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1983
+        runAsGroup: 1983
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.controller.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: uninstall
+          image: {{ include "workers.image" . | quote }}
+          imagePullPolicy: {{ .Values.controller.imagePullPolicy }}
+          command: [/usr/local/bin/infraweave]
+          args:
+            - worker-controller
+            - uninstall
+            - --config
+            - {{ include "workers.configPath" . }}
+            - --selector
+            - {{ include "workers.poolSelector" . | quote }}
+            - --timeout
+            - {{ printf "%ds" (int .Values.uninstall.timeoutSeconds) | quote }}
+          env:
+            - name: GODEBUG
+              value: {{ printf "fips140=%s" .Values.controller.fips140 | quote }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+              ephemeral-storage: 16Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+              ephemeral-storage: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/infraweave/worker-controller.yaml
+              subPath: worker-controller.yaml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "workers.name" . }}

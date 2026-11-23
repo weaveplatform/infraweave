@@ -25,9 +25,13 @@
 // WorkerController loads the worker_controller configuration the same
 // strict way, from its flags, the INFRAWEAVE_WORKER_CONTROLLER_*
 // environment and --config. It reaches Kubernetes through the file
-// KUBECONFIG names or else the Pod's service account, serves /livez and
-// /readyz, ready once the leader's first pass read its pools, and runs
-// the controller until its context ends.
+// KUBECONFIG names or else the Pod's service account, logs its commit and
+// FIPS 140-3 mode as it starts, serves /livez and /readyz, ready while
+// the API server answers its Lease and, on the leader, once a pass read
+// its pools and reached their installations, and runs the controller
+// until its context ends. Its uninstall subcommand, the chart's
+// pre-delete hook, deletes the WorkerPools its --selector matches and
+// waits, within --timeout, while the running controller finalizes them.
 //
 // ref: decision 0008 § "The launcher and the runner"
 //

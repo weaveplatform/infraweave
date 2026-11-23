@@ -1,0 +1,95 @@
+{{- /*
+The controller's rights are namespaced: a Role in each watch namespace and
+one for its Lease in the release's namespace. It holds no ClusterRole, so
+it reads no Secret, WorkerPool or Pod of a namespace it does not watch.
+*/ -}}
+{{- range .Values.watchNamespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infraweave-worker-controller
+  namespace: {{ . }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+rules:
+  - apiGroups: ["workers.infraweave.io"]
+    resources: ["workerpools"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["workers.infraweave.io"]
+    resources: ["workerpools/status"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["workers.infraweave.io"]
+    resources: ["workers"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: ["workers.infraweave.io"]
+    resources: ["workers/status"]
+    verbs: ["get", "patch"]
+  # Credential Secrets are read by name, never listed; a Managed pool's
+  # token is the only key the controller writes.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  # Attach and exec need create; an API server that authorizes a
+  # WebSocket upgrade by its GET needs get too.
+  - apiGroups: [""]
+    resources: ["pods/attach", "pods/exec"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: infraweave-worker-controller
+  namespace: {{ . }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: infraweave-worker-controller
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "workers.name" $ }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "workers.name" . }}-lease
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+rules:
+  # The release creates its Lease, so the controller needs no create,
+  # which Kubernetes cannot scope to a name.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    resourceNames: [{{ include "workers.leaseName" . | quote }}]
+    verbs: ["get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "workers.name" . }}-lease
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "workers.name" . }}-lease
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "workers.name" . }}
+    namespace: {{ .Release.Namespace }}

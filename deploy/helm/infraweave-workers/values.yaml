@@ -1,0 +1,113 @@
+# Values of the infraweave-workers chart. values.schema.json refuses every
+# key it does not name, so a misspelt key fails the install instead of
+# being ignored. Secret values are never chart values: every credential,
+# trust bundle and policy is a reference to an existing Secret or ConfigMap.
+
+# clusterID is the stable installation-assigned identity of this cluster,
+# a DNS label. It is part of every pool's owner, so it never changes.
+clusterID: ""
+
+# watchNamespaces are the namespaces whose WorkerPools this release's
+# controller reconciles and where it runs their Pods. Each belongs to one
+# release: the controller's Role in it has a fixed name, so a second
+# release watching it is refused at install.
+watchNamespaces: []
+
+controller:
+  # image is the infraweave worker image, pinned by digest; a tag alone is
+  # refused. The release's published chart carries its own image here.
+  image:
+    repository: ghcr.io/weaveplatform/infraweave-worker
+    digest: ""
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+  # replicas share one Lease: one leads, the others stand by to take over.
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 1Gi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+      ephemeral-storage: 13Gi
+  # cacheSizeLimit bounds the Pod-local volume that holds the verified tool
+  # binaries and each slot's workspace staging; it is no reservation.
+  cacheSizeLimit: 12Gi
+  nodeSelector: {}
+  tolerations: []
+  # fips140 is the GODEBUG fips140 mode: "on", the default of a release
+  # build, or "only", which refuses every non-approved algorithm.
+  fips140: "on"
+  log:
+    level: info
+    format: json
+  cleanupTimeoutSeconds: 120
+  podDisruptionBudget:
+    enabled: true
+
+# bootstrapImage is the image each run Pod's bootstrap init container
+# copies infraweave from. Empty, it is controller.image: one release.
+bootstrapImage:
+  repository: ""
+  digest: ""
+
+# toolMirror, when set, is where the controller downloads Terraform and
+# OpenTofu releases instead of the vendors' sites; it verifies them against
+# the vendors' signing keys either way.
+toolMirror: ""
+
+# managementCredentialsRef names, in each watch namespace, the Secret and
+# keys of the worker-pool-controller API key that Managed pools need. Null
+# when every pool is Existing or Public.
+managementCredentialsRef: null
+
+# trust names a Secret in the release's namespace holding a PEM bundle the
+# controller and its runs trust beside the system roots, for an endpoint
+# a private authority certifies. TLS verification is never switched off.
+trust:
+  caSecretRef: null
+
+# initializationPolicyRef names a ConfigMap or Secret key in the release's
+# namespace holding the Rego initialization policy every run's
+# initialization commands are evaluated against.
+initializationPolicyRef: null
+initializationTimeoutSeconds: 60
+
+networkPolicy:
+  enabled: true
+  # dnsEgress is added to the controller's and the run Pods' egress.
+  dnsEgress:
+    - cidr: 0.0.0.0/0
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+  # controllerEgress reaches the Kubernetes API and the pools' endpoints,
+  # the tool mirror and the vendors' release sites.
+  controllerEgress:
+    - cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 6443
+          protocol: TCP
+  # runEgress reaches the pools' endpoints, the object store the
+  # installation signs URLs for, and what the runs' code calls.
+  runEgress:
+    - cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+
+# pools are the WorkerPools this release owns. Each spec is a WorkerPool
+# spec exactly as the CRD defines it; the namespace is a watch namespace.
+pools: []
+
+uninstall:
+  # timeoutSeconds bounds how long an uninstall waits for its pools' runs
+  # to end and their workers to deregister before it fails, leaving the
+  # release, its controller and its pools in place to retry.
+  timeoutSeconds: 600

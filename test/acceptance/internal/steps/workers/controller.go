@@ -82,6 +82,8 @@ type controllerSteps struct {
 	// on evaluate, and initializationTimeout its budget when set.
 	initialization        string
 	initializationTimeout string
+	// chart is the scenario's worker chart releases.
+	chart *chart
 }
 
 func (c *controllerSteps) register(sc *godog.ScenarioContext) {
@@ -90,6 +92,7 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^(\d+) worker controllers? watch the controller namespaces$`, c.start)
 	sc.Step(`^the leading worker controller is replaced$`, c.replace)
 	c.registerRecovery(sc)
+	c.registerChart(sc)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)" is applied in "(\w+)"( for another account)?$`, c.managed)
 	sc.Step(`^the Managed WorkerPool "(\w+)" of capacity (\d+) in the space "(\w+)", whose Pods select "(\w+)" nodes, is applied in "(\w+)"$`, c.selecting)
 	sc.Step(
@@ -679,9 +682,13 @@ func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, failed
 	if c.api == nil {
 		return ctx, nil
 	}
+	// A release's controllers finalize its pools as it uninstalls, so its
+	// releases go before the controllers, front and namespaces they need.
+	charts, stop := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+	result := c.uninstallCharts(charts)
+	stop()
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 	defer cancel()
-	var result error
 	for _, srv := range c.running {
 		result = errors.Join(result, srv.Stop(cleanup))
 	}

@@ -174,7 +174,7 @@ DATA_VIEW := docs/implementation/tiers.md
 CATALOGUE := internal/features/catalogue.gen.go
 ACTIONS := internal/access/api/actions.gen.go
 
-## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, the action catalogue, and render the docs/data view
+## generate: bundle the specs, generate each strict chi server, Go client and 501 stubs, the action catalogue, the worker chart's pool schema, and render the docs/data view
 generate: bundle
 	@for s in $(SPECS); do \
 		echo "generate $$s"; \
@@ -186,10 +186,11 @@ generate: bundle
 	$(GO) run ./tools/specref actions --generated $(ACTIONS)
 	$(GO) run ./tools/dataview docs/data $(DATA_VIEW) $(CATALOGUE)
 	python3 deploy/images/imagectl.py generate
+	$(GO) run ./tools/workerchart
 
 ## verify-generate: fail if the committed bundles, generated code or docs/data view differ from what make generate writes
 verify-generate: generate
-	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen internal/agent/wire pkg/client $(DATA_VIEW) $(CATALOGUE) $(ACTIONS) internal/platform/runnerimages || \
+	@git diff --exit-code -- api/*.openapi.yaml internal/platform/gen internal/agent/wire pkg/client $(DATA_VIEW) $(CATALOGUE) $(ACTIONS) internal/platform/runnerimages deploy/helm/infraweave-workers/values.schema.json || \
 		{ echo "generated files are stale; run make generate and commit the result"; exit 1; }
 
 ## reference: regenerate each product's OpenAPI reference and coverage report from its snapshots

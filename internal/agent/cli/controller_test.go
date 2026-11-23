@@ -8,9 +8,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"k8s.io/client-go/rest"
 
 	"github.com/weaveplatform/infraweave/internal/agent/cli"
@@ -77,6 +79,54 @@ func TestUnitWorkerControllerRunsUntilItsContextEnds(t *testing.T) {
 	defer cancel()
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		t.Fatalf("%v: %s", err, out.String())
+	}
+	if !strings.Contains(out.String(), `"msg":"worker controller starting"`) || !strings.Contains(out.String(), `"fips140":`) {
+		t.Fatalf("the controller did not log its build: %s", out.String())
+	}
+}
+
+func TestUnitWorkerControllerUninstallWaitsForItsPools(t *testing.T) {
+	controllerEnvironment(t)
+	r := chi.NewRouter()
+	r.Get("/apis/workers.infraweave.io/v1alpha1/namespaces/workers/workerpools", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"apiVersion":"workers.infraweave.io/v1alpha1","kind":"WorkerPoolList","metadata":{},"items":[]}`))
+	})
+	api := httptest.NewServer(r)
+	defer api.Close()
+	kube := func() (*rest.Config, error) { return &rest.Config{Host: api.URL}, nil }
+	for name, tc := range map[string]struct {
+		args []string
+		kube func() (*rest.Config, error)
+		ok   bool
+	}{
+		"no pools left": {[]string{"uninstall", "--selector", "app.kubernetes.io/instance=alpha"}, kube, true},
+		"no selector":   {[]string{"uninstall"}, kube, false},
+		"no Kubernetes": {[]string{"uninstall", "--selector", "a=b"}, func() (*rest.Config, error) { return nil, errors.New("no cluster") }, false},
+		"no Kubernetes client": {[]string{"uninstall", "--selector", "a=b"}, func() (*rest.Config, error) {
+			// A CA that holds no certificate is a transport client-go refuses.
+			return &rest.Config{Host: "https://kubernetes.invalid", TLSClientConfig: rest.TLSClientConfig{CAData: []byte("not a certificate")}}, nil
+		}, false},
+		"an invalid configuration": {[]string{"uninstall", "--selector", "a=b", "--log-level", "loud"}, kube, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cmd := cli.WorkerControllerCmd(tc.kube)
+			cmd.SetArgs(tc.args)
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetErr(&bytes.Buffer{})
+			if err := cmd.ExecuteContext(t.Context()); (err == nil) != tc.ok {
+				t.Fatalf("uninstall = %v: %s", err, out.String())
+			}
+		})
+	}
+	t.Setenv("INFRAWEAVE_WORKER_CONTROLLER_WATCH_NAMESPACES", "")
+	cmd := cli.WorkerControllerCmd(kube)
+	cmd.SetArgs([]string{"uninstall", "--selector", "a=b"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	if err := cmd.ExecuteContext(t.Context()); err == nil {
+		t.Fatal("an uninstallation without watch namespaces ran")
 	}
 }
 
