@@ -1,5 +1,5 @@
 variable "project_id" {
-  description = "The lab project the KEK live tests use."
+  description = "The dedicated lab project the KEK live tests use: landing-zone/google's project_id output."
   type        = string
 }
 

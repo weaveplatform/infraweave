@@ -6,8 +6,18 @@ its reference deployments (`deploy/`); it exists only so a scheduled
 workflow on `main` can reach a real cloud through GitHub's OIDC token, with
 no stored key.
 
+Every cloud test runs in a dedicated account per cloud, which the
+`landing-zone` roots create: an AWS account in the Organization, an Azure
+subscription and a Google project. A maintainer applies `landing-zone`
+first, with the Organization's management account, a billing owner's
+sign-in or a billing account and organization; every other root here
+applies into the account it creates.
+
 | Root | Job | Creates |
 |---|---|---|
+| `landing-zone/aws` | every AWS root | an organizational unit under the organization's root, or `parent_id`, holding one member account, `infraweave-lab`, whose `OrganizationAccountAccessRole` the management account assumes; a destroy closes the account only with `close_on_destroy` |
+| `landing-zone/azure` | every Azure root | a subscription, `infraweave-lab`, created through a subscription alias at `billing_scope_id`; a destroy cancels it only with `cancel_on_destroy` |
+| `landing-zone/google` | every Google root | a project linked to `billing_account`, in `org_id` or `folder_id`, with no default network and the APIs the other roots use enabled; a destroy deletes it only with `delete_on_destroy` |
 | `objectstore/google` | `objectstore-cloud` | a bucket that deletes objects after a day; a workload identity pool and provider admitting only this repository's `objectstore-cloud.yml` on `main`; writer and deleter service accounts with decision 0020's custom roles |
 | `objectstore/aws` | `objectstore-cloud` | a bucket that deletes objects (and incomplete multipart uploads) after a day; the GitHub OIDC provider, unless the account has one; writer and deleter roles with decision 0020's grants, assumable only from the repository's `objectstore-cloud` environment |
 | `objectstore/azure` | `objectstore-cloud` | a resource group with a storage account that allows no shared keys and deletes blobs after a day; writer and deleter user-assigned identities with decision 0020's custom roles on the account, whose federated credentials admit only the repository's `objectstore-cloud` environment; nothing is registered in the tenant's directory |
@@ -18,22 +28,38 @@ no stored key.
 | `kek/azure` | the `azurekv` KEK and signing live tests, run by a maintainer | a resource group with a vault that authorizes through Azure RBAC and is purged when destroyed, an RSA key, `kek`, an EC key on P-256, `signing`, and Key Vault Crypto Officer on the vault for whoever applies the root |
 | `kek/aws` | the `awskms` signing live test, run by a maintainer | an `ECC_NIST_P256` KMS key for `SIGN_VERIFY`, deleted seven days after it is destroyed |
 
-Each root takes the lab project, account or subscription from its
-provider's own credentials (`gcloud auth application-default login`, an
-AWS profile, `az login`) and from a `terraform.tfvars` that stays out of
-the repository: Google's `project_id`, Azure's `subscription_id`, and on
-AWS, for `objectstore/aws` and `workers-identity/aws`, the ARN of an
-existing GitHub OIDC provider, if the account has one, including one the
-other root created. State is local and ignored; the provider lock files are
-committed, so every machine resolves the same provider builds.
+Each root signs in with its provider's own credentials (`gcloud auth
+application-default login`, an AWS profile, `az login`) and takes the rest
+from a `terraform.tfvars` that stays out of the repository. State is local
+and ignored; the provider lock files are committed, so every machine
+resolves the same provider builds.
+
+| Root | `terraform.tfvars` |
+|---|---|
+| `landing-zone/aws` | `email`, the new account's root user email, unique across AWS; optionally `parent_id` |
+| `landing-zone/azure` | `subscription_id`, an existing subscription to sign in through; `billing_scope_id`, the invoice section, enrollment account or partner customer to bill |
+| `landing-zone/google` | `project_id`, unique across Google Cloud; `billing_account`; one of `org_id` and `folder_id` |
+| AWS roots | `landing_zone_role_arn`, `landing-zone/aws`'s `role_arn`, which the provider assumes from the management account's credentials; for `objectstore/aws` and `workers-identity/aws`, the ARN of an existing GitHub OIDC provider, if the account has one, including one the other root created |
+| Azure roots | `subscription_id`, `landing-zone/azure`'s `subscription_id` |
+| Google roots | `project_id`, `landing-zone/google`'s `project_id` |
 
 ```sh
-cd test/terraform/platform/objectstore/google   # or aws, azure
+cd test/terraform/platform/landing-zone/aws   # then objectstore/aws and the rest
 terraform init
 terraform plan -out=lab.tfplan
 terraform apply lab.tfplan
-terraform output                   # the workflow's environment secrets
+terraform output                   # the next roots' variables, or the workflow's environment secrets
 ```
+
+An AWS root's provider accepts only credentials that resolve to the
+landing zone's account. Without `landing_zone_role_arn`, an AWS root
+applies into the account of the caller's own credentials.
+
+A root already applied elsewhere moves into its landing zone by being
+destroyed with its current `terraform.tfvars` first, then applied with the
+landing zone's values. Pointed at a new account with its old state, a root
+finds none of its resources there, drops them from its state and creates
+them again, and what it made in the old account stays behind.
 
 The `objectstore` roots' outputs are the secrets of `objectstore-cloud.yml`'s
 `objectstore-cloud` environment, set with `gh secret set --env

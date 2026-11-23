@@ -1,5 +1,5 @@
 variable "project_id" {
-  description = "The lab project the managed cloud worker batches use, and nothing else: the service account's GKE and network roles reach every cluster and network in it."
+  description = "The dedicated lab project the managed cloud worker batches use: landing-zone/google's project_id output. The service account's GKE and network roles reach every cluster and network in it."
   type        = string
 }
 

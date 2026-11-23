@@ -1,5 +1,5 @@
 variable "subscription_id" {
-  description = "The lab subscription the managed cloud worker batches use."
+  description = "The dedicated lab subscription the managed cloud worker batches use: landing-zone/azure's subscription_id output."
   type        = string
 }
 

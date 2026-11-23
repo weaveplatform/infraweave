@@ -1,0 +1,19 @@
+terraform {
+  required_version = ">= 1.16.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "5.14.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {
+    subscription {
+      prevent_cancellation_on_destroy = !var.cancel_on_destroy
+    }
+  }
+  subscription_id = var.subscription_id
+}

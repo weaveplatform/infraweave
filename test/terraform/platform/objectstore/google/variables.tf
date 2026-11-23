@@ -1,5 +1,5 @@
 variable "project_id" {
-  description = "The lab project the objectstore-cloud job uses, and nothing else."
+  description = "The dedicated lab project the objectstore-cloud job uses: landing-zone/google's project_id output."
   type        = string
 }
 

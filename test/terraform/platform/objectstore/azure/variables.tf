@@ -1,5 +1,5 @@
 variable "subscription_id" {
-  description = "The lab subscription the objectstore-cloud job uses."
+  description = "The dedicated lab subscription the objectstore-cloud job uses: landing-zone/azure's subscription_id output."
   type        = string
 }
 

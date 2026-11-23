@@ -1,5 +1,5 @@
 variable "subscription_id" {
-  description = "The lab subscription the KEK live tests use."
+  description = "The dedicated lab subscription the KEK live tests use: landing-zone/azure's subscription_id output."
   type        = string
 }
 
