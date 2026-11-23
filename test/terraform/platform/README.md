@@ -137,14 +137,14 @@ delete is refused proves `serve` needs none (decision 0005).
 ## Worker hosting acceptance
 
 The [managed Kubernetes worker hosting contract](../../../docs/implementation/worker-hosting-contracts.md)
-specifies the future `workers/{aws,azure,google}` roots and their shared modules
+specifies the `workers/{aws,azure,google}` roots and their shared modules
 under `deploy/terraform/modules/workers/{aws,azure,google}`. Each cloud delivery
-must include both its module and its real acceptance root, with separate
+includes both its module and its real acceptance root, with separate
 cluster/deployment state, reference-only Secrets, verified immutable artifacts,
 explicit cloud IDs, owner/TTL inventory and ordered destroy plus cloud absence
-readback. Existing shared infrastructure retains its external ownership. These
-roots are not implemented or proven by this documentation change; their owners
-supply verified provider locks and actual apply/run/destroy instructions.
+readback. Existing shared infrastructure retains its external ownership.
+[`workers/aws`](workers/aws) builds EKS Auto Mode hosting; the Azure and
+Google roots ship with their own deliveries.
 
 The general credential-discovery examples above do not apply to worker roots:
 worker inputs explicitly name the cloud account/subscription/project, tenant
@@ -155,5 +155,5 @@ environment and maintainer approval requirement from ADR 0020.
 The `workers-*` batches of [infraweave-lab](../lab/README.md#managed-cloud-worker-batches)
 apply these roots: each cloud's `cluster/` then `deployment/` stage under one
 owner, with private per-stage state, preflight of credentials and quota before
-any apply, and per-cloud cleanup with cloud readback. Until a cloud's root is
-committed here, its batch fails preflight rather than skipping.
+any apply, and per-cloud cleanup with cloud readback. A batch selecting a cloud
+whose root is not committed here fails preflight rather than skipping.

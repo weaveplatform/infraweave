@@ -336,8 +336,8 @@ manifest mismatch and an untrusted cluster API failing before any scenario;
 a foreign journal refused before destroy; unknown or remaining cloud resources
 never reported absent; interruption stopping owned Terraform; and an existing
 directory never adopted. They are controller evidence, not cloud evidence.
-The `test/terraform/platform/workers` roots ship with their cloud deliveries;
-until then every `workers-*` batch fails preflight. The scenarios prove the
+Each `test/terraform/platform/workers/<cloud>` root ships with its cloud's
+delivery, `aws` first; a batch selecting a cloud without one fails preflight. The scenarios prove the
 attachment and the control plane's pool API beside it; worker execution on
 the cloud pools needs a server endpoint those Pods can reach, which the
 platform scenario at `test/terraform/platform/<cloud>` supplies: one
