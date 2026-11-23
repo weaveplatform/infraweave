@@ -437,7 +437,7 @@ each night against real Amazon S3, Google Cloud Storage and Azure Blob
 Storage, as `serve`'s writer identity, whose delete the cloud must refuse,
 and as the `scheduler`'s deleter, through GitHub's OIDC token with no
 stored key; the issue is per cloud.
-[`test/terraform/cloud`](test/terraform/cloud/README.md) provisions the
+[`test/terraform/platform`](test/terraform/platform/README.md) provisions the
 buckets and the trust. `infraweave-lab.yml` makes private repositories on
 GitHub, GitLab, Bitbucket Cloud, Azure DevOps and a Bitbucket Data Center
 container each night, runs every provider's source contract and a stack

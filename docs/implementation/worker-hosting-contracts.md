@@ -18,9 +18,9 @@ a skipped cloud job cannot complete that delivery.
 | Owner | Module or artifact | Acceptance responsibility |
 |---|---|---|
 | [#748](https://github.com/weaveplatform/infraweave/issues/748) | `deploy/helm/infraweave-workers` | One strict values schema, CRDs, controller, scoped RBAC, resources and Pod security contract across clouds; install/upgrade/finalizer proof |
-| [#755](https://github.com/weaveplatform/infraweave/issues/755) | `deploy/terraform/modules/workers/aws` | Ship `test/terraform/cloud/workers/aws`, EKS Auto Mode create and explicit existing EKS cases, exact pins, cloud cleanup/readback |
-| [#756](https://github.com/weaveplatform/infraweave/issues/756) | `deploy/terraform/modules/workers/azure` | Ship `test/terraform/cloud/workers/azure`, AKS create and explicit existing AKS cases, exact pins, cloud cleanup/readback |
-| [#757](https://github.com/weaveplatform/infraweave/issues/757) | `deploy/terraform/modules/workers/google` | Ship `test/terraform/cloud/workers/google`, GKE Autopilot create and explicit existing GKE cases, exact pins, cloud cleanup/readback |
+| [#755](https://github.com/weaveplatform/infraweave/issues/755) | `deploy/terraform/modules/workers/aws` | Ship `test/terraform/platform/workers/aws`, EKS Auto Mode create and explicit existing EKS cases, exact pins, cloud cleanup/readback |
+| [#756](https://github.com/weaveplatform/infraweave/issues/756) | `deploy/terraform/modules/workers/azure` | Ship `test/terraform/platform/workers/azure`, AKS create and explicit existing AKS cases, exact pins, cloud cleanup/readback |
+| [#757](https://github.com/weaveplatform/infraweave/issues/757) | `deploy/terraform/modules/workers/google` | Ship `test/terraform/platform/workers/google`, GKE Autopilot create and explicit existing GKE cases, exact pins, cloud cleanup/readback |
 | [#741](https://github.com/weaveplatform/infraweave/issues/741) | `test/terraform/lab` Kubernetes extension | Local Kubernetes lifecycle and real application execution; supplies no managed-cloud evidence |
 | [#758](https://github.com/weaveplatform/infraweave/issues/758) | Existing lab lifecycle extended to cloud roots | Common manifest validation, private journals, failure/interruption cleanup, two-owner isolation and evidence retention |
 | [#759](https://github.com/weaveplatform/infraweave/issues/759) | Concurrent acceptance through those roots | Distinct stable pools executing simultaneously on all three clouds, selected-pool loss with no fallback, complete cleanup |

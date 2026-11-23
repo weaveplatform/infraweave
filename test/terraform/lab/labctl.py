@@ -18,7 +18,7 @@ import uuid
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
-ROOT = HERE / "platform"
+ROOT = HERE / "services"
 OWNER_LABEL = "io.infraweave.lab.owner"
 OWNER_PATTERN = re.compile(r"iw-lab-[a-z0-9-]{1,60}\Z")
 TERRAFORM_TIMEOUT = 600

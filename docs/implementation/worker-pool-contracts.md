@@ -617,7 +617,7 @@ requires explicit managed-profile admission and node-capacity evidence;
 emptyDir size, resource requests/limits and available storage are distinct.
 
 Worker-hosting Terraform modules live at `deploy/terraform/modules/workers/{aws,azure,google}`;
-acceptance roots at `test/terraform/cloud/workers/{aws,azure,google}` integrate
+acceptance roots at `test/terraform/platform/workers/{aws,azure,google}` integrate
 `test/terraform/lab`. Modules take existing server HTTPS endpoint, cluster/create
 network inputs, cluster ID, namespace, chart/image pins, desired pool capacity
 and existing credential references. They output cluster/namespace/pool-binding

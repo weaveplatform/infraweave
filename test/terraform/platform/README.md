@@ -28,7 +28,7 @@ other root created. State is local and ignored; the provider lock files are
 committed, so every machine resolves the same provider builds.
 
 ```sh
-cd test/terraform/cloud/objectstore/google   # or aws, azure
+cd test/terraform/platform/objectstore/google   # or aws, azure
 terraform init
 terraform plan -out=lab.tfplan
 terraform apply lab.tfplan

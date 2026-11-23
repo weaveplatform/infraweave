@@ -241,7 +241,7 @@ chart/config/CRD/secret-reference contract is [worker pool contracts](../../impl
 The [managed Kubernetes hosting contract](../../implementation/worker-hosting-contracts.md)
 settles shared semantic inputs/outputs, explicit cloud IDs, secret transport,
 managed-profile compatibility and cleanup ownership. Every cloud delivery ships
-its `test/terraform/cloud/workers/{aws,azure,google}` acceptance root calling the
+its `test/terraform/platform/workers/{aws,azure,google}` acceptance root calling the
 shared module in the same PR; modules alone do not complete cloud delivery.
 Cluster infrastructure and worker deployment use separate state so finalizers,
 protocol deregistration and ownership release finish before cluster teardown.
@@ -264,7 +264,7 @@ runner CLIs and explicit version overrides; Terraform acceptance infrastructure
 is not a replacement tool-image build.
 
 Local Kubernetes infrastructure extends `test/terraform/lab`; real-cloud roots
-are `test/terraform/cloud/workers/{aws,azure,google}`. Retain isolated owner/state,
+are `test/terraform/platform/workers/{aws,azure,google}`. Retain isolated owner/state,
 exact version evidence and destroy plus real cloud absence checks, including
 another owner's survival. k3s success cannot stand in for managed-cloud proof.
 

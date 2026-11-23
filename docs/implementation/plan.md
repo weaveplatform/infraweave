@@ -2491,7 +2491,7 @@ The architecture contract does not mark the downstream runtime delivered.
    public slots 1/2/2; a four-worker lab uses an explicit grant. Terraform
    provisioner, scoped controller management, pool protocol and run credentials
    stay distinct. Workload credentials and full server deployment stay later.
-   Acceptance roots are `test/terraform/cloud/workers/{aws,azure,google}` using
+   Acceptance roots are `test/terraform/platform/workers/{aws,azure,google}` using
    the existing `test/terraform/lab` ownership/evidence/cleanup lifecycle.
 
 **Exit criteria**
