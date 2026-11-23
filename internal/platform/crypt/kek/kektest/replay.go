@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -49,8 +50,43 @@ func canonical(body []byte) string {
 
 func key(method, path, body string) string { return method + " " + path + " " + body }
 
+// apiVersion is the syntax of Key Vault's api-version query parameter: a
+// date, or the major.minor of its earlier versions, either one possibly a
+// preview.
+var apiVersion = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}|\d+\.\d+)(-preview(\.\d+)?)?$`)
+
+// unversioned is uri with the value of its api-version query parameter
+// elided and the rest of it as given. The SDK chooses the service API
+// version, and a release moves its default without any change in what
+// infraweave asks of Key Vault, so a replay matches the parameter's
+// presence but not its value; a fixture keeps the version it was
+// recorded at. ok is false when the parameter repeats or names no
+// version.
+func unversioned(uri string) (string, bool) {
+	path, query, found := strings.Cut(uri, "?")
+	if !found {
+		return uri, true
+	}
+	params := strings.Split(query, "&")
+	seen := false
+	for i, param := range params {
+		name, value, _ := strings.Cut(param, "=")
+		if n, err := url.QueryUnescape(name); err != nil || n != "api-version" {
+			continue
+		}
+		v, err := url.QueryUnescape(value)
+		if seen || err != nil || !apiVersion.MatchString(v) {
+			return uri, false
+		}
+		seen = true
+		params[i] = "api-version=*"
+	}
+	return path + "?" + strings.Join(params, "&"), true
+}
+
 // Replay serves the exchanges in file, matching each request by method,
-// path and query, and body. Requests that match alike get the exchanges
+// path and query, and body, with any api-version matched by its presence
+// and syntax but not its value. Requests that match alike get the exchanges
 // recorded for them in order, the last one again once they run out: Key
 // Vault's challenge answers a request 401 and its identical retry 200. A
 // request with no recorded exchange fails t.
@@ -66,14 +102,24 @@ func Replay(t *testing.T, file string, tls bool) *httptest.Server {
 	}
 	recorded := map[string][]Exchange{}
 	for _, e := range exchanges {
-		k := key(e.Method, e.Path, e.Body)
+		path, ok := unversioned(e.Path)
+		if !ok {
+			t.Fatalf("%s: %s names no single well-formed api-version", file, e.Path)
+		}
+		k := key(e.Method, path, e.Body)
 		recorded[k] = append(recorded[k], e)
 	}
 	var mu sync.Mutex
 	r := chi.NewRouter()
 	r.HandleFunc("/*", func(w http.ResponseWriter, req *http.Request) {
 		body, _ := io.ReadAll(req.Body)
-		k := key(req.Method, req.URL.RequestURI(), canonical(body))
+		path, ok := unversioned(req.URL.RequestURI())
+		if !ok {
+			t.Errorf("%s %s names no single well-formed api-version", req.Method, req.URL.RequestURI())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		k := key(req.Method, path, canonical(body))
 		mu.Lock()
 		queue, ok := recorded[k]
 		var e Exchange
