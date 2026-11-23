@@ -10,8 +10,10 @@ Feature: Initialization commands in Kubernetes helper Pods
   call's arguments reach the helper only through its attached standard
   input, so they appear in no Pod; the run's secrets reach no helper at
   all. A helper Pod is gone once its call ends, and a call that outlasts
-  the policy's deadline fails the run in PREPARING and leaves none. Each
-  slot's launcher admits a run's token against the server's run token keys
+  the policy's deadline, or whose helper Pod's own active deadline ends
+  its command, fails the run in PREPARING and leaves none, even under a
+  policy that denies only when the command exits zero. Each slot's
+  launcher admits a run's token against the server's run token keys
   before the policy runs, and the policy verifies the token again against
   the issuer, audience and keys it was admitted against.
   ref: decision 0009
@@ -55,7 +57,7 @@ Feature: Initialization commands in Kubernetes helper Pods
       deny contains "Helper saw a secret" if { contains(probe.stdout, "s3cr3t") }
       deny contains "Helper saw its request" if { contains(probe.stdout, input.run.token) }
       deny contains "Slow verifier ran" if {
-        input.static_run_environment.stack_slug == "slow"
+        input.static_run_environment.stack_slug in {"slow", "deadline"}
         exec(["sleep", "55"]).status == 0
       }
       """
@@ -87,5 +89,18 @@ Feature: Initialization commands in Kubernetes helper Pods
     And token "h" eventually reads the run "run" in the state "FAILED" through B
     And the answer's history is the states "QUEUED, READY, PREPARING, FAILED"
     And the answer's last state transition's note is "worker initialization policy evaluation failed: the initialization command did not finish within its deadline"
+    And the run "run" eventually has no initialization command Pod
+    And the run "run" eventually has no Pod
+
+  @op:runTrigger @case:failure
+  Scenario: An initialization command its helper Pod's active deadline ends fails the run in PREPARING under a policy that denies only on success
+    Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Deadline","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}","workerPool":"{build}","vendorConfig":{"opentofu":{}}},"manageState":true}' through B
+    When token "h" sends "POST /api/v1/stacks/deadline/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "run"
+    And the run "run" eventually runs an initialization command Pod
+    And the active deadline of the run "run"'s initialization command Pod ends it
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, FAILED"
+    And the answer's last state transition's note is "worker initialization policy evaluation failed: the initialization command's helper failed"
     And the run "run" eventually has no initialization command Pod
     And the run "run" eventually has no Pod

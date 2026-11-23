@@ -19,10 +19,11 @@
 // remaining deadline, with at most 1 MiB of each stream per call and 4
 // MiB across the evaluation, all checked before any chunk is kept. A
 // command's exit status, 127 when it cannot start, reaches the policy
-// with its output. A call beyond its bounds, a timeout, a cancellation,
-// output beyond its bounds, an image that cannot be pulled and a helper
-// that fails end the helper and stop the evaluation with an error whose
-// text names no argument, output or image.
+// with its output only when the command ended by itself. A call beyond
+// its bounds, a timeout, a cancellation, output beyond its bounds, an
+// image that cannot be pulled and a helper that fails, also one stopped
+// before its command ends, end the helper and stop the evaluation with an
+// error whose text names no argument, output or image.
 //
 // ref: decision 0009 § "The worker-side initialization policy"
 // ref: docs/implementation/worker-pool-contracts.md § "Worker initialization and signed runs"

@@ -51,7 +51,8 @@
 // Command runs an initialization command's helper in a Pod of its own,
 // labelled for its worker and run with labels no run Pod carries: the
 // same fixed security, owner, pool resources, placement and pull
-// secrets, an active deadline of the call's remaining time, a bootstrap
+// secrets, an active deadline ten seconds beyond the call's remaining
+// time, so that the call's own deadline ends it first, a bootstrap
 // that receives only the executable and an empty workspace, and a helper
 // container of the run's image that mounts the executable read-only and
 // nothing else and starts it as runner command. The request reaches the

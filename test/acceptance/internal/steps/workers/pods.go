@@ -423,3 +423,43 @@ func (c *controllerSteps) noHelper(ctx context.Context, run string) error {
 	}
 	return nil
 }
+
+// deadlineEnds lowers the active deadline of each running helper Pod of
+// the run kept as run to one second, already past, so kubelet stops the
+// helper while its command runs, and waits until kubelet reports, in the
+// Pod's DeadlineExceeded event, which outlives the Pod, that the deadline
+// ended it.
+func (c *controllerSteps) deadlineEnds(ctx context.Context, run string) error {
+	ended := map[string]string{}
+	for _, ns := range c.order {
+		list, err := c.core.Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: kubernetes.LabelCommandRun + "=" + c.w.IDs[run]})
+		if err != nil {
+			return fmt.Errorf("list Pods: %w", err)
+		}
+		for _, p := range list.Items {
+			if p.Status.Phase != corev1.PodRunning {
+				continue
+			}
+			if _, err := c.core.Pods(ns).Patch(ctx, p.Name, types.MergePatchType, []byte(`{"spec":{"activeDeadlineSeconds":1}}`), metav1.PatchOptions{}); err != nil {
+				return fmt.Errorf("shorten the active deadline of Pod %s: %w", p.Name, err)
+			}
+			ended[p.Name] = ns
+		}
+	}
+	if len(ended) == 0 {
+		return fmt.Errorf("%w: the run %s has no running initialization command Pod", harness.ErrStep, run)
+	}
+	//nolint:wrapcheck // names what it waited for
+	return deps.Eventually(ctx, "kubelet to end the initialization command Pods of "+run+" at their active deadline", func(ctx context.Context) (bool, error) {
+		for name, ns := range ended {
+			events, err := c.core.Events(ns).List(ctx, metav1.ListOptions{FieldSelector: "involvedObject.name=" + name + ",reason=DeadlineExceeded"})
+			if err != nil {
+				return false, fmt.Errorf("list the events of Pod %s: %w", name, err)
+			}
+			if len(events.Items) == 0 {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+}
