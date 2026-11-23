@@ -434,6 +434,10 @@ func (UnimplementedStrict) DefaultPrivateWorkerPoolRunnerImage(context.Context, 
 	return nil, &problem.NotImplementedError{OperationID: "defaultPrivateWorkerPoolRunnerImage", Route: "GET /default-private-worker-pool-runner-image"}
 }
 
+func (UnimplementedStrict) DefaultPublicWorkerPoolRunnerImage(context.Context, DefaultPublicWorkerPoolRunnerImageRequestObject) (DefaultPublicWorkerPoolRunnerImageResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "defaultPublicWorkerPoolRunnerImage", Route: "GET /default-public-worker-pool-runner-image"}
+}
+
 func (UnimplementedStrict) EvaluateFeatureFlags(context.Context, EvaluateFeatureFlagsRequestObject) (EvaluateFeatureFlagsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "evaluateFeatureFlags", Route: "GET /evaluate-feature-flags"}
 }
@@ -712,6 +716,10 @@ func (UnimplementedStrict) OrganizationAdminGrant(context.Context, OrganizationA
 
 func (UnimplementedStrict) OrganizationUsage(context.Context, OrganizationUsageRequestObject) (OrganizationUsageResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organizationUsage", Route: "GET /organization/usage"}
+}
+
+func (UnimplementedStrict) OutgoingIPAddresses(context.Context, OutgoingIPAddressesRequestObject) (OutgoingIPAddressesResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "outgoingIPAddresses", Route: "GET /outgoing-ip-addresses"}
 }
 
 func (UnimplementedStrict) PersonalApiKeys(context.Context, PersonalApiKeysRequestObject) (PersonalApiKeysResponseObject, error) {
@@ -1552,6 +1560,22 @@ func (UnimplementedStrict) WorkerPoolCreate(context.Context, WorkerPoolCreateReq
 
 func (UnimplementedStrict) WorkerPoolManaged(context.Context, WorkerPoolManagedRequestObject) (WorkerPoolManagedResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerPoolManaged", Route: "GET /worker-pools/managed"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolSearchSchedulableRuns(context.Context, PublicWorkerPoolSearchSchedulableRunsRequestObject) (PublicWorkerPoolSearchSchedulableRunsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolSearchSchedulableRuns", Route: "GET /worker-pools/public/search-schedulable-runs"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolSearchSchedulableRunsSuggestions(context.Context, PublicWorkerPoolSearchSchedulableRunsSuggestionsRequestObject) (PublicWorkerPoolSearchSchedulableRunsSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolSearchSchedulableRunsSuggestions", Route: "GET /worker-pools/public/search-schedulable-runs-suggestions"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolSearchUsers(context.Context, PublicWorkerPoolSearchUsersRequestObject) (PublicWorkerPoolSearchUsersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolSearchUsers", Route: "GET /worker-pools/public/search-users"}
+}
+
+func (UnimplementedStrict) PublicWorkerPoolSearchUsersSuggestions(context.Context, PublicWorkerPoolSearchUsersSuggestionsRequestObject) (PublicWorkerPoolSearchUsersSuggestionsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "publicWorkerPoolSearchUsersSuggestions", Route: "GET /worker-pools/public/search-users-suggestions"}
 }
 
 func (UnimplementedStrict) SearchWorkerPools(context.Context, SearchWorkerPoolsRequestObject) (SearchWorkerPoolsResponseObject, error) {

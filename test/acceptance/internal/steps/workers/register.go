@@ -15,4 +15,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&controllerSteps{w: w, workers: ws}).register(sc)
 	(&launcherSteps{w: w}).register(sc)
 	(&schemaSteps{w: w}).register(sc)
+	(&projectionSteps{w: w}).register(sc)
 }

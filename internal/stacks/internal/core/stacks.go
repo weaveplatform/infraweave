@@ -187,6 +187,7 @@ type Deps struct {
 	Bindings accessapi.Bindings
 	Grants   accessapi.Grants
 	Pools    workersapi.Pools
+	Users    UserStore
 	Events   Events
 	Now      func() time.Time
 }
@@ -202,6 +203,7 @@ type Service struct {
 	bindings accessapi.Bindings
 	grants   accessapi.Grants
 	pools    workersapi.Pools
+	users    UserStore
 	events   Events
 	now      func() time.Time
 
@@ -221,7 +223,7 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, authz: d.Authz, bindings: d.Bindings,
-		grants: d.Grants, pools: d.Pools, events: d.Events, now: now,
+		grants: d.Grants, pools: d.Pools, users: d.Users, events: d.Events, now: now,
 	}
 }
 

@@ -327,6 +327,35 @@ func (s *Service) contents(ctx context.Context) ([]features.Tier, error) {
 	return slices.Clone(ts), nil
 }
 
+// Quota is acct's effective value of limit, the one CheckLimit applies:
+// none while billing is off or for an organization without an
+// entitlement, otherwise the lower of org's pool and acct's ceiling, the
+// pool when they are equal.
+func (s *Service) Quota(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string) (featuresapi.Quota, error) {
+	on, err := s.Billing(ctx)
+	if err != nil || !on {
+		return featuresapi.Quota{}, err
+	}
+	e, err := s.Entitlement(ctx, org)
+	if errors.Is(err, featuresapi.ErrNotFound) {
+		return featuresapi.Quota{}, nil
+	}
+	if err != nil {
+		return featuresapi.Quota{}, err
+	}
+	pool, pooled := e.Limits[limit]
+	ceiling, capped, err := s.store.AccountLimit(ctx, acct, limit)
+	switch {
+	case err != nil:
+		return featuresapi.Quota{}, err //nolint:wrapcheck // as above
+	case pooled && (!capped || pool <= ceiling):
+		return featuresapi.Quota{Value: &pool, Pooled: true}, nil
+	case capped:
+		return featuresapi.Quota{Value: &ceiling}, nil
+	}
+	return featuresapi.Quota{}, nil
+}
+
 // CheckLimit admits one more limit in acct, or refuses it with a
 // *featuresapi.LimitError; with billing off it admits everything. The pool
 // is checked first, so a creation that passes both names the

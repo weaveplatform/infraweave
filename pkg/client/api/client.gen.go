@@ -6613,7 +6613,8 @@ type ProposeWithOverridesRequest struct {
 
 // PublicWorkerPool PublicWorkerPool contains details of public worker pool for account.
 type PublicWorkerPool struct {
-	// BusyWorkers Number of currently busy workers in the public worker pool for this account.
+	// BusyWorkers Number of this account's runs that a public worker holds now, among the runs
+	// of stacks in the spaces the caller may read.
 	BusyWorkers int32 `json:"busyWorkers"`
 
 	// IntentProjects List of intent projects using public WorkerPool for this account.
@@ -6622,16 +6623,25 @@ type PublicWorkerPool struct {
 	// IntentProjectsCount Count of intent projects using public WorkerPool for this account.
 	IntentProjectsCount int32 `json:"intentProjectsCount"`
 
-	// Parallelism Maximum number of simultaneously executing runs on the public worker pool for account.
-	Parallelism int32 `json:"parallelism"`
+	// Parallelism Maximum number of simultaneously executing runs on the public worker pool for
+	// this account: the lower of the organization's public worker slots and the
+	// account's own ceiling. Null when neither bounds it, including while billing
+	// is off. Zero means no public run can start. It is a quota, not a count of free
+	// slots or of registered workers.
+	Parallelism *int64 `json:"parallelism"`
 
-	// PendingRuns Number of runs on the public worker ready for processing for this account.
+	// PendingRuns Number of this account's runs waiting for a public worker, among the runs of
+	// stacks in the spaces the caller may read. Runs stay pending while public
+	// execution is switched off.
 	PendingRuns int32 `json:"pendingRuns"`
 
-	// SchedulableRunsCount Count of schedulable runs on the public worker pool workers for this account.
+	// SchedulableRunsCount Count of the pending runs a public worker may claim now: the runs
+	// `GET /worker-pools/public/search-schedulable-runs` lists. Zero while public
+	// execution is switched off.
 	SchedulableRunsCount int32 `json:"schedulableRunsCount"`
 
-	// UsersCount Count of users on the public worker pool workers for this account.
+	// UsersCount Count of this account's stacks that select the public worker pool, in the
+	// spaces the caller may read.
 	UsersCount int32 `json:"usersCount"`
 }
 
@@ -10615,7 +10625,8 @@ type WorkerPool struct {
 	// NotificationCount Number of the new worker pool notifications.
 	NotificationCount int32 `json:"notificationCount"`
 
-	// PendingRuns Number of runs ready for processing by this WorkerPool.
+	// PendingRuns Number of runs waiting for a worker of this WorkerPool, among the runs of
+	// stacks in the spaces the caller may read.
 	PendingRuns int32 `json:"pendingRuns"`
 
 	// PreparingTimeoutSeconds The effective Preparing-phase timeout in seconds: the pool's override, or the platform
@@ -10630,7 +10641,8 @@ type WorkerPool struct {
 	// ScansCount Count of scans using this WorkerPool.
 	ScansCount int32 `json:"scansCount"`
 
-	// SchedulableRunsCount Count of schedulable runs on the worker pool workers for this account.
+	// SchedulableRunsCount Count of the pending runs a worker of this WorkerPool may claim: the runs
+	// `GET /worker-pools/{workerPoolId}/search-schedulable-runs` lists.
 	SchedulableRunsCount int32 `json:"schedulableRunsCount"`
 
 	// Space ID of the space this WorkerPool belongs to.
@@ -10642,11 +10654,11 @@ type WorkerPool struct {
 	// UpdatedAt UpdatedAt is unix timestamp (in seconds) at which the worker pool was updated.
 	UpdatedAt int32 `json:"updatedAt"`
 
-	// Users List of users (modules or stacks) of this WorkerPool.
-	// It will return an empty result for the public worker pool.
+	// Users List of users (modules or stacks) of this WorkerPool, in the spaces the
+	// caller may read, by slug.
 	Users []WorkerPoolUser `json:"users"`
 
-	// UsersCount Count of users on the public worker pool workers for this account.
+	// UsersCount Count of the stacks that select this WorkerPool, in the spaces the caller may read.
 	UsersCount int32 `json:"usersCount"`
 
 	// WorkerPool A reference to a WorkerPool; fetch it with GET /worker-pools/{workerPoolId}.
@@ -10772,44 +10784,45 @@ type WorkerPoolUserConnection struct {
 // WorkerStatus defines model for WorkerStatus.
 type WorkerStatus string
 
-// WorkerUsage defines model for WorkerUsage.
+// WorkerUsage The account's private worker usage for a billing cycle. A cycle is a calendar
+// month in UTC. The contract is the account's private-workers entitlement; no
+// billed percentile applies to it.
 type WorkerUsage struct {
 	// Burst Uses the current contract's limit and percentile, including for past cycles.
 	// `budgetMinutes` applies the current billed percentile to the selected cycle's
-	// duration.
+	// duration. Absent when the contract has no percentile.
 	Burst *WorkerUsageBurst `json:"burst,omitempty"`
 
 	// ConcurrencyAtContractedPercentile Concurrency at the percentile the contract bills on (contractedPercentile).
-	// Null when there is no contract or the contract has no percentile, matching
-	// contractedPercentile.
+	// Null when the contract has no percentile, matching contractedPercentile.
 	ConcurrencyAtContractedPercentile *int32 `json:"concurrencyAtContractedPercentile,omitempty"`
 
-	// ContractedLimit Worker concurrency limit in the current contract. Null when the account
-	// has no contract or no limit. Past cycles also use this current value,
-	// which may differ from the limit in effect during that cycle.
+	// ContractedLimit The account's private worker limit: the lower of the organization's
+	// private-workers limit and the account's own ceiling. Null when neither
+	// bounds it, including while billing is off. Past cycles also use this
+	// current value, which may differ from the limit in effect during that cycle.
 	ContractedLimit *int32 `json:"contractedLimit,omitempty"`
 
-	// ContractedPercentile Billed percentile in the current contract, such as 95. Null when the
-	// account has no contract. Past cycles also use this current value.
+	// ContractedPercentile Billed percentile in the current contract, such as 95. Null, since the
+	// private-workers entitlement bills no percentile.
 	ContractedPercentile *int32           `json:"contractedPercentile,omitempty"`
 	Cycle                WorkerUsageCycle `json:"cycle"`
 
-	// MultiAccountContract True when contractedLimit is not specific to this account: other accounts
-	// draw on the same limit, so this account's usage is only part of what counts
-	// against it.
+	// MultiAccountContract True when contractedLimit is the organization's limit rather than this
+	// account's ceiling: other accounts draw on the same limit, so this account's
+	// usage is only part of what counts against it.
 	MultiAccountContract bool `json:"multiAccountContract"`
 
 	// SelectableCycles Every cycle `cyclesAgo` can select right now, newest first, starting with
-	// the current cycle. The list stops at the oldest retained cycle or at the
-	// cycle the account was created or the contract started in, whichever is
-	// newer. Past dates are extrapolated from the current contract, and the list
-	// shifts by one when a new cycle starts.
+	// the current cycle. The list stops at the fifth cycle before the current one
+	// or at the oldest cycle the pool samples' retention still covers, whichever
+	// is newer, and shifts by one when a new cycle starts.
 	SelectableCycles []WorkerUsageCycle `json:"selectableCycles"`
 }
 
 // WorkerUsageBurst Uses the current contract's limit and percentile, including for past cycles.
 // `budgetMinutes` applies the current billed percentile to the selected cycle's
-// duration.
+// duration. Absent when the contract has no percentile.
 type WorkerUsageBurst struct {
 	// BudgetMinutes How many minutes of the full cycle may exceed the contracted worker limit.
 	BudgetMinutes int32 `json:"budgetMinutes"`
@@ -10841,16 +10854,8 @@ type WorkerUsageCycle struct {
 type WorkerUsageInput struct {
 	// CyclesAgo Number of billing cycles before the current cycle. Null means 0. 0 selects
 	// the current cycle to date; 1 selects the most recent completed cycle.
-	// Valid values range from 0 through 5.
-	//
-	// The rollup retains the current monthly partition and the six preceding
-	// partitions. An anniversary-based billing cycle can span two partitions,
-	// so selecting cycle 6 could read a dropped partition as zero.
-	//
-	// A past cycle that ends before the account was created, or before the contract
-	// or subscription started, returns an error. The cycle those dates fall in stays
-	// selectable. The current cycle is never checked. A valid cycle older than the
-	// rollup returns zeros, which is indistinguishable from no usage.
+	// A value that is not the `cyclesAgo` of one of `selectableCycles` is
+	// refused.
 	CyclesAgo *int32 `json:"cyclesAgo,omitempty"`
 }
 
@@ -12792,6 +12797,26 @@ type WorkerPoolManagedParams struct {
 	ClusterID   string `form:"clusterID" json:"clusterID"`
 	Namespace   string `form:"namespace" json:"namespace"`
 	ResourceUID string `form:"resourceUID" json:"resourceUID"`
+}
+
+// PublicWorkerPoolSearchSchedulableRunsParams defines parameters for PublicWorkerPoolSearchSchedulableRuns.
+type PublicWorkerPoolSearchSchedulableRunsParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestionsParams defines parameters for PublicWorkerPoolSearchSchedulableRunsSuggestions.
+type PublicWorkerPoolSearchSchedulableRunsSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
+}
+
+// PublicWorkerPoolSearchUsersParams defines parameters for PublicWorkerPoolSearchUsers.
+type PublicWorkerPoolSearchUsersParams struct {
+	Input SearchInput `form:"input" json:"input"`
+}
+
+// PublicWorkerPoolSearchUsersSuggestionsParams defines parameters for PublicWorkerPoolSearchUsersSuggestions.
+type PublicWorkerPoolSearchUsersSuggestionsParams struct {
+	Input SearchSuggestionsInput `form:"input" json:"input"`
 }
 
 // WorkerPoolDeleteParams defines parameters for WorkerPoolDelete.
@@ -16413,6 +16438,13 @@ type ClientInterface interface {
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DefaultPublicWorkerPoolRunnerImage Get Default Public Worker Pool Runner Image
+	//
+	// The account's default runner image for the public worker pool, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image, and a public launcher's own default runner image overrides those vendor defaults.
+	//
+	// Corresponds with GET /default-public-worker-pool-runner-image (the `DefaultPublicWorkerPoolRunnerImage` operationId).
+	DefaultPublicWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EvaluateFeatureFlags Evaluate Feature Flags
 	//
 	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
@@ -17189,6 +17221,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /organization/usage (the `OrganizationUsage` operationId).
 	OrganizationUsage(ctx context.Context, params *OrganizationUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OutgoingIPAddresses List Outgoing IP Addresses
+	//
+	// The addresses the installation's operator declares public worker pool traffic leaves from, as canonical IPv4 and IPv6 literals. The list is empty while public execution is switched off or the operator declares none. It never names the addresses of private workers.
+	//
+	// Corresponds with GET /outgoing-ip-addresses (the `OutgoingIPAddresses` operationId).
+	OutgoingIPAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PersonalApiKeys List Personal API Keys
 	//
@@ -19712,6 +19751,34 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
 	WorkerPoolManaged(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolSearchSchedulableRuns Public worker pool search schedulable runs
+	//
+	// Search this account's runs a public worker may claim now, in the spaces the caller may read. Without an order they follow the claim order, oldest first; each run's position counts from 1 in that order, among the runs the caller may read, when the request is answered. Nothing is listed while public execution is switched off.
+	//
+	// Corresponds with GET /worker-pools/public/search-schedulable-runs (the `PublicWorkerPoolSearchSchedulableRuns` operationId).
+	PublicWorkerPoolSearchSchedulableRuns(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolSearchSchedulableRunsSuggestions Public worker pool search schedulable runs suggestions
+	//
+	// Search Runs Suggestions for the public worker pool.
+	//
+	// Corresponds with GET /worker-pools/public/search-schedulable-runs-suggestions (the `PublicWorkerPoolSearchSchedulableRunsSuggestions` operationId).
+	PublicWorkerPoolSearchSchedulableRunsSuggestions(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolSearchUsers Public worker pool search users
+	//
+	// Search this account's stacks that select the public worker pool, in the spaces the caller may read.
+	//
+	// Corresponds with GET /worker-pools/public/search-users (the `PublicWorkerPoolSearchUsers` operationId).
+	PublicWorkerPoolSearchUsers(ctx context.Context, params *PublicWorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PublicWorkerPoolSearchUsersSuggestions Public worker pool search users suggestions
+	//
+	// Search stacks suggestions using the public worker pool.
+	//
+	// Corresponds with GET /worker-pools/public/search-users-suggestions (the `PublicWorkerPoolSearchUsersSuggestions` operationId).
+	PublicWorkerPoolSearchUsersSuggestions(ctx context.Context, params *PublicWorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SearchWorkerPoolsWithBody Search Worker Pools
 	//
@@ -22549,6 +22616,23 @@ func (c *Client) DefaultPrivateWorkerPoolRunnerImage(ctx context.Context, reqEdi
 	return c.Client.Do(req)
 }
 
+// DefaultPublicWorkerPoolRunnerImage Get Default Public Worker Pool Runner Image
+//
+// The account's default runner image for the public worker pool, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image, and a public launcher's own default runner image overrides those vendor defaults.
+//
+// Corresponds with GET /default-public-worker-pool-runner-image (the `DefaultPublicWorkerPoolRunnerImage` operationId).
+func (c *Client) DefaultPublicWorkerPoolRunnerImage(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDefaultPublicWorkerPoolRunnerImageRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // EvaluateFeatureFlags Evaluate Feature Flags
 //
 // An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
@@ -24256,6 +24340,23 @@ func (c *Client) OrganizationAdminGrant(ctx context.Context, member Organization
 // Corresponds with GET /organization/usage (the `OrganizationUsage` operationId).
 func (c *Client) OrganizationUsage(ctx context.Context, params *OrganizationUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOrganizationUsageRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OutgoingIPAddresses List Outgoing IP Addresses
+//
+// The addresses the installation's operator declares public worker pool traffic leaves from, as canonical IPv4 and IPv6 literals. The list is empty while public execution is switched off or the operator declares none. It never names the addresses of private workers.
+//
+// Corresponds with GET /outgoing-ip-addresses (the `OutgoingIPAddresses` operationId).
+func (c *Client) OutgoingIPAddresses(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOutgoingIPAddressesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -29809,6 +29910,74 @@ func (c *Client) WorkerPoolCreate(ctx context.Context, params *WorkerPoolCreateP
 // Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
 func (c *Client) WorkerPoolManaged(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerPoolManagedRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolSearchSchedulableRuns Public worker pool search schedulable runs
+//
+// Search this account's runs a public worker may claim now, in the spaces the caller may read. Without an order they follow the claim order, oldest first; each run's position counts from 1 in that order, among the runs the caller may read, when the request is answered. Nothing is listed while public execution is switched off.
+//
+// Corresponds with GET /worker-pools/public/search-schedulable-runs (the `PublicWorkerPoolSearchSchedulableRuns` operationId).
+func (c *Client) PublicWorkerPoolSearchSchedulableRuns(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolSearchSchedulableRunsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestions Public worker pool search schedulable runs suggestions
+//
+// Search Runs Suggestions for the public worker pool.
+//
+// Corresponds with GET /worker-pools/public/search-schedulable-runs-suggestions (the `PublicWorkerPoolSearchSchedulableRunsSuggestions` operationId).
+func (c *Client) PublicWorkerPoolSearchSchedulableRunsSuggestions(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolSearchSchedulableRunsSuggestionsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolSearchUsers Public worker pool search users
+//
+// Search this account's stacks that select the public worker pool, in the spaces the caller may read.
+//
+// Corresponds with GET /worker-pools/public/search-users (the `PublicWorkerPoolSearchUsers` operationId).
+func (c *Client) PublicWorkerPoolSearchUsers(ctx context.Context, params *PublicWorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolSearchUsersRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PublicWorkerPoolSearchUsersSuggestions Public worker pool search users suggestions
+//
+// Search stacks suggestions using the public worker pool.
+//
+// Corresponds with GET /worker-pools/public/search-users-suggestions (the `PublicWorkerPoolSearchUsersSuggestions` operationId).
+func (c *Client) PublicWorkerPoolSearchUsersSuggestions(ctx context.Context, params *PublicWorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPublicWorkerPoolSearchUsersSuggestionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -35629,6 +35798,33 @@ func NewDefaultPrivateWorkerPoolRunnerImageRequest(server string) (*http.Request
 	return req, nil
 }
 
+// NewDefaultPublicWorkerPoolRunnerImageRequest constructs an http.Request for the DefaultPublicWorkerPoolRunnerImage method
+func NewDefaultPublicWorkerPoolRunnerImageRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/default-public-worker-pool-runner-image")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewEvaluateFeatureFlagsRequest constructs an http.Request for the EvaluateFeatureFlags method
 func NewEvaluateFeatureFlagsRequest(server string, params *EvaluateFeatureFlagsParams) (*http.Request, error) {
 	var err error
@@ -39123,6 +39319,33 @@ func NewOrganizationUsageRequest(server string, params *OrganizationUsageParams)
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOutgoingIPAddressesRequest constructs an http.Request for the OutgoingIPAddresses method
+func NewOutgoingIPAddressesRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/outgoing-ip-addresses")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -50807,6 +51030,198 @@ func NewWorkerPoolManagedRequest(server string, params *WorkerPoolManagedParams)
 	return req, nil
 }
 
+// NewPublicWorkerPoolSearchSchedulableRunsRequest constructs an http.Request for the PublicWorkerPoolSearchSchedulableRuns method
+func NewPublicWorkerPoolSearchSchedulableRunsRequest(server string, params *PublicWorkerPoolSearchSchedulableRunsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/public/search-schedulable-runs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPublicWorkerPoolSearchSchedulableRunsSuggestionsRequest constructs an http.Request for the PublicWorkerPoolSearchSchedulableRunsSuggestions method
+func NewPublicWorkerPoolSearchSchedulableRunsSuggestionsRequest(server string, params *PublicWorkerPoolSearchSchedulableRunsSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/public/search-schedulable-runs-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPublicWorkerPoolSearchUsersRequest constructs an http.Request for the PublicWorkerPoolSearchUsers method
+func NewPublicWorkerPoolSearchUsersRequest(server string, params *PublicWorkerPoolSearchUsersParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/public/search-users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPublicWorkerPoolSearchUsersSuggestionsRequest constructs an http.Request for the PublicWorkerPoolSearchUsersSuggestions method
+func NewPublicWorkerPoolSearchUsersSuggestionsRequest(server string, params *PublicWorkerPoolSearchUsersSuggestionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/worker-pools/public/search-users-suggestions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryParamBuf, err := json.Marshal(params.Input); err != nil {
+			return nil, err
+		} else {
+			queryValues.Add("input", string(queryParamBuf))
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchWorkerPoolsRequest calls the generic SearchWorkerPools builder with application/json body
 func NewSearchWorkerPoolsRequest(server string, body SearchWorkerPoolsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -53126,6 +53541,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /default-private-worker-pool-runner-image (the `DefaultPrivateWorkerPoolRunnerImage` operationId).
 	DefaultPrivateWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPrivateWorkerPoolRunnerImageResponse, error)
 
+	// DefaultPublicWorkerPoolRunnerImageWithResponse Get Default Public Worker Pool Runner Image
+	//
+	// The account's default runner image for the public worker pool, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image, and a public launcher's own default runner image overrides those vendor defaults.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /default-public-worker-pool-runner-image (the `DefaultPublicWorkerPoolRunnerImage` operationId).
+	DefaultPublicWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPublicWorkerPoolRunnerImageResponse, error)
+
 	// EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
 	//
 	// An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
@@ -53994,6 +54418,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /organization/usage (the `OrganizationUsage` operationId).
 	OrganizationUsageWithResponse(ctx context.Context, params *OrganizationUsageParams, reqEditors ...RequestEditorFn) (*OrganizationUsageResponse, error)
+
+	// OutgoingIPAddressesWithResponse List Outgoing IP Addresses
+	//
+	// The addresses the installation's operator declares public worker pool traffic leaves from, as canonical IPv4 and IPv6 literals. The list is empty while public execution is switched off or the operator declares none. It never names the addresses of private workers.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /outgoing-ip-addresses (the `OutgoingIPAddresses` operationId).
+	OutgoingIPAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OutgoingIPAddressesResponse, error)
 
 	// PersonalApiKeysWithResponse List Personal API Keys
 	//
@@ -56751,6 +57184,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /worker-pools/managed (the `WorkerPoolManaged` operationId).
 	WorkerPoolManagedWithResponse(ctx context.Context, params *WorkerPoolManagedParams, reqEditors ...RequestEditorFn) (*WorkerPoolManagedResponse, error)
+
+	// PublicWorkerPoolSearchSchedulableRunsWithResponse Public worker pool search schedulable runs
+	//
+	// Search this account's runs a public worker may claim now, in the spaces the caller may read. Without an order they follow the claim order, oldest first; each run's position counts from 1 in that order, among the runs the caller may read, when the request is answered. Nothing is listed while public execution is switched off.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/public/search-schedulable-runs (the `PublicWorkerPoolSearchSchedulableRuns` operationId).
+	PublicWorkerPoolSearchSchedulableRunsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchSchedulableRunsResponse, error)
+
+	// PublicWorkerPoolSearchSchedulableRunsSuggestionsWithResponse Public worker pool search schedulable runs suggestions
+	//
+	// Search Runs Suggestions for the public worker pool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/public/search-schedulable-runs-suggestions (the `PublicWorkerPoolSearchSchedulableRunsSuggestions` operationId).
+	PublicWorkerPoolSearchSchedulableRunsSuggestionsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse, error)
+
+	// PublicWorkerPoolSearchUsersWithResponse Public worker pool search users
+	//
+	// Search this account's stacks that select the public worker pool, in the spaces the caller may read.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/public/search-users (the `PublicWorkerPoolSearchUsers` operationId).
+	PublicWorkerPoolSearchUsersWithResponse(ctx context.Context, params *PublicWorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchUsersResponse, error)
+
+	// PublicWorkerPoolSearchUsersSuggestionsWithResponse Public worker pool search users suggestions
+	//
+	// Search stacks suggestions using the public worker pool.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /worker-pools/public/search-users-suggestions (the `PublicWorkerPoolSearchUsersSuggestions` operationId).
+	PublicWorkerPoolSearchUsersSuggestionsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchUsersSuggestionsResponse, error)
 
 	// SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
 	//
@@ -67370,6 +67839,94 @@ func (r DefaultPrivateWorkerPoolRunnerImageResponse) ContentType() string {
 	return ""
 }
 
+// DefaultPublicWorkerPoolRunnerImageResponse200Headers the declared response headers of an HTTP 200 response for DefaultPublicWorkerPoolRunnerImage
+type DefaultPublicWorkerPoolRunnerImageResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// DefaultPublicWorkerPoolRunnerImageResponse429Headers the declared response headers of an HTTP 429 response for DefaultPublicWorkerPoolRunnerImage
+type DefaultPublicWorkerPoolRunnerImageResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// DefaultPublicWorkerPoolRunnerImageResponse503Headers the declared response headers of an HTTP 503 response for DefaultPublicWorkerPoolRunnerImage
+type DefaultPublicWorkerPoolRunnerImageResponse503Headers struct {
+	RetryAfter *int
+}
+
+type DefaultPublicWorkerPoolRunnerImageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *DefaultPublicWorkerPoolRunnerImageResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *DefaultPublicWorkerPoolRunnerImageResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *DefaultPublicWorkerPoolRunnerImageResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DefaultPublicWorkerPoolRunnerImageResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r DefaultPublicWorkerPoolRunnerImageResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r DefaultPublicWorkerPoolRunnerImageResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r DefaultPublicWorkerPoolRunnerImageResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DefaultPublicWorkerPoolRunnerImageResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DefaultPublicWorkerPoolRunnerImageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DefaultPublicWorkerPoolRunnerImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DefaultPublicWorkerPoolRunnerImageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // EvaluateFeatureFlagsResponse200Headers the declared response headers of an HTTP 200 response for EvaluateFeatureFlags
 type EvaluateFeatureFlagsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -74579,6 +75136,94 @@ func (r OrganizationUsageResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OrganizationUsageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OutgoingIPAddressesResponse200Headers the declared response headers of an HTTP 200 response for OutgoingIPAddresses
+type OutgoingIPAddressesResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OutgoingIPAddressesResponse429Headers the declared response headers of an HTTP 429 response for OutgoingIPAddresses
+type OutgoingIPAddressesResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OutgoingIPAddressesResponse503Headers the declared response headers of an HTTP 503 response for OutgoingIPAddresses
+type OutgoingIPAddressesResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OutgoingIPAddressesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OutgoingIPAddressesResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OutgoingIPAddressesResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OutgoingIPAddressesResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OutgoingIPAddressesResponse) GetJSON200() *[]string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OutgoingIPAddressesResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OutgoingIPAddressesResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OutgoingIPAddressesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OutgoingIPAddressesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OutgoingIPAddressesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OutgoingIPAddressesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OutgoingIPAddressesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -95523,6 +96168,358 @@ func (r WorkerPoolManagedResponse) ContentType() string {
 	return ""
 }
 
+// PublicWorkerPoolSearchSchedulableRunsResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolSearchSchedulableRuns
+type PublicWorkerPoolSearchSchedulableRunsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchSchedulableRunsResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolSearchSchedulableRuns
+type PublicWorkerPoolSearchSchedulableRunsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchSchedulableRunsResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolSearchSchedulableRuns
+type PublicWorkerPoolSearchSchedulableRunsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolSearchSchedulableRunsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSchedulableRunsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolSearchSchedulableRunsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolSearchSchedulableRunsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolSearchSchedulableRunsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) GetJSON200() *SearchSchedulableRunsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolSearchSchedulableRunsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolSearchSchedulableRunsSuggestions
+type PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolSearchSchedulableRunsSuggestions
+type PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolSearchSchedulableRunsSuggestions
+type PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PublicWorkerPoolSearchUsersResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolSearchUsers
+type PublicWorkerPoolSearchUsersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchUsersResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolSearchUsers
+type PublicWorkerPoolSearchUsersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchUsersResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolSearchUsers
+type PublicWorkerPoolSearchUsersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolSearchUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchWorkerPoolUsersOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolSearchUsersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolSearchUsersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolSearchUsersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolSearchUsersResponse) GetJSON200() *SearchWorkerPoolUsersOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolSearchUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolSearchUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolSearchUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolSearchUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PublicWorkerPoolSearchUsersSuggestionsResponse200Headers the declared response headers of an HTTP 200 response for PublicWorkerPoolSearchUsersSuggestions
+type PublicWorkerPoolSearchUsersSuggestionsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchUsersSuggestionsResponse429Headers the declared response headers of an HTTP 429 response for PublicWorkerPoolSearchUsersSuggestions
+type PublicWorkerPoolSearchUsersSuggestionsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// PublicWorkerPoolSearchUsersSuggestionsResponse503Headers the declared response headers of an HTTP 503 response for PublicWorkerPoolSearchUsersSuggestions
+type PublicWorkerPoolSearchUsersSuggestionsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type PublicWorkerPoolSearchUsersSuggestionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *SearchSuggestionsOutput
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PublicWorkerPoolSearchUsersSuggestionsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *PublicWorkerPoolSearchUsersSuggestionsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *PublicWorkerPoolSearchUsersSuggestionsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) GetJSON200() *SearchSuggestionsOutput {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PublicWorkerPoolSearchUsersSuggestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SearchWorkerPoolsResponse200Headers the declared response headers of an HTTP 200 response for SearchWorkerPools
 type SearchWorkerPoolsResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -99468,6 +100465,21 @@ func (c *ClientWithResponses) DefaultPrivateWorkerPoolRunnerImageWithResponse(ct
 	return ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp)
 }
 
+// DefaultPublicWorkerPoolRunnerImageWithResponse Get Default Public Worker Pool Runner Image
+//
+// The account's default runner image for the public worker pool, as accountUpdateDefaultWorkerPoolRunnerImages sets it, or the infraweave Terraform runner image when the account sets none. A run without an account default uses its vendor's infraweave runner image, and a public launcher's own default runner image overrides those vendor defaults.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /default-public-worker-pool-runner-image (the `DefaultPublicWorkerPoolRunnerImage` operationId).
+func (c *ClientWithResponses) DefaultPublicWorkerPoolRunnerImageWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DefaultPublicWorkerPoolRunnerImageResponse, error) {
+	rsp, err := c.DefaultPublicWorkerPoolRunnerImage(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDefaultPublicWorkerPoolRunnerImageResponse(rsp)
+}
+
 // EvaluateFeatureFlagsWithResponse Evaluate Feature Flags
 //
 // An empty set: infraweave holds no vendor-set flags. Its own features are the operator's to switch.
@@ -100899,6 +101911,21 @@ func (c *ClientWithResponses) OrganizationUsageWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseOrganizationUsageResponse(rsp)
+}
+
+// OutgoingIPAddressesWithResponse List Outgoing IP Addresses
+//
+// The addresses the installation's operator declares public worker pool traffic leaves from, as canonical IPv4 and IPv6 literals. The list is empty while public execution is switched off or the operator declares none. It never names the addresses of private workers.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /outgoing-ip-addresses (the `OutgoingIPAddresses` operationId).
+func (c *ClientWithResponses) OutgoingIPAddressesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OutgoingIPAddressesResponse, error) {
+	rsp, err := c.OutgoingIPAddresses(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOutgoingIPAddressesResponse(rsp)
 }
 
 // PersonalApiKeysWithResponse List Personal API Keys
@@ -105474,6 +106501,66 @@ func (c *ClientWithResponses) WorkerPoolManagedWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseWorkerPoolManagedResponse(rsp)
+}
+
+// PublicWorkerPoolSearchSchedulableRunsWithResponse Public worker pool search schedulable runs
+//
+// Search this account's runs a public worker may claim now, in the spaces the caller may read. Without an order they follow the claim order, oldest first; each run's position counts from 1 in that order, among the runs the caller may read, when the request is answered. Nothing is listed while public execution is switched off.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/public/search-schedulable-runs (the `PublicWorkerPoolSearchSchedulableRuns` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolSearchSchedulableRunsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchSchedulableRunsResponse, error) {
+	rsp, err := c.PublicWorkerPoolSearchSchedulableRuns(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolSearchSchedulableRunsResponse(rsp)
+}
+
+// PublicWorkerPoolSearchSchedulableRunsSuggestionsWithResponse Public worker pool search schedulable runs suggestions
+//
+// Search Runs Suggestions for the public worker pool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/public/search-schedulable-runs-suggestions (the `PublicWorkerPoolSearchSchedulableRunsSuggestions` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolSearchSchedulableRunsSuggestionsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchSchedulableRunsSuggestionsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse, error) {
+	rsp, err := c.PublicWorkerPoolSearchSchedulableRunsSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolSearchSchedulableRunsSuggestionsResponse(rsp)
+}
+
+// PublicWorkerPoolSearchUsersWithResponse Public worker pool search users
+//
+// Search this account's stacks that select the public worker pool, in the spaces the caller may read.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/public/search-users (the `PublicWorkerPoolSearchUsers` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolSearchUsersWithResponse(ctx context.Context, params *PublicWorkerPoolSearchUsersParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchUsersResponse, error) {
+	rsp, err := c.PublicWorkerPoolSearchUsers(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolSearchUsersResponse(rsp)
+}
+
+// PublicWorkerPoolSearchUsersSuggestionsWithResponse Public worker pool search users suggestions
+//
+// Search stacks suggestions using the public worker pool.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /worker-pools/public/search-users-suggestions (the `PublicWorkerPoolSearchUsersSuggestions` operationId).
+func (c *ClientWithResponses) PublicWorkerPoolSearchUsersSuggestionsWithResponse(ctx context.Context, params *PublicWorkerPoolSearchUsersSuggestionsParams, reqEditors ...RequestEditorFn) (*PublicWorkerPoolSearchUsersSuggestionsResponse, error) {
+	rsp, err := c.PublicWorkerPoolSearchUsersSuggestions(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePublicWorkerPoolSearchUsersSuggestionsResponse(rsp)
 }
 
 // SearchWorkerPoolsWithBodyWithResponse Search Worker Pools
@@ -119222,6 +120309,121 @@ func ParseDefaultPrivateWorkerPoolRunnerImageResponse(rsp *http.Response) (*Defa
 	return response, nil
 }
 
+// ParseDefaultPublicWorkerPoolRunnerImageResponse parses an HTTP response from a DefaultPublicWorkerPoolRunnerImageWithResponse call
+func ParseDefaultPublicWorkerPoolRunnerImageResponse(rsp *http.Response) (*DefaultPublicWorkerPoolRunnerImageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DefaultPublicWorkerPoolRunnerImageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers DefaultPublicWorkerPoolRunnerImageResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers DefaultPublicWorkerPoolRunnerImageResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers DefaultPublicWorkerPoolRunnerImageResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseEvaluateFeatureFlagsResponse parses an HTTP response from a EvaluateFeatureFlagsWithResponse call
 func ParseEvaluateFeatureFlagsResponse(rsp *http.Response) (*EvaluateFeatureFlagsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -128386,6 +129588,121 @@ func ParseOrganizationUsageResponse(rsp *http.Response) (*OrganizationUsageRespo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OrganizationUsageResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOutgoingIPAddressesResponse parses an HTTP response from a OutgoingIPAddressesWithResponse call
+func ParseOutgoingIPAddressesResponse(rsp *http.Response) (*OutgoingIPAddressesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OutgoingIPAddressesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OutgoingIPAddressesResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OutgoingIPAddressesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OutgoingIPAddressesResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -155216,6 +156533,466 @@ func ParseWorkerPoolManagedResponse(rsp *http.Response) (*WorkerPoolManagedRespo
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerPoolManagedResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolSearchSchedulableRunsResponse parses an HTTP response from a PublicWorkerPoolSearchSchedulableRunsWithResponse call
+func ParsePublicWorkerPoolSearchSchedulableRunsResponse(rsp *http.Response) (*PublicWorkerPoolSearchSchedulableRunsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolSearchSchedulableRunsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSchedulableRunsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolSearchSchedulableRunsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolSearchSchedulableRunsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolSearchSchedulableRunsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolSearchSchedulableRunsSuggestionsResponse parses an HTTP response from a PublicWorkerPoolSearchSchedulableRunsSuggestionsWithResponse call
+func ParsePublicWorkerPoolSearchSchedulableRunsSuggestionsResponse(rsp *http.Response) (*PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolSearchSchedulableRunsSuggestionsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolSearchUsersResponse parses an HTTP response from a PublicWorkerPoolSearchUsersWithResponse call
+func ParsePublicWorkerPoolSearchUsersResponse(rsp *http.Response) (*PublicWorkerPoolSearchUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolSearchUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchWorkerPoolUsersOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolSearchUsersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolSearchUsersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolSearchUsersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePublicWorkerPoolSearchUsersSuggestionsResponse parses an HTTP response from a PublicWorkerPoolSearchUsersSuggestionsWithResponse call
+func ParsePublicWorkerPoolSearchUsersSuggestionsResponse(rsp *http.Response) (*PublicWorkerPoolSearchUsersSuggestionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PublicWorkerPoolSearchUsersSuggestionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SearchSuggestionsOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PublicWorkerPoolSearchUsersSuggestionsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers PublicWorkerPoolSearchUsersSuggestionsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers PublicWorkerPoolSearchUsersSuggestionsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

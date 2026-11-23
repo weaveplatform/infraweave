@@ -21,8 +21,13 @@ const (
 	Time      Type = "TIME"
 )
 
+// Ordering is the Type of a field that orders a search and never filters
+// one, such as a position computed for each row.
+const Ordering Type = ""
+
 // Field is a searchable field of an entity, as its suggestions describe
-// it. Every field filters; Orderable ones order. Values are an ENUM's.
+// it. Every field but an Ordering one filters; Orderable ones order.
+// Values are an ENUM's.
 type Field struct {
 	Name      string
 	Type      Type
@@ -225,6 +230,13 @@ func checkPredicates(fields []Field, preds []Predicate) []FieldError {
 		f, ok := Lookup(fields, p.Field)
 		if !ok {
 			errs = append(errs, unknown(at+"/field", p.Field))
+			continue
+		}
+		if f.Type == Ordering {
+			errs = append(errs, FieldError{
+				Pointer: at + "/field", Reason: ReasonRule,
+				Message: fmt.Sprintf("The field %s orders a search and does not filter one.", f.Name),
+			})
 			continue
 		}
 		errs = append(errs, checkConstraint(f, p.Constraint, at+"/constraint")...)

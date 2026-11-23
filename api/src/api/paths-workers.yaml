@@ -17,7 +17,9 @@ components:
       description: PublicWorkerPool contains details of public worker pool for account.
       properties:
         busyWorkers:
-          description: Number of currently busy workers in the public worker pool for this account.
+          description: |-
+            Number of this account's runs that a public worker holds now, among the runs
+            of stacks in the spaces the caller may read.
           format: int32
           type: integer
         intentProjects:
@@ -30,19 +32,33 @@ components:
           format: int32
           type: integer
         parallelism:
-          description: Maximum number of simultaneously executing runs on the public worker pool for account.
-          format: int32
+          description: |-
+            Maximum number of simultaneously executing runs on the public worker pool for
+            this account: the lower of the organization's public worker slots and the
+            account's own ceiling. Null when neither bounds it, including while billing
+            is off. Zero means no public run can start. It is a quota, not a count of free
+            slots or of registered workers.
+          format: int64
+          nullable: true
           type: integer
         pendingRuns:
-          description: Number of runs on the public worker ready for processing for this account.
+          description: |-
+            Number of this account's runs waiting for a public worker, among the runs of
+            stacks in the spaces the caller may read. Runs stay pending while public
+            execution is switched off.
           format: int32
           type: integer
         schedulableRunsCount:
-          description: Count of schedulable runs on the public worker pool workers for this account.
+          description: |-
+            Count of the pending runs a public worker may claim now: the runs
+            `GET /worker-pools/public/search-schedulable-runs` lists. Zero while public
+            execution is switched off.
           format: int32
           type: integer
         usersCount:
-          description: Count of users on the public worker pool workers for this account.
+          description: |-
+            Count of this account's stacks that select the public worker pool, in the
+            spaces the caller may read.
           format: int32
           type: integer
       required:
@@ -59,10 +75,10 @@ components:
         queuedRunsCount: superseded under rule S2; use schedulableRunsCount
         searchIntentProjects: takes arguments; not reachable from an item route
         searchIntentProjectsSuggestions: takes arguments; not reachable from an item route
-        searchSchedulableRuns: takes arguments; not reachable from an item route
-        searchSchedulableRunsSuggestions: takes arguments; not reachable from an item route
-        searchUsers: takes arguments; not reachable from an item route
-        searchUsersSuggestions: takes arguments; not reachable from an item route
+        searchSchedulableRuns: served by GET /worker-pools/public/search-schedulable-runs
+        searchSchedulableRunsSuggestions: served by GET /worker-pools/public/search-schedulable-runs-suggestions
+        searchUsers: served by GET /worker-pools/public/search-users
+        searchUsersSuggestions: served by GET /worker-pools/public/search-users-suggestions
       x-graphql-type: PublicWorkerPool
     RunWithPosition:
       description: RunWithPosition is a wrapper for run with its position in the queue.
@@ -335,29 +351,33 @@ components:
       type: object
       x-graphql-type: WorkerPoolUserConnection
     WorkerUsage:
+      description: |-
+        The account's private worker usage for a billing cycle. A cycle is a calendar
+        month in UTC. The contract is the account's private-workers entitlement; no
+        billed percentile applies to it.
       properties:
         burst:
           $ref: '#/components/schemas/WorkerUsageBurst'
         concurrencyAtContractedPercentile:
           description: |-
             Concurrency at the percentile the contract bills on (contractedPercentile).
-            Null when there is no contract or the contract has no percentile, matching
-            contractedPercentile.
+            Null when the contract has no percentile, matching contractedPercentile.
           format: int32
           nullable: true
           type: integer
         contractedLimit:
           description: |-
-            Worker concurrency limit in the current contract. Null when the account
-            has no contract or no limit. Past cycles also use this current value,
-            which may differ from the limit in effect during that cycle.
+            The account's private worker limit: the lower of the organization's
+            private-workers limit and the account's own ceiling. Null when neither
+            bounds it, including while billing is off. Past cycles also use this
+            current value, which may differ from the limit in effect during that cycle.
           format: int32
           nullable: true
           type: integer
         contractedPercentile:
           description: |-
-            Billed percentile in the current contract, such as 95. Null when the
-            account has no contract. Past cycles also use this current value.
+            Billed percentile in the current contract, such as 95. Null, since the
+            private-workers entitlement bills no percentile.
           format: int32
           nullable: true
           type: integer
@@ -365,17 +385,16 @@ components:
           $ref: '#/components/schemas/WorkerUsageCycle'
         multiAccountContract:
           description: |-
-            True when contractedLimit is not specific to this account: other accounts
-            draw on the same limit, so this account's usage is only part of what counts
-            against it.
+            True when contractedLimit is the organization's limit rather than this
+            account's ceiling: other accounts draw on the same limit, so this account's
+            usage is only part of what counts against it.
           type: boolean
         selectableCycles:
           description: |-
             Every cycle `cyclesAgo` can select right now, newest first, starting with
-            the current cycle. The list stops at the oldest retained cycle or at the
-            cycle the account was created or the contract started in, whichever is
-            newer. Past dates are extrapolated from the current contract, and the list
-            shifts by one when a new cycle starts.
+            the current cycle. The list stops at the fifth cycle before the current one
+            or at the oldest cycle the pool samples' retention still covers, whichever
+            is newer, and shifts by one when a new cycle starts.
           items:
             $ref: '#/components/schemas/WorkerUsageCycle'
           type: array
@@ -392,7 +411,7 @@ components:
       description: |-
         Uses the current contract's limit and percentile, including for past cycles.
         `budgetMinutes` applies the current billed percentile to the selected cycle's
-        duration.
+        duration. Absent when the contract has no percentile.
       properties:
         budgetMinutes:
           description: How many minutes of the full cycle may exceed the contracted worker limit.
@@ -446,16 +465,8 @@ components:
           description: |-
             Number of billing cycles before the current cycle. Null means 0. 0 selects
             the current cycle to date; 1 selects the most recent completed cycle.
-            Valid values range from 0 through 5.
-
-            The rollup retains the current monthly partition and the six preceding
-            partitions. An anniversary-based billing cycle can span two partitions,
-            so selecting cycle 6 could read a dropped partition as zero.
-
-            A past cycle that ends before the account was created, or before the contract
-            or subscription started, returns an error. The cycle those dates fall in stays
-            selectable. The current cycle is never checked. A valid cycle older than the
-            rollup returns zeros, which is indistinguishable from no usage.
+            A value that is not the `cyclesAgo` of one of `selectableCycles` is
+            refused.
           format: int32
           nullable: true
           type: integer
@@ -664,6 +675,178 @@ paths:
       summary: Get Managed Worker Pool
       tags: [Worker Pools]
       x-infraweave-divergence: [rate-limit]
+  /worker-pools/public/search-schedulable-runs:
+    get:
+      description: Search this account's runs a public worker may claim now, in the spaces the caller may read. Without an order they follow the claim order, oldest first; each run's position counts from 1 in that order, among the runs the caller may read, when the request is answered. Nothing is listed while public execution is switched off.
+      operationId: publicWorkerPoolSearchSchedulableRuns
+      x-infraweave-feature: worker-pools
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSchedulableRunsOutput'
+          description: The searchSchedulableRuns result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Public worker pool search schedulable runs
+      tags:
+        - Worker Pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-upstream: none
+  /worker-pools/public/search-schedulable-runs-suggestions:
+    get:
+      description: Search Runs Suggestions for the public worker pool.
+      operationId: publicWorkerPoolSearchSchedulableRunsSuggestions
+      x-infraweave-feature: worker-pools
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchSchedulableRunsSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Public worker pool search schedulable runs suggestions
+      tags:
+        - Worker Pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-upstream: none
+  /worker-pools/public/search-users:
+    get:
+      description: Search this account's stacks that select the public worker pool, in the spaces the caller may read.
+      operationId: publicWorkerPoolSearchUsers
+      x-infraweave-feature: worker-pools
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchWorkerPoolUsersOutput'
+          description: The searchUsers result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Public worker pool search users
+      tags:
+        - Worker Pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-upstream: none
+  /worker-pools/public/search-users-suggestions:
+    get:
+      description: Search stacks suggestions using the public worker pool.
+      operationId: publicWorkerPoolSearchUsersSuggestions
+      x-infraweave-feature: worker-pools
+      parameters:
+        - content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsInput'
+          in: query
+          name: input
+          required: true
+          x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSuggestionsOutput'
+          description: The searchUsersSuggestions result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Public worker pool search users suggestions
+      tags:
+        - Worker Pools
+      x-infraweave-action: SPACE_READ
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-infraweave-subject: list
+      x-upstream: none
   /worker-pools/{workerPoolId}:
     delete:
       description: Delete an existing WorkerPool.

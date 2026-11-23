@@ -133,6 +133,7 @@ type Deps struct {
 	Public           string
 	Tokens           accessapi.Tokens
 	Features         worker.Limits
+	Quotas           http.Quotas
 	Version          string
 	PollMax          time.Duration
 	OfflineAfter     time.Duration
@@ -174,7 +175,10 @@ func New(d Deps) *Domain {
 	samples := sample.New(sample.Deps{Store: store, Retention: d.SampleRetention, Now: d.Now})
 	return &Domain{
 		svc: svc, workers: wk, samples: samples, log: log,
-		api: http.New(svc, images.New(store), wk, d.Authz, d.Spaces),
+		api: http.New(svc, images.New(store), wk, d.Authz, d.Spaces).WithOptions(http.Options{
+			Quotas: d.Quotas, PublicEnabled: d.PublicPool.Enabled,
+			Egress: d.PublicPool.OutgoingIPAddresses, Samples: samples,
+		}),
 	}
 }
 
@@ -281,6 +285,12 @@ func (d *Domain) BindPoolAssignments(r workersapi.PoolAssignments) {
 	d.svc.BindPoolAssignments(r)
 	d.workers.BindAssignments(r)
 }
+
+// BindProjections binds the runs domain's workersapi.Queues and the
+// stacks domain's workersapi.Users, back edges internal/app binds after it
+// constructs those domains, which a pool's and the public pool's
+// projections count runs and stacks through.
+func (d *Domain) BindProjections(q workersapi.Queues, u workersapi.Users) { d.api.Bind(q, u) }
 
 // BindSignals binds the runs domain's workersapi.Signals, a back edge
 // internal/app binds after it constructs that domain, which a busy

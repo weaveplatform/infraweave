@@ -936,7 +936,8 @@ type WorkerPool struct {
 	// NotificationCount Number of the new worker pool notifications.
 	NotificationCount int32 `json:"notificationCount"`
 
-	// PendingRuns Number of runs ready for processing by this WorkerPool.
+	// PendingRuns Number of runs waiting for a worker of this WorkerPool, among the runs of
+	// stacks in the spaces the caller may read.
 	PendingRuns int32 `json:"pendingRuns"`
 
 	// PreparingTimeoutSeconds The effective Preparing-phase timeout in seconds: the pool's override, or the platform
@@ -951,7 +952,8 @@ type WorkerPool struct {
 	// ScansCount Count of scans using this WorkerPool.
 	ScansCount int32 `json:"scansCount"`
 
-	// SchedulableRunsCount Count of schedulable runs on the worker pool workers for this account.
+	// SchedulableRunsCount Count of the pending runs a worker of this WorkerPool may claim: the runs
+	// `GET /worker-pools/{workerPoolId}/search-schedulable-runs` lists.
 	SchedulableRunsCount int32 `json:"schedulableRunsCount"`
 
 	// Space ID of the space this WorkerPool belongs to.
@@ -963,11 +965,11 @@ type WorkerPool struct {
 	// UpdatedAt UpdatedAt is unix timestamp (in seconds) at which the worker pool was updated.
 	UpdatedAt int32 `json:"updatedAt"`
 
-	// Users List of users (modules or stacks) of this WorkerPool.
-	// It will return an empty result for the public worker pool.
+	// Users List of users (modules or stacks) of this WorkerPool, in the spaces the
+	// caller may read, by slug.
 	Users []WorkerPoolUser `json:"users"`
 
-	// UsersCount Count of users on the public worker pool workers for this account.
+	// UsersCount Count of the stacks that select this WorkerPool, in the spaces the caller may read.
 	UsersCount int32 `json:"usersCount"`
 
 	// WorkerPool A reference to a WorkerPool; fetch it with GET /worker-pools/{workerPoolId}.

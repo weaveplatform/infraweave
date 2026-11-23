@@ -51,6 +51,21 @@ func (s *Service) Private(ctx context.Context, acct kernel.AccountID) (string, e
 	return DefaultPrivate, nil
 }
 
+// Public answers the account's default for the public pool, or
+// DefaultPrivate, the same infraweave Terraform image, when none is set.
+// It is what the account reads; a run's own image precedence is the
+// launcher's.
+func (s *Service) Public(ctx context.Context, acct kernel.AccountID) (string, error) {
+	in, err := s.store.RunnerImages(ctx, acct)
+	if err != nil {
+		return "", err //nolint:wrapcheck // the store names the read
+	}
+	if in.Public != nil {
+		return *in.Public, nil
+	}
+	return DefaultPrivate, nil
+}
+
 // Set replaces acct's images with in's and answers them as stored: each
 // trimmed, an empty one nil. The route has decided ACCOUNT_ADMIN.
 func (s *Service) Set(ctx context.Context, acct kernel.AccountID, in Images) (Images, error) {

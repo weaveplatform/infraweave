@@ -109,6 +109,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Public:           c.Server.PublicURL,
 		Tokens:           access.Tokens(),
 		Features:         features.Entitlements(),
+		Quotas:           features.Entitlements(),
 		Version:          buildinfo.Version(),
 		PollMax:          c.Worker.PollTimeoutMax,
 		OfflineAfter:     c.Worker.OfflineAfter,
@@ -222,6 +223,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	workers.BindReports(runs.Reports())
 	workers.BindLiveness(runs.Liveness())
 	workers.BindSignals(runs.Signals())
+	workers.BindProjections(runs.Queues(), stacks.PoolUsers())
 	registry, err := expr.NewRegistry(
 		c.Expressions,
 		slices.Concat(configuration.Surfaces(), runs.Surfaces(), vendors.Surfaces(), policies.Surfaces())...,

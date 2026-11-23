@@ -65,7 +65,7 @@
       "domain": "workers",
       "contract": "Required nullable int64 account share, null unbounded, physical capacity separate",
       "requiredEvidence": "Free/Starter/Business/Enterprise/grant/billing-off/lower-account real API cases",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "public-default-image-egress",
@@ -76,7 +76,7 @@
       "domain": "workers",
       "contract": "New default-public image and outgoing-ip-address reads; configured egress only",
       "requiredEvidence": "Normal SDK success/403/failure with actual configuration",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "public-queue-users",
@@ -87,7 +87,7 @@
       "domain": "runs",
       "contract": "Explicit literal public selector paths; visible queue/user counts and suggestions",
       "requiredEvidence": "Real account/space isolation, filters, positions and C292 partial REST replay",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "worker-usage",

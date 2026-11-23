@@ -70,12 +70,16 @@
 // of reaching it, its implicit read of its own space among them.
 // SearchUsers and SuggestUsers search the stacks the caller may read that
 // use a VCS integration: those bound to it and, for a provider's default,
-// those on its provider that name none.
+// those on its provider that name none. SearchPoolUsers and
+// SuggestPoolUsers search the stacks the caller may read that select a
+// private pool, or the public pool when they name none, and PoolUsers and
+// PublicUsers list and count them for the workers domain as
+// workersapi.Users.
 //
 // # Input and output
 //
-// None of its own: it reaches PostgreSQL through its Store and the outbox
-// through its Events.
+// None of its own: it reaches PostgreSQL through its Store and UserStore
+// and the outbox through its Events.
 //
 // # Dependencies
 //

@@ -163,8 +163,9 @@ func newFixture(t *testing.T) fixture {
 	}
 	l := &ledger{spaces: sp, authz: az, rows: map[kernel.ULID]accessapi.RoleBinding{}}
 	wp := &pools{reach: map[kernel.ULID]kernel.ULID{}}
+	store := pg.New(db)
 	svc := core.New(core.Deps{
-		Store: pg.New(db), DB: db, Spaces: sp, Authz: az, Bindings: l, Grants: l, Pools: wp,
+		Store: store, DB: db, Spaces: sp, Authz: az, Bindings: l, Grants: l, Pools: wp, Users: store,
 		Events: outbox.New(db, queue.New(db), kinds),
 		Now:    func() time.Time { return time.Unix(1_800_000_000, 0) },
 	})

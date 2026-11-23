@@ -43,6 +43,45 @@ type PoolAssignments interface {
 	ActivePool(context.Context, kernel.ULID) (bool, error)
 }
 
+// QueueCounts are a pool's runs as a caller reads them, among the runs of
+// stacks in the spaces the caller may read: Pending, the runs waiting for
+// a worker; Schedulable, those a worker may claim now; and, for the public
+// pool, Busy, the runs a public worker holds.
+type QueueCounts struct {
+	Pending, Schedulable, Busy int
+}
+
+// Queues is the runs domain's count of the runs waiting for each pool, a
+// back edge internal/app binds after it constructs that domain. Neither
+// count names a run of another account or of a space p may not read.
+type Queues interface {
+	// PoolQueues counts the runs waiting for each private pool of pools;
+	// a pool none waits for is absent.
+	PoolQueues(ctx context.Context, p kernel.Principal, pools []kernel.ULID) (map[kernel.ULID]QueueCounts, error)
+	// PublicQueue counts the runs of p's account waiting for the public
+	// pool and held by its workers.
+	PublicQueue(ctx context.Context, p kernel.Principal) (QueueCounts, error)
+}
+
+// PoolUser is a stack that selects a pool, by its slug and name, and the
+// space it lives in.
+type PoolUser struct {
+	Slug, Name string
+	Space      kernel.ULID
+}
+
+// Users is the stacks domain's read of the stacks that select each pool,
+// a back edge internal/app binds after it constructs that domain. Neither
+// read names a stack of another account or of a space p may not read.
+type Users interface {
+	// PoolUsers lists the stacks that select each private pool of pools,
+	// by slug; a pool none selects is absent.
+	PoolUsers(ctx context.Context, p kernel.Principal, pools []kernel.ULID) (map[kernel.ULID][]PoolUser, error)
+	// PublicUsers counts the stacks of p's account that select the public
+	// pool.
+	PublicUsers(ctx context.Context, p kernel.Principal) (int, error)
+}
+
 // Claim is a worker's claim of a run: the worker, its account and pool,
 // and DriftLimit, the pool's drift detection run limit, nil or negative
 // for none.

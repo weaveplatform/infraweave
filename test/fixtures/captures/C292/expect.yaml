@@ -1,6 +1,6 @@
 # Partial public-pool observation; private priority behavior remains unobserved.
-# Do not turn the downstream stub's 501 response into an acceptance expectation.
-replayAfter: https://github.com/weaveplatform/infraweave/issues/744
+# The public projections replay over REST; private priority stays open.
+replaySubset: worker-pool-public-projections
 observed:
   "/exchanges/0/status": 200
   "/exchanges/0/request/operationName": "SearchWorkerPools"
@@ -54,3 +54,213 @@ observed:
   "/exchanges/8/response/data/tier": "V5_FREE"
   "/exchanges/8/response/data/defaultPrivateWorkerPoolRunnerImage": ""
   "/exchanges/8/response/data/defaultPublicWorkerPoolRunnerImage": ""
+
+handoffs:
+  "/exchanges/0/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through POST /worker-pools/search with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/0/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through POST /worker-pools/search with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/1/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through POST /worker-pools/search/suggestions, the operations that serve this GraphQL query."
+  "/exchanges/1/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through POST /worker-pools/search/suggestions, the operations that serve this GraphQL query."
+  "/exchanges/2/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/2/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/3/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-schedulable-runs with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/3/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-schedulable-runs with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/4/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-schedulable-runs-suggestions, the operations that serve this GraphQL query."
+  "/exchanges/4/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-schedulable-runs-suggestions, the operations that serve this GraphQL query."
+  "/exchanges/5/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/5/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/6/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-users with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/6/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-users with GET /public-worker-pool, the operations that serve this GraphQL query."
+  "/exchanges/7/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-users-suggestions, the operations that serve this GraphQL query."
+  "/exchanges/7/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools/public/search-users-suggestions, the operations that serve this GraphQL query."
+  "/exchanges/8/status":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools, GET /attachable-worker-pools-in-space, GET /default-public-worker-pool-runner-image and GET /outgoing-ip-addresses, the operations that serve this GraphQL query."
+  "/exchanges/8/request/operationName":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay answers 200 through GET /worker-pools, GET /attachable-worker-pools-in-space, GET /default-public-worker-pool-runner-image and GET /outgoing-ip-addresses, the operations that serve this GraphQL query."
+  "/readOnly":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The replay sends reads alone and compares the account's pool and public stack inventories before and after."
+  "/exchanges/0/response/data/publicWorkerPool/parallelism":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "parallelism is the account's effective public-worker-slots quota, null while billing is off as on the replay server. features/workers/pool_projections.feature asserts Business's 2 with billing on; reference parallelism is not copied as an infraweave limit."
+  "/exchanges/2/response/data/publicWorkerPool/parallelism":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "parallelism is the account's effective public-worker-slots quota, null while billing is off as on the replay server. features/workers/pool_projections.feature asserts Business's 2 with billing on; reference parallelism is not copied as an infraweave limit."
+  "/exchanges/5/response/data/publicWorkerPool/parallelism":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "parallelism is the account's effective public-worker-slots quota, null while billing is off as on the replay server. features/workers/pool_projections.feature asserts Business's 2 with billing on; reference parallelism is not copied as an infraweave limit."
+  "/exchanges/8/response/data/publicWorkerPool/parallelism":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "parallelism is the account's effective public-worker-slots quota, null while billing is off as on the replay server. features/workers/pool_projections.feature asserts Business's 2 with billing on; reference parallelism is not copied as an infraweave limit."
+  "/exchanges/0/response/data/publicWorkerPool/busyWorkers":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/0/response/data/publicWorkerPool/schedulableRunsCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/1/response/data/searchWorkerPoolsSuggestions/filteredCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/3/response/data/publicWorkerPool/schedulableRunsCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/3/response/data/publicWorkerPool/usersCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The public pool's users are the replay account's stacks that select no private pool, as its home key reads them; the captured zero is an account with none."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/filteredCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/6/response/data/publicWorkerPool/usersCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The public pool's users are the replay account's stacks that select no private pool, as its home key reads them; the captured zero is an account with none."
+  "/exchanges/7/response/data/publicWorkerPool/searchUsersSuggestions/filteredCount":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The public pool's users are the replay account's stacks that select no private pool, as its home key reads them; the captured zero is an account with none."
+  "/exchanges/0/response/data/searchWorkerPools/edges":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/3/response/data/publicWorkerPool/searchSchedulableRuns/edges":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/6/response/data/publicWorkerPool/searchUsers/edges":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The public pool's users are the replay account's stacks that select no private pool, as its home key reads them; the captured zero is an account with none."
+  "/exchanges/8/response/data/workerPools":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/8/response/data/stacks":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The captured account's stack inventory is not the replay account's; the public pool's users are compared with the replay account's own stacks instead."
+  "/exchanges/8/response/data/attachableWorkerPoolsInSpace":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/0/response/data/searchWorkerPools/pageInfo/hasNextPage":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/3/response/data/publicWorkerPool/searchSchedulableRuns/pageInfo/hasNextPage":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/6/response/data/publicWorkerPool/searchUsers/pageInfo/hasNextPage":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The public pool's users are the replay account's stacks that select no private pool, as its home key reads them; the captured zero is an account with none."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/0/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/1/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/2/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/3/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/4/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/5/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/6/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/7/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/4/response/data/publicWorkerPool/searchSchedulableRunsSuggestions/fields/8/name":
+    classification: rest
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The REST replay asserts the recorded value on the equivalent public projection while public execution is off, so no run is schedulable."
+  "/exchanges/8/response/data/tier":
+    classification: upstream
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The captured V5_FREE plan name is reference evidence. infraweave tiers are the features catalogue's, asserted by the tiers features."
+  "/exchanges/8/response/data/defaultPrivateWorkerPoolRunnerImage":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The reference answers an empty string for an unset default. infraweave answers the built-in GHCR Terraform runner image, which the replay checks is set; an account's own default is asserted by features/workers/pool_projections.feature."
+  "/exchanges/8/response/data/defaultPublicWorkerPoolRunnerImage":
+    classification: deviation
+    owner: https://github.com/weaveplatform/infraweave/issues/744
+    detail: "The reference answers an empty string for an unset default. infraweave answers the built-in GHCR Terraform runner image, which the replay checks is set; an account's own default is asserted by features/workers/pool_projections.feature."

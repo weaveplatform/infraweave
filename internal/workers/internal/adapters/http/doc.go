@@ -9,6 +9,11 @@
 // effective preparing timeout and its workers. It drains and undrains a
 // worker, cycles a pool's workers, and searches and suggests a pool's
 // workers. It reads and replaces the account's default runner images.
+// It answers the public pool as the caller's account uses it, each pool's
+// queue counts and users, the operator's declared public egress, and the
+// account's private worker usage cycles; the queue counts and users come
+// from the runs and stacks domains through the ports Bind binds, and the
+// quotas from the features domain.
 //
 // # Input and output
 //
@@ -16,8 +21,9 @@
 //
 // # Dependencies
 //
-// It imports the access api package, internal/kernel and its search
-// package, the generated API, platform/httpkit's apisearch, problem and
-// strict packages and the domain's images, pool and worker packages. The
+// It imports the access, features and workers api packages,
+// internal/kernel and its search package, the generated API,
+// platform/httpkit's apisearch, problem and strict packages and the
+// domain's images, pool, sample and worker packages. The
 // workers domain's assembly constructs it.
 package http

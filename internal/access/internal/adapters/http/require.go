@@ -148,7 +148,7 @@ func (q Require) decideEntity(w http.ResponseWriter, r *http.Request, p kernel.P
 			hidden(w, s.Entity, id)
 			return false, true
 		case err != nil:
-			problem.Failure(w, err)
+			problem.ResponseError(w, r, err)
 			return false, true
 		}
 	}

@@ -25,13 +25,19 @@ keeps these boundaries explicit.
 ## Verification and handoff
 
 The existing capture loader validates every observed pointer and redaction.
-The observations are replayAfter #744 because public pool/search projections are
-not implemented yet; no expected 501 response is substituted for their contract.
-#744 must replace this deferral with real API/SDK assertions on equivalent
-public projections, keeping reference limits distinct from infraweave's tier and
-grants. #753 audits the complete operation matrix. Actual private prioritization
-remains open and is owned by #740/#743/#744. Only the account name/subdomain and
-browser/unrelated request material are omitted; GraphQL data stays unchanged.
+`TestAccCaptures` replays the public observations as the REST subset
+`worker-pool-public-projections` on real PostgreSQL: the pool search and its
+suggestions, the public pool, its queue and used-by searches with their
+suggestions, and the account's pool inventory. The queue suggestions name the
+recorded nine fields in order. The public pool's users are compared with the
+replay account's own stacks, so the captured zero holds for an account with
+none. Parallelism and the runner-image defaults are deviations: infraweave
+answers the effective tier quota, null with billing off, and its built-in
+runner image; the tier name and the captured stack inventory stay upstream
+evidence. #753 audits the complete operation matrix. Actual private
+prioritization remains open and is owned by #740/#743. Only the account
+name/subdomain and browser/unrelated request material are omitted; GraphQL
+data stays unchanged.
 
 The schema fingerprint is SHA-256 of the actual account's response to the
 repository's standard IntrospectionQuery. It is provenance, not a claim that the
