@@ -547,7 +547,7 @@ type PollResult struct {
 	// Assignment A run the poll claimed for the worker, which the launcher prepares and executes.
 	Assignment *Assignment `json:"assignment,omitempty"`
 
-	// Drained Whether the worker is drained: it takes no new run and finishes its current one.
+	// Drained Whether the worker is drained: it takes no new run and finishes its current one. Answered when the worker is drained, or when the poll's flag was true and the worker is no longer drained.
 	Drained *bool `json:"drained,omitempty"`
 
 	// SessionExpiresAt When the renewed session token expires, in Unix seconds.

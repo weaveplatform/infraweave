@@ -175,7 +175,9 @@ func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject)
 		}
 		out.Signals = &signals
 	}
-	if got.Drained {
+	// An undrained worker's flag is answered only to a launcher that
+	// still holds it drained, which learns of the undrain no other way.
+	if got.Drained || in.Drained {
 		out.Drained = &got.Drained
 	}
 	if got.Token != nil {

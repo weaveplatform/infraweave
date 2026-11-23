@@ -783,7 +783,7 @@ components:
         drained:
           type: boolean
           description: >-
-            Whether the worker is drained: it takes no new run and finishes its current one.
+            Whether the worker is drained: it takes no new run and finishes its current one. Answered when the worker is drained, or when the poll's flag was true and the worker is no longer drained.
         sessionToken:
           type: string
           description: >-

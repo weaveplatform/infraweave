@@ -349,6 +349,13 @@ func TestUnitProtocol(t *testing.T) {
 		signals[0] != "cycle" || body["drained"] != true || body["sessionToken"] != nil {
 		t.Errorf("cycled poll = %d %v", code, body)
 	}
+	// An undrained worker's launcher that holds it drained learns so.
+	w.Cycle, w.Drained = false, false
+	f.store.workers[u] = w
+	code, body = f.call(t, "/poll", token, map[string]any{"busy": true, "drained": true, "wait": 5})
+	if code != http.StatusOK || body["drained"] != false {
+		t.Errorf("undrained poll = %d %v", code, body)
+	}
 	f.tokens.expires[token] = time.Now().Add(time.Minute)
 	code, body = f.call(t, "/poll", token, map[string]any{"busy": false, "wait": 5})
 	if code != http.StatusOK || body["sessionToken"] == nil || body["sessionExpiresAt"] == nil {
