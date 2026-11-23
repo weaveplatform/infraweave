@@ -9,13 +9,14 @@ no stored key.
 Every cloud test runs in a dedicated account per cloud, which the
 `landing-zone` roots create: an AWS account in the Organization, an Azure
 subscription and a Google project. A maintainer applies `landing-zone`
-first, with the Organization's management account, a billing owner's
-sign-in or a billing account and organization; every other root here
-applies into the account it creates.
+first, with the credentials of the AWS account that becomes the
+Organization's management account, a billing owner's sign-in or a billing
+account and organization; every other root here applies into the account
+it creates.
 
 | Root | Job | Creates |
 |---|---|---|
-| `landing-zone/aws` | every AWS root | an organizational unit under the organization's root, or `parent_id`, holding one member account, `infraweave-lab`, whose `OrganizationAccountAccessRole` the management account assumes; a destroy closes the account only with `close_on_destroy` |
+| `landing-zone/aws` | every AWS root | the AWS Organization, with all features and no trusted services, which makes the applying account its management account and payer for the lab account; an organizational unit under the organization's root, or `parent_id`, holding one member account, `infraweave-lab`, whose `OrganizationAccountAccessRole` the management account assumes; a destroy closes the account only with `close_on_destroy` |
 | `landing-zone/azure` | every Azure root | a subscription, `infraweave-lab`, created through a subscription alias at `billing_scope_id`; a destroy cancels it only with `cancel_on_destroy` |
 | `landing-zone/google` | every Google root | a project linked to `billing_account`, in `org_id` or `folder_id`, with no default network and the APIs the other roots use enabled; a destroy deletes it only with `delete_on_destroy` |
 | `aws` | `managed-cloud-workers`, the platform the AWS workers attach to | `infraweave all` as two ECS Fargate tasks behind an HTTPS load balancer on `domain_name`, RDS for PostgreSQL with IAM authentication, an S3 bucket and KMS keys for the KEK and signing, in a VPC with one NAT gateway |
@@ -52,6 +53,28 @@ terraform init
 terraform plan -out=lab.tfplan
 terraform apply lab.tfplan
 terraform output                   # the next roots' variables, or the workflow's environment secrets
+```
+
+`landing-zone/aws` creates the Organization, so it runs with a standalone
+account's credentials; an account that already manages an Organization
+imports it first, with `terraform import aws_organizations_organization.lab
+<organization ID>`, and reviews the next plan, which disables every
+trusted service and policy type the root does not list. Organizations
+refuses to delete an Organization while it holds a member account, so a
+destroy that leaves the lab account behind leaves the Organization too.
+
+The other AWS roots reach the lab account by assuming `role_arn`, which
+STS refuses to a root user's credentials. The maintainer applies them as
+`infraweave-lab-operator`, an IAM user of the management account created
+outside Terraform, so neither it nor its access key is in any state. It has
+no console password and one inline policy, `assume-lab`, allowing only
+`sts:AssumeRole` and `sts:TagSession` on the lab account's
+`OrganizationAccountAccessRole`; it can change nothing in the management
+account. Its one access key lives only in the maintainer's local CLI
+profile, `infraweave-lab`:
+
+```sh
+AWS_PROFILE=infraweave-lab terraform plan -out=lab.tfplan   # objectstore/aws, kek/aws, workers-identity/aws, platform/aws
 ```
 
 An AWS root's provider accepts only credentials that resolve to the

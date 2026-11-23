@@ -9,8 +9,8 @@ terraform {
   }
 }
 
-# The Organization's management account, whose credentials alone may create
-# a member account.
+# The account that becomes the Organization's management account; only its
+# credentials may create the Organization and a member account.
 provider "aws" {
   region = var.region
 }
