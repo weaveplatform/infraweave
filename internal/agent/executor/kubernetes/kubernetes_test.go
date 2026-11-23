@@ -500,6 +500,16 @@ func TestUnitRunPodRefusesHostMountsAndConflictingArchitectures(t *testing.T) {
 	}
 }
 
+// unbounded is a preparation bound that ends with t: a case whose Pod
+// fails on what the fake kubelet answers then reports that answer
+// however long a loaded host takes to reach it, never the deadline.
+func unbounded(t *testing.T) time.Duration {
+	if deadline, ok := t.Deadline(); ok {
+		return time.Until(deadline)
+	}
+	return 24 * time.Hour
+}
+
 // gone checks that the preparation left no Pod.
 func (k *kubelet) gone(t *testing.T) {
 	t.Helper()
@@ -529,11 +539,9 @@ func TestUnitRunPodPreparationFailuresDeleteThePod(t *testing.T) {
 			k := newKubelet(t)
 			j := job(t)
 			tc.setup(k, &j)
-			// Only a pending Pod waits out its bound; the others fail first,
-			// however slowly the race detector runs them.
-			bound := 10 * time.Second
-			if name == "pending" {
-				bound = 200 * time.Millisecond
+			bound := 200 * time.Millisecond
+			if name != "pending" {
+				bound = unbounded(t)
 			}
 			e := k.executor(t, func(c *Config) { c.Preparation = bound })
 			_, err := e.Start(t.Context(), j)
