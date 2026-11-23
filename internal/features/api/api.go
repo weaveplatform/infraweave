@@ -25,17 +25,24 @@ type Entitlement struct {
 }
 
 // Refusal is why an operation may not use a feature: Disabled for the
-// operator's switch-off, otherwise the organization's entitlement lacks
-// it and Tiers names the tiers that hold it, smallest first.
+// operator's switch-off; Preview for a feature in preview that the
+// account has not opted in to; otherwise the organization's entitlement
+// lacks it and Tiers names the tiers that hold it, smallest first.
+//
+// ref: decision 0021
 type Refusal struct {
 	Disabled bool
+	Preview  bool
 	Feature  string
 	Tiers    []string
 }
 
 func (r *Refusal) Error() string {
-	if r.Disabled {
+	switch {
+	case r.Disabled:
 		return "features: " + r.Feature + " is switched off"
+	case r.Preview:
+		return "features: " + r.Feature + " is a preview the account has not opted in to"
 	}
 	return "features: " + r.Feature + " is not in the organization's tier"
 }
@@ -146,6 +153,7 @@ type OptionGate struct {
 // deletes the organization or account.
 type Entitlements interface {
 	Options
+	Previews
 	// CreateOrganization gives org its entitlement on the installation's
 	// default tier, Enterprise unless the operator changed it.
 	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
@@ -179,8 +187,33 @@ type Entitlements interface {
 
 // Options admits effective domain values that require a catalogue option.
 type Options interface {
-	// AllowOrganization checks the installation's switches and org's
-	// entitlement. A denied feature is a *Refusal; billing off admits every
-	// feature not switched off.
-	AllowOrganization(ctx context.Context, org kernel.OrganizationID, feature string) error
+	// AllowAccount checks feature for acct of org: the installation's
+	// switches, then, with billing on, org's entitlement, then, for a
+	// feature in preview, acct's opt-in to feature previews. A denied
+	// feature is a *Refusal; billing off admits every feature not switched
+	// off and not a preview acct has not opted in to. A zero org is
+	// refused only a switched-off feature.
+	AllowAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, feature string) error
+}
+
+// Previews are an account's opt-in to feature previews, off until its
+// admins turn it on, and each member's personal setting in the account,
+// on until the member opts out. Only the account's opt-in gates a preview;
+// the personal setting changes what the member's clients show.
+//
+// ref: decision 0021
+type Previews interface {
+	// FeaturePreviewsEnabled reads acct's opt-in.
+	FeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID) (bool, error)
+	// SetFeaturePreviewsEnabled sets acct's opt-in; every replica applies
+	// it from its next request once ctx's transaction commits.
+	SetFeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID, enabled bool) error
+	// PersonalFeaturePreviewsEnabled reads member's setting in acct: false
+	// once the member has opted out.
+	PersonalFeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) (bool, error)
+	// SetPersonalFeaturePreviewsEnabled sets member's setting in acct.
+	SetPersonalFeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID, member kernel.MemberID, enabled bool) error
+	// RemoveMember deletes member's setting in acct; access calls it in
+	// the transaction that removes the member from the account.
+	RemoveMember(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error
 }

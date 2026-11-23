@@ -150,7 +150,7 @@ func TestAccDomainGates(t *testing.T) {
 		{kernel.OrganizationID{}, "policies", true},
 		{kernel.OrganizationID{}, "scans", false},
 	} {
-		if ok, err := d.Allowed(ctx, c.org, c.feature); err != nil || ok != c.want {
+		if ok, err := d.Allowed(ctx, c.org, kernel.NewAccountID(), c.feature); err != nil || ok != c.want {
 			t.Errorf("Allowed(%v, %s) = %t, %v", c.org, c.feature, ok, err)
 		}
 	}

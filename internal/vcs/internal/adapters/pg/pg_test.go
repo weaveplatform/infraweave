@@ -108,7 +108,7 @@ func (tester) Test(_ context.Context, in port.Integration) ([]port.Check, error)
 // options; entitlement refusals use a separate policy in options_test.go.
 type allowOptions struct{}
 
-func (allowOptions) AllowOrganization(context.Context, kernel.OrganizationID, string) error {
+func (allowOptions) AllowAccount(context.Context, kernel.OrganizationID, kernel.AccountID, string) error {
 	return nil
 }
 

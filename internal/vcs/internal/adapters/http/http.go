@@ -301,6 +301,11 @@ func integrationError(err error) error {
 			p = problem.FeatureDisabled.New(fmt.Sprintf("The operator has switched off %s for this installation.", r.Feature))
 			p.Feature = r.Feature
 		}
+		if r.Preview {
+			p = problem.PreviewNotEnabled.New(fmt.Sprintf(
+				"%s is in preview, and this account has not opted in to feature previews.", r.Feature))
+			p.Feature = r.Feature
+		}
 		return &problem.Error{Problem: p}
 	}
 	if m, ok := errors.AsType[*integration.Missing](err); ok {

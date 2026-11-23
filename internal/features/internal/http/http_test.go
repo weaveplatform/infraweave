@@ -151,6 +151,17 @@ func TestUnitFeatureMiddlewareRefusals(t *testing.T) {
 		t.Errorf("not in tier: %d %+v, handler read %q", rec.Code, p, read)
 	}
 
+	preview := &allower{refuse: map[string]*core.Refusal{
+		"admin-keys": {Preview: true, Feature: "admin-keys"},
+	}}
+	rec, read = serve(t, preview, apiKeys, true, strings.NewReader(`{"kind":"admin"}`))
+	p = decode(t, rec)
+	if rec.Code != nethttp.StatusForbidden || read != "" ||
+		p.Type != problem.TypePrefix+problem.PreviewNotEnabled.Slug || p.Feature != "admin-keys" ||
+		p.Tiers != nil {
+		t.Errorf("a preview not opted in to: %d %+v, handler read %q", rec.Code, p, read)
+	}
+
 	// A stack input that chooses a switched-off vendor, as stackCreate's
 	// gate names it under its input member.
 	stackCreate := featuresapi.Gate{Feature: "stacks", Options: []featuresapi.OptionGate{

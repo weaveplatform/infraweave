@@ -260,8 +260,9 @@ func (s *Store) Resend(ctx context.Context, acct kernel.AccountID, id kernel.Mem
 	return s.User(ctx, acct, id)
 }
 
-// Remove stops acct admitting member id: it deletes the admission and the
-// member's invitations to acct, disables their personal keys in acct as
+// Remove stops acct admitting member id: it deletes the admission, the
+// member's invitations to acct and, through featuresapi, their feature
+// preview setting in acct, disables their personal keys in acct as
 // DEPROVISIONED and revokes their sessions in acct and those keys', and
 // records e, in one transaction, returning the revoked sessions; an
 // admission whose version expect does not accept stays.
@@ -304,6 +305,11 @@ func (s *Store) Remove(ctx context.Context, acct kernel.AccountID, id kernel.Mem
 			`DELETE FROM account_users WHERE account_id = $1 AND member_id = $2`,
 			acct, id); err != nil {
 			return fmt.Errorf("access: remove managed user: %w", sql.Unavailable(err))
+		}
+		if s.features != nil {
+			if err := s.features.RemoveMember(ctx, acct, id); err != nil {
+				return fmt.Errorf("access: remove the member's feature preview setting: %w", err)
+			}
 		}
 		if err := unbindActor(ctx, q, acct, binding.ActorUser, id.ULID); err != nil {
 			return err

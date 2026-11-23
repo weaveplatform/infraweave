@@ -28950,7 +28950,7 @@ components:
         feature:
           type: string
           description: >-
-            The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
+            The feature of feature-disabled, feature-not-in-tier and preview-not-enabled, a name of the feature catalogue.
         tiers:
           type: array
           items:

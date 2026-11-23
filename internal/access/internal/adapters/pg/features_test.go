@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -325,4 +326,53 @@ func (f failingCount) CheckLimit(ctx context.Context, _ kernel.OrganizationID, _
 	_, _ = tx.Q(ctx, f.db).Exec(ctx, `SELECT 1/0`)
 	_, err := count(ctx)
 	return err
+}
+
+// previews is the features domain as a member's removal sees it: it
+// records each removed member's feature preview setting, whether it ran
+// inside a transaction, and fails with removeErr.
+type previews struct {
+	entitled
+	removed   [][2]kernel.ULID
+	removedTx bool
+	removeErr error
+}
+
+func (p *previews) RemoveMember(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error {
+	p.removed = append(p.removed, [2]kernel.ULID{acct.ULID, member.ULID})
+	p.removedTx = tx.In(ctx)
+	return p.removeErr
+}
+
+// TestAccRemoveMemberFeaturePreviews checks that removing a member from an
+// account removes their feature preview setting in the same transaction,
+// and that a failure there keeps the admission.
+//
+// ref: decision 0021
+func TestAccRemoveMemberFeaturePreviews(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	x := seed(t, db, "raviga")
+	p := &previews{removeErr: errors.New("features down")}
+	s := x.s.WithFeatures(p)
+	if _, err := db.Exec(ctx, `INSERT INTO account_users (account_id, organization_id, member_id)
+		VALUES ($1, $2, $3)`, x.acct, x.org, x.member); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Remove(ctx, x.acct, x.member, kernel.Expect{},
+		onTrail(x, user.ActionDelete)); !errors.Is(err, p.removeErr) {
+		t.Fatalf("a failed removal of the setting = %v", err)
+	}
+	if _, err := s.User(ctx, x.acct, x.member); err != nil {
+		t.Errorf("the member after a failed removal of the setting: %v", err)
+	}
+	p.removeErr = nil
+	if _, err := s.Remove(ctx, x.acct, x.member, kernel.Expect{},
+		onTrail(x, user.ActionDelete)); err != nil {
+		t.Fatal(err)
+	}
+	want := [2]kernel.ULID{x.acct.ULID, x.member.ULID}
+	if len(p.removed) != 2 || p.removed[1] != want || !p.removedTx {
+		t.Errorf("settings removed = %v, in a transaction %t", p.removed, p.removedTx)
+	}
 }

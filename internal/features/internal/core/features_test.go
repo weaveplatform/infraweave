@@ -35,6 +35,10 @@ type store struct {
 	grants      core.Grants
 	grantsErr   error
 	opErr       error
+	optedIn     map[kernel.AccountID]bool
+	optedOut    map[[2]kernel.ULID]bool
+	previewErr  error
+	personalErr error
 }
 
 func (s *store) read(what string) {
@@ -557,6 +561,7 @@ func TestUnitRefusalError(t *testing.T) {
 	for r, want := range map[*core.Refusal]string{
 		{Disabled: true, Feature: "scans"}: "features: scans is switched off",
 		{Feature: "scans"}:                 "features: scans is not in the organization's tier",
+		{Preview: true, Feature: "scans"}:  "features: scans is a preview the account has not opted in to",
 	} {
 		if r.Error() != want {
 			t.Errorf("Error = %q, want %q", r.Error(), want)

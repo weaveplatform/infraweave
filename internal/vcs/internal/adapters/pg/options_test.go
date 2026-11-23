@@ -16,7 +16,7 @@ type optionPolicy struct {
 	calls int
 }
 
-func (p *optionPolicy) AllowOrganization(context.Context, kernel.OrganizationID, string) error {
+func (p *optionPolicy) AllowAccount(context.Context, kernel.OrganizationID, kernel.AccountID, string) error {
 	p.calls++
 	return p.err
 }
