@@ -654,14 +654,24 @@ func (c *controllerSteps) chartGone(ctx context.Context, name string) error {
 			return lenOf(l, err)
 		},
 	}
-	for _, kind := range slices.Sorted(maps.Keys(counts)) {
-		n, err := counts[kind]()
-		if err != nil {
-			return fmt.Errorf("list %s: %w", kind, err)
+	// Helm waits for the objects it deletes, and the garbage collector
+	// then removes what they owned, such as the controller's Pods.
+	left := ""
+	err := deps.Eventually(ctx, "the release "+name+" to leave nothing", func(context.Context) (bool, error) {
+		left = ""
+		for _, kind := range slices.Sorted(maps.Keys(counts)) {
+			n, err := counts[kind]()
+			if err != nil {
+				return false, fmt.Errorf("list %s: %w", kind, err)
+			}
+			if n != 0 {
+				left += fmt.Sprintf(" %d %s", n, kind)
+			}
 		}
-		if n != 0 {
-			return fmt.Errorf("%w: the release %s left %d %s in %s", harness.ErrStep, name, n, kind, ns)
-		}
+		return left == "", nil
+	})
+	if err != nil {
+		return fmt.Errorf("%w: the release %s left%s in %s: %w", harness.ErrStep, name, left, ns, err)
 	}
 	for _, crd := range []string{"workerpools.workers.infraweave.io", "workers.workers.infraweave.io"} {
 		if _, err := c.api.Resource(definitionsResource).Get(ctx, crd, metav1.GetOptions{}); err != nil {
