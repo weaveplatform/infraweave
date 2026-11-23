@@ -268,8 +268,10 @@ Who calls the engine, when, and what the result does to the run of decision
 The launcher compiles its configured policy at startup and evaluates before
 source/restore or requested-tool downloads. The complete version-1 input,
 argv/result frames, masking and budgets are the [worker pool contract](../../implementation/worker-pool-contracts.md#worker-initialization-and-signed-runs).
-It includes the bare server run JWT and trusted static assignment environment;
-optional user-provided metadata signatures remain a separate admission rule.
+It includes the bare server run JWT, the issuer, audience and public keys the
+launcher admitted it against as `run.token_trust`, and trusted static
+assignment environment; optional user-provided metadata signatures remain a
+separate admission rule.
 C68 is still missing vendor input evidence, not permission to leave the
 infraweave input unspecified. The local evaluator reuses the INITIALIZATION
 preamble and has a distinct worker prepared-query identity within the bounded
@@ -284,10 +286,15 @@ The worker specification adds the immutable stack ULID beside its existing slug
 `id` and the stored run commit's branch beside the stack's tracked branch. A
 configured local policy fails closed if an older server omits either new field.
 Without a configured policy, the supported older-server path is unchanged.
-The bare token is supplied by authenticated assignment delivery; independent JWT
-signature/admission and issued restart-safe preparation deadlines remain separate
-implementation requirements. The evaluator adds no replacement
-preparation clock and cannot claim those protections from its own timeout.
+The launcher admits the token natively before the policy runs, as the
+server-signed run token of the assignment under the keys its worker session
+reads ([0006](0006-authentication-and-tokens.md)); a refused token never
+reaches a policy. A policy may verify it again with `io.jwt.decode_verify`
+against `run.token_trust` under its own constraints, such as another time or
+a pinned key set, and a valid token admits nothing a policy denies. Issued
+restart-safe preparation deadlines remain a separate implementation
+requirement. The evaluator adds no replacement preparation clock and cannot
+claim that protection from its own timeout.
 
 Print and deny text are masked in the individual evaluation before truncation,
 so a long token cannot leak a truncated prefix. Raw OPA evaluation/startup

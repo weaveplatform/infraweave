@@ -203,6 +203,7 @@ func NewServer(pool Pool) *Server {
 		r.Post("/register", s.register)
 		r.Post("/poll", s.poll)
 		r.Post("/deregister", s.deregister)
+		r.Get("/run-token-keys", s.runTokenKeys)
 		r.Get("/runs/{run}/spec", s.spec)
 		r.Post("/runs/{run}/reports", s.report)
 		r.Post("/runs/{run}/upload-urls", s.uploadURLs)
@@ -232,7 +233,8 @@ func (t inProcess) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // Refuse makes the server answer the next n calls of op (register, poll,
-// deregister, spec, reports, upload-urls, put or log-chunks) with status;
+// deregister, run-token-keys, spec, reports, upload-urls, put or
+// log-chunks) with status;
 // n of 0 takes op's calls again.
 func (s *Server) Refuse(op string, status, n int) {
 	s.mu.Lock()

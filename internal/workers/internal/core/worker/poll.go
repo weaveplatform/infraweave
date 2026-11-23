@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -381,6 +382,22 @@ func (s *Service) Deregister(ctx context.Context, b accessapi.Bearer) error {
 		return s.store.Remove(ctx, b.ID) //nolint:wrapcheck // store names the removal
 	})
 	return s.unauthenticated(err)
+}
+
+// RunTokenKeys answers the session's worker what verifies the run tokens
+// its polls carry; ErrUnauthenticated for a worker that is gone or whose
+// credential generation is no longer current.
+//
+// ref: decision 0006 § "Signing keys"
+func (s *Service) RunTokenKeys(ctx context.Context, b accessapi.Bearer) (accessapi.RunTokenKeys, error) {
+	if _, err := s.session(ctx, b, false); err != nil {
+		return accessapi.RunTokenKeys{}, err
+	}
+	keys, err := s.tokens.RunTokenKeys(ctx)
+	if err != nil {
+		return accessapi.RunTokenKeys{}, fmt.Errorf("read the run token keys: %w", err)
+	}
+	return keys, nil
 }
 
 // Wake ends the hold of every poll held for pool, each of which rereads

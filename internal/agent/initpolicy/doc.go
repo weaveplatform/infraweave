@@ -10,9 +10,10 @@
 // print/deny text or a safe failure; no raw input or OPA diagnostic is logged.
 // The policy's exec calls go to the rego.Commands the caller supplies for that
 // evaluation alone; a call that produces no result fails the evaluation with the
-// call's reason, which names no argument, output or image. The run token is
-// delivered by the authenticated worker protocol; independent signature
-// admission belongs to its separate verifier.
+// call's reason, which names no argument, output or image. The run token
+// reaches the policy only after internal/agent/signedrun admitted it, with
+// the issuer, audience and public keys it was admitted against as
+// run.token_trust, so a policy verifies it again under its own constraints.
 //
 // # Dependencies
 //

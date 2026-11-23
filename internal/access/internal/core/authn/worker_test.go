@@ -2,10 +2,16 @@ package authn_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
+
+	jose "github.com/go-jose/go-jose/v4"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
@@ -203,5 +209,65 @@ func TestUnitInRunToken(t *testing.T) {
 		if _, err := w.s.InRunToken(ctx, req); !errors.Is(err, errDown) {
 			t.Errorf("%s down = %v", op, err)
 		}
+	}
+}
+
+// verifying is authn.Verifying over fixed keys, or err.
+type verifying struct {
+	keys []jose.JSONWebKey
+	err  error
+}
+
+func (v verifying) VerifyingKeys(context.Context) (string, []jose.JSONWebKey, error) {
+	return "https://iw.example.com", v.keys, v.err
+}
+
+// RunTokenKeys answers each verifying key's public point, with the run
+// token's issuer and audience, and refuses a key that is not P-256.
+func TestUnitRunTokenKeys(t *testing.T) {
+	ctx := t.Context()
+	f := newWorld(t).f
+	service := func(v authn.Verifying) *authn.Service {
+		return authn.New(authn.Deps{Sessions: f, Verifying: v, Now: time.Now})
+	}
+	if _, err := service(nil).RunTokenKeys(ctx); !errors.Is(err, authn.ErrRunTokenKeys) {
+		t.Errorf("RunTokenKeys with no keys = %v", err)
+	}
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := jose.JSONWebKey{Key: &key.PublicKey, KeyID: "k1", Algorithm: "ES256", Use: "sig"}
+	got, err := service(verifying{keys: []jose.JSONWebKey{jwk}}).RunTokenKeys(ctx)
+	if err != nil || got.Issuer != "https://iw.example.com" || got.Audience != accessapi.RunnerAudience || len(got.Keys) != 1 {
+		t.Fatalf("RunTokenKeys = %+v, %v", got, err)
+	}
+	want, err := json.Marshal(jwk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var point struct {
+		X string `json:"x"`
+		Y string `json:"y"`
+	}
+	if err := json.Unmarshal(want, &point); err != nil {
+		t.Fatal(err)
+	}
+	if k := got.Keys[0]; k.ID != "k1" || k.X != point.X || k.Y != point.Y {
+		t.Errorf("key = %+v, want the JWK's point %+v", k, point)
+	}
+	other, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []jose.JSONWebKey{{Key: &other.PublicKey, KeyID: "p384"}, {Key: []byte("hmac"), KeyID: "hs"}} {
+		_, err := service(verifying{keys: []jose.JSONWebKey{bad}}).RunTokenKeys(ctx)
+		if !errors.Is(err, authn.ErrRunTokenKeys) {
+			t.Errorf("RunTokenKeys of %s = %v", bad.KeyID, err)
+		}
+	}
+	down := errors.New("store down")
+	if _, err := service(verifying{err: down}).RunTokenKeys(ctx); !errors.Is(err, down) {
+		t.Errorf("RunTokenKeys = %v, want the store's error", err)
 	}
 }

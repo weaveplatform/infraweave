@@ -407,3 +407,55 @@ func TestUnitRunIssuer(t *testing.T) {
 		}
 	}
 }
+
+// VerifyingKeys answers the public half of every key that verifies, which
+// verifies a runner token apart from the service, and no private member.
+func TestUnitVerifyingKeys(t *testing.T) {
+	ctx := context.Background()
+	svc, store, c := setup(t)
+	r := request()
+	r.Kind, r.Subject, r.Audience = token.KindRunner, kernel.NewULID().String(), "infraweave-runner"
+	raw, _, err := svc.Issue(ctx, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A successor published beside the active key is answered too.
+	c.advance(token.KeyLifetime - token.NextLead)
+	if err := svc.Rotate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	iss, keys, err := svc.VerifyingKeys(ctx)
+	if err != nil || iss != issuer || len(keys) != 2 {
+		t.Fatalf("VerifyingKeys = %q, %d keys, %v", iss, len(keys), err)
+	}
+	kid := segment(t, raw, 0)["kid"]
+	var found bool
+	for _, k := range keys {
+		encoded, err := json.Marshal(k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !k.IsPublic() || k.Algorithm != "ES256" || k.Use != "sig" || strings.Contains(string(encoded), `"d"`) {
+			t.Errorf("key %s = %s", k.KeyID, encoded)
+		}
+		if k.KeyID != kid {
+			continue
+		}
+		found = true
+		parsed, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{jose.ES256})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var claims jwt.Claims
+		if err := parsed.Claims(k.Key, &claims); err != nil || claims.Subject != r.Subject {
+			t.Errorf("runner token against its key = %+v, %v", claims, err)
+		}
+	}
+	if !found {
+		t.Errorf("no answered key is the token's %v", kid)
+	}
+	store.err = errDown
+	if _, _, err := svc.VerifyingKeys(ctx); !errors.Is(err, errDown) {
+		t.Errorf("VerifyingKeys = %v, want the store's error", err)
+	}
+}

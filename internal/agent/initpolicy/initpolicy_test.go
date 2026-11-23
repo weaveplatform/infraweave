@@ -3,14 +3,21 @@ package initpolicy_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
@@ -28,12 +35,15 @@ func settings(t *testing.T, dialect rego.EngineType, body string) initpolicy.Set
 	return initpolicy.Settings{Path: file, Engine: dialect, Timeout: initpolicy.DefaultTimeout}
 }
 
+var trust = initpolicy.TokenTrust{Issuer: "https://iw.example.com", Audience: "infraweave-runner", JWKS: `{"keys":[]}`}
+
 func input() initpolicy.Input {
 	return initpolicy.Input{
 		Version: 1,
 		Run: initpolicy.Run{
 			ID: "run", Type: "TRACKED", Token: "signed-run-secret", Metadata: []string{},
-			Commit: initpolicy.Commit{Hash: "abc", Branch: "feature/source", Message: "Change"},
+			Commit:     initpolicy.Commit{Hash: "abc", Branch: "feature/source", Message: "Change"},
+			TokenTrust: trust,
 		},
 		Static: initpolicy.StaticEnvironment{StackID: "immutable", StackSlug: "stack", Space: "legacy", PoolID: "pool", AccountID: "account", RunnerImage: "image@sha256:digest"},
 	}
@@ -168,6 +178,61 @@ flag contains "print" if { print(concat("", ["output" | some n in numbers.range(
 	if _, err := p.Evaluate(t.Context(), in, nil); !errors.Is(err, initpolicy.ErrInput) {
 		t.Fatal(err)
 	}
+	in = input()
+	in.Run.TokenTrust.JWKS = ""
+	if _, err := p.Evaluate(t.Context(), in, nil); !errors.Is(err, initpolicy.ErrInput) {
+		t.Fatal(err)
+	}
+}
+
+// A policy verifies the admitted run token again against its trust with
+// io.jwt.decode_verify in both dialects, and its own pinned constraints
+// still deny a token the launcher admitted.
+func TestUnitInitializationVerifiesTheTokenAgainstItsTrust(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	js, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key},
+		(&jose.SignerOptions{}).WithType("JWT").WithHeader(jose.HeaderKey("kid"), "k1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	raw, err := jwt.Signed(js).Claims(map[string]any{
+		"iss": "https://iw.example.com", "aud": "infraweave-runner", "sub": "run", "iw_kind": "runner",
+		"jti": "jti", "iat": now.Unix(), "nbf": now.Unix(), "exp": now.Add(time.Hour).Unix(),
+	}).Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwks, err := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: &key.PublicKey, KeyID: "k1", Algorithm: "ES256", Use: "sig"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := input()
+	in.Run.Token = raw
+	in.Run.TokenTrust.JWKS = string(jwks)
+	for _, dialect := range []rego.EngineType{rego.V0, rego.V1} {
+		body := `package infraweave
+import future.keywords
+trust := input.run.token_trust
+verified := io.jwt.decode_verify(input.run.token, {"cert": trust.jwks, "iss": trust.issuer, "aud": trust.audience})
+deny contains "unverified" if { not verified[0] }
+deny contains "another run" if { verified[2].sub != input.run.id }
+deny contains "not a run token" if { verified[2].iw_kind != "runner" }
+deny contains "pinned elsewhere" if { not io.jwt.decode_verify(input.run.token, {"cert": trust.jwks, "iss": "https://other.example.com", "aud": trust.audience})[0] }
+`
+		p, err := initpolicy.Load(t.Context(), settings(t, dialect, body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = p.Evaluate(t.Context(), in, nil)
+		var denied *initpolicy.Denied
+		if !errors.As(err, &denied) || !slices.Equal(denied.Reasons, []string{"pinned elsewhere"}) {
+			t.Errorf("%s: %v", dialect, err)
+		}
+	}
 }
 
 func TestUnitInitializationCancellationAndCombinedDeadline(t *testing.T) {
@@ -216,24 +281,24 @@ func TestUnitInitializationSnapshot(t *testing.T) {
 		Tool:       &wire.RunSpecTool{Name: wire.RunSpecToolName("terraform"), Version: "1.17.2", Download: true},
 		Terragrunt: &wire.RunSpecTerragrunt{Version: "1.2.2", Download: false},
 	}
-	in, err := initpolicy.Snapshot(a, spec, "pool", "resolved-image")
+	in, err := initpolicy.Snapshot(a, spec, "pool", "resolved-image", trust)
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := json.Marshal(in)
-	want := `{"version":1,"run":{"id":"run","type":"TRACKED","user_provided_metadata":[],"commit":{"hash":"abc","branch":"feature/source","message":"message"},"token":"signed-token"},"static_run_environment":{"stack_id":"stack-ulid","stack_slug":"slug","space":"legacy","pool_id":"pool","account_id":"account","runner_image":"resolved-image"},"tool":{"name":"terraform","version":"1.17.2","download":true},"terragrunt":{"version":"1.2.2","download":false}}`
+	want := `{"version":1,"run":{"id":"run","type":"TRACKED","user_provided_metadata":[],"commit":{"hash":"abc","branch":"feature/source","message":"message"},"token":"signed-token","token_trust":{"issuer":"https://iw.example.com","audience":"infraweave-runner","jwks":"{\"keys\":[]}"}},"static_run_environment":{"stack_id":"stack-ulid","stack_slug":"slug","space":"legacy","pool_id":"pool","account_id":"account","runner_image":"resolved-image"},"tool":{"name":"terraform","version":"1.17.2","download":true},"terragrunt":{"version":"1.2.2","download":false}}`
 	if string(body) != want {
 		t.Fatalf("snapshot: %s", body)
 	}
 	spec.Tool, spec.Terragrunt = nil, nil
-	in, err = initpolicy.Snapshot(a, spec, "pool", "image")
+	in, err = initpolicy.Snapshot(a, spec, "pool", "image", trust)
 	if err != nil || in.Tool != nil || in.Terragrunt != nil {
 		t.Fatal("absent tools fabricated")
 	}
 	for _, mutate := range []func(*wire.RunSpec){func(s *wire.RunSpec) { s.Run.Id = "other" }, func(s *wire.RunSpec) { s.Run.StateVersion++ }, func(s *wire.RunSpec) { s.Stack.Ulid = nil }, func(s *wire.RunSpec) { s.Commit.Branch = nil }} {
 		bad := spec
 		mutate(&bad)
-		if _, err := initpolicy.Snapshot(a, bad, "pool", "image"); !errors.Is(err, initpolicy.ErrInput) {
+		if _, err := initpolicy.Snapshot(a, bad, "pool", "image", trust); !errors.Is(err, initpolicy.ErrInput) {
 			t.Fatal(err)
 		}
 	}

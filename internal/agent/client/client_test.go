@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -324,3 +326,46 @@ func TestUnitClientFailures(t *testing.T) {
 		t.Fatal("Status of an error that is no refusal")
 	}
 }
+
+// TestUnitClientRunTokenKeys checks that the run token keys are read with
+// the session token, and that a refusal, an answer that is no JSON, a
+// failed read and one beyond MaxRunTokenKeys are errors.
+func TestUnitClientRunTokenKeys(t *testing.T) {
+	answer := func(status int, body string) *client.Client {
+		return client.New("http://iw.invalid/worker/v1", doer(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path != "/worker/v1/run-token-keys" || r.Header.Get("Authorization") != "Bearer s" {
+				return nil, fmt.Errorf("%w: %s %s", errUnexpected, r.URL.Path, r.Header.Get("Authorization"))
+			}
+			return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}, nil
+		}))
+	}
+	// The client carries the answer as it is; the verifier refuses a
+	// private member.
+	keys := `{"issuer":"i","audience":"infraweave-runner","keys":[` +
+		`{"kid":"k","kty":"EC","crv":"P-256","x":"x","y":"y","alg":"ES256","use":"sig","d":"private"}]}`
+	got, err := answer(http.StatusOK, keys).RunTokenKeys(t.Context(), "s")
+	if err != nil || got.Issuer != "i" || len(got.Keys) != 1 || got.Keys[0].Kid != "k" {
+		t.Errorf("RunTokenKeys = %+v, %v", got, err)
+	}
+	if _, err := answer(http.StatusUnauthorized, `{"detail":"refused"}`).RunTokenKeys(t.Context(), "s"); client.Status(err) != http.StatusUnauthorized {
+		t.Errorf("refused = %v", err)
+	}
+	if _, err := answer(http.StatusOK, `{`).RunTokenKeys(t.Context(), "s"); err == nil {
+		t.Error("an answer that is no JSON was read")
+	}
+	big := `{"issuer":"` + strings.Repeat("i", client.MaxRunTokenKeys) + `"}`
+	if _, err := answer(http.StatusOK, big).RunTokenKeys(t.Context(), "s"); !errors.Is(err, client.ErrTooLarge) {
+		t.Errorf("an answer beyond the bound = %v", err)
+	}
+	broken := client.New("http://iw.invalid/worker/v1", doer(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(iotest.ErrReader(errUnexpected))}, nil
+	}))
+	if _, err := broken.RunTokenKeys(t.Context(), "s"); !errors.Is(err, errUnexpected) {
+		t.Errorf("a failed read = %v", err)
+	}
+	if _, err := client.New("http://[::1", http.DefaultClient).RunTokenKeys(t.Context(), "s"); err == nil {
+		t.Error("a base that is no URL was read")
+	}
+}
+
+var errUnexpected = errors.New("unexpected request")

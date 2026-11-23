@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	jose "github.com/go-jose/go-jose/v4"
+
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/apikey"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -49,6 +51,12 @@ type Tokens interface {
 	Verify(ctx context.Context, raw, audience string) (token.Claims, error)
 }
 
+// Verifying reads the iss of the worker protocol's tokens and the public
+// half of each key that verifies them; *token.Service is one.
+type Verifying interface {
+	VerifyingKeys(ctx context.Context) (string, []jose.JSONWebKey, error)
+}
+
 // Deps are what the service needs.
 type Deps struct {
 	Keys port.APIKeys
@@ -57,6 +65,9 @@ type Deps struct {
 	OrganizationKeys port.OrganizationKeys
 	Sessions         port.Sessions
 	Tokens           Tokens
+	// Verifying reads the keys that verify the tokens Tokens issues; nil
+	// answers no run token keys.
+	Verifying Verifying
 	// OIDC verifies an OIDC API key's JWT; nil, or a nil IssuerAllowed,
 	// refuses every OIDC key.
 	OIDC port.OIDC

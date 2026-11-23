@@ -123,12 +123,23 @@ type Input struct {
 }
 
 // Run contains the assignment's run facts; metadata is currently always empty.
+// Token is the run token the launcher admitted against TokenTrust.
 type Run struct {
-	ID       string   `json:"id"`
-	Type     string   `json:"type"`
-	Metadata []string `json:"user_provided_metadata"`
-	Commit   Commit   `json:"commit"`
-	Token    string   `json:"token"`
+	ID         string     `json:"id"`
+	Type       string     `json:"type"`
+	Metadata   []string   `json:"user_provided_metadata"`
+	Commit     Commit     `json:"commit"`
+	Token      string     `json:"token"`
+	TokenTrust TokenTrust `json:"token_trust"`
+}
+
+// TokenTrust is what verified the run token: the server's issuer, the run
+// tokens' audience and the server's public keys as an RFC 7517 JWK Set
+// document, which io.jwt.decode_verify takes as its cert.
+type TokenTrust struct {
+	Issuer   string `json:"issuer"`
+	Audience string `json:"audience"`
+	JWKS     string `json:"jwks"`
 }
 
 // Commit is the run's actual source commit, not the tracked branch's head.
@@ -162,8 +173,9 @@ type Terragrunt struct {
 }
 
 // Snapshot projects the specification authenticated by the caller's opened
-// pool envelope, refusing a mismatched run/state version or missing new facts.
-func Snapshot(a wire.Assignment, spec wire.RunSpec, pool, image string) (Input, error) {
+// pool envelope, with the trust the run token was admitted against,
+// refusing a mismatched run/state version or missing new facts.
+func Snapshot(a wire.Assignment, spec wire.RunSpec, pool, image string, trust TokenTrust) (Input, error) {
 	if a.Run != spec.Run.Id || a.StateVersion != spec.Run.StateVersion || string(a.State) != spec.Run.State ||
 		spec.Stack.Ulid == nil || *spec.Stack.Ulid == "" || spec.Commit.Branch == nil ||
 		a.RunToken == "" || spec.Run.Account == "" || pool == "" || image == "" || spec.Stack.Id == "" || spec.Stack.Space == "" {
@@ -172,7 +184,7 @@ func Snapshot(a wire.Assignment, spec wire.RunSpec, pool, image string) (Input, 
 	in := Input{
 		Version: 1,
 		Run: Run{
-			ID: a.Run, Type: string(spec.Run.Type), Metadata: []string{}, Token: a.RunToken,
+			ID: a.Run, Type: string(spec.Run.Type), Metadata: []string{}, Token: a.RunToken, TokenTrust: trust,
 			Commit: Commit{Hash: spec.Commit.Hash, Branch: *spec.Commit.Branch, Message: spec.Commit.Message},
 		},
 		Static: StaticEnvironment{
@@ -238,7 +250,9 @@ func (p *Policy) Evaluate(ctx context.Context, input Input, commands rego.Comman
 }
 
 func (in Input) validate(limit int64) error {
+	trust := in.Run.TokenTrust
 	if in.Version != 1 || in.Run.ID == "" || in.Run.Token == "" || in.Run.Metadata == nil ||
+		trust.Issuer == "" || trust.Audience == "" || trust.JWKS == "" ||
 		in.Static.StackID == "" || in.Static.StackSlug == "" || in.Static.Space == "" ||
 		in.Static.PoolID == "" || in.Static.AccountID == "" || in.Static.RunnerImage == "" {
 		return ErrInput
@@ -249,7 +263,7 @@ func (in Input) validate(limit int64) error {
 		return ErrInput
 	}
 	words := []string{
-		in.Run.ID, in.Run.Token, in.Run.Type, in.Run.Commit.Hash, in.Run.Commit.Branch,
+		in.Run.ID, in.Run.Token, trust.Issuer, trust.Audience, trust.JWKS, in.Run.Type, in.Run.Commit.Hash, in.Run.Commit.Branch,
 		in.Run.Commit.Message, in.Static.StackID, in.Static.StackSlug, in.Static.Space,
 		in.Static.PoolID, in.Static.AccountID, in.Static.RunnerImage,
 	}

@@ -620,3 +620,28 @@ func TestUnitWorkerPollClaimFails(t *testing.T) {
 		}
 	})
 }
+
+// TestUnitWorkerRunTokenKeys checks that a current session reads the run
+// token keys, a session of a gone or superseded worker reads none, and a
+// failed read is no refusal of the credential.
+func TestUnitWorkerRunTokenKeys(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t, worker.Deps{})
+	_, b := f.add()
+	keys, err := f.svc.RunTokenKeys(ctx, b)
+	if err != nil || keys.Audience != accessapi.RunnerAudience || len(keys.Keys) != 1 {
+		t.Fatalf("RunTokenKeys = %+v, %v", keys, err)
+	}
+	stale := b
+	stale.WorkerSerial++
+	if _, err := f.svc.RunTokenKeys(ctx, stale); !errors.Is(err, worker.ErrUnauthenticated) {
+		t.Errorf("superseded generation = %v", err)
+	}
+	if _, err := f.svc.RunTokenKeys(ctx, accessapi.Bearer{ID: kernel.NewULID(), WorkerSerial: 1}); !errors.Is(err, worker.ErrUnauthenticated) {
+		t.Errorf("unknown worker = %v", err)
+	}
+	f.svc = worker.New(worker.Deps{Store: f.store, DB: db{}, Tokens: tokens{failRun: true}})
+	if _, err := f.svc.RunTokenKeys(ctx, b); !errors.Is(err, errDown) || errors.Is(err, worker.ErrUnauthenticated) {
+		t.Errorf("keys down = %v", err)
+	}
+}

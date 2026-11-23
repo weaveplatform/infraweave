@@ -34,6 +34,10 @@ func (UnimplementedStrict) WorkerRegister(context.Context, WorkerRegisterRequest
 	return nil, &problem.NotImplementedError{OperationID: "workerRegister", Route: "POST /register"}
 }
 
+func (UnimplementedStrict) WorkerRunTokenKeys(context.Context, WorkerRunTokenKeysRequestObject) (WorkerRunTokenKeysResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunTokenKeys", Route: "GET /run-token-keys"}
+}
+
 func (UnimplementedStrict) WorkerRunArtifacts(context.Context, WorkerRunArtifactsRequestObject) (WorkerRunArtifactsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerRunArtifacts", Route: "POST /runs/{run}/artifacts"}
 }

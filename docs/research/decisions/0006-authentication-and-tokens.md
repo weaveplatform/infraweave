@@ -387,6 +387,21 @@ works.
   treat a run token as no credential, and the run routes a worker session
   token, so neither token reaches the other's operations. A runner principal
   holds no role.
+- **Run token admission.** A launcher admits each assignment's run token
+  before it uses it, apart from the server that delivered it: an ES256 JWT
+  whose `kid` names a key `GET /worker/v1/run-token-keys` answers its worker
+  session, whose signature that key verifies, whose `iss` is that server's,
+  whose one `aud` is `infraweave-runner`, whose `iw_kind` is `runner`, whose
+  `sub` is the assigned run and whose times hold within 30 seconds. The
+  route answers the issuer, the audience and the public `api-token` keys,
+  at most 16 RFC 7517 keys with no private member, to a worker principal
+  alone. The launcher reads them only from the server it is configured for,
+  caches them for at most five minutes and reads them once more for an
+  unknown `kid`, so a rotated key is found and an unrelated installation's
+  is not. A refused token, or keys it cannot read, fails the run in its
+  preparing state before its specification, source, tools or container
+  ([0008](0008-run-execution-and-worker-protocol.md)), with a fixed note
+  that names no token.
 - **Organization principals.** The routes of the `Organization` tag accept
   an organization token, a break-glass session, and a member session or CLI
   token whose member holds the organization admin role, whichever account
@@ -561,7 +576,7 @@ customer can write it into a trust policy. Without AWS credentials it answers
 
   | Purpose | Algorithm | Published |
   |---|---|---|
-  | `api-token` (API, organization, CLI, Terraform CLI, MCP access, in-run, worker and run tokens) | ES256 (P-256) | no |
+  | `api-token` (API, organization, CLI, Terraform CLI, MCP access, in-run, worker and run tokens) | ES256 (P-256) | no; worker sessions read the public keys at `/worker/v1/run-token-keys` |
   | `federation` | RS256 (RSA 3072) by default; PS256 and ES256 selectable | yes, `/.well-known/jwks` |
 
 - **Rotation.** States are `next`, `active`, `retiring` and `retired`. A
@@ -652,7 +667,10 @@ captures block their affected P13b implementation; P13 adds no login bypass.
   cannot be replayed on the REST API.
 - **API-token keys never published.** Only federation keys appear in the
   JWKS, so a cloud trust policy can never accept an API or run token, even
-  if a customer writes a loose audience condition.
+  if a customer writes a loose audience condition. The worker API answers
+  the public `api-token` keys to an authenticated worker session alone, so
+  a launcher verifies a run token without a public discovery path that a
+  trust policy could name.
 - **ES256 inside, RS256 outside.** ES256 keys and signatures are small and
   fast for tokens infraweave alone verifies. RS256 is the algorithm every
   relying party in report 12 accepts; Spacelift's own may be PS512 (capture
@@ -795,7 +813,10 @@ Departures from Spacelift, for the plan's deviations register:
   refused with a token for another resource), `auth/oidc_federation.feature` (a
   real run's token verified against the served discovery document and JWKS,
   and accepted by a Vault container's `jwt` auth method with
-  `bound_claims` on `spacePath`).
+  `bound_claims` on `spacePath`), `runs/signed.feature` (a launcher
+  admitting the server's run token through a rotation, and refusing a
+  tampered signature or claim, an unrelated installation's key, another
+  account's run token and a token of another kind before any container).
 - Parity checks against captures C17, C81, C83, C91 and C94 once recorded.
 
 ## References

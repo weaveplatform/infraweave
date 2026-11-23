@@ -199,6 +199,28 @@ func (s Server) WorkerDeregister(ctx context.Context, _ gen.WorkerDeregisterRequ
 	return gen.WorkerDeregister204Response{}, nil
 }
 
+// WorkerRunTokenKeys answers the session's worker the issuer, audience
+// and public keys that verify run tokens.
+func (s Server) WorkerRunTokenKeys(ctx context.Context, _ gen.WorkerRunTokenKeysRequestObject) (gen.WorkerRunTokenKeysResponseObject, error) {
+	b, err := bearer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := s.svc.RunTokenKeys(ctx, b)
+	if err != nil {
+		return nil, s.answer(ctx, err)
+	}
+	out := gen.RunTokenKeys{
+		Issuer: keys.Issuer, Audience: keys.Audience, Keys: make([]gen.RunTokenKey, 0, len(keys.Keys)),
+	}
+	for _, k := range keys.Keys {
+		out.Keys = append(out.Keys, gen.RunTokenKey{
+			Kty: gen.EC, Crv: gen.P256, Alg: gen.ES256, Use: gen.Sig, Kid: k.ID, X: k.X, Y: k.Y,
+		})
+	}
+	return gen.WorkerRunTokenKeys200JSONResponse{Body: out}, nil
+}
+
 // WorkerRunSpec answers the specification of the run the run token names,
 // its secrets sealed to the run's pool's key.
 //

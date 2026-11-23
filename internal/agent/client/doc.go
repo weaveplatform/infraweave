@@ -1,5 +1,6 @@
 // Package client is the launcher's and the runner's side of the worker
-// API: Client calls register, poll, deregister, a run's specification,
+// API: Client calls register, poll, deregister, the run token keys, read
+// with at most MaxRunTokenKeys of their answer, a run's specification,
 // its reports, its upload declarations, its log chunks' and artifacts'
 // commits and its saved workspace's location through the generated
 // internal/agent/wire client, setting each call's bearer token, and

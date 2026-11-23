@@ -213,6 +213,7 @@ func New(d Deps) (*Domain, error) {
 		OrganizationKeys: store,
 		Sessions:         store,
 		Tokens:           tokens,
+		Verifying:        tokens,
 		OIDC:             verifier,
 		IssuerAllowed: func(issuer string) bool {
 			return apikey.IssuerAllowed(d.Settings.OIDCAPIKeys.AllowedIssuers, issuer)

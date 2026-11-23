@@ -199,6 +199,61 @@ components:
           type: integer
           format: int64
           description: When the renewed session token expires, in Unix seconds.
+    RunTokenKeys:
+      description: >-
+        What verifies a run token apart from the server that issued it: the
+        issuer and the audience its claims name, and the public keys that
+        may have signed it.
+      type: object
+      required: [issuer, audience, keys]
+      properties:
+        issuer:
+          type: string
+          description: The iss of every run token the server issues.
+        audience:
+          type: string
+          description: The one aud of every run token, infraweave-runner.
+        keys:
+          type: array
+          maxItems: 16
+          description: >-
+            The public half of each signing key that verifies a token: the
+            key that signs now, its published successor, and the keys it
+            replaced until the last token they signed expires.
+          items:
+            $ref: '#/components/schemas/RunTokenKey'
+    RunTokenKey:
+      description: >-
+        A public ES256 signing key as an RFC 7517 JSON Web Key. It carries no
+        private member.
+      type: object
+      required: [kty, crv, x, y, kid, alg, use]
+      properties:
+        kty:
+          type: string
+          enum: [EC]
+          description: The key type.
+        crv:
+          type: string
+          enum: [P-256]
+          description: The key's curve.
+        x:
+          type: string
+          description: The public point's x coordinate, base64url without padding.
+        y:
+          type: string
+          description: The public point's y coordinate, base64url without padding.
+        kid:
+          type: string
+          description: The key's ID, which a token's kid header names.
+        alg:
+          type: string
+          enum: [ES256]
+          description: The one algorithm the key signs with.
+        use:
+          type: string
+          enum: [sig]
+          description: The key's use.
 paths:
   /register:
     post:
@@ -362,6 +417,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PollResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /run-token-keys:
+    get:
+      summary: Read the keys that verify run tokens
+      description: >-
+        Answers the issuer and audience of the run tokens the server issues,
+        and the public keys that verify them, so a launcher admits an
+        assignment's run token before it uses it. Only a registered worker's
+        session reads them: no discovery document names these keys, so no
+        relying party outside the worker protocol trusts them. No private
+        key material is answered.
+      operationId: workerRunTokenKeys
+      tags:
+        - Workers
+      responses:
+        '200':
+          description: The run tokens' issuer, audience and verifying keys.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunTokenKeys'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '429':

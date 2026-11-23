@@ -82,6 +82,28 @@ type Tokens interface {
 	// ErrInvalidToken.
 	VerifyRun(ctx context.Context, raw string) (Bearer, error)
 	InRunToken(ctx context.Context, r InRunRequest) (Token, error)
+	// RunTokenKeys are what verifies a run token apart from the server.
+	RunTokenKeys(ctx context.Context) (RunTokenKeys, error)
+}
+
+// RunTokenKeys are what verifies a run token apart from the server that
+// issued it: the iss and the one aud its claims name, and the public half
+// of each signing key that may have signed it.
+//
+// ref: decision 0006 § "Signing keys"
+type RunTokenKeys struct {
+	Issuer   string
+	Audience string
+	Keys     []RunTokenKey
+}
+
+// RunTokenKey is the public half of an ES256 signing key on P-256: its
+// kid, and its point's coordinates, each base64url without padding as an
+// RFC 7517 JSON Web Key carries them.
+type RunTokenKey struct {
+	ID string
+	X  string
+	Y  string
 }
 
 // RunAccess is what authenticating an in-run API token needs of its run:

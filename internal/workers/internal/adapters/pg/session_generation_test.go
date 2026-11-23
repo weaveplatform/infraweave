@@ -46,6 +46,10 @@ func (*serialTokens) RunToken(context.Context, kernel.ULID) (accessapi.Token, er
 	return accessapi.Token{}, errDown
 }
 
+func (*serialTokens) RunTokenKeys(context.Context) (accessapi.RunTokenKeys, error) {
+	return accessapi.RunTokenKeys{}, errDown
+}
+
 type claimCounter struct {
 	workersapi.Scheduler
 	calls atomic.Int32

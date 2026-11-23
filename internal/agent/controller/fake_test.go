@@ -22,6 +22,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-jose/go-jose/v4"
 
+	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/agent/wire/management"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -98,6 +99,7 @@ func newInstallation(t *testing.T) *installation {
 	r.Post("/worker/v1/register", in.register)
 	r.Post("/worker/v1/deregister", in.deregister)
 	r.Post("/worker/v1/poll", in.poll)
+	r.Get("/worker/v1/run-token-keys", in.runTokenKeys)
 	r.Get("/worker/v1/runs/{run}/spec", in.spec)
 	r.Post("/worker/v1/runs/{run}/reports", in.report)
 	in.srv = httptest.NewServer(r)
@@ -475,6 +477,20 @@ func (in *installation) deregister(w http.ResponseWriter, r *http.Request) {
 	}
 	delete(in.workers, worker)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// runTokenKeys answers a worker's session agenttest's run token keys.
+func (in *installation) runTokenKeys(w http.ResponseWriter, r *http.Request) {
+	if !in.enter(w, "run-token-keys") {
+		return
+	}
+	_, ok := in.sessions[strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")]
+	in.mu.Unlock()
+	if !ok {
+		problem(w, http.StatusUnauthorized, "", "session")
+		return
+	}
+	reply(w, http.StatusOK, agenttest.RunTokenKeys())
 }
 
 // assign queues run of pool for the next idle poll of its workers, its

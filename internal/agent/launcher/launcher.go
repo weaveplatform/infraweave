@@ -25,6 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
+	"github.com/weaveplatform/infraweave/internal/agent/signedrun"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -113,6 +114,9 @@ type Launcher struct {
 	id     identity
 	api    *client.Client
 	policy *initpolicy.Policy
+	// admit verifies each assignment's run token against the keys of
+	// the server api reaches.
+	admit *signedrun.Verifier
 	// endpoint is where the launcher and its runners reach the worker
 	// API; roots is launcher.ca_file's PEM bundle, which its runners
 	// trust too.
@@ -232,8 +236,9 @@ func NewContext(ctx context.Context, d Deps) (*Launcher, error) {
 	if d.Endpoint != "" {
 		endpoint = d.Endpoint
 	}
+	api := client.New(client.Base(endpoint), d.Doer)
 	return &Launcher{
-		d: d, id: id, api: client.New(client.Base(endpoint), d.Doer), policy: policy,
+		d: d, id: id, api: api, policy: policy, admit: signedrun.New(api, d.Now),
 		endpoint: endpoint, roots: ca,
 	}, nil
 }
@@ -710,16 +715,21 @@ func (l *Launcher) prepareBy(ctx context.Context, a wire.Assignment, out *lines)
 	return c, err
 }
 
-// prepare fetches a's specification, opens its sealed part with the
-// pool's private key, resolves and admits the run's image, evaluates the
-// initialization policy, whose exec calls run in helpers of that image,
-// fetches the run's source into its workspace, and starts the run's
-// container. The image is the specification's, else the launcher's
+// prepare admits a's run token as its run's, signed by the server's
+// keys, before it uses it, fetches a's specification, opens its sealed
+// part with the pool's private key, resolves and admits the run's image,
+// evaluates the initialization policy, whose exec calls run in helpers of
+// that image, fetches the run's source into its workspace, and starts the
+// run's container. The image is the specification's, else the launcher's
 // default when set, else the stack's vendor's built-in image. A container
 // that does not start takes its workspace with it.
 //
 // ref: decision 0008 § "The launcher and the runner"
 func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (executor.Container, error) {
+	trust, err := l.admit.Verify(ctx, l.session, a.RunToken, a.Run)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // signedrun's text is one fixed reason that names no token
+	}
 	cctx, cancel := context.WithTimeout(ctx, callTimeout)
 	spec, err := l.api.Spec(cctx, a.RunToken, a.Run)
 	cancel()
@@ -740,7 +750,7 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (
 		return nil, errPublicRunnerImage
 	}
 	if l.policy != nil {
-		input, err := initpolicy.Snapshot(a, spec, l.id.pool, image)
+		input, err := initpolicy.Snapshot(a, spec, l.id.pool, image, initpolicy.TokenTrust(trust))
 		if err != nil {
 			return nil, err //nolint:wrapcheck // initpolicy exposes a safe refusal
 		}

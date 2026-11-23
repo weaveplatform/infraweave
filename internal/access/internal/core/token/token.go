@@ -332,6 +332,24 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 	}, nil
 }
 
+// VerifyingKeys are the iss of every token but an in-run API token, and
+// the public half of each key that verifies a token, the store's keys
+// that are not retired, as ES256 signing keys. It reads the store each
+// call, so a key a rotation publishes is answered at once.
+func (s *Service) VerifyingKeys(ctx context.Context) (string, []jose.JSONWebKey, error) {
+	keys, err := s.store.Keys(ctx, APIToken)
+	if err != nil {
+		return "", nil, fmt.Errorf("read signing keys: %w", err)
+	}
+	out := make([]jose.JSONWebKey, 0, len(keys))
+	for _, k := range keys {
+		pub := k.Public.Public()
+		pub.Algorithm, pub.Use = string(signer.ES256), "sig"
+		out = append(out, pub)
+	}
+	return s.issuer, out, nil
+}
+
 // publicKey returns the public key kid names from this replica's cache,
 // reloading the cache when kid is unknown and the last reload is at least
 // reloadEvery old.

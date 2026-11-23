@@ -5,8 +5,12 @@ Feature: Worker local initialization admits a run before source and tool startup
   calls run, each in a fresh Docker container of the run's resolved runner image
   whose arguments arrive only on its standard input, never on the launcher's
   host; every helper is removed once its call ends, and a stopped or killed
-  launcher leaves none behind.
-  ref: decisions 0008, 0009 and 0013
+  launcher leaves none behind. Each program receives the run token the
+  launcher already admitted as the server's, and the issuer, audience and
+  public keys it was admitted against, so a program verifies it again with
+  io.jwt.decode_verify under its own constraints; a valid token admits
+  nothing a program denies.
+  ref: decisions 0006, 0008, 0009 and 0013
 
   Background:
     Given the release indexes serve the recorded fixtures
@@ -228,3 +232,59 @@ Feature: Worker local initialization admits a run before source and tool startup
     Then the run "run" eventually has no initialization command container
     And token "h" eventually reads the run "run" in the state "FAILED" through B
     And the run "run" has no run container
+
+  @op:taskCreate @case:success
+  Scenario Outline: A local <engine> program verifies the server-signed run token against its trust and binds its run and commit
+    Given the launchers started from now on evaluate a <engine> initialization policy:
+      """
+      package infraweave
+      import future.keywords
+      trust := input.run.token_trust
+      constraints := {"cert": trust.jwks, "iss": trust.issuer, "aud": trust.audience}
+      verified := io.jwt.decode_verify(input.run.token, constraints)
+      claims := verified[2]
+      unrelated_key := {"kty": "EC", "crv": "P-256", "alg": "ES256", "use": "sig", "x": "BZZi1WKoIHZoEqIhn4qugRI11YStt1fOmdWXu3vMIrM", "y": "ltqYo9vbO0ytXMROjFzvTxc8FRqgA-11OF4e1TmAMmA"}
+      unrelated := json.marshal({"keys": [object.union(unrelated_key, {"kid": io.jwt.decode(input.run.token)[0].kid})]})
+      deny contains "Unsigned run" if { not verified[0] }
+      deny contains "Another run" if { claims.sub != input.run.id }
+      deny contains "Not a run token" if { claims.iw_kind != "runner" }
+      deny contains "Unbound commit" if { input.run.commit.branch != "main" }
+      deny contains "Unbound commit" if { count(input.run.commit.hash) != 40 }
+      deny contains "Unexpected metadata" if { input.run.user_provided_metadata != [] }
+      deny contains "Expired claims admitted" if { io.jwt.decode_verify(input.run.token, object.union(constraints, {"time": (claims.exp + 1) * 1000000000}))[0] }
+      deny contains "Another issuer admitted" if { io.jwt.decode_verify(input.run.token, object.union(constraints, {"iss": "https://unrelated.example.com"}))[0] }
+      deny contains "Another audience admitted" if { io.jwt.decode_verify(input.run.token, object.union(constraints, {"aud": "infraweave-worker"}))[0] }
+      deny contains "Unrelated installation admitted" if { io.jwt.decode_verify(input.run.token, object.union(constraints, {"cert": unrelated}))[0] }
+      flag contains "observed" if { print("worker-policy-checked"); print(input.run.token) }
+      """
+    When token "h" sends "POST /api/v1/stacks/infra/tasks" with '{"command":"terraform version","skipInitialization":true}' through A
+    Then it answers 201
+    And the answer's id names "run"
+    When token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    Then token "h" eventually reads the run "run" in the state "FINISHED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, INITIALIZING, PERFORMING, FINISHED"
+    And the launcher "l" masked its initialization token in print and reports
+
+    Examples:
+      | engine  |
+      | REGO_V0 |
+      | REGO_V1 |
+
+  @op:runTrigger @case:failure
+  Scenario: A verified run token does not bypass a policy that requires signed run metadata
+    Given the launchers started from now on evaluate a REGO_V1 initialization policy:
+      """
+      package infraweave
+      trust := input.run.token_trust
+      verified := io.jwt.decode_verify(input.run.token, {"cert": trust.jwks, "iss": trust.issuer, "aud": trust.audience})
+      deny contains "The run carries no signed metadata" if { verified[0]; count(input.run.user_provided_metadata) == 0; print("worker-policy-checked"); print(input.run.token) }
+      """
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}","runType":"TRACKED"}' through A
+    Then it answers 200
+    And the answer's id names "run"
+    When token "h" starts the launcher "l" of the pool "pool" with the key of "csr" through A
+    Then token "h" eventually reads the run "run" in the state "FAILED" through B
+    And the answer's history is the states "QUEUED, READY, PREPARING, FAILED"
+    And the answer's last state transition's note is "worker initialization policy denied: The run carries no signed metadata"
+    And the run "run" never started a container
+    And the launcher "l" masked its initialization token in print and reports
