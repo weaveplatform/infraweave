@@ -269,13 +269,19 @@ func IsProblem(resp Response, what, code, slug string) error {
 func Literal(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
 // Row scans the one row query answers on the scenario's database, with
-// args, into dest.
+// args, into dest: its own PostgreSQL's when it has one, as Querier.
 func (w *World) Row(ctx context.Context, query string, args []any, dest ...any) error {
-	db, err := w.Database(ctx)
-	if err != nil {
-		return err
+	var dsn string
+	if w.OwnPG != nil {
+		dsn = w.OwnPG.DSN
+	} else {
+		db, err := w.Database(ctx)
+		if err != nil {
+			return err
+		}
+		dsn = db.DSN
 	}
-	conn, err := pgx.Connect(ctx, db.DSN)
+	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
