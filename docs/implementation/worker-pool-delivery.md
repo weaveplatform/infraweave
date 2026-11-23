@@ -18,13 +18,18 @@ executed sources, none of them a synthetic fixture:
 | Source | Revision | Result |
 | --- | --- | --- |
 | Main quality gate [CI 45218707334](https://github.com/weaveplatform/infraweave/actions/runs/45218707334) | `e95e9ad3` (#810) | All 37 jobs passed: seven acceptance partitions with **1,208 scenarios / 28,606 steps**, native and capture suites, certified FIPS for every suite, the Terraform policy and Kubernetes batches and the coverage gate |
-| Local `make gate` | ⟨GATE_REV⟩ | ⟨GATE_SUMMARY⟩ |
+| Delivery pull request's quality gate, [#819](https://github.com/weaveplatform/infraweave/pull/819) | ⟨GATE_REV⟩ | ⟨GATE_SUMMARY⟩ |
 | Local Terraform Kubernetes batch, certified FIPS | `e5feb44b`, clean tree | Passed: **37 scenarios / 661 steps**, the six ownership and injected-failure controls, and absence readback for every owner |
 
 The local runs used native ARM64 Docker Desktop 29.6.1, official Terraform
-1.17.2 and the pinned `rancher/k3s:v1.37.2-k3s1` digest. The exact-head CI of
-the delivery pull request reruns all of it on Linux, including the Kubernetes
-batch and certified FIPS; the pull request records that run and its head.
+1.17.2 and the pinned `rancher/k3s:v1.37.2-k3s1` digest. The pull request's
+quality gate is the full gate on Linux: every acceptance partition, the native
+and capture suites, certified FIPS, both Terraform batches and the coverage
+gate. The local `make gate` was stopped during acceptance, after its
+documentation, vet, lint, lab validation and unit stages passed, so that it
+would not compete with that run; no count below comes from it. The focused
+native suites and the four changed features also ran locally, as recorded in
+the matrix.
 
 Each report counts only scenarios whose every step passed. A scenario with no
 steps, a skipped, pending or undefined step, or an empty selection fails the
@@ -40,10 +45,10 @@ the twelve `/worker/v1` routes.
 
 | Class | Operations | Evidence rule | Result |
 | --- | --- | --- | --- |
-| Account-scoped, authorized by feature and action | ⟨N_SCOPED⟩ | Passing `@case:success`, `@case:denial` (403 or the not-found answer that hides an unreadable pool) and `@case:failure` | All ⟨N_SCOPED⟩ complete |
+| Account-scoped, authorized by feature and action | 30 | Passing `@case:success`, `@case:denial` (403 or the not-found answer that hides an unreadable pool) and `@case:failure` | All 30 complete |
 | Declared stubs | `workerPoolSearchIntentProjects` and its suggestions | Answer 501 until intent projects exist (P25) | Not claimed; they keep `tag:Worker Pools` partial |
 | Operator | `publicWorkerPoolCreate`, `publicWorkerPoolCredentials`, `publicWorkerPoolReset` | Operator credential; an account credential is the wrong audience and answers 401, not a role 403 | Success, credential refusal and failure all pass |
-| Worker protocol | ⟨N_PROTOCOL⟩ `/worker/v1` routes | Pool certificate, worker session or run token; a credential of another kind, run or generation answers 401 | Success, credential refusal and failure evidenced for each; see the matrix |
+| Worker protocol | 12 `/worker/v1` routes | Pool certificate, worker session or run token; a credential of another kind, run or generation answers 401 | Success, credential refusal and failure evidenced for each; see the matrix |
 
 The operation audit of main `e95e9ad3` found six account-scoped operations
 without failure evidence: `publicWorkerPool`, `defaultPublicWorkerPoolRunnerImage`,
@@ -203,8 +208,10 @@ owner left the other's cluster and services intact until its own destroy. Every
 private key, plan and kubeconfig was removed after the absence readback. Run and
 helper Pods live inside the owned cluster, so its destroy removes them; the
 scenarios themselves first assert each run's Pods and helper Pods are gone.
-Ordinary acceptance's testcontainers are reaped when each test process exits;
-⟨CLEANUP_TC⟩
+Ordinary acceptance's testcontainers are reaped when each test process exits.
+After the focused runs and the stopped local gate, no running container carries
+a testcontainers session label; the exited ones Docker still lists belong to
+sessions from before this delivery's runs.
 
 ## Remaining boundaries
 
