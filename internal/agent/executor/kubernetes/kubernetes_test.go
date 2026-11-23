@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/weaveplatform/infraweave/internal/agent/bootstrap"
@@ -606,7 +607,7 @@ func TestUnitRunPodsEndAsTheirRunnersDid(t *testing.T) {
 				})
 			})
 			// The executor reads the Pod marked before it goes.
-			if _, done, err := c.(*run).ended(t.Context()); done || err != nil {
+			if _, done, err := c.(*run).ended(t.Context(), nil); done || err != nil {
 				t.Fatalf("a disrupted Pod ended: %v %v", done, err)
 			}
 			if err := k.core.CoreV1().Pods(ns).Delete(t.Context(), PodName(runID, 4), metav1.DeleteOptions{}); err != nil {
@@ -811,25 +812,78 @@ func TestUnitHelpersBoundWhatTheyKeep(t *testing.T) {
 	}
 }
 
+// gatedCore is a core client whose Pod reads wait for open to close and
+// call read once answered. The fake client runs its reactors under its
+// own lock, so a read held there would hold every other request too.
+type gatedCore struct {
+	corev1client.CoreV1Interface
+	open <-chan struct{}
+	read func()
+}
+
+func (g gatedCore) Pods(namespace string) corev1client.PodInterface {
+	return gatedPods{g.CoreV1Interface.Pods(namespace), g}
+}
+
+type gatedPods struct {
+	corev1client.PodInterface
+	g gatedCore
+}
+
+func (p gatedPods) Get(ctx context.Context, name string, o metav1.GetOptions) (*corev1.Pod, error) {
+	<-p.g.open
+	defer p.g.read()
+	return p.PodInterface.Get(ctx, name, o) //nolint:wrapcheck // the fake's own answer
+}
+
+// heldWatch answers each watch of the namespace's Pods with one whose
+// events reach the watcher only once release closes, and calls opened
+// once the watch is open.
+func heldWatch(k *kubelet, release <-chan struct{}, opened func()) k8stesting.WatchReactionFunc {
+	return func(k8stesting.Action) (bool, watch.Interface, error) {
+		w, err := k.core.Tracker().Watch(podsResource, ns)
+		if err != nil {
+			return true, nil, err
+		}
+		held := make(chan watch.Event)
+		p := watch.NewProxyWatcher(held)
+		go func() {
+			defer w.Stop()
+			select {
+			case <-release:
+			case <-p.StopChan():
+				return
+			}
+			for ev := range w.ResultChan() {
+				select {
+				case held <- ev:
+				case <-p.StopChan():
+					return
+				}
+			}
+		}()
+		opened()
+		return true, p, nil
+	}
+}
+
 // TestUnitWaitSeesAnEvictionBetweenItsReads checks that a Pod marked as
-// a disruption target and deleted between two reads still ends evicted,
-// from the watch beside the reads.
+// a disruption target and deleted between two reads ends evicted when
+// the read finds the Pod gone before the watch delivers either update:
+// Wait's reads answer only once the Pod is deleted, and the watch's
+// events reach Wait only once a read has answered.
 func TestUnitWaitSeesAnEvictionBetweenItsReads(t *testing.T) {
 	k := newKubelet(t)
-	watching := make(chan struct{})
-	var once sync.Once
-	// The watch is open, its events delivered, before the test moves on.
-	k.core.PrependWatchReactor("pods", func(k8stesting.Action) (bool, watch.Interface, error) {
-		w, err := k.core.Tracker().Watch(podsResource, ns)
-		once.Do(func() { close(watching) })
-		return true, w, err
-	})
 	c, err := k.executor(t).Start(t.Context(), job(t))
 	if err != nil {
 		t.Fatal(err)
 	}
+	watching, gone, read := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var opened, answered sync.Once
+	k.core.PrependWatchReactor("pods", heldWatch(k, read, func() { opened.Do(func() { close(watching) }) }))
 	r := c.(*run)
 	r.c.Interval = time.Hour
+	r.e.core = gatedCore{CoreV1Interface: r.e.core, open: gone, read: func() { answered.Do(func() { close(read) }) }}
 	done := make(chan executor.Exit, 1)
 	go func() {
 		exit, err := c.Wait(t.Context())
@@ -839,18 +893,71 @@ func TestUnitWaitSeesAnEvictionBetweenItsReads(t *testing.T) {
 		done <- exit
 	}()
 	<-watching
-	k.setStatus(t.Context(), PodName(runID, 4), func(p *corev1.Pod) {
+	name := PodName(runID, 4)
+	k.setStatus(t.Context(), name, func(p *corev1.Pod) {
 		p.Status.Conditions = append(p.Status.Conditions, corev1.PodCondition{Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue})
 	})
+	if err := k.core.CoreV1().Pods(ns).Delete(t.Context(), name, metav1.DeleteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	close(gone)
+	if exit := <-done; exit != (executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}) {
+		t.Fatalf("exit %+v", exit)
+	}
+}
+
+// TestUnitWaitForADeletionEndsWithItsContext checks that a Wait waiting
+// for the watch to deliver a gone Pod's deletion ends with its context.
+func TestUnitWaitForADeletionEndsWithItsContext(t *testing.T) {
+	k := newKubelet(t)
+	c, err := k.executor(t).Start(t.Context(), job(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.(*run).c.Interval = time.Hour
 	if err := k.core.CoreV1().Pods(ns).Delete(t.Context(), PodName(runID, 4), metav1.DeleteOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case exit := <-done:
-		if exit != (executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}) {
-			t.Fatalf("exit %+v", exit)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := c.Wait(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+}
+
+// TestUnitWaitReopensItsWatch checks that Wait's watch opens again after
+// one that cannot open and one that ends without the Pod's deletion.
+func TestUnitWaitReopensItsWatch(t *testing.T) {
+	k := newKubelet(t)
+	c, err := k.executor(t).Start(t.Context(), job(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopened := make(chan struct{})
+	var opens int
+	k.core.PrependWatchReactor("pods", func(k8stesting.Action) (bool, watch.Interface, error) {
+		opens++
+		switch opens {
+		case 1:
+			return true, nil, errors.New("watch refused")
+		case 2:
+			return true, watch.NewEmptyWatch(), nil
+		case 3:
+			close(reopened)
 		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("Wait did not see the eviction")
+		return false, nil, nil
+	})
+	done := make(chan executor.Exit, 1)
+	go func() {
+		exit, err := c.Wait(t.Context())
+		if err != nil {
+			t.Error(err)
+		}
+		done <- exit
+	}()
+	<-reopened
+	k.exit(PodName(runID, 4), 0)
+	if exit := <-done; exit != (executor.Exit{Code: 0, Reason: wire.Exited}) {
+		t.Fatalf("exit %+v", exit)
 	}
 }

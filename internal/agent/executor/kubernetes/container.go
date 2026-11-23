@@ -16,6 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -88,10 +89,10 @@ func (r *run) Wait(ctx context.Context) (executor.Exit, error) {
 	defer t.Stop()
 	wctx, stop := context.WithCancel(ctx)
 	defer stop()
-	wake := make(chan struct{}, 1)
-	go r.follow(wctx, wake)
+	wake, deleted := make(chan struct{}, 1), make(chan struct{})
+	go r.follow(wctx, wake, deleted)
 	for {
-		exit, done, err := r.ended(ctx)
+		exit, done, err := r.ended(ctx, deleted)
 		if err != nil {
 			return executor.Exit{}, err
 		}
@@ -109,23 +110,14 @@ func (r *run) Wait(ctx context.Context) (executor.Exit, error) {
 	}
 }
 
-// follow watches the Pod until ctx ends, marking it evicted from the
-// first update that shows a disruption and waking Wait on each update. A
-// watch that cannot open, or that ends, opens again after an interval.
-func (r *run) follow(ctx context.Context, wake chan<- struct{}) {
+// follow watches the Pod until ctx ends or the watch delivers its
+// deletion, then closes deleted. A watch that cannot open, or that ends,
+// opens again after an interval.
+func (r *run) follow(ctx context.Context, wake chan<- struct{}, deleted chan<- struct{}) {
 	for ctx.Err() == nil {
-		w, err := r.e.core.Pods(r.c.Namespace).Watch(ctx, metav1.ListOptions{FieldSelector: "metadata.name=" + r.name})
-		if err == nil {
-			for ev := range w.ResultChan() {
-				if p, ok := ev.Object.(*corev1.Pod); ok && p.UID == r.uid && disrupted(p) {
-					r.evicted.Store(true)
-				}
-				select {
-				case wake <- struct{}{}:
-				default:
-				}
-			}
-			w.Stop()
+		if r.watch(ctx, wake) {
+			close(deleted)
+			return
 		}
 		select {
 		case <-ctx.Done():
@@ -134,11 +126,58 @@ func (r *run) follow(ctx context.Context, wake chan<- struct{}) {
 	}
 }
 
+// watch follows one watch of the Pod, marking it evicted from the first
+// update that shows a disruption and waking Wait on each update, and
+// answers whether the watch delivered the Pod's deletion.
+func (r *run) watch(ctx context.Context, wake chan<- struct{}) bool {
+	w, err := r.e.core.Pods(r.c.Namespace).Watch(ctx, metav1.ListOptions{FieldSelector: "metadata.name=" + r.name})
+	if err != nil {
+		return false
+	}
+	defer w.Stop()
+	for ev := range w.ResultChan() {
+		p, ok := ev.Object.(*corev1.Pod)
+		ours := ok && p.UID == r.uid
+		if ours && disrupted(p) {
+			r.evicted.Store(true)
+		}
+		select {
+		case wake <- struct{}{}:
+		default:
+		}
+		if ours && ev.Type == watch.Deleted {
+			return true
+		}
+	}
+	return false
+}
+
 // ended reads the Pod and answers its runner's exit once there is one.
-func (r *run) ended(ctx context.Context) (executor.Exit, bool, error) {
+// deleted, when not nil, closes once Wait's watch delivered the Pod's
+// deletion.
+func (r *run) ended(ctx context.Context, deleted <-chan struct{}) (executor.Exit, bool, error) {
 	p, err := r.e.core.Pods(r.c.Namespace).Get(ctx, r.name, metav1.GetOptions{})
 	switch {
 	case apierrors.IsNotFound(err) || err == nil && p.UID != r.uid:
+		if deleted != nil && !r.killed.Load() && !r.evicted.Load() {
+			// The read and the watch are separate streams, so the read can
+			// find the Pod gone before the watch delivers the update that
+			// marked it a disruption target. The watch's deletion event
+			// carries the Pod's last state, conditions included, and
+			// follows every earlier update, so waiting for it settles the
+			// Pod's end; draining only the events already received misses
+			// those still in flight. The wait is bounded by an interval
+			// for a watch that is reopening as the Pod goes, which never
+			// delivers the deletion.
+			t := time.NewTimer(r.c.Interval)
+			defer t.Stop()
+			select {
+			case <-deleted:
+			case <-t.C:
+			case <-ctx.Done():
+				return executor.Exit{}, false, fmt.Errorf("kubernetes: wait for run %s: %w", r.run, context.Cause(ctx))
+			}
+		}
 		switch {
 		case r.killed.Load():
 			return executor.Exit{Code: killedCode, Reason: wire.Killed}, true, nil
@@ -224,7 +263,7 @@ func (r *run) Stop(ctx context.Context) error {
 	if err == nil {
 		return nil
 	}
-	if _, done, rerr := r.ended(ctx); rerr == nil && done {
+	if _, done, rerr := r.ended(ctx, nil); rerr == nil && done {
 		return nil
 	}
 	return fmt.Errorf("kubernetes: stop run %s: %w: %s", r.run, err, truncate(out.String()))
