@@ -12,6 +12,7 @@
     ],
     "Account Settings": [
       "accountRequestInfraAssistantEnabling",
+      "accountSetFeaturePreviewsEnabled",
       "accountSetInfraAssistantBuildModeEnabled",
       "accountSetInfraAssistantEnabled",
       "accountSetOIDCSubjectTemplate",
@@ -22,6 +23,8 @@
       "availableAIModels",
       "availableAIProviders",
       "enforceMFA",
+      "featurePreview",
+      "featurePreviewSetPersonalEnabled",
       "hasAnsibleStacks",
       "hasSSO",
       "infraAssistantBuildModeEnabled",
@@ -289,6 +292,7 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
+      "runDestroyTrigger",
       "runExternalDependencyMarkAsCompleted",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",
@@ -326,6 +330,7 @@
       "scanDelete",
       "scanLatestRun",
       "scanProviderSchemas",
+      "scanResourceStats",
       "scanResourcesIgnore",
       "scanResourcesUnignore",
       "scanRun",

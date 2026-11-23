@@ -183,11 +183,11 @@ through a list or a scalar.
 | Family | Shape |
 |---|---|
 | Sign-in | `/auth/token`, `/auth/github/{redirect,token,user}` (public), `/auth/cli-confirmation-tokens` |
-| Account settings | `/scim-settings` (POST, DELETE, `/reset`), `/ui-config` (GET, PUT), `/account/api-key-non-root-managers` |
+| Account settings | `/scim-settings` (POST, DELETE, `/reset`), `/ui-config` (GET, PUT), `/account/api-key-non-root-managers`, `/feature-preview` (GET, and PUT `/personal` for the signed-in user's opt-out) |
 | Notifications | `POST /notifications/dismiss`, `/notifications/dismiss-all`, `/notification-groups/{groupingKey}/dismiss` |
 | Active user guide | `POST /active-user-guide-progress/{abandon,complete,next-step,previous-step}` |
 | Stack dependencies | `/stack-dependencies/{id}/references` (+ `/batch`), `/stack-dependency-references/{referenceId}`, batch `PUT`/`DELETE` on `/stack-dependency-references` |
-| Stacks and runs | `/stacks/{stackId}/proposed-runs`, `/stacks/{stackId}/aws-role`, `/stacks/{stackId}/state/download-url`, `/runs/batch` |
+| Stacks and runs | `/stacks/{stackId}/proposed-runs`, `/stacks/{stackId}/destroy-runs`, `/stacks/{stackId}/aws-role`, `/stacks/{stackId}/state/download-url`, `/runs/batch` |
 | Intent projects | `/intent-projects/{intentProjectId}/configs/{configId}`, `/stacks`, and the resource dependency, review and eject routes |
 
 ## Flows: RPC to REST

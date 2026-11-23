@@ -355,10 +355,11 @@ published; `Role.actions` returns it at run time [G] *(unverified)* (C116).
 
 ### 3.3 The action catalogue
 
-`Action` has 155 values [G]. Five of them, the Azure integration consent
+`Action` has 156 values [G]. Five of them, the Azure integration consent
 actions, the stack dependency actions and `BLUEPRINT_DEPLOYMENT_TASK_CREATE`,
 are in the introspection fetched 2026-11-16 and were checked against
-[rbac] that day. The table groups them by subject, gives the UI
+[rbac] that day; `RUN_DESTROY_TRIGGER` is in the introspection fetched
+2026-11-23 and was checked against [rbac] that day. The table groups them by subject, gives the UI
 label and the legacy access level that grants the action when no role does
 [D] [rbac]. Labels marked "not documented" appear only in the schema.
 
@@ -374,6 +375,7 @@ label and the legacy access level that grants the action when no role does
 | `RUN_CANCEL_BLOCKING` | Cancel blocking run | Writer | |
 | `RUN_COMMENT` | Comment on run | Reader | |
 | `RUN_CONFIRM` | Confirm run | Writer | |
+| `RUN_DESTROY_TRIGGER` | not documented | *(unverified)* (C312) | |
 | `RUN_DISCARD` | Discard run | Writer | |
 | `RUN_KILL` | Kill run | Reader | |
 | `RUN_KILL_BLOCKING` | Kill blocking run | Writer | |

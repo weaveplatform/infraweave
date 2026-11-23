@@ -1126,6 +1126,16 @@
           "name": "oauthScopes",
           "type": "[String!]",
           "nullable": true
+        },
+        {
+          "name": "sessionId",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "surface",
+          "type": "AuditTrailSurface",
+          "nullable": true
         }
       ]
     },
@@ -4611,6 +4621,95 @@
         {
           "name": "value",
           "type": "String!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "FeaturePreview",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "visible",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "organization",
+          "type": "FeaturePreviewOrganizationSettings!",
+          "nullable": false
+        },
+        {
+          "name": "personal",
+          "type": "FeaturePreviewPersonalSettings",
+          "nullable": true
+        },
+        {
+          "name": "features",
+          "type": "[FeaturePreviewFeature!]!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "FeaturePreviewFeature",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "key",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "docsUrl",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "imageUrl",
+          "type": "String",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "type": "Boolean!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "FeaturePreviewOrganizationSettings",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "Boolean!",
+          "nullable": false
+        },
+        {
+          "name": "canManage",
+          "type": "Boolean!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "FeaturePreviewPersonalSettings",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "enabled",
+          "type": "Boolean!",
           "nullable": false
         }
       ]
@@ -8762,6 +8861,30 @@
           "nullable": true
         },
         {
+          "name": "accountSetFeaturePreviewsEnabled",
+          "args": [
+            {
+              "name": "enabled",
+              "type": "Boolean!",
+              "nullable": false
+            }
+          ],
+          "type": "FeaturePreview!",
+          "nullable": false
+        },
+        {
+          "name": "featurePreviewSetPersonalEnabled",
+          "args": [
+            {
+              "name": "enabled",
+              "type": "Boolean!",
+              "nullable": false
+            }
+          ],
+          "type": "FeaturePreview!",
+          "nullable": false
+        },
+        {
           "name": "flowsProjectRoleBindingBatchCreate",
           "args": [
             {
@@ -10514,6 +10637,18 @@
             {
               "name": "targets",
               "type": "[String!]!",
+              "nullable": false
+            }
+          ],
+          "type": "Run!",
+          "nullable": false
+        },
+        {
+          "name": "runDestroyTrigger",
+          "args": [
+            {
+              "name": "stack",
+              "type": "ID!",
               "nullable": false
             }
           ],
@@ -14644,6 +14779,11 @@
           "nullable": true
         },
         {
+          "name": "template",
+          "type": "PolicyTemplate",
+          "nullable": true
+        },
+        {
           "name": "evaluationRecords",
           "type": "[PolicyEvaluationRecord!]!",
           "nullable": false
@@ -15956,6 +16096,11 @@
           "nullable": false
         },
         {
+          "name": "featurePreview",
+          "type": "FeaturePreview!",
+          "nullable": false
+        },
+        {
           "name": "flowsIntegration",
           "type": "FlowsIntegration",
           "nullable": true
@@ -17043,6 +17188,11 @@
             }
           ],
           "type": "ScanCoverage!",
+          "nullable": false
+        },
+        {
+          "name": "scanResourceStats",
+          "type": "ScanResourceStats!",
           "nullable": false
         },
         {
@@ -21311,6 +21461,68 @@
       ]
     },
     {
+      "id": "ScanResourceStats",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "total",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "managed",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "unmanaged",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "ignored",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "bySubcategory",
+          "type": "[ScanResourceSubcategoryCount!]!",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "id": "ScanResourceSubcategoryCount",
+      "kind": "OBJECT",
+      "fields": [
+        {
+          "name": "subcategory",
+          "type": "String!",
+          "nullable": false
+        },
+        {
+          "name": "total",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "managed",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "unmanaged",
+          "type": "Int!",
+          "nullable": false
+        },
+        {
+          "name": "ignored",
+          "type": "Int!",
+          "nullable": false
+        }
+      ]
+    },
+    {
       "id": "ScanResourceType",
       "kind": "OBJECT",
       "fields": [
@@ -23674,6 +23886,11 @@
           "nullable": true
         },
         {
+          "name": "destroyedByRun",
+          "type": "Run",
+          "nullable": true
+        },
+        {
           "name": "afterApply",
           "type": "[String!]!",
           "nullable": false,
@@ -25116,6 +25333,11 @@
           "name": "policyLabels",
           "type": "[String!]!",
           "nullable": false
+        },
+        {
+          "name": "policyTemplateSlug",
+          "type": "String",
+          "nullable": true
         },
         {
           "name": "isAutoattached",
@@ -33053,6 +33275,9 @@
           "name": "RUN_CONFIRM"
         },
         {
+          "name": "RUN_DESTROY_TRIGGER"
+        },
+        {
           "name": "RUN_DISCARD"
         },
         {
@@ -33601,6 +33826,21 @@
         },
         {
           "name": "FLOWS_PROJECT_ROLE_BINDING"
+        }
+      ]
+    },
+    {
+      "id": "AuditTrailSurface",
+      "kind": "ENUM",
+      "values": [
+        {
+          "name": "GRAPHQL"
+        },
+        {
+          "name": "MCP"
+        },
+        {
+          "name": "SCIM"
         }
       ]
     },
