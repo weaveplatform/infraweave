@@ -35,6 +35,7 @@ type Store interface {
 	// Seed installs the seeded tiers, or brings forward those the operator
 	// has not changed.
 	Seed(ctx context.Context, seeds []features.Tier) error
+	PreviewStore
 }
 
 // Transactor runs fn in a transaction that ctx carries to the store,
@@ -51,6 +52,15 @@ const invalidatePrefix = "features:"
 // entitlement snapshot.
 func InvalidateKey(org kernel.OrganizationID) string { return invalidatePrefix + org.String() }
 
+// accountPrefix follows invalidatePrefix in AccountKey's payloads.
+const accountPrefix = "account:"
+
+// AccountKey is the payload that makes every replica drop its snapshot of
+// acct's opt-in to feature previews.
+func AccountKey(acct kernel.AccountID) string {
+	return invalidatePrefix + accountPrefix + acct.String()
+}
+
 // TiersKey is the payload that makes every replica drop every snapshot
 // after a tier's content changes, which reaches every organization on it.
 const TiersKey = invalidatePrefix + "tiers"
@@ -60,17 +70,20 @@ const TiersKey = invalidatePrefix + "tiers"
 const BillingKey = invalidatePrefix + "billing"
 
 // Service is featuresapi.Entitlements over a Store, with the replica's
-// snapshot of each organization's entitlement, the billing switch and the
-// tiers, which Invalidate drops.
+// snapshot of each organization's entitlement, each account's opt-in to
+// feature previews, the billing switch and the tiers, which Invalidate
+// drops.
 type Service struct {
 	store    Store
 	inTx     Transactor
 	disabled []string
+	previews func() []features.Feature
 
-	mu      sync.Mutex
-	orgs    map[kernel.OrganizationID]featuresapi.Entitlement
-	billing *bool
-	tiers   []features.Tier
+	mu       sync.Mutex
+	orgs     map[kernel.OrganizationID]featuresapi.Entitlement
+	accounts map[kernel.AccountID]bool
+	billing  *bool
+	tiers    []features.Tier
 	// gen counts invalidations, so a read that began before one does not
 	// store what it read after it.
 	gen uint64
@@ -80,12 +93,22 @@ var _ featuresapi.Entitlements = (*Service)(nil)
 
 // New returns the service on store, running a limit check in a
 // transaction through inTx, with disabled the installation's
-// features.disabled, which no entitlement holds.
+// features.disabled, which no entitlement holds. The features in preview
+// are the compiled catalogue's until WithPreviews replaces them.
 func New(store Store, inTx Transactor, disabled []string) *Service {
 	return &Service{
-		store: store, inTx: inTx, disabled: disabled,
-		orgs: map[kernel.OrganizationID]featuresapi.Entitlement{},
+		store: store, inTx: inTx, disabled: disabled, previews: features.Previews,
+		orgs:     map[kernel.OrganizationID]featuresapi.Entitlement{},
+		accounts: map[kernel.AccountID]bool{},
 	}
+}
+
+// WithPreviews makes previews, in catalogue order, the features the
+// service holds in preview, so a test marks features the compiled
+// catalogue does not; it returns s.
+func (s *Service) WithPreviews(previews func() []features.Feature) *Service {
+	s.previews = previews
+	return s
 }
 
 // Seed installs the seeded tiers from the catalogue.
@@ -99,8 +122,9 @@ func (s *Service) Seed(ctx context.Context) error {
 }
 
 // Invalidate drops what the payload of an infraweave_invalidate message
-// concerns: one organization's snapshot, or every snapshot for another
-// payload of this domain. It ignores other domains' payloads.
+// concerns: one organization's snapshot, one account's opt-in, or every
+// snapshot for another payload of this domain. It ignores other domains'
+// payloads.
 func (s *Service) Invalidate(payload string) {
 	rest, ok := strings.CutPrefix(payload, invalidatePrefix)
 	if !ok {
@@ -109,6 +133,12 @@ func (s *Service) Invalidate(payload string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.gen++
+	if acct, ok := strings.CutPrefix(rest, accountPrefix); ok {
+		if id, err := kernel.ParseULID(acct); err == nil {
+			delete(s.accounts, kernel.AccountID{ULID: id})
+			return
+		}
+	}
 	if id, err := kernel.ParseULID(rest); err == nil {
 		delete(s.orgs, kernel.OrganizationID{ULID: id})
 		return
@@ -126,6 +156,7 @@ func (s *Service) Flush() {
 func (s *Service) flush() {
 	s.gen++
 	clear(s.orgs)
+	clear(s.accounts)
 	s.billing, s.tiers = nil, nil
 }
 
@@ -184,7 +215,7 @@ func (s *Service) AccountLimits(ctx context.Context, acct kernel.AccountID) (map
 	return s.store.AccountLimits(ctx, acct) //nolint:wrapcheck // as above
 }
 
-// DeleteAccount deletes acct's limits.
+// DeleteAccount deletes acct's limits and feature preview settings.
 func (s *Service) DeleteAccount(ctx context.Context, acct kernel.AccountID) error {
 	return s.store.DeleteAccount(ctx, acct) //nolint:wrapcheck // as above
 }
@@ -246,29 +277,53 @@ func (s *Service) Billing(ctx context.Context) (bool, error) {
 }
 
 // Refusal is why a request for a feature is refused: Disabled for the
-// operator's switch-off, which no caller can change, else the caller's
+// operator's switch-off, which no caller can change; Preview for a feature
+// in preview the account has not opted in to; else the caller's
 // organization lacks it, and Tiers are the tiers that hold it.
 type Refusal = featuresapi.Refusal
 
-// Allow refuses feature to the request ctx carries with a *Refusal when the
-// installation switched it off, or, with billing on, when the principal's
-// organization lacks it. A principal of no organization, an operator's or
-// none, is refused only a switched-off feature; so is an organization the
-// operator has not given an entitlement.
+// Allow refuses feature to the request ctx carries with a *Refusal, as
+// AllowAccount does for the principal's organization and account. A
+// principal of no organization, an operator's or none, is refused only a
+// switched-off feature.
 func (s *Service) Allow(ctx context.Context, feature string) error {
 	p, _ := kernel.PrincipalFrom(ctx) // none is the zero principal, of no organization
-	return s.AllowOrganization(ctx, p.OrganizationID, feature)
+	return s.AllowAccount(ctx, p.OrganizationID, p.AccountID, feature)
 }
 
-// AllowOrganization is Allow for org's work outside a request, such as a
-// job; a zero org is refused only a switched-off feature.
-func (s *Service) AllowOrganization(ctx context.Context, org kernel.OrganizationID, feature string) error {
+// AllowAccount refuses feature to acct of org with a *Refusal, checking in
+// order: the installation switched it off; with billing on, org's
+// entitlement lacks it; it is in preview and acct has not opted in to
+// feature previews, whether billing is on or off. A zero org is refused
+// only a switched-off feature; an organization the operator has not given
+// an entitlement meets no tier; a zero acct of an organization has not
+// opted in. It serves a request's option check and org's work outside a
+// request, such as a job.
+//
+// ref: decision 0021
+func (s *Service) AllowAccount(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, feature string) error {
 	if s.switchedOff(feature) {
 		return &Refusal{Disabled: true, Feature: feature}
 	}
 	if org.IsZero() {
 		return nil
 	}
+	if err := s.inTier(ctx, org, feature); err != nil {
+		return err
+	}
+	if !s.preview(feature) {
+		return nil
+	}
+	in, err := s.optedIn(ctx, acct)
+	if err != nil || in {
+		return err
+	}
+	return &Refusal{Preview: true, Feature: feature}
+}
+
+// inTier refuses feature with a *Refusal naming the tiers that hold it
+// when billing is on and org's entitlement lacks it.
+func (s *Service) inTier(ctx context.Context, org kernel.OrganizationID, feature string) error {
 	on, err := s.Billing(ctx)
 	if err != nil || !on {
 		return err

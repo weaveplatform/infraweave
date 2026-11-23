@@ -70,6 +70,8 @@ type (
 	FeatureDisabled struct{ Problem }
 	// FeatureNotInTier is the feature-not-in-tier problem (403).
 	FeatureNotInTier struct{ Problem }
+	// PreviewNotEnabled is the preview-not-enabled problem (403).
+	PreviewNotEnabled struct{ Problem }
 	// LimitReached is the limit-reached problem (403).
 	LimitReached struct{ Problem }
 	// InstallationUnsupported is the installation-unsupported problem (403).
@@ -123,6 +125,7 @@ var bySlug = map[string]func(Problem) error{
 	"forbidden":                   func(p Problem) error { return Forbidden{p} },
 	"feature-disabled":            func(p Problem) error { return FeatureDisabled{p} },
 	"feature-not-in-tier":         func(p Problem) error { return FeatureNotInTier{p} },
+	"preview-not-enabled":         func(p Problem) error { return PreviewNotEnabled{p} },
 	"limit-reached":               func(p Problem) error { return LimitReached{p} },
 	"installation-unsupported":    func(p Problem) error { return InstallationUnsupported{p} },
 	"not-found":                   func(p Problem) error { return NotFound{p} },

@@ -4,14 +4,21 @@
 // features, less the installation's features.disabled, less every feature
 // whose requirements that leaves out, with each limit's value from a
 // grant, else the tier; with the billing switch off it reads as
-// Enterprise. Allow refuses a feature that is switched off, or, with
-// billing on, that the caller's organization lacks, naming the tiers that
-// hold it. CheckLimit locks the organization's entitlement, counts the
+// Enterprise. Allow, for a request's principal, and AllowAccount, for an
+// option check or a job, refuse a feature that is switched off; with
+// billing on, one the organization lacks, naming the tiers that hold it;
+// and, billing on or off, a feature in preview the account has not opted
+// in to. The features in preview are the compiled catalogue's unless
+// WithPreviews names others. Each account's opt-in to feature previews,
+// off by default, and each member's personal setting, on by default, are
+// read and set through the Service; the personal setting refuses nothing,
+// and FeaturePreviews lists the previews the installation has not
+// switched off with whether each is Active for a principal. CheckLimit locks the organization's entitlement, counts the
 // limit's use through the caller, and refuses one more beyond the
 // organization's pool or the account's limit, pool first; Quota reads the
 // value of a limit it applies to an account. The replica
-// keeps a snapshot of each entitlement, the switch and the tiers, which
-// Invalidate and Flush drop. The operator's edits run through Service too:
+// keeps a snapshot of each entitlement, each account's opt-in, the switch
+// and the tiers, which Invalidate and Flush drop. The operator's edits run through Service too:
 // CheckTier holds a tier to the catalogue (gated features, each once, and
 // limits of zero or more), Enterprise cannot be edited or deleted
 // (ErrInvalidState), and OrganizationEntitlement is what an organization's
@@ -28,8 +35,8 @@
 //
 // # Input and output
 //
-// None of its own: it reaches storage through Store and transactions
-// through Transactor.
+// None of its own: it reaches storage through Store, with PreviewStore
+// for the feature preview settings, and transactions through Transactor.
 //
 // # Dependencies
 //

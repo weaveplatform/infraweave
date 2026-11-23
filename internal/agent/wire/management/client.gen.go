@@ -706,7 +706,7 @@ type Problem struct {
 	// Errors For invalid-request and validation-failed, each field the server refused.
 	Errors *[]ProblemFieldError `json:"errors,omitempty"`
 
-	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
+	// Feature The feature of feature-disabled, feature-not-in-tier and preview-not-enabled, a name of the feature catalogue.
 	Feature *string `json:"feature,omitempty"`
 
 	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.

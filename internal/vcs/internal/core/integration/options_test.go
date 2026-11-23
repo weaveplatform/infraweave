@@ -17,13 +17,14 @@ import (
 type optionCheck struct {
 	err   error
 	org   kernel.OrganizationID
+	acct  kernel.AccountID
 	name  string
 	calls int
 }
 
-func (c *optionCheck) AllowOrganization(_ context.Context, org kernel.OrganizationID, name string) error {
+func (c *optionCheck) AllowAccount(_ context.Context, org kernel.OrganizationID, acct kernel.AccountID, name string) error {
 	c.calls++
-	c.org, c.name = org, name
+	c.org, c.acct, c.name = org, acct, name
 	return c.err
 }
 
@@ -58,7 +59,7 @@ func TestUnitCreateOption(t *testing.T) {
 						t.Fatalf("default: %v, check=%+v, transactions=%d", err, check, db.calls)
 					}
 				} else if !errors.Is(err, refused) || check.calls != 1 || check.org != p.OrganizationID ||
-					check.name != "multiple-vcs-integrations" || db.calls != 0 {
+					check.acct != p.AccountID || check.name != "multiple-vcs-integrations" || db.calls != 0 {
 					t.Fatalf("non-default: %v, check=%+v, transactions=%d", err, check, db.calls)
 				}
 			})

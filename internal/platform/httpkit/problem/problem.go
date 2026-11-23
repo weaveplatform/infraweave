@@ -62,6 +62,11 @@ var (
 		http.StatusForbidden,
 		"feature not in tier",
 	}
+	PreviewNotEnabled = Type{
+		"preview-not-enabled",
+		http.StatusForbidden,
+		"preview not enabled",
+	}
 	LimitReached            = Type{"limit-reached", http.StatusForbidden, "limit reached"}
 	InstallationUnsupported = Type{
 		"installation-unsupported",
@@ -143,7 +148,7 @@ var (
 func Types() []Type {
 	types := []Type{
 		InvalidRequest, InvalidCursor, Unauthenticated, Forbidden, FeatureDisabled,
-		FeatureNotInTier, LimitReached, InstallationUnsupported, NotFound,
+		FeatureNotInTier, PreviewNotEnabled, LimitReached, InstallationUnsupported, NotFound,
 		MethodNotAllowed, AlreadyExists, InvalidState, ResourceLocked,
 		IntentProjectLocked, IdempotencyKeyInFlight, PreconditionFailed, PreconditionRequired,
 		PayloadTooLarge, UnsupportedMediaType, ValidationFailed,
@@ -193,8 +198,9 @@ type Problem struct {
 	Detail   string `json:"detail,omitempty"`
 	Instance string `json:"instance,omitempty"`
 
-	// Feature is the feature of feature-disabled and feature-not-in-tier,
-	// and Tiers, for the latter, the tiers that hold it, smallest first.
+	// Feature is the feature of feature-disabled, feature-not-in-tier and
+	// preview-not-enabled, and Tiers, for feature-not-in-tier, the tiers
+	// that hold it, smallest first.
 	Feature string   `json:"feature,omitempty"`
 	Tiers   []string `json:"tiers,omitempty"`
 	// Limit, Scope and Value are limit-reached's: the limit, organization

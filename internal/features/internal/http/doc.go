@@ -2,8 +2,9 @@
 // middleware internal/app runs after authentication, which resolves each
 // request's Gate (its operation's capability and the gated values its body
 // may set) and asks an Allower for each feature the request needs,
-// answering 403 feature-disabled with the feature, or feature-not-in-tier
-// with the feature and the tiers that hold it. OperatorServer is the
+// answering 403 feature-disabled with the feature, feature-not-in-tier
+// with the feature and the tiers that hold it, or preview-not-enabled with
+// the feature in preview. OperatorServer is the
 // domain's partial of the operator API's strict server: the tiers, the
 // billing switch and the default tier, and an organization's tier,
 // entitlement and grants, finding the organization by its slug through the

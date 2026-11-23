@@ -9,6 +9,7 @@ func TestUnitRefusal(t *testing.T) {
 	}{
 		{Refusal{Feature: "multiple-vcs-integrations"}, "features: multiple-vcs-integrations is not in the organization's tier"},
 		{Refusal{Feature: "multiple-vcs-integrations", Disabled: true}, "features: multiple-vcs-integrations is switched off"},
+		{Refusal{Feature: "multiple-vcs-integrations", Preview: true}, "features: multiple-vcs-integrations is a preview the account has not opted in to"},
 	} {
 		if got := tc.refusal.Error(); got != tc.want {
 			t.Errorf("Error = %q, want %q", got, tc.want)

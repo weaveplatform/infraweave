@@ -22,7 +22,8 @@ type Allower interface {
 }
 
 // Middleware refuses a request whose operation's capability, or an option
-// its body sets, the Allower refuses: 403 feature-disabled or feature-not-in-tier.
+// its body sets, the Allower refuses: 403 feature-disabled,
+// feature-not-in-tier or preview-not-enabled.
 // gate resolves the request's Gate; a request it resolves none for, such
 // as a 404, passes.
 func Middleware(a Allower, gate func(*nethttp.Request) (featuresapi.Gate, bool)) func(nethttp.Handler) nethttp.Handler {
@@ -102,6 +103,12 @@ func refusal(r *core.Refusal) problem.Problem {
 	if r.Disabled {
 		p := problem.FeatureDisabled.New(fmt.Sprintf(
 			"The operator has switched off %s for this installation.", r.Feature))
+		p.Feature = r.Feature
+		return p
+	}
+	if r.Preview {
+		p := problem.PreviewNotEnabled.New(fmt.Sprintf(
+			"%s is in preview, and this account has not opted in to feature previews.", r.Feature))
 		p.Feature = r.Feature
 		return p
 	}

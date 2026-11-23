@@ -280,7 +280,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 			if err != nil {
 				return false, fmt.Errorf("VCS policy account organization: %w", err)
 			}
-			return features.Allowed(ctx, org, "policies")
+			return features.Allowed(ctx, org, account, "policies")
 		},
 	})
 	if err != nil {
@@ -342,15 +342,17 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 }
 
 // Allowed is queue.Entitlements over the domains: a job's account names
-// its organization through access, whose entitlement features decides. A
-// job of an account that no longer exists is refused only a switched-off
-// feature, and its handler finds the account gone.
+// its organization through access, whose entitlement and the account's
+// opt-in to feature previews features decides on. A job of an account
+// that no longer exists is refused only a switched-off feature, and its
+// handler finds the account gone.
 func (d Domains) Allowed(ctx context.Context, account kernel.ULID, feature string) (bool, error) {
-	org, err := d.Access.AccountOrganization(ctx, kernel.AccountID{ULID: account})
+	acct := kernel.AccountID{ULID: account}
+	org, err := d.Access.AccountOrganization(ctx, acct)
 	if err != nil {
 		return false, err //nolint:wrapcheck // the store names the read
 	}
-	return d.Features.Allowed(ctx, org, feature) //nolint:wrapcheck // as above
+	return d.Features.Allowed(ctx, org, acct, feature) //nolint:wrapcheck // as above
 }
 
 var _ queue.Entitlements = Domains{}

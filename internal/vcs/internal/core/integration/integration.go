@@ -460,7 +460,7 @@ func (s *Service) create(ctx context.Context, p kernel.Principal, id kernel.ULID
 		if s.features == nil {
 			return Integration{}, fmt.Errorf("vcs: integration option policy: %w", kernel.ErrUnavailable)
 		}
-		if err := s.features.AllowOrganization(ctx, p.OrganizationID, "multiple-vcs-integrations"); err != nil {
+		if err := s.features.AllowAccount(ctx, p.OrganizationID, p.AccountID, "multiple-vcs-integrations"); err != nil {
 			return Integration{}, err //nolint:wrapcheck // the features domain names the refusal
 		}
 	}

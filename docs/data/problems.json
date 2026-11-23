@@ -44,6 +44,13 @@
       "decision": "0022"
     },
     {
+      "id": "preview-not-enabled",
+      "status": 403,
+      "title": "preview not enabled",
+      "when": "The feature that gates the operation or the value it sets is in preview and the caller's account has not opted in to feature previews, whether billing is on or off (decision 0021); the body carries the feature as `feature`",
+      "decision": "0022"
+    },
+    {
       "id": "limit-reached",
       "status": 403,
       "title": "limit reached",

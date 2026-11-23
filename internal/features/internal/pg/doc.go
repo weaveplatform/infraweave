@@ -1,7 +1,8 @@
 // Package pg is the features domain's PostgreSQL storage: Stream, its
 // migration stream of tiers, tier features and limit values, organization
 // entitlements, the organization's feature and limit grants, account limits,
-// the seeded tiers' record and the billing switch with its default tier,
+// each account's opt-in to feature previews and each member's personal
+// opt-out, the seeded tiers' record and the billing switch with its default tier,
 // NULL for Enterprise; the organization and account IDs carry no foreign
 // keys, since no key crosses domains. Store creates and deletes an
 // organization's and account's rows, reads an entitlement, under FOR UPDATE
@@ -13,8 +14,10 @@
 // sets an organization's tier and its feature and limit grants; each change
 // bumps the entitlement version of every organization it touches. A tier an
 // organization holds or the default names cannot be deleted
-// (core.ErrInvalidState). Every method joins the transaction its context
-// carries. Held names the columns that hold the access domain's
+// (core.ErrInvalidState). It reads and sets an account's opt-in and a
+// member's personal setting, an opt-out being a row, and deletes a
+// member's row and, with the account, every row of the account. Every
+// method joins the transaction its context carries. Held names the columns that hold the access domain's
 // organizations and accounts.
 //
 // ref: decisions 0004 and 0021
@@ -24,7 +27,7 @@
 // It reads and writes PostgreSQL through the DB it is given. A seed or an
 // operator change sends the payload of what it changed, an organization,
 // the tiers or the billing switch, on infraweave_invalidate when it
-// commits.
+// commits, as does a write or deletion of an account's opt-in.
 //
 // # Dependencies
 //

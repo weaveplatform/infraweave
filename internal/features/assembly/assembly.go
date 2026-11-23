@@ -79,13 +79,21 @@ type Domain struct {
 	entitlements *entitlement.Service
 }
 
-// New constructs the domain on d.
-func New(d Deps) *Domain {
+// New constructs the domain on d, with the compiled catalogue's features
+// in preview.
+func New(d Deps) *Domain { return build(d, features.Previews) }
+
+// build constructs the domain on d with previews, in catalogue order, the
+// features in preview.
+func build(d Deps, previews func() []features.Feature) *Domain {
 	inTx := func(ctx context.Context, fn func(context.Context) error) error {
 		//nolint:wrapcheck // fn's error, as it returned it
 		return tx.Do(ctx, d.DB, tx.Options{}, fn)
 	}
-	return &Domain{entitlements: entitlement.New(pg.New(d.DB), inTx, d.Settings.Disabled)}
+	return &Domain{
+		entitlements: entitlement.New(pg.New(d.DB), inTx, d.Settings.Disabled).
+			WithPreviews(previews),
+	}
 }
 
 // FeaturesAPI is the domain's partial of the API's strict server, which
@@ -126,15 +134,16 @@ func (d *Domain) OperatorAPI(orgs Organizations) FeaturesOperatorAPI {
 // Entitlements is what other domains call of this one.
 func (d *Domain) Entitlements() featuresapi.Entitlements { return d.entitlements }
 
-// Purge deletes the domain's rows of the deleted account acct: its
-// limits, or, when its organization org went with it, the organization's
-// entitlement, grants and every account's limits. internal/app runs it for
-// each accessapi.Deleted; a purge that runs again finds nothing left.
+// Purge deletes the domain's rows of the deleted account acct: its limits
+// and feature preview settings, and, when its organization org went with
+// it, the organization's entitlement, grants and every account's limits.
+// internal/app runs it for each accessapi.Deleted, one per account; a
+// purge that runs again finds nothing left.
 func (d *Domain) Purge(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, whole bool) error {
-	if whole {
-		return d.entitlements.DeleteOrganization(ctx, org) //nolint:wrapcheck // names the delete
+	if err := d.entitlements.DeleteAccount(ctx, acct); err != nil || !whole {
+		return err //nolint:wrapcheck // names the delete
 	}
-	return d.entitlements.DeleteAccount(ctx, acct) //nolint:wrapcheck // as above
+	return d.entitlements.DeleteOrganization(ctx, org) //nolint:wrapcheck // as above
 }
 
 // Seed installs the seeded tiers the first time, and brings forward those
@@ -145,17 +154,19 @@ func (d *Domain) Seed(ctx context.Context) error {
 }
 
 // Middleware is the chi middleware that refuses a request for a feature
-// the installation switched off or, with billing on, the caller's
-// organization lacks; gate resolves each request's Gate.
+// the installation switched off, with billing on the caller's
+// organization lacks, or in preview the caller's account has not opted in
+// to; gate resolves each request's Gate.
 func (d *Domain) Middleware(gate func(*nethttp.Request) (featuresapi.Gate, bool)) func(nethttp.Handler) nethttp.Handler {
 	return http.Middleware(d.entitlements, gate)
 }
 
-// Allowed reports whether org's work may use feature outside a request,
-// as a queued job does at dequeue: false when the installation switched
-// it off or, with billing on, org's entitlement lacks it.
-func (d *Domain) Allowed(ctx context.Context, org kernel.OrganizationID, feature string) (bool, error) {
-	err := d.entitlements.AllowOrganization(ctx, org, feature)
+// Allowed reports whether acct's work in org may use feature outside a
+// request, as a queued job does at dequeue: false when the installation
+// switched it off, with billing on org's entitlement lacks it, or it is
+// in preview and acct has not opted in.
+func (d *Domain) Allowed(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, feature string) (bool, error) {
+	err := d.entitlements.AllowAccount(ctx, org, acct, feature)
 	if _, refused := errors.AsType[*entitlement.Refusal](err); refused {
 		return false, nil
 	}

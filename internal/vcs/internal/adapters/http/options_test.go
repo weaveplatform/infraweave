@@ -17,15 +17,18 @@ import (
 
 type deniedOption struct{ refusal *featuresapi.Refusal }
 
-func (d deniedOption) AllowOrganization(context.Context, kernel.OrganizationID, string) error {
+func (d deniedOption) AllowAccount(context.Context, kernel.OrganizationID, kernel.AccountID, string) error {
 	return d.refusal
 }
 
 // Typed handlers must preserve the domain's refusal for values the
 // early body gate cannot see, including omission and JSON null.
 func TestUnitCreateOptionProblems(t *testing.T) {
-	for _, disabled := range []bool{false, true} {
-		r := &featuresapi.Refusal{Feature: "multiple-vcs-integrations", Tiers: []string{"Enterprise"}, Disabled: disabled}
+	for _, reason := range []string{"tier", "disabled", "preview"} {
+		r := &featuresapi.Refusal{
+			Feature: "multiple-vcs-integrations", Tiers: []string{"Enterprise"},
+			Disabled: reason == "disabled", Preview: reason == "preview",
+		}
 		srv := vcshttp.New(integration.New(integration.Deps{
 			Features: deniedOption{r}, Providers: []string{
 				integration.GitLab, integration.GitHubEnterprise, integration.BitbucketCloud,
@@ -74,8 +77,11 @@ func TestUnitCreateOptionProblems(t *testing.T) {
 					t.Fatalf("%s refusal: %+v", name, pe)
 				}
 				want, tiers := problem.FeatureNotInTier, r.Tiers
-				if disabled {
+				switch reason {
+				case "disabled":
 					want, tiers = problem.FeatureDisabled, nil
+				case "preview":
+					want, tiers = problem.PreviewNotEnabled, nil
 				}
 				if pe.Problem.Type != problem.TypePrefix+want.Slug || !reflect.DeepEqual(pe.Problem.Tiers, tiers) {
 					t.Fatalf("%s refusal shape: %+v", name, pe.Problem)

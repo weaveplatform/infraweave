@@ -39,7 +39,8 @@ func Stream() migrate.Stream {
 }
 
 // Held are the features columns that hold the access domain's rows: each
-// organization's entitlement and grants, and each account's limits.
+// organization's entitlement and grants, and each account's limits and
+// feature preview settings.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{
@@ -58,6 +59,12 @@ func Held() []integrity.Held {
 			Columns: []string{"organization_id"},
 		},
 		{Entity: "account", Table: "account_limits", Columns: []string{"account_id"}},
+		{Entity: "account", Table: "account_feature_previews", Columns: []string{"account_id"}},
+		{
+			Entity:  "account",
+			Table:   "member_feature_preview_opt_outs",
+			Columns: []string{"account_id"},
+		},
 	}
 }
 
@@ -68,8 +75,8 @@ type DB interface {
 	tx.Beginner
 }
 
-// Store keeps tiers, entitlements, grants and account limits in
-// PostgreSQL. Every method joins the transaction ctx carries.
+// Store keeps tiers, entitlements, grants, account limits and feature
+// preview settings in PostgreSQL. Every method joins the transaction ctx carries.
 type Store struct{ db DB }
 
 // New returns the store on db.
@@ -158,11 +165,28 @@ func (s *Store) AccountLimits(ctx context.Context, acct kernel.AccountID) (map[s
 	return out, nil
 }
 
-// DeleteAccount deletes acct's limits.
+// deleteAccount deletes an account's rows.
+var deleteAccount = []string{
+	`DELETE FROM account_limits WHERE account_id = $1`,
+	`DELETE FROM account_feature_previews WHERE account_id = $1`,
+	`DELETE FROM member_feature_preview_opt_outs WHERE account_id = $1`,
+}
+
+// DeleteAccount deletes acct's limits and its feature preview settings,
+// the account's and its members', and on commit tells every replica to
+// drop its snapshot of the account's opt-in.
 func (s *Store) DeleteAccount(ctx context.Context, acct kernel.AccountID) error {
-	if _, err := tx.Q(ctx, s.db).Exec(ctx,
-		`DELETE FROM account_limits WHERE account_id = $1`, acct); err != nil {
-		return fmt.Errorf("features: %w", sql.Unavailable(err))
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		q := tx.Q(ctx, s.db)
+		for _, stmt := range deleteAccount {
+			if _, err := q.Exec(ctx, stmt, acct); err != nil {
+				return fmt.Errorf("features: %w", sql.Unavailable(err))
+			}
+		}
+		return tell(ctx, q, core.AccountKey(acct))
+	})
+	if err != nil {
+		return fmt.Errorf("delete account %s: %w", acct, err)
 	}
 	return nil
 }

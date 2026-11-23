@@ -78,3 +78,23 @@ CREATE TABLE account_limits (
     PRIMARY KEY (account_id, limit_name)
 );
 CREATE INDEX account_limits_organization ON account_limits (organization_id);
+
+-- An account's opt-in to feature previews, which its account admins set; an
+-- account without a row has not opted in. A write notifies
+-- infraweave_invalidate, since every replica's feature lookup keeps a
+-- snapshot of it.
+CREATE TABLE account_feature_previews (
+    account_id uuid        PRIMARY KEY,
+    enabled    boolean     NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- A member's personal opt-out of feature previews in one account; a member
+-- without a row has not opted out. It changes only what the member's
+-- clients show, so no feature lookup reads it.
+CREATE TABLE member_feature_preview_opt_outs (
+    account_id uuid        NOT NULL,
+    member_id  uuid        NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, member_id)
+);
