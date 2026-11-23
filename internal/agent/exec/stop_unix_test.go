@@ -4,16 +4,14 @@ package exec_test
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/exec"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -32,69 +30,93 @@ func (w *world) stopped(reports exec.Reporter, stop <-chan os.Signal, log slog.H
 	return done
 }
 
-// reached makes a FIFO that a hook writes with `: > "$path"` once it is
-// running, and answers its path and a channel closed once a hook wrote
-// it. Opening a FIFO blocks until both ends are open, so the hook goes on
-// only once the test knows it is running.
-func reached(t *testing.T) (string, <-chan struct{}) {
+// fifo makes a FIFO named name and answers its path and the FIFO, open
+// for reading and writing before the run starts, so a hook's open of it
+// neither waits for the test nor meets it in open(2): on darwin a reader
+// whose blocking open restarts after a signal, such as the SIGCHLD of a
+// step's syntax check, misses a writer that opens and closes meanwhile
+// and waits for one that never comes. Linux and darwin open a FIFO for
+// reading and writing at once, and a read of it waits for a line rather
+// than ending when no writer is left.
+func fifo(t *testing.T, name string) (string, *os.File) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "reached")
+	path := filepath.Join(t.TempDir(), name)
 	if err := syscall.Mkfifo(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path, f
+}
+
+// reached makes a FIFO that a hook writes a line to with `echo > "$path"`
+// once it is running, and answers its path and a channel closed once a
+// hook wrote it.
+func reached(t *testing.T) (string, <-chan struct{}) {
+	t.Helper()
+	path, f := fifo(t, "reached")
 	ch := make(chan struct{})
 	go func() {
-		_, _ = os.ReadFile(path)
-		close(ch)
+		defer f.Close()
+		if _, err := f.Read(make([]byte, 1)); err == nil {
+			close(ch)
+		}
 	}()
 	return path, ch
 }
 
-// await waits until ch is closed, or fails the test.
-func await(t *testing.T, ch <-chan struct{}) {
+// gate makes a FIFO a hook waits on with
+// `until read line < "$path"; do :; done`, and answers its path and a
+// function that lets the hook go on. The hook runs no command while it
+// waits, so a stop's SIGINT reaches the shell and not a child between its
+// fork and its exec, and a read a trapped SIGINT interrupts is read again.
+func gate(t *testing.T) (string, func()) {
 	t.Helper()
-	select {
-	case <-ch:
-	case <-time.After(30 * time.Second):
-		t.Fatal("the hook was not reached")
+	path, f := fifo(t, "gate")
+	t.Cleanup(func() { _ = f.Close() })
+	return path, func() {
+		t.Helper()
+		if _, err := f.WriteString("\n"); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
-// decided is a slog.Handler whose channel is closed once the runner logs
-// that it took a stop or ignored one, which it does once it decided.
-type decided struct {
-	once *sync.Once
-	ch   chan struct{}
+// await receives from ch, or fails the test with the run's error, which
+// done answers, when the run ends first. It sets no deadline a slow host
+// could pass: the test binary's timeout bounds a run that does not end.
+func await(t *testing.T, what string, ch <-chan struct{}, done <-chan error) {
+	t.Helper()
+	select {
+	case <-ch:
+	case err := <-done:
+		t.Fatalf("the run ended before %s: %v", what, err)
+	}
 }
 
-func newDecided() decided {
-	return decided{once: &sync.Once{}, ch: make(chan struct{})}
-}
+// decisions is a slog.Handler that sends on its channel each time the
+// runner logs that it took a stop or ignored one, which it does once it
+// decided on it. A decision the channel has no room for is dropped, so a
+// runner that decides more often than the test expects does not block.
+type decisions chan struct{}
 
-func (decided) Enabled(context.Context, slog.Level) bool { return true }
+func (decisions) Enabled(context.Context, slog.Level) bool { return true }
 
-func (d decided) Handle(_ context.Context, r slog.Record) error {
+func (d decisions) Handle(_ context.Context, r slog.Record) error {
 	if r.Message == "stopping" || r.Message == "stop ignored" {
-		d.once.Do(func() { close(d.ch) })
+		select {
+		case d <- struct{}{}:
+		default:
+		}
 	}
 	return nil
 }
 
-func (d decided) WithAttrs([]slog.Attr) slog.Handler { return d }
+func (d decisions) WithAttrs([]slog.Attr) slog.Handler { return d }
 
-func (d decided) WithGroup(string) slog.Handler { return d }
-
-// ended waits for done's error, or fails the test.
-func ended(t *testing.T, done <-chan error) error {
-	t.Helper()
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(30 * time.Second):
-		t.Fatal("the run did not end")
-		return nil
-	}
-}
+func (d decisions) WithGroup(string) slog.Handler { return d }
 
 func TestUnitExecStop(t *testing.T) {
 	w := newWorld(t)
@@ -104,22 +126,20 @@ func TestUnitExecStop(t *testing.T) {
 	// trapped by the session's shell, which goes on to the next.
 	w.h.Spec.Hooks = map[string][]string{
 		"before_plan": {
-			hook("holding") + `; sh -c ': > "$0" && exec sleep 60' '` + fifo + `'`,
+			hook("holding") + `; sh -c 'echo > "$0" && exec sleep 60' '` + fifo + `'`,
 			hook("not reached"),
 		},
 		"after_run": {hook("after_run", "TF_VAR_infraweave_final_run_state")},
 	}
 	stop := make(chan os.Signal, 1)
 	done := w.stopped(w.w, stop, slog.DiscardHandler)
-	await(t, holding)
-	start := time.Now()
+	await(t, "the hook was reached", holding, done)
 	stop <- os.Interrupt
-	if err := ended(t, done); err != nil {
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if took := time.Since(start); took > 20*time.Second {
-		t.Errorf("the stop took %v; the hook's sleep ran on", took)
-	}
+	// A stop that missed the sleep lets the hook succeed after it, and
+	// the phase reports no failed hook.
 	events := w.events()
 	if len(events) != 3 || !strings.HasPrefix(events[2],
 		"PLANNING stopped 5: Stopped on request: The before_plan hook 1 of 2 failed") {
@@ -136,20 +156,27 @@ func TestUnitExecStop(t *testing.T) {
 func TestUnitExecStopOnce(t *testing.T) {
 	w := newWorld(t)
 	fifo, holding := reached(t)
+	held, release := gate(t)
 	// The hook traps SIGINT itself and goes on, so the stop ends the phase
-	// once it returns; each SIGINT it receives is a line of the trace.
+	// once it returns; each SIGINT it receives is a line of the trace. It
+	// holds until the runner decided on both stops, so a second SIGINT
+	// would reach it too.
 	w.h.Spec.Hooks = map[string][]string{
 		"before_plan": {
-			`trap 'echo interrupted >> "$TRACE"' INT; ` + hook("holding") + `; : > '` + fifo + `'` +
-				`; i=0; while [ $i -lt 20 ]; do sleep 0.1; i=$((i+1)); done; ` + hook("held"),
+			`trap 'echo interrupted >> "$TRACE"' INT; ` + hook("holding") + `; echo > '` + fifo + `'` +
+				`; until read line < '` + held + `'; do :; done; ` + hook("held"),
 		},
 	}
 	stop := make(chan os.Signal, 2)
-	done := w.stopped(w.w, stop, slog.DiscardHandler)
-	await(t, holding)
+	decided := make(decisions, 2)
+	done := w.stopped(w.w, stop, decided)
+	await(t, "the hook was reached", holding, done)
 	stop <- os.Interrupt
 	stop <- os.Interrupt
-	if err := ended(t, done); err != nil {
+	await(t, "the runner decided on the first stop", decided, done)
+	await(t, "the runner decided on the second stop", decided, done)
+	release()
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
 	equal(t, "reports", w.events(), []string{
@@ -164,22 +191,32 @@ func TestUnitExecStopOnce(t *testing.T) {
 func TestUnitExecApplyIgnoresStop(t *testing.T) {
 	w := newWorld(t)
 	fifo, holding := reached(t)
+	held, release := gate(t)
 	w.w.autodeploy = true
+	// The hook holds until the runner decided on the stop, which it takes
+	// while applying runs; a SIGINT that reached the session would be a
+	// line of the trace.
 	w.h.Spec.Hooks = map[string][]string{
-		"before_apply": {hook("holding") + `; : > '` + fifo + `'; sleep 1; ` + hook("held")},
+		"before_apply": {
+			`trap 'echo interrupted >> "$TRACE"' INT; ` + hook("holding") + `; echo > '` + fifo + `'` +
+				`; until read line < '` + held + `'; do :; done; ` + hook("held"),
+		},
 	}
 	stop := make(chan os.Signal, 1)
-	done := w.stopped(w.w, stop, slog.DiscardHandler)
-	await(t, holding)
+	decided := make(decisions, 1)
+	done := w.stopped(w.w, stop, decided)
+	await(t, "the hook was reached", holding, done)
 	stop <- os.Interrupt
-	if err := ended(t, done); err != nil {
+	await(t, "the runner decided on the stop", decided, done)
+	release()
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
 	equal(t, "reports", w.events(), []string{
 		"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5",
 		"APPLYING succeeded 6",
 	})
-	if tr := w.traced(); !slices.Contains(tr, "held") ||
+	if tr := w.traced(); !slices.Contains(tr, "held") || slices.Contains(tr, "interrupted") ||
 		!slices.Contains(tr, "apply -input=false -lock-timeout=5m0s infraweave.plan") {
 		t.Errorf("trace: %q", tr)
 	}
@@ -200,8 +237,8 @@ func (s stopAfter) Report(ctx context.Context, token, run string, r wire.RunRepo
 		s.stop <- os.Interrupt
 		select {
 		case <-s.decided:
-		case <-time.After(30 * time.Second):
-			return wire.NextStep{}, errors.New("the runner did not decide on the stop")
+		case <-ctx.Done():
+			return wire.NextStep{}, fmt.Errorf("the runner did not decide on the stop: %w", ctx.Err())
 		}
 	}
 	return s.worker.Report(ctx, token, run, r)
@@ -237,9 +274,9 @@ func TestUnitExecStopBetweenPhases(t *testing.T) {
 			if tc.autodeploy {
 				state = wire.WorkerStatePLANNING
 			}
-			log := newDecided()
-			done := w.stopped(stopAfter{w.w, state, wire.Succeeded, stop, log.ch}, stop, log)
-			if err := ended(t, done); err != nil {
+			decided := make(decisions, 1)
+			done := w.stopped(stopAfter{w.w, state, wire.Succeeded, stop, decided}, stop, decided)
+			if err := <-done; err != nil {
 				t.Fatal(err)
 			}
 			equal(t, "reports", w.events(), tc.want)
