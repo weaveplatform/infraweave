@@ -11,6 +11,7 @@ import (
 
 	"github.com/cucumber/godog"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
 
@@ -49,7 +50,7 @@ func (s *spaceSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the problem refuses the field "([^"]+)" as "([a-z-]+)"$`, s.refuses)
 	sc.Step(`^a caller with no token sends "([A-Z]+) ([^"]+)" through ([AB])$`, s.anonymous)
 	sc.Step(
-		`^the answer lists (\d+) actions, "([A-Z_]+)" deprecated and "([A-Z_]+)" disabled$`,
+		`^the answer lists the action catalogue, "([A-Z_]+)" deprecated and "([A-Z_]+)" disabled$`,
 		s.catalogue,
 	)
 }
@@ -274,20 +275,29 @@ func (s *spaceSteps) anonymous(ctx context.Context, method, path, replica string
 	return err
 }
 
-// catalogue checks the last answer, the action catalogue, for its size
-// and two actions' flags.
-func (s *spaceSteps) catalogue(n int, deprecated, disabled string) error {
-	var out []struct {
+// catalogue checks the last answer against the action catalogue the
+// server is built from: every action in its order with its flags, and the
+// two the scenario names flagged as it says. Deriving the rows from
+// accessapi.Actions keeps the scenario true as the reference's Action enum
+// grows; the catalogue's own size is TestUnitActions' to check.
+func (s *spaceSteps) catalogue(deprecated, disabled string) error {
+	type entry struct {
 		Action     string `json:"action"`
 		Deprecated bool   `json:"deprecated"`
 		Disabled   bool   `json:"disabled"`
 	}
+	catalogue := accessapi.Actions()
+	want := make([]entry, 0, len(catalogue))
+	for _, a := range catalogue {
+		want = append(want, entry{string(a.Action), a.Deprecated, a.Disabled})
+	}
+	var out []entry
 	r := s.w.Last()
-	if json.Unmarshal(r.Body, &out) != nil || r.Status != http.StatusOK || len(out) != n {
+	if json.Unmarshal(r.Body, &out) != nil || r.Status != http.StatusOK || !slices.Equal(out, want) {
 		return fmt.Errorf(
-			"%w: not a catalogue of %d actions: %d %.200s",
+			"%w: not the catalogue of %d actions: %d %.200s",
 			harness.ErrStep,
-			n,
+			len(want),
 			r.Status,
 			r.Body,
 		)

@@ -166,7 +166,7 @@ Feature: Spaces
   @op:actionCatalogue @case:success @case:denial
   Scenario: Any authenticated caller reads the action catalogue with its flags
     When token "m" sends "GET /api/v1/actions" through A
-    Then the answer lists 170 actions, "UPDATE_BLUEPRINT_DEPLOYMENT" deprecated and "STACK_CONTEXT_ATTACH" disabled
+    Then the answer lists the action catalogue, "UPDATE_BLUEPRINT_DEPLOYMENT" deprecated and "STACK_CONTEXT_ATTACH" disabled
     When a caller with no token sends "GET /api/v1/actions" through B
     Then it answers a 401 problem "unauthenticated"
 
