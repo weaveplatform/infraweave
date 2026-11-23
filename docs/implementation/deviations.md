@@ -155,7 +155,8 @@ first-party Flows apps as images, launcher downloads, and no licence token.
 ### Scope, tiers and clients: decision 0021
 
 Seats and tiers, billing as an installation feature, operator-registered apps
-and catalogues, superseded enum values, and `infraweavectl` authentication.
+and catalogues, superseded enum values, feature previews, and `infraweavectl`
+authentication.
 
 ### Names: decision 0001 and the glossary
 

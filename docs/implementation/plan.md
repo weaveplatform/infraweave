@@ -138,6 +138,7 @@ and lint is clean.
 | P2c Work queue, cron, outbox and the event model | Done | Epic [#132](https://github.com/weaveplatform/infraweave/issues/132). Done: [#133](https://github.com/weaveplatform/infraweave/issues/133) transactional enqueue and claims across replicas, [#135](https://github.com/weaveplatform/infraweave/issues/135) workers with leases, retries, timeouts and the ordered shutdown, [#136](https://github.com/weaveplatform/infraweave/issues/136) five-field cron and periodic tasks, [#139](https://github.com/weaveplatform/infraweave/issues/139) the outbox, typed event kinds and fan-out to consumers, [#134](https://github.com/weaveplatform/infraweave/issues/134) audit entries in the change's transaction, [#138](https://github.com/weaveplatform/infraweave/issues/138) the queue and periodic tasks in the `scheduler` and `all` modes, [#137](https://github.com/weaveplatform/infraweave/issues/137) `messageQueueStats` |
 | P3 Identity and tokens | Done | Epic [#165](https://github.com/weaveplatform/infraweave/issues/165). Done: [#166](https://github.com/weaveplatform/infraweave/issues/166) the `access` domain, the tenancy and identity tables, `account_users` and the kernel principal, [#167](https://github.com/weaveplatform/infraweave/issues/167) JWTs under rotating installation signing keys, [#168](https://github.com/weaveplatform/infraweave/issues/168) signing through AWS KMS, Cloud KMS, Key Vault and Vault, [#169](https://github.com/weaveplatform/infraweave/issues/169) the bearer-token middleware, sessions and their revocation across replicas, [#170](https://github.com/weaveplatform/infraweave/issues/170) API keys and OIDC API keys, [#171](https://github.com/weaveplatform/infraweave/issues/171) the break-glass login, browser sessions, CLI tokens and account switching, [#172](https://github.com/weaveplatform/infraweave/issues/172) the account reads, [#173](https://github.com/weaveplatform/infraweave/issues/173) the operator API with organizations, break-glass credentials and `infraweave auth hash-password` |
 | P3b Organizations, members, account settings and the feature catalogue | Done | Epic [#184](https://github.com/weaveplatform/infraweave/issues/184). Done: [#185](https://github.com/weaveplatform/infraweave/issues/185) the `features` domain below `access`, its tables and `featuresapi`; [#186](https://github.com/weaveplatform/infraweave/issues/186) the generated catalogue, seeded tiers, the billing switch, the feature middleware on every operation, the dequeue skip and the `seats` check at an API key's first use; [#187](https://github.com/weaveplatform/infraweave/issues/187) the account settings no other domain owns, with the account delete; [#188](https://github.com/weaveplatform/infraweave/issues/188) tiers, organization tiers, grants, the billing switch with the default tier, dead jobs and the data key rotation through the operator API, and `infraweavectl` with its `operator` group; [#189](https://github.com/weaveplatform/infraweave/issues/189) the Billing and Feature Flags reads from the organization's entitlement, with the subscription mutations refused; [#190](https://github.com/weaveplatform/infraweave/issues/190) the Organization tag with accounts, members, organization-admin, organization keys and account limits; [#192](https://github.com/weaveplatform/infraweave/issues/192) the Managed Users tag: invitations, pending members holding seats, removal from an account, invite and role change requests on the account trail, and groups from the identity provider groups each sign-in reports; [#193](https://github.com/weaveplatform/infraweave/issues/193) personal API keys, whose tokens act as their owner in the key's account and which their owner's removal or deactivation disables as `DEPROVISIONED`; [#191](https://github.com/weaveplatform/infraweave/issues/191) the OAuth server for MCP clients: registration, consent in the console, PKCE `S256` codes and rotating refresh tokens, each grant a session of the member's |
+| P3c Feature previews | Not started | |
 | P4 Spaces and authorization | Done | Epic [#209](https://github.com/weaveplatform/infraweave/issues/209). Done: [#211](https://github.com/weaveplatform/infraweave/issues/211) each account's space tree, its top space and `legacy`, and the closure table; [#212](https://github.com/weaveplatform/infraweave/issues/212) the generated action catalogue, the system roles, the role tables and each account admin's `space-admin` binding; [#213](https://github.com/weaveplatform/infraweave/issues/213) the evaluator, `Authorize`, `Reachable` and the explaining variant, from per-account snapshots each replica rebuilds on `authz:<account>` or a moved `authz_version`; [#214](https://github.com/weaveplatform/infraweave/issues/214) every operation's action and subject in the spec, the route table that denies a route no operation names, the middleware that decides each operation's action on its subject's space, infraweave's account actions on API keys, sessions, managed users and groups, and the `allowedActions` of their views; [#215](https://github.com/weaveplatform/infraweave/issues/215) the Spaces operations but search, the `query:` subject, and the non-admin space creation setting with the second check it gives space admins below the top space; [#216](https://github.com/weaveplatform/infraweave/issues/216) the generic search that compiles `SearchInput` to SQL under the caller's reachable spaces, `searchSpaces` and `searchSpacesSuggestions`, the `spaces` list on the compiled filter, and the action catalogue's `GET /actions` |
 | P4b Roles and role bindings | Done | Epic [#235](https://github.com/weaveplatform/infraweave/issues/235). Done: [#236](https://github.com/weaveplatform/infraweave/issues/236) custom roles created, read, listed, replaced with `PUT`, patched and deleted from the action catalogue, each slug made from its name and kept, a disabled action refused as `422` naming it and a deprecated one by the `Action` enum as `400`, a system role refused any change and a role with bindings its delete, each write moving the account's `authz_version`; [#237](https://github.com/weaveplatform/infraweave/issues/237) roles bound to managed users, groups and API keys in spaces, one at a time or in all-or-nothing batches, each needing `SPACE_ADMIN` on its space, and the access rules and role bindings that managed users, groups and API keys carry stored as bindings, removed with their actor; [#238](https://github.com/weaveplatform/infraweave/issues/238) the user, group, API key and session grant views and their suggestions, each holder and its grants found by the evaluator that decides requests, `RESIDENT`, `PROPAGATED` or `INHERITED` with `space-reader`, and each view searching its holders alone; [#239](https://github.com/weaveplatform/infraweave/issues/239) roles bound to stacks in other spaces, one at a time or in all-or-nothing batches, each needing `STACK_MANAGE` on the stack's space and `SPACE_ADMIN` on the space bound in, a top-space binding needing the stack to live in the top space, bindings kept when the stack moves and deleted with it, and `stacksWithAccessToSpace` listing a space's residents or, for its admin, every stack whose own read or binding reaches it; [#240](https://github.com/weaveplatform/infraweave/issues/240) a removed binding, a role's changed actions or a deleted group reaching a member's live session on every replica within a second, every write path audited to move the account's `authz_version`, send `authz:<account>` and drop the writing replica's snapshot on commit, and an `ACTIVE` managed user with no binding signing in with empty grants; [#241](https://github.com/weaveplatform/infraweave/issues/241) each Organization tag operation refusing an account admin without the organization role with `403` naming `ORGANIZATION_ADMIN`, and a limit cleared for no account or no limit refused; [#242](https://github.com/weaveplatform/infraweave/issues/242) the managed user, group and API key operations refusing a key bound `space-writer` on the top space with `403` naming each action, and an admin of a space below the top reading the account's users, groups and keys but changing none; [#243](https://github.com/weaveplatform/infraweave/issues/243) the account settings and `messageQueueStats` refusing a key bound `space-writer` on the top space with `403` naming `ACCOUNT_ADMIN`, the settings any principal of the account reads refused to a session no account admits with `401`, and each with its failure case; [#292](https://github.com/weaveplatform/infraweave/pull/292) the success and failure scenarios P3b's operations lacked and `spacePatch`'s denial, Billing's subscription mutations having no success to show because they are always refused |
 | P5 Stacks | Done | **M2**. Epic [#227](https://github.com/weaveplatform/infraweave/issues/227). Done: [#228](https://github.com/weaveplatform/infraweave/issues/228) the `vendors` and `stacks` domains after `access`, the stacks stream, `stacksapi.Stacks`, `accessapi.Spaces.Hold`, and the space guard that refuses deleting a space a stack lives in; [#229](https://github.com/weaveplatform/infraweave/issues/229) `internal/iac` with the `terraform` and `opentofu` settings checks, refused at write time as `422 validation-failed`, the `iactest` contract suite, and the `vendor-terraform` and `vendor-opentofu` options on their `vendorConfig` members; [#230](https://github.com/weaveplatform/infraweave/issues/230) stacks created, read, listed, replaced with `PUT`, moved, reslugged, disabled, enabled, locked, unlocked, starred and deleted in spaces, each change a `stack.changed` event in the outbox; [#231](https://github.com/weaveplatform/infraweave/issues/231) a `PATCH` merge patch beside every update `PUT`, `ETag` on reads and writes, `If-Match` answering `412 precondition-failed` when stale, every input schema refusing an unknown field as `400` with its pointer, and the one label rule on stacks and spaces; [#232](https://github.com/weaveplatform/infraweave/issues/232) `searchStacks` and `searchStacksSuggestions` over the reachable spaces, the space tree read through `accessapi.Spaces.Tree`, and `searchtest.FuzzCompile` holding every entity's search to parameterized SQL; [#233](https://github.com/weaveplatform/infraweave/issues/233) the Version Catalog's `terraformVersions`, `openTofuVersions`, `terraformEffectiveVersion` and `openTofuEffectiveVersion` from `vendor_releases`, which the hourly `vendors.refresh` task reads from HashiCorp's and OpenTofu's release indexes, `vendorsapi.Catalog`, the `indextest` contract suite over fixtures from `make vendors-fixtures`, and the nightly `vendors-upstream` job; [#234](https://github.com/weaveplatform/infraweave/issues/234) `stackRuns`, `stackRunsInRange`, `stackProposedRuns` and `stackTasks` answering empty pages, and `stackRun` answering `404`, on the stack's space until P7; [#257](https://github.com/weaveplatform/infraweave/issues/257) account and organization deletion that deletes `access`' rows at once and appends `account.deleted`, which the `features` and `stacks` purges consume in batches, and the nightly `integrity.orphans` count of held IDs whose row is gone |
@@ -208,6 +209,8 @@ flowchart LR
   P2b --> P3[P3 Identity]
   P3 --> P3b[P3b Organizations and features]
   P3 --> P4[P4 Spaces and authz]
+  P3b --> P3c[P3c Feature previews]
+  P4 --> P3c
   P4 --> P5[P5 Stacks]
   P3b --> P5
   P5 --> P4b[P4b Roles and bindings]
@@ -264,6 +267,7 @@ flowchart LR
   P24b --> P24c[P24c Console]
   P18d --> P24c
   P25b --> P24c
+  P3c --> P24c
   P15 --> P25[P25 AI and MCP]
   P3b --> P25
   P25 --> P25b[P25b Intent]
@@ -294,8 +298,10 @@ chain (P18 → P18b) are each two phases shorter.
   P2c also fixes the event envelope that P18 and the Flows engine share.
 - P1d runs beside P1c once P1b lands; nothing waits on it before P18c.
 - P3b runs beside P4. P4b follows P5, because stack role bindings bind a
-  stack. P3b's authorization server is ready long before `/flows/mcp`
-  (P18c, through P4b) and `/mcp` (P25) use it.
+  stack. P3c follows P3b and P4, since the preview gate sits in P3b's
+  feature lookup and only account admins opt an account in; no phase but
+  the console (P24c) waits on it. P3b's authorization server is ready long
+  before `/flows/mcp` (P18c, through P4b) and `/mcp` (P25) use it.
 - P6 and P6b run side by side once P5 lands, and P7 follows P6b, because a
   run is created on its stack's tracked commit. P8 needs P6 and P7, because
   the run handover carries the resolved environment.
@@ -346,6 +352,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | P12 moves before P9, after P6b; its webhooks, processing and feedback become P12b after P10; P19's providers join both, and P19 folds into them | Every provider is a peer ([0012](../research/decisions/0012-vcs-integration-model.md)): GitHub, GitLab, Bitbucket Cloud, Bitbucket Data Center and Azure DevOps each gain every capability in the same phase. Integrations need only stacks and P6b's sources, and a private repository needs an integration's credential before its first run, so P12 runs beside P7 to P8b. Webhooks create proposed runs, which P10 completes, so events and feedback wait for it. P19b keeps its name |
 | Login policies and the `LOGIN_POLICIES` scheme move from P4 to P13b | They evaluate through decision [0009](../research/decisions/0009-policy-engine-opa.md)'s engine ([0007](../research/decisions/0007-authorization-spaces-and-roles.md)) |
 | Flows moves from the end of the spine to P18c and P18d | Flows is built on Deploy's events from the start ([0018](../research/decisions/0018-flows-runtime.md)): the engine needs the fan-out of P18 and the queue of P2c, nothing later, and its clients join `infraweavectl` and the provider in P24 and P24b |
+| P3c added for feature previews | The reference schema of 2026-11-23 adds `featurePreview`, `accountSetFeaturePreviewsEnabled` and `featurePreviewSetPersonalEnabled`. infraweave serves them over its own catalogue ([0021](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews)), so they follow P3b's catalogue and P4's account admins instead of waiting for a later phase, and the console's pages for them join P24c |
 | P24c added for the console | Decision [0023](../research/decisions/0023-console.md) builds a console over the public API only, so it follows the last client phase and covers every surface |
 | P12, P13, P17, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
 | A minimal Terragrunt vendor moves from P20 to P11 | P11's exit runs `state/terragrunt_units.feature` and captures C113 and C114, which need a Terragrunt stack whose units each reach their own workspace, and P20 depends on P11. P11 takes the vendor, its release index, a run specification that names Terragrunt and its tool, the launcher's verification and the runner's `run --all` with a backend per unit; P20 keeps smart sanitization, `MANUALLY_PROVISIONED`, `skipReplan`, explicit stacks, the version operations, the changes view, outputs and the policy input (maintainer, 2026-11-16) |
@@ -1210,6 +1217,79 @@ use.
   `S256` and refreshes once; `plain` PKCE, a reused refresh token and a
   redirect URI outside loopback and the allowlist are refused.
 - Captures C118, C123, C124 and C125 replay once recorded.
+- `make gate` passes at 95% in total and 90% per package.
+
+## P3c: Feature previews
+
+Decisions: [0021](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0003](../research/decisions/0003-api-conventions.md), [0022](../research/decisions/0022-api-errors-and-update-semantics.md), [0004](../research/decisions/0004-repository-architecture.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
+
+**Depends on:** P3b, P4.
+
+Feature previews over infraweave's own catalogue: a `preview` member on a
+catalogue record, an account's opt-in that its account admins set, a
+member's personal opt-out that changes only that member's view, and a gate
+in the feature lookup that keeps a preview from every account that has not
+opted in. The three operations of the Account Settings tag are served, and
+both settings are stored, while no catalogue record carries the marker.
+
+**Tasks**
+1. The marker: an optional `preview` member in
+   [features.schema.json](../data/schema/features.schema.json) with `name`,
+   `description`, `docsUrl` (`https` only) and an optional `imageUrl`,
+   allowed on a capability or an option only; `tools/dataview` compiles it
+   into `catalogue.gen.go`, `internal/features` exposes it on `Feature` and
+   lists the previews in catalogue order, and [tiers.md](tiers.md) marks a
+   preview. `TestUnitFeatureCatalogue` refuses a marker on a limit or the
+   switch, or one missing a required member; the generator's tests cover a
+   marked record, since the register has none yet.
+2. The settings and the gate in `internal/features`:
+   `account_feature_previews(account_id, enabled, updated_at)` and
+   `member_feature_preview_opt_outs(account_id, member_id, updated_at)` in
+   the `features` stream's initial migration, as every table is created
+   before v0.1.0; `featuresapi` methods that read and set both settings and
+   remove a member's row, which `access` calls in the transaction that
+   removes the member from the account; the account's rows deleted by the
+   `features` purge of `account.deleted`; a write of the account's setting
+   notifying `infraweave_invalidate`, so every replica's lookup applies it
+   at the next request. `Allow`, the option check and the dequeue check
+   take the account and refuse a preview in an account that has not opted
+   in with `403 preview-not-enabled`, after `feature-disabled` and
+   `feature-not-in-tier`, whether billing is on or off; a skipped job of a
+   preview counts in `infraweave.features.skipped`. The slug joins the
+   problem register and `internal/platform/httpkit/problem`. Tests:
+   `TestUnitPreviewGate` over a test catalogue, `TestAccPreviewSettings`
+   on PostgreSQL across two replicas.
+3. The operations in `api/src/api/paths-account-settings.yaml`, gated by
+   `account-settings` and answered from `features`' HTTP server:
+   `featurePreview` (`GET /feature-preview`, `AUTHENTICATED` on `account`),
+   `accountSetFeaturePreviewsEnabled`
+   (`POST /account/set-feature-previews-enabled`, `ACCOUNT_ADMIN` on
+   `account`, with an idempotency key) and
+   `featurePreviewSetPersonalEnabled` (`PUT /feature-preview/personal`,
+   `AUTHENTICATED` on `account`). Each answers the `FeaturePreview` object:
+   every preview `features.disabled` leaves, with `key`, `name`,
+   `description`, `docsUrl`, `imageUrl` and `active`; `account` (the
+   reference's `organization`, RN-47) with `enabled` and `canManage`;
+   `personal` for a principal that names a member; and `visible`. A
+   principal that names no member gets `403 forbidden` from the personal
+   write. Served descriptions say infraweave, the three operations leave
+   `api/parity-baseline.deploy.json`, and each carries its
+   `x-infraweave-divergence`. Feature:
+   `organization/feature_previews.feature`. Records DV-137.
+4. `infraweavectl preview` over `pkg/sdk`: `show`, `account enable` and
+   `account disable`, `personal enable` and `personal disable`, each
+   printing the answer; and the command tree hiding a command that a
+   preview gates while `featurePreview` reports it inactive for the
+   caller. Feature: `cli/feature_previews.feature`.
+
+**Exit criteria**
+- The three operations meet decision 0016's evidence rule: each has a
+  `@case:success`, a `@case:denial` and a `@case:failure` scenario.
+- With no preview in the catalogue, `featurePreview` answers an empty
+  list and `visible: false`, and both settings round-trip across replicas.
+- `TestUnitPreviewGate` shows a preview refused with `preview-not-enabled`
+  to an account that has not opted in, with billing off and on, and a
+  member's opt-out refusing nothing.
 - `make gate` passes at 95% in total and 90% per package.
 
 ## P4: Spaces and authorization
@@ -3613,15 +3693,24 @@ today are plugins (P20b) whose results plan policies read (P13).
    a managed entity by provider, type and identity is linked to it, and
    one that matches none counts as unmanaged. Scan resources are kept for
    `resources.scans.retention` (C195).
-5. Coverage and ignored resources: `scanCoverage`, `scanCoverageGenerate`,
-   `scanResourcesIgnore`, `scanResourcesUnignore`,
-   `scanSearchIgnoredResources`, `scanSearchIgnoredResourcesSuggestions`;
-   an ignored resource leaves the unmanaged count and stays listed as
-   ignored.
+5. Coverage, resource stats and ignored resources: `scanCoverage`,
+   `scanCoverageGenerate`, `scanResourceStats`, `scanResourcesIgnore`,
+   `scanResourcesUnignore`, `scanSearchIgnoredResources`,
+   `scanSearchIgnoredResourcesSuggestions`; an ignored resource leaves the
+   unmanaged count and stays listed as ignored. `scanResourceStats`
+   (`GET /scan-resource-stats`, tagged Scans like `scanCoverage`) answers
+   the resources found by the latest finished run of each scan the caller
+   can read: `total`, `managed`, `unmanaged` and `ignored`, and
+   `bySubcategory` sorted by name, with resource types the provider's docs
+   do not group under `Ungrouped`. A resource that two scans find counts
+   twice, and an ignored resource counts only towards `ignored`. Its source
+   is the upstream schema of 2026-11-23
+   ([#803](https://github.com/weaveplatform/infraweave/pull/803),
+   [#808](https://github.com/weaveplatform/infraweave/pull/808)).
 6. Feature: `resources/scans.feature` (`@postgres`, `@docker`), a scan run
    on a discovery pool that records one managed and one unmanaged
-   resource, coverage before and after ignoring the unmanaged one, and a
-   scan refused on an ordinary pool.
+   resource, coverage and resource stats before and after ignoring the
+   unmanaged one, and a scan refused on an ordinary pool.
 
 **Exit criteria**
 - Scans meets decision 0016's evidence rule: every operation of tasks 1, 2,
@@ -3795,8 +3884,9 @@ publishing, state download and usage export to the API and its clients
    upload docs; `gpg-key`), `policy` (samples, evaluation records,
    `policySimulatev2`), `workerpool` (watch, workers, drain with wait,
    undrain, cycle), `blueprint`, `template` (deploy), `audit-trail`,
-   `run-external-dependency`, `ai`, `profile` (including `usage-csv` over
-   `usage` with since, until, aspect and grouping; C23), `registry`,
+   `run-external-dependency`, `ai`, `preview` (from P3c), `profile`
+   (including `usage-csv` over `usage` with since, until, aspect and
+   grouping; C23), `registry`,
    `whoami`, `version` and `api` (an arbitrary request and the served
    OpenAPI document). Run logs stream over the run log stream of P18, with
    polling when it closes.
@@ -3825,7 +3915,7 @@ publishing, state download and usage export to the API and its clients
 
 Decisions: [0023](../research/decisions/0023-console.md), [0006](../research/decisions/0006-authentication-and-tokens.md), [0001](../research/decisions/0001-rest-first-spacelift-surface.md), [0015](../research/decisions/0015-events-notifications-webhooks-audit.md), [0019](../research/decisions/0019-ai-provider-boundary.md), [0024](../research/decisions/0024-expression-language.md), [0016](../research/decisions/0016-testing-and-acceptance.md).
 
-**Depends on:** P24b, P18d, P25b.
+**Depends on:** P24b, P18d, P25b, P3c.
 
 infraweave's console: a React client of the public REST API, embedded in
 the `infraweave` binary, that covers every surface and calls no operation
@@ -3865,7 +3955,10 @@ of its own.
    searches, dashboards over `metrics` and `metricsRange`, an account-wide
    runs explorer, login policies beside the management strategy rather
    than among the policies, and a stack wizard step that binds roles to the
-   stack (C286); the Infra Assistant panel with
+   stack (C286); the feature previews pages of P3c, the account's opt-in
+   for account admins and the member's personal opt-out, with a preview's
+   pages hidden while `featurePreview` reports it inactive for the member;
+   the Infra Assistant panel with
    page context, navigation and confirmation of destructive calls; English
    messages from a catalogue; WCAG 2.2 level AA. Records DV-108.
 4. Quality gate: the blocking `console` job (`tsc --strict`, ESLint with

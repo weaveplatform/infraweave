@@ -282,6 +282,19 @@
       "kind": "concept",
       "reference": "Check, deployment environment and deployment task names under `spacelift/`",
       "infraweave": "The same names under `infraweave/`"
+    },
+    {
+      "id": "RN-47",
+      "kind": "identifier",
+      "schema": "FeaturePreview",
+      "reference": "organization",
+      "infraweave": "account"
+    },
+    {
+      "id": "RN-48",
+      "kind": "identifier",
+      "reference": "FeaturePreviewOrganizationSettings",
+      "infraweave": "FeaturePreviewAccountSettings"
     }
   ]
 }
