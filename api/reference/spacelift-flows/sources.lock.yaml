@@ -5,8 +5,8 @@ provider:
   sha256: ff3953820aa41dd2c5016eb49047660292f28482422811a53c870aba88d60caf
 flowctl:
   repository: spacelift-io/flowctl
-  ref: 96bdd03303a60fca5c208c8a167faa80af40021d
-  sha256: a80fe8474eb5171ca8622a04a4aa04847041d5343abb4e98013cfaa276a84142
+  ref: e470e3488fce45fee13e81cd531f6ead8cd6597d
+  sha256: 900d71624fbe6618d6c9bc38253d655678d296743cdfe57fb698dd46978366cd
 sdk:
   package: '@slflows/sdk'
   version: 0.14.0
@@ -62,4 +62,4 @@ templates:
     variables-simple: 0dc5dc2dd4000d63b50ed82e78016e6153a9f59fc543e50bd539bc871515edd7
 registry:
   manifest: https://registry.useflows.com/core
-fetchedAt: "2026-11-04T15:25:48Z"
+fetchedAt: "2026-11-23T15:21:35Z"
