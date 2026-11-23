@@ -18,7 +18,7 @@ executed sources, none of them a synthetic fixture:
 | Source | Revision | Result |
 | --- | --- | --- |
 | Main quality gate [CI 45218707334](https://github.com/weaveplatform/infraweave/actions/runs/45218707334) | `e95e9ad3` (#810) | All 37 jobs passed: seven acceptance partitions with **1,208 scenarios / 28,606 steps**, native and capture suites, certified FIPS for every suite, the Terraform policy and Kubernetes batches and the coverage gate |
-| Delivery pull request's quality gate, [#819](https://github.com/weaveplatform/infraweave/pull/819) | ⟨GATE_REV⟩ | ⟨GATE_SUMMARY⟩ |
+| Delivery pull request's quality gate, [#819](https://github.com/weaveplatform/infraweave/pull/819) | `739218ea`, [CI 45262242932](https://github.com/weaveplatform/infraweave/actions/runs/45262242932) | 37 of 38 jobs passed and one was skipped as not applicable: seven acceptance partitions with **1,215 scenarios / 28,808 steps**, the Kubernetes batch with **37 / 661** and empty cleanup, native and capture suites, certified FIPS, parity, and coverage at 95.2% total with every package at 90% or more |
 | Local Terraform Kubernetes batch, certified FIPS | `e5feb44b`, clean tree | Passed: **37 scenarios / 661 steps**, the six ownership and injected-failure controls, and absence readback for every owner |
 
 The local runs used native ARM64 Docker Desktop 29.6.1, official Terraform
