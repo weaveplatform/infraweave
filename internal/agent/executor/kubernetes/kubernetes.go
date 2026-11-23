@@ -52,7 +52,7 @@ type Observation struct {
 // is a directory private to the worker where a workspace is packed
 // before it is streamed. The job's preparing deadline bounds scheduling,
 // image pulls, the stream and the handoff together, or Preparation from
-// Start for a job with none. Execution is the run timeout and cleanup
+// the Pod's creation for a job with none. Execution is the run timeout and cleanup
 // time after that deadline, which with the preparation left makes the
 // Pod's own active deadline, counted by Kubernetes from its start.
 // Interval is how often a Pod's status is read, a second when zero.
@@ -143,10 +143,6 @@ func tools(j executor.Job) ([]executor.Tool, error) {
 // runner.
 func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Container, error) {
 	c := e.config()
-	deadline := j.PreparingDeadline
-	if deadline.IsZero() {
-		deadline = time.Now().Add(c.Preparation)
-	}
 	ts, err := tools(j)
 	if err != nil {
 		return nil, err
@@ -167,6 +163,12 @@ func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Containe
 			return nil, err
 		}
 		m.Tools = append(m.Tools, d)
+	}
+	// A job with no issued deadline has the configured bound from its
+	// Pod's creation.
+	deadline := j.PreparingDeadline
+	if deadline.IsZero() {
+		deadline = time.Now().Add(c.Preparation)
 	}
 	pctx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()

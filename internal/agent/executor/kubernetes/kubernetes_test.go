@@ -529,7 +529,13 @@ func TestUnitRunPodPreparationFailuresDeleteThePod(t *testing.T) {
 			k := newKubelet(t)
 			j := job(t)
 			tc.setup(k, &j)
-			e := k.executor(t, func(c *Config) { c.Preparation = 200 * time.Millisecond })
+			// Only a pending Pod waits out its bound; the others fail first,
+			// however slowly the race detector runs them.
+			bound := 10 * time.Second
+			if name == "pending" {
+				bound = 200 * time.Millisecond
+			}
+			e := k.executor(t, func(c *Config) { c.Preparation = bound })
 			_, err := e.Start(t.Context(), j)
 			if !errors.Is(err, ErrPreparation) || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("%v", err)
