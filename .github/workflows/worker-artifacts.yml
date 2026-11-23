@@ -7,7 +7,7 @@ name: images | Publish worker artifacts
 # release's version; a dispatch on main publishes a preview of main's head.
 # Every artifact is pinned by digest, signed with this workflow's identity on
 # main, and recorded in worker-artifacts.json, the contract the managed
-# cloud worker modules consume. The server image is published separately.
+# cloud worker modules consume. server-image.yml publishes the server image.
 # ref: decision 0020
 
 on:

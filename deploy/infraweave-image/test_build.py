@@ -74,9 +74,10 @@ class Describe(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             context = Path(directory)
             (context / "SHA256SUMS").write_text("one\n")
-            first = build.recipe(context)
+            first = build.recipe(context, "worker")
             (context / "SHA256SUMS").write_text("two\n")
-            self.assertNotEqual(first, build.recipe(context))
+            self.assertNotEqual(first, build.recipe(context, "worker"))
+            self.assertNotEqual(build.recipe(context, "worker"), build.recipe(context, "server"))
             self.assertRegex(first, r"^sha256:[0-9a-f]{64}$")
 
     def test_the_repository_runner_pins_are_read(self):
@@ -84,6 +85,67 @@ class Describe(unittest.TestCase):
         self.assertTrue(images)
         for reference in images.values():
             self.assertRegex(reference, r"@sha256:[0-9a-f]{64}$")
+
+
+class Server(unittest.TestCase):
+    def test_both_images_share_one_base(self):
+        bases = {kind: [line for line in image.dockerfile.read_text().splitlines() if line.startswith("FROM ")]
+                 for kind, image in build.IMAGES.items()}
+        self.assertEqual(len(bases["server"]), 1)
+        self.assertEqual(bases["server"], bases["worker"])
+        self.assertRegex(bases["server"][0], r"@sha256:[0-9a-f]{64}$")
+
+    def test_the_contract_is_the_kinds(self):
+        build.check_contract({"User": "65532:65532", "Entrypoint": [build.BINARY, "all"],
+                              "ExposedPorts": {"8080/tcp": {}, "9090/tcp": {}}}, "server")
+        build.check_contract({"User": "1983:1983", "Entrypoint": [build.BINARY]}, "worker")
+        for config in (
+            {"User": "1983:1983", "Entrypoint": [build.BINARY], "ExposedPorts": {"8080/tcp": {}, "9090/tcp": {}}},
+            {"User": "65532:65532", "Entrypoint": [build.BINARY], "ExposedPorts": {"8080/tcp": {}, "9090/tcp": {}}},
+            {"User": "65532:65532", "Entrypoint": [build.BINARY, "all"], "ExposedPorts": {"8080/tcp": {}}},
+            {"User": "0", "Entrypoint": [build.BINARY, "all"], "ExposedPorts": {"8080/tcp": {}, "9090/tcp": {}}},
+        ):
+            with self.assertRaises(ValueError, msg=config):
+                build.check_contract(config, "server")
+
+    def test_the_configuration_keeps_the_listener_defaults(self):
+        config = build.server_config("postgres://u:p@db:5432/infraweave")
+        self.assertEqual(config["database"], {"url": "postgres://u:p@db:5432/infraweave"})
+        self.assertNotIn("listen", config["server"])
+        self.assertNotIn("admin_listen", config["server"])
+        self.assertEqual(config["server"]["public_url"], build.SMOKE_URL)
+        self.assertEqual(set(config["vendors"]), {"terraform_index", "opentofu_index", "terragrunt_index"})
+        self.assertTrue(all(url.startswith("http://127.0.0.1:1/") for url in config["vendors"].values()))
+
+    def test_postgres_is_the_acceptance_pin(self):
+        self.assertRegex(build.postgres_image(), r"^postgres:[^@]+@sha256:[0-9a-f]{64}$")
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "images.go"
+            source.write_text('\tImagePostgres = "postgres:18"\n')
+            with self.assertRaises(ValueError):
+                build.postgres_image(source)
+
+    def test_host_port(self):
+        self.assertEqual(build.host_port("127.0.0.1:49153\n"), 49153)
+        self.assertEqual(build.host_port("0.0.0.0:1\n[::]:2\n"), 1)
+        with self.assertRaises(ValueError):
+            build.host_port("")
+
+    def test_describes_the_pinned_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            context = Path(directory)
+            (context / "SHA256SUMS").write_text(f"{'b' * 64}  infraweave-linux-amd64\n{'c' * 64}  infraweave-linux-arm64\n")
+            image = "ghcr.io/weaveplatform/infraweave@" + DIGEST
+            platforms = {"linux/amd64": DIGEST, "linux/arm64": DIGEST}
+            value = build.describe_server("0.1.0", "abc", image, platforms, context)
+            self.assertEqual(value["kind"], "server-image")
+            self.assertEqual(value["image"], image)
+            self.assertEqual(value["entrypoint"], [build.BINARY, "all"])
+            self.assertEqual(value["ports"], {"api": 8080, "admin": 9090})
+            self.assertEqual(value["binaries"]["linux/arm64"], "sha256:" + "c" * 64)
+            self.assertEqual(value["signature"]["identity"], build.SERVER_SIGNER)
+            with self.assertRaises(ValueError):
+                build.describe_server("0.1.0", "abc", "ghcr.io/weaveplatform/infraweave:0.1.0", platforms, context)
 
 
 class Main(unittest.TestCase):

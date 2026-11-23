@@ -260,7 +260,8 @@ infraweave/
 │   └── dataview/
 ├── deploy/                        decision 0020's packaging and reference deployments (P27)
 │   ├── images/                    image definitions: runner-terraform and runner-opentofu (P9), runner-pulumi
-│   │                              (P20), runner-ansible with its callback plugin (P20b), the server image (P27)
+│   │                              (P20), runner-ansible with its callback plugin (P20b)
+│   ├── infraweave-image/          the certified FIPS binaries and the worker and server images (build.py)
 │   ├── compose/compose.yaml       one infraweave all and one infraweave launcher on Docker
 │   ├── helm/infraweave/           chart for serve and scheduler, one Deployment per process mode
 │   ├── helm/infraweave-workers/   chart for infraweave launcher

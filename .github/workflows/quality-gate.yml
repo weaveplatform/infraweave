@@ -1016,12 +1016,48 @@ jobs:
           helm template check "$chart" --namespace workers --set clusterID=check --set 'watchNamespaces={workers}' \
             | grep -q "image: \"$image\""
 
+  # The server image server-image.yml publishes, built from this revision
+  # without pushing: the certified FIPS binaries, and each platform's image
+  # (arm64 under QEMU) started with only --config on a read-only root file
+  # system against PostgreSQL, until /readyz answers on the admin port.
+  # ref: decision 0020
+  server-image:
+    name: 'Server image'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: 'go.mod'
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - name: Build the certified FIPS binaries
+        run: python3 deploy/infraweave-image/build.py binaries --version 0.0.0-check --out dist
+      - name: Build each platform's image and start it on PostgreSQL
+        run: |
+          for platform in linux/amd64 linux/arm64; do
+            tag="check-${platform#linux/}"
+            python3 deploy/infraweave-image/build.py build --kind server --repository infraweave.test/server \
+              --tag "$tag" --version 0.0.0-check --context dist --platform "$platform"
+            python3 deploy/infraweave-image/build.py smoke "infraweave.test/server:$tag" --kind server \
+              --platform "$platform" --version 0.0.0-check | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
   # images is the one job that may be skipped: it is when the change leaves
   # the image definitions alone.
   gate:
     name: 'Quality gate'
     if: always()
-    needs: [unit, accept, native, lab-batch, fips-only, postgres-next, parity, reference, generated, lint, vuln, build, coverage, changes, images, worker-artifacts]
+    needs: [unit, accept, native, lab-batch, fips-only, postgres-next, parity, reference, generated, lint, vuln, build, coverage, changes, images, worker-artifacts, server-image]
     runs-on: ubuntu-latest
     steps:
       - name: Every gate job passed
