@@ -5,7 +5,8 @@
 // container's workspace, taking each SIGINT on the channel it is given as
 // a stop of the run. HandBack, infraweave runner hand-back, opens the
 // workspace of a run container that ended before its runner did to the
-// launcher's user.
+// launcher's user. Interrupt, infraweave runner signal interrupt, sends
+// a process SIGINT, as a Kubernetes run Pod's stop does to its runner.
 //
 // ref: decision 0008 § "The launcher and the runner"
 //
@@ -19,6 +20,6 @@
 // # Dependencies
 //
 // It imports internal/agent/handoff, internal/agent/client and
-// internal/agent/exec. internal/agent/cli runs it as infraweave runner
-// and infraweave runner hand-back.
+// internal/agent/exec. internal/agent/cli runs it as infraweave runner,
+// infraweave runner hand-back and infraweave runner signal interrupt.
 package runner

@@ -10,7 +10,12 @@
 // registered and Docker answered, and /readyz while the worker has a
 // session the server answered within three poll timeouts and Docker
 // answers. SIGHUP re-reads launcher.log.level. Runner reads the
-// launcher's handoff from standard input and runs the runner.
+// launcher's handoff from standard input and runs the runner. Its
+// bootstrap subcommand, a run Pod's init container, receives the Pod's
+// preparation stream on standard input into the Pod's volumes, for the
+// run, state version and worker its flags name, and logs only the
+// stream's shape; its signal interrupt subcommand sends the run
+// container's PID 1, the runner, SIGINT.
 //
 // WorkerController loads the worker_controller configuration the same
 // strict way, from its flags, the INFRAWEAVE_WORKER_CONTROLLER_*
@@ -30,8 +35,8 @@
 //
 // # Dependencies
 //
-// It imports cobra, client-go's rest and clientcmd, internal/agent/config,
-// controller, executor, executor/docker, launcher, runner and wire, and
+// It imports cobra, client-go's rest and clientcmd, internal/agent/bootstrap,
+// config, controller, executor, executor/docker, launcher, runner and wire, and
 // platform/buildinfo, httpkit/serve and observe; no server package.
 // cmd/infraweave adds its commands.
 package cli

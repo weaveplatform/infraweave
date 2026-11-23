@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+
+	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
 // TokenVersion is the pool token format the launcher reads.
@@ -111,15 +113,17 @@ func privateKey(b []byte) (*ecdsa.PrivateKey, error) {
 
 // claims are a registration's payload, as the worker API describes it.
 type claims struct {
-	Capabilities []string          `json:"capabilities"`
-	Pool         string            `json:"pool"`
-	IssuedAt     int64             `json:"iat"`
-	ID           string            `json:"jti"`
-	Version      string            `json:"version"`
-	OS           string            `json:"os"`
-	Arch         string            `json:"arch"`
-	Metadata     map[string]string `json:"metadata"`
-	Worker       string            `json:"worker,omitempty"`
+	Capabilities []string            `json:"capabilities"`
+	Pool         string              `json:"pool"`
+	IssuedAt     int64               `json:"iat"`
+	ID           string              `json:"jti"`
+	Version      string              `json:"version"`
+	OS           string              `json:"os"`
+	Arch         string              `json:"arch"`
+	Metadata     map[string]string   `json:"metadata"`
+	Worker       string              `json:"worker,omitempty"`
+	Owner        *kernel.WorkerOwner `json:"owner,omitempty"`
+	Slot         *int32              `json:"slot,omitempty"`
 }
 
 // sign is the compact ES256 JWS of c, with the pool's certificate in x5c

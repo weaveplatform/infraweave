@@ -8,18 +8,32 @@ import (
 )
 
 // Job is one run's container: the worker and the run it belongs to, which
-// label it so a restarted launcher finds it, the image it starts from, the
-// host directory that is its workspace, the image's own when empty, the
-// other host paths it mounts, the handoff its runner reads on standard
-// input, and where its output goes.
+// label it so a restarted launcher finds it, the run's state version
+// after its claim, which names the assignment, the image it starts from,
+// the host directory that is its workspace, the image's own when empty,
+// the other host paths it mounts, the verified tool executables among
+// them, the handoff its runner reads on standard input, and where its
+// output goes.
 type Job struct {
-	Worker    string
-	Run       string
-	Image     string
-	Workspace string
-	Mounts    []Mount
-	Handoff   []byte
-	Output    io.Writer
+	Worker       string
+	Run          string
+	StateVersion int64
+	Image        string
+	Workspace    string
+	Mounts       []Mount
+	Tools        []Tool
+	Handoff      []byte
+	Output       io.Writer
+}
+
+// Tool is a verified tool executable at the host path Path, of the
+// release Version, which replaces the image's /bin/<Name>; its Mount is
+// among the Job's. An executor that cannot mount host paths streams it
+// instead.
+type Tool struct {
+	Name    string
+	Version string
+	Path    string
 }
 
 // Mount is a host path, absolute, that the container sees at Target.

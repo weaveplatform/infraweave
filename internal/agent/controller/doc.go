@@ -18,14 +18,30 @@
 // A pool's capacity is a set of Worker resources, one per slot, named
 // from the pool's UID and owned by it. Each slot registers a worker with
 // the owner and slot in its signed registration, which resumes the slot's
-// worker, and registers again each heartbeat to keep it seen. There is no
-// Kubernetes executor yet, so the condition ExecutorAvailable is False
-// and the workers claim no runs. A slot beyond the organization's
-// private-workers limit stays unregistered with the reason LimitReached,
-// and a pool creates no further slots while one is refused.
+// worker, and then runs a launcher with the pool's credentials that
+// registers the same way and polls the pool's endpoint for runs. The
+// launcher executes each run it claims through a Kubernetes executor in a
+// Pod owned by the slot's Worker, built from the pool's pod settings,
+// with its preparation bounded by the pool's preparing timeout and the
+// Pod's active deadline by that timeout, the run timeout and
+// cleanup_timeout. Tool binaries are fetched once into cache_dir, from
+// tool_mirror when set, and each slot stages its workspaces in its own
+// directory under it. The Worker's status shows the slot's worker and the
+// assignment it executes: the run, its state and version, its Pod, how far
+// its preparation came, its deadlines and its exit; the pool counts its
+// busy and ready slots, and ExecutorAvailable is True. A controller with
+// no Kubernetes API configuration to stream through runs no launcher:
+// ExecutorAvailable is False and its slots, which register each heartbeat
+// instead, claim no runs. A slot beyond the organization's private-workers
+// limit stays unregistered with the reason LimitReached, and a pool
+// creates no further slots while one is refused. Slot launchers run while
+// the replica leads; losing the Lease, or a pool removed without its
+// finalizer, ends them, and a busy slot's Pod is left for its next
+// launcher to resume.
 //
 // A slot beyond the capacity, and every slot of a deleted pool, is
-// retired: its Worker is deleted, its worker deregistered and then its
+// retired: its Worker is deleted; its launcher, once its run ends and
+// claiming none after it, is ended; its worker deregistered and then its
 // finalizer released. A deleted Managed pool's remote pool is deleted
 // through the ordinary delete and its guards; an Existing or Public pool's
 // binding is released. Only then is the pool's finalizer released. Each
@@ -38,16 +54,17 @@
 //
 // It reads the worker_controller configuration, WorkerPool, Worker and
 // Secret resources and the Lease through the Kubernetes API, writes
-// finalizers and status with patches under strict field validation, and
-// calls the worker API and the account API of each pool's endpoint over
-// HTTPS trusting the system roots and ca_file. It never writes a
-// private key, management credential or session token to a resource or
+// finalizers and status with patches under strict field validation,
+// creates and deletes run Pods and streams into them, and calls the
+// worker API and the account API of each pool's endpoint over HTTPS
+// trusting the system roots and ca_file. It never writes a private key,
+// management credential, session token or opened secret to a resource or
 // a log.
 //
 // # Dependencies
 //
 // It imports client-go's dynamic, core and coordination clients and
-// leader election, internal/agent/client, initpolicy and the generated
-// wire/management client, kernel, and platform/observe and rego; no
-// server package.
+// leader election, internal/agent/client, config, executor/kubernetes,
+// initpolicy, launcher, tools and the generated wire/management client,
+// kernel, and platform/observe and rego; no server package.
 package controller
