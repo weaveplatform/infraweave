@@ -3030,6 +3030,12 @@ type AccountMetrics struct {
 	UpcomingDriftDetectionSchedules []DriftDetectionIntegrationTile `json:"upcomingDriftDetectionSchedules"`
 }
 
+// AccountSetFeaturePreviewsEnabledRequest The arguments of accountSetFeaturePreviewsEnabled not carried in the path.
+type AccountSetFeaturePreviewsEnabledRequest struct {
+	// Enabled Whether the account opts in to feature previews.
+	Enabled bool `json:"enabled"`
+}
+
 // AccountSetOAuthRedirectAllowlistRequest The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
 type AccountSetOAuthRedirectAllowlistRequest struct {
 	Hosts []string `json:"hosts"`
@@ -5006,6 +5012,61 @@ type FeatureFlagIntEvaluation struct {
 
 	// Name The name of the flag.
 	Name string `json:"name"`
+}
+
+// FeaturePreview The account's feature previews, with the account's opt-in and the caller's own setting.
+type FeaturePreview struct {
+	// Account The account's opt-in to feature previews.
+	Account FeaturePreviewAccountSettings `json:"account"`
+
+	// Features Every feature in preview that the installation has not switched off, in catalogue order.
+	Features []FeaturePreviewFeature `json:"features"`
+
+	// Personal The caller's own setting, present only when the caller is a member, signed in or through a personal API key.
+	Personal *FeaturePreviewPersonalSettings `json:"personal,omitempty"`
+
+	// Visible Whether features is not empty. Clients hide both settings while it is false.
+	Visible bool `json:"visible"`
+}
+
+// FeaturePreviewAccountSettings The account's opt-in to feature previews.
+type FeaturePreviewAccountSettings struct {
+	// CanManage Whether the caller is an account admin, who may change enabled.
+	CanManage bool `json:"canManage"`
+
+	// Enabled Whether the account has opted in to feature previews. A feature in preview answers 403 preview-not-enabled in an account that has not.
+	Enabled bool `json:"enabled"`
+}
+
+// FeaturePreviewFeature One feature in preview.
+type FeaturePreviewFeature struct {
+	// Active Whether the feature is on for the caller: the organization's entitlement holds it, the account has opted in and, for a caller that is a member, the member has not opted out.
+	Active      bool   `json:"active"`
+	Description string `json:"description"`
+
+	// DocsUrl The feature's documentation, over https.
+	DocsUrl string `json:"docsUrl"`
+
+	// ImageUrl A screenshot of the feature, when it has one.
+	ImageUrl *string `json:"imageUrl,omitempty"`
+
+	// Key The feature's name in the feature catalogue.
+	Key string `json:"key"`
+
+	// Name The feature's display name.
+	Name string `json:"name"`
+}
+
+// FeaturePreviewPersonalSettings The caller's own setting, present only when the caller is a member, signed in or through a personal API key.
+type FeaturePreviewPersonalSettings struct {
+	// Enabled False while the member has opted out of feature previews, which hides them in the member's own clients and refuses nothing.
+	Enabled bool `json:"enabled"`
+}
+
+// FeaturePreviewSetPersonalEnabledRequest The arguments of featurePreviewSetPersonalEnabled not carried in the path.
+type FeaturePreviewSetPersonalEnabledRequest struct {
+	// Enabled Whether the member sees feature previews in their own clients.
+	Enabled bool `json:"enabled"`
 }
 
 // FederationProvider All supported federation providers.
@@ -10919,6 +10980,12 @@ type AccountRequestPersonalApiKeysEnablingParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AccountSetFeaturePreviewsEnabledParams defines parameters for AccountSetFeaturePreviewsEnabled.
+type AccountSetFeaturePreviewsEnabledParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // AccountSetOAuthRedirectAllowlistParams defines parameters for AccountSetOAuthRedirectAllowlist.
 type AccountSetOAuthRedirectAllowlistParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -12909,6 +12976,9 @@ type WorkerUsageParams struct {
 // ApiKeyEnableNonAdminManagersJSONRequestBody defines body for ApiKeyEnableNonAdminManagers for application/json ContentType.
 type ApiKeyEnableNonAdminManagersJSONRequestBody = ApiKeyEnableNonAdminManagersRequest
 
+// AccountSetFeaturePreviewsEnabledJSONRequestBody defines body for AccountSetFeaturePreviewsEnabled for application/json ContentType.
+type AccountSetFeaturePreviewsEnabledJSONRequestBody = AccountSetFeaturePreviewsEnabledRequest
+
 // AccountSetOAuthRedirectAllowlistJSONRequestBody defines body for AccountSetOAuthRedirectAllowlist for application/json ContentType.
 type AccountSetOAuthRedirectAllowlistJSONRequestBody = AccountSetOAuthRedirectAllowlistRequest
 
@@ -13034,6 +13104,9 @@ type ExpressionCompleteJSONRequestBody = ExpressionCompleteRequest
 
 // ExpressionEvaluateJSONRequestBody defines body for ExpressionEvaluate for application/json ContentType.
 type ExpressionEvaluateJSONRequestBody = ExpressionEvaluateRequest
+
+// FeaturePreviewSetPersonalEnabledJSONRequestBody defines body for FeaturePreviewSetPersonalEnabled for application/json ContentType.
+type FeaturePreviewSetPersonalEnabledJSONRequestBody = FeaturePreviewSetPersonalEnabledRequest
 
 // GithubAppGenerateManifestJSONRequestBody defines body for GithubAppGenerateManifest for application/json ContentType.
 type GithubAppGenerateManifestJSONRequestBody = GitHubAppManifestInput
@@ -15309,6 +15382,24 @@ type ClientInterface interface {
 	// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
 	AccountRequestPersonalApiKeysEnabling(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AccountSetFeaturePreviewsEnabledWithBody Account Set Feature Previews Enabled
+	//
+	// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+	AccountSetFeaturePreviewsEnabledWithBody(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetFeaturePreviewsEnabled Account Set Feature Previews Enabled
+	//
+	// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+	AccountSetFeaturePreviewsEnabled(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, body AccountSetFeaturePreviewsEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AccountSetOAuthRedirectAllowlistWithBody Account Set OAuth Redirect Allowlist
 	//
 	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
@@ -16514,6 +16605,31 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FeaturePreview Feature Preview
+	//
+	// The account's feature previews: every feature in preview that the installation has not switched off, the account's opt-in, and the caller's own setting when the caller is a member. A feature in preview reaches the account only while it has opted in; a member's own setting changes only what the member's clients show.
+	//
+	// Corresponds with GET /feature-preview (the `FeaturePreview` operationId).
+	FeaturePreview(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FeaturePreviewSetPersonalEnabledWithBody Feature Preview Set Personal Enabled
+	//
+	// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+	FeaturePreviewSetPersonalEnabledWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// FeaturePreviewSetPersonalEnabled Feature Preview Set Personal Enabled
+	//
+	// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+	FeaturePreviewSetPersonalEnabled(ctx context.Context, body FeaturePreviewSetPersonalEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubAppGenerateManifestWithBody Github App Generate Manifest
 	//
@@ -20114,6 +20230,44 @@ func (c *Client) AccountRequestPersonalApiKeysEnabling(ctx context.Context, para
 	return c.Client.Do(req)
 }
 
+// AccountSetFeaturePreviewsEnabledWithBody Account Set Feature Previews Enabled
+//
+// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+func (c *Client) AccountSetFeaturePreviewsEnabledWithBody(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetFeaturePreviewsEnabledRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetFeaturePreviewsEnabled Account Set Feature Previews Enabled
+//
+// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+func (c *Client) AccountSetFeaturePreviewsEnabled(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, body AccountSetFeaturePreviewsEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetFeaturePreviewsEnabledRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AccountSetOAuthRedirectAllowlistWithBody Account Set OAuth Redirect Allowlist
 //
 // Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
@@ -22780,6 +22934,61 @@ func (c *Client) ExpressionEvaluateWithBody(ctx context.Context, params *Express
 // Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 func (c *Client) ExpressionEvaluate(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewExpressionEvaluateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FeaturePreview Feature Preview
+//
+// The account's feature previews: every feature in preview that the installation has not switched off, the account's opt-in, and the caller's own setting when the caller is a member. A feature in preview reaches the account only while it has opted in; a member's own setting changes only what the member's clients show.
+//
+// Corresponds with GET /feature-preview (the `FeaturePreview` operationId).
+func (c *Client) FeaturePreview(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFeaturePreviewRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FeaturePreviewSetPersonalEnabledWithBody Feature Preview Set Personal Enabled
+//
+// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+func (c *Client) FeaturePreviewSetPersonalEnabledWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFeaturePreviewSetPersonalEnabledRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FeaturePreviewSetPersonalEnabled Feature Preview Set Personal Enabled
+//
+// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+func (c *Client) FeaturePreviewSetPersonalEnabled(ctx context.Context, body FeaturePreviewSetPersonalEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFeaturePreviewSetPersonalEnabledRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -30654,6 +30863,61 @@ func NewAccountRequestPersonalApiKeysEnablingRequest(server string, params *Acco
 	return req, nil
 }
 
+// NewAccountSetFeaturePreviewsEnabledRequest calls the generic AccountSetFeaturePreviewsEnabled builder with application/json body
+func NewAccountSetFeaturePreviewsEnabledRequest(server string, params *AccountSetFeaturePreviewsEnabledParams, body AccountSetFeaturePreviewsEnabledJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountSetFeaturePreviewsEnabledRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountSetFeaturePreviewsEnabledRequestWithBody constructs an http.Request for the AccountSetFeaturePreviewsEnabled method, with any body, and a specified content type
+func NewAccountSetFeaturePreviewsEnabledRequestWithBody(server string, params *AccountSetFeaturePreviewsEnabledParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/set-feature-previews-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewAccountSetOAuthRedirectAllowlistRequest calls the generic AccountSetOAuthRedirectAllowlist builder with application/json body
 func NewAccountSetOAuthRedirectAllowlistRequest(server string, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -36111,6 +36375,73 @@ func NewExpressionEvaluateRequestWithBody(server string, params *ExpressionEvalu
 		}
 
 	}
+
+	return req, nil
+}
+
+// NewFeaturePreviewRequest constructs an http.Request for the FeaturePreview method
+func NewFeaturePreviewRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/feature-preview")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewFeaturePreviewSetPersonalEnabledRequest calls the generic FeaturePreviewSetPersonalEnabled builder with application/json body
+func NewFeaturePreviewSetPersonalEnabledRequest(server string, body FeaturePreviewSetPersonalEnabledJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewFeaturePreviewSetPersonalEnabledRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewFeaturePreviewSetPersonalEnabledRequestWithBody constructs an http.Request for the FeaturePreviewSetPersonalEnabled method, with any body, and a specified content type
+func NewFeaturePreviewSetPersonalEnabledRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/feature-preview/personal")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -52383,6 +52714,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /account/request-personal-api-keys-enabling (the `AccountRequestPersonalApiKeysEnabling` operationId).
 	AccountRequestPersonalApiKeysEnablingWithResponse(ctx context.Context, params *AccountRequestPersonalApiKeysEnablingParams, reqEditors ...RequestEditorFn) (*AccountRequestPersonalApiKeysEnablingResponse, error)
 
+	// AccountSetFeaturePreviewsEnabledWithBodyWithResponse Account Set Feature Previews Enabled
+	//
+	// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+	AccountSetFeaturePreviewsEnabledWithBodyWithResponse(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetFeaturePreviewsEnabledResponse, error)
+
+	// AccountSetFeaturePreviewsEnabledWithResponse Account Set Feature Previews Enabled
+	//
+	// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+	AccountSetFeaturePreviewsEnabledWithResponse(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, body AccountSetFeaturePreviewsEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetFeaturePreviewsEnabledResponse, error)
+
 	// AccountSetOAuthRedirectAllowlistWithBodyWithResponse Account Set OAuth Redirect Allowlist
 	//
 	// Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
@@ -53714,6 +54063,33 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /expressions/evaluate (the `ExpressionEvaluate` operationId).
 	ExpressionEvaluateWithResponse(ctx context.Context, params *ExpressionEvaluateParams, body ExpressionEvaluateJSONRequestBody, reqEditors ...RequestEditorFn) (*ExpressionEvaluateResponse, error)
+
+	// FeaturePreviewWithResponse Feature Preview
+	//
+	// The account's feature previews: every feature in preview that the installation has not switched off, the account's opt-in, and the caller's own setting when the caller is a member. A feature in preview reaches the account only while it has opted in; a member's own setting changes only what the member's clients show.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /feature-preview (the `FeaturePreview` operationId).
+	FeaturePreviewWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*FeaturePreviewResponse, error)
+
+	// FeaturePreviewSetPersonalEnabledWithBodyWithResponse Feature Preview Set Personal Enabled
+	//
+	// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+	FeaturePreviewSetPersonalEnabledWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FeaturePreviewSetPersonalEnabledResponse, error)
+
+	// FeaturePreviewSetPersonalEnabledWithResponse Feature Preview Set Personal Enabled
+	//
+	// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+	FeaturePreviewSetPersonalEnabledWithResponse(ctx context.Context, body FeaturePreviewSetPersonalEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*FeaturePreviewSetPersonalEnabledResponse, error)
 
 	// GithubAppGenerateManifestWithBodyWithResponse Github App Generate Manifest
 	//
@@ -58024,6 +58400,108 @@ func (r AccountRequestPersonalApiKeysEnablingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AccountRequestPersonalApiKeysEnablingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountSetFeaturePreviewsEnabledResponse200Headers the declared response headers of an HTTP 200 response for AccountSetFeaturePreviewsEnabled
+type AccountSetFeaturePreviewsEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetFeaturePreviewsEnabledResponse429Headers the declared response headers of an HTTP 429 response for AccountSetFeaturePreviewsEnabled
+type AccountSetFeaturePreviewsEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetFeaturePreviewsEnabledResponse503Headers the declared response headers of an HTTP 503 response for AccountSetFeaturePreviewsEnabled
+type AccountSetFeaturePreviewsEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountSetFeaturePreviewsEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeaturePreview
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountSetFeaturePreviewsEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountSetFeaturePreviewsEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountSetFeaturePreviewsEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetJSON200() *FeaturePreview {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountSetFeaturePreviewsEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountSetFeaturePreviewsEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountSetFeaturePreviewsEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountSetFeaturePreviewsEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountSetFeaturePreviewsEnabledResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -68464,6 +68942,182 @@ func (r ExpressionEvaluateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ExpressionEvaluateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// FeaturePreviewResponse200Headers the declared response headers of an HTTP 200 response for FeaturePreview
+type FeaturePreviewResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// FeaturePreviewResponse429Headers the declared response headers of an HTTP 429 response for FeaturePreview
+type FeaturePreviewResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// FeaturePreviewResponse503Headers the declared response headers of an HTTP 503 response for FeaturePreview
+type FeaturePreviewResponse503Headers struct {
+	RetryAfter *int
+}
+
+type FeaturePreviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeaturePreview
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *FeaturePreviewResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *FeaturePreviewResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *FeaturePreviewResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r FeaturePreviewResponse) GetJSON200() *FeaturePreview {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r FeaturePreviewResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r FeaturePreviewResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r FeaturePreviewResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r FeaturePreviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r FeaturePreviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FeaturePreviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r FeaturePreviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// FeaturePreviewSetPersonalEnabledResponse200Headers the declared response headers of an HTTP 200 response for FeaturePreviewSetPersonalEnabled
+type FeaturePreviewSetPersonalEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// FeaturePreviewSetPersonalEnabledResponse429Headers the declared response headers of an HTTP 429 response for FeaturePreviewSetPersonalEnabled
+type FeaturePreviewSetPersonalEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// FeaturePreviewSetPersonalEnabledResponse503Headers the declared response headers of an HTTP 503 response for FeaturePreviewSetPersonalEnabled
+type FeaturePreviewSetPersonalEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type FeaturePreviewSetPersonalEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FeaturePreview
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *FeaturePreviewSetPersonalEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *FeaturePreviewSetPersonalEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *FeaturePreviewSetPersonalEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r FeaturePreviewSetPersonalEnabledResponse) GetJSON200() *FeaturePreview {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r FeaturePreviewSetPersonalEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r FeaturePreviewSetPersonalEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r FeaturePreviewSetPersonalEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r FeaturePreviewSetPersonalEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r FeaturePreviewSetPersonalEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FeaturePreviewSetPersonalEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r FeaturePreviewSetPersonalEnabledResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -98601,6 +99255,36 @@ func (c *ClientWithResponses) AccountRequestPersonalApiKeysEnablingWithResponse(
 	return ParseAccountRequestPersonalApiKeysEnablingResponse(rsp)
 }
 
+// AccountSetFeaturePreviewsEnabledWithBodyWithResponse Account Set Feature Previews Enabled
+//
+// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+func (c *ClientWithResponses) AccountSetFeaturePreviewsEnabledWithBodyWithResponse(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetFeaturePreviewsEnabledResponse, error) {
+	rsp, err := c.AccountSetFeaturePreviewsEnabledWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetFeaturePreviewsEnabledResponse(rsp)
+}
+
+// AccountSetFeaturePreviewsEnabledWithResponse Account Set Feature Previews Enabled
+//
+// Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-feature-previews-enabled (the `AccountSetFeaturePreviewsEnabled` operationId).
+func (c *ClientWithResponses) AccountSetFeaturePreviewsEnabledWithResponse(ctx context.Context, params *AccountSetFeaturePreviewsEnabledParams, body AccountSetFeaturePreviewsEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetFeaturePreviewsEnabledResponse, error) {
+	rsp, err := c.AccountSetFeaturePreviewsEnabled(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetFeaturePreviewsEnabledResponse(rsp)
+}
+
 // AccountSetOAuthRedirectAllowlistWithBodyWithResponse Account Set OAuth Redirect Allowlist
 //
 // Replace the account's OAuth redirect host allowlist, which the OAuth authorization server checks a client's https redirect URI against. Each entry is a bare host or a host with one leading "*."; anything else answers 422 validation-failed naming the entry. There is no built-in list of client hosts.
@@ -100813,6 +101497,51 @@ func (c *ClientWithResponses) ExpressionEvaluateWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseExpressionEvaluateResponse(rsp)
+}
+
+// FeaturePreviewWithResponse Feature Preview
+//
+// The account's feature previews: every feature in preview that the installation has not switched off, the account's opt-in, and the caller's own setting when the caller is a member. A feature in preview reaches the account only while it has opted in; a member's own setting changes only what the member's clients show.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /feature-preview (the `FeaturePreview` operationId).
+func (c *ClientWithResponses) FeaturePreviewWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*FeaturePreviewResponse, error) {
+	rsp, err := c.FeaturePreview(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFeaturePreviewResponse(rsp)
+}
+
+// FeaturePreviewSetPersonalEnabledWithBodyWithResponse Feature Preview Set Personal Enabled
+//
+// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+func (c *ClientWithResponses) FeaturePreviewSetPersonalEnabledWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FeaturePreviewSetPersonalEnabledResponse, error) {
+	rsp, err := c.FeaturePreviewSetPersonalEnabledWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFeaturePreviewSetPersonalEnabledResponse(rsp)
+}
+
+// FeaturePreviewSetPersonalEnabledWithResponse Feature Preview Set Personal Enabled
+//
+// Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /feature-preview/personal (the `FeaturePreviewSetPersonalEnabled` operationId).
+func (c *ClientWithResponses) FeaturePreviewSetPersonalEnabledWithResponse(ctx context.Context, body FeaturePreviewSetPersonalEnabledJSONRequestBody, reqEditors ...RequestEditorFn) (*FeaturePreviewSetPersonalEnabledResponse, error) {
+	rsp, err := c.FeaturePreviewSetPersonalEnabled(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFeaturePreviewSetPersonalEnabledResponse(rsp)
 }
 
 // GithubAppGenerateManifestWithBodyWithResponse Github App Generate Manifest
@@ -107771,6 +108500,135 @@ func ParseAccountRequestPersonalApiKeysEnablingResponse(rsp *http.Response) (*Ac
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AccountRequestPersonalApiKeysEnablingResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountSetFeaturePreviewsEnabledResponse parses an HTTP response from a AccountSetFeaturePreviewsEnabledWithResponse call
+func ParseAccountSetFeaturePreviewsEnabledResponse(rsp *http.Response) (*AccountSetFeaturePreviewsEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountSetFeaturePreviewsEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeaturePreview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountSetFeaturePreviewsEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountSetFeaturePreviewsEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountSetFeaturePreviewsEnabledResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -121196,6 +122054,236 @@ func ParseExpressionEvaluateResponse(rsp *http.Response) (*ExpressionEvaluateRes
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers ExpressionEvaluateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseFeaturePreviewResponse parses an HTTP response from a FeaturePreviewWithResponse call
+func ParseFeaturePreviewResponse(rsp *http.Response) (*FeaturePreviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FeaturePreviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeaturePreview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers FeaturePreviewResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers FeaturePreviewResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers FeaturePreviewResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseFeaturePreviewSetPersonalEnabledResponse parses an HTTP response from a FeaturePreviewSetPersonalEnabledWithResponse call
+func ParseFeaturePreviewSetPersonalEnabledResponse(rsp *http.Response) (*FeaturePreviewSetPersonalEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FeaturePreviewSetPersonalEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FeaturePreview
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers FeaturePreviewSetPersonalEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers FeaturePreviewSetPersonalEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers FeaturePreviewSetPersonalEnabledResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -298,6 +298,61 @@ paths:
         - idempotency-key
         - rate-limit
       x-rest-style: singleton
+  /account/set-feature-previews-enabled:
+    post:
+      description: >-
+        Opt the account in to feature previews, or out of them, and answer the account's feature previews as featurePreview does. Opting out deletes nothing: a preview's background work pauses and its stored options read as their defaults until the account opts in again.
+      operationId: accountSetFeaturePreviewsEnabled
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              enabled: true
+            schema:
+              $ref: '#/components/schemas/AccountSetFeaturePreviewsEnabledRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The accountSetFeaturePreviewsEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Set Feature Previews Enabled
+      tags:
+        - Account Settings
+      x-graphql:
+        field: accountSetFeaturePreviewsEnabled
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-137
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
   /account/set-o-auth-redirect-allowlist:
     post:
       description: >-
@@ -5837,6 +5892,94 @@ paths:
         - idempotency-key
         - rate-limit
       x-upstream: none
+  /feature-preview:
+    get:
+      description: >-
+        The account's feature previews: every feature in preview that the installation has not switched off, the account's opt-in, and the caller's own setting when the caller is a member. A feature in preview reaches the account only while it has opted in; a member's own setting changes only what the member's clients show.
+      operationId: featurePreview
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The featurePreview result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Feature Preview
+      tags:
+        - Account Settings
+      x-graphql:
+        field: featurePreview
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-137
+        - rate-limit
+      x-rest-style: override
+  /feature-preview/personal:
+    put:
+      description: >-
+        Opt the calling member out of feature previews, or back in, and answer the account's feature previews as featurePreview does. The setting hides previews in the member's own clients and refuses no request. A caller that is not a member, such as an API key that is not personal or a run, answers 403 forbidden; a personal API key sets its owner's setting.
+      operationId: featurePreviewSetPersonalEnabled
+      x-infraweave-feature: account-settings
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      requestBody:
+        content:
+          application/json:
+            example:
+              enabled: false
+            schema:
+              $ref: '#/components/schemas/FeaturePreviewSetPersonalEnabledRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturePreview'
+          description: The featurePreviewSetPersonalEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Feature Preview Set Personal Enabled
+      tags:
+        - Account Settings
+      x-graphql:
+        field: featurePreviewSetPersonalEnabled
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-137
+        - rate-limit
+      x-rest-style: override
   /github-app-manifests:
     post:
       description: >-
@@ -22663,6 +22806,17 @@ components:
       x-graphql-omitted:
         recentStacks: takes arguments; not reachable from an item route
       x-graphql-type: SpaceliftMetrics
+    AccountSetFeaturePreviewsEnabledRequest:
+      additionalProperties: false
+      description: The arguments of accountSetFeaturePreviewsEnabled not carried in the path.
+      properties:
+        enabled:
+          description: Whether the account opts in to feature previews.
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-args-of: accountSetFeaturePreviewsEnabled
     AccountSetOAuthRedirectAllowlistRequest:
       additionalProperties: false
       description: The arguments of accountSetOAuthRedirectAllowlist not carried in the path.
@@ -26200,6 +26354,97 @@ components:
         - name
       type: object
       x-graphql-type: FeatureFlagIntEvaluation
+    FeaturePreview:
+      description: >-
+        The account's feature previews, with the account's opt-in and the caller's own setting.
+      properties:
+        account:
+          $ref: '#/components/schemas/FeaturePreviewAccountSettings'
+        features:
+          description: >-
+            Every feature in preview that the installation has not switched off, in catalogue order.
+          items:
+            $ref: '#/components/schemas/FeaturePreviewFeature'
+          type: array
+        personal:
+          $ref: '#/components/schemas/FeaturePreviewPersonalSettings'
+        visible:
+          description: >-
+            Whether features is not empty. Clients hide both settings while it is false.
+          type: boolean
+      required:
+        - account
+        - features
+        - visible
+      type: object
+      x-graphql-type: FeaturePreview
+    FeaturePreviewAccountSettings:
+      description: The account's opt-in to feature previews.
+      properties:
+        canManage:
+          description: Whether the caller is an account admin, who may change enabled.
+          type: boolean
+        enabled:
+          description: >-
+            Whether the account has opted in to feature previews. A feature in preview answers 403 preview-not-enabled in an account that has not.
+          type: boolean
+      required:
+        - canManage
+        - enabled
+      type: object
+    FeaturePreviewFeature:
+      description: One feature in preview.
+      properties:
+        active:
+          description: >-
+            Whether the feature is on for the caller: the organization's entitlement holds it, the account has opted in and, for a caller that is a member, the member has not opted out.
+          type: boolean
+        description:
+          type: string
+        docsUrl:
+          description: The feature's documentation, over https.
+          type: string
+        imageUrl:
+          description: A screenshot of the feature, when it has one.
+          nullable: true
+          type: string
+        key:
+          description: The feature's name in the feature catalogue.
+          type: string
+        name:
+          description: The feature's display name.
+          type: string
+      required:
+        - active
+        - description
+        - docsUrl
+        - key
+        - name
+      type: object
+      x-graphql-type: FeaturePreviewFeature
+    FeaturePreviewPersonalSettings:
+      description: >-
+        The caller's own setting, present only when the caller is a member, signed in or through a personal API key.
+      properties:
+        enabled:
+          description: >-
+            False while the member has opted out of feature previews, which hides them in the member's own clients and refuses nothing.
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-type: FeaturePreviewPersonalSettings
+    FeaturePreviewSetPersonalEnabledRequest:
+      additionalProperties: false
+      description: The arguments of featurePreviewSetPersonalEnabled not carried in the path.
+      properties:
+        enabled:
+          description: Whether the member sees feature previews in their own clients.
+          type: boolean
+      required:
+        - enabled
+      type: object
+      x-graphql-args-of: featurePreviewSetPersonalEnabled
     FederationProvider:
       description: All supported federation providers.
       enum:

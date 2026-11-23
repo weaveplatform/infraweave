@@ -12,7 +12,6 @@
     ],
     "Account Settings": [
       "accountRequestInfraAssistantEnabling",
-      "accountSetFeaturePreviewsEnabled",
       "accountSetInfraAssistantBuildModeEnabled",
       "accountSetInfraAssistantEnabled",
       "accountSetOIDCSubjectTemplate",
@@ -23,8 +22,6 @@
       "availableAIModels",
       "availableAIProviders",
       "enforceMFA",
-      "featurePreview",
-      "featurePreviewSetPersonalEnabled",
       "hasAnsibleStacks",
       "hasSSO",
       "infraAssistantBuildModeEnabled",

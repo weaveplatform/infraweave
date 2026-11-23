@@ -60,11 +60,18 @@ func (s *Service) FeaturePreviewsEnabled(ctx context.Context, acct kernel.Accoun
 	return on, nil
 }
 
-// SetFeaturePreviewsEnabled sets acct's opt-in; every replica, this one
-// included, applies it once the write commits and its notification
-// arrives.
+// SetFeaturePreviewsEnabled sets acct's opt-in. It drops this replica's
+// snapshot of it at once, so the caller's next request here reads the
+// write rather than waiting for the notification; every other replica
+// applies it once the write commits and its notification arrives, which
+// also corrects a read this replica kept before a surrounding transaction
+// committed.
 func (s *Service) SetFeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID, enabled bool) error {
-	return s.store.SetFeaturePreviews(ctx, acct, enabled) //nolint:wrapcheck // as above
+	if err := s.store.SetFeaturePreviews(ctx, acct, enabled); err != nil {
+		return err //nolint:wrapcheck // as above
+	}
+	s.Invalidate(AccountKey(acct))
+	return nil
 }
 
 // PersonalFeaturePreviewsEnabled reads member's setting in acct. No
@@ -112,25 +119,71 @@ type Previews struct {
 	Personal *bool
 }
 
+// ErrNoMember refuses a personal setting to a principal that names no
+// member, such as an API key that is not personal or a run.
+var ErrNoMember = errors.New("features: the principal names no member")
+
 // FeaturePreviews reads the feature previews for p: each preview the
 // installation has not switched off, active when p's organization holds
 // it, p's account has opted in and, for a principal that names a member,
 // the member has not opted out; the account's opt-in; and the member's
 // own setting.
 func (s *Service) FeaturePreviews(ctx context.Context, p kernel.Principal) (Previews, error) {
-	var out Previews
-	var err error
-	if out.Account, err = s.optedIn(ctx, p.AccountID); err != nil {
+	account, err := s.optedIn(ctx, p.AccountID)
+	if err != nil {
 		return Previews{}, err
 	}
+	var personal *bool
 	if !p.MemberID.IsZero() {
-		personal, err := s.PersonalFeaturePreviewsEnabled(ctx, p.AccountID, p.MemberID)
+		on, err := s.PersonalFeaturePreviewsEnabled(ctx, p.AccountID, p.MemberID)
 		if err != nil {
 			return Previews{}, err
 		}
-		out.Personal = &personal
+		personal = &on
 	}
-	out.Features = []PreviewStatus{}
+	return s.featurePreviews(ctx, p, account, personal)
+}
+
+// SetAccountFeaturePreviews sets the opt-in of p's account and answers
+// the feature previews as p sees them with enabled applied. The replica's
+// snapshot takes the write only when its notification arrives after the
+// commit, so the answer uses enabled rather than reading the opt-in back.
+func (s *Service) SetAccountFeaturePreviews(ctx context.Context, p kernel.Principal, enabled bool) (Previews, error) {
+	if err := s.SetFeaturePreviewsEnabled(ctx, p.AccountID, enabled); err != nil {
+		return Previews{}, err
+	}
+	var personal *bool
+	if !p.MemberID.IsZero() {
+		on, err := s.PersonalFeaturePreviewsEnabled(ctx, p.AccountID, p.MemberID)
+		if err != nil {
+			return Previews{}, err
+		}
+		personal = &on
+	}
+	return s.featurePreviews(ctx, p, enabled, personal)
+}
+
+// SetPersonalFeaturePreviews sets the setting of p's member and answers
+// the feature previews as p sees them with enabled applied. A principal
+// that names no member has no setting and is ErrNoMember.
+func (s *Service) SetPersonalFeaturePreviews(ctx context.Context, p kernel.Principal, enabled bool) (Previews, error) {
+	if p.MemberID.IsZero() {
+		return Previews{}, ErrNoMember
+	}
+	if err := s.SetPersonalFeaturePreviewsEnabled(ctx, p.AccountID, p.MemberID, enabled); err != nil {
+		return Previews{}, err
+	}
+	account, err := s.optedIn(ctx, p.AccountID)
+	if err != nil {
+		return Previews{}, err
+	}
+	return s.featurePreviews(ctx, p, account, &enabled)
+}
+
+// featurePreviews lists the previews for p given the account's opt-in and
+// the member's own setting.
+func (s *Service) featurePreviews(ctx context.Context, p kernel.Principal, account bool, personal *bool) (Previews, error) {
+	out := Previews{Account: account, Personal: personal, Features: []PreviewStatus{}}
 	for _, f := range s.previews() {
 		if s.switchedOff(f.Name) {
 			continue

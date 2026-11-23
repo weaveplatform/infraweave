@@ -13,7 +13,10 @@
 // off by default, and each member's personal setting, on by default, are
 // read and set through the Service; the personal setting refuses nothing,
 // and FeaturePreviews lists the previews the installation has not
-// switched off with whether each is Active for a principal. CheckLimit locks the organization's entitlement, counts the
+// switched off with whether each is Active for a principal.
+// SetAccountFeaturePreviews and SetPersonalFeaturePreviews write a setting
+// and answer that list with the write applied; the personal one refuses a
+// principal that names no member with ErrNoMember. CheckLimit locks the organization's entitlement, counts the
 // limit's use through the caller, and refuses one more beyond the
 // organization's pool or the account's limit, pool first; Quota reads the
 // value of a limit it applies to an account. The replica

@@ -34,6 +34,10 @@ func (UnimplementedStrict) AccountRequestPersonalApiKeysEnabling(context.Context
 	return nil, &problem.NotImplementedError{OperationID: "accountRequestPersonalApiKeysEnabling", Route: "POST /account/request-personal-api-keys-enabling"}
 }
 
+func (UnimplementedStrict) AccountSetFeaturePreviewsEnabled(context.Context, AccountSetFeaturePreviewsEnabledRequestObject) (AccountSetFeaturePreviewsEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountSetFeaturePreviewsEnabled", Route: "POST /account/set-feature-previews-enabled"}
+}
+
 func (UnimplementedStrict) AccountSetOAuthRedirectAllowlist(context.Context, AccountSetOAuthRedirectAllowlistRequestObject) (AccountSetOAuthRedirectAllowlistResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountSetOAuthRedirectAllowlist", Route: "POST /account/set-o-auth-redirect-allowlist"}
 }
@@ -452,6 +456,14 @@ func (UnimplementedStrict) ExpressionComplete(context.Context, ExpressionComplet
 
 func (UnimplementedStrict) ExpressionEvaluate(context.Context, ExpressionEvaluateRequestObject) (ExpressionEvaluateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "expressionEvaluate", Route: "POST /expressions/evaluate"}
+}
+
+func (UnimplementedStrict) FeaturePreview(context.Context, FeaturePreviewRequestObject) (FeaturePreviewResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "featurePreview", Route: "GET /feature-preview"}
+}
+
+func (UnimplementedStrict) FeaturePreviewSetPersonalEnabled(context.Context, FeaturePreviewSetPersonalEnabledRequestObject) (FeaturePreviewSetPersonalEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "featurePreviewSetPersonalEnabled", Route: "PUT /feature-preview/personal"}
 }
 
 func (UnimplementedStrict) GithubAppGenerateManifest(context.Context, GithubAppGenerateManifestRequestObject) (GithubAppGenerateManifestResponseObject, error) {
