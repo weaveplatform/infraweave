@@ -1,6 +1,6 @@
 @postgres
 Feature: Private certificate reset revokes old worker sessions
-  @op:workerRegister @op:workerPoll @op:workerPoolReset @case:denial
+  @op:workerRegister @op:workerPoll @op:workerDeregister @op:workerPoolReset @case:denial
   Scenario: An old session stays revoked after a replacement certificate resumes the same worker
     Given two infraweave servers, A and B, on one database, with an operator key and worker sessions lasting "10m"
     And the home key is exchanged through A for token "h"

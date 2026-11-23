@@ -4,9 +4,9 @@ This is the detailed contract of [0008](../research/decisions/0008-run-execution
 [0009](../research/decisions/0009-policy-engine-opa.md) and
 [0020](../research/decisions/0020-reference-deployments-and-packaging.md) for
 [P14](plan.md#p14-public-worker-pool-kubernetes-workers-and-signed-runs).
-It specifies intended additions, not completed runtime behavior. The
-[ownership matrix](worker-pool-contracts.json) assigns every requirement and its
-proof. The [reference observations](worker-pool-reference-observations.md) are
+The [ownership matrix](worker-pool-contracts.json) assigns every requirement and
+its proof, and the [delivery audit](worker-pool-delivery.md) records the executed
+evidence that delivers each one. The [reference observations](worker-pool-reference-observations.md) are
 separate: nine read-only exchanges establish an empty public-pool account view;
 C21, C66, C67, C68, C69 and private-priority C292 remain open.
 

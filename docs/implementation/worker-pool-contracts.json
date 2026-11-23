@@ -3,7 +3,8 @@
   "sourceRevision": "af9c8ab4",
   "contract": "worker-pool-contracts.md",
   "hostingContract": "worker-hosting-contracts.md",
-  "status": "specified-not-runtime-delivered",
+  "status": "local-delivery-proven-managed-cloud-open",
+  "delivery": "worker-pool-delivery.json",
   "referenceEvidence": "worker-pool-reference-observations.json",
   "architectureDecisions": [
     "0004",
@@ -32,7 +33,7 @@
       "domain": "workers",
       "contract": "Stable installation ULID, CSR certificate/token, no private-worker quota or fabricated tenant",
       "requiredEvidence": "Real operator create/read/reset and worker credential-audience acceptance",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "public-claim-limits",
@@ -43,7 +44,7 @@
       "domain": "runs",
       "contract": "Organization+account quota lock, queue beyond capacity, FIFO public ordering and stack fences",
       "requiredEvidence": "Concurrent real claims across accounts, organizations and replicas",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "public-restrictions",
@@ -54,7 +55,7 @@
       "domain": "runs",
       "contract": "No priority/scheduled/drift; final resolved-image allowlist",
       "requiredEvidence": "Normal admission/update failure plus no forbidden assignment",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "public-quota-projection",
@@ -99,7 +100,7 @@
       "domain": "workers",
       "contract": "Existing sample windows and account-only public usage",
       "requiredEvidence": "Real samples/window/authorization failures",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "managed-pool-ownership",
@@ -110,7 +111,7 @@
       "domain": "workers",
       "contract": "Managed/Existing modes, immutable remote management identity and durable unique lookup",
       "requiredEvidence": "Duplicate reconciles, ownership conflict, lost status, no name adoption",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "controller-resources",
@@ -121,7 +122,7 @@
       "domain": "agent",
       "contract": "Namespaced WorkerPool/Worker strict CRDs, deterministic slots, Lease leader, restricted management role",
       "requiredEvidence": "Real Kubernetes resources/API role success/403/failure and leader handover",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "capacity-finalizers",
@@ -133,7 +134,7 @@
       "domain": "agent",
       "contract": "Configured capacity, aggregate registration limits, retiring slots, finalizers/readback",
       "requiredEvidence": "Scale/drain/cycle/reset/cleanup failures and recovery",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "portable-preparation",
@@ -144,7 +145,7 @@
       "domain": "agent",
       "contract": "Separate bounded workspace+verified executable stream assets; Docker retained",
       "requiredEvidence": "Real Docker+k3s source/restore/bootstrap/checksum/path/boundary cases",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "private-handoff",
@@ -155,7 +156,7 @@
       "domain": "agent",
       "contract": "64 MiB JSON stdin to exact main Pod, never persistent API object or PodSpec secret",
       "requiredEvidence": "Captured PodSpecs/status/logs/evidence absence assertions and partial handoff failures",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "execution-deadlines",
@@ -167,7 +168,7 @@
       "domain": "runs",
       "contract": "Issued preparingDeadline shared by server/controller; run timer and absolute watchdog",
       "requiredEvidence": "Clock-controlled pending/preparation/run/restart timing with real runtime",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "pod-recovery-signals",
@@ -178,7 +179,7 @@
       "domain": "agent",
       "contract": "Exact owned Pod UID+assignment version, no replay, SIGINT/SIGKILL/exit acknowledgement",
       "requiredEvidence": "Crash boundaries, missing/OOM/eviction/stop/kill, server outage and duplicate leaders",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "worker-artifacts",
@@ -200,7 +201,7 @@
       "domain": "agent",
       "contract": "Version1 complete input,60-second worker budget, cache isolation; server exec forbidden",
       "requiredEvidence": "Real OPA V0/V1 compile/deny/error/budget and server simulation exec refusal",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "isolated-policy-exec",
@@ -211,7 +212,7 @@
       "domain": "agent",
       "contract": "Private argv frame,8 calls,4 MiB aggregate output,1 MiB per-stream per-call,60-second total",
       "requiredEvidence": "Real Docker+k3s helper output/argv/budget/cancellation/secret absence cases",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "signed-run-admission",
@@ -234,7 +235,7 @@
       "domain": "workers",
       "contract": "Reuse existing available_at and sample ownership",
       "requiredEvidence": "Real idle/busy/drained/offline/recovery projection changes",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "stage-inputs",
@@ -267,7 +268,7 @@
       "domain": "acceptance",
       "contract": "Every served operation classified; real success/403/failure and exact revision gates",
       "requiredEvidence": "Native/OS/lint/FIPS,95 percent total90 percent per package",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "local-terraform-lab",
@@ -278,7 +279,7 @@
       "domain": "acceptance",
       "contract": "Existing infraweave-lab owns isolated k3s infrastructure and teardown",
       "requiredEvidence": "Actual Terraform up/run/destroy/readback; second owner preserved",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "shared-worker-hosting",
