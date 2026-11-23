@@ -77,9 +77,9 @@
         "feature": "`account-settings`; each setting with its subject's feature, such as `mfa` and `ai-account-controls`",
         "lowestTier": "Free; Enterprise for `mfa`",
         "phase": "P3b",
-        "also": "P4, P8, P10, P12b, P13b, P15, P18b, P20b, P23, P25",
+        "also": "P3c, P4, P8, P10, P12b, P13b, P15, P18b, P20b, P23, P25",
         "state": "partial",
-        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days"
+        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days; the feature previews (P3c) list the catalogue's own previews, gated on the account's opt-in"
       }
     },
     {

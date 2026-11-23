@@ -1377,6 +1377,15 @@
       "why": "A standards-compliant dated notice is required by the API contract; unavailable upstream chronology must not be fabricated.",
       "impact": "Clients receive an explicit project-owned deprecation date. No Sunset or removal deadline is announced; ordinary tasks without TASK policies stay supported.",
       "source": "[#659 implementation and deprecation notice](../implementation/task-policy-verification.md#deprecation-notice); [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745.html#section-2.1); [upstream TASK documentation](https://docs.spacelift.io/concepts/policy/deprecated/task-run-policy); [#660 server initialization notice](../implementation/initialization-policy-verification.md#deprecation-notice)"
+    },
+    {
+      "id": "DV-137",
+      "group": "Scope, tiers and clients: decision 0021",
+      "spacelift": "`featurePreview` lists Spacelift's own previews. The schema describes a preview as active for the current user when the organization opted in, the user did not opt out, and the Spacelift Intelligence and billing checks it needs pass",
+      "infraweave": "The previews are the catalogue features whose record carries a `preview` member. The server gates them on the account's opt-in alone: a preview in an account that has not opted in answers `403` `preview-not-enabled`. A member's personal opt-out hides previews in that member's console and `infraweavectl` and refuses nothing. A principal that names no member reads no `personal` setting, and its personal opt-out answers `403` `forbidden`",
+      "why": "Features are account-scoped, so one member's choice must not change what runs and automations set up by others can do",
+      "impact": "Preview keys are infraweave feature names; a client that relied on a personal opt-out to stop server behaviour sees only its views change",
+      "source": "[0021 Feature previews](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews)"
     }
   ]
 }

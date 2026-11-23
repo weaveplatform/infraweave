@@ -190,7 +190,8 @@ Every feature of infraweave is an entry in one catalogue, the register
 `make generate` writes `internal/features/catalogue.gen.go` from the
 register, and `make verify-generate` fails when that file is stale. An
 entry has a name, a kind, a description, the features it requires, the
-lowest seeded tier that includes it and its owning phase. The
+lowest seeded tier that includes it, its owning phase and, for a feature
+in preview, its `preview` member ([feature previews](#feature-previews)). The
 `BillingTierFeature` values it covers for parity (the mapping section
 below) are the `tier-feature:` records of
 [docs/data/capabilities.json](../../data/capabilities.json), which the
@@ -288,7 +289,9 @@ tier still matches its seed.
   lacks, or set one of its limits to a value above or below the tier's.
   Grants belong to the organization, apply to all its accounts, and survive
   a change of tier. Nothing in the entitlement is set per account except
-  the account limits below.
+  the account limits below. An account's opt-in to feature previews gates
+  the previews it uses without changing the entitlement
+  ([feature previews](#feature-previews)).
 - **Switch-offs.** `features.disabled` stays operator configuration. It
   removes a feature from every organization of the installation:
 
@@ -416,9 +419,11 @@ checks limits.
 | `feature-disabled` (403) | The feature is in `features.disabled` | `feature` |
 | `feature-not-in-tier` (403) | Billing is on and the organization's entitlement lacks the feature | `feature`; `tiers`, the names of the tiers that include it, smallest first (fewest features, then name) |
 | `limit-reached` (403) | Billing is on and creating the thing would take the account above its account limit or the organization above its pool | `limit`; `scope`, `organization` or `account`, whichever was reached; `value`, that scope's limit |
+| `preview-not-enabled` (403) | The feature is a preview and the caller's account has not opted in to feature previews | `feature` |
 
 - `feature-disabled` wins over `feature-not-in-tier`: the operator's
-  switch-off is the cause a caller can do nothing about.
+  switch-off is the cause a caller can do nothing about. Both win over
+  `preview-not-enabled`, whose cause the account's own admins can remove.
 - An option is checked only when a write changes the field to the gated
   value, so a `PATCH` of another field of an aggregated-checks integration
   still succeeds after a downgrade.
@@ -454,6 +459,79 @@ in one account, moves to Starter:
 |---|---|---|
 | The five schedules | Kept; none fires. Reading or changing them answers `feature-not-in-tier` with `feature: scheduling` and `tiers: [Business, Enterprise]` | Fire again from their next occurrence |
 | The twelve members | All keep working. An invitation answers `limit-reached` with `limit: seats`, `scope: organization`, `value: 10`, also after two leave: ten is not below ten | No seats limit |
+
+### Feature previews
+
+A feature that infraweave ships before it is generally available is a
+preview. Spacelift's three feature-preview operations are served over
+infraweave's own catalogue, not over Spacelift's list of previews.
+
+- **The marker.** A preview's catalogue record carries a `preview` member:
+  its display `name`, a `description`, a `docsUrl` (an `https` URL) and an
+  optional `imageUrl`. `make generate` compiles the member into
+  `internal/features` with the rest of the entry. Only a capability or an
+  option can be a preview; a limit or the billing switch cannot. A release
+  marks only a feature it adds as a preview, never one accounts already
+  use, since the marker takes the feature from every account that has not
+  opted in. Removing the marker makes the feature generally available to
+  every entitlement that holds it.
+- **The account's opt-in.** Each account holds one setting, off by
+  default, that its account admins (Spacelift's root admins, decision
+  [0007](0007-authorization-spaces-and-roles.md)) change through
+  `accountSetFeaturePreviewsEnabled`, `POST
+  /account/set-feature-previews-enabled`, which takes `ACCOUNT_ADMIN` on the
+  `account` subject. A preview reaches an account only while its opt-in is
+  on, whether billing is on or off.
+- **The gate.** The check sits in the feature lookup that the chi
+  middleware, input validation and the dequeue check already make, after
+  `feature-disabled` and, with billing on, `feature-not-in-tier`: a preview
+  in an account that has not opted in answers `403 preview-not-enabled`
+  naming the feature. Opting out deletes nothing. As at a downgrade, a
+  preview's background work in that account pauses, a stored preview option
+  value reads as the field's default, and opting in again resumes from the
+  next occurrence.
+- **A member's personal opt-out.** Each member of an account holds a
+  personal setting, on by default, that the member changes through
+  `featurePreviewSetPersonalEnabled`, `PUT /feature-preview/personal`,
+  which takes `AUTHENTICATED` on the `account` subject. It changes only what
+  that member's console and `infraweavectl` show: they hide a preview's
+  pages and commands while it is not active for the member. The server
+  never refuses a request because of it, because features are
+  account-scoped. A principal that names no member, such as an API key that
+  is not personal or a run's token, has no personal setting: its reads omit
+  `personal`, and its `PUT` answers `403 forbidden`. A personal API key acts
+  as its owner (decision [0006](0006-authentication-and-tokens.md)), so it
+  reads and sets its owner's setting.
+- **The read.** `featurePreview`, `GET /feature-preview`, takes
+  `AUTHENTICATED` on the `account` subject. It answers every preview that
+  `features.disabled` does not switch off, in catalogue order. Each one
+  carries `key` (its feature name), `name`, `description`, `docsUrl`,
+  `imageUrl` and `active`. The object also holds the account's setting
+  with `canManage`, true for an account admin; the caller's own setting as
+  `personal`; and `visible`, true while the list is not empty. `active` is
+  true when the account's entitlement holds the feature, the account has
+  opted in and, for a member, the member has not opted out. Both writes
+  answer the same object. The reference's `organization` member and
+  `FeaturePreviewOrganizationSettings` schema name Spacelift's account, so
+  they are served as `account` and `FeaturePreviewAccountSettings`
+  (decision [0001](0001-rest-first-spacelift-surface.md#names), RN-47 and
+  RN-48).
+- **No previews yet.** The operations and both settings are served while
+  no catalogue record carries the marker: the read then answers an empty
+  list and `visible: false`, and the settings are stored and read back.
+- **Storage.** The `features` domain owns
+  `account_feature_previews(account_id, enabled, updated_at)` and
+  `member_feature_preview_opt_outs(account_id, member_id, updated_at)`,
+  with the IDs as plain columns (decision
+  [0004](0004-repository-architecture.md)). `features`' purge removes an
+  account's rows with the account; `access` removes a member's row through
+  `featuresapi` in the transaction that removes the member from the
+  account. A write of the account's setting notifies
+  `infraweave_invalidate`, so every replica's lookup applies it at the next
+  request, as for an entitlement change.
+- **Capability.** The three operations belong to `account-settings`.
+  Spacelift gates no part of them, and an operator who wants no previews
+  switches off the preview features themselves.
 
 ### Vendor-bound operations
 
@@ -587,6 +665,14 @@ own feature gates; typed policy inputs do not advertise those workflows early.
   the customer's surface, under a capability of its own; what the operator
   manages spans customers and stays in a document no customer credential
   reaches.
+- **Previews opted into per account, and a personal opt-out that only
+  hides.** An account is the data boundary and the unit an account admin
+  decides for, so the server's gate is the account's opt-in. A member's
+  opt-out cannot change what the server does without letting one member's
+  choice break a run or an automation that another member set up, so it
+  changes only that member's view. The marker sits on the catalogue entry
+  because the catalogue already gates every operation and option, and the
+  preview check is one more condition of the same lookup.
 - **Refusal over simulation.** A fake billing or Entra success looks like
   progress in a test and fails in production. `installation-unsupported`
   is explicit and testable.
@@ -613,6 +699,10 @@ own feature gates; typed policy inputs do not advertise those workflows early.
   rather than accepted in a disabled state.
 - **Departure from Spacelift:** the CLI refuses ambiguous credentials, and
   stores its profiles as one YAML file.
+- **Departure from Spacelift:** feature previews list infraweave's own
+  catalogue features, a preview in an account that has not opted in
+  answers `preview-not-enabled`, and a member's personal opt-out changes
+  only what infraweave's clients show (DV-137).
 
 ## Constraints
 
@@ -666,7 +756,15 @@ own feature gates; typed policy inputs do not advertise those workflows early.
   - a gated schema property names anything but an option, or an option's
     catalogue field does not exist;
   - a live `BillingTierFeature` value of the snapshot has no mapping;
-  - the seeded Enterprise tier lacks a feature or holds a limit.
+  - the seeded Enterprise tier lacks a feature or holds a limit;
+  - a `preview` member sits on a limit or the switch, or lacks its name,
+    description or `https` documentation URL.
+- **`TestUnitPreviewGate`** (`internal/features`), table-driven over a test
+  catalogue that marks a capability and an option as previews: an account
+  that has not opted in is refused each with `preview-not-enabled`, with
+  billing off and on; `feature-disabled` and `feature-not-in-tier` win over
+  it; a member's personal opt-out refuses nothing; `active` follows the
+  entitlement, the account's setting and the member's.
 - **`TestUnitEntitlement`** (`internal/features`), table-driven: tier plus
   grants minus switch-offs, requirements, limit grants above and below the
   tier, and billing off; every account of an organization reads the same
@@ -700,6 +798,13 @@ own feature gates; typed policy inputs do not advertise those workflows early.
   - `organization create` creates the organization with its first account,
     unclaimed, and the default tier; an organization token reaches the
     `Organization` tag and no account route.
+- **`test/acceptance/features/organization/feature_previews.feature`**
+  (`@postgres`): an account admin opts the account in and out and a member
+  opts out and back in, each read back through `featurePreview` and on
+  another replica; a non-admin's opt-in answers 403 naming
+  `ACCOUNT_ADMIN`; an API key that is not personal reads no `personal` and
+  its personal opt-out answers 403 `forbidden`; with no preview in the
+  catalogue, `featurePreview` answers an empty list and `visible: false`.
 - **`test/acceptance/features/cli/operator.feature`**: `infraweavectl
   operator` drives the operator API against `infraweave all`, printing each
   answer, and a refused change's problem.

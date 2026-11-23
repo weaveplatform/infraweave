@@ -107,10 +107,23 @@ value in each seeded tier, and a tier with no value has no limit
 default. It turns entitlement enforcement on, and the operator API sets it
 (P3b). `features.disabled` rejects it, as it rejects any unknown name.
 
+### Previews
+
+A capability or an option that ships before it is generally available
+carries a `preview` member in its record: the name, description and
+documentation URL that `featurePreview` lists. A preview reaches an
+account only once an account admin opts the account in, and refuses it
+otherwise with `403 preview-not-enabled`, whether billing is on or off. A
+member's personal opt-out hides previews in that member's console and
+`infraweavectl` only. Removing the member makes the feature generally
+available (decision
+[0021](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews),
+P3c).
+
 ## Summary by phase
 
 [tiers.md](tiers.md#summary-by-phase) counts the reference rows each phase
-owns, both products' tags together in its Tags column. The phases that own no row (P0 to P2c, P7, P8b, P13b, P18d, P20, P24,
+owns, both products' tags together in its Tags column. The phases that own no row (P0 to P2c, P3c, P7, P8b, P13b, P18d, P20, P24,
 P24b, P24c and P28) build foundations, behaviour behind other rows, features
 the reference has no row for, or the provider and clients. Superseded counts
 the Terraform rows that no phase builds; the two superseded
