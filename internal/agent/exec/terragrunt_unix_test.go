@@ -530,7 +530,7 @@ func TestUnitExecTerragruntSingleUnitStop(t *testing.T) {
 	w.h.Spec.Terragrunt.RunAll = false
 	fifo, holding := reached(t)
 	templates := workflow.Terragrunt(false)
-	templates[workflow.ShowPlan] = `sh -c ': > "$0" && exec sleep 60' '` + fifo + `'`
+	templates[workflow.ShowPlan] = `sh -c 'echo > "$0" && exec sleep 60' '` + fifo + `'`
 	var file strings.Builder
 	for _, key := range workflow.Keys {
 		file.WriteString(string(key) + ": |\n  " + templates[key] + "\n")
@@ -542,9 +542,9 @@ func TestUnitExecTerragruntSingleUnitStop(t *testing.T) {
 	}
 	stop := make(chan os.Signal, 1)
 	done := w.stopped(w.w, stop, slog.DiscardHandler)
-	await(t, holding)
+	await(t, "the showPlan command was reached", holding, done)
 	stop <- os.Interrupt
-	if err := ended(t, done); err != nil {
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
 	events := w.events()
