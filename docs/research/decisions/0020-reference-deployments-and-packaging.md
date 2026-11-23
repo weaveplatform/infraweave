@@ -94,7 +94,7 @@ Listeners:
 | Artefact | Content | Published as |
 |---|---|---|
 | Release archives | `infraweave` for `linux`, `darwin` and `windows` on `amd64` and `arm64` (the Makefile's `PLATFORMS`), `SHA256SUMS`, a Sigstore bundle per file | GitHub release assets |
-| Server image | `infraweave` on `gcr.io/distroless/static-debian12:nonroot`, user `65532`, read-only root file system, no shell; `ENTRYPOINT ["/infraweave"]` | `ghcr.io/weaveplatform/infraweave:<version>`, multi-arch |
+| Server image | `infraweave` built with `GOFIPS140=certified` at `/usr/local/bin/infraweave` on the worker image's base, `gcr.io/distroless/static-debian13:nonroot` pinned by digest, whose system CA roots verify TLS to the database and cloud services; user `65532`, read-only root file system, no shell; `ENTRYPOINT ["/usr/local/bin/infraweave", "all"]`, so a single-node deployment passes only `--config`, and a deployment of `serve` and `scheduler` apart, such as the `infraweave` chart's, replaces the entrypoint per process mode; exposes `server.listen`'s and `server.admin_listen`'s defaults, 8080 and 9090; built by `deploy/infraweave-image/build.py` from the worker image's binaries | `ghcr.io/weaveplatform/infraweave:<version>`, multi-arch |
 | Worker image | `infraweave` built with `GOFIPS140=certified` at `/usr/local/bin/infraweave` on `gcr.io/distroless/static-debian13:nonroot` pinned by digest, user `1983`, no shell; the worker controller's image and each run Pod's bootstrap image, built by `deploy/infraweave-image/build.py` | `ghcr.io/weaveplatform/infraweave-worker:<version>`, multi-arch |
 | Runner images | Built from the repository's runner image definitions under `deploy/images/`, one per vendor, whose contents decision 0008 defines: the tools a phase's shell needs and pinned verified Terraform/OpenTofu CLIs. The application and acceptance harness consume the same published immutable digests; explicit requested versions retain signed verified acquisition and read-only overrides (0016) | `ghcr.io/weaveplatform/infraweave-runner-<vendor>:<version>` |
 | First-party Flows apps | One OCI image per app version, a Go program on `pkg/flows/appsdk` that serves the `App` service ([0018](0018-flows-runtime.md)) | Multi-arch images under `ghcr.io/weaveplatform`, listed in infraweave's first-party app registry |
@@ -112,7 +112,11 @@ Listeners:
   The worker image and the `infraweave-workers` chart use `worker-artifacts.yml`
   on `main`, which `release-please.yml` calls for each release; the release's
   `worker-artifacts.json` asset records their digests, the binaries' SHA-256
-  and the runner image digests the release pins.
+  and the runner image digests the release pins. The server image uses
+  `server-image.yml` on `main`, which `release-please.yml` also calls; the
+  release's `server-image.json` asset records its digest, platforms,
+  entrypoint, ports and the binaries' SHA-256, and is what a deployment pins
+  its image from.
 - **Versioning.** release-please produces one version for the binary, the
   application image, both charts, the modules and the compose file. Runner
   environments release independently when their upstream tools, base or packages

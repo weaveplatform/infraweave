@@ -11169,7 +11169,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "## P24c: Console",
-            "**Depends on:** P24b, P18d, P25b."
+            "**Depends on:** P24b, P18d, P25b"
           ]
         }
       ]

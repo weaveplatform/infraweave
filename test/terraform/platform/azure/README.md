@@ -52,11 +52,13 @@ belongs to `azure_pg_admin` and is not a superuser.
 
 ## Before applying
 
-- The server image comes from [#791](https://github.com/weaveplatform/infraweave/issues/791),
-  which doesn't publish one yet. Until it does, no `image` exists to apply
-  with. The image must be pullable without credentials, its entrypoint must
-  be `infraweave all`, and it must hold the system CA roots that verify the
-  PostgreSQL server's certificate.
+- `image` is the `image` field of `server-image.json`, which
+  `.github/workflows/server-image.yml` publishes: a release's asset
+  (`gh release download v<version> --pattern server-image.json`), or the
+  `server-image` artifact of a dispatch on `main`, which publishes main's
+  head. The image, `ghcr.io/weaveplatform/infraweave`, is public, its
+  entrypoint is `infraweave all`, and its distroless base holds the system
+  CA roots that verify the PostgreSQL server's certificate.
 - `dns_zone` is a public Azure DNS zone in the lab subscription, already
   delegated from its parent. The root adds records to it and never
   changes the zone itself.

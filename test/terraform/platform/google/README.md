@@ -51,9 +51,12 @@ Secret Manager, mounted at `/etc/infraweave/infraweave.yaml` and passed as
 `image` is the server image on GHCR, pinned by digest:
 `ghcr.io/<path>@sha256:<digest>`. The root maps it to
 `<region>-docker.pkg.dev/<project>/iw-ghcr-<suffix>/<path>@sha256:<digest>`.
-Its entrypoint must be `infraweave all`. The image is built from the
-tested revision by [#791](https://github.com/weaveplatform/infraweave/issues/791),
-which does not exist yet; until it does, this root has no image to run.
+Its entrypoint must be `infraweave all`. `image` is the `image` field of
+`server-image.json`, which `.github/workflows/server-image.yml` publishes
+for `ghcr.io/weaveplatform/infraweave`: a release's asset
+(`gh release download v<version> --pattern server-image.json`), or the
+`server-image` artifact of a dispatch on `main`, which publishes main's
+head.
 
 ## Variables
 

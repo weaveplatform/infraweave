@@ -68,10 +68,13 @@ for RDS is signed for.
 | `postgres_version`, `db_instance_class` | no | default `18`, `db.t4g.micro` |
 | `log_level`, `log_retention_days` | no | default `info`, 7 |
 
-The server image comes from #791, which publishes it to GHCR for linux/amd64
-and linux/arm64 with `infraweave all` as its entrypoint. Until that image
-exists, this root validates but cannot be applied: the service never reaches
-a steady state. Both images must be public, because the execution role holds
+`image` is the `image` field of `server-image.json`, which
+`.github/workflows/server-image.yml` publishes: a release's asset
+(`gh release download v<version> --pattern server-image.json`), or the
+`server-image` artifact of a dispatch on `main`, which publishes main's
+head. The image is `ghcr.io/weaveplatform/infraweave` for linux/amd64 and
+linux/arm64, so either `cpu_architecture` runs it, with `infraweave all` as
+its entrypoint. Both images must be public, because the execution role holds
 no registry credential.
 
 The zone must be in this account; a lab subdomain delegated from the
