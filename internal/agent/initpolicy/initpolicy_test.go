@@ -235,6 +235,11 @@ deny contains "pinned elsewhere" if { not io.jwt.decode_verify(input.run.token, 
 	}
 }
 
+// TestUnitInitializationCancellationAndCombinedDeadline checks that an
+// evaluation ends at the caller's cancellation or deadline, and at the
+// policy's own budget when the caller has none. Each wait it measures
+// is bounded far below the deadline whose absence it detects, so a
+// loaded host cannot turn a stopped evaluation into a failure.
 func TestUnitInitializationCancellationAndCombinedDeadline(t *testing.T) {
 	s := settings(t, rego.V1, `package infraweave
 deny contains "late" if {
@@ -243,7 +248,6 @@ deny contains "late" if {
  some c in numbers.range(0, 1000)
  a+b+c == -1
 }`)
-	s.Timeout = 500 * time.Millisecond
 	p, err := initpolicy.Load(t.Context(), s)
 	if err != nil {
 		t.Fatal(err)
@@ -259,14 +263,15 @@ deny contains "late" if {
 	if _, err := p.Evaluate(ctx, input(), nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
-	if time.Since(started) > time.Second {
+	if time.Since(started) >= s.Timeout/2 {
 		t.Fatal("caller deadline was extended")
 	}
 	started = time.Now()
-	if _, err := p.Evaluate(t.Context(), input(), nil); !errors.Is(err, context.DeadlineExceeded) {
+	short := initpolicy.WithTimeout(p, 500*time.Millisecond)
+	if _, err := short.Evaluate(t.Context(), input(), nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
-	if time.Since(started) > 2*time.Second {
+	if time.Since(started) >= initpolicy.DefaultTimeout/2 {
 		t.Fatal("combined worker budget was extended")
 	}
 }

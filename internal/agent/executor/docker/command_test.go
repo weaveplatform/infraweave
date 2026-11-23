@@ -38,8 +38,8 @@ func TestUnitDockerCommandRunsAnIsolatedHelper(t *testing.T) {
 	if err := e.Command(t.Context(), command(&out)); err != nil {
 		t.Fatal(err)
 	}
-	if out.String() != "frames" || d.got.String() != "private-argv" || d.removed != 1 {
-		t.Fatalf("output %q, stdin %q, removed %d", out.String(), d.got.String(), d.removed)
+	if out.String() != "frames" || d.request() != "private-argv" || d.removed != 1 {
+		t.Fatalf("output %q, stdin %q, removed %d", out.String(), d.request(), d.removed)
 	}
 	cfg, host := d.created, d.host
 	if cfg.Image != "img" || cfg.User != docker.User || !slices.Equal(cfg.Entrypoint, []string{docker.BinaryPath}) ||
@@ -72,6 +72,7 @@ func TestUnitDockerCommandRemovesItsHelperHoweverItEnds(t *testing.T) {
 		"attach": {&daemon{errs: map[string]error{"attach": errDaemon}}, "attach to run r's", 1},
 		"start":  {&daemon{errs: map[string]error{"start": errDaemon}}, "start run r's", 1},
 		"write":  {&daemon{errs: map[string]error{"write": errDaemon}}, "send run r's", 1},
+		"close":  {&daemon{errs: map[string]error{"close-write": errDaemon}}, "send run r's", 1},
 		"remove": {&daemon{output: []byte("x"), errs: map[string]error{"remove": errDaemon}}, "remove run r's", 1},
 	} {
 		err := docker.NewWith(c.d, "bin", docker.Config{}).Command(t.Context(), command(nil))

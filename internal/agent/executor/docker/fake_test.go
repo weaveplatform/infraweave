@@ -46,8 +46,10 @@ type daemon struct {
 	followed client.ContainerLogsOptions
 	// output, when set, is what an attached container writes to its
 	// standard output before it ends; hold keeps it running instead.
-	output    []byte
-	hold      bool
+	output []byte
+	hold   bool
+	// got is the container's standard input, read with request;
+	// requested, when set, closes once it begins.
 	got       bytes.Buffer
 	requested chan struct{}
 }
@@ -92,43 +94,77 @@ func (d *daemon) ContainerCreate(_ context.Context, o client.ContainerCreateOpti
 	return client.ContainerCreateResult{ID: "c1"}, d.err("create")
 }
 
+// ContainerAttach answers the stream of an attached container. The
+// stream's writes are the container's standard input, recorded before
+// they return; an output-writing container reads that input until it
+// closes, as a StdinOnce container does, then writes its frames and
+// ends. hold keeps the container running until the stream closes.
 func (d *daemon) ContainerAttach(context.Context, string, client.ContainerAttachOptions) (client.ContainerAttachResult, error) {
 	if err := d.err("attach"); err != nil {
 		return client.ContainerAttachResult{}, err
 	}
 	ours, theirs := net.Pipe()
 	d.stdin = theirs
+	att := &attachment{Conn: ours, d: d, eof: make(chan struct{})}
 	switch {
 	case d.err("write") != nil:
 		_ = theirs.Close()
-	case d.output != nil || d.hold:
+	case d.output != nil && !d.hold:
 		go func() {
-			buf := make([]byte, 4096)
-			for {
-				n, err := theirs.Read(buf)
-				d.mu.Lock()
-				d.got.Write(buf[:n])
-				if n > 0 && d.requested != nil {
-					close(d.requested)
-					d.requested = nil
-				}
-				d.mu.Unlock()
-				if err != nil {
-					return
-				}
-			}
+			<-att.eof
+			_, _ = theirs.Write(multiplexed(stdcopy.Stdout, d.output))
+			_, _ = theirs.Write(multiplexed(stdcopy.Stderr, []byte("helper diagnostics")))
+			_ = theirs.Close()
 		}()
-		if !d.hold {
-			go func() {
-				_, _ = theirs.Write(multiplexed(stdcopy.Stdout, d.output))
-				_, _ = theirs.Write(multiplexed(stdcopy.Stderr, []byte("helper diagnostics")))
-				_ = theirs.Close()
-			}()
-		}
-	default:
-		go func() { _, _ = io.Copy(io.Discard, theirs) }()
 	}
-	return client.ContainerAttachResult{HijackedResponse: client.NewHijackedResponse(ours, "")}, nil
+	return client.ContainerAttachResult{HijackedResponse: client.NewHijackedResponse(att, "")}, nil
+}
+
+// attachment is the client's end of an attach stream. Writes go to the
+// daemon's record of the container's standard input before they return,
+// so a caller that has written its request has delivered it; CloseWrite
+// ends that input, which a net.Pipe alone cannot.
+type attachment struct {
+	net.Conn
+	d    *daemon
+	once sync.Once
+	eof  chan struct{}
+}
+
+func (a *attachment) Write(p []byte) (int, error) {
+	if err := a.d.err("write"); err != nil {
+		return 0, err
+	}
+	a.d.mu.Lock()
+	defer a.d.mu.Unlock()
+	a.d.got.Write(p)
+	if len(p) > 0 && a.d.requested != nil {
+		close(a.d.requested)
+		a.d.requested = nil
+	}
+	return len(p), nil
+}
+
+func (a *attachment) CloseWrite() error {
+	if err := a.d.err("close-write"); err != nil {
+		return err
+	}
+	a.once.Do(func() { close(a.eof) })
+	return nil
+}
+
+// Close also ends the standard input, so a container waiting for it
+// writes into the closed stream and stops.
+func (a *attachment) Close() error {
+	a.once.Do(func() { close(a.eof) })
+	return a.Conn.Close()
+}
+
+// request is what the container read from its standard input.
+func (d *daemon) request() string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.got.String()
 }
 
 // multiplexed is p as one frame of the daemon's attach stream.
@@ -264,7 +300,12 @@ func (d *daemon) ContainerKill(context.Context, string, client.ContainerKillOpti
 	return client.ContainerKillResult{}, d.err("kill")
 }
 
+// ContainerRemove ends an attached container's stream, as removing a
+// running container does.
 func (d *daemon) ContainerRemove(context.Context, string, client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
+	if d.stdin != nil {
+		_ = d.stdin.Close()
+	}
 	d.mu.Lock()
 	d.removed++
 	d.mu.Unlock()
@@ -336,6 +377,7 @@ func TestUnitDockerExecutorFailures(t *testing.T) {
 		{call: "attach", want: "attach to run r's container", removed: 1},
 		{call: "start", want: "start run r's container", removed: 1},
 		{call: "write", want: "hand run r over", removed: 1},
+		{call: "close-write", want: "hand run r over", removed: 1},
 	} {
 		d := &daemon{errs: map[string]error{tc.call: errDaemon}, missing: tc.missing}
 		_, err := docker.NewWith(d, "bin", docker.Config{}).Start(ctx, job)
