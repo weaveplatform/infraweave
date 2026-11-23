@@ -2,9 +2,11 @@ package kubernetes
 
 import (
 	"context"
+	"crypto/fips140"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,8 +24,8 @@ type Streams interface {
 	Exec(ctx context.Context, namespace, pod, container string, command []string, stdout, stderr io.Writer) error
 }
 
-// apiStreams opens streams through the Kubernetes API server, over
-// WebSocket, or SPDY where the server refuses the WebSocket upgrade.
+// apiStreams opens streams through the Kubernetes API server, as
+// executor chooses.
 type apiStreams struct {
 	config *rest.Config
 	rest   rest.Interface
@@ -57,18 +59,7 @@ func (s *apiStreams) Exec(ctx context.Context, namespace, pod, container string,
 }
 
 func (s *apiStreams) stream(ctx context.Context, req *rest.Request, stdin io.Reader, stdout, stderr io.Writer) error {
-	url := req.URL()
-	ws, err := remotecommand.NewWebSocketExecutor(s.config, http.MethodGet, url.String())
-	if err != nil {
-		return fmt.Errorf("kubernetes: open a stream: %w", err)
-	}
-	spdy, err := remotecommand.NewSPDYExecutor(s.config, http.MethodPost, url)
-	if err != nil {
-		return fmt.Errorf("kubernetes: open a stream: %w", err)
-	}
-	ex, err := remotecommand.NewFallbackExecutor(ws, spdy, func(err error) bool {
-		return httpstream.IsUpgradeFailure(err) || httpstream.IsHTTPSProxyError(err)
-	})
+	ex, err := s.executor(req.URL(), fips140.Enforced())
 	if err != nil {
 		return fmt.Errorf("kubernetes: open a stream: %w", err)
 	}
@@ -76,4 +67,22 @@ func (s *apiStreams) stream(ctx context.Context, req *rest.Request, stdin io.Rea
 		return fmt.Errorf("kubernetes: stream: %w", err)
 	}
 	return nil
+}
+
+// executor streams to url over WebSocket, falling back to SPDY where the
+// server refuses the upgrade, or over SPDY alone in FIPS 140-only mode:
+// the WebSocket handshake's accept key is a SHA-1 digest, which that mode
+// refuses with a panic.
+func (s *apiStreams) executor(url *url.URL, fipsOnly bool) (remotecommand.Executor, error) {
+	spdy, err := remotecommand.NewSPDYExecutor(s.config, http.MethodPost, url)
+	if err != nil || fipsOnly {
+		return spdy, err //nolint:wrapcheck // stream names the step
+	}
+	ws, err := remotecommand.NewWebSocketExecutor(s.config, http.MethodGet, url.String())
+	if err != nil {
+		return nil, err //nolint:wrapcheck // stream names the step
+	}
+	return remotecommand.NewFallbackExecutor(ws, spdy, func(err error) bool { //nolint:wrapcheck // stream names the step
+		return httpstream.IsUpgradeFailure(err) || httpstream.IsHTTPSProxyError(err)
+	})
 }

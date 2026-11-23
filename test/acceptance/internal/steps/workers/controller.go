@@ -624,8 +624,10 @@ func (c *controllerSteps) corrupt(ctx context.Context, name string) error {
 }
 
 // cleanup stops the scenario's controllers and its front, releases every
-// finalizer left in its namespaces, and deletes them.
-func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
+// finalizer left in its namespaces, and deletes them. A failed scenario
+// leaves each controller's output and the run Pods it recorded beside
+// its servers' evidence.
+func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, failed error) (context.Context, error) {
 	if c.api == nil {
 		return ctx, nil
 	}
@@ -634,6 +636,9 @@ func (c *controllerSteps) cleanup(ctx context.Context, _ *godog.Scenario, _ erro
 	var result error
 	for _, srv := range c.running {
 		result = errors.Join(result, srv.Stop(cleanup))
+	}
+	if failed != nil {
+		result = errors.Join(result, c.evidence())
 	}
 	if c.front != nil {
 		result = errors.Join(result, c.front.Shutdown(cleanup))

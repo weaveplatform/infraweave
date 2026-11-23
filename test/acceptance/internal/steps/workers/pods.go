@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -293,4 +296,23 @@ func (c *controllerSteps) noPod(ctx context.Context, run string) error {
 		return fmt.Errorf("%w (left %s)", err, strings.Join(left, ", "))
 	}
 	return nil
+}
+
+// evidence writes each controller's output and configuration to
+// worker-controller-<n>/ of the scenario's evidence directory, and the
+// run Pods recorded to run-pods.json.
+func (c *controllerSteps) evidence() error {
+	dir := filepath.Join(c.w.Suite.Out, harness.Slug(c.w.Name))
+	var err error
+	for i, srv := range c.running {
+		d := filepath.Join(dir, fmt.Sprintf("worker-controller-%d", i+1))
+		if mkErr := os.MkdirAll(d, 0o750); mkErr != nil {
+			err = errors.Join(err, mkErr)
+			continue
+		}
+		err = errors.Join(err, srv.Evidence(d))
+	}
+	pods, jsonErr := json.MarshalIndent(c.recorded(""), "", "  ")
+	err = errors.Join(err, jsonErr, os.MkdirAll(dir, 0o750))
+	return errors.Join(err, os.WriteFile(filepath.Join(dir, "run-pods.json"), pods, 0o600))
 }
