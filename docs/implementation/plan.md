@@ -2485,13 +2485,13 @@ The architecture contract does not mark the downstream runtime delivered.
    implemented collectors. C66/C69 remain reference uncertainties rather than
    inferred parity. Preserve all operation evidence and secret-negative cases.
 6. Pull only worker hosting forward from 0020: Terraform-managed EKS Auto Mode,
-   AKS and GKE Autopilot, one worker chart, concurrent distinct stable pools
+   AKS and GKE Standard, one worker chart, concurrent distinct stable pools
    across clusters/clouds, no cloud tier gate or silent fallback. Preserve
    worker-pools Free/private-worker-pools Business, private-workers 0/0/3 and
    public slots 1/2/2; a four-worker lab uses an explicit grant. Terraform
    provisioner, scoped controller management, pool protocol and run credentials
    stay distinct. Workload credentials and full server deployment stay later.
-   Acceptance roots are `test/terraform/cloud/workers/{aws,azure,google}` using
+   Acceptance roots are `test/terraform/platform/workers/{aws,azure,google}` using
    the existing `test/terraform/lab` ownership/evidence/cleanup lifecycle.
 
 **Exit criteria**

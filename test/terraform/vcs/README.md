@@ -6,7 +6,7 @@ VCS provider. Each run applies its provider's root, runs that provider's
 `TestAcc<Provider>Lab`, then its `@vcs-lab` source, webhook and feedback
 scenarios in that order, and destroys the root, pass or fail. Each source,
 webhook and feedback batch also provisions and destroys its backing services
-through [the shared Terraform platform root](../lab/README.md). Nothing here
+through [the shared Terraform services root](../lab/README.md). Nothing here
 is part of infraweave or its reference deployments.
 
 | Root | Creates |
@@ -258,4 +258,4 @@ Docker Desktop, a direct webhook URL uses `host.docker.internal` to reach the
 host's webhook-only listener; Linux runners use their Docker bridge gateway.
 
 `make labs-vcs` validates every root against its lock file;
-`make labs-cloud` does the same for `test/terraform/cloud`.
+`make labs-cloud` does the same for `test/terraform/platform`.

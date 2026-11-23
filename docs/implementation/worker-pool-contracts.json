@@ -299,7 +299,7 @@
         755
       ],
       "domain": "deployment",
-      "contract": "Shared deploy/terraform/modules/workers/aws module plus test/terraform/cloud/workers/aws cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "contract": "Shared deploy/terraform/modules/workers/aws module plus test/terraform/platform/workers/aws cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
       "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },
@@ -310,7 +310,7 @@
         756
       ],
       "domain": "deployment",
-      "contract": "Shared deploy/terraform/modules/workers/azure module plus test/terraform/cloud/workers/azure cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "contract": "Shared deploy/terraform/modules/workers/azure module plus test/terraform/platform/workers/azure cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
       "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },
@@ -321,7 +321,7 @@
         757
       ],
       "domain": "deployment",
-      "contract": "Shared deploy/terraform/modules/workers/google module plus test/terraform/cloud/workers/google cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
+      "contract": "Shared deploy/terraform/modules/workers/google module plus test/terraform/platform/workers/google cluster/deployment acceptance stages in the same delivery, explicit create/existing managed profiles and pinned versions",
       "requiredEvidence": "Real managed cloud admission/execution, explicit existing-cluster/network retention, two-owner failure cleanup and cloud API absence; module-only or skipped acceptance cannot complete delivery",
       "delivery": "unproven"
     },

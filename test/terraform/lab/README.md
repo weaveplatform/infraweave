@@ -16,8 +16,9 @@ startup helpers. Those parts of the infrastructure migration remain in progress.
 ## Run a batch
 
 Use the official Terraform release pinned by `test/deps/tools.go`, Python 3 and
-a reachable Docker daemon. The provider is pinned to `kreuzwerker/docker` 4.7.0
-with checksums for local ARM64 and both Linux architectures. Service images come
+a reachable Docker daemon. The `services` root holds these services; its
+provider is pinned to `kreuzwerker/docker` 4.7.0 with checksums for local ARM64
+and both Linux architectures. Service images come
 from the same immutable pins as ordinary acceptance. The lab uses local Docker
 infrastructure and creates no cloud resources.
 
@@ -41,7 +42,7 @@ and fixture namespace, including nested capture replays.
 | `policies` | `@policies` across partitions: real Rego V0/V1, approvals, warnings, flags, isolation and limits |
 | `core`, `terraform-plans`, `terraform-vcs`, `terraform`, `runs`, `integrations` | The named existing Cucumber partition |
 | `vcs` | The existing real-provider partition, narrowed with `--tags '@lab:github'` and `--features features/vcs/feedback.feature` |
-| `workers-aws`, `workers-azure`, `workers-google` | Required `managed-cloud-workers` partition against one cloud's committed `test/terraform/cloud/workers/<cloud>` root and the local platform's control plane |
+| `workers-aws`, `workers-azure`, `workers-google` | Required `managed-cloud-workers` partition against one cloud's committed `test/terraform/platform/workers/<cloud>` root and the local platform's control plane |
 | `workers-multicloud` | The same partition with all three clouds attached concurrently under one owner and one control plane |
 
 These are Gherkin batches. The ordinary quality gate still runs every existing
@@ -193,9 +194,11 @@ API behavior, leaving controller/executor delivery to its implementation work.
 
 ## Managed cloud worker batches
 
-The `workers-*` batches attach Terraform-managed EKS, AKS and GKE worker
-hosting to the same lab. Each selects the `@managed-cloud-workers` scenarios
-in `features/workers/managed_cloud_workers.feature`, which ordinary and other
+The `workers-*` batches attach Terraform-managed EKS Auto Mode, AKS and GKE
+Standard worker hosting to the same lab, each in its cloud's dedicated
+account, subscription or project, which [`landing-zone`](../platform/README.md)
+creates. Each selects the `@managed-cloud-workers` scenarios in
+`features/workers/managed_cloud_workers.feature`, which ordinary and other
 lab partitions exclude. The committed definition fixes the clouds and the
 bounds a reviewer approves before any billable apply: parallel clouds, owner
 TTL, the vCPU quota headroom each cloud must have, configured pool capacity per
@@ -219,7 +222,7 @@ provisioned unless every selected cloud passes:
 
 | Check | Fails when |
 |---|---|
-| Root | `test/terraform/cloud/workers/<cloud>/{cluster,deployment}` lacks `versions.tf` or a committed `.terraform.lock.hcl` |
+| Root | `test/terraform/platform/workers/<cloud>/{cluster,deployment}` lacks `versions.tf` or a committed `.terraform.lock.hcl` |
 | Inputs | No `--inputs` file, a file readable by group or others, over 64 KiB, carrying private key text, naming another cloud, missing or malformed explicit identifiers, setting a coordinator variable, or requesting pool capacity above the bound |
 | Credentials | The provider CLI's current identity is absent or resolves to another AWS account, Azure tenant/subscription or Google project number |
 | Quota | Regional vCPU headroom (`ec2` quota `L-1216C47A`, `az vm list-usage` cores, the region's `CPUS` quota) is below the bound, or the EKS cluster quota is full in create mode |
@@ -239,7 +242,8 @@ accounts but holds no credential:
  "deployment": {"cluster": {"mode": "create", "name": "..."}, "pools": [{"capacity": 2}], "...": "deployment/ stage variables"}}
 ```
 
-Identifiers follow the [hosting contract's three-cloud mapping](../../../docs/implementation/worker-hosting-contracts.md#three-cloud-mapping-and-compatibility):
+The identifiers name the landing zone's account, subscription or project.
+They follow the [hosting contract's three-cloud mapping](../../../docs/implementation/worker-hosting-contracts.md#three-cloud-mapping-and-compatibility):
 AWS `account_id`/`region`; Azure `tenant_id`/`subscription_id`/`location`/`resource_group_name`;
 Google `project_id`/`project_number`/`location`. The controller adds three
 variables to every stage and refuses inputs that set them: `ownership`
@@ -311,7 +315,7 @@ GitHub's OIDC token is federated to each cloud. The environment's secrets are
 `WORKERS_GOOGLE_WORKLOAD_IDENTITY_PROVIDER`, `WORKERS_GOOGLE_SERVICE_ACCOUNT`
 and one `WORKERS_<CLOUD>_INPUTS` inputs file per cloud. The AWS role must
 allow four-hour sessions. The `workers-identity` roots of
-[the cloud labs](../cloud/README.md) provision these identities and map
+[the cloud labs](../platform/README.md) provision these identities and map
 their outputs to the secrets. A selected cloud without its secrets fails
 preflight. Only `evidence/` is uploaded.
 
@@ -327,8 +331,9 @@ manifest mismatch and an untrusted cluster API failing before any scenario;
 a foreign journal refused before destroy; unknown or remaining cloud resources
 never reported absent; interruption stopping owned Terraform; and an existing
 directory never adopted. They are controller evidence, not cloud evidence.
-The `test/terraform/cloud/workers` roots ship with their cloud deliveries;
+The `test/terraform/platform/workers` roots ship with their cloud deliveries;
 until then every `workers-*` batch fails preflight. The scenarios prove the
 attachment and the control plane's pool API beside it; worker execution on
 the cloud pools needs a server endpoint those Pods can reach, which the
-concurrent cloud proof supplies.
+platform scenario at `test/terraform/platform/<cloud>` supplies: one
+infraweave platform behind public HTTPS in one cloud's dedicated account.

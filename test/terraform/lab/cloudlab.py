@@ -1,6 +1,6 @@
 """Managed cloud worker batches: owned per-cloud Terraform stages beside one lab control plane.
 
-Each selected cloud applies its committed `test/terraform/cloud/workers/<cloud>`
+Each selected cloud applies its committed `test/terraform/platform/workers/<cloud>`
 `cluster/` then `deployment/` root with an independent private state, provider
 directory, variables file and log. The local platform deployment of labctl.py
 supplies the single application control plane. Required clouds are never
@@ -25,7 +25,7 @@ import urllib.parse
 import labctl as lab
 
 CLOUDS = ("aws", "azure", "google")
-ROOTS = lab.REPO / "test/terraform/cloud/workers"
+ROOTS = lab.REPO / "test/terraform/platform/workers"
 STAGES = ("cluster", "deployment")
 STAGE_OUTPUTS = {"cluster": "cluster", "deployment": "hosting"}
 IDENTIFIERS = {
