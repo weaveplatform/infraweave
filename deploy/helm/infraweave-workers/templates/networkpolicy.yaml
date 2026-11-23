@@ -1,0 +1,53 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $egress := concat .Values.networkPolicy.dnsEgress .Values.networkPolicy.controllerEgress }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "workers.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "workers.selector" . | nindent 6 }}
+  policyTypes: ["Ingress", "Egress"]
+  # Only the admin listener, for the kubelet's probes, takes connections.
+  ingress:
+    - ports:
+        - port: admin
+          protocol: TCP
+  {{- if $egress }}
+  egress:
+    {{- include "workers.egress" $egress | trimPrefix "\n" | nindent 4 }}
+  {{- else }}
+  egress: []
+  {{- end }}
+{{- $run := concat .Values.networkPolicy.dnsEgress .Values.networkPolicy.runEgress }}
+{{- range .Values.watchNamespaces }}
+---
+# Run and initialization command Pods take no connection: the controller
+# reaches them through the API server's attach and exec.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: infraweave-worker-runs
+  namespace: {{ . }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-runs
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: infraweave-worker-controller
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  {{- if $run }}
+  egress:
+    {{- include "workers.egress" $run | trimPrefix "\n" | nindent 4 }}
+  {{- else }}
+  egress: []
+  {{- end }}
+{{- end }}
+{{- end }}

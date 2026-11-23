@@ -1,0 +1,15 @@
+{{- if and .Values.controller.podDisruptionBudget.enabled (gt (int .Values.controller.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "workers.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "workers.selector" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,12 @@
+{{- include "workers.validate" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "workers.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+data:
+  worker-controller.yaml: |
+    {{- include "workers.config" . | nindent 4 }}

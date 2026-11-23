@@ -1,0 +1,18 @@
+{{- /*
+The release's WorkerPools. Deleting one, by removing it from pools in an
+upgrade or by uninstalling, retires its slots as the controller drains
+them: each busy slot's run ends before its worker deregisters.
+*/ -}}
+{{- range .Values.pools }}
+---
+apiVersion: workers.infraweave.io/v1alpha1
+kind: WorkerPool
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    {{- include "workers.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker-pool
+spec:
+  {{- toYaml .spec | nindent 2 }}
+{{- end }}

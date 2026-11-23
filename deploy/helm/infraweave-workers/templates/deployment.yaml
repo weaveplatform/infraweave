@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "workers.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "workers.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-controller
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "workers.selector" . | nindent 6 }}
+  # A replacement replica is ready, standing by, before a replica it
+  # replaces goes; the leader releases its Lease as it stops, and its
+  # successor resumes each busy slot from the slot's Worker status.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "workers.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker-controller
+      annotations:
+        infraweave.io/config-sha256: {{ include "workers.config" . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "workers.name" . }}
+      automountServiceAccountToken: true
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1983
+        runAsGroup: 1983
+        fsGroup: 1983
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.controller.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "workers.selector" . | nindent 20 }}
+      containers:
+        - name: worker-controller
+          image: {{ include "workers.image" . | quote }}
+          imagePullPolicy: {{ .Values.controller.imagePullPolicy }}
+          command: [/usr/local/bin/infraweave]
+          args:
+            - worker-controller
+            - --config
+            - {{ include "workers.configPath" . }}
+          env:
+            - name: GODEBUG
+              value: {{ printf "fips140=%s" .Values.controller.fips140 | quote }}
+          ports:
+            - name: admin
+              containerPort: 9091
+              protocol: TCP
+          # Ready once the Kubernetes API answers the replica's Lease and,
+          # on the leader, once a pass has read every watch namespace and
+          # reached every pool's installation.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: admin
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: admin
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/infraweave/worker-controller.yaml
+              subPath: worker-controller.yaml
+              readOnly: true
+            - name: cache
+              mountPath: /var/cache/infraweave
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.trust.caSecretRef }}
+            - name: trust
+              mountPath: /etc/infraweave/trust
+              readOnly: true
+            {{- end }}
+            {{- if .Values.initializationPolicyRef }}
+            - name: policy
+              mountPath: /etc/infraweave/policy
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "workers.name" . }}
+        - name: cache
+          emptyDir:
+            sizeLimit: {{ .Values.controller.cacheSizeLimit | quote }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        {{- with .Values.trust.caSecretRef }}
+        - name: trust
+          secret:
+            secretName: {{ .name }}
+            items:
+              - key: {{ .key | quote }}
+                path: ca.pem
+        {{- end }}
+        {{- with .Values.initializationPolicyRef }}
+        - name: policy
+          {{- if eq .kind "Secret" }}
+          secret:
+            secretName: {{ .name }}
+          {{- else }}
+          configMap:
+            name: {{ .name }}
+          {{- end }}
+            items:
+              - key: {{ .key | quote }}
+                path: initialization.rego
+        {{- end }}

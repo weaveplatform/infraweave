@@ -1,0 +1,14 @@
+The worker controller of release {{ .Release.Name }} reconciles the WorkerPools of:
+{{- range .Values.watchNamespaces }}
+  - {{ . }}
+{{- end }}
+
+Each WorkerPool reports its binding, registered slots and executor in its
+status:
+
+  kubectl get workerpools.workers.infraweave.io -n <namespace> -o wide
+
+Uninstalling deletes the release's WorkerPools first and waits, up to
+{{ .Values.uninstall.timeoutSeconds }} seconds, while the controller lets their runs end and
+deregisters their workers. The CRDs stay; remove them only once no
+WorkerPool or Worker remains in the cluster.
