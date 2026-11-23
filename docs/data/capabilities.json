@@ -58,7 +58,7 @@
         "phase": "P3",
         "also": "P8, P14, P15",
         "state": "partial",
-        "notes": "`id`, `name`, `type` and `defaultPrivateWorkerPoolRunnerImage` are served (P3), the image as the account's default that `accountUpdateDefaultWorkerPoolRunnerImages` sets (P8), else infraweave's Terraform runner image; `defaultPublicWorkerPoolRunnerImage`, `outgoingIPAddresses` and `spaceliftAwsAccountId` arrive with their phases"
+        "notes": "`id`, `name`, `type` and `defaultPrivateWorkerPoolRunnerImage` are served (P3), the image as the account's default that `accountUpdateDefaultWorkerPoolRunnerImages` sets (P8), else infraweave's Terraform runner image; `defaultPublicWorkerPoolRunnerImage` and `outgoingIPAddresses` are served (P14), the addresses from the operator's configuration; `spaceliftAwsAccountId` arrives with its phase"
       }
     },
     {
@@ -1122,8 +1122,8 @@
         "lowestTier": "Free; Business for `private-worker-pools`",
         "phase": "P8",
         "also": "P14, P25b",
-        "state": "missing",
-        "notes": "Private pools in P8; the public worker pool, its usage and its searches in P14, as an option"
+        "state": "partial",
+        "notes": "Private pools in P8; the public worker pool, its usage, queue and user searches, the managed-pool lookup and merge patch, and Kubernetes hosting in P14, as an option. Every served operation has passing success, denial and failure acceptance; `workerPoolSearchIntentProjects` and its suggestions answer 501 until intent projects exist (P25)"
       }
     },
     {
@@ -1459,8 +1459,8 @@
         "lowestTier": "Free",
         "apiPhase": "P8",
         "providerPhase": "P24",
-        "state": "missing",
-        "notes": "Also reads `defaultPublicWorkerPoolRunnerImage` (P14)"
+        "state": "partial",
+        "notes": "Also reads `defaultPublicWorkerPoolRunnerImage` (P14). The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2215,7 +2215,8 @@
         "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2233,7 +2234,8 @@
         "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -2731,8 +2733,8 @@
         "lowestTier": "Free",
         "apiPhase": "P14",
         "providerPhase": "P24",
-        "state": "missing",
-        "notes": "Outgoing addresses of the public worker pool"
+        "state": "partial",
+        "notes": "Outgoing addresses of the public worker pool. The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -3355,7 +3357,8 @@
         "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
@@ -3373,7 +3376,8 @@
         "lowestTier": "Business",
         "apiPhase": "P8",
         "providerPhase": "P24",
-        "state": "missing"
+        "state": "partial",
+        "notes": "The worker pool API operations it calls have passing success, denial and failure acceptance. The computed state is partial because native Terraform provider execution remains P24; this record does not claim that the provider resource/data source exists."
       }
     },
     {
