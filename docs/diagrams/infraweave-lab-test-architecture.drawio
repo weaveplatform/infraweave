@@ -4,10 +4,10 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title" value="infraweave-lab · target acceptance test architecture" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=25;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="title" value="infraweave-lab · acceptance test architecture" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=25;fontColor=#e6e8f0;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="35" y="20" width="1450" height="40" />
         </mxCell>
-        <mxCell id="subtitle" value="Terraform deploys the test platform. Acceptance clients exercise real APIs, workers and provider services. Target design · implementation in progress." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="subtitle" value="Terraform provisions the lab Docker services; the Go harness starts the infraweave servers and launchers. Acceptance clients exercise real APIs, workers and provider services." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="35" y="68" width="1450" height="30" />
         </mxCell>
         <mxCell id="inputs-panel" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;strokeWidth=1;" vertex="1" parent="1">
@@ -46,10 +46,10 @@
         <mxCell id="input-note" value="Tools are baked into the runner images.&lt;br&gt;The application revision under test is a separate build artifact." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="45" y="1050" width="340" height="90" />
         </mxCell>
-        <mxCell id="select" value="&lt;b&gt;1 · Select batch and scenarios&lt;/b&gt;&lt;br&gt;core / policies / vendors / runs / VCS" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+        <mxCell id="select" value="&lt;b&gt;1 · Select batch and scenarios&lt;/b&gt;&lt;br&gt;core / policies / runs / terraform / kubernetes / vcs / workers" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="200" width="360" height="75" />
         </mxCell>
-        <mxCell id="apply" value="&lt;b&gt;2 · Lab Terraform: plan + apply&lt;/b&gt;&lt;br&gt;Reusable modules + batch roots / tfvars&lt;br&gt;Unique state and resource prefix" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+        <mxCell id="apply" value="&lt;b&gt;2 · Lab Terraform: plan + apply&lt;/b&gt;&lt;br&gt;One root: test/terraform/lab/platform&lt;br&gt;Owner-named network, local state and labels" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="320" width="360" height="95" />
         </mxCell>
         <mxCell id="ready" value="&lt;b&gt;3 · Readiness gate&lt;/b&gt;&lt;br&gt;API, database, storage and worker registration" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
@@ -70,13 +70,13 @@
         <mxCell id="gate" value="&lt;b&gt;8 · Acceptance gate&lt;/b&gt;&lt;br&gt;Required cases ran; tests, providers&lt;br&gt;and verified cleanup all passed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#17332b;strokeColor=#34d399;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="1130" width="360" height="75" />
         </mxCell>
-        <mxCell id="batch" value="&lt;b&gt;Terraform batch roots&lt;/b&gt;&lt;br&gt;Platform module + scenario/provider fixtures&lt;br&gt;One isolated deployment and state per batch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+        <mxCell id="batch" value="&lt;b&gt;lab/platform root&lt;/b&gt;&lt;br&gt;Docker provider: postgres, objectstore, gitea; k3s when enabled&lt;br&gt;One owner, local state and loopback ports per batch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="965" y="200" width="535" height="95" />
         </mxCell>
         <mxCell id="platform-box" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;dashed=0;strokeColor=#475569;strokeWidth=1;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="955" y="335" width="555" height="490" />
         </mxCell>
-        <mxCell id="platform-title" value="REAL PLATFORM SERVICES" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#cbd5e1;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="platform-title" value="REAL PLATFORM · DOCKER SERVICES AND HARNESS PROCESSES" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=13;fontColor=#cbd5e1;align=left;verticalAlign=middle;spacing=0;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="980" y="350" width="510" height="25" />
         </mxCell>
         <mxCell id="database" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;Actual persistence" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;shape=cylinder3;size=12;" vertex="1" parent="1">
@@ -85,16 +85,16 @@
         <mxCell id="objects" value="&lt;b&gt;Object storage&lt;/b&gt;&lt;br&gt;Sealed state, plans and samples" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;shape=cylinder3;size=12;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1240" y="395" width="245" height="75" />
         </mxCell>
-        <mxCell id="api" value="&lt;b&gt;infraweave API replicas A / B&lt;/b&gt;&lt;br&gt;Scheduler + persistent work queue&lt;br&gt;Application build from the tested SHA" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+        <mxCell id="api" value="&lt;b&gt;infraweave servers A / B&lt;/b&gt;&lt;br&gt;Host processes started by the Go harness&lt;br&gt;Application build from the tested SHA" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="980" y="515" width="505" height="95" />
         </mxCell>
-        <mxCell id="workers" value="&lt;b&gt;Launchers and worker pools&lt;/b&gt;&lt;br&gt;Use pinned GHCR runner images&lt;br&gt;Terraform CLI already installed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+        <mxCell id="workers" value="&lt;b&gt;Launchers and worker pools&lt;/b&gt;&lt;br&gt;Started by the harness; pinned GHCR runner images&lt;br&gt;Terraform CLI already installed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="980" y="655" width="505" height="95" />
         </mxCell>
         <mxCell id="worker-note" value="Stack Terraform runs the scenario workload:&lt;br&gt;real plan / apply / state operations and policy decisions." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="980" y="765" width="500" height="45" />
         </mxCell>
-        <mxCell id="providers" value="&lt;b&gt;Real VCS fixture batches&lt;/b&gt;&lt;br&gt;GitHub · GitLab · Bitbucket Cloud · Azure DevOps&lt;br&gt;Repositories, hooks, checks and comments&lt;br&gt;Bitbucket DC when licensed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#252a35;strokeColor=#94a3b8;" vertex="1" parent="1">
+        <mxCell id="providers" value="&lt;b&gt;VCS lab roots · test/terraform/vcs&lt;/b&gt;&lt;br&gt;GitHub · GitLab · Bitbucket Cloud · Azure DevOps&lt;br&gt;Repositories, hooks, checks and comments&lt;br&gt;Bitbucket DC when licensed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#252a35;strokeColor=#94a3b8;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="965" y="875" width="535" height="130" />
         </mxCell>
         <mxCell id="artifacts" value="&lt;b&gt;Retained evidence artifacts&lt;/b&gt;&lt;br&gt;Nonempty scenario reports + exact revision / pins&lt;br&gt;OPA results, receipts and provider results&lt;br&gt;95% total / 90% package coverage + cleanup readback" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
@@ -159,23 +159,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e14" value="deploy services" edge="1" parent="1" source="batch" target="platform-box" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
+        <mxCell id="e14" value="Docker services" edge="1" parent="1" source="batch" target="platform-box" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1233" y="330" />
               <mxPoint x="1231" y="330" />
               <mxPoint x="1231" y="486" />
               <mxPoint x="1233" y="486" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e15" value="" edge="1" parent="1" source="batch" target="providers" style="strokeColor=#94a3b8;strokeWidth=1.5;endArrow=block;endSize=7;fontFamily=Helvetica;fontSize=11;fontColor=#cbd5e1;labelBackgroundColor=#161823;dashed=0;jumpStyle=arc;jumpSize=6;labelPlacement=auto;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1233" y="316" />
-              <mxPoint x="950" y="316" />
-              <mxPoint x="950" y="853" />
-              <mxPoint x="1233" y="853" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -240,7 +230,7 @@
         <mxCell id="legend" value="Solid arrows: workflow, provisioning and artifact flow.    Dashed arrows: network traffic against real services." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="35" y="1270" width="1480" height="25" />
         </mxCell>
-        <mxCell id="ownership" value="Terraform owns infrastructure lifecycle. Tests own assertions. Every batch uses its own state and resources; cleanup also runs after failures." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
+        <mxCell id="ownership" value="Terraform owns the Docker services. The harness owns server and launcher processes. Tests own assertions. Every batch uses its own state and resources; cleanup also runs after failures." style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=12;fontColor=#9aa0b4;align=left;verticalAlign=middle;spacing=0;fontStyle=0;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="35" y="1305" width="1480" height="25" />
         </mxCell>
       </root>
