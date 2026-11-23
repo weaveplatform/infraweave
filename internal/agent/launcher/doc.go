@@ -9,7 +9,11 @@
 // poll for launcher.poll_timeout. A poll reports whether a run is
 // executing, the drain flag it last learned, and the exit of a container
 // that ended since the last poll; a container that ends cuts a held poll
-// short. An assignment is prepared: the launcher fetches the run's
+// short. An assignment is prepared: the launcher first admits its run
+// token through internal/agent/signedrun, as the server-signed token of
+// the assigned run under the run token keys its worker session reads, and
+// a token that fails, or keys it cannot read, fails the run in its
+// preparing state before anything below; it then fetches the run's
 // specification with the run token, opens its sealed part with the pool's
 // private key, resolves the run's image and refuses one a public pool does
 // not admit, evaluates any startup-compiled local initialization policy over
@@ -108,7 +112,7 @@
 // # Dependencies
 //
 // It imports internal/agent/client, config, executor, handoff, initcommand,
-// initpolicy, source, tools and wire, kernel's hosting owner, platform/rego
+// initpolicy, signedrun, source, tools and wire, kernel's hosting owner, platform/rego
 // for the policy's commands, platform/seal to open
 // specifications, and go-jose to sign registrations; no server package.
 // internal/agent/cli runs it as infraweave launcher, and

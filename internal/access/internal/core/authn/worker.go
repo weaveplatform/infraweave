@@ -2,6 +2,10 @@ package authn
 
 import (
 	"context"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -76,6 +80,45 @@ func (s *Service) AuthenticateRunner(ctx context.Context, raw string) (kernel.Pr
 	}
 	return kernel.Principal{Kind: kernel.PrincipalRunner, ActorID: b.ID},
 		token.Claims{Kind: token.KindRunner, Subject: b.ID.String(), Expiry: b.Expires}, nil
+}
+
+// ErrRunTokenKeys reports a service constructed with no Verifying, or a
+// verifying key that is not a P-256 public key.
+var ErrRunTokenKeys = errors.New("run token keys unavailable")
+
+// RunTokenKeys are the issuer and audience of every run token and the
+// public half of each key that verifies one, which a launcher checks a
+// run token against before it uses it. Only the public point of each key
+// is answered.
+//
+// ref: decision 0006 § "Signing keys"
+func (s *Service) RunTokenKeys(ctx context.Context) (accessapi.RunTokenKeys, error) {
+	if s.d.Verifying == nil {
+		return accessapi.RunTokenKeys{}, ErrRunTokenKeys
+	}
+	iss, keys, err := s.d.Verifying.VerifyingKeys(ctx)
+	if err != nil {
+		return accessapi.RunTokenKeys{}, err //nolint:wrapcheck // token names the read
+	}
+	out := accessapi.RunTokenKeys{
+		Issuer: iss, Audience: accessapi.RunnerAudience, Keys: make([]accessapi.RunTokenKey, 0, len(keys)),
+	}
+	for _, k := range keys {
+		pub, ok := k.Key.(*ecdsa.PublicKey)
+		var point *ecdh.PublicKey
+		if ok && pub.Curve == elliptic.P256() {
+			point, err = pub.ECDH()
+		}
+		if point == nil {
+			return accessapi.RunTokenKeys{}, errors.Join(fmt.Errorf("%w: signing key %s is not a P-256 public key", ErrRunTokenKeys, k.KeyID), err)
+		}
+		// An uncompressed P-256 point is 0x04, then X and Y of 32 bytes each.
+		b := point.Bytes()
+		out.Keys = append(out.Keys, accessapi.RunTokenKey{
+			ID: k.KeyID, X: base64.RawURLEncoding.EncodeToString(b[1:33]), Y: base64.RawURLEncoding.EncodeToString(b[33:]),
+		})
+	}
+	return out, nil
 }
 
 // bare issues a token of kind for audience naming id, with no session

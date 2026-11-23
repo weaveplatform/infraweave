@@ -133,6 +133,8 @@ func (db) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return fakeT
 type tokens struct {
 	fail    error
 	expires map[string]time.Time
+	// keys fails RunTokenKeys alone.
+	keys error
 }
 
 func (t *tokens) WorkerToken(_ context.Context, w kernel.ULID, serial int64) (accessapi.Token, error) {
@@ -143,6 +145,13 @@ func (t *tokens) WorkerToken(_ context.Context, w kernel.ULID, serial int64) (ac
 
 func (t *tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, error) {
 	return accessapi.Token{Raw: "run." + run.String(), Expires: time.Unix(1e9, 0)}, t.fail
+}
+
+func (t *tokens) RunTokenKeys(context.Context) (accessapi.RunTokenKeys, error) {
+	return accessapi.RunTokenKeys{
+		Issuer: "https://iw.example.com", Audience: accessapi.RunnerAudience,
+		Keys: []accessapi.RunTokenKey{{ID: "k1", X: "x1", Y: "y1"}},
+	}, t.keys
 }
 
 func (t *tokens) VerifyWorker(_ context.Context, raw string) (accessapi.Bearer, error) {
@@ -515,5 +524,47 @@ func TestUnitProtocolRefused(t *testing.T) {
 		"registration": f.registration(t, ""),
 	}); code != http.StatusInternalServerError {
 		t.Errorf("mint down = %d", code)
+	}
+}
+
+// TestUnitProtocolRunTokenKeys checks that a worker session reads the run
+// token keys as public ES256 JSON Web Keys, and that no session, a run
+// token or a failed read answers no keys.
+func TestUnitProtocolRunTokenKeys(t *testing.T) {
+	f := newFixture(t)
+	_, reg := f.call(t, "/register", "", map[string]any{"registration": f.registration(t, "")})
+	token, _ := reg["sessionToken"].(string)
+	read := func(token string) (int, map[string]any) {
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, base+"/run-token-keys", nil)
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		w := httptest.NewRecorder()
+		f.h.ServeHTTP(w, r)
+		out := map[string]any{}
+		if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+			t.Fatalf("run-token-keys answered %q", w.Body.Bytes())
+		}
+		return w.Code, out
+	}
+	code, body := read(token)
+	keys, _ := body["keys"].([]any)
+	if code != http.StatusOK || body["issuer"] != "https://iw.example.com" ||
+		body["audience"] != accessapi.RunnerAudience || len(keys) != 1 {
+		t.Fatalf("run-token-keys = %d %v", code, body)
+	}
+	want := map[string]any{"kty": "EC", "crv": "P-256", "alg": "ES256", "use": "sig", "kid": "k1", "x": "x1", "y": "y1"}
+	if got, _ := keys[0].(map[string]any); !maps.Equal(got, want) {
+		t.Errorf("key = %v, want %v", got, want)
+	}
+	if code, _ := read(""); code != http.StatusUnauthorized {
+		t.Errorf("no session = %d", code)
+	}
+	if code, _ := read("run." + kernel.NewULID().String()); code != http.StatusUnauthorized {
+		t.Errorf("a run token = %d", code)
+	}
+	f.tokens.keys = errors.New("signing keys unreadable")
+	if code, _ := read(token); code != http.StatusInternalServerError {
+		t.Errorf("keys down = %d", code)
 	}
 }

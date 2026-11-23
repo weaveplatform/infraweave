@@ -97,6 +97,7 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the run "(\w+)" has no run container$`, l.noContainer)
 	sc.Step(`^the launcher "(\w+)" masked its initialization token in print and reports$`, l.initializationMasked)
 	sc.Step(`^the run "(\w+)" never started a container$`, l.noRunContainer)
+	l.signed(sc)
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
 		l.servers)

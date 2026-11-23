@@ -8,7 +8,8 @@
 // poll waits on a synctest bubble's clock. It checks each registration's
 // JWS against the pool's certificate, registers or resumes the worker it
 // names, holds polls until Answer or Assign queues a result or the poll's
-// wait passes, seals each assigned run's secrets for the pool, answers a
+// wait passes, answers a worker's session the run token keys RunToken
+// signs with, seals each assigned run's secrets for the pool, answers a
 // started report with execute and any other with exit, signs uploads to
 // an in-memory store that checks each PUT against its declaration and
 // serves a GET with no bearer token, indexes uploaded log chunks once,

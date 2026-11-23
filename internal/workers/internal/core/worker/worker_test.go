@@ -324,6 +324,17 @@ func (t tokens) RunToken(_ context.Context, run kernel.ULID) (accessapi.Token, e
 	return accessapi.Token{Raw: "run " + run.String(), Expires: time.Now().Add(time.Hour)}, nil
 }
 
+// RunTokenKeys answers one key, or errDown with failRun.
+func (t tokens) RunTokenKeys(context.Context) (accessapi.RunTokenKeys, error) {
+	if t.failRun {
+		return accessapi.RunTokenKeys{}, errDown
+	}
+	return accessapi.RunTokenKeys{
+		Issuer: "https://iw.example.com", Audience: accessapi.RunnerAudience,
+		Keys: []accessapi.RunTokenKey{{ID: "k1", X: "x", Y: "y"}},
+	}, nil
+}
+
 // limits refuses a new worker once the organization has max.
 type limits struct{ max int64 }
 

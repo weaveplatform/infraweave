@@ -313,6 +313,66 @@ func (e RunSpecToolName) Valid() bool {
 	}
 }
 
+// Defines values for RunTokenKeyAlg.
+const (
+	ES256 RunTokenKeyAlg = "ES256"
+)
+
+// Valid indicates whether the value is a known member of the RunTokenKeyAlg enum.
+func (e RunTokenKeyAlg) Valid() bool {
+	switch e {
+	case ES256:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunTokenKeyCrv.
+const (
+	P256 RunTokenKeyCrv = "P-256"
+)
+
+// Valid indicates whether the value is a known member of the RunTokenKeyCrv enum.
+func (e RunTokenKeyCrv) Valid() bool {
+	switch e {
+	case P256:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunTokenKeyKty.
+const (
+	EC RunTokenKeyKty = "EC"
+)
+
+// Valid indicates whether the value is a known member of the RunTokenKeyKty enum.
+func (e RunTokenKeyKty) Valid() bool {
+	switch e {
+	case EC:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunTokenKeyUse.
+const (
+	Sig RunTokenKeyUse = "sig"
+)
+
+// Valid indicates whether the value is a known member of the RunTokenKeyUse enum.
+func (e RunTokenKeyUse) Valid() bool {
+	switch e {
+	case Sig:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Signal.
 const (
 	Cycle Signal = "cycle"
@@ -947,6 +1007,54 @@ type RunSpecVariable struct {
 	WriteOnly bool `json:"writeOnly"`
 }
 
+// RunTokenKey A public ES256 signing key as an RFC 7517 JSON Web Key. It carries no private member.
+type RunTokenKey struct {
+	// Alg The one algorithm the key signs with.
+	Alg RunTokenKeyAlg `json:"alg"`
+
+	// Crv The key's curve.
+	Crv RunTokenKeyCrv `json:"crv"`
+
+	// Kid The key's ID, which a token's kid header names.
+	Kid string `json:"kid"`
+
+	// Kty The key type.
+	Kty RunTokenKeyKty `json:"kty"`
+
+	// Use The key's use.
+	Use RunTokenKeyUse `json:"use"`
+
+	// X The public point's x coordinate, base64url without padding.
+	X string `json:"x"`
+
+	// Y The public point's y coordinate, base64url without padding.
+	Y string `json:"y"`
+}
+
+// RunTokenKeyAlg The one algorithm the key signs with.
+type RunTokenKeyAlg string
+
+// RunTokenKeyCrv The key's curve.
+type RunTokenKeyCrv string
+
+// RunTokenKeyKty The key type.
+type RunTokenKeyKty string
+
+// RunTokenKeyUse The key's use.
+type RunTokenKeyUse string
+
+// RunTokenKeys What verifies a run token apart from the server that issued it: the issuer and the audience its claims name, and the public keys that may have signed it.
+type RunTokenKeys struct {
+	// Audience The one aud of every run token, infraweave-runner.
+	Audience string `json:"audience"`
+
+	// Issuer The iss of every run token the server issues.
+	Issuer string `json:"issuer"`
+
+	// Keys The public half of each signing key that verifies a token: the key that signs now, its published successor, and the keys it replaced until the last token they signed expires.
+	Keys []RunTokenKey `json:"keys"`
+}
+
 // Signal stop or kill asks the launcher to stop or kill its current run; cycle asks it to exit, at once when idle, after its run when busy.
 type Signal string
 
@@ -1204,6 +1312,13 @@ type ClientInterface interface {
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// WorkerRunTokenKeys Read the keys that verify run tokens
+	//
+	// Answers the issuer and audience of the run tokens the server issues, and the public keys that verify them, so a launcher admits an assignment's run token before it uses it. Only a registered worker's session reads them: no discovery document names these keys, so no relying party outside the worker protocol trusts them. No private key material is answered.
+	//
+	// Corresponds with GET /run-token-keys (the `WorkerRunTokenKeys` operationId).
+	WorkerRunTokenKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// WorkerRunArtifactsWithBody Record a run's uploaded artifacts
 	//
 	// Records artifacts, workspaces and observability artifacts of the run's current state once their uploads hold the declared size and SHA-256. One already recorded is left as it is. One whose upload is missing or does not match answers 422 validation-failed.
@@ -1450,6 +1565,23 @@ func (c *Client) WorkerRegisterWithBody(ctx context.Context, contentType string,
 // Corresponds with POST /register (the `WorkerRegister` operationId).
 func (c *Client) WorkerRegister(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerRegisterRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunTokenKeys Read the keys that verify run tokens
+//
+// Answers the issuer and audience of the run tokens the server issues, and the public keys that verify them, so a launcher admits an assignment's run token before it uses it. Only a registered worker's session reads them: no discovery document names these keys, so no relying party outside the worker protocol trusts them. No private key material is answered.
+//
+// Corresponds with GET /run-token-keys (the `WorkerRunTokenKeys` operationId).
+func (c *Client) WorkerRunTokenKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunTokenKeysRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -1829,6 +1961,33 @@ func NewWorkerRegisterRequestWithBody(server string, contentType string, body io
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewWorkerRunTokenKeysRequest constructs an http.Request for the WorkerRunTokenKeys method
+func NewWorkerRunTokenKeysRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/run-token-keys")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -2213,6 +2372,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /register (the `WorkerRegister` operationId).
 	WorkerRegisterWithResponse(ctx context.Context, body WorkerRegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRegisterResponse, error)
+
+	// WorkerRunTokenKeysWithResponse Read the keys that verify run tokens
+	//
+	// Answers the issuer and audience of the run tokens the server issues, and the public keys that verify them, so a launcher admits an assignment's run token before it uses it. Only a registered worker's session reads them: no discovery document names these keys, so no relying party outside the worker protocol trusts them. No private key material is answered.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /run-token-keys (the `WorkerRunTokenKeys` operationId).
+	WorkerRunTokenKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*WorkerRunTokenKeysResponse, error)
 
 	// WorkerRunArtifactsWithBodyWithResponse Record a run's uploaded artifacts
 	//
@@ -2774,6 +2942,101 @@ func (r WorkerRegisterResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r WorkerRegisterResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// WorkerRunTokenKeysResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunTokenKeys
+type WorkerRunTokenKeysResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunTokenKeysResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunTokenKeys
+type WorkerRunTokenKeysResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunTokenKeysResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunTokenKeys
+type WorkerRunTokenKeysResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunTokenKeysResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunTokenKeys
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerRunTokenKeysResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunTokenKeysResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunTokenKeysResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerRunTokenKeysResponse) GetJSON200() *RunTokenKeys {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunTokenKeysResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunTokenKeysResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunTokenKeysResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunTokenKeysResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunTokenKeysResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunTokenKeysResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunTokenKeysResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunTokenKeysResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3519,6 +3782,21 @@ func (c *ClientWithResponses) WorkerRegisterWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseWorkerRegisterResponse(rsp)
+}
+
+// WorkerRunTokenKeysWithResponse Read the keys that verify run tokens
+//
+// Answers the issuer and audience of the run tokens the server issues, and the public keys that verify them, so a launcher admits an assignment's run token before it uses it. Only a registered worker's session reads them: no discovery document names these keys, so no relying party outside the worker protocol trusts them. No private key material is answered.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /run-token-keys (the `WorkerRunTokenKeys` operationId).
+func (c *ClientWithResponses) WorkerRunTokenKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*WorkerRunTokenKeysResponse, error) {
+	rsp, err := c.WorkerRunTokenKeys(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunTokenKeysResponse(rsp)
 }
 
 // WorkerRunArtifactsWithBodyWithResponse Record a run's uploaded artifacts
@@ -4277,6 +4555,128 @@ func ParseWorkerRegisterResponse(rsp *http.Response) (*WorkerRegisterResponse, e
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerRegisterResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunTokenKeysResponse parses an HTTP response from a WorkerRunTokenKeysWithResponse call
+func ParseWorkerRunTokenKeysResponse(rsp *http.Response) (*WorkerRunTokenKeysResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunTokenKeysResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunTokenKeys
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerRunTokenKeysResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunTokenKeysResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunTokenKeysResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

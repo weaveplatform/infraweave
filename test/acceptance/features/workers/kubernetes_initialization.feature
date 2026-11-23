@@ -10,7 +10,10 @@ Feature: Initialization commands in Kubernetes helper Pods
   call's arguments reach the helper only through its attached standard
   input, so they appear in no Pod; the run's secrets reach no helper at
   all. A helper Pod is gone once its call ends, and a call that outlasts
-  the policy's deadline fails the run in PREPARING and leaves none.
+  the policy's deadline fails the run in PREPARING and leaves none. Each
+  slot's launcher admits a run's token against the server's run token keys
+  before the policy runs, and the policy verifies the token again against
+  the issuer, audience and keys it was admitted against.
   ref: decision 0009
   ref: decision 0016
 
@@ -45,6 +48,10 @@ Feature: Initialization commands in Kubernetes helper Pods
         input.static_run_environment.stack_slug == "infra"
         not startswith(probe.stdout, "1983\n")
       }
+      trust := input.run.token_trust
+      signed := io.jwt.decode_verify(input.run.token, {"cert": trust.jwks, "iss": trust.issuer, "aud": trust.audience})
+      deny contains "Unsigned run" if { not signed[0] }
+      deny contains "Another run" if { signed[2].sub != input.run.id }
       deny contains "Helper saw a secret" if { contains(probe.stdout, "s3cr3t") }
       deny contains "Helper saw its request" if { contains(probe.stdout, input.run.token) }
       deny contains "Slow verifier ran" if {
@@ -58,8 +65,8 @@ Feature: Initialization commands in Kubernetes helper Pods
     And the WorkerPool "build" eventually reports ExecutorAvailable True "LauncherRunning"
     And token "h" eventually reads the OpenTofu versions through A as the fixture's stable releases newest first
 
-  @op:runTrigger @case:success
-  Scenario: A run's initialization commands verify it in hardened helper Pods of its runner image
+  @op:runTrigger @op:workerRunTokenKeys @case:success
+  Scenario: A run's signed token and initialization commands verify it in hardened helper Pods of its runner image
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}","workerPool":"{build}","autodeploy":true,"vendorConfig":{"opentofu":{}}},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/configs" with '{"id":"TF_VAR_secret","type":"ENVIRONMENT_VARIABLE","value":"s3cr3t-h3lp3r","writeOnly":true}' through A
     When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A

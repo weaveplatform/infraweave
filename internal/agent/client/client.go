@@ -344,3 +344,36 @@ func (c *Client) LogChunks(ctx context.Context, token, run string, in wire.LogCh
 	}
 	return nil
 }
+
+// MaxRunTokenKeys bounds the run token keys' answer RunTokenKeys reads.
+const MaxRunTokenKeys = 1 << 20
+
+// ErrTooLarge is an answer beyond the bound its call reads.
+var ErrTooLarge = errors.New("the answer exceeds its bound")
+
+// RunTokenKeys reads the issuer, audience and public keys of the run
+// tokens the server issues, with the worker's session token. An answer
+// over MaxRunTokenKeys is ErrTooLarge, read no further.
+func (c *Client) RunTokenKeys(ctx context.Context, session string) (wire.RunTokenKeys, error) {
+	const op = "read the run token keys"
+	res, err := c.c.WorkerRunTokenKeys(ctx, bearer(session))
+	if err != nil {
+		return wire.RunTokenKeys{}, fmt.Errorf("%s: %w", op, err)
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(res.Body, MaxRunTokenKeys+1))
+	if err != nil {
+		return wire.RunTokenKeys{}, fmt.Errorf("%s: %w", op, err)
+	}
+	if len(body) > MaxRunTokenKeys {
+		return wire.RunTokenKeys{}, fmt.Errorf("%s: %w", op, ErrTooLarge)
+	}
+	if res.StatusCode != http.StatusOK {
+		return wire.RunTokenKeys{}, refused(op, res, body)
+	}
+	var out wire.RunTokenKeys
+	if err := json.Unmarshal(body, &out); err != nil {
+		return wire.RunTokenKeys{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return out, nil
+}

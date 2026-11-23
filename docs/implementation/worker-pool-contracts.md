@@ -442,12 +442,12 @@ metadata ingestion or changing its unknown-metadata policy semantics.
 The local adapter emits a typed projection, checks required facts, the supported
 run-type enum and assignment run/state/version consistency. Identity strings
 come from the authenticated server/pool-token producers; the adapter does not
-independently parse every ULID or verify the run JWT.
+independently parse every ULID. The launcher verifies the run JWT before the
+adapter runs, as below.
 
 The local implementation's combined deadline honors caller cancellation and
-any earlier context deadline. Issued/restart-safe preparation deadlines and
-independent JWT verification retain their own delivery owners; a local timeout
-proves neither. Worker programs compile `exec` against the worker engine's own
+any earlier context deadline. Issued/restart-safe preparation deadlines retain
+their own delivery owner; a local timeout does not prove them. Worker programs compile `exec` against the worker engine's own
 capability set; server policy/simulation still cannot compile it, also after a
 worker compilation has cached the same body, and worker queries use a separate
 cache identity. The
@@ -472,7 +472,11 @@ Initialization input is strict version 1, and contains exactly:
   "run": {
     "id": "ULID", "type": "TRACKED", "user_provided_metadata": [],
     "commit": {"hash": "commit", "branch": "branch", "message": "message"},
-    "token": "server-run-JWT"
+    "token": "server-run-JWT",
+    "token_trust": {
+      "issuer": "server-issuer", "audience": "infraweave-runner",
+      "jwks": "{\"keys\":[RFC 7517 public ES256 keys]}"
+    }
   },
   "static_run_environment": {
     "stack_id": "ULID", "stack_slug": "slug", "space": "space-slug",
@@ -494,19 +498,29 @@ or files. C68's vendor input remains unobserved; this is infraweave's own schema
 The server JWT is the current bare [runner credential](../../internal/access/internal/core/authn/worker.go):
 issuer from server, `aud=infraweave-runner`, `iw_kind=runner`, subject run ULID,
 issued/not-before/expiry times and jti. It contains **no signed pool/account/space
-claim**. Local verification checks signature against pinned trusted server/JWKS,
-issuer, audience, kind, subject and time; pool binding is from the authenticated
-assignment and run/state-bound pool envelope, not a fictional JWT claim. Policy
+claim**. The launcher verifies it natively before the specification is fetched:
+signature against the public keys `GET /worker/v1/run-token-keys` answers the
+worker session, issuer, audience, kind, subject (the assigned run), jti and
+times within 30 seconds; pool binding is from the authenticated assignment and
+run/state-bound pool envelope, not a fictional JWT claim. A refused token
+fails the run in PREPARING with `signed run admission refused:` and one fixed
+reason, and keys that cannot be read or are invalid with `signed run admission
+failed:`; neither names the token, a claim or a key. `run.token_trust` carries
+the issuer, audience and keys (a JWK Set string, sorted by `kid`) that admitted
+the token, so `io.jwt.decode_verify(input.run.token, {"cert":
+input.run.token_trust.jwks, "iss": ..., "aud": ...})` verifies it again in
+either dialect. Policy
 may require an additional user-provided signature and verify its stack/commit
 claims, independently of trusting server delivery. Exposing a token does not
 make that extra admission automatic. An exec verifier is only as trustworthy as
 its image: admission policies must pin/constrain the resolved immutable image
 digest and trusted verifier, or verify natively against pinned keys. A stack
 author-controlled image can fake exit zero; successful exec alone is no signature
-proof. Key fetch uses configured HTTPS server and
-CA, bounded 1-MiB JWKS response, 30-second call under total deadline, cached at
-most five minutes, refreshed once for unknown kid. TLS/JWKS failure fails closed.
-No user metadata or key URL chooses another issuer/trust endpoint.
+proof. Key fetch uses the configured server and CA with the worker session,
+a bounded 1-MiB response of at most 16 keys, a 30-second call under the total
+deadline, a cache of at most five minutes, and one refresh for an unknown kid.
+TLS or key failure fails closed. No token header, claim, user metadata or key
+URL chooses another issuer or trust endpoint.
 
 Evaluate policy **before source fetch/restore and override-tool acquisition**.
 Image resolution/pull and a policy helper may occur first because verifier code

@@ -222,7 +222,7 @@
       "domain": "agent",
       "contract": "Bare runner JWT verification and independent user-metadata signature admission",
       "requiredEvidence": "Actual signed/forged/expired/wrongissuer/audience/run and stack/commit mismatch cases",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "availability",

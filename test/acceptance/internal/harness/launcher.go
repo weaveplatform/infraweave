@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -243,6 +245,7 @@ type Refusal struct {
 const (
 	reportsPath = "/worker/v1/runs/{run}/reports"
 	statePath   = "/state/v1/*"
+	pollPath    = "/worker/v1/poll"
 )
 
 // init registers the state backend's lock methods with chi, which routes
@@ -275,9 +278,14 @@ type Relay struct {
 	calls       []Call
 	refusals    []Refusal
 	refusePlans bool
-	reports     *gate
-	unlocks     *gate
-	writes      *gate
+	// forge, while set, makes the next assignment's run token the relay
+	// delivers; real maps each forged token it delivered to the server's.
+	forge     func(real string) string
+	real      map[string]string
+	delivered []Delivered
+	reports   *gate
+	unlocks   *gate
+	writes    *gate
 }
 
 // RefusePlanUploads injects a permanent declaration refusal for the actual runner.
@@ -292,14 +300,20 @@ func StartRelay(ctx context.Context, target string) (*Relay, error) {
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 	r := &Relay{
 		URL: "http://" + ln.Addr().String(), Port: port, reports: newGate(), unlocks: newGate(),
-		writes: newGate(),
+		writes: newGate(), real: map[string]string{},
 	}
 	to := &url.URL{Scheme: "http", Host: target}
 	proxy := &httputil.ReverseProxy{
-		Rewrite: func(pr *httputil.ProxyRequest) { pr.SetURL(to) },
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(to)
+			r.restore(pr.Out)
+		},
 		ModifyResponse: func(resp *http.Response) error {
 			req := resp.Request
 			r.record(req.Method, req.URL.Path, resp.StatusCode)
+			if req.URL.Path == pollPath && resp.StatusCode == http.StatusOK {
+				return r.deliver(resp)
+			}
 			if resp.StatusCode != http.StatusLocked {
 				return nil
 			}
@@ -375,6 +389,91 @@ func (r *Relay) refused(f Refusal) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.refusals = append(r.refusals, f)
+}
+
+// Delivered is a run token a relay delivered in a poll's assignment: the
+// run, the token the launcher received, and whether the relay forged it
+// in place of the server's.
+type Delivered struct {
+	Run    string
+	Token  string
+	Forged bool
+}
+
+// Forge makes the relay deliver, in the next poll answer that assigns a
+// run, forge of the server's run token in its place, and pass each later
+// call that carries the forged token on with the server's. It stands for
+// a delivery path between an honest server and the launcher that
+// tampers with the token, which only the launcher's own verification
+// can catch. A forged token is a deliberate tamper of a genuine one, or
+// a token signed by a key the scenario made: never a reference capture.
+func (r *Relay) Forge(forge func(real string) string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.forge = forge
+}
+
+// Deliveries are the run tokens the relay delivered so far, in order.
+func (r *Relay) Deliveries() []Delivered {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]Delivered(nil), r.delivered...)
+}
+
+// deliver records the run token of a poll answer's assignment, forging
+// it when the scenario asked, and rewrites the answer to carry what it
+// delivers.
+func (r *Relay) deliver(resp *http.Response) error {
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("relay: read a poll answer: %w", err)
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	var answer map[string]json.RawMessage
+	if json.Unmarshal(body, &answer) != nil || answer["assignment"] == nil {
+		return nil
+	}
+	var a map[string]any
+	if err := json.Unmarshal(answer["assignment"], &a); err != nil {
+		return fmt.Errorf("relay: read a poll's assignment: %w", err)
+	}
+	token, _ := a["runToken"].(string)
+	run, _ := a["run"].(string)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d := Delivered{Run: run, Token: token}
+	if r.forge != nil {
+		d.Token, d.Forged = r.forge(token), true
+		r.forge, r.real[d.Token] = nil, token
+		a["runToken"] = d.Token
+		if answer["assignment"], err = json.Marshal(a); err != nil {
+			return fmt.Errorf("relay: forge a poll's assignment: %w", err)
+		}
+		if body, err = json.Marshal(answer); err != nil {
+			return fmt.Errorf("relay: forge a poll answer: %w", err)
+		}
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		resp.ContentLength = int64(len(body))
+		resp.Header.Set("Content-Length", strconv.Itoa(len(body)))
+	}
+	r.delivered = append(r.delivered, d)
+	return nil
+}
+
+// restore puts the server's run token back on a call that carries one the
+// relay forged.
+func (r *Relay) restore(out *http.Request) {
+	forged, ok := strings.CutPrefix(out.Header.Get("Authorization"), "Bearer ")
+	if !ok {
+		return
+	}
+	r.mu.Lock()
+	real, found := r.real[forged]
+	r.mu.Unlock()
+	if found {
+		out.Header.Set("Authorization", "Bearer "+real)
+	}
 }
 
 // Hold makes the relay hold the runners' reports from now on.

@@ -161,8 +161,10 @@ imports it into the node with `ctr`, and the node pulls the pinned runner
 images from GHCR. Pods reach the front at the lab network's gateway on Linux,
 or at `host.docker.internal` under Docker Desktop, where host processes reach
 the same address through a loopback proxy; coredns is disabled, so every
-address is an IP. They do not claim managed cloud deployment or signed-run
-admission, which are not implemented by this lab.
+address is an IP. `kubernetes_initialization.feature` has each slot's
+launcher admit a run's server-signed token against the run token keys before
+its initialization policy verifies it again and runs its helper Pods. They do
+not claim managed cloud deployment, which this lab does not implement.
 Empty, skipped and undefined scenario reports still fail the controller census.
 
 Before that CI batch, the real failure controls run:

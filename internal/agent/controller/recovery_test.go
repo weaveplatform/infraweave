@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stesting "k8s.io/client-go/testing"
 
+	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/kubernetes"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -30,7 +31,7 @@ func (e *env) runOn(c *Controller, pool string) (string, string) {
 	})
 	run := kernel.NewULID().String()
 	e.in.assign(pool, wire.Assignment{
-		Run: run, RunToken: "run-token", State: wire.AssignmentStatePREPARING, StateVersion: 2,
+		Run: run, RunToken: agenttest.RunToken(run), State: wire.AssignmentStatePREPARING, StateVersion: 2,
 		PreparingDeadline: time.Now().Add(15 * time.Minute).Unix(),
 	}, wire.RunSpec{}, wire.RunSpecSecrets{ApiToken: "opened-secret"})
 	e.until(c, "build", func(_ WorkerPool, ws []Worker) bool {

@@ -219,10 +219,12 @@ type Store interface {
 }
 
 // Tokens mints the worker session tokens registrations and polls answer,
-// and the run tokens of the runs polls claim.
+// and the run tokens of the runs polls claim, and answers the keys that
+// verify those run tokens.
 type Tokens interface {
 	WorkerToken(ctx context.Context, worker kernel.ULID, serial int64) (accessapi.Token, error)
 	RunToken(ctx context.Context, run kernel.ULID) (accessapi.Token, error)
+	RunTokenKeys(ctx context.Context) (accessapi.RunTokenKeys, error)
 }
 
 // Limits admits one more registered worker, as the features domain's

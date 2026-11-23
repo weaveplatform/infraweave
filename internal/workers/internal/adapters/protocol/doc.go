@@ -1,6 +1,8 @@
 // Package protocol is the worker API's adapter: Server is the generated
 // strict server of api/worker.openapi.yaml, registering, polling and
-// deregistering workers through the worker package. internal/app mounts
+// deregistering workers through the worker package, and answering a
+// worker's session the issuer, audience and public keys that verify run
+// tokens, as RFC 7517 keys with no private member. internal/app mounts
 // it behind the controls every API surface shares, whose authenticator
 // admits worker session tokens, and run tokens on the run specification's
 // route alone, and puts each one's bearer on the request's context, which

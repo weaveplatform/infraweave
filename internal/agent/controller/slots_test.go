@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	k8stesting "k8s.io/client-go/testing"
 
+	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/kubernetes"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -200,7 +201,7 @@ func TestUnitSlotsExecuteRunsInPods(t *testing.T) {
 	run := kernel.NewULID().String()
 	deadline := time.Now().Add(900 * time.Second).Truncate(time.Second)
 	e.in.assign(remote.id, wire.Assignment{
-		Run: run, RunToken: "run-token", State: wire.AssignmentStatePREPARING, StateVersion: 2, PreparingDeadline: deadline.Unix(),
+		Run: run, RunToken: agenttest.RunToken(run), State: wire.AssignmentStatePREPARING, StateVersion: 2, PreparingDeadline: deadline.Unix(),
 	},
 		wire.RunSpec{}, wire.RunSpecSecrets{ApiToken: "opened-secret"})
 	name := kubernetes.PodName(run, 2)

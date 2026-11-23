@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -17,6 +22,9 @@ import (
 	"testing/synctest"
 	"time"
 	"unicode/utf8"
+
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
@@ -242,12 +250,28 @@ func (w *world) assignTool(t *testing.T, run string, state wire.AssignmentState,
 	w.queue(t, r)
 }
 
+// subject is the sub of the run token raw, empty for any other string.
+func subject(raw string) string {
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	var claims struct {
+		Sub string `json:"sub"`
+	}
+	if err != nil || json.Unmarshal(payload, &claims) != nil {
+		return ""
+	}
+	return claims.Sub
+}
+
 // newRun is an assignment of run in state, with image when it is set.
 func newRun(run string, state wire.AssignmentState, image string) agenttest.Run {
 	r := agenttest.Run{
 		Assignment: wire.Assignment{
 			Run:               run,
-			RunToken:          "token-" + run,
+			RunToken:          agenttest.RunToken(run),
 			State:             state,
 			StateVersion:      4,
 			PreparingDeadline: time.Now().Add(15 * time.Minute).Unix(),
@@ -399,7 +423,7 @@ func TestUnitLauncherExecutesARun(t *testing.T) {
 			t.Fatal(err)
 		}
 		if h.Endpoint != client.Base(agenttest.Endpoint) || h.Run != "run-1" ||
-			h.RunToken != "token-run-1" || h.Assigned != wire.AssignmentStatePREPARING ||
+			subject(h.RunToken) != "run-1" || h.Assigned != wire.AssignmentStatePREPARING ||
 			h.StateVersion != 4 || h.Secrets.ApiToken != "api-run-1" ||
 			h.Secrets.Environment["TF_VAR_x"] != "1" || h.Spec.Sealed != nil ||
 			h.Spec.Hooks["before_init"][0] != "echo hi" ||
@@ -1249,7 +1273,7 @@ func TestUnitLauncherReportsAFailedPreparation(t *testing.T) {
 			t.Fatalf("reports: %+v", reps)
 		}
 		rep := reps[0]
-		if rep.Run != "run-1" || rep.Token != "token-run-1" || rep.Report.Event != wire.Failed ||
+		if rep.Run != "run-1" || subject(rep.Token) != "run-1" || rep.Report.Event != wire.Failed ||
 			rep.Report.State != "PREPARING_APPLY" || rep.Report.StateVersion != 4 ||
 			!strings.Contains(*rep.Report.Details, "409") {
 			t.Fatalf("report: %+v %s", rep, *rep.Report.Details)
@@ -1573,4 +1597,139 @@ func TestUnitLauncherPolicyExecRunsInHelpersOfTheRunsImage(t *testing.T) {
 			})
 		})
 	}
+}
+
+// forgedRunToken is a run token of run with the server's claims, signed
+// by a key the server does not hold.
+func forgedRunToken(t *testing.T, run string) string {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	js, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key},
+		(&jose.SignerOptions{}).WithType("JWT").WithHeader(jose.HeaderKey("kid"), "unrelated-installation"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	raw, err := jwt.Signed(js).Claims(map[string]any{
+		"iss": agenttest.Issuer, "aud": "infraweave-runner", "sub": run, "iw_kind": "runner", "jti": "jti",
+		"iat": now.Unix(), "nbf": now.Unix(), "exp": now.Add(time.Hour).Unix(),
+	}).Serialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+// TestUnitLauncherAdmitsOnlyTheSignedRun checks that a run token the
+// server's keys do not prove as the assigned run's, or keys that cannot
+// be read, fail the run in its preparing state before its specification,
+// policy, source, tools or container, with a fixed note that names no
+// token, and that the policy sees the trust a genuine token was admitted
+// against.
+func TestUnitLauncherAdmitsOnlyTheSignedRun(t *testing.T) {
+	for name, c := range map[string]struct {
+		token   func(t *testing.T) string
+		refuse  bool
+		details string
+	}{
+		"unrelated key": {
+			func(t *testing.T) string { return forgedRunToken(t, "run-signed") },
+			false, "signed run admission refused: the run token names no key the server verifies with",
+		},
+		"another run": {
+			func(*testing.T) string { return agenttest.RunToken("run-other") },
+			false, "signed run admission refused: the run token names another run",
+		},
+		"keys unread": {
+			func(*testing.T) string { return agenttest.RunToken("run-signed") },
+			true, "signed run admission failed: the server's run token keys could not be read",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				w := newWorld(t)
+				cfg := w.config()
+				cfg.InitializationPolicy = filepath.Join(w.dir, "initialization.rego")
+				if err := os.WriteFile(cfg.InitializationPolicy, []byte("package infraweave\ndeny contains \"evaluated\" if { print(input.run.token) }"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				l, err := launcher.New(launcher.Deps{
+					Config: cfg, Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources, Tools: w.tools,
+					Log: slog.New(slog.NewTextHandler(w.log, nil)),
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				done := make(chan error, 1)
+				go func() { done <- l.Run(ctx) }()
+				synctest.Wait()
+				if c.refuse {
+					w.srv.Refuse("run-token-keys", http.StatusServiceUnavailable, 1)
+				}
+				r := newRun("run-signed", wire.AssignmentStatePREPARING, "")
+				r.Assignment.RunToken = c.token(t)
+				w.queue(t, r)
+				reports := w.srv.Reports()
+				if len(reports) != 1 || reports[0].Report.State != wire.WorkerStatePREPARING || reports[0].Report.Event != wire.Failed ||
+					reports[0].Report.Details == nil || *reports[0].Report.Details != c.details {
+					t.Fatalf("refusal: %+v", reports)
+				}
+				if len(w.exec.Jobs()) != 0 || len(w.exec.Commands()) != 0 || len(w.sources.dirs) != 0 || len(w.tools.fetched()) != 0 {
+					t.Fatal("a refused run token reached preparation or execution")
+				}
+				if strings.Contains(w.log.String(), r.Assignment.RunToken) {
+					t.Fatal("the refusal logged the run token")
+				}
+				cancel()
+				if err := <-done; err != nil {
+					t.Fatal(err)
+				}
+			})
+		})
+	}
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		cfg := w.config()
+		cfg.InitializationPolicy = filepath.Join(w.dir, "initialization.rego")
+		policy := `package infraweave
+trust := input.run.token_trust
+verified := io.jwt.decode_verify(input.run.token, {"cert": trust.jwks, "iss": trust.issuer, "aud": trust.audience})
+deny contains "unverified" if { not verified[0] }
+deny contains "another run" if { verified[2].sub != input.run.id }
+`
+		if err := os.WriteFile(cfg.InitializationPolicy, []byte(policy), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		l, err := launcher.New(launcher.Deps{
+			Config: cfg, Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources, Tools: w.tools,
+			Log: slog.New(slog.NewTextHandler(w.log, nil)),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan error, 1)
+		go func() { done <- l.Run(ctx) }()
+		synctest.Wait()
+		r := newRun("run-signed", wire.AssignmentStatePREPARING, "")
+		stack, branch := "immutable-stack", "main"
+		r.Spec.Run = wire.RunSpecRun{
+			Id: r.Assignment.Run, Account: "account", State: string(wire.AssignmentStatePREPARING),
+			StateVersion: r.Assignment.StateVersion, Type: wire.RunSpecRunType("TRACKED"),
+		}
+		r.Spec.Stack = wire.RunSpecStack{Id: "slug", Ulid: &stack, Space: "legacy"}
+		r.Spec.Commit.Branch = &branch
+		w.queue(t, r)
+		if len(w.exec.Jobs()) != 1 || len(w.srv.Reports()) != 0 {
+			t.Fatalf("a genuine run token verified by the policy: %+v", w.srv.Reports())
+		}
+		cancel()
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	})
 }
