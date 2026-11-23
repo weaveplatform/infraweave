@@ -102,13 +102,14 @@ Feature: Kubernetes run recovery
   @op:workerDrainSet @op:runTrigger @case:success
   Scenario: A drained worker finishes its run through a lost connection, and claims no other until it is undrained
     Given the worker of the WorkerPool "build" is kept as "w"
-    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Slow","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}","workerPool":"{build}","autodeploy":true,"vendorConfig":{"opentofu":{}},"beforePlan":["sleep 30"]},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Slow","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"{team}","workerPool":"{build}","autodeploy":true,"vendorConfig":{"opentofu":{}},"beforePlan":["echo the hook waits","sleep 75"]},"manageState":true}' through B
     When token "h" sends "POST /api/v1/stacks/slow/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "first"
     And the run "first" eventually has a handed-off Pod
     And token "h" sends "PUT /api/v1/worker-pools/{build}/workers/{w}/drain" with '{"drain":true}' through B
     Then it answers 200
     And the Worker of the WorkerPool "build" eventually reports Drained True "Drained"
+    And a worker controller eventually logs the runner output "the hook waits"
     When the HTTPS front answers 502 for 30 seconds
     Then token "h" eventually reads the run "first" in the state "FINISHED" through A
     And the run "first" ran in 1 Pod

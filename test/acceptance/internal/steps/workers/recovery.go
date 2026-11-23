@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -44,6 +45,7 @@ func (c *controllerSteps) registerRecovery(sc *godog.ScenarioContext) {
 	sc.Step(`^the worker of the WorkerPool "(\w+)" is kept as "(\w+)"$`, c.keepWorker)
 	sc.Step(`^the Worker of the WorkerPool "(\w+)" eventually reports (\w+) (True|False) "(\w+)"$`, c.workerReports)
 	sc.Step(`^the HTTPS front answers 502 for (\d+) seconds$`, c.cutFront)
+	sc.Step(`^a worker controller eventually logs the runner output "([^"]+)"$`, c.runnerSaid)
 }
 
 // unschedulable applies a Managed WorkerPool whose Pods select a node
@@ -287,4 +289,20 @@ func (c *controllerSteps) cutFront(ctx context.Context, seconds int) error {
 	case <-time.After(time.Duration(seconds) * time.Second):
 		return nil
 	}
+}
+
+// runnerSaid waits until a running controller logs a runner output line
+// that holds text.
+func (c *controllerSteps) runnerSaid(ctx context.Context, text string) error {
+	//nolint:wrapcheck // names what it waited for
+	return deps.Eventually(ctx, "a runner to write "+text, func(context.Context) (bool, error) {
+		for _, srv := range c.running {
+			for line := range bytes.Lines(srv.Stdout()) {
+				if bytes.Contains(line, []byte(`"msg":"runner output"`)) && bytes.Contains(line, []byte(text)) {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	})
 }
