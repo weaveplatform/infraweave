@@ -277,7 +277,7 @@ func (c *controllerSteps) clean(ctx context.Context, secret string) error {
 			return fmt.Errorf("%w: a Worker of %s holds the secret", harness.ErrStep, ns)
 		}
 	}
-	for i, srv := range c.running {
+	for i, srv := range slices.Concat(c.running, c.killed) {
 		if bytes.Contains(srv.Stdout(), []byte(secret)) || bytes.Contains(srv.Stderr(), []byte(secret)) {
 			return fmt.Errorf("%w: worker controller %d logged the secret", harness.ErrStep, i+1)
 		}
@@ -314,7 +314,7 @@ func (c *controllerSteps) noPod(ctx context.Context, run string) error {
 func (c *controllerSteps) evidence() error {
 	dir := filepath.Join(c.w.Suite.Out, harness.Slug(c.w.Name))
 	var err error
-	for i, srv := range c.running {
+	for i, srv := range slices.Concat(c.running, c.killed) {
 		d := filepath.Join(dir, fmt.Sprintf("worker-controller-%d", i+1))
 		if mkErr := os.MkdirAll(d, 0o750); mkErr != nil {
 			err = errors.Join(err, mkErr)

@@ -26,6 +26,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
 func TestUnitIdentityKeys(t *testing.T) {
@@ -118,28 +119,55 @@ func TestUnitIdentityTokens(t *testing.T) {
 }
 
 func TestUnitState(t *testing.T) {
+	ctx := t.Context()
 	dir := t.TempDir()
-	if s := load(dir); s != (state{}) {
-		t.Fatalf("no state: %+v", s)
+	store := FileStore(dir)
+	if s, err := store.Load(ctx); err != nil || s != (State{}) {
+		t.Fatalf("no state: %+v, %v", s, err)
 	}
-	if err := forget(dir); err != nil {
+	if err := store.Forget(ctx); err != nil {
 		t.Fatalf("forget no state: %v", err)
 	}
 	if err := os.Mkdir(filepath.Join(dir, stateFile+".tmp"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := save(dir, state{Pool: "p"}); err == nil {
+	if err := store.Save(ctx, State{Pool: "p"}); err == nil {
 		t.Fatal("save over a directory")
 	}
 
 	dir = t.TempDir()
+	store = FileStore(dir)
+	want := State{
+		Pool: "p", Worker: "w", Run: "r", Assigned: wire.AssignmentStatePREPARINGAPPLY, StateVersion: 4,
+		PreparingDeadline: time.Unix(1700000000, 0).UTC(), Kill: true,
+		Exit: &wire.ContainerExit{Code: 137, Reason: wire.Killed},
+	}
+	if err := store.Save(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load(ctx)
+	if err != nil || got.Exit == nil || *got.Exit != *want.Exit {
+		t.Fatalf("Load = %+v, %v", got, err)
+	}
+	got.Exit, want.Exit = nil, nil
+	if got != want {
+		t.Fatalf("Load = %+v, want %+v", got, want)
+	}
+	reset := got
+	reset.reset()
+	if reset != (State{Pool: "p", Worker: "w"}) {
+		t.Fatalf("reset = %+v", reset)
+	}
+
+	dir = t.TempDir()
+	store = FileStore(dir)
 	if err := os.MkdirAll(filepath.Join(dir, stateFile, "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := save(dir, state{Pool: "p"}); err == nil {
+	if err := store.Save(ctx, State{Pool: "p"}); err == nil {
 		t.Fatal("save renamed over a directory")
 	}
-	if err := forget(dir); err == nil {
+	if err := store.Forget(ctx); err == nil {
 		t.Fatal("forget removed a directory")
 	}
 
@@ -147,6 +175,7 @@ func TestUnitState(t *testing.T) {
 	var log bytes.Buffer
 	l := &Launcher{api: api, d: Deps{
 		Config: config.Launcher{CacheDir: dir}, Log: slog.New(slog.NewTextHandler(&log, nil)),
+		Store: store,
 	}}
 	l.saveOrLog(t.Context())
 	l.deregister(t.Context(), "stopped")

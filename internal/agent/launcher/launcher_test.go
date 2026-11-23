@@ -62,6 +62,9 @@ type world struct {
 	dir     string
 	log     *logs
 	image   string
+	// store, when set, keeps the launchers' state instead of the cache
+	// directory.
+	store launcher.Store
 }
 
 func newWorld(t *testing.T) *world {
@@ -93,7 +96,7 @@ func (w *world) launcher(t *testing.T) *launcher.Launcher {
 		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources,
 		Tools:   w.tools,
 		Log:     slog.New(slog.NewTextHandler(w.log, nil)),
-		Version: "1.2.3", OS: "linux", Arch: "arm64",
+		Version: "1.2.3", OS: "linux", Arch: "arm64", Store: w.store,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -109,9 +112,10 @@ type fakeSources struct {
 	creds    []*wire.RunSpecSourceCredential
 	restored []string
 	// errs fail the first fetches and restores, in order, and err every
-	// later one.
-	errs []error
-	err  error
+	// later one; block holds each fetch until its context ends.
+	errs  []error
+	err   error
+	block bool
 }
 
 func (f *fakeSources) next() error {
@@ -123,9 +127,13 @@ func (f *fakeSources) next() error {
 	return f.err
 }
 
-func (f *fakeSources) Fetch(_ context.Context, dir string, _ wire.RunSpec, cred *wire.RunSpecSourceCredential) error {
+func (f *fakeSources) Fetch(ctx context.Context, dir string, _ wire.RunSpec, cred *wire.RunSpecSourceCredential) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.block {
+		<-ctx.Done()
+		return ctx.Err()
+	}
 	f.dirs, f.creds = append(f.dirs, dir), append(f.creds, cred)
 	if err := os.MkdirAll(filepath.Join(dir, source.Checkout), 0o750); err != nil {
 		return err
@@ -238,10 +246,11 @@ func (w *world) assignTool(t *testing.T, run string, state wire.AssignmentState,
 func newRun(run string, state wire.AssignmentState, image string) agenttest.Run {
 	r := agenttest.Run{
 		Assignment: wire.Assignment{
-			Run:          run,
-			RunToken:     "token-" + run,
-			State:        state,
-			StateVersion: 4,
+			Run:               run,
+			RunToken:          "token-" + run,
+			State:             state,
+			StateVersion:      4,
+			PreparingDeadline: time.Now().Add(15 * time.Minute).Unix(),
 		},
 		Spec: wire.RunSpec{
 			Run:   wire.RunSpecRun{},

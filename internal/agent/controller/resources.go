@@ -122,6 +122,9 @@ type WorkerStatus struct {
 
 // AssignmentStatus records durable identity/acknowledgement, not a handoff's
 // secret contents. A stale replica cannot infer ownership from a Pod name.
+// It is the slot's launcher state: the replica that next leads resumes
+// the run, its preparing deadline and run timeout, a kill asked of it and
+// an exit the server has not yet taken from it.
 type AssignmentStatus struct {
 	RunID               string       `json:"runID"`            //nolint:tagliatelle // the protocol uses runID
 	PodUID              string       `json:"podUID,omitempty"` //nolint:tagliatelle // Kubernetes UIDs are opaque
@@ -136,6 +139,7 @@ type AssignmentStatus struct {
 	ExitCode            *int32       `json:"exitCode,omitempty"`
 	ExitReason          string       `json:"exitReason,omitempty"`
 	HandoffAcknowledged bool         `json:"handoffAcknowledged"`
+	KillRequested       bool         `json:"killRequested,omitempty"`
 }
 
 func (p WorkerPool) Owner(clusterID string) kernel.WorkerOwner {

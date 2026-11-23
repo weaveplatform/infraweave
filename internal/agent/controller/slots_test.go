@@ -198,7 +198,10 @@ func TestUnitSlotsExecuteRunsInPods(t *testing.T) {
 	}
 
 	run := kernel.NewULID().String()
-	e.in.assign(remote.id, wire.Assignment{Run: run, RunToken: "run-token", State: wire.AssignmentStatePREPARING, StateVersion: 2},
+	deadline := time.Now().Add(900 * time.Second).Truncate(time.Second)
+	e.in.assign(remote.id, wire.Assignment{
+		Run: run, RunToken: "run-token", State: wire.AssignmentStatePREPARING, StateVersion: 2, PreparingDeadline: deadline.Unix(),
+	},
 		wire.RunSpec{}, wire.RunSpecSecrets{ApiToken: "opened-secret"})
 	name := kubernetes.PodName(run, 2)
 	e.until(c, "build", func(wp WorkerPool, ws []Worker) bool {
@@ -207,7 +210,9 @@ func TestUnitSlotsExecuteRunsInPods(t *testing.T) {
 	})
 	a := e.workers("build")[0].Status.Assignment
 	if a.RunID != run || a.StateVersion != 2 || a.State != string(wire.AssignmentStatePREPARING) || a.PodName != name ||
-		a.HandoffPhase != string(kubernetes.PhaseAcknowledged) || a.StartedAt == nil || a.RunDeadline == nil || a.PreparationDeadline == nil {
+		a.HandoffPhase != string(
+			kubernetes.PhaseAcknowledged,
+		) || a.StartedAt == nil || a.RunDeadline == nil || a.PreparationDeadline == nil || !a.PreparationDeadline.Time.Equal(deadline) {
 		t.Fatalf("assignment %+v", a)
 	}
 	p, err := e.core.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -215,7 +220,7 @@ func TestUnitSlotsExecuteRunsInPods(t *testing.T) {
 		t.Fatal(err)
 	}
 	if p.OwnerReferences[0].UID != w.UID || p.Spec.Containers[0].Resources.Requests.Cpu().String() != "100m" ||
-		p.Spec.Volumes[2].EmptyDir.SizeLimit.String() != "2Gi" || *p.Spec.ActiveDeadlineSeconds != 5220 {
+		p.Spec.Volumes[2].EmptyDir.SizeLimit.String() != "2Gi" || *p.Spec.ActiveDeadlineSeconds > 5220 || *p.Spec.ActiveDeadlineSeconds < 5200 {
 		t.Fatalf("pod %+v", p.Spec)
 	}
 	k.mu.Lock()

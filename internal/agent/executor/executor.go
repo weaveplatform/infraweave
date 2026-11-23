@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
@@ -13,18 +14,20 @@ import (
 // after its claim, which names the assignment, the image it starts from,
 // the host directory that is its workspace, the image's own when empty,
 // the other host paths it mounts, the verified tool executables among
-// them, the handoff its runner reads on standard input, and where its
-// output goes.
+// them, the handoff its runner reads on standard input, where its output
+// goes, and the assignment's preparing deadline, none when zero, by which
+// the container must have taken its handoff.
 type Job struct {
-	Worker       string
-	Run          string
-	StateVersion int64
-	Image        string
-	Workspace    string
-	Mounts       []Mount
-	Tools        []Tool
-	Handoff      []byte
-	Output       io.Writer
+	Worker            string
+	Run               string
+	StateVersion      int64
+	Image             string
+	Workspace         string
+	Mounts            []Mount
+	Tools             []Tool
+	Handoff           []byte
+	Output            io.Writer
+	PreparingDeadline time.Time
 }
 
 // Tool is a verified tool executable at the host path Path, of the

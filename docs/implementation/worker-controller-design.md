@@ -1,11 +1,11 @@
 # Kubernetes worker controller implementation notes
 
 Status: implemented for #745 (pool and worker resources, ownership and
-registration) and #746 (run execution in Pods). The accepted
+registration), #746 (run execution in Pods) and #747 (recovery across restarts
+and lifecycle failures). The accepted
 [worker contract](worker-pool-contracts.md#controller-and-resources) governs the
 public interface; this document records the concrete ownership and recovery
-choices behind it. Lifecycle recovery (#747) and the chart (#748) are separate
-deliveries.
+choices behind it. The chart (#748) is a separate delivery.
 
 ## Process and API boundaries
 
@@ -81,11 +81,52 @@ The controller has a separate execution port: each slot's launcher executes
 through the Kubernetes executor, `internal/agent/executor/kubernetes`. A
 controller without Kubernetes stream configuration has no executor; its
 registration maintenance neither polls for nor claims runs, and the missing
-executor is a visible unavailable condition, not successful capacity. The
-issued `preparingDeadline`, restart adoption of a handed-off Pod, persisted
-kill intent and drain are owned by #747; until then a slot's preparation
-timeout is its pool's, counted from the claim, and a busy slot's Pod is left
-for the next leader when leadership ends.
+executor is a visible unavailable condition, not successful capacity.
+
+## Recovery
+
+Each assignment carries the server's issued `preparingDeadline`: the assigned
+state's change time plus the pool's preparing timeout at the claim, rounded down
+to the second. The runs domain stores it on the run and its reap fails a run
+still preparing past it, so a changed pool setting never moves an issued
+deadline. The launcher bounds its whole preparation by it, Pod scheduling,
+image pulls, the bootstrap stream and the handoff included, and a restart
+keeps it rather than starting another clock. The run Pod's
+`activeDeadlineSeconds` is the time left to that deadline at creation plus the
+run timeout and `cleanup_timeout`: the hard deadline as Kubernetes measures it,
+from a Pod start no earlier than creation, so it never cuts a run short of it.
+
+A slot is its launcher's state store. The launcher saves its state before each
+effect a restart must know of: the assignment before preparation, the kill
+intent before deleting the Pod, the runner's start once handed off, and the
+exit until the server takes it. The slot writes it to the Worker's
+`status.assignment` as a merge patch naming every field, absent ones as null,
+with the Worker's UID, so a replacement of the same name is never written; the
+reconciliation writes only `workerID`, `observedGeneration` and conditions
+beside it. When leadership moves, the next leader starts the slot's launcher
+from that record: it re-registers the same slot's worker, finds the run Pod the
+Worker controls and was handed off, follows it to its exit and reports that
+once; a Pod never handed off is deleted and the run reported missing, and a
+recorded kill is applied again, its Pod's absence reporting killed. A Worker
+retired while it records an assignment gets a launcher on the new leader so its
+run ends before the worker deregisters. Server fencing makes a repeated exit
+report harmless: the run fails only while its worker still holds it.
+
+Adoption and cleanup consider only Pods whose controller owner reference is the
+slot's Worker UID; Pods of another Worker, pool or namespace, or bearing the
+worker label without that owner, are neither adopted nor deleted.
+
+Loss is distinguishable. A Pod the cluster evicted or preempted, shown by the
+`Evicted` reason or a true `DisruptionTarget` condition, reports `evicted`
+("container evicted"); a Pod otherwise gone reports `missing` ("container
+missing"); a worker whose installation is unreachable keeps its run, shows
+`Connected=False` with `ServerUnreachable`, and is failed by the server as
+"worker lost" only when it stays away for the lost-worker bound. None of these
+reroutes the run to another pool.
+
+Drain is the server's: a drained worker finishes its current run and claims no
+other. The Worker's `Drained` condition shows it, and the pool counts a drained
+slot as busy while its run executes and never as ready.
 
 ## Structural schema compatibility
 

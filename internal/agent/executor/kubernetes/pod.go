@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -59,10 +60,11 @@ func PodName(run string, stateVersion int64) string {
 }
 
 // pod is the run Pod of j under c, mounting each of tools over its
-// image's /bin/<name>. Its fixed security context, commands and volumes
-// are not configurable: a pool sets only resources, storage, placement
-// and pull secrets.
-func pod(c Config, j executor.Job, tools []executor.Tool) *corev1.Pod {
+// image's /bin/<name>, whose active deadline is active, rounded up to the
+// second. Its fixed security context, commands and volumes are not
+// configurable: a pool sets only resources, storage, placement and pull
+// secrets.
+func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) *corev1.Pod {
 	no, yes := false, true
 	uid := UID
 	drop := &corev1.SecurityContext{
@@ -89,8 +91,8 @@ func pod(c Config, j executor.Job, tools []executor.Tool) *corev1.Pod {
 		selector[corev1.LabelArchStable] = c.Arch
 	}
 	var deadline *int64
-	if c.ActiveDeadline > 0 {
-		s := int64(math.Ceil(c.ActiveDeadline.Seconds()))
+	if active > 0 {
+		s := int64(math.Ceil(active.Seconds()))
 		deadline = &s
 	}
 	workspace := &corev1.EmptyDirVolumeSource{}

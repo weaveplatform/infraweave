@@ -7,7 +7,10 @@
 // gets a new Pod, with a fixed shape no pool setting changes: no service
 // account token, no service links, no host namespace or path, UID and GID
 // 1983, every capability dropped, no privilege escalation, RuntimeDefault
-// seccomp, restartPolicy Never and the pool's active deadline. Its volumes
+// seccomp, restartPolicy Never and an active deadline of the time left
+// to the job's preparing deadline, or the configured preparation bound
+// when it has none, plus the configured execution bound, the run timeout
+// and cleanup after it. Its volumes
 // are Pod-local emptyDirs. Its bootstrap init container, of the
 // same-version infraweave image, is attached once it runs and receives
 // the bootstrap package's stream of the workspace and the job's verified
@@ -18,18 +21,26 @@
 // reach the Pod only over those streams, never its specification,
 // annotations, status or logs. An image that cannot be pulled, a
 // container that cannot start, a refused stream or a preparation that
-// outlasts its bound deletes the Pod and fails Start. A job that mounts
+// outlasts the job's preparing deadline, or the configured bound when it
+// has none, deletes the Pod and fails Start; a deadline already passed
+// creates no Pod. A job that mounts
 // any host path but its verified tools is refused, and a Pod that
 // streams tools selects nodes of their architecture.
 //
 // Wait reads the Pod until its runner ends: its exit code, killed after
 // Kill, out-of-memory when the kubelet ended it so, run-timeout when the
-// active deadline ended the Pod, and missing when the Pod is gone or
-// ended first. Stop runs the fixed infraweave runner signal interrupt
+// active deadline ended the Pod, evicted when the cluster evicted or
+// preempted it, which the Pod's Evicted reason or DisruptionTarget
+// condition shows, even once it is gone, and missing when the Pod is
+// otherwise gone or ended first. Stop runs the fixed infraweave runner signal interrupt
 // beside the runner, which sends its PID 1 SIGINT; Kill deletes the Pod
 // with a one-second grace; Remove deletes it. Find answers a worker's
-// newest Pod after a restart, following its runner's output from then on;
-// a Pod never handed its handoff cannot be resumed and is deleted.
+// newest Pod after a restart, following its runner's output from then on,
+// and deletes its older ones; it considers only Pods the configured owner,
+// the worker's resource, controls, so it never adopts or deletes a Pod of
+// another worker, pool, namespace or run. A Pod never handed its handoff
+// cannot be resumed and is deleted; one that was is observed as
+// acknowledged.
 //
 // Command runs an initialization command's helper in a Pod of its own,
 // labelled for its worker and run with labels no run Pod carries: the

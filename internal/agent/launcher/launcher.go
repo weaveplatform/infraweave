@@ -47,7 +47,8 @@ import (
 // token's endpoint. Owner and Slot name the
 // hosting owner and logical slot it registers, so registering again
 // resumes the slot's worker. Retain keeps the worker registered when Run
-// ends idle, for its controller to deregister.
+// ends idle, for its controller to deregister. Store keeps the state a
+// restart resumes, worker.json in the cache directory when nil.
 type Deps struct {
 	Config   config.Launcher
 	Doer     wire.HttpRequestDoer
@@ -63,6 +64,7 @@ type Deps struct {
 	Owner    *kernel.WorkerOwner
 	Slot     *int32
 	Retain   bool
+	Store    Store
 }
 
 // Sources writes a run's workspace directory, which must not exist: its
@@ -98,6 +100,10 @@ const (
 // RunReport.details bound.
 const maxDetails = 1024
 
+// killedCode is SIGKILL's exit code, which a run whose container a kill
+// removed before its end was read reports.
+const killedCode = 128 + 9
+
 // Launcher registers a worker of a pool, polls for runs and executes each
 // in a container, one at a time.
 //
@@ -125,46 +131,42 @@ type Launcher struct {
 	status   Status
 
 	// Run's goroutine alone touches the rest.
-	st       state
-	session  string
-	cur      *running
-	ended    *wire.ContainerExit
-	drained  bool
-	cycle    bool
-	assigned *assigned
-}
-
-// assigned is the assignment the launcher executes and when it claimed
-// it.
-type assigned struct {
-	a  wire.Assignment
-	at time.Time
+	st      State
+	session string
+	cur     *running
+	ended   *wire.ContainerExit
+	drained bool
+	cycle   bool
 }
 
 // Status is what a launcher shows of its worker: its ID, once registered,
-// and the run it executes or whose end it has not yet reported, with the
-// assignment's state and version and when it was claimed, when this
-// launcher claimed it, when the run's container started, and its exit
-// once it ended. It holds no token.
+// the drain flag it last learned, and the run it executes or whose end it
+// has not yet reported, with the assignment's state, version and
+// preparing deadline, when the run's container started, whether a kill
+// was asked of it, and its exit once it ended. It holds no token.
 type Status struct {
-	Worker       string
-	Run          string
-	State        wire.AssignmentState
-	StateVersion int64
-	Assigned     time.Time
-	Started      time.Time
-	Exit         *wire.ContainerExit
+	Worker            string
+	Drained           bool
+	Run               string
+	State             wire.AssignmentState
+	StateVersion      int64
+	PreparingDeadline time.Time
+	Started           time.Time
+	Kill              bool
+	Exit              *wire.ContainerExit
 }
 
 // running is the run container the launcher waits on. Its run timeout
 // counts from started and its no-log timeout from out's last line;
-// timedOut is the timeout the launcher killed it on, empty until then.
+// timedOut is the timeout the launcher killed it on, empty until then,
+// and killed holds once a kill signal's kill reached it.
 type running struct {
 	c        executor.Container
 	done     chan waited
 	out      *lines
 	started  time.Time
 	timedOut wire.ContainerExitReason
+	killed   bool
 }
 
 // expiry is when r's nearer timeout ends, and the reason a kill then
@@ -192,6 +194,9 @@ func New(d Deps) (*Launcher, error) {
 func NewContext(ctx context.Context, d Deps) (*Launcher, error) {
 	if d.Now == nil {
 		d.Now = time.Now
+	}
+	if d.Store == nil {
+		d.Store = FileStore(d.Config.CacheDir)
 	}
 	ca, roots, err := d.Config.CA()
 	if err != nil {
@@ -294,9 +299,10 @@ func (l *Launcher) Status() Status {
 
 // publish records the state Status answers.
 func (l *Launcher) publish() {
-	s := Status{Worker: l.st.Worker, Run: l.st.Run, Started: l.st.Started, Exit: l.st.Exit}
-	if a := l.assigned; a != nil && a.a.Run == l.st.Run && l.st.Run != "" {
-		s.State, s.StateVersion, s.Assigned = a.a.State, a.a.StateVersion, a.at
+	s := Status{
+		Worker: l.st.Worker, Drained: l.drained, Run: l.st.Run, State: l.st.Assigned,
+		StateVersion: l.st.StateVersion, PreparingDeadline: l.st.PreparingDeadline,
+		Started: l.st.Started, Kill: l.st.Kill, Exit: l.st.Exit,
 	}
 	l.mu.Lock()
 	l.status = s
@@ -334,6 +340,9 @@ func (l *Launcher) Run(ctx context.Context) error {
 			l.stop(ctx)
 			return nil
 		}
+		if l.st.Kill && l.cur != nil && !l.cur.killed {
+			l.kill(ctx)
+		}
 		p, err := l.poll(ctx)
 		switch {
 		case ctx.Err() != nil:
@@ -360,14 +369,21 @@ func (l *Launcher) Run(ctx context.Context) error {
 	}
 }
 
-// start registers and resumes what the cache directory holds: the run
-// container of a resumed worker, or the exit of one that ended before
-// the last stop. A worker the server no longer has had its run failed, so
-// its container is removed.
+// start registers and resumes what the store holds: the run container
+// of a resumed worker, killed again when a kill was asked of it, or the
+// exit of one that ended before the last stop. A worker the server no
+// longer has had its run failed, so its container is removed, and so is
+// a container of another run than the store's, whose removal failed
+// before. A run whose container is gone ends missing, or killed when a
+// kill was asked of it.
 func (l *Launcher) start(ctx context.Context) error {
-	l.st = load(l.d.Config.CacheDir)
+	st, err := l.d.Store.Load(ctx)
+	if err != nil {
+		return fmt.Errorf("launcher: load the worker: %w", err)
+	}
+	l.st = st
 	if l.st.Pool != l.id.pool {
-		l.st = state{Pool: l.id.pool}
+		l.st = State{Pool: l.id.pool}
 	}
 	old := l.st.Worker
 	if err := l.register(ctx); err != nil {
@@ -381,6 +397,12 @@ func (l *Launcher) start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("launcher: find the worker's run: %w", err)
 	}
+	if ok && l.st.Run != "" && c.Run() != l.st.Run {
+		l.d.Log.WarnContext(ctx, "removing the container of a run the worker no longer executes",
+			"run", c.Run(), "assigned", l.st.Run)
+		l.lose(ctx, c, c.Run())
+		ok = false
+	}
 	switch {
 	case ok:
 		out.named(c.Run())
@@ -390,14 +412,20 @@ func (l *Launcher) start(ctx context.Context) error {
 		l.st.Run = c.Run()
 		l.cur = l.watch(ctx, c, out, l.st.Started)
 		l.d.Log.InfoContext(ctx, "resumed run", "run", c.Run())
+		if l.st.Kill {
+			l.kill(ctx)
+		}
 	case l.st.Exit != nil:
 		l.ended = l.st.Exit
 	case l.st.Run != "":
-		l.ended = &wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
-		l.st.Started = time.Time{}
+		exit := wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
+		if l.st.Kill {
+			exit = wire.ContainerExit{Code: killedCode, Reason: wire.Killed}
+		}
+		l.ended, l.st.Exit, l.st.Started = &exit, &exit, time.Time{}
 		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
-	return l.save()
+	return l.save(ctx)
 }
 
 // discard removes the container of the worker old, which the server no
@@ -410,7 +438,7 @@ func (l *Launcher) discard(ctx context.Context, old string) {
 	} else {
 		l.dropWorkspace(ctx, l.st.Run, nil)
 	}
-	l.st.Run, l.st.Exit, l.st.Started = "", nil, time.Time{}
+	l.st.reset()
 }
 
 // lose kills c, the container of run, which the server no longer has, and
@@ -451,7 +479,7 @@ func (l *Launcher) register(ctx context.Context) error {
 			l.registered.Store(true)
 			l.d.Log.InfoContext(ctx, "registered", "pool", l.id.pool, "worker", r.Worker,
 				"resumed", resumed)
-			return l.save()
+			return l.save(ctx)
 		}
 		if s := client.Status(err); s >= 400 && s < 500 && s != http.StatusTooManyRequests {
 			return fmt.Errorf("launcher: the server refused the registration: %w", err)
@@ -481,8 +509,9 @@ func (l *Launcher) reregister(ctx context.Context) error {
 		l.lose(ctx, l.cur.c, l.cur.c.Run())
 		l.cur = nil
 	}
-	l.ended, l.st.Run, l.st.Exit = nil, "", nil
-	return l.save()
+	l.ended = nil
+	l.st.reset()
+	return l.save(ctx)
 }
 
 // poll sends one poll and answers its result. A container that ends while
@@ -529,7 +558,8 @@ func (l *Launcher) poll(ctx context.Context) (wire.PollResult, error) {
 		select {
 		case p := <-res:
 			if p.err == nil && reported != nil {
-				l.ended, l.st.Run, l.st.Exit = nil, "", nil
+				l.ended = nil
+				l.st.reset()
 				l.saveOrLog(ctx)
 			}
 			return p.r, p.err
@@ -579,8 +609,10 @@ func (l *Launcher) apply(ctx context.Context, p wire.PollResult) {
 	if p.SessionToken != nil {
 		l.session = *p.SessionToken
 	}
-	if p.Drained != nil {
+	if p.Drained != nil && *p.Drained != l.drained {
 		l.drained = *p.Drained
+		l.d.Log.InfoContext(ctx, "drain flag changed", "drained", l.drained)
+		l.publish()
 	}
 	if p.Signals != nil {
 		for _, s := range *p.Signals {
@@ -593,7 +625,9 @@ func (l *Launcher) apply(ctx context.Context, p wire.PollResult) {
 }
 
 // signal stops or kills the current run, or marks the launcher to exit
-// once it is idle.
+// once it is idle. A kill is saved before the container is killed, so a
+// restart that finds the container kills it again and one that finds it
+// gone reports it killed rather than missing.
 func (l *Launcher) signal(ctx context.Context, s wire.Signal) {
 	if s == wire.Cycle {
 		l.cycle = true
@@ -604,30 +638,53 @@ func (l *Launcher) signal(ctx context.Context, s wire.Signal) {
 		return
 	}
 	run := l.cur.c.Run()
-	act := l.cur.c.Stop
 	if s == wire.Kill {
-		act = l.cur.c.Kill
+		l.st.Kill = true
+		l.saveOrLog(ctx)
+		l.kill(ctx)
+		return
 	}
-	if err := act(ctx); err != nil {
+	if err := l.cur.c.Stop(ctx); err != nil {
 		l.d.Log.ErrorContext(ctx, "signal the run", "run", run, "signal", s, "error", err)
 		return
 	}
 	l.d.Log.InfoContext(ctx, "signalled the run", "run", run, "signal", s)
 }
 
+// kill kills the current run's container on the kill its state holds. A
+// kill the host refuses is tried again before the next poll.
+func (l *Launcher) kill(ctx context.Context) {
+	run := l.cur.c.Run()
+	if err := l.cur.c.Kill(ctx); err != nil {
+		l.d.Log.ErrorContext(ctx, "signal the run", "run", run, "signal", wire.Kill, "error", err)
+		return
+	}
+	l.cur.killed = true
+	l.d.Log.InfoContext(ctx, "signalled the run", "run", run, "signal", wire.Kill)
+}
+
 // assign prepares and starts a, recording its run first, so a restart
-// that finds no container reports it missing. A preparation that fails
-// reports the run failed in its preparing state.
+// that finds no container reports it missing; a run whose record cannot
+// be saved is not prepared. The whole preparation is bounded by the
+// assignment's preparing deadline, which a restart never extends. A
+// preparation that fails reports the run failed in its preparing state.
 func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
-	l.st.Run = a.Run
-	l.assigned = &assigned{a: a, at: l.d.Now()}
-	l.saveOrLog(ctx)
+	l.st.Run, l.st.Assigned, l.st.StateVersion = a.Run, a.State, a.StateVersion
+	if a.PreparingDeadline > 0 {
+		l.st.PreparingDeadline = time.Unix(a.PreparingDeadline, 0)
+	}
 	out := &lines{log: l.d.Log, run: a.Run, now: l.d.Now}
-	c, err := l.prepare(ctx, a, out)
+	var c executor.Container
+	err := l.save(ctx)
+	if err != nil {
+		err = fmt.Errorf("record the assignment: %w", err)
+	} else {
+		c, err = l.prepareBy(ctx, a, out)
+	}
 	if err != nil {
 		l.d.Log.ErrorContext(ctx, "preparation failed", "run", a.Run, "error", err)
 		l.fail(ctx, a, err)
-		l.st.Run = ""
+		l.st.reset()
 		l.saveOrLog(ctx)
 		return
 	}
@@ -635,6 +692,22 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 	l.st.Started = l.d.Now()
 	l.saveOrLog(ctx)
 	l.cur = l.watch(ctx, c, out, l.st.Started)
+}
+
+// prepareBy prepares a within its preparing deadline, naming the deadline
+// in the failure of a preparation it cut short.
+func (l *Launcher) prepareBy(ctx context.Context, a wire.Assignment, out *lines) (executor.Container, error) {
+	deadline := l.st.PreparingDeadline
+	if deadline.IsZero() {
+		return l.prepare(ctx, a, out)
+	}
+	pctx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	c, err := l.prepare(pctx, a, out)
+	if err != nil && ctx.Err() == nil && pctx.Err() != nil {
+		err = fmt.Errorf("the preparing deadline %s passed: %w", deadline.UTC().Format(time.RFC3339), err)
+	}
+	return c, err
 }
 
 // prepare fetches a's specification, opens its sealed part with the
@@ -740,6 +813,9 @@ func (l *Launcher) workspace(ctx context.Context, a wire.Assignment, spec wire.R
 		return "", fmt.Errorf("the workspace: %w", err)
 	}
 	deadline := l.d.Now().Add(transferRetry)
+	if pd := l.st.PreparingDeadline; !pd.IsZero() && pd.Before(deadline) {
+		deadline = pd
+	}
 	var backoff time.Duration
 	for {
 		if err := os.RemoveAll(dir); err != nil {
@@ -865,6 +941,7 @@ func (l *Launcher) container(
 	c, err := l.d.Executor.Start(ctx, executor.Job{
 		Worker: l.st.Worker, Run: a.Run, StateVersion: a.StateVersion, Image: image, Workspace: ws,
 		Mounts: mounts, Tools: verified, Handoff: h.Bytes(), Output: out,
+		PreparingDeadline: l.st.PreparingDeadline,
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the executor names the step
@@ -972,7 +1049,7 @@ func (l *Launcher) deregister(ctx context.Context, why string) {
 	if err := l.api.Deregister(dctx, l.session); err != nil {
 		l.d.Log.WarnContext(ctx, "deregister", "error", err)
 	}
-	if err := forget(l.d.Config.CacheDir); err != nil {
+	if err := l.d.Store.Forget(dctx); err != nil {
 		l.d.Log.WarnContext(ctx, "forget the worker", "error", err)
 	}
 	l.registered.Store(false)
@@ -980,15 +1057,15 @@ func (l *Launcher) deregister(ctx context.Context, why string) {
 }
 
 // save writes the state a restart resumes and publishes it to Status.
-func (l *Launcher) save() error {
+func (l *Launcher) save(ctx context.Context) error {
 	l.publish()
-	return save(l.d.Config.CacheDir, l.st)
+	return l.d.Store.Save(ctx, l.st) //nolint:wrapcheck // the store names the write
 }
 
 // saveOrLog saves the state, logging a failure: the launcher keeps
 // working, and only a restart would miss what it did not save.
 func (l *Launcher) saveOrLog(ctx context.Context) {
-	if err := l.save(); err != nil {
+	if err := l.save(ctx); err != nil {
 		l.d.Log.ErrorContext(ctx, "save the worker", "error", err)
 	}
 }

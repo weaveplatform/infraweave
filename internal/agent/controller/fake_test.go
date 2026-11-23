@@ -69,6 +69,8 @@ type installation struct {
 	runs       map[string]wire.RunSpec      // run to its sealed specification
 	polls      []wire.PollRequest
 	reports    []wire.RunReport
+	drained    map[string]bool          // pool to whether its workers drain
+	signals    map[string][]wire.Signal // pool to the signals its next poll answers
 }
 
 func newInstallation(t *testing.T) *installation {
@@ -82,6 +84,7 @@ func newInstallation(t *testing.T) *installation {
 		pools: map[string]*remotePool{}, idempotent: map[string]string{}, sessions: map[string]string{},
 		workers: map[string]string{}, limit: 100, refuse: map[string]int{}, calls: map[string]int{},
 		queued: map[string][]wire.Assignment{}, runs: map[string]wire.RunSpec{}, wake: make(chan struct{}),
+		drained: map[string]bool{}, signals: map[string][]wire.Signal{},
 	}
 	r := chi.NewRouter()
 	r.Post("/api/v1/auth/token", in.exchange)
@@ -497,6 +500,24 @@ func (in *installation) assign(pool string, a wire.Assignment, spec wire.RunSpec
 	in.wake = make(chan struct{})
 }
 
+// drain sets whether pool's workers drain, which each later poll answers.
+func (in *installation) drain(pool string, on bool) {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	in.drained[pool] = on
+	close(in.wake)
+	in.wake = make(chan struct{})
+}
+
+// signal queues sig for the next poll of pool's workers.
+func (in *installation) signal(pool string, sig wire.Signal) {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+	in.signals[pool] = append(in.signals[pool], sig)
+	close(in.wake)
+	in.wake = make(chan struct{})
+}
+
 func (in *installation) pollRequests() []wire.PollRequest {
 	in.mu.Lock()
 	defer in.mu.Unlock()
@@ -527,10 +548,22 @@ func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
 	defer hold.Stop()
 	for {
 		in.mu.Lock()
-		if q := in.queued[pool]; !req.Busy && len(q) > 0 {
+		drained := in.drained[pool]
+		if sigs := in.signals[pool]; len(sigs) > 0 {
+			delete(in.signals, pool)
+			in.mu.Unlock()
+			reply(w, http.StatusOK, wire.PollResult{Signals: &sigs, Drained: &drained})
+			return
+		}
+		if req.Drained == nil || *req.Drained != drained {
+			in.mu.Unlock()
+			reply(w, http.StatusOK, wire.PollResult{Drained: &drained})
+			return
+		}
+		if q := in.queued[pool]; !req.Busy && !drained && len(q) > 0 {
 			in.queued[pool] = q[1:]
 			in.mu.Unlock()
-			reply(w, http.StatusOK, wire.PollResult{Assignment: &q[0]})
+			reply(w, http.StatusOK, wire.PollResult{Assignment: &q[0], Drained: &drained})
 			return
 		}
 		wake := in.wake
@@ -538,7 +571,7 @@ func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-wake:
 		case <-hold.C:
-			reply(w, http.StatusOK, wire.PollResult{})
+			reply(w, http.StatusOK, wire.PollResult{Drained: &drained})
 			return
 		case <-r.Context().Done():
 			return

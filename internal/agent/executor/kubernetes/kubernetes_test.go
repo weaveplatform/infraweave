@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 
@@ -266,7 +267,7 @@ func (k *kubelet) executor(t *testing.T, change ...func(*Config)) *Executor {
 			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")},
 		},
 		StorageSize: resource.MustParse("1Gi"), Staging: t.TempDir(), Arch: "arm64",
-		ActiveDeadline: 5220 * time.Second, Preparation: 5 * time.Second, Interval: 5 * time.Millisecond,
+		Execution: 4320 * time.Second, Preparation: 5 * time.Second, Interval: 5 * time.Millisecond,
 	}
 	for _, f := range change {
 		f(&c)
@@ -400,6 +401,9 @@ func TestUnitRunPodSpecHoldsNoSecretAndNoPrivilege(t *testing.T) {
 		c.ImagePullSecrets = []corev1.LocalObjectReference{{Name: "registry"}}
 	})
 	j := job(t)
+	// The issued deadline leaves 900 seconds of preparation, which the
+	// active deadline counts with the run timeout and cleanup after it.
+	j.PreparingDeadline = time.Now().Add(900 * time.Second)
 	c, err := e.Start(t.Context(), j)
 	if err != nil {
 		t.Fatal(err)
@@ -413,8 +417,8 @@ func TestUnitRunPodSpecHoldsNoSecretAndNoPrivilege(t *testing.T) {
 	if *spec.AutomountServiceAccountToken || *spec.EnableServiceLinks || *spec.ShareProcessNamespace || spec.HostNetwork || spec.HostPID || spec.HostIPC {
 		t.Fatal("the Pod shares the node's or API's identity")
 	}
-	if spec.RestartPolicy != corev1.RestartPolicyNever || *spec.ActiveDeadlineSeconds != 5220 {
-		t.Fatalf("restart %s deadline %d", spec.RestartPolicy, *spec.ActiveDeadlineSeconds)
+	if d := *spec.ActiveDeadlineSeconds; spec.RestartPolicy != corev1.RestartPolicyNever || d > 5220 || d < 5215 {
+		t.Fatalf("restart %s deadline %d", spec.RestartPolicy, d)
 	}
 	if *spec.SecurityContext.RunAsUser != UID || *spec.SecurityContext.FSGroup != UID || !*spec.SecurityContext.RunAsNonRoot {
 		t.Fatalf("security %+v", spec.SecurityContext)
@@ -457,7 +461,7 @@ func TestUnitRunPodSpecHoldsNoSecretAndNoPrivilege(t *testing.T) {
 
 func TestUnitRunPodWithoutToolsOrWorkspaceKeepsTheImagesOwn(t *testing.T) {
 	k := newKubelet(t)
-	e := k.executor(t, func(c *Config) { c.ActiveDeadline, c.StorageSize = 0, resource.Quantity{} })
+	e := k.executor(t, func(c *Config) { c.Execution, c.StorageSize = 0, resource.Quantity{} })
 	j := job(t)
 	j.Mounts, j.Tools, j.Workspace = nil, nil, ""
 	c, err := e.Start(t.Context(), j)
@@ -515,7 +519,11 @@ func TestUnitRunPodPreparationFailuresDeleteThePod(t *testing.T) {
 		"runner pull":      {func(k *kubelet, _ *executor.Job) { k.runner = "ErrImagePull" }, "runner image"},
 		"runner attach":    {func(k *kubelet, _ *executor.Job) { k.refuse = true }, "upgrade refused"},
 		"pending":          {func(k *kubelet, _ *executor.Job) { k.bootstrap = "ContainerCreating" }, "did not become ready"},
-		"stream refused":   {func(k *kubelet, _ *executor.Job) { k.arch = "amd64" }, "bootstrap exited 1"},
+		"issued deadline": {func(k *kubelet, j *executor.Job) {
+			k.bootstrap, j.PreparingDeadline = "ContainerCreating", time.Now().Add(100*time.Millisecond)
+		}, "did not become ready"},
+		"passed deadline": {func(_ *kubelet, j *executor.Job) { j.PreparingDeadline = time.Now().Add(-time.Second) }, "before its Pod was created"},
+		"stream refused":  {func(k *kubelet, _ *executor.Job) { k.arch = "amd64" }, "bootstrap exited 1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			k := newKubelet(t)
@@ -570,7 +578,27 @@ func TestUnitRunPodsEndAsTheirRunnersDid(t *testing.T) {
 		}, executor.Exit{Code: executor.MissingCode, Reason: wire.Missing}},
 		"evicted": {func(*kubelet) {}, func(_ *testing.T, k *kubelet, _ executor.Container) {
 			k.setStatus(t.Context(), PodName(runID, 4), func(p *corev1.Pod) { p.Status.Phase, p.Status.Reason = corev1.PodFailed, "Evicted" })
-		}, executor.Exit{Code: executor.MissingCode, Reason: wire.Missing}},
+		}, executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}},
+		"evicted with its runner's code": {func(*kubelet) {}, func(_ *testing.T, k *kubelet, _ executor.Container) {
+			k.setStatus(t.Context(), PodName(runID, 4), func(p *corev1.Pod) {
+				p.Status.Phase, p.Status.Reason = corev1.PodFailed, "Evicted"
+				p.Status.ContainerStatuses[0].State = terminated(143, "Error", "")
+			})
+		}, executor.Exit{Code: 143, Reason: wire.Evicted}},
+		"disrupted then deleted": {func(*kubelet) {}, func(t *testing.T, k *kubelet, c executor.Container) {
+			k.setStatus(t.Context(), PodName(runID, 4), func(p *corev1.Pod) {
+				p.Status.Conditions = append(p.Status.Conditions, corev1.PodCondition{
+					Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue, Reason: "EvictionByEvictionAPI",
+				})
+			})
+			// The executor reads the Pod marked before it goes.
+			if _, done, err := c.(*run).ended(t.Context()); done || err != nil {
+				t.Fatalf("a disrupted Pod ended: %v %v", done, err)
+			}
+			if err := k.core.CoreV1().Pods(ns).Delete(t.Context(), PodName(runID, 4), metav1.DeleteOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}, executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			k := newKubelet(t)
@@ -623,17 +651,22 @@ func TestUnitWaitEndsWithItsContext(t *testing.T) {
 
 func TestUnitFindResumesAHandedOffPodAndDiscardsAnUnpreparedOne(t *testing.T) {
 	k := newKubelet(t)
-	e := k.executor(t)
+	var seen []Observation
+	e := k.executor(t, func(c *Config) { c.Observe = func(o Observation) { seen = append(seen, o) } })
 	if _, ok, err := e.Find(t.Context(), workerID, nil); ok || err != nil {
 		t.Fatalf("found %v %v", ok, err)
 	}
-	started := func(name string, at time.Time, handed bool) {
+	yes := true
+	started := func(name string, at time.Time, handed bool, owner types.UID) {
 		p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Name: name, Namespace: ns, UID: types.UID("uid-" + name), CreationTimestamp: metav1.NewTime(at),
 			Labels: map[string]string{LabelWorker: workerID, LabelRun: runID},
 		}, Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{
 			Name: RunnerContainer, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
 		}}}}
+		if owner != "" {
+			p.OwnerReferences = []metav1.OwnerReference{{Kind: "Worker", Name: "slot", UID: owner, Controller: &yes}}
+		}
 		if handed {
 			p.Annotations = map[string]string{AnnotationHandoff: handedOff}
 		}
@@ -642,8 +675,12 @@ func TestUnitFindResumesAHandedOffPodAndDiscardsAnUnpreparedOne(t *testing.T) {
 		}
 	}
 	now := time.Now()
-	started("old", now.Add(-time.Hour), true)
-	started("new", now, true)
+	started("old", now.Add(-time.Hour), true, "worker-uid")
+	started("new", now, true, "worker-uid")
+	// Pods of the worker's label that the worker's resource does not
+	// control are another's: newer, they are neither answered nor deleted.
+	started("foreign", now.Add(time.Minute), true, "another-uid")
+	started("orphan", now.Add(time.Minute), true, "")
 	out := &output{}
 	c, ok, err := e.Find(t.Context(), workerID, out)
 	if !ok || err != nil || c.Run() != runID {
@@ -651,6 +688,20 @@ func TestUnitFindResumesAHandedOffPodAndDiscardsAnUnpreparedOne(t *testing.T) {
 	}
 	if name, uid := c.(*run).Pod(); name != "new" || uid != "uid-new" {
 		t.Fatalf("found %s", name)
+	}
+	if len(seen) != 1 || seen[0].Pod != "new" || seen[0].Phase != PhaseAcknowledged {
+		t.Fatalf("observed %+v", seen)
+	}
+	if _, err := k.core.CoreV1().Pods(ns).Get(t.Context(), "old", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("the stale Pod remains: %v", err)
+	}
+	for _, name := range []string{"foreign", "orphan"} {
+		if _, err := k.core.CoreV1().Pods(ns).Get(t.Context(), name, metav1.GetOptions{}); err != nil {
+			t.Fatalf("%s's Pod was deleted: %v", name, err)
+		}
+		if err := k.core.Tracker().Delete(podsResource, ns, name); err != nil {
+			t.Fatal(err)
+		}
 	}
 	k.setStatus(t.Context(), "new", func(p *corev1.Pod) { p.Status.ContainerStatuses[0].State = terminated(2, "Error", "") })
 	if exit, err := c.Wait(t.Context()); err != nil || exit.Code != 2 {
@@ -662,10 +713,7 @@ func TestUnitFindResumesAHandedOffPodAndDiscardsAnUnpreparedOne(t *testing.T) {
 	if err := c.Remove(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := k.core.Tracker().Delete(podsResource, ns, "old"); err != nil {
-		t.Fatal(err)
-	}
-	started("unprepared", now, false)
+	started("unprepared", now, false, "worker-uid")
 	c, ok, err = e.Find(t.Context(), workerID, nil)
 	if !ok || err != nil {
 		t.Fatalf("%v %v", ok, err)
@@ -674,6 +722,15 @@ func TestUnitFindResumesAHandedOffPodAndDiscardsAnUnpreparedOne(t *testing.T) {
 		t.Fatalf("%+v %v", exit, err)
 	}
 	k.gone(t)
+
+	started("stuck", now, true, "worker-uid")
+	started("stuck-older", now.Add(-time.Minute), true, "worker-uid")
+	k.core.PrependReactor("delete", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("unavailable")
+	})
+	if _, _, err := e.Find(t.Context(), workerID, nil); err == nil {
+		t.Fatal("a stale Pod that cannot be deleted was ignored")
+	}
 }
 
 func TestUnitFindReportsAnUnreadableNamespace(t *testing.T) {
@@ -737,5 +794,49 @@ func TestUnitHelpersBoundWhatTheyKeep(t *testing.T) {
 		ErrPreparation,
 	) {
 		t.Fatal(err)
+	}
+}
+
+// TestUnitWaitSeesAnEvictionBetweenItsReads checks that a Pod marked as
+// a disruption target and deleted between two reads still ends evicted,
+// from the watch beside the reads.
+func TestUnitWaitSeesAnEvictionBetweenItsReads(t *testing.T) {
+	k := newKubelet(t)
+	watching := make(chan struct{})
+	var once sync.Once
+	// The watch is open, its events delivered, before the test moves on.
+	k.core.PrependWatchReactor("pods", func(k8stesting.Action) (bool, watch.Interface, error) {
+		w, err := k.core.Tracker().Watch(podsResource, ns)
+		once.Do(func() { close(watching) })
+		return true, w, err
+	})
+	c, err := k.executor(t).Start(t.Context(), job(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := c.(*run)
+	r.c.Interval = time.Hour
+	done := make(chan executor.Exit, 1)
+	go func() {
+		exit, err := c.Wait(t.Context())
+		if err != nil {
+			t.Error(err)
+		}
+		done <- exit
+	}()
+	<-watching
+	k.setStatus(t.Context(), PodName(runID, 4), func(p *corev1.Pod) {
+		p.Status.Conditions = append(p.Status.Conditions, corev1.PodCondition{Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue})
+	})
+	if err := k.core.CoreV1().Pods(ns).Delete(t.Context(), PodName(runID, 4), metav1.DeleteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case exit := <-done:
+		if exit != (executor.Exit{Code: executor.MissingCode, Reason: wire.Evicted}) {
+			t.Fatalf("exit %+v", exit)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Wait did not see the eviction")
 	}
 }
