@@ -63,6 +63,20 @@ trusted service and policy type the root does not list. Organizations
 refuses to delete an Organization while it holds a member account, so a
 destroy that leaves the lab account behind leaves the Organization too.
 
+The other AWS roots reach the lab account by assuming `role_arn`, which
+STS refuses to a root user's credentials. The maintainer applies them as
+`infraweave-lab-operator`, an IAM user of the management account created
+outside Terraform, so neither it nor its access key is in any state. It has
+no console password and one inline policy, `assume-lab`, allowing only
+`sts:AssumeRole` and `sts:TagSession` on the lab account's
+`OrganizationAccountAccessRole`; it can change nothing in the management
+account. Its one access key lives only in the maintainer's local CLI
+profile, `infraweave-lab`:
+
+```sh
+AWS_PROFILE=infraweave-lab terraform plan -out=lab.tfplan   # objectstore/aws, kek/aws, workers-identity/aws, platform/aws
+```
+
 An AWS root's provider accepts only credentials that resolve to the
 landing zone's account. Without `landing_zone_role_arn`, an AWS root
 applies into the account of the caller's own credentials.
