@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -83,4 +84,36 @@ type Executor interface {
 	// Find answers worker's container, running or ended but not removed,
 	// copying what it writes from now on to out; false when it has none.
 	Find(ctx context.Context, worker string, out io.Writer) (Container, bool, error)
+}
+
+// Command is one initialization command's helper: a fresh container of
+// the run's resolved Image, labelled with the worker and run whose
+// initialization it serves, its call within that evaluation, the
+// private Request frame its helper reads on standard input, and where
+// the helper's framed standard output goes. It mounts no workspace,
+// tool, credential or other host path but the infraweave executable,
+// and receives no environment.
+type Command struct {
+	Worker       string
+	Run          string
+	StateVersion int64
+	Call         int
+	Image        string
+	Request      []byte
+	Output       io.Writer
+}
+
+// ErrImage marks a helper whose image cannot be pulled.
+var ErrImage = errors.New("the runner image is unavailable")
+
+// Commander runs initialization command helpers. An executor that is
+// one runs them where it runs runs, never on the launcher's host.
+//
+// ref: decision 0009 § "The worker-side initialization policy"
+type Commander interface {
+	// Command starts c's helper, writes c.Request to its standard input
+	// and closes it, copies its standard output to c.Output until it
+	// ends, and removes it, also when ctx ends first, which ends the
+	// helper. A write to c.Output that fails ends the helper too.
+	Command(ctx context.Context, c Command) error
 }

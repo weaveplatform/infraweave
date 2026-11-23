@@ -11,8 +11,12 @@
 // that ended since the last poll; a container that ends cuts a held poll
 // short. An assignment is prepared: the launcher fetches the run's
 // specification with the run token, opens its sealed part with the pool's
-// private key, evaluates any startup-compiled local initialization policy over
-// its minimal version-1 snapshot, then fetches the release of the tool the specification names,
+// private key, resolves the run's image and refuses one a public pool does
+// not admit, evaluates any startup-compiled local initialization policy over
+// its minimal version-1 snapshot, whose exec calls run through
+// internal/agent/initcommand in fresh helpers of that image which the
+// executor starts and removes, never on the launcher's host, then fetches
+// the release of the tool the specification names,
 // and for a Terragrunt stack's run the Terragrunt release that drives it,
 // through internal/agent/tools, each unless its download is false, and
 // writes
@@ -85,8 +89,9 @@
 //
 // # Dependencies
 //
-// It imports internal/agent/client, config, executor, handoff, initpolicy, source,
-// tools and wire, kernel's hosting owner, platform/seal to open
+// It imports internal/agent/client, config, executor, handoff, initcommand,
+// initpolicy, source, tools and wire, kernel's hosting owner, platform/rego
+// for the policy's commands, platform/seal to open
 // specifications, and go-jose to sign registrations; no server package.
 // internal/agent/cli runs it as infraweave launcher, and
 // internal/agent/controller per slot.

@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
@@ -1478,6 +1479,83 @@ func TestUnitLauncherPolicyDeniesBeforeSourceRestoreAndTools(t *testing.T) {
 				}
 				if strings.Contains(w.log.String(), r.Assignment.RunToken) {
 					t.Fatal("policy leaked run token")
+				}
+				cancel()
+				if err := <-done; err != nil {
+					t.Fatal(err)
+				}
+			})
+		})
+	}
+}
+
+func TestUnitLauncherPolicyExecRunsInHelpersOfTheRunsImage(t *testing.T) {
+	for name, c := range map[string]struct {
+		helper  func(context.Context, executor.Command) error
+		started bool
+		details string
+	}{
+		"verified": {func(_ context.Context, cmd executor.Command) error {
+			req, err := initcommand.ReadRequest(bytes.NewReader(cmd.Request))
+			if err != nil {
+				return err
+			}
+			if err := initcommand.WriteOutput(cmd.Output, false, []byte(strings.Join(req.Argv, " "))); err != nil {
+				return err
+			}
+			return initcommand.WriteResult(cmd.Output, initcommand.Result{Call: req.Call, Status: initcommand.StatusExited})
+		}, true, ""},
+		"no helper": {nil, false, "worker initialization policy evaluation failed: the initialization command's helper failed"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				w := newWorld(t)
+				w.exec.OnCommand(c.helper)
+				cfg := w.config()
+				cfg.InitializationPolicy = filepath.Join(w.dir, "initialization.rego")
+				body := "package infraweave\nimport future.keywords\nout := exec([\"verify\", input.run.token])\ndeny contains \"unverified\" if { out.stdout != concat(\" \", [\"verify\", input.run.token]) }"
+				if err := os.WriteFile(cfg.InitializationPolicy, []byte(body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				l, err := launcher.New(
+					launcher.Deps{Config: cfg, Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources, Tools: w.tools, Log: slog.New(slog.NewTextHandler(w.log, nil))},
+				)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				done := make(chan error, 1)
+				go func() { done <- l.Run(ctx) }()
+				synctest.Wait()
+				r := newRun("run-exec", wire.AssignmentStatePREPARING, "")
+				stack, branch, image := "immutable-stack", "main", "ghcr.io/acme/runner@sha256:"+strings.Repeat("c", 64)
+				r.Spec.Run = wire.RunSpecRun{
+					Id:           r.Assignment.Run,
+					Account:      "account",
+					State:        "PREPARING",
+					StateVersion: r.Assignment.StateVersion,
+					Type:         wire.RunSpecRunType("TRACKED"),
+				}
+				r.Spec.Stack = wire.RunSpecStack{Id: "slug", Ulid: &stack, Space: "legacy"}
+				r.Spec.Commit.Branch = &branch
+				r.Spec.RunnerImage = &image
+				w.queue(t, r)
+				cmds := w.exec.Commands()
+				if len(cmds) != 1 || cmds[0].Image != image || cmds[0].Run != r.Assignment.Run || cmds[0].StateVersion != r.Assignment.StateVersion ||
+					cmds[0].Worker == "" || cmds[0].Call != 1 {
+					t.Fatalf("helpers %+v", cmds)
+				}
+				if started := len(w.exec.Jobs()) == 1; started != c.started {
+					t.Fatalf("started %v, reports %+v", started, w.srv.Reports())
+				}
+				if !c.started {
+					reports := w.srv.Reports()
+					if len(reports) != 1 || reports[0].Report.Details == nil || *reports[0].Report.Details != c.details || len(w.sources.dirs) != 0 {
+						t.Fatalf("reports %+v", reports)
+					}
+				}
+				if strings.Contains(w.log.String(), r.Assignment.RunToken) {
+					t.Fatal("the helper's argument reached the log")
 				}
 				cancel()
 				if err := <-done; err != nil {

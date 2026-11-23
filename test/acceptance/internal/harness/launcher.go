@@ -180,6 +180,24 @@ func (l *Launchers) RunContainerCount(ctx context.Context, run string) (int, err
 	return len(list.Items), nil
 }
 
+// CommandContainers counts run's initialization command helpers on the
+// host, including stopped ones, and those running. A daemon failure
+// cannot stand in for their absence.
+func (l *Launchers) CommandContainers(ctx context.Context, run string) (total, running int, err error) {
+	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
+		All: true, Filters: client.Filters{}.Add("label", docker.LabelCommandRun+"="+run),
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("docker: count initialization command containers: %w", err)
+	}
+	for _, c := range list.Items {
+		if c.State == container.StateRunning {
+			running++
+		}
+	}
+	return len(list.Items), running, nil
+}
+
 // Remove removes every container labelled with the label key=value, run
 // containers and forwarders alike, running or not. Runs end and hand their
 // workspace directories back before removal. A container already

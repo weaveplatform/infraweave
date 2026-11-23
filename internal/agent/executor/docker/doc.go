@@ -27,6 +27,16 @@
 // workspace whose runner was killed before it opened it; Remove removes
 // it.
 //
+// Command runs an initialization command's helper: a container of the
+// run's image, pulled as a run's is, whose root process is the mounted
+// binary as runner command, as UID and GID 1983, with every capability
+// dropped, no new privileges, 1 GiB of memory and 512 processes, no
+// environment and no mount but the binary, labelled for the worker and
+// run with labels a run's container does not carry. Its standard input
+// alone carries the request, its standard output goes to the caller, and
+// it is removed however the call ends; Find first removes any helper of
+// its worker that a stopped launcher left.
+//
 // ref: decision 0008 § "The launcher and the runner"
 //
 // # Input and output

@@ -1,15 +1,19 @@
 package initpolicy_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/agent/executor"
+	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
@@ -50,12 +54,12 @@ deny contains "undefined helper" if { input.missing == "deny" }
 			t.Fatal(err)
 		}
 		in := input()
-		out, err := p.Evaluate(t.Context(), in)
+		out, err := p.Evaluate(t.Context(), in, nil)
 		if err != nil || len(out.Deny) != 0 {
 			t.Fatalf("%s allow: %+v %v", dialect, out, err)
 		}
 		in.Run.Type = "TASK"
-		out, err = p.Evaluate(t.Context(), in)
+		out, err = p.Evaluate(t.Context(), in, nil)
 		var denied *initpolicy.Denied
 		if !errors.As(err, &denied) || len(out.Deny) != 1 || out.Deny[0] != "unexpected snapshot" {
 			t.Fatalf("deny: %+v %v", out, err)
@@ -67,7 +71,7 @@ func TestUnitInitializationStartupFailures(t *testing.T) {
 	for name, body := range map[string]string{
 		"parse":     "package infraweave\ndeny contains",
 		"type":      "package infraweave\ndeny contains \"bad\" if { plus(1, true) == 2 }",
-		"exec":      "package infraweave\ndeny contains \"bad\" if { exec([\"touch\", \"should-not-run\"]).status == 0 }",
+		"exec type": "package infraweave\ndeny contains \"bad\" if { exec(\"touch should-not-run\").status == 0 }",
 		"http":      "package infraweave\ndeny contains \"bad\" if { http.send({\"url\":\"http://localhost\"}).status_code == 200 }",
 		"package":   "package other",
 		"oversized": strings.Repeat("x", (256<<10)+1),
@@ -114,12 +118,12 @@ deny contains input.run.token if { print(input.run.token) }
 	}
 	in := input()
 	in.Run.Token = strings.Repeat("sensitive-prefix-", 600)
-	out, err := p.Evaluate(t.Context(), in)
+	out, err := p.Evaluate(t.Context(), in, nil)
 	if err == nil || len(out.Deny) != 1 || out.Deny[0] != "*****" || strings.Contains(out.Print, "sensitive-prefix-") || strings.Contains(err.Error(), "sensitive-prefix-") {
 		t.Fatalf("unsafe output: %+v %v", out, err)
 	}
 	in.Run.Token = "second-secret-token"
-	out, err = p.Evaluate(t.Context(), in)
+	out, err = p.Evaluate(t.Context(), in, nil)
 	if err == nil || out.Deny[0] != "*****" || strings.Contains(out.Print, in.Run.Token) {
 		t.Fatalf("cached query retained input: %+v %v", out, err)
 	}
@@ -131,7 +135,7 @@ deny contains 42 if true`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Evaluate(t.Context(), input()); !errors.Is(err, initpolicy.ErrEvaluation) || !errors.Is(err, rego.ErrResult) {
+	if _, err := p.Evaluate(t.Context(), input(), nil); !errors.Is(err, initpolicy.ErrEvaluation) || !errors.Is(err, rego.ErrResult) {
 		t.Fatalf("invalid result: %v", err)
 	}
 	p, err = initpolicy.Load(t.Context(), settings(t, rego.V1, `package infraweave
@@ -140,7 +144,7 @@ flag contains "print" if { print(concat("", ["output" | some n in numbers.range(
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := p.Evaluate(t.Context(), input())
+	out, err := p.Evaluate(t.Context(), input(), nil)
 	if err == nil || len(out.Deny) != rego.MessageCount || len(out.Print) > rego.PrintBytes || !out.PrintTruncated {
 		t.Fatalf("bounds: %d %d %v %v", len(out.Deny), len(out.Print), out.PrintTruncated, err)
 	}
@@ -151,17 +155,17 @@ flag contains "print" if { print(concat("", ["output" | some n in numbers.range(
 	}
 	in := input()
 	in.Run.Commit.Message = strings.Repeat("x", (64<<20)+1)
-	if _, err := p.Evaluate(t.Context(), in); !errors.Is(err, rego.ErrLimit) {
+	if _, err := p.Evaluate(t.Context(), in, nil); !errors.Is(err, rego.ErrLimit) {
 		t.Fatal(err)
 	}
 	in = input()
 	in.Run.Type = "INVALID"
-	if _, err := p.Evaluate(t.Context(), in); !errors.Is(err, initpolicy.ErrInput) {
+	if _, err := p.Evaluate(t.Context(), in, nil); !errors.Is(err, initpolicy.ErrInput) {
 		t.Fatal(err)
 	}
 	in = input()
 	in.Run.Metadata = nil
-	if _, err := p.Evaluate(t.Context(), in); !errors.Is(err, initpolicy.ErrInput) {
+	if _, err := p.Evaluate(t.Context(), in, nil); !errors.Is(err, initpolicy.ErrInput) {
 		t.Fatal(err)
 	}
 }
@@ -181,20 +185,20 @@ deny contains "late" if {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := p.Evaluate(ctx, input()); !errors.Is(err, context.Canceled) {
+	if _, err := p.Evaluate(ctx, input(), nil); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	ctx, cancel = context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	started := time.Now()
-	if _, err := p.Evaluate(ctx, input()); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := p.Evaluate(ctx, input(), nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
 	if time.Since(started) > time.Second {
 		t.Fatal("caller deadline was extended")
 	}
 	started = time.Now()
-	if _, err := p.Evaluate(t.Context(), input()); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := p.Evaluate(t.Context(), input(), nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
 	if time.Since(started) > 2*time.Second {
@@ -232,5 +236,66 @@ func TestUnitInitializationSnapshot(t *testing.T) {
 		if _, err := initpolicy.Snapshot(a, bad, "pool", "image"); !errors.Is(err, initpolicy.ErrInput) {
 			t.Fatal(err)
 		}
+	}
+}
+
+// commander serves each helper in-process with a fixed result, as a
+// container would after running its command.
+type commander struct {
+	argv   [][]string
+	status int
+	stdout string
+	err    error
+}
+
+func (c *commander) Command(_ context.Context, cmd executor.Command) error {
+	if c.err != nil {
+		return c.err
+	}
+	req, err := initcommand.ReadRequest(bytes.NewReader(cmd.Request))
+	if err != nil {
+		return err
+	}
+	c.argv = append(c.argv, req.Argv)
+	if err := initcommand.WriteOutput(cmd.Output, false, []byte(c.stdout)); err != nil {
+		return err
+	}
+	return initcommand.WriteResult(cmd.Output, initcommand.Result{Call: req.Call, Status: initcommand.StatusExited, ExitCode: c.status})
+}
+
+func TestUnitInitializationExecReachesTheVerifierAndFailsClosed(t *testing.T) {
+	body := `package infraweave
+import future.keywords
+verified := exec(["verify", "--token", input.run.token])
+deny contains "unverified" if { verified.status != 0 }
+deny contains verified.stdout if { verified.stdout != "ok" }
+`
+	p, err := initpolicy.Load(t.Context(), settings(t, rego.V1, body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := func(c *commander) *initcommand.Session {
+		return initcommand.NewSession(c, executor.Command{Worker: "w", Run: "run", Image: "image@sha256:digest"})
+	}
+	ok := &commander{stdout: "ok"}
+	if out, err := p.Evaluate(t.Context(), input(), session(ok)); err != nil || len(out.Deny) != 0 {
+		t.Fatalf("a verified run: %+v, %v", out, err)
+	}
+	if len(ok.argv) != 1 || strings.Join(ok.argv[0], " ") != "verify --token signed-run-secret" {
+		t.Fatalf("argv = %q", ok.argv)
+	}
+	_, err = p.Evaluate(t.Context(), input(), session(&commander{status: 1, stdout: "signed-run-secret"}))
+	var denied *initpolicy.Denied
+	if !errors.As(err, &denied) || err.Error() != "worker initialization policy denied: *****; unverified" {
+		t.Fatalf("an unverified run: %v", err)
+	}
+	_, err = p.Evaluate(t.Context(), input(), session(&commander{err: fmt.Errorf("pull image@sha256:digest: %w", executor.ErrImage)}))
+	if !errors.Is(err, initpolicy.ErrEvaluation) || !errors.Is(err, initcommand.ErrImage) ||
+		err.Error() != "worker initialization policy evaluation failed: the initialization command's runner image is unavailable" {
+		t.Fatalf("an unavailable image: %v", err)
+	}
+	_, err = p.Evaluate(t.Context(), input(), nil)
+	if !errors.Is(err, rego.ErrNoCommands) || err.Error() != "worker initialization policy evaluation failed: initialization commands are unavailable" {
+		t.Fatalf("no commands: %v", err)
 	}
 }

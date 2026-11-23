@@ -42,7 +42,9 @@ func (o *output) String() string {
 }
 
 // removeAfterList delegates to the real daemon, removing an owned run only
-// after its list snapshot has been returned and before Find follows its logs.
+// after the list of the worker's runs has been returned and before Find
+// follows its logs. Find's list of the worker's initialization command
+// helpers removes nothing.
 type removeAfterList struct {
 	docker.API
 	remove func(context.Context) error
@@ -52,6 +54,11 @@ func (d removeAfterList) ContainerList(ctx context.Context, options client.Conta
 	listed, err := d.API.ContainerList(ctx, options)
 	if err != nil {
 		return listed, fmt.Errorf("list before removal: %w", err)
+	}
+	for label := range options.Filters["label"] {
+		if strings.HasPrefix(label, docker.LabelCommandWorker+"=") {
+			return listed, nil
+		}
 	}
 	if err := d.remove(ctx); err != nil {
 		return listed, fmt.Errorf("remove after list: %w", err)

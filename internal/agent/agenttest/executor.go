@@ -3,6 +3,7 @@ package agenttest
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -21,6 +22,42 @@ type Executor struct {
 	containers map[string]*Container
 	startErr   error
 	findErr    error
+	commands   []executor.Command
+	helper     func(context.Context, executor.Command) error
+}
+
+var _ executor.Commander = (*Executor)(nil)
+
+// errNoHelper fails a helper the test gave no behaviour.
+var errNoHelper = errors.New("agenttest: no initialization command helper")
+
+// OnCommand makes each later helper run f, which writes the helper's
+// frames to its command's Output; nil fails each.
+func (e *Executor) OnCommand(f func(context.Context, executor.Command) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.helper = f
+}
+
+// Commands are the helpers Command was asked to run, in order, each with
+// a copy of its request.
+func (e *Executor) Commands() []executor.Command {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]executor.Command(nil), e.commands...)
+}
+
+// Command records c and runs OnCommand's function.
+func (e *Executor) Command(ctx context.Context, c executor.Command) error {
+	e.mu.Lock()
+	c.Request = bytes.Clone(c.Request)
+	e.commands = append(e.commands, c)
+	f := e.helper
+	e.mu.Unlock()
+	if f == nil {
+		return errNoHelper
+	}
+	return f(ctx, c)
 }
 
 // NewExecutor is an Executor with no containers.

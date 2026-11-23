@@ -31,6 +31,18 @@
 // newest Pod after a restart, following its runner's output from then on;
 // a Pod never handed its handoff cannot be resumed and is deleted.
 //
+// Command runs an initialization command's helper in a Pod of its own,
+// labelled for its worker and run with labels no run Pod carries: the
+// same fixed security, owner, pool resources, placement and pull
+// secrets, an active deadline of the call's remaining time, a bootstrap
+// that receives only the executable and an empty workspace, and a helper
+// container of the run's image that mounts the executable read-only and
+// nothing else and starts it as runner command. The request reaches the
+// helper only through its attached standard input, its standard output
+// goes to the caller, and the Pod is deleted however the call ends; a
+// helper image that cannot be pulled is executor.ErrImage. Find first
+// deletes any helper Pod of its worker a stopped controller left.
+//
 // ref: docs/implementation/worker-pool-contracts.md § "Portable preparation, handoff and recovery"
 //
 // # Input and output

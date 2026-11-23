@@ -53,7 +53,15 @@ type failure struct {
 	cause error
 }
 
-func (f *failure) Error() string   { return f.kind.Error() }
+// Error is the kind, and for an evaluation an exec call stopped, the
+// call's reason, whose text names no argument, output or image.
+func (f *failure) Error() string {
+	var command *rego.CommandError
+	if errors.As(f.cause, &command) {
+		return f.kind.Error() + ": " + command.Error()
+	}
+	return f.kind.Error()
+}
 func (f *failure) Unwrap() []error { return []error{f.kind, f.cause} }
 
 // Policy is a checked startup snapshot. It retains no run input or credentials.
@@ -197,7 +205,9 @@ func (d *Denied) Error() string {
 
 // Evaluate fails closed on evaluation/result errors. An empty deny set allows
 // the run, following the existing initialization preamble; helpers may be undefined.
-func (p *Policy) Evaluate(ctx context.Context, input Input) (Result, error) {
+// commands runs this evaluation's exec calls; with none, a call fails the
+// evaluation. A call that produces no result fails it with the call's reason.
+func (p *Policy) Evaluate(ctx context.Context, input Input, commands rego.Commands) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 	if err := input.validate(p.engine.InputLimit()); err != nil {
@@ -209,7 +219,7 @@ func (p *Policy) Evaluate(ctx context.Context, input Input) (Result, error) {
 	}
 	defer clear(body)
 	masker := mask.New([]byte(input.Run.Token)).WellKnown()
-	out, err := p.engine.Evaluate(ctx, rego.Request{Policy: p.policy, Input: body, Redact: masker.String})
+	out, err := p.engine.Evaluate(ctx, rego.Request{Policy: p.policy, Input: body, Redact: masker.String, Commands: commands})
 	if err != nil {
 		return Result{}, &failure{ErrEvaluation, err}
 	}

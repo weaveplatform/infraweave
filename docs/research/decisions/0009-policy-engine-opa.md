@@ -285,8 +285,8 @@ The worker specification adds the immutable stack ULID beside its existing slug
 configured local policy fails closed if an older server omits either new field.
 Without a configured policy, the supported older-server path is unchanged.
 The bare token is supplied by authenticated assignment delivery; independent JWT
-signature/admission, isolated exec and issued restart-safe preparation deadlines
-remain separate implementation requirements. The evaluator adds no replacement
+signature/admission and issued restart-safe preparation deadlines remain separate
+implementation requirements. The evaluator adds no replacement
 preparation clock and cannot claim those protections from its own timeout.
 
 Print and deny text are masked in the individual evaluation before truncation,
@@ -311,7 +311,9 @@ invoke exec; a worker mode cannot mutate the global capability registry.
 Retain bounded cache/concurrency/input/policy/print/messages; cached modules hold
 no credentials/input or pool-bound executor closure. Deny/error/timeout fails the
 assignment's preparing state with sanitized reasons before user hooks; invalid
-policy stops startup. These are intended P14 additions, not delivered runtime.
+policy stops startup. The exec built-in reaches its evaluation's helpers through
+that evaluation's context alone, and a call that produces no result halts the
+evaluation rather than leaving a rule undefined.
 
 ### Receipts, flags and sampling
 

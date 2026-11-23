@@ -60,10 +60,11 @@ type launcherSteps struct {
 	tamperer *httptest.Server
 	// Request limits override the launcher defaults when the scenario
 	// needs to prove their propagation into a run.
-	maxRequestsPerSecond int
-	maxRequestsBurst     int
-	initializationPolicy string
-	initializationEngine string
+	maxRequestsPerSecond  int
+	maxRequestsBurst      int
+	initializationPolicy  string
+	initializationEngine  string
+	initializationTimeout string
 }
 
 // launcher is one launcher of the scenario: its process, the directory
@@ -85,10 +86,15 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the answer is the pinned Terraform runner image$`, func() error {
 		return harness.Answered(l.w.Last(), "default runner image", strconv.Quote(harness.RunnerTerraform))
 	})
-	sc.Step(`^the launchers started from now on evaluate a (REGO_V0|REGO_V1) initialization policy:$`,
-		func(engine string, body *godog.DocString) {
-			l.initializationEngine, l.initializationPolicy = engine, body.Content
+	sc.Step(`^the launchers started from now on evaluate a (REGO_V0|REGO_V1) initialization policy(?: within (\d+s))?:$`,
+		func(engine, timeout string, body *godog.DocString) {
+			l.initializationEngine, l.initializationPolicy, l.initializationTimeout = engine, body.Content, timeout
 		})
+	sc.Step(`^the run "(\w+)" eventually runs an initialization command$`, l.commandRuns)
+	sc.Step(`^the run "(\w+)" still has an initialization command container$`, l.commandLeft)
+	sc.Step(`^the run "(\w+)" eventually has no initialization command container$`, l.noCommand)
+	sc.Step(`^the launcher "(\w+)" is stopped$`, l.stop)
+	sc.Step(`^the run "(\w+)" has no run container$`, l.noContainer)
 	sc.Step(`^the launcher "(\w+)" masked its initialization token in print and reports$`, l.initializationMasked)
 	sc.Step(`^the run "(\w+)" never started a container$`, l.noRunContainer)
 	sc.After(l.end)
@@ -242,6 +248,9 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 		}
 		settings["initialization_policy"] = path
 		settings["initialization_policy_engine"] = l.initializationEngine
+		if l.initializationTimeout != "" {
+			settings["initialization_timeout"] = l.initializationTimeout
+		}
 	}
 	if ca := w.CAFile(); ca != "" {
 		settings["ca_file"] = ca
@@ -437,6 +446,12 @@ func (l *launcherSteps) kill(ctx context.Context, name string) error {
 	return err
 }
 
+// stop stops the launcher name with SIGTERM, which cancels what it is
+// doing, and waits for it to exit.
+func (l *launcherSteps) stop(ctx context.Context, name string) error {
+	return l.launchers[name].srv.Stop(ctx) //nolint:wrapcheck // names the process
+}
+
 // restart starts the launcher name again on its configuration and cache,
 // and checks that it resumed the worker it had.
 func (l *launcherSteps) restart(ctx context.Context, name string) error {
@@ -620,7 +635,7 @@ func (l *launcherSteps) end(ctx context.Context, _ *godog.Scenario, failed error
 			err = errors.Join(err, os.MkdirAll(dir, 0o750), ln.srv.Evidence(dir))
 		}
 		if worker := l.w.IDs[name]; worker != "" && err == nil {
-			err = host.Remove(ctx, docker.LabelWorker, worker)
+			err = errors.Join(host.Remove(ctx, docker.LabelWorker, worker), host.Remove(ctx, docker.LabelCommandWorker, worker))
 		}
 	}
 	if failed != nil {

@@ -56,6 +56,9 @@ type kubelet struct {
 	bootstrap  string // a waiting reason the bootstrap shows instead of running
 	runner     string // a waiting reason the runner shows instead of running
 	refuse     bool   // the runner's attach fails before reading
+	requests   map[string][]byte
+	hold       bool // a helper runs until its attach ends
+	requested  chan struct{}
 	execFails  bool
 	oom        bool
 	deadline   bool
@@ -66,7 +69,7 @@ func newKubelet(t *testing.T) *kubelet {
 	t.Helper()
 	k := &kubelet{
 		t: t, core: k8sfake.NewClientset(), arch: "arm64", volumes: map[string]bootstrap.Paths{},
-		handoffs: map[string][]byte{}, exits: map[string]chan int32{},
+		handoffs: map[string][]byte{}, exits: map[string]chan int32{}, requests: map[string][]byte{},
 	}
 	k.core.PrependReactor("create", "pods", func(a k8stesting.Action) (bool, runtime.Object, error) {
 		k.mu.Lock()
@@ -157,12 +160,15 @@ func (k *kubelet) Attach(ctx context.Context, namespace, pod, container string, 
 				runner = corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: runnerWaiting, Message: "manifest unknown"}}
 			}
 			p.Status.Phase = corev1.PodRunning
-			p.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: RunnerContainer, Image: p.Spec.Containers[0].Image, State: runner}}
+			p.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: p.Spec.Containers[0].Name, Image: p.Spec.Containers[0].Image, State: runner}}
 		})
 		return nil
 	}
 	if refuse {
 		return errors.New("upgrade refused")
+	}
+	if container == CommandContainer {
+		return k.command(ctx, pod, stdin, stdout)
 	}
 	b, err := io.ReadAll(stdin)
 	if err != nil {
@@ -201,6 +207,32 @@ func (k *kubelet) Attach(ctx context.Context, namespace, pod, container string, 
 			return ctx.Err()
 		}
 	}
+}
+
+// command is a helper container: it reads its request and answers it on
+// standard output, or runs until its attach ends when k.hold is set.
+func (k *kubelet) command(ctx context.Context, pod string, stdin io.Reader, stdout io.Writer) error {
+	b, err := io.ReadAll(stdin)
+	if err != nil {
+		return err
+	}
+	k.mu.Lock()
+	k.requests[pod] = b
+	hold, requested := k.hold, k.requested
+	k.mu.Unlock()
+	if requested != nil {
+		close(requested)
+	}
+	if hold {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	_, _ = stdout.Write(append([]byte("answer:"), b...))
+	k.setStatus(ctx, pod, func(p *corev1.Pod) {
+		p.Status.ContainerStatuses[0].State = terminated(0, "Completed", "")
+		p.Status.Phase = corev1.PodSucceeded
+	})
+	return nil
 }
 
 func (k *kubelet) Exec(_ context.Context, _, pod, container string, command []string, stdout, _ io.Writer) error {

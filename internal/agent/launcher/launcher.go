@@ -23,11 +23,13 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/config"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
 )
@@ -636,9 +638,12 @@ func (l *Launcher) assign(ctx context.Context, a wire.Assignment) {
 }
 
 // prepare fetches a's specification, opens its sealed part with the
-// pool's private key, fetches the run's source into its workspace, and
-// starts the run's container. A container that does not start takes its
-// workspace with it.
+// pool's private key, resolves and admits the run's image, evaluates the
+// initialization policy, whose exec calls run in helpers of that image,
+// fetches the run's source into its workspace, and starts the run's
+// container. The image is the specification's, else the launcher's
+// default when set, else the stack's vendor's built-in image. A container
+// that does not start takes its workspace with it.
 //
 // ref: decision 0008 § "The launcher and the runner"
 func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (executor.Container, error) {
@@ -657,12 +662,25 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (
 	if err := json.Unmarshal(plain, &secrets); err != nil {
 		return nil, fmt.Errorf("read the run's secrets: %w", err)
 	}
+	image := l.runnerImage(spec)
+	if spec.PublicPool != nil && !runnerimages.RegistryAllowed(image, spec.PublicPool.AllowedRegistries) {
+		return nil, errPublicRunnerImage
+	}
 	if l.policy != nil {
-		input, err := initpolicy.Snapshot(a, spec, l.id.pool, l.runnerImage(spec))
+		input, err := initpolicy.Snapshot(a, spec, l.id.pool, image)
 		if err != nil {
 			return nil, err //nolint:wrapcheck // initpolicy exposes a safe refusal
 		}
-		result, err := l.policy.Evaluate(ctx, input)
+		// The policy's exec calls run in helpers of the run's own admitted
+		// image, where its runs run; an executor that cannot start helpers
+		// fails each call.
+		var commands rego.Commands
+		if c, ok := l.d.Executor.(executor.Commander); ok {
+			commands = initcommand.NewSession(c, executor.Command{
+				Worker: l.st.Worker, Run: a.Run, StateVersion: a.StateVersion, Image: image,
+			})
+		}
+		result, err := l.policy.Evaluate(ctx, input, commands)
 		if result.Print != "" {
 			l.d.Log.InfoContext(ctx, "worker initialization policy print", "run", a.Run,
 				"print", result.Print, "truncated", result.PrintTruncated)
@@ -675,7 +693,7 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (
 	if err != nil {
 		return nil, err
 	}
-	c, err := l.container(ctx, a, spec, secrets, ws, out)
+	c, err := l.container(ctx, a, spec, image, secrets, ws, out)
 	if err != nil && ws != "" {
 		l.dropWorkspace(ctx, a.Run, nil)
 	}
@@ -801,18 +819,21 @@ var errPublicRunnerImage = errors.New("runner image is not admitted by the insta
 
 // container fetches the tool a's specification names, and the Terragrunt
 // that drives it for a Terragrunt stack's run, and starts the run's
-// container with ws as its workspace, each binary mounted read-only at
-// /bin/<tool>, and the handoff, which holds the opened secrets in memory
-// alone. A binary whose download is false is not mounted, so the image's
-// own runs. The image is the specification's, else the launcher's default
-// when set, else the stack's vendor's built-in image.
+// container of image with ws as its workspace, each binary mounted
+// read-only at /bin/<tool>, and the handoff, which holds the opened
+// secrets in memory alone. A binary whose download is false is not
+// mounted, so the image's own runs.
 //
 // ref: decision 0008 § "Runner images"
-func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.RunSpec, secrets wire.RunSpecSecrets, ws string, out *lines) (executor.Container, error) {
-	image := l.runnerImage(spec)
-	if spec.PublicPool != nil && !runnerimages.RegistryAllowed(image, spec.PublicPool.AllowedRegistries) {
-		return nil, errPublicRunnerImage
-	}
+func (l *Launcher) container(
+	ctx context.Context,
+	a wire.Assignment,
+	spec wire.RunSpec,
+	image string,
+	secrets wire.RunSpecSecrets,
+	ws string,
+	out *lines,
+) (executor.Container, error) {
 	var mounts []executor.Mount
 	var verified []executor.Tool
 	for _, b := range binaries(spec) {

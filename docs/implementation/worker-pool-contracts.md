@@ -444,11 +444,12 @@ come from the authenticated server/pool-token producers; the adapter does not
 independently parse every ULID or verify the run JWT.
 
 The local implementation's combined deadline honors caller cancellation and
-any earlier context deadline. Issued/restart-safe preparation deadlines,
-independent JWT verification and isolated exec retain their own delivery owners;
-a local timeout proves none of those additions. Without exec delivery, worker
-programs using exec fail compilation. Server policy/simulation still cannot
-compile exec, and worker queries use a separate cache identity. The
+any earlier context deadline. Issued/restart-safe preparation deadlines and
+independent JWT verification retain their own delivery owners; a local timeout
+proves neither. Worker programs compile `exec` against the worker engine's own
+capability set; server policy/simulation still cannot compile it, also after a
+worker compilation has cached the same body, and worker queries use a separate
+cache identity. The
 [worker initialization verification](worker-initialization-verification.json)
 records the bounded local implementation's candidate evidence; other worker
 and cloud requirements remain unproven. Compile at worker startup with bounded embedded
@@ -538,6 +539,21 @@ bounds and masking. Scope these new exec budgets to worker initialization;
 wall-clock limits alone are not a memory bound. Helper ownership, termination,
 restart cleanup and hard deadlines use the same controller mechanisms as run
 Pods. Helper Pods do not register protocol workers or expand private-worker quota.
+
+The policy outcomes of a call are explicit. A command that ends by itself,
+including a nonzero exit, returns its status and output to the policy; a
+command that cannot start returns status 127 with the reason on stderr. Every
+other outcome halts the evaluation, so no deny rule is left undefined, and fails
+the assignment's preparing state with `worker initialization policy evaluation
+failed:` and one fixed reason: more than eight calls, arguments beyond their
+bounds, the call's deadline, cancellation, output beyond its bounds, an image
+that cannot be pulled, or a helper that fails. No reason names an argument,
+output or image. Docker helpers run with every capability dropped, no new
+privileges, 1 GiB memory and 512 processes; Kubernetes helper Pods have the run
+Pod's fixed security, the pool's resources and placement, and the call's
+remaining time as their active deadline. Helpers carry labels no run container
+or Pod carries, and a restarted launcher's or controller's recovery removes any
+helper of its worker before it looks for its run.
 
 ## Phase-scoped inputs and vendor signals
 
