@@ -762,6 +762,66 @@ func TestUnitCapabilitiesSchemaProduct(t *testing.T) {
 	}
 }
 
+// TestUnitFeaturesSchemaPreview proves the committed features schema takes
+// a preview marker on a capability or an option only, with its name,
+// description and https documentation URL, and an https image URL when it
+// has one.
+func TestUnitFeaturesSchemaPreview(t *testing.T) {
+	schema, err := os.ReadFile("../../../docs/data/schema/features.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	common, err := os.ReadFile("../../../docs/data/schema/common.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const featReg = "docs/data/features.json"
+	const docs = `"docsUrl": "https://docs.example.com/stacks"`
+	for _, tc := range []struct {
+		name, old, new string
+		fails          bool
+	}{
+		{"a marked capability and option", "", "", false},
+		{"a marker on a limit", `"values": {"free": 2},`, `"values": {"free": 2}, "preview": {"name": "S", "description": "S.", ` + docs + `},`, true},
+		{"a marker on the switch", `"gates": "Enforcement",`, `"gates": "Enforcement", "preview": {"name": "B", "description": "B.", ` + docs + `},`, true},
+		{"no name", `"name": "Stacks", `, "", true},
+		{"an empty name", `"name": "Stacks"`, `"name": ""`, true},
+		{"no description", `"description": "Runs ` + "`terraform`" + `.", `, "", true},
+		{"no docsUrl", `, ` + docs, "", true},
+		{"an http docsUrl", docs, `"docsUrl": "http://docs.example.com/stacks"`, true},
+		{"a relative docsUrl", docs, `"docsUrl": "/stacks"`, true},
+		{"an http imageUrl", `"https://docs.example.com/checks.png"`, `"http://docs.example.com/checks.png"`, true},
+		{"an unknown member", docs, docs + `, "videoUrl": "https://docs.example.com/v"`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			register := documentFixture(t, "features-preview.json")
+			if tc.old != "" {
+				if !strings.Contains(register, tc.old) {
+					t.Fatalf("the fixture lacks %s", tc.old)
+				}
+				register = strings.Replace(register, tc.old, tc.new, 1)
+			}
+			m := tree(t)
+			m["docs/data/schema/features.schema.json"] = &fstest.MapFile{Data: schema}
+			m["docs/data/schema/common.schema.json"] = &fstest.MapFile{Data: common}
+			m[featReg] = file(register)
+			found, err := Check(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, f := range found {
+				if strings.Contains(f.String(), featReg) {
+					got = append(got, f.String())
+				}
+			}
+			if tc.fails != (len(got) > 0) {
+				t.Errorf("findings = %q, want the register refused: %t", got, tc.fails)
+			}
+		})
+	}
+}
+
 // TestUnitCheckSupersededOperations proves each operations entry of the
 // supersessions register is held to its product's reference.
 func TestUnitCheckSupersededOperations(t *testing.T) {

@@ -2,6 +2,7 @@ package features_test
 
 import (
 	"maps"
+	"net/url"
 	"slices"
 	"testing"
 
@@ -9,8 +10,9 @@ import (
 )
 
 // TestUnitFeatureCatalogue checks the compiled-in catalogue's rules: names
-// sorted and unique, every requirement a gated feature, and the
-// installation's own names of the kinds it treats them as.
+// sorted and unique, every requirement a gated feature, every preview
+// marker one the feature preview read can show, and the installation's own
+// names of the kinds it treats them as.
 //
 // ref: decision 0021
 func TestUnitFeatureCatalogue(t *testing.T) {
@@ -46,6 +48,47 @@ func TestUnitFeatureCatalogue(t *testing.T) {
 				t.Errorf("%s requires %s, which is not a gated feature", f.Name, r)
 			}
 		}
+		if fault := previewFault(f); fault != "" {
+			t.Errorf("%s: %s", f.Name, fault)
+		}
+	}
+	marker := func(edit func(*features.Preview)) *features.Preview {
+		p := &features.Preview{Name: "X", Description: "Does x.", DocsURL: "https://docs.example.com/x"}
+		edit(p)
+		return p
+	}
+	same := func(*features.Preview) {}
+	for name, f := range map[string]features.Feature{
+		"a preview on a limit":    {Name: "seats", Kind: features.Limit, Preview: marker(same)},
+		"a preview on the switch": {Name: features.Billing, Kind: features.Switch, Preview: marker(same)},
+		"no name":                 {Name: "x", Kind: features.Capability, Preview: marker(func(p *features.Preview) { p.Name = "" })},
+		"no description": {
+			Name: "x", Kind: features.Option, Preview: marker(func(p *features.Preview) { p.Description = "" }),
+		},
+		"no docsUrl": {Name: "x", Kind: features.Capability, Preview: marker(func(p *features.Preview) { p.DocsURL = "" })},
+		"an http docsUrl": {
+			Name: "x", Kind: features.Capability,
+			Preview: marker(func(p *features.Preview) { p.DocsURL = "http://docs.example.com/x" }),
+		},
+		"an http imageUrl": {
+			Name: "x", Kind: features.Option,
+			Preview: marker(func(p *features.Preview) { p.ImageURL = "http://docs.example.com/x.png" }),
+		},
+	} {
+		if previewFault(f) == "" {
+			t.Errorf("%s: the check accepts %+v", name, *f.Preview)
+		}
+	}
+	for _, f := range []features.Feature{
+		{Name: "x", Kind: features.Capability, Preview: marker(same)},
+		{Name: "x", Kind: features.Option, Preview: marker(func(p *features.Preview) {
+			p.ImageURL = "https://docs.example.com/x.png"
+		})},
+		{Name: "seats", Kind: features.Limit},
+	} {
+		if fault := previewFault(f); fault != "" {
+			t.Errorf("%s: %s", f.Name, fault)
+		}
 	}
 	if _, ok := features.Lookup("SCANS"); ok {
 		t.Error("Lookup found a Spacelift spelling")
@@ -58,6 +101,63 @@ func TestUnitFeatureCatalogue(t *testing.T) {
 	); f.Kind != features.Capability ||
 		f.LowestTier != features.Free {
 		t.Errorf("operator is a %s from %s", f.Kind, f.LowestTier)
+	}
+}
+
+// previewFault is what is wrong with f's preview marker, or "" when it has
+// none or the feature preview read can show it: only a capability or an
+// option is a preview, and its marker has a name, a description, an https
+// documentation URL and, when it has one, an https image URL.
+func previewFault(f features.Feature) string {
+	p := f.Preview
+	switch {
+	case p == nil:
+		return ""
+	case !f.Gated():
+		return "a preview marker on a " + string(f.Kind)
+	case p.Name == "" || p.Description == "" || p.DocsURL == "":
+		return "a preview marker without its name, description or docsUrl"
+	case !isHTTPS(p.DocsURL) || p.ImageURL != "" && !isHTTPS(p.ImageURL):
+		return "a preview marker with a URL that is not https"
+	}
+	return ""
+}
+
+func isHTTPS(s string) bool {
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme == "https" && u.Host != ""
+}
+
+// TestUnitPreviews checks that the preview list holds every marked
+// capability and option, with its marker, in catalogue order.
+func TestUnitPreviews(t *testing.T) {
+	drift := &features.Preview{
+		Name: "Drift detection", Description: "Finds resources that changed outside a run.",
+		DocsURL: "https://docs.example.com/drift",
+	}
+	checks := &features.Preview{
+		Name: "Aggregated checks", Description: "One `check` per commit.",
+		DocsURL: "https://docs.example.com/checks", ImageURL: "https://docs.example.com/checks.png",
+	}
+	features.WithCatalogue(t, []features.Feature{
+		{Name: "aggregated", Kind: features.Option, LowestTier: features.Business, Preview: checks},
+		{Name: features.Billing, Kind: features.Switch},
+		{Name: "drift", Kind: features.Capability, LowestTier: features.Business, Preview: drift},
+		{Name: "stacks", Kind: features.Capability, LowestTier: features.Free},
+	})
+	got := features.Previews()
+	if len(got) != 2 || got[0].Name != "aggregated" || got[1].Name != "drift" {
+		t.Fatalf("previews %+v, want aggregated and drift", got)
+	}
+	if *got[0].Preview != *checks || *got[1].Preview != *drift {
+		t.Errorf("markers %+v and %+v", *got[0].Preview, *got[1].Preview)
+	}
+	if f, _ := features.Lookup("stacks"); f.Preview != nil {
+		t.Errorf("stacks is a preview: %+v", *f.Preview)
+	}
+	features.WithCatalogue(t, []features.Feature{{Name: "stacks", Kind: features.Capability, LowestTier: features.Free}})
+	if got := features.Previews(); len(got) != 0 {
+		t.Errorf("previews of a catalogue without one: %+v", got)
 	}
 }
 
