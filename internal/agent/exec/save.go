@@ -86,7 +86,10 @@ func (r *run) save(ctx context.Context, version int64, p plan.Plan) string {
 		}
 		ups = append(ups, u)
 	}
-	if r.h.Spec.Run.Type == wire.TRACKED && changes(p.Delta) {
+	// A destroy run may wait for confirmation whatever its plan changes,
+	// when a plan policy warns, and destroys from this workspace once
+	// confirmed.
+	if r.h.Spec.Run.Type == wire.TRACKED && changes(p.Delta) || r.h.Spec.Run.Type == wire.DESTROY {
 		u, err := r.sealWorkspace(version)
 		if err != nil {
 			return fmt.Sprintf("The workspace could not be saved for the plan's confirmation: %v.",

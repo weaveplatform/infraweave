@@ -185,7 +185,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's first run names "destroy"
     And token "h" eventually finds no stack "infra" through A
-    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, DESTROYING, FINISHED"
 
   @terraform @op:runTrigger @op:runConfirm @op:stackDelete @case:success
   Scenario: A single-unit run plans and applies only the project root, then destroys it
@@ -208,7 +208,7 @@ Feature: Terragrunt runs select the root unit or all units and their state works
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's first run names "destroy"
     And token "h" eventually finds no stack "infra" through A
-    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, DESTROYING, FINISHED"
 
   @terraform @op:runTrigger @case:success
   Scenario Outline: The runtime block replaces the stack's run-all mode, and an absent block keeps it

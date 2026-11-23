@@ -1130,6 +1130,10 @@ func (UnimplementedStrict) StackDependency(context.Context, StackDependencyReque
 	return nil, &problem.NotImplementedError{OperationID: "stackDependency", Route: "GET /stacks/{stackId}/dependency"}
 }
 
+func (UnimplementedStrict) RunDestroyTrigger(context.Context, RunDestroyTriggerRequestObject) (RunDestroyTriggerResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "runDestroyTrigger", Route: "POST /stacks/{stackId}/destroy-runs"}
+}
+
 func (UnimplementedStrict) StackDisable(context.Context, StackDisableRequestObject) (StackDisableResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackDisable", Route: "POST /stacks/{stackId}/disable"}
 }

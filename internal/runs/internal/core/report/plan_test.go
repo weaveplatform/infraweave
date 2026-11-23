@@ -29,6 +29,7 @@ func TestUnitPlanRoutingRetainsTestingAndInformationalBehavior(t *testing.T) {
 	}{
 		{name: "testing warning still applies a no-change test", typ: kernel.RunTypeTesting, plan: policyapi.PlanDecision{Warn: []string{"test warning"}}, note: "test warning"},
 		{name: "information does not hold autodeploy", typ: kernel.RunTypeTracked, plan: policyapi.PlanDecision{Info: []string{"informational"}}},
+		{name: "information does not hold a destroy", typ: kernel.RunTypeDestroy, plan: policyapi.PlanDecision{Info: []string{"informational"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := newWorld(tc.typ, kernel.RunStatePlanning)
@@ -47,7 +48,11 @@ func TestUnitPlanRoutingRetainsTestingAndInformationalBehavior(t *testing.T) {
 				delta = kernel.PlanDelta{}
 			}
 			got, err := w.send(t, workersapi.Report{StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded, Delta: &delta})
-			want(t, got, err, workersapi.ActionExecute, kernel.RunStateApplying, 3)
+			to := kernel.RunStateApplying
+			if tc.typ == kernel.RunTypeDestroy {
+				to = kernel.RunStateDestroying
+			}
+			want(t, got, err, workersapi.ActionExecute, to, 3)
 			if calls != 1 || len(w.m.reqs) != 1 || w.m.reqs[0].Note != tc.note {
 				t.Fatal("planning evaluation or informational/warning history was lost")
 			}
@@ -75,6 +80,47 @@ func TestUnitPlanReportRefusesContradictoryEvaluationAndMissingSelection(t *test
 			_, err := w.send(t, workersapi.Report{StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded, Delta: &kernel.PlanDelta{Add: 1}})
 			if !errors.Is(err, tc.err) || len(w.m.reqs) != 0 {
 				t.Fatalf("unavailable or invalid evaluation advanced a run: %v", err)
+			}
+		})
+	}
+}
+
+// TestUnitPlanRoutingDestroy routes a destroy run's plan: a warning holds
+// it for confirmation even when its plan changes nothing, with the
+// warning as the note, and a deny fails it.
+func TestUnitPlanRoutingDestroy(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		out    policyapi.Evaluation
+		to     kernel.RunState
+		action workersapi.Action
+		note   string
+	}{
+		{
+			name:   "warning",
+			out:    policyapi.Evaluation{Type: policyapi.Plan, HasPolicies: true, Outcome: policyapi.Allow, Plan: &policyapi.PlanDecision{Warn: []string{"review the destroy"}}},
+			to:     kernel.RunStateUnconfirmed,
+			action: workersapi.ActionPause,
+			note:   "review the destroy",
+		},
+		{
+			name:   "deny",
+			out:    policyapi.Evaluation{Type: policyapi.Plan, HasPolicies: true, Outcome: policyapi.Deny, Plan: &policyapi.PlanDecision{Deny: []string{"keep it"}}},
+			to:     kernel.RunStateFailed,
+			action: workersapi.ActionExit,
+			note:   "denied by plan policy",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newWorld(kernel.RunTypeDestroy, kernel.RunStatePlanning)
+			w.svc = report.New(report.Deps{
+				DB: db{}, Store: w.s, Lifecycle: w.m, Stacks: w.st,
+				Policies: controlledPlanEvaluation(func(context.Context, policyapi.EvaluationRequest) (policyapi.Evaluation, error) { return tc.out, nil }),
+			})
+			got, err := w.send(t, workersapi.Report{StateVersion: 2, State: kernel.RunStatePlanning, Event: workersapi.ReportSucceeded, Delta: &kernel.PlanDelta{}})
+			want(t, got, err, tc.action, tc.to, 3)
+			if len(w.m.reqs) != 1 || w.m.reqs[0].Note != tc.note {
+				t.Fatalf("moved %+v", w.m.reqs)
 			}
 		})
 	}

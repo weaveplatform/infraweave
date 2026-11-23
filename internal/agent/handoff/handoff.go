@@ -89,15 +89,17 @@ func Read(r io.Reader) (Handoff, error) {
 
 // First is the state the runner's first started report names, the one
 // the run's preparation leads to: INITIALIZING after PREPARING, PLANNING
-// after PREPARING_REPLAN and APPLYING after PREPARING_APPLY; empty for
-// any other state.
+// after PREPARING_REPLAN, and after PREPARING_APPLY DESTROYING for a
+// destroy run and APPLYING for any other; empty for any other state.
 func (h Handoff) First() wire.WorkerState {
-	switch h.Assigned {
-	case wire.AssignmentStatePREPARING:
+	switch {
+	case h.Assigned == wire.AssignmentStatePREPARING:
 		return wire.WorkerStateINITIALIZING
-	case wire.AssignmentStatePREPARINGREPLAN:
+	case h.Assigned == wire.AssignmentStatePREPARINGREPLAN:
 		return wire.WorkerStatePLANNING
-	case wire.AssignmentStatePREPARINGAPPLY:
+	case h.Assigned == wire.AssignmentStatePREPARINGAPPLY && h.Spec.Run.Type == wire.DESTROY:
+		return wire.WorkerStateDESTROYING
+	case h.Assigned == wire.AssignmentStatePREPARINGAPPLY:
 		return wire.WorkerStateAPPLYING
 	}
 	return ""

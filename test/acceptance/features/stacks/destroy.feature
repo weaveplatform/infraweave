@@ -1,7 +1,8 @@
 @postgres @vcs
 Feature: A stack deleted with its resources stays until its destroy run finishes
   A delete with destroyResources answers the stack deleting and creates a
-  DESTROY run on its tracked commit. While the stack is deleting it runs
+  DESTROY run on its tracked commit, which plans the destroy before it
+  destroys. While the stack is deleting it runs
   nothing else, and a delete without destroyResources is refused; another
   delete with it answers the stack as it is. The stack is deleted when
   its destroy run finishes; a destroy run that ends any other way leaves
@@ -68,8 +69,11 @@ Feature: A stack deleted with its resources stays until its destroy run finishes
     Then it answers 200
     When token "rt" sends "POST /worker/v1/runs/{destroy}/reports" with '{"event":"succeeded","state":"INITIALIZING","stateVersion":4}' through A
     Then it answers 200
+    And the answer's state is '"PLANNING"'
+    When token "rt" sends "POST /worker/v1/runs/{destroy}/reports" with '{"event":"succeeded","state":"PLANNING","stateVersion":5,"delta":{"add":0,"change":0,"delete":0,"import":0,"outputs":false}}' through B
+    Then it answers 200
     And the answer's state is '"DESTROYING"'
-    When token "rt" sends "POST /worker/v1/runs/{destroy}/reports" with '{"event":"succeeded","state":"DESTROYING","stateVersion":5}' through B
+    When token "rt" sends "POST /worker/v1/runs/{destroy}/reports" with '{"event":"succeeded","state":"DESTROYING","stateVersion":6}' through B
     Then it answers 200
     And the answer's action is '"exit"'
     When token "h" sends "GET /api/v1/stacks/infra" through A

@@ -468,7 +468,15 @@ func TestUnitReportEdges(t *testing.T) {
 		},
 		{
 			kernel.RunTypeDestroy, kernel.RunStateInitializing, kernel.RunStateInitializing,
-			workersapi.ReportSucceeded, kernel.RunStateDestroying, workersapi.ActionExecute, nil,
+			workersapi.ReportSucceeded, kernel.RunStatePlanning, workersapi.ActionExecute, nil,
+		},
+		{
+			kernel.RunTypeDestroy, kernel.RunStatePreparingApply, kernel.RunStateDestroying,
+			workersapi.ReportStarted, kernel.RunStateDestroying, workersapi.ActionExecute, nil,
+		},
+		{
+			kernel.RunTypeDestroy, kernel.RunStatePreparingApply, kernel.RunStateApplying,
+			workersapi.ReportStarted, "", "", workersapi.ErrReportRefused,
 		},
 		{
 			kernel.RunTypeTesting, kernel.RunStateApplying, kernel.RunStateApplying,
@@ -673,6 +681,36 @@ func TestUnitReportOutputs(t *testing.T) {
 	if w.s.outputs != nil {
 		t.Errorf("a test case's apply kept %+v", w.s.outputs)
 	}
+
+	// A destroy run's destroy leaves its stack no outputs; a test case's
+	// leaves its stack's as they are.
+	destroy := func(typ kernel.RunType, ev workersapi.ReportEvent) *world {
+		w := newWorld(typ, kernel.RunStateDestroying)
+		w.s.outputs = map[string]plan.Output{"earlier": {Value: []byte(`1`)}}
+		_, err := w.report(t, 2, kernel.RunStateDestroying, ev)
+		if err != nil {
+			t.Fatalf("%s %s: %v", typ, ev, err)
+		}
+		return w
+	}
+	if w := destroy(kernel.RunTypeDestroy, workersapi.ReportSucceeded); w.s.outputs == nil ||
+		len(w.s.outputs) != 0 {
+		t.Errorf("a destroy kept %+v", w.s.outputs)
+	}
+	for _, w := range []*world{
+		destroy(kernel.RunTypeDestroy, workersapi.ReportFailed),
+		destroy(kernel.RunTypeTesting, workersapi.ReportSucceeded),
+	} {
+		if len(w.s.outputs) != 1 {
+			t.Errorf("%s run's %s left %+v", w.s.run.Type, w.s.run.State, w.s.outputs)
+		}
+	}
+	w = newWorld(kernel.RunTypeDestroy, kernel.RunStateDestroying)
+	w.s.fail = "ReplaceOutputs"
+	if _, err := w.report(t, 2, kernel.RunStateDestroying, workersapi.ReportSucceeded); !errors.Is(err,
+		errDown) || len(w.m.reqs) != 0 {
+		t.Errorf("a failing replace: %v, moved %+v", err, w.m.reqs)
+	}
 }
 
 // TestUnitReportStopped checks that a stopped report records who asked
@@ -766,6 +804,16 @@ func TestUnitPlanDecision(t *testing.T) {
 			stacksapi.Settings{},
 			kernel.RunStateApplying,
 			workersapi.ActionExecute,
+		},
+		"destroy without autodeploy": {
+			kernel.RunTypeDestroy,
+			kernel.PlanDelta{Delete: 2, Resources: 2},
+			stacksapi.Settings{},
+			kernel.RunStateDestroying, workersapi.ActionExecute,
+		},
+		"destroy without changes, locked": {
+			kernel.RunTypeDestroy, none, locked,
+			kernel.RunStateDestroying, workersapi.ActionExecute,
 		},
 	} {
 		w := newWorld(tc.typ, kernel.RunStatePlanning)

@@ -315,6 +315,12 @@ func (s *Service) reportCurrent(ctx context.Context, run lifecycle.Run, r worker
 			return workersapi.Step{}, err
 		}
 	}
+	if destroyed(run, r) {
+		// The stack's resources are gone, and its outputs with them.
+		if err := s.d.Store.ReplaceOutputs(ctx, run, map[string]plan.Output{}); err != nil {
+			return workersapi.Step{}, err //nolint:wrapcheck // the store names the write
+		}
+	}
 	actor, note := lifecycle.Actor{}, r.Details
 	if to == kernel.RunStateStopped {
 		actor, note = run.Stop.Ends(note)
@@ -400,17 +406,21 @@ func (s *Service) decide(ctx context.Context, run lifecycle.Run, r workersapi.Re
 
 // Decision is the state the plan decision moves a run of type t out of
 // PLANNING to when no plan policy is attached, from its plan's delta d and
-// its stack st: a test case applies (T21); a tracked run with changes
-// applies when its stack deploys automatically and is unlocked (T21), and
-// waits for confirmation otherwise (T20); any other run, or a tracked one
-// whose plan changes nothing, finishes (T17). A type with none of these
-// edges is refused by the lifecycle.
+// its stack st: a test case applies (T21); a destroy run destroys (T47),
+// whatever its plan and its stack's autodeploy, as its trigger asked; a
+// tracked run with changes applies when its stack deploys automatically
+// and is unlocked (T21), and waits for confirmation otherwise (T20); any
+// other run, or a tracked one whose plan changes nothing, finishes (T17).
+// A type with none of these edges is refused by the lifecycle.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
+// ref: decision 0008 § "The destroy trigger"
 func Decision(t kernel.RunType, d kernel.PlanDelta, st stacksapi.Settings) kernel.RunState {
 	switch {
 	case t == kernel.RunTypeTesting:
 		return kernel.RunStateApplying
+	case t == kernel.RunTypeDestroy:
+		return kernel.RunStateDestroying
 	case t != kernel.RunTypeTracked || !d.Changes():
 		return kernel.RunStateFinished
 	case st.Autodeploy && st.Lock == nil:
@@ -432,6 +442,13 @@ const (
 func applied(run lifecycle.Run, r workersapi.Report) bool {
 	return run.Type == kernel.RunTypeTracked && run.State == kernel.RunStateApplying &&
 		r.State == kernel.RunStateApplying && r.Event == workersapi.ReportSucceeded
+}
+
+// destroyed reports whether r is a succeeded report of a destroy run's
+// DESTROYING, after which its stack has no outputs.
+func destroyed(run lifecycle.Run, r workersapi.Report) bool {
+	return run.Type == kernel.RunTypeDestroy && run.State == kernel.RunStateDestroying &&
+		r.State == kernel.RunStateDestroying && r.Event == workersapi.ReportSucceeded
 }
 
 // keepOutputs replaces the outputs of run's stack, in the report's

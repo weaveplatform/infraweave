@@ -974,10 +974,15 @@ func (s *Service) destroy(ctx context.Context, p kernel.Principal, st *Stack) er
 	return nil
 }
 
-// Destroyed ends acct's stack id's deletion once its destroy run ends,
-// in the transaction ctx carries, which the run's terminal transition
-// holds: deleting the stack when the run finished, else clearing the
-// mark.
+// Destroyed ends acct's stack id's destroy run, in the transaction ctx
+// carries, which the run's terminal transition holds. A stack being
+// deleted is deleted when the run finished, and otherwise no longer
+// deleting. Any other stack whose destroy run finished is disabled, as
+// stackDisable disables it, so no run creates its resources again until
+// a caller enables it.
+//
+// ref: decision 0008 § "Destroy on delete"
+// ref: decision 0008 § "The destroy trigger"
 func (s *Service) Destroyed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, finished bool) error {
 	//nolint:wrapcheck // each step in the transaction names itself
 	return tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -985,12 +990,19 @@ func (s *Service) Destroyed(ctx context.Context, acct kernel.AccountID, id kerne
 		switch {
 		case err != nil:
 			return err //nolint:wrapcheck // the store names the read
-		case !st.Deleting:
-			return nil
-		case finished:
+		case st.Deleting && finished:
 			return s.remove(ctx, &st)
+		case st.Deleting:
+			return s.store.SetDeleting(ctx, acct, id, false) //nolint:wrapcheck // as above
+		case !finished || st.Disabled:
+			return nil
 		}
-		return s.store.SetDeleting(ctx, acct, id, false) //nolint:wrapcheck // as above
+		st.Disabled = true
+		st.Version++
+		if err := s.store.Write(ctx, st); err != nil {
+			return err //nolint:wrapcheck // the store names the write
+		}
+		return s.changed(ctx, st, stacksapi.ChangeDisabled, false)
 	})
 }
 

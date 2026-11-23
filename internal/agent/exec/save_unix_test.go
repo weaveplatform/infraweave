@@ -133,6 +133,23 @@ func TestUnitExecSaveNoWorkspace(t *testing.T) {
 	}
 }
 
+// TestUnitExecSaveDestroy checks that a destroy run's planning saves the
+// workspace even when its plan changes nothing, since a plan policy's
+// warning holds it for confirmation whatever it changes.
+func TestUnitExecSaveDestroy(t *testing.T) {
+	w := newWorld(t)
+	w.h.Spec.Run.Type = wire.DESTROY
+	if err := os.WriteFile(w.plan, []byte(`{"format_version":"1.2"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.run(); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := w.w.recorded[exec.WorkspaceName]; !ok {
+		t.Errorf("a destroy run saved no workspace: %q", w.w.taken)
+	}
+}
+
 // TestUnitExecSaveFails checks that planning fails, with a note that says
 // why, when its results cannot be saved: a workspace file that holds the
 // run token, a pool key that is no P-256 point, a specification with no
