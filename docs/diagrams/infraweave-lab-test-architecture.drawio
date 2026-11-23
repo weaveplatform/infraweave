@@ -49,7 +49,7 @@
         <mxCell id="select" value="&lt;b&gt;1 · Select batch and scenarios&lt;/b&gt;&lt;br&gt;core / policies / runs / terraform / kubernetes / vcs / workers" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="200" width="360" height="75" />
         </mxCell>
-        <mxCell id="apply" value="&lt;b&gt;2 · Lab Terraform: plan + apply&lt;/b&gt;&lt;br&gt;One root: test/terraform/lab/platform&lt;br&gt;Owner-named network, local state and labels" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
+        <mxCell id="apply" value="&lt;b&gt;2 · Lab Terraform: plan + apply&lt;/b&gt;&lt;br&gt;One root: test/terraform/lab/services&lt;br&gt;Owner-named network, local state and labels" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="320" width="360" height="95" />
         </mxCell>
         <mxCell id="ready" value="&lt;b&gt;3 · Readiness gate&lt;/b&gt;&lt;br&gt;API, database, storage and worker registration" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#1d263b;strokeColor=#60a5fa;" vertex="1" parent="1">
@@ -70,7 +70,7 @@
         <mxCell id="gate" value="&lt;b&gt;8 · Acceptance gate&lt;/b&gt;&lt;br&gt;Required cases ran; tests, providers&lt;br&gt;and verified cleanup all passed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#17332b;strokeColor=#34d399;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="490" y="1130" width="360" height="75" />
         </mxCell>
-        <mxCell id="batch" value="&lt;b&gt;lab/platform root&lt;/b&gt;&lt;br&gt;Docker provider: postgres, objectstore, gitea; k3s when enabled&lt;br&gt;One owner, local state and loopback ports per batch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
+        <mxCell id="batch" value="&lt;b&gt;lab/services root&lt;/b&gt;&lt;br&gt;Docker provider: postgres, objectstore, gitea; k3s when enabled&lt;br&gt;One owner, local state and loopback ports per batch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#251f38;strokeColor=#a78bfa;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="965" y="200" width="535" height="95" />
         </mxCell>
         <mxCell id="platform-box" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=13;fontColor=#e6e8f0;strokeWidth=1.5;spacing=10;fillColor=#191d2b;strokeColor=#3a3f55;dashed=0;strokeColor=#475569;strokeWidth=1;" vertex="1" parent="1">

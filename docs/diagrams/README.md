@@ -13,10 +13,10 @@ Each diagram is a draw.io source (`.drawio`) with its SVG export (`.drawio.svg`)
 ## Test infrastructure
 
 - [test-infrastructure-overview](test-infrastructure-overview.drawio.svg): every test scenario, from trigger and GitHub environment through its Terraform roots to its local or cloud target.
-- [test-terraform-layout](test-terraform-layout.drawio.svg): the `test/terraform` tree: the local lab, the VCS labs and the per-cloud roots under `platform/`.
+- [test-terraform-layout](test-terraform-layout.drawio.svg): the `test/terraform` tree: the local lab and its `lab/services` root, the VCS labs and the per-cloud roots under `platform/`, with the landing zone every other cloud root applies into.
 - [lab-platform-kubernetes](lab-platform-kubernetes.drawio.svg): the local platform lab and the k3s lab on a runner, with the batch lifecycle.
 - [vcs-labs](vcs-labs.drawio.svg): the five VCS providers, their roots and the webhook paths through the tunnel or the Docker bridge gateway.
-- [cloud-objectstore-kek](cloud-objectstore-kek.drawio.svg): the object store and KEK scenarios in the current AWS account, Azure subscription and Google project.
+- [cloud-objectstore-kek](cloud-objectstore-kek.drawio.svg): the object store and KEK scenarios in the dedicated AWS account, Azure subscription and Google project that the landing zone creates.
 - [cloud-platform](cloud-platform.drawio): the platform scenario, one infraweave platform behind public HTTPS in a cloud's dedicated account, with worker clusters on all three clouds attached; one page per cloud:
   - [AWS: ALB, ECS Fargate, RDS for PostgreSQL, S3](cloud-platform-aws.drawio.svg)
   - [Azure: Container Apps, PostgreSQL Flexible Server, Blob Storage](cloud-platform-azure.drawio.svg)

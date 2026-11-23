@@ -7,7 +7,7 @@
         <mxCell id="title" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#e6e8f0;align=left;verticalAlign=top;spacing=0;fontStyle=1;" value="Object store and KEK scenarios in the three clouds" vertex="1">
           <mxGeometry height="24" width="1450" x="30" y="24" as="geometry" />
         </mxCell>
-        <mxCell id="sub" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#9aa0b4;align=left;verticalAlign=top;spacing=0;" value="Both stay in the current AWS account, Azure subscription and Google project. A maintainer applies each root once. The nightly object store job reaches its bucket only through GitHub OIDC; the KEK and signing live tests run by hand with the maintainer&#x27;s own credentials." vertex="1">
+        <mxCell id="sub" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#9aa0b4;align=left;verticalAlign=top;spacing=0;" value="Both run in the dedicated AWS account, Azure subscription and Google project that platform/landing-zone creates. A maintainer applies each root once, after the landing zone. The nightly object store job reaches its bucket only through GitHub OIDC; the KEK and signing live tests run by hand with the maintainer&#x27;s own credentials." vertex="1">
           <mxGeometry height="32" width="1450" x="30" y="52" as="geometry" />
         </mxCell>
         <mxCell id="gh" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#64748b;strokeWidth=1.2;dashed=1;" value="" vertex="1">
@@ -55,14 +55,14 @@
         <mxCell id="mtn-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="maintainer" vertex="1">
           <mxGeometry height="22" width="81" x="1349.5" y="234" as="geometry" />
         </mxCell>
-        <mxCell id="mtn-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="applies platform/objectstore and platform/kek once with own sign-in; runs TestAcc*Live by hand" vertex="1">
-          <mxGeometry height="70" width="170" x="1305" y="262" as="geometry" />
+        <mxCell id="mtn-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="applies platform/objectstore and platform/kek once into the landing zone with own sign-in; runs TestAcc*Live by hand" vertex="1">
+          <mxGeometry height="84" width="170" x="1305" y="262" as="geometry" />
         </mxCell>
         <mxCell id="aws" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#ec4899;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="212" width="930" x="320" y="130" as="geometry" />
         </mxCell>
-        <mxCell id="aws-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="AWS account · current · the AWS Organization&#x27;s management account" vertex="1">
-          <mxGeometry height="22" width="420" x="575" y="119" as="geometry" />
+        <mxCell id="aws-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="AWS account · dedicated · member of the AWS Organization · platform/landing-zone/aws" vertex="1">
+          <mxGeometry height="22" width="537" x="516.5" y="119" as="geometry" />
         </mxCell>
         <mxCell id="aws-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="160" as="geometry" />
@@ -149,8 +149,8 @@
         <mxCell id="azure" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#ec4899;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="212" width="930" x="320" y="360" as="geometry" />
         </mxCell>
-        <mxCell id="azure-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="Azure subscription · current" vertex="1">
-          <mxGeometry height="22" width="192" x="689" y="349" as="geometry" />
+        <mxCell id="azure-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="Azure subscription · dedicated · platform/landing-zone/azure" vertex="1">
+          <mxGeometry height="22" width="389" x="590.5" y="349" as="geometry" />
         </mxCell>
         <mxCell id="azure-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="390" as="geometry" />
@@ -237,8 +237,8 @@
         <mxCell id="google" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#ec4899;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="212" width="930" x="320" y="590" as="geometry" />
         </mxCell>
-        <mxCell id="google-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="Google project · current" vertex="1">
-          <mxGeometry height="22" width="167" x="701.5" y="579" as="geometry" />
+        <mxCell id="google-t" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#ec4899;align=center;verticalAlign=middle;spacing=2;" value="Google project · dedicated · platform/landing-zone/google" vertex="1">
+          <mxGeometry height="22" width="371" x="599.5" y="579" as="geometry" />
         </mxCell>
         <mxCell id="google-os" parent="1" style="rounded=1;arcSize=3;absoluteArcSize=1;fillColor=#1b1e2b;strokeColor=#3b82f6;strokeWidth=1.2;" value="" vertex="1">
           <mxGeometry height="170" width="560" x="340" y="620" as="geometry" />

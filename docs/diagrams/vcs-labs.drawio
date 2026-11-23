@@ -58,7 +58,7 @@
         <mxCell id="s4-dot" parent="1" style="ellipse;fillColor=#f5b13d;strokeColor=none;" value="" vertex="1">
           <mxGeometry height="8" width="8" x="50" y="534" as="geometry" />
         </mxCell>
-        <mxCell id="s5" parent="1" style="rounded=1;arcSize=12;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;fillColor=#1d2030;strokeColor=#f5b13d;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;" value="6 · Three fresh lab/platform runs: sources, webhooks, feedback" vertex="1">
+        <mxCell id="s5" parent="1" style="rounded=1;arcSize=12;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#e6e8f0;fillColor=#1d2030;strokeColor=#f5b13d;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;" value="6 · Three fresh lab/services runs: sources, webhooks, feedback" vertex="1">
           <mxGeometry height="40" width="266" x="66" y="568" as="geometry" />
         </mxCell>
         <mxCell id="s5-dot" parent="1" style="ellipse;fillColor=#f5b13d;strokeColor=none;" value="" vertex="1">
@@ -91,7 +91,7 @@
         <mxCell id="srv-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="infraweave servers" vertex="1">
           <mxGeometry height="22" width="130" x="425" y="276" as="geometry" />
         </mxCell>
-        <mxCell id="srv-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="from the batch&#x27;s fresh lab/platform deployment" vertex="1">
+        <mxCell id="srv-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="from the batch&#x27;s fresh lab/services deployment" vertex="1">
           <mxGeometry height="44" width="150" x="415" y="304" as="geometry" />
         </mxCell>
         <mxCell id="lsn" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#8b5cf6;strokeWidth=1.5;" value="" vertex="1">
@@ -133,7 +133,7 @@
         <mxCell id="plat-l" parent="1" style="rounded=1;arcSize=20;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=11;fontColor=#e6e8f0;fillColor=#161823;strokeColor=#3a3f55;align=center;verticalAlign=middle;spacing=2;" value="platform services" vertex="1">
           <mxGeometry height="22" width="124" x="428" y="564" as="geometry" />
         </mxCell>
-        <mxCell id="plat-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="postgres, objectstore and gitea from lab/platform" vertex="1">
+        <mxCell id="plat-c" parent="1" style="text;html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=10;fontColor=#9aa0b4;align=center;verticalAlign=top;spacing=0;" value="postgres, objectstore and gitea from lab/services" vertex="1">
           <mxGeometry height="44" width="150" x="415" y="592" as="geometry" />
         </mxCell>
         <mxCell id="gl" parent="1" style="rounded=1;arcSize=14;fillColor=#1d2030;strokeColor=#64748b;strokeWidth=1.5;" value="" vertex="1">
