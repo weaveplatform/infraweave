@@ -290,7 +290,7 @@ func (l *logSteps) download(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
-	resp, err := store.Do(req)
+	resp, err := l.w.SignedClient().Do(req)
 	if err != nil {
 		return "", fmt.Errorf("%w: download the log: %w", harness.ErrStep, err)
 	}

@@ -3,6 +3,8 @@
 package exec_test
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -94,5 +96,30 @@ func TestUnitExecRunEnvironment(t *testing.T) {
 				t.Errorf("phase environments: %q; want four copies of %q", got, want)
 			}
 		})
+	}
+}
+
+// TestUnitExecTrustsTheHandoffRoots checks that a run's commands read
+// SSL_CERT_FILE as the image's roots, the container's SSL_CERT_FILE or a
+// system bundle, followed by the handoff's.
+func TestUnitExecTrustsTheHandoffRoots(t *testing.T) {
+	for _, own := range []bool{true, false} {
+		w := newWorld(t)
+		w.h.Roots = []byte("PRIVATE ROOT\n")
+		if own {
+			bundle := filepath.Join(t.TempDir(), "bundle.pem")
+			if err := os.WriteFile(bundle, []byte("IMAGE ROOT"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			w.environ = append(w.environ, "SSL_CERT_FILE="+bundle)
+		}
+		w.h.Spec.Hooks["before_init"] = []string{`cat "$SSL_CERT_FILE" >> "$TRACE"`}
+		if err := w.run(); err != nil {
+			t.Fatal(err)
+		}
+		got := w.traced()
+		if !slices.Contains(got, "PRIVATE ROOT") || own && !slices.Contains(got, "IMAGE ROOT") {
+			t.Errorf("own bundle %v: the trusted roots: %q", own, got)
+		}
 	}
 }

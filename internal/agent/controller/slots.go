@@ -21,6 +21,9 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 )
 
+// podOS is the operating system of every run Pod.
+const podOS = "linux"
+
 // DefaultPreparing is a pool's preparing timeout when its resource sets
 // none, the server's default.
 const DefaultPreparing = 15 * time.Minute
@@ -151,10 +154,12 @@ func (c *Controller) start(ctx context.Context, wp WorkerPool, h hosted, w Worke
 	s.exec = kubernetes.New(c.kube.Core, c.streams, c.executorConfig(wp, w, lc, s))
 	slotNumber := w.Spec.Slot
 	owner := h.owner
+	// Run Pods are Linux whatever the controller runs on, so the worker
+	// registers, and its tools are fetched, for Linux.
 	l, err := launcher.NewContext(ctx, launcher.Deps{
 		Config: lc, Doer: c.slotDoer, Executor: s.exec, Tools: c.tools, Sources: c.sources,
 		Log: c.log.With("namespace", w.Namespace, "worker", w.Name),
-		Now: c.now, Version: c.version, OS: c.os, Arch: c.arch,
+		Now: c.now, Version: c.version, OS: podOS, Arch: c.arch,
 		Endpoint: wp.Spec.Endpoint, Owner: &owner, Slot: &slotNumber, Retain: true,
 	})
 	if err != nil {
@@ -186,6 +191,8 @@ func (c *Controller) running(ctx context.Context, wp WorkerPool, h hosted, w Wor
 	if c.streams == nil {
 		return nil, errNoExecutor
 	}
+	c.starting.Lock()
+	defer c.starting.Unlock()
 	c.mu.Lock()
 	s := c.slots[w.UID]
 	c.mu.Unlock()
@@ -217,6 +224,8 @@ var errBusy = errors.New("worker controller: the slot's run executes")
 // launcher at once, a busy one once its run ends, which errBusy reports
 // meanwhile; the launcher claims no run after it.
 func (c *Controller) release(w Worker) error {
+	c.starting.Lock()
+	defer c.starting.Unlock()
 	c.mu.Lock()
 	s := c.slots[w.UID]
 	c.mu.Unlock()
@@ -238,6 +247,8 @@ func (c *Controller) release(w Worker) error {
 // controller stops leading; a busy slot leaves its Pod for the next
 // leader to resume.
 func (c *Controller) stopSlots(keep func(*slot) bool) {
+	c.starting.Lock()
+	defer c.starting.Unlock()
 	c.mu.Lock()
 	var stopping []*slot
 	for uid, s := range c.slots {

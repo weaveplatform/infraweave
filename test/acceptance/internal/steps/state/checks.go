@@ -1,9 +1,13 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -336,14 +340,25 @@ func (b *backendSteps) current(ctx context.Context, run string) error {
 	return nil
 }
 
-// sealed checks that no object in the scenario's bucket holds secret,
-// having read at least n, so a bucket the servers never wrote to fails.
+// sealed checks that no object in the scenario's bucket, or under its
+// objects directory where its servers keep objects on the fs driver,
+// holds secret, having read at least n, so a bucket the servers never
+// wrote to fails.
 func (b *backendSteps) sealed(ctx context.Context, secret string, n int) error {
-	store, err := b.w.Suite.Deps.ObjectStore(ctx)
-	if err != nil {
-		return err //nolint:wrapcheck // names @objectstore
+	var (
+		keys []string
+		read int
+		err  error
+	)
+	if slices.Contains(b.w.Tags, "@objectstore") {
+		store, serr := b.w.Suite.Deps.ObjectStore(ctx)
+		if serr != nil {
+			return serr //nolint:wrapcheck // names @objectstore
+		}
+		keys, read, err = store.Containing(ctx, b.w.Bucket, []byte(secret))
+	} else {
+		keys, read, err = containing(b.w.Objects(), []byte(secret))
 	}
-	keys, read, err := store.Containing(ctx, b.w.Bucket, []byte(secret))
 	switch {
 	case err != nil:
 		return err //nolint:wrapcheck // names the bucket
@@ -354,4 +369,29 @@ func (b *backendSteps) sealed(ctx context.Context, secret string, n int) error {
 			read, n)
 	}
 	return nil
+}
+
+// containing is the files under root that hold secret, and how many files
+// it read.
+func containing(root string, secret []byte) ([]string, int, error) {
+	var keys []string
+	read := 0
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.Type().IsRegular() {
+			return err
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err //nolint:wrapcheck // names the path
+		}
+		read++
+		if bytes.Contains(b, secret) {
+			keys = append(keys, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("the scenario's objects: %w", err)
+	}
+	return keys, read, nil
 }

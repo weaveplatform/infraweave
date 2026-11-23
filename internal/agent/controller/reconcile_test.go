@@ -140,7 +140,7 @@ func (e *env) controller(change ...func(*Settings)) *Controller {
 	}
 	c, err := New(Deps{
 		Settings: s, Clients: Clients{Dynamic: e.dyn, Core: e.core.CoreV1(), Coordination: e.core.CoordinationV1()},
-		HTTP: e.in.srv.Client(), Now: e.clock, Version: "test", OS: "linux", Arch: "arm64", Identity: "replica",
+		HTTP: e.in.srv.Client(), Now: e.clock, Version: "test", Arch: "arm64", Identity: "replica",
 		Resync: 10 * time.Millisecond,
 	})
 	if err != nil {

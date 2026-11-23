@@ -41,8 +41,8 @@ import (
 // cache directory and the tool mirror.
 //
 // A worker controller's slot sets the rest. Endpoint, when set, is where
-// the launcher calls the worker API instead of the pool token's endpoint,
-// which the handoff still gives the runner. Owner and Slot name the
+// the launcher and its runners call the worker API instead of the pool
+// token's endpoint. Owner and Slot name the
 // hosting owner and logical slot it registers, so registering again
 // resumes the slot's worker. Retain keeps the worker registered when Run
 // ends idle, for its controller to deregister.
@@ -105,6 +105,11 @@ type Launcher struct {
 	id     identity
 	api    *client.Client
 	policy *initpolicy.Policy
+	// endpoint is where the launcher and its runners reach the worker
+	// API; roots is launcher.ca_file's PEM bundle, which its runners
+	// trust too.
+	endpoint string
+	roots    []byte
 
 	// registered holds while the launcher has a session, and answered is
 	// when the server last answered it, in Unix nanoseconds.
@@ -220,7 +225,10 @@ func NewContext(ctx context.Context, d Deps) (*Launcher, error) {
 	if d.Endpoint != "" {
 		endpoint = d.Endpoint
 	}
-	return &Launcher{d: d, id: id, api: client.New(client.Base(endpoint), d.Doer), policy: policy}, nil
+	return &Launcher{
+		d: d, id: id, api: client.New(client.Base(endpoint), d.Doer), policy: policy,
+		endpoint: endpoint, roots: ca,
+	}, nil
 }
 
 // newClient is the launcher's HTTP client, trusting roots, or the
@@ -822,7 +830,7 @@ func (l *Launcher) container(ctx context.Context, a wire.Assignment, spec wire.R
 	spec.Sealed = nil
 	var h bytes.Buffer
 	if err := handoff.Write(&h, handoff.Handoff{
-		Endpoint: client.Base(l.id.endpoint), Run: a.Run, RunToken: a.RunToken,
+		Endpoint: client.Base(l.endpoint), Roots: l.roots, Run: a.Run, RunToken: a.RunToken,
 		Assigned: a.State, StateVersion: a.StateVersion, Spec: spec, Secrets: secrets,
 		StateLockTimeout: l.d.Config.StateLockTimeout, MaskEnvs: l.d.Config.MaskEnvs,
 		SensitiveOutputUpload: l.d.Config.SensitiveOutputUpload,

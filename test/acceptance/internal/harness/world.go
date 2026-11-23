@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
@@ -72,6 +74,10 @@ type World struct {
 	// before. The state steps hold and read the backend calls of a run a
 	// launcher executes through it.
 	Relay *Relay
+	// Signed is the client a step reaches a URL a server signed with, when
+	// the scenario's servers sign URLs only another network reaches; nil
+	// is SignedClient's default.
+	Signed *http.Client
 	// Bucket is an @objectstore scenario's bucket in the shared RustFS,
 	// which every server of the scenario keeps its objects in.
 	Bucket string
@@ -163,6 +169,16 @@ func (w *World) Querier(ctx context.Context) (Querier, error) {
 	}
 	return w.Database(ctx)
 }
+
+// SignedClient is the client a step reaches a URL a server signed with.
+func (w *World) SignedClient() *http.Client {
+	if w.Signed != nil {
+		return w.Signed
+	}
+	return signed
+}
+
+var signed = &http.Client{Timeout: 30 * time.Second}
 
 // Objects is the scenario's object storage root, which all its servers
 // share.

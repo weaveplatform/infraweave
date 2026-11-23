@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/x509"
+
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
 
@@ -15,7 +17,7 @@ func LauncherCmd(doer wire.HttpRequestDoer, engine func(config.Docker) (Engine, 
 }
 
 func RunnerCmd(doer wire.HttpRequestDoer) *cobra.Command {
-	return runnerCmd(doer, bootstrap.PodPaths, runner.Interrupt)
+	return runnerCmd(func(*x509.CertPool) wire.HttpRequestDoer { return doer }, bootstrap.PodPaths, runner.Interrupt)
 }
 
 func PodRunnerCmd(paths bootstrap.Paths, interrupt func(int) error) *cobra.Command {

@@ -46,8 +46,9 @@ const (
 // requestTimeout bounds each call to the installation.
 const requestTimeout = 30 * time.Second
 
-// Deps are what a Controller runs on. Identity names this replica in the
-// Lease; Resync, Heartbeat and Batch take their defaults when zero, and
+// Deps are what a Controller runs on. Arch is the architecture its
+// workers register and fetch tools for, on Linux, which run Pods are.
+// Identity names this replica in the Lease; Resync, Heartbeat and Batch take their defaults when zero, and
 // HTTP, when nil, is a client trusting the system roots and ca_file's,
 // which bounds each call, while each slot's launcher, whose polls are
 // held, builds its own from ca_file. Streams opens run Pods' attach and
@@ -63,7 +64,7 @@ type Deps struct {
 	Log         *slog.Logger
 	Now         func() time.Time
 	Version     string
-	OS, Arch    string
+	Arch        string
 	Identity    string
 	Resync      time.Duration
 	Heartbeat   time.Duration
@@ -82,7 +83,7 @@ type Controller struct {
 	log       *slog.Logger
 	now       func() time.Time
 	version   string
-	os, arch  string
+	arch      string
 	identity  string
 	resync    time.Duration
 	heartbeat time.Duration
@@ -97,11 +98,14 @@ type Controller struct {
 	sources  launcher.Sources
 	interval time.Duration
 
-	mu      sync.Mutex
-	seen    map[types.UID]time.Time
-	slots   map[types.UID]*slot
-	synced  atomic.Bool
-	leading atomic.Bool
+	mu    sync.Mutex
+	seen  map[types.UID]time.Time
+	slots map[types.UID]*slot
+	// starting serializes starting and stopping slots, so two passes
+	// never start two launchers of one Worker.
+	starting sync.Mutex
+	synced   atomic.Bool
+	leading  atomic.Bool
 }
 
 // New is a Controller over d.
@@ -115,7 +119,7 @@ func New(d Deps) (*Controller, error) {
 	}
 	c := &Controller{
 		settings: d.Settings, kube: d.Clients, log: d.Log, now: d.Now,
-		version: d.Version, os: d.OS, arch: d.Arch, identity: d.Identity,
+		version: d.Version, arch: d.Arch, identity: d.Identity,
 		resync: d.Resync, heartbeat: d.Heartbeat, batch: d.Batch, seen: map[types.UID]time.Time{},
 		streams: d.Streams, tools: d.Tools, pollTimeout: d.PollTimeout, slots: map[types.UID]*slot{},
 	}

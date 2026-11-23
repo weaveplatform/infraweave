@@ -389,7 +389,7 @@ func (c *Controller) registration(ctx context.Context, h hosted, w Worker) (stri
 	}
 	slot := w.Spec.Slot
 	jws, err := h.id.sign(claims{
-		Owner: h.owner, Slot: &slot, Capabilities: capabilities, Version: c.version, OS: c.os, Arch: c.arch,
+		Owner: h.owner, Slot: &slot, Capabilities: capabilities, Version: c.version, OS: podOS, Arch: c.arch,
 		Metadata: map[string]string{"kubernetes.namespace": w.Namespace, "kubernetes.worker": w.Name},
 	}, c.now())
 	if err != nil {

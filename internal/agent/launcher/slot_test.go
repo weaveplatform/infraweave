@@ -2,15 +2,22 @@ package launcher_test
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 
-	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
@@ -37,8 +44,13 @@ func (h *hosts) RoundTrip(r *http.Request) (*http.Response, error) {
 func (w *world) slot(t *testing.T, seen *hosts) *launcher.Launcher {
 	t.Helper()
 	slot := int32(2)
+	c := w.config()
+	c.CAFile = filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(c.CAFile, slotCA(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	l, err := launcher.New(launcher.Deps{
-		Config: w.config(), Doer: &http.Client{Transport: seen}, Executor: w.exec, Sources: w.sources,
+		Config: c, Doer: &http.Client{Transport: seen}, Executor: w.exec, Sources: w.sources,
 		Tools: w.tools, Log: slog.New(slog.NewTextHandler(w.log, nil)),
 		Version: "1.2.3", OS: "linux", Arch: "arm64",
 		Endpoint: "http://controller.invalid",
@@ -78,8 +90,11 @@ func TestUnitLauncherServesAControllerSlot(t *testing.T) {
 			t.Fatalf("status of a run: %+v", s)
 		}
 		h, err := handoff.Read(bytes.NewReader(w.exec.Jobs()[0].Handoff))
-		if err != nil || h.Endpoint != client.Base(agenttest.Endpoint) {
-			t.Fatalf("the runner reaches the token's endpoint: %+v %v", h.Endpoint, err)
+		if err != nil || h.Endpoint != client.Base("http://controller.invalid") {
+			t.Fatalf("the runner reaches %+v, not the slot's endpoint: %v", h.Endpoint, err)
+		}
+		if !bytes.Equal(h.Roots, slotCA(t)) {
+			t.Fatalf("the runner trusts %q, not launcher.ca_file", h.Roots)
 		}
 		if !seen.seen["controller.invalid"] || seen.seen["agenttest.invalid"] {
 			t.Fatalf("hosts: %v", seen.seen)
@@ -109,3 +124,30 @@ func TestUnitLauncherServesAControllerSlot(t *testing.T) {
 		}
 	})
 }
+
+// slotCA is a PEM certificate of a private authority, the same each call.
+func slotCA(t *testing.T) []byte {
+	t.Helper()
+	b, err := privateCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+var privateCA = sync.OnceValues(func() ([]byte, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // a test's own
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "slot test authority"},
+		NotBefore: time.Unix(0, 0), NotAfter: time.Unix(1<<32, 0),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // a test's own
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), nil
+})

@@ -2,10 +2,10 @@ package cli
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -137,12 +137,13 @@ func launch(cmd *cobra.Command, d deps) error {
 // Runner is infraweave runner, the root process of a run's container,
 // which the launcher starts; it is hidden, as no one else runs it.
 func Runner() *cobra.Command {
-	return runnerCmd(&http.Client{Timeout: runnerTimeout}, bootstrap.PodPaths, runner.Interrupt)
+	return runnerCmd(runner.Client(runnerTimeout), bootstrap.PodPaths, runner.Interrupt)
 }
 
-// runnerCmd is infraweave runner calling the worker API through doer, its
+// runnerCmd is infraweave runner calling the worker API through the
+// client doer makes, its
 // bootstrap writing to paths, and its signal sending through interrupt.
-func runnerCmd(doer wire.HttpRequestDoer, paths bootstrap.Paths, interrupt func(int) error) *cobra.Command {
+func runnerCmd(doer func(*x509.CertPool) wire.HttpRequestDoer, paths bootstrap.Paths, interrupt func(int) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "runner",
 		Short:  "Execute a run's phase from the launcher's handoff on standard input",

@@ -133,7 +133,7 @@ func (e *env) executing(k *kubelet) *Controller {
 	e.t.Helper()
 	c, err := New(Deps{
 		Settings: e.settings(), Clients: Clients{Dynamic: e.dyn, Core: e.core.CoreV1(), Coordination: e.core.CoordinationV1()},
-		HTTP: e.in.srv.Client(), Now: time.Now, Version: "test", OS: "linux", Arch: "arm64", Identity: "replica",
+		HTTP: e.in.srv.Client(), Now: time.Now, Version: "test", Arch: "arm64", Identity: "replica",
 		Streams: k, Tools: noTools{}, PollTimeout: time.Second,
 	})
 	if err != nil {

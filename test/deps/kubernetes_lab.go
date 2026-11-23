@@ -33,8 +33,13 @@ type Kubernetes struct {
 	Endpoint   string
 	Namespace  string
 	Kubeconfig string
-	owner      string
-	client     *http.Client
+	// Container is the Docker container of the cluster's one node, and
+	// Network the lab's Docker network, which the node and the lab's
+	// other services share.
+	Container string
+	Network   string
+	owner     string
+	client    *http.Client
 }
 
 // HTTPClient reuses the verified CA/client identity and redirect policy for
@@ -123,7 +128,7 @@ func labKubernetesClient(m *labManifest) (*Kubernetes, error) {
 	}
 	return &Kubernetes{
 		Endpoint: m.Kubernetes.Endpoint, Namespace: m.Kubernetes.Namespace, Kubeconfig: m.Kubernetes.Kubeconfig,
-		owner: m.Owner, client: &http.Client{
+		Container: m.Kubernetes.Container, Network: m.Owner, owner: m.Owner, client: &http.Client{
 			Timeout:       5 * time.Second,
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },
 			Transport: &http.Transport{

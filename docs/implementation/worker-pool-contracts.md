@@ -135,9 +135,11 @@ compare-and-set, deterministic names and server fencing even during leader
 handover. Every slot's preparation and busy heartbeat continue independently;
 source/tool transfer never blocks protocol polling for other slots or its own
 liveness. No second worker registers merely because a replica's local cache is
-empty. Until the Pod executor exists, a slot neither polls nor claims runs:
-it registers again each minute, which resumes its worker and keeps it within
-the server's offline bound, and the WorkerPool reports `ExecutorAvailable=False`.
+empty. Each registered slot runs a launcher that polls for, claims and executes
+runs in Pods, and the WorkerPool reports `ExecutorAvailable=True`; a controller
+without Kubernetes stream configuration claims nothing and reports
+`ExecutorAvailable=False`, its slots registering again each minute, which
+resumes their workers and keeps them within the server's offline bound.
 
 Strict `worker_controller` YAML/configuration keys:
 
@@ -359,8 +361,9 @@ unbounded queue of staged work.
 After `bootstrap` exits zero, main container named `runner` starts the injected binary as `runner` with its image
 entrypoint replaced, `stdin=true`, `stdinOnce=true`, `tty=false`. A second attach targets only `runner`; the launcher
 checks exact Pod UID/run/version and sends existing in-memory handoff, closes
-stdin and clears buffers. It includes opened workload secrets/run token and pool
-**public** key only. It never sends pool private key, management API key, operator
+stdin and clears buffers. It includes opened workload secrets/run token, pool
+**public** key and the controller's `ca_file` trust bundle, which the runner and
+the run's tools trust beside the image's roots, only. It never sends pool private key, management API key, operator
 key or worker session token. Secrets never enter PodSpec env/args, annotations,
 Secret/ConfigMap objects, status, termination messages, logs or retained evidence.
 Expected workload-mounted files retain their existing secret semantics.
