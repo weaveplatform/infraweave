@@ -138,7 +138,9 @@ var errMount = errors.New("want <absolute host path>:<container path>, optionall
 
 // ParseMount parses an extra mount, <host path>:<container path>[:ro].
 // The container path follows the last colon, so a host path may hold
-// one, as a Windows drive does.
+// one, as a Windows drive does. The host path is absolute on the
+// launcher's own system or a rooted POSIX path, which a Docker daemon
+// running Linux containers resolves on a Windows host too.
 func ParseMount(s string) (Mount, error) {
 	rest := strings.TrimSuffix(s, ":ro")
 	i := strings.LastIndex(rest, ":")
@@ -146,7 +148,8 @@ func ParseMount(s string) (Mount, error) {
 		return Mount{}, errMount
 	}
 	m := Mount{Source: rest[:i], Target: rest[i+1:]}
-	if !filepath.IsAbs(m.Source) || !strings.HasPrefix(m.Target, "/") {
+	absolute := filepath.IsAbs(m.Source) || strings.HasPrefix(m.Source, "/")
+	if !absolute || !strings.HasPrefix(m.Target, "/") {
 		return Mount{}, errMount
 	}
 	return m, nil
