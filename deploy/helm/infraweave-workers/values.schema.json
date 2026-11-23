@@ -240,6 +240,36 @@
                 ],
                 "type": "string"
               },
+              "from": {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "maxLength": 253,
+                    "minLength": 1,
+                    "pattern": "^[-._a-zA-Z0-9]+$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "Secret",
+                      "ConfigMap"
+                    ],
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 253,
+                    "minLength": 1,
+                    "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "key"
+                ],
+                "type": "object"
+              },
               "name": {
                 "maxLength": 255,
                 "minLength": 1,
@@ -249,7 +279,8 @@
             },
             "required": [
               "name",
-              "exposure"
+              "exposure",
+              "from"
             ],
             "type": "object"
           },
