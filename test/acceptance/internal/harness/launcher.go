@@ -58,7 +58,10 @@ type Launchers struct {
 	// Arch is the daemon's architecture as GOARCH names it, which a
 	// binary its containers run is built or fetched for.
 	Arch string
-	cli  *testcontainers.DockerClient
+	// Commit is the module's commit, which each Linux build reports as
+	// its own.
+	Commit string
+	cli    *testcontainers.DockerClient
 	// ready holds successfully inspected or pulled immutable image references.
 	mu    sync.Mutex
 	ready map[string]bool
@@ -91,21 +94,30 @@ func (l *Launchers) prepare(ctx context.Context, root, dir string) error {
 		return fmt.Errorf("%w: %q", ErrDockerArch, info.Info.Architecture)
 	}
 	l.Arch = arch
-	if l.Runner, err = buildLinux(ctx, root, dir, arch, "./cmd/infraweave"); err != nil {
+	head := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
+	head.Dir = root
+	out, err := head.Output()
+	if err != nil {
+		return fmt.Errorf("the module's commit: %w", err)
+	}
+	l.Commit = strings.TrimSpace(string(out))
+	if l.Runner, err = buildLinux(ctx, root, dir, arch, l.Commit, "./cmd/infraweave"); err != nil {
 		return err
 	}
-	if l.Forward, err = buildLinux(ctx, root, dir, arch,
+	if l.Forward, err = buildLinux(ctx, root, dir, arch, l.Commit,
 		"./test/acceptance/testdata/forward"); err != nil {
 		return err
 	}
 	return l.EnsureRunnerImage(ctx, RunnerImage)
 }
 
-// buildLinux builds pkg statically for linux/arch into dir. The runner
-// writes no coverage: a run container has no GOCOVERDIR.
-func buildLinux(ctx context.Context, root, dir, arch, pkg string) (string, error) {
+// buildLinux builds pkg statically for linux/arch into dir, stamped with
+// commit as a release build is. The runner writes no coverage: a run
+// container has no GOCOVERDIR.
+func buildLinux(ctx context.Context, root, dir, arch, commit, pkg string) (string, error) {
 	bin := filepath.Join(dir, "linux-"+arch, filepath.Base(pkg))
-	build := exec.CommandContext(ctx, "go", "build", "-o", bin, pkg)
+	build := exec.CommandContext(ctx, "go", "build",
+		"-ldflags", "-X github.com/weaveplatform/infraweave/internal/platform/buildinfo.commit="+commit, "-o", bin, pkg)
 	build.Dir = root
 	build.Env = append(os.Environ(), "GOWORK=off", "GOOS=linux", "GOARCH="+arch,
 		"CGO_ENABLED=0")
