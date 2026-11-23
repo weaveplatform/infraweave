@@ -520,7 +520,7 @@ func TestUnitRunPodPreparationFailuresDeleteThePod(t *testing.T) {
 		"runner attach":    {func(k *kubelet, _ *executor.Job) { k.refuse = true }, "upgrade refused"},
 		"pending":          {func(k *kubelet, _ *executor.Job) { k.bootstrap = "ContainerCreating" }, "did not become ready"},
 		"issued deadline": {func(k *kubelet, j *executor.Job) {
-			k.bootstrap, j.PreparingDeadline = "ContainerCreating", time.Now().Add(100*time.Millisecond)
+			k.bootstrap, j.PreparingDeadline = "ContainerCreating", time.Now().Add(time.Second)
 		}, "did not become ready"},
 		"passed deadline": {func(_ *kubelet, j *executor.Job) { j.PreparingDeadline = time.Now().Add(-time.Second) }, "before its Pod was created"},
 		"stream refused":  {func(k *kubelet, _ *executor.Job) { k.arch = "amd64" }, "bootstrap exited 1"},
