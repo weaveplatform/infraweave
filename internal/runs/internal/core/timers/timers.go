@@ -38,7 +38,7 @@ const (
 
 // Settings are run.timers: how long a proposed or test run waits to be
 // picked up, how long a tracked run, task or destroy run waits in READY,
-// how long a tracked run stays UNCONFIRMED, and CONFIRMED or
+// how long a tracked or destroy run stays UNCONFIRMED, and CONFIRMED or
 // REPLAN_REQUESTED, unchanged, and how long after its creation any run
 // that no worker holds may go on.
 //
@@ -109,7 +109,7 @@ func (s Settings) rules() []rule {
 		kernel.RunTypeProposed, kernel.RunTypeTracked, kernel.RunTypeTask,
 		kernel.RunTypeTesting, kernel.RunTypeDestroy,
 	}
-	tracked := []kernel.RunType{kernel.RunTypeTracked}
+	confirmed := []kernel.RunType{kernel.RunTypeTracked, kernel.RunTypeDestroy}
 	return []rule{
 		{
 			timer: runsapi.TimerMaxAge, types: every, states: waiting, created: true,
@@ -130,12 +130,12 @@ func (s Settings) rules() []rule {
 			after:  s.PickupBlocking, note: "not picked up within " + span(s.PickupBlocking),
 		},
 		{
-			timer: runsapi.TimerUnconfirmed, types: tracked,
+			timer: runsapi.TimerUnconfirmed, types: confirmed,
 			states: []kernel.RunState{kernel.RunStateUnconfirmed},
 			after:  s.Unconfirmed, note: "unconfirmed for " + span(s.Unconfirmed),
 		},
 		{
-			timer: runsapi.TimerConfirmed, types: tracked,
+			timer: runsapi.TimerConfirmed, types: confirmed,
 			states: []kernel.RunState{kernel.RunStateConfirmed, kernel.RunStateReplanRequested},
 			after:  s.Confirmed, note: "not applied within " + span(s.Confirmed),
 		},

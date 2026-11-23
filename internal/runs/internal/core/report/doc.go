@@ -6,7 +6,7 @@
 //
 // A report moves the run through the edges a worker's report drives: a
 // started report of the state the run's preparation leads to ends the
-// handover (T10, T32, T35), a succeeded report enters the next phase or
+// handover (T10, T32, T35, T48), a succeeded report enters the next phase or
 // ends the run, and failed and stopped reports end it. The answer is the
 // next step, execute, pause or exit, with the run's state version, which
 // the next report names; a report that names an older state version is
@@ -16,8 +16,8 @@
 // chunk never committed. A succeeded report of PLANNING carries the
 // plan's delta, and no other report does; it takes the plan decision with no plan policy attached,
 // from the delta and the stack's autodeploy and lock, which the service
-// reads through Stacks: Decision moves the run to FINISHED, APPLYING or
-// UNCONFIRMED, and the delta is kept on the run. A tracked run's
+// reads through Stacks: Decision moves the run to FINISHED, APPLYING,
+// DESTROYING or UNCONFIRMED, and the delta is kept on the run. A tracked run's
 // succeeded report of APPLYING first replaces its stack's outputs with
 // those in the outputs.json its apply recorded at that state version,
 // each with its description from the plan.json the run recorded last
@@ -25,7 +25,8 @@
 // with no value unless the stack's EnableSensitiveOutputUpload allows
 // it; a run that recorded no outputs the server reads is refused with
 // workersapi.ErrNoOutputs, but for a Terragrunt stack's, whose runner
-// records none, which leaves its stack none.
+// records none, which leaves its stack none. A destroy run's succeeded
+// report of DESTROYING leaves its stack no outputs.
 //
 // Uploads are keyed <account>/<run>/<state>-<stateVersion>/<name> in
 // their kind's store, recorded pending in blob_objects before their PUT

@@ -196,8 +196,9 @@ ref: [0012, intake and replay](0012-vcs-integration-model.md#webhook-intake-stor
   searches and `/batch` paths `expensive`; curators mark the rest. The
   server refuses to start on an operation whose action creates runs, or
   plans one again (`RUN_TRIGGER`, `TASK_CREATE`, `RUN_PROPOSE_WITH_OVERRIDES`,
-  `RUN_PROPOSE_LOCAL_WORKSPACE`, `RUN_RETRY`, `RUN_PROMOTE` and
-  `RUN_TARGETED_REPLAN`) and that is not `expensive`.
+  `RUN_PROPOSE_LOCAL_WORKSPACE`, `RUN_RETRY`, `RUN_PROMOTE`,
+  `RUN_TARGETED_REPLAN` and `RUN_DESTROY_TRIGGER`) and that is not
+  `expensive`.
 - **Response headers.** Every response carries the state of the bucket that
   the request drew from:
 

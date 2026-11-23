@@ -132,9 +132,11 @@ type Commit struct {
 // SkipVendorBinaryDownload runs the image's own tool rather than the one
 // the launcher mounts. LocalPreviewEnabled lets runs be proposed on
 // uploaded local workspaces, and GithubActionDeploy lets a proposed run
-// be promoted to a tracked one. Deleting marks a stack whose delete waits
-// for its destroy run, which no other run joins. Version counts the
-// stack's writes, which SetTracked and Destroyed are not.
+// be promoted to a tracked one. ProtectFromDeletion refuses its delete and
+// a destroy trigger. Deleting marks a stack whose delete waits for its
+// destroy run, which no other run joins. Version counts the
+// stack's writes, which SetTracked is not, nor Destroyed but where it
+// disables the stack.
 type Settings struct {
 	Stack
 	Repository                   string
@@ -159,6 +161,7 @@ type Settings struct {
 	Autodeploy                   bool
 	Autoretry                    bool
 	Disabled                     bool
+	ProtectFromDeletion          bool
 	LocalPreviewEnabled          bool
 	GithubActionDeploy           bool
 	Lock                         *Lock
@@ -225,13 +228,15 @@ type Stacks interface {
 	// when nil. It changes neither the stack's version nor its events;
 	// ErrNotFound when acct lacks it.
 	SetTracked(ctx context.Context, acct kernel.AccountID, id kernel.ULID, head, commit *Commit, setBy string) error
-	// Destroyed ends the deletion of acct's stack id once its destroy run
-	// ends, in the context's transaction: a finished run deletes the stack
-	// as a delete does, and any other end leaves it, no longer deleting.
-	// It leaves a stack that is not deleting as it is; ErrNotFound when
-	// acct lacks it.
+	// Destroyed ends acct's stack id's destroy run, in the context's
+	// transaction. A stack being deleted is deleted as a delete deletes
+	// it when the run finished, and any other end leaves it, no longer
+	// deleting. Any other stack is disabled, as a write that disables it
+	// does, when the run finished, and left as it is otherwise;
+	// ErrNotFound when acct lacks it.
 	//
 	// ref: decision 0008 § "Destroy on delete"
+	// ref: decision 0008 § "The destroy trigger"
 	Destroyed(ctx context.Context, acct kernel.AccountID, id kernel.ULID, finished bool) error
 	// DetachVCS detaches acct's stacks bound to integration, in the
 	// context's transaction: each one forgets the integration and

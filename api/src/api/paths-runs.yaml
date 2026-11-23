@@ -1338,6 +1338,71 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: search
+  /stacks/{stackId}/destroy-runs:
+    post:
+      description: |-
+        Trigger a destroy run on the Stack. The run plans the destroy first, so
+        plan policies can deny it or pause it for confirmation, then destroys
+        the Stack's resources; once it finishes the Stack is disabled. It
+        works on the commit the Stack tracks or, if the Stack does not track
+        one yet, on the head of its tracked branch, and on a busy Stack it
+        queues behind the runs already there.
+        A Stack that is being deleted, is protected from deletion or has a
+        destroy run that has not ended is refused, as is one that manages no
+        resources: no run has applied changes to it since it was created or
+        since its last destroy run finished. So is a Stack that is disabled,
+        has no commit to run on yet, or another caller has locked.
+      operationId: runDestroyTrigger
+      x-infraweave-feature: stacks
+      x-infraweave-action: RUN_DESTROY_TRIGGER
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - description: ID of the stack whose resources the run destroys.
+          in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Run destroy trigger
+      tags:
+        - Runs
+      x-graphql:
+        field: runDestroyTrigger
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: expensive
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: override
   /stacks/{stackId}/local-workspace-uploads:
     post:
       description: >-

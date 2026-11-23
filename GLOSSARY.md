@@ -217,7 +217,7 @@ A run that performs one command a user gives on a stack, after initializing it, 
 _Avoid_: job, ad hoc run
 
 **Destroy run**:
-A run that destroys every resource a stack manages, without planning first; deleting a stack with its resources creates one, and the stack goes when it finishes.
+A run that plans the destroy of every resource a stack manages, under the stack's plan policies, then destroys them; triggering one leaves the stack disabled when it finishes, and deleting a stack with its resources creates one, after which the stack goes.
 _Avoid_: teardown, delete run
 
 **Targeted replan**:

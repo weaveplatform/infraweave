@@ -221,8 +221,8 @@ The pass's findings are the `RES-03.` records of the register
   the docs' terminal and passive flags; the 43 transitions, each edge's
   states and diagram ID matching the table, every reachable state with an
   edge in and out, terminal states leading only to the end, and `UNKNOWN`
-  and `PENDING` justified as unreachable; the inferred edges T14, T30 and
-  T32 with their basis; the 2-day, 7-day and 30-day timers; the seven
+  and `PENDING` justified as unreachable; the inferred edges T30 and T32
+  with their basis; the 2-day, 7-day and 30-day timers; the seven
   priority levels; the human and policy locks; the 11 hook lists and their
   order; the run actions' RBAC; `Run`'s 57 fields; the metadata header.
 - **09:** the 13 `PolicyType` values and aliases; the 2026-10-20

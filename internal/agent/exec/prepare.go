@@ -16,6 +16,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
 	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
+	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
@@ -120,6 +121,7 @@ func (r *run) setUp(ctx context.Context) string {
 			WorkspaceName: r.workspaceName(),
 			LockTimeout:   r.h.StateLockTimeout,
 			Targets:       targets,
+			Destroy:       r.h.Spec.Run.Type == wire.DESTROY,
 		},
 		PlanJSON:    filepath.Join(r.temp, "plan.json"),
 		OutputsJSON: filepath.Join(r.temp, "outputs.json"),

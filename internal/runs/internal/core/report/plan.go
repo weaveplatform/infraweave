@@ -122,8 +122,10 @@ func (s *Service) planInput(ctx context.Context, run lifecycle.Run) (json.RawMes
 }
 
 // planTarget preserves the policy-free state table except for an actual deny
-// or warning. Approval presence is selected without evaluating it in PLANNING;
-// the lifecycle evaluates its rules after entering the review's own version.
+// or warning. A warning holds a tracked run that changes something, and any
+// destroy run, for confirmation. Approval presence is selected without
+// evaluating it in PLANNING; the lifecycle evaluates its rules after
+// entering the review's own version.
 func (s *Service) planTarget(
 	ctx context.Context,
 	run lifecycle.Run,
@@ -143,7 +145,7 @@ func (s *Service) planTarget(
 		note = strings.Join(result.Plan.Warn, "\n")
 	}
 	switch {
-	case run.Type == kernel.RunTypeTracked && delta.Changes():
+	case run.Type == kernel.RunTypeTracked && delta.Changes(), run.Type == kernel.RunTypeDestroy:
 		next = kernel.RunStateUnconfirmed
 	case run.Type == kernel.RunTypeProposed:
 		if s.d.Selection == nil {

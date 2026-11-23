@@ -852,7 +852,8 @@ func TestAccLifecycleDestroy(t *testing.T) {
 		w.takeLock(t, run)
 		run = w.mustMove(t, run, kernel.RunStatePreparing, machine.DriverWorkerClaim)
 		run = w.mustMove(t, run, kernel.RunStateInitializing, machine.DriverWorkerReport)
-		return w.mustMove(t, run, kernel.RunStateDestroying, machine.DriverWorkerReport)
+		run = w.mustMove(t, run, kernel.RunStatePlanning, machine.DriverWorkerReport)
+		return w.mustMove(t, run, kernel.RunStateDestroying, machine.DriverDecision)
 	}
 
 	tracked, _, err := w.create(t, kernel.RunTypeTracked, "abc123")

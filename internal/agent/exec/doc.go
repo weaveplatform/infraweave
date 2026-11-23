@@ -64,22 +64,24 @@
 // through sh -c in place of a workflow's, so neither an exit nor a cd in
 // it ends or moves the session; a task that skips initialization runs
 // initialization's hooks alone; destroying runs the workflow's destroy,
-// for a destroy run after initialization and for a test run after
-// applying. Planning's succeeded report carries the delta internal/iac/plan
-// reads from the plan's JSON.
+// for a destroy run after its plan and for a test run after applying. A
+// destroy run's planning renders the workflow's plan with destroy true.
+// Planning's succeeded report carries the delta internal/iac/plan reads
+// from the plan's JSON.
 //
 // Before that report, planning saves its results: the plan's JSON and its
 // changes, each sealed in platform/seal's object stream under the content
 // key the run's artifact key derives for its object, which the server
-// opens, and, for a tracked run whose plan changes something, the
-// workspace with the binary plan, sealed to the pool's public key through
+// opens, and, for a tracked run whose plan changes something and for any
+// destroy run, the workspace with the binary plan, sealed to the pool's public key through
 // internal/agent/workspace, which the server cannot open. Each is written
 // to the run's temporary directory, declared, PUT to its pre-signed URL
 // and recorded, every step taken again for up to ten minutes while the
 // worker API or the store is unavailable or the store refuses the URL's
 // signature, which a new declaration signs afresh; a save that fails
-// fails the phase. A run that resumes in a new container to apply or
-// replan its saved workspace runs the init hooks and command first, since the
+// fails the phase. A run that resumes in a new container to apply,
+// destroy or replan its saved workspace runs the init hooks and command
+// first, since the
 // workspace was saved without its providers; a replan's plan command
 // renders the specification's targets, each one -target word. Applying
 // runs getOutputs after apply, its output the outputs file, and fails on

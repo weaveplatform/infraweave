@@ -107,10 +107,10 @@ var drivenBy = map[machine.Driver][]string{
 	machine.DriverInitialization: {"T46"},
 	machine.DriverWorkerClaim:    {"T7", "T30", "T33"},
 	machine.DriverWorkerReport: {
-		"T10", "T11", "T12", "T13", "T14", "T15", "T16", "T18", "T19", "T32", "T35", "T36",
-		"T37", "T38", "T39", "T40", "T41", "T42", "T43", "T44",
+		"T10", "T11", "T12", "T13", "T15", "T16", "T18", "T19", "T32", "T35", "T36",
+		"T37", "T38", "T39", "T40", "T41", "T42", "T43", "T44", "T48",
 	},
-	machine.DriverDecision: {"T17", "T18", "T20", "T21", "T22"},
+	machine.DriverDecision: {"T17", "T18", "T20", "T21", "T22", "T47"},
 	machine.DriverTimers:   {"T4", "T9", "T25", "T27", "T31", "T34"},
 	machine.DriverLiveness: {"T11", "T15", "T18", "T36", "T38", "T41", "T43", "T44", "T45"},
 }

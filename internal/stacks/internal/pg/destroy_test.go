@@ -36,8 +36,9 @@ func (d *destroyer) Destroy(_ context.Context, _ kernel.Principal, id kernel.ULI
 // answers as it is to another such delete without a second run, while a
 // delete without destroy is refused with ErrDeleting. Destroyed keeps a
 // stack whose run did not finish, no longer deleting, deletes one whose
-// run finished, with each guard's rows, and leaves a stack that is not
-// deleting alone. A protected stack refuses both forms.
+// run finished, with each guard's rows, and disables a stack that is not
+// deleting when its run finished, as a write does, once. A protected
+// stack refuses both forms.
 func TestAccServiceDestroy(t *testing.T) {
 	ctx := t.Context()
 	f := newFixture(t)
@@ -95,10 +96,26 @@ func TestAccServiceDestroy(t *testing.T) {
 		t.Fatal(err)
 	}
 	deleting(false)
-	if err := f.svc.Destroyed(ctx, f.acct, st.ID, true); err != nil {
+	if err := f.svc.Destroyed(ctx, f.acct, st.ID, false); err != nil {
 		t.Fatal(err)
 	}
 	deleting(false)
+	for range 2 {
+		if err := f.svc.Destroyed(ctx, f.acct, st.ID, true); err != nil {
+			t.Fatal(err)
+		}
+		got, err := f.svc.Stack(ctx, f.acct, "infra")
+		if err != nil || got.Deleting || !got.Disabled || got.Version != st.Version+1 {
+			t.Errorf("a stack whose destroy run finished reads deleting %v, disabled %v "+
+				"at version %d, %v", got.Deleting, got.Disabled, got.Version, err)
+		}
+	}
+	if c := f.changes(t, st.ID); !slices.Equal(c, []string{
+		stacksapi.ChangeCreated, stacksapi.ChangeDisabled,
+	}) {
+		t.Errorf("changes %v", c)
+	}
+	st.Version++
 
 	g := &guard{}
 	f.svc.Guard(g)

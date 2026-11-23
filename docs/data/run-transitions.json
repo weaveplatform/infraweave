@@ -109,10 +109,11 @@
       "runTypes": [
         "PROPOSED",
         "TRACKED",
-        "TESTING"
+        "TESTING",
+        "DESTROY"
       ],
       "cause": "Initialization succeeds; the next state depends on the run type",
-      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#initializing), [proposed](https://docs.spacelift.io/concepts/run/proposed#planning)",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#initializing), [proposed](https://docs.spacelift.io/concepts/run/proposed#planning); for a destroy run, [G] the `runDestroyTrigger` description in the introspection fetched 2026-11-23: a destroy run \"plans the destroy first, so plan policies can pause it for review or deny it\"",
       "source": "report 08"
     },
     {
@@ -124,17 +125,6 @@
       ],
       "cause": "Initialization succeeds. With `skipInitialization` the vendor initialization does not run; the run still passes through `INITIALIZING`, which only logs that initialization is skipped (report 32, C42)",
       "evidence": "[D] [task](https://docs.spacelift.io/concepts/run/task#skipping-initialization); [G] `taskCreate`; the console, report 32 section 17.4",
-      "source": "report 08"
-    },
-    {
-      "id": "T14",
-      "from": "INITIALIZING",
-      "to": "DESTROYING",
-      "runTypes": [
-        "DESTROY"
-      ],
-      "cause": "Initialization succeeds and the destroy command runs",
-      "evidence": "[I] from the `DESTROYING` description [G], the `destroy` workflow command used when a stack is deleted [D] [workflow tool](https://docs.spacelift.io/vendors/terraform/workflow-tool), and the `before_destroy` hook being used during stack destruction [D] [stack settings](https://docs.spacelift.io/concepts/stack/stack-settings#customizing-workflow). Whether a destroy run plans and waits for confirmation first is *(unverified)*",
       "source": "report 08"
     },
     {
@@ -174,10 +164,11 @@
       "runTypes": [
         "PROPOSED",
         "TRACKED",
-        "TESTING"
+        "TESTING",
+        "DESTROY"
       ],
       "cause": "Invalid code, provider API errors, a plan policy `deny`, or a worker crash",
-      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria)",
+      "evidence": "[D] [proposed](https://docs.spacelift.io/concepts/run/proposed#success-criteria); for a destroy run's plan policy `deny`, [G] the `runDestroyTrigger` description in the introspection fetched 2026-11-23: a destroy run \"plans the destroy first, so plan policies can pause it for review or deny it\"",
       "source": "report 08"
     },
     {
@@ -186,10 +177,11 @@
       "to": "STOPPED",
       "runTypes": [
         "PROPOSED",
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "A user stops the run; Spacelift stops a proposed run when a newer commit is pushed to its branch",
-      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#stopped), [GitHub](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations)",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#stopped), [GitHub](https://docs.spacelift.io/integrations/source-control/github#webhook-integrations); a destroy run plans as a tracked run does, [G] the `runDestroyTrigger` description in the introspection fetched 2026-11-23: a destroy run \"plans the destroy first, so plan policies can pause it for review or deny it\"",
       "source": "report 08"
     },
     {
@@ -197,10 +189,11 @@
       "from": "PLANNING",
       "to": "UNCONFIRMED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
-      "cause": "The plan has changes and either autodeploy is off, a plan policy warns, or the stack is locked (locking disables autodeploy). The worker encrypts the workspace, uploads it to object storage and leaves the run",
-      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [creating a stack](https://docs.spacelift.io/concepts/stack/creating-a-stack#lock-a-stack-in-spacelift)",
+      "cause": "The plan has changes and either autodeploy is off, a plan policy warns, or the stack is locked (locking disables autodeploy). The worker encrypts the workspace, uploads it to object storage and leaves the run. A destroy run waits here when a plan policy warns",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [creating a stack](https://docs.spacelift.io/concepts/stack/creating-a-stack#lock-a-stack-in-spacelift); for a destroy run, [G] the `runDestroyTrigger` description in the introspection fetched 2026-11-23: a destroy run \"plans the destroy first, so plan policies can pause it for review or deny it\"",
       "source": "report 08"
     },
     {
@@ -264,10 +257,11 @@
       "from": "UNCONFIRMED",
       "to": "CONFIRMED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "A user confirms (`runConfirm`), only after approval policies approve",
-      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#review-a-run); [G] `runConfirm`",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#unconfirmed), [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#review-a-run); [G] `runConfirm`; [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -275,10 +269,11 @@
       "from": "UNCONFIRMED",
       "to": "DISCARDED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "A user discards (`runDiscard`, `runDiscardAll`); a newer run's push policy `cancel` rule, after which the history notes \"canceled by push policy in favor of run <id>\" and the stack's state is `DISCARDED` (report 32, C37); seven days without change; the 30-day rule",
-      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard`; the console, report 32 section 16.2",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [G] `runDiscard`; the console, report 32 section 16.2; [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -297,10 +292,11 @@
       "from": "UNCONFIRMED",
       "to": "FAILED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "An approval policy reject fires in UNCONFIRMED; C291’s 2026-11-19 real API capture confirms FAILED with Run rejected by approval policies, including one rejecting policy among approving policies",
-      "evidence": "[C] [C291](../../test/fixtures/captures/C291/README.md), 2026-11-19; [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules)",
+      "evidence": "[C] [C291](../../test/fixtures/captures/C291/README.md), 2026-11-19; [D] [approval policy](https://docs.spacelift.io/concepts/policy/approval-policy#rules); [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -341,10 +337,11 @@
       "from": "CONFIRMED",
       "to": "PREPARING_APPLY",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "A worker picks the confirmed run up; a second handover starts",
-      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [G]",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [G]; [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -352,10 +349,11 @@
       "from": "CONFIRMED",
       "to": "FAILED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "Seven days without change, or the 30-day rule",
-      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01]",
+      "evidence": "[D] [run](https://docs.spacelift.io/concepts/run#automatic-termination); [RN 2026-09-01]; [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -374,10 +372,11 @@
       "from": "PREPARING_APPLY",
       "to": "FAILED",
       "runTypes": [
-        "TRACKED"
+        "TRACKED",
+        "DESTROY"
       ],
       "cause": "The handover fails, for example the worker disappears",
-      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying)",
+      "evidence": "[D] [tracked](https://docs.spacelift.io/concepts/run/tracked#applying); [I] a destroy run that waits for confirmation takes the tracked run's confirmation path, from the `runDestroyTrigger` description [G]",
       "source": "report 08"
     },
     {
@@ -488,6 +487,28 @@
       "runTypes": "all",
       "cause": "Server-side INITIALIZATION policies deny worker assignment before PREPARING. The failure note counts denying policies; no worker receives the refused run.",
       "evidence": "[C] [C52](../../test/fixtures/captures/C52/README.md) records QUEUED, READY, FAILED with the note \"job assignment failed: denied by 1 initialization policy\". This is separate from launcher initialization.",
+      "source": "decision 0008"
+    },
+    {
+      "id": "T47",
+      "from": "PLANNING",
+      "to": "DESTROYING",
+      "runTypes": [
+        "DESTROY"
+      ],
+      "cause": "The destroy run's plan decision: no plan policy denies it or warns, so the run destroys the stack's resources in the container that planned",
+      "evidence": "[I] from [G] the `runDestroyTrigger` description in the introspection fetched 2026-11-23: a destroy run \"plans the destroy first, so plan policies can pause it for review or deny it\", then \"destroys the Stack's resources\"; decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#the-destroy-trigger) moves on in the planning container as T21 does for a test case",
+      "source": "decision 0008"
+    },
+    {
+      "id": "T48",
+      "from": "PREPARING_APPLY",
+      "to": "DESTROYING",
+      "runTypes": [
+        "DESTROY"
+      ],
+      "cause": "A confirmed destroy run's saved workspace is restored in a new container, which destroys the stack's resources",
+      "evidence": "[I] No Spacelift source describes this edge; decision [0008](../research/decisions/0008-run-execution-and-worker-protocol.md#the-destroy-trigger) adds it as the destroy run's analogue of T35",
       "source": "decision 0008"
     }
   ]

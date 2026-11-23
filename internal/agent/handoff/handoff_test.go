@@ -67,6 +67,11 @@ func TestUnitHandoffFirst(t *testing.T) {
 			t.Errorf("First after %s = %q, want %q", assigned, got, want)
 		}
 	}
+	destroy := handoff.Handoff{Assigned: wire.AssignmentStatePREPARINGAPPLY}
+	destroy.Spec.Run.Type = wire.DESTROY
+	if got := destroy.First(); got != wire.WorkerStateDESTROYING {
+		t.Errorf("First of a confirmed destroy run = %q", got)
+	}
 }
 
 func TestUnitHandoffRefuses(t *testing.T) {

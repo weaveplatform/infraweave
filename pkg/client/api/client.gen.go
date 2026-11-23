@@ -132,6 +132,7 @@ const (
 	RUNCANCELBLOCKING                        Action = "RUN_CANCEL_BLOCKING"
 	RUNCOMMENT                               Action = "RUN_COMMENT"
 	RUNCONFIRM                               Action = "RUN_CONFIRM"
+	RUNDESTROYTRIGGER                        Action = "RUN_DESTROY_TRIGGER"
 	RUNDISCARD                               Action = "RUN_DISCARD"
 	RUNKILL                                  Action = "RUN_KILL"
 	RUNKILLBLOCKING                          Action = "RUN_KILL_BLOCKING"
@@ -366,6 +367,8 @@ func (e Action) Valid() bool {
 	case RUNCOMMENT:
 		return true
 	case RUNCONFIRM:
+		return true
+	case RUNDESTROYTRIGGER:
 		return true
 	case RUNDISCARD:
 		return true
@@ -12200,6 +12203,12 @@ type StackDependencyParams struct {
 	DependsOnStackId *string `form:"dependsOnStackId,omitempty" json:"dependsOnStackId,omitempty"`
 }
 
+// RunDestroyTriggerParams defines parameters for RunDestroyTrigger.
+type RunDestroyTriggerParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // StackDisableParams defines parameters for StackDisable.
 type StackDisableParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -18482,6 +18491,23 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/dependency (the `StackDependency` operationId).
 	StackDependency(ctx context.Context, stackId string, params *StackDependencyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RunDestroyTrigger Run destroy trigger
+	//
+	// Trigger a destroy run on the Stack. The run plans the destroy first, so
+	// plan policies can deny it or pause it for confirmation, then destroys
+	// the Stack's resources; once it finishes the Stack is disabled. It
+	// works on the commit the Stack tracks or, if the Stack does not track
+	// one yet, on the head of its tracked branch, and on a busy Stack it
+	// queues behind the runs already there.
+	// A Stack that is being deleted, is protected from deletion or has a
+	// destroy run that has not ended is refused, as is one that manages no
+	// resources: no run has applied changes to it since it was created or
+	// since its last destroy run finished. So is a Stack that is disabled,
+	// has no commit to run on yet, or another caller has locked.
+	//
+	// Corresponds with POST /stacks/{stackId}/destroy-runs (the `RunDestroyTrigger` operationId).
+	RunDestroyTrigger(ctx context.Context, stackId string, params *RunDestroyTriggerParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackDisable Disable Stack
 	//
@@ -27091,6 +27117,33 @@ func (c *Client) ContextAttach(ctx context.Context, stackId string, contextId st
 // Corresponds with GET /stacks/{stackId}/dependency (the `StackDependency` operationId).
 func (c *Client) StackDependency(ctx context.Context, stackId string, params *StackDependencyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackDependencyRequest(c.Server, stackId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RunDestroyTrigger Run destroy trigger
+//
+// Trigger a destroy run on the Stack. The run plans the destroy first, so
+// plan policies can deny it or pause it for confirmation, then destroys
+// the Stack's resources; once it finishes the Stack is disabled. It
+// works on the commit the Stack tracks or, if the Stack does not track
+// one yet, on the head of its tracked branch, and on a busy Stack it
+// queues behind the runs already there.
+// A Stack that is being deleted, is protected from deletion or has a
+// destroy run that has not ended is refused, as is one that manages no
+// resources: no run has applied changes to it since it was created or
+// since its last destroy run finished. So is a Stack that is disabled,
+// has no commit to run on yet, or another caller has locked.
+//
+// Corresponds with POST /stacks/{stackId}/destroy-runs (the `RunDestroyTrigger` operationId).
+func (c *Client) RunDestroyTrigger(ctx context.Context, stackId string, params *RunDestroyTriggerParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRunDestroyTriggerRequest(c.Server, stackId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -44776,6 +44829,55 @@ func NewStackDependencyRequest(server string, stackId string, params *StackDepen
 	return req, nil
 }
 
+// NewRunDestroyTriggerRequest constructs an http.Request for the RunDestroyTrigger method
+func NewRunDestroyTriggerRequest(server string, stackId string, params *RunDestroyTriggerParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/destroy-runs", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 // NewStackDisableRequest constructs an http.Request for the StackDisable method
 func NewStackDisableRequest(server string, stackId string, params *StackDisableParams) (*http.Request, error) {
 	var err error
@@ -55793,6 +55895,25 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/dependency (the `StackDependency` operationId).
 	StackDependencyWithResponse(ctx context.Context, stackId string, params *StackDependencyParams, reqEditors ...RequestEditorFn) (*StackDependencyResponse, error)
+
+	// RunDestroyTriggerWithResponse Run destroy trigger
+	//
+	// Trigger a destroy run on the Stack. The run plans the destroy first, so
+	// plan policies can deny it or pause it for confirmation, then destroys
+	// the Stack's resources; once it finishes the Stack is disabled. It
+	// works on the commit the Stack tracks or, if the Stack does not track
+	// one yet, on the head of its tracked branch, and on a busy Stack it
+	// queues behind the runs already there.
+	// A Stack that is being deleted, is protected from deletion or has a
+	// destroy run that has not ended is refused, as is one that manages no
+	// resources: no run has applied changes to it since it was created or
+	// since its last destroy run finished. So is a Stack that is disabled,
+	// has no commit to run on yet, or another caller has locked.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /stacks/{stackId}/destroy-runs (the `RunDestroyTrigger` operationId).
+	RunDestroyTriggerWithResponse(ctx context.Context, stackId string, params *RunDestroyTriggerParams, reqEditors ...RequestEditorFn) (*RunDestroyTriggerResponse, error)
 
 	// StackDisableWithResponse Disable Stack
 	//
@@ -85228,6 +85349,115 @@ func (r StackDependencyResponse) ContentType() string {
 	return ""
 }
 
+// RunDestroyTriggerResponse201Headers the declared response headers of an HTTP 201 response for RunDestroyTrigger
+type RunDestroyTriggerResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunDestroyTriggerResponse429Headers the declared response headers of an HTTP 429 response for RunDestroyTrigger
+type RunDestroyTriggerResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// RunDestroyTriggerResponse503Headers the declared response headers of an HTTP 503 response for RunDestroyTrigger
+type RunDestroyTriggerResponse503Headers struct {
+	RetryAfter *int
+}
+
+type RunDestroyTriggerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Run
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *RunDestroyTriggerResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RunDestroyTriggerResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *RunDestroyTriggerResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r RunDestroyTriggerResponse) GetJSON201() *Run {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RunDestroyTriggerResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RunDestroyTriggerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RunDestroyTriggerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RunDestroyTriggerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RunDestroyTriggerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackDisableResponse200Headers the declared response headers of an HTTP 200 response for StackDisable
 type StackDisableResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -104180,6 +104410,31 @@ func (c *ClientWithResponses) StackDependencyWithResponse(ctx context.Context, s
 		return nil, err
 	}
 	return ParseStackDependencyResponse(rsp)
+}
+
+// RunDestroyTriggerWithResponse Run destroy trigger
+//
+// Trigger a destroy run on the Stack. The run plans the destroy first, so
+// plan policies can deny it or pause it for confirmation, then destroys
+// the Stack's resources; once it finishes the Stack is disabled. It
+// works on the commit the Stack tracks or, if the Stack does not track
+// one yet, on the head of its tracked branch, and on a busy Stack it
+// queues behind the runs already there.
+// A Stack that is being deleted, is protected from deletion or has a
+// destroy run that has not ended is refused, as is one that manages no
+// resources: no run has applied changes to it since it was created or
+// since its last destroy run finished. So is a Stack that is disabled,
+// has no commit to run on yet, or another caller has locked.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /stacks/{stackId}/destroy-runs (the `RunDestroyTrigger` operationId).
+func (c *ClientWithResponses) RunDestroyTriggerWithResponse(ctx context.Context, stackId string, params *RunDestroyTriggerParams, reqEditors ...RequestEditorFn) (*RunDestroyTriggerResponse, error) {
+	rsp, err := c.RunDestroyTrigger(ctx, stackId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRunDestroyTriggerResponse(rsp)
 }
 
 // StackDisableWithResponse Disable Stack
@@ -142587,6 +142842,142 @@ func ParseStackDependencyResponse(rsp *http.Response) (*StackDependencyResponse,
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackDependencyResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseRunDestroyTriggerResponse parses an HTTP response from a RunDestroyTriggerWithResponse call
+func ParseRunDestroyTriggerResponse(rsp *http.Response) (*RunDestroyTriggerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RunDestroyTriggerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Run
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers RunDestroyTriggerResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers RunDestroyTriggerResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers RunDestroyTriggerResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

@@ -59,6 +59,21 @@ func (s Server) RunTrigger(ctx context.Context, req api.RunTriggerRequestObject)
 	return api.RunTrigger200JSONResponse{Body: runOf(v)}, nil
 }
 
+// RunDestroyTrigger creates a destroy run on the stack, which plans the
+// destroy, destroys the stack's resources and leaves the stack disabled.
+// The route has decided RUN_DESTROY_TRIGGER on the stack's space.
+func (s Server) RunDestroyTrigger(ctx context.Context, req api.RunDestroyTriggerRequestObject) (api.RunDestroyTriggerResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	v, err := s.trigger.DestroyTrigger(ctx, p, req.StackId)
+	if err != nil {
+		return nil, runError(err, req.StackId, "")
+	}
+	return api.RunDestroyTrigger201JSONResponse{Body: runOf(v)}, nil
+}
+
 // RunTriggerBatch triggers a tracked run on each stack the body lists,
 // all or none, and answers the runs in the body's order. The route has
 // decided RUN_TRIGGER in some space of the account; the trigger decides
@@ -280,6 +295,14 @@ func runError(err error, slug, run string) error {
 		p := problem.ResourceLocked.New(
 			fmt.Sprintf("The stack is locked by %s; only its holder creates runs on it.", l.By))
 		p.LockedBy = l.By
+		return &problem.Error{Problem: p}
+	}
+	if u, ok := errors.AsType[*stacksapi.Undestroyable](err); ok {
+		if u.LockedBy == "" {
+			return problem.InvalidState.Error(u.Detail) //nolint:wrapcheck // a problem, answered as it is
+		}
+		p := problem.ResourceLocked.New(u.Detail)
+		p.LockedBy = u.LockedBy
 		return &problem.Error{Problem: p}
 	}
 	if b, ok := errors.AsType[*control.Blocked](err); ok {

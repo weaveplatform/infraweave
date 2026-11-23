@@ -124,9 +124,8 @@ stateDiagram-v2
     READY --> CANCELED: T9 no worker, policy, timeout [D][RN]
     PREPARING --> INITIALIZING: T10 container started [D]
     PREPARING --> FAILED: T11 handover failed [D]
-    INITIALIZING --> PLANNING: T12 proposed, tracked, testing [D]
+    INITIALIZING --> PLANNING: T12 proposed, tracked, testing, destroy [D][G]
     INITIALIZING --> PERFORMING: T13 task [D]
-    INITIALIZING --> DESTROYING: T14 destroy run [I]
     INITIALIZING --> FAILED: T15 init failed [D]
     INITIALIZING --> STOPPED: T16 stop [D][G]
     PLANNING --> FINISHED: T17 proposed done or no-op [D]
@@ -189,7 +188,7 @@ implied transitions below); decision
 adds it as the analogue of T11 and T36, and its record names 0008 as its
 source. The state diagram above draws T1 to T43 only.
 
-Three edges rest on inference rather than a statement: T14, T30 and T32,
+Two edges rest on inference rather than a statement: T30 and T32,
 each with its basis in its record. T5, T24 and T29 give an approval policy
 `reject` as `FAILED`, while the approval page's walkthrough describes
 **Reject** as canceling the run; the console shows a reject in `QUEUED`
@@ -200,8 +199,10 @@ or UNCONFIRMED fails the run with `Run rejected by approval policies`, even
 while another attached approval policy approves. A
 task with `skipInitialization` still passes through `INITIALIZING` (T13),
 which only logs that initialization is skipped
-([32](32-spacelift-console-survey.md) section 17.4), which resolves C42. T14
-leaves open whether a destroy run plans and waits for confirmation first.
+([32](32-spacelift-console-survey.md) section 17.4), which resolves C42. A
+destroy run plans the destroy first, so plan policies can pause it for
+review or deny it, as the `runDestroyTrigger` description states [G]; it
+takes T12, and decision 0008's T47 and T48 carry it on to `DESTROYING`.
 
 Transitions the sources imply but do not pin to a target state:
 
@@ -224,7 +225,7 @@ Transitions the sources imply but do not pin to a target state:
 | `TRACKED`, autodeploy | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PLANNING` → `APPLYING` → `FINISHED` | A no-op plan ends at `FINISHED` straight from `PLANNING` [D] |
 | `TASK` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PERFORMING` → `FINISHED` | `PERFORMING` cannot be stopped [D] |
 | `TESTING` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PLANNING` → `APPLYING` → `DESTROYING` → `FINISHED` | `SPACELIFT_SKIP_DESTROYING=true` skips the destroy phase [D] |
-| `DESTROY` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `DESTROYING` → `FINISHED` | [I]; see T14 |
+| `DESTROY` | `QUEUED` → `READY` → `PREPARING` → `INITIALIZING` → `PLANNING` → `DESTROYING` → `FINISHED` | [G] `runDestroyTrigger`; a plan policy's warning holds it in `UNCONFIRMED`, and a deny fails it; see T47 and T48 |
 | `PARSE` | Not documented | *(unverified)* (C33) |
 
 ### Timers
@@ -593,10 +594,10 @@ and `finished` [G].
 
 ## Inferred and undocumented
 
-- **[I]** `DESTROY` runs go `INITIALIZING` → `DESTROYING` (T14), from the
-  `DESTROYING` description, the workflow tool's `destroy` command and the
-  `before_destroy` hook's use during stack destruction. Whether a destroy run
-  plans or asks for confirmation first is *(unverified)* (C34).
+- **[G]** `DESTROY` runs plan the destroy before `DESTROYING`, as the
+  `runDestroyTrigger` description states, so plan policies can pause one
+  for review or deny it. Whether one that no policy holds still waits for
+  confirmation is *(unverified)* (C34).
 - **[I]** `REPLAN_REQUESTED` → `PREPARING_REPLAN` → `PLANNING` (T30, T32),
   from the schema descriptions, the `.Targets` plan parameter and
   `stateVersion`.

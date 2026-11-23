@@ -282,6 +282,7 @@ var errRunCost = errors.New("creates runs and is not x-infraweave-cost expensive
 // ref: decision 0003 § "Rate limits"
 var createsRuns = map[accessapi.Action]bool{
 	accessapi.ActionRunTrigger:               true,
+	accessapi.ActionRunDestroyTrigger:        true,
 	accessapi.ActionTaskCreate:               true,
 	accessapi.ActionRunProposeWithOverrides:  true,
 	accessapi.ActionRunProposeLocalWorkspace: true,
