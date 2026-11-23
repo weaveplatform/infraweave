@@ -12,3 +12,7 @@ output "role_arn" {
 output "organizational_unit_id" {
   value = aws_organizations_organizational_unit.lab.id
 }
+
+output "organization_id" {
+  value = aws_organizations_organization.lab.id
+}
