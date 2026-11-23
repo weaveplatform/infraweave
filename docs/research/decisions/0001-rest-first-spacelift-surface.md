@@ -103,8 +103,8 @@ session channel, the token file), 0007 (admins and the top space), 0008
 (run variables, the API endpoint's RN-45 and the config element category),
 0009 (the policy input),
 0010 and 0012 (environment variables, the `INFRAWEAVE` provider, the
-check and deployment names), 0017 (metrics), 0018 (Flows), 0019 (AI), 0022 and 0024
-(repository files).
+check and deployment names), 0017 (metrics), 0018 (Flows), 0019 (AI), 0021
+(the feature previews' account setting), 0022 and 0024 (repository files).
 `BillingTierFeature` is not served, so its values are mapped to feature
 names rather than renamed; decision 0021's mapping table covers
 `SPACELIFT_INTELLIGENCE` with the rest.
