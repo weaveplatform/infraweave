@@ -262,7 +262,8 @@ conditions, desired/registered/busy/retiring counts. Worker spec: immutable
 WorkerPool UID, poolID and integer slot; name is parent UID plus slot hash.
 Worker status: server worker ULID, assignment run/state/version/deadlines,
 Pod name/UID, handoff phase, original start, exit code/reason, acknowledgement.
-No token, private key, opened handoff, source credential or signed URL is in
+The acknowledgement is written in the same update as the original start and run
+deadline it begins; until then the handoff phase is `Staged`. No token, private key, opened handoff, source credential or signed URL is in
 status. Capacity reconciliation creates slots 0..N-1, registrations enforce live
 organization limits, and excess slots retire without new claims, finish current
 work, report/deregister, then disappear. A retiring slot's polls say `retiring`,

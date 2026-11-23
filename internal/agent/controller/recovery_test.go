@@ -15,6 +15,7 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/weaveplatform/infraweave/internal/agent/agenttest"
+	"github.com/weaveplatform/infraweave/internal/agent/executor"
 	"github.com/weaveplatform/infraweave/internal/agent/executor/kubernetes"
 	"github.com/weaveplatform/infraweave/internal/agent/launcher"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
@@ -289,6 +290,55 @@ func TestUnitSlotStoreRoundTrips(t *testing.T) {
 	gone.Name = "absent"
 	if _, err := (&slot{c: c, worker: gone}).Load(ctx); err == nil || !strings.Contains(err.Error(), "absent") {
 		t.Fatalf("load of an absent Worker: %v", err)
+	}
+}
+
+// TestUnitSlotRecordsAnAcknowledgedHandoffWithItsStart checks that a
+// Worker's status acknowledges a run's handoff only together with the
+// run's start and run deadline, which the launcher records after the
+// executor observes the acknowledgement, and keeps the acknowledgement
+// with the run's exit, which clears its start.
+func TestUnitSlotRecordsAnAcknowledgedHandoffWithItsStart(t *testing.T) {
+	e := newEnv(t)
+	c := e.controller()
+	e.hosted("build", Existing, 1)
+	e.pass(c)
+	w := e.workers("build")[0]
+	s := &slot{c: c, worker: w.ObjectMeta, runTimeout: time.Hour}
+	ctx := t.Context()
+	st, err := s.Load(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.Run, st.Assigned, st.StateVersion = "run-1", wire.AssignmentStatePREPARING, 2
+	if err := s.Save(ctx, st); err != nil {
+		t.Fatal(err)
+	}
+	pod := kubernetes.PodName("run-1", 2)
+	s.observe(kubernetes.Observation{Run: "run-1", Pod: pod, UID: "pod-uid", Phase: kubernetes.PhaseStaged})
+	s.observe(kubernetes.Observation{Run: "run-1", Pod: pod, UID: "pod-uid", Phase: kubernetes.PhaseAcknowledged})
+	a := e.workers("build")[0].Status.Assignment
+	if a == nil || a.HandoffAcknowledged || a.HandoffPhase != string(kubernetes.PhaseStaged) || a.PodUID != "pod-uid" || a.StartedAt != nil {
+		t.Fatalf("an acknowledgement recorded before its start: %+v", a)
+	}
+
+	st.Started = time.Unix(1_900_000_000, 0)
+	if err := s.Save(ctx, st); err != nil {
+		t.Fatal(err)
+	}
+	a = e.workers("build")[0].Status.Assignment
+	if !a.HandoffAcknowledged || a.HandoffPhase != string(kubernetes.PhaseAcknowledged) || a.StartedAt == nil ||
+		!a.RunDeadline.Time.Equal(st.Started.Add(time.Hour)) {
+		t.Fatalf("the acknowledgement without its start: %+v", a)
+	}
+
+	st.Started, st.Exit = time.Time{}, &wire.ContainerExit{Code: executor.MissingCode, Reason: wire.Missing}
+	if err := s.Save(ctx, st); err != nil {
+		t.Fatal(err)
+	}
+	a = e.workers("build")[0].Status.Assignment
+	if !a.HandoffAcknowledged || a.HandoffPhase != string(kubernetes.PhaseAcknowledged) || a.StartedAt != nil || a.ExitReason != string(wire.Missing) {
+		t.Fatalf("an ended run's acknowledgement: %+v", a)
 	}
 }
 
