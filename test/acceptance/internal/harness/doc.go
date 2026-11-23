@@ -21,8 +21,11 @@
 // object store request for a latency and refuses a share of signed
 // uploads and of the launcher's signed reads as a skewed store does,
 // counting both into out/store-refusals.json, and each run container is
-// capped at a CPU count. A failed scenario leaves its evidence in
-// out/<scenario>/.
+// capped at a CPU count. The kubernetes-lab partition runs at most one
+// scenario per CPU of the lab cluster's node, whose Pods every scenario
+// shares; BootstrapImage imports the bootstrap image into that node and
+// NodeImage pulls a runner image there before a scenario's controllers
+// start. A failed scenario leaves its evidence in out/<scenario>/.
 //
 // ref: decision 0016
 //
@@ -36,7 +39,8 @@
 // reaches their listeners over loopback HTTP, queries
 // the scenario's database, and writes godog's cucumber report, the
 // subprocesses' coverage, a failed scenario's evidence and a stressed
-// run's store refusals. Under a CPU
+// run's store refusals. It reads the lab node's CPU limit from Docker
+// and runs the node's container runtime to import and pull images. Under a CPU
 // stress it watches the daemon's container events and updates each run
 // container's CPU limit.
 //

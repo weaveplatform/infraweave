@@ -164,12 +164,42 @@ concurrently on the six-CPU host against the two-CPU cluster. Each failed
 `kubernetes_initialization`'s signed-token scenario because the second helper
 Pod's container started after the policy's 45-second deadline; the second
 attempt also timed out `kubernetes_recovery`'s adoption scenario. The batch
-then passed with CI's settings, `GOMAXPROCS=2` and `GOFLAGS=-p=1`.
-[#814](https://github.com/weaveplatform/infraweave/issues/814) tracks that
-scenario's time budget under node contention. Neither failed attempt is counted
-as evidence. Each still destroyed its owned
+then passed with CI's settings, `GOMAXPROCS=2` and `GOFLAGS=-p=1`. Neither
+failed attempt is counted as evidence. Each still destroyed its owned
 infrastructure and verified the readback, which is the failed-attempt cleanup
 evidence below.
+
+### Lab concurrency
+
+[#814](https://github.com/weaveplatform/infraweave/issues/814) traced those
+failures to the batch, not the product. The 45 seconds is the scenario's own
+`initialization_timeout`, inside the product's 60-second limit, and the contract
+counts a helper Pod's start inside the call's deadline. The batch ran as many
+scenarios at once as the host's `GOMAXPROCS`, while every scenario's run Pods,
+helper Pods and attach streams share the cluster's one two-CPU node. A clean
+batch at `af723bf8` on a ten-CPU host, ten scenarios at once, failed 10 of 37
+scenarios: the three initialization scenarios' helper bootstraps were still
+running when the 45-second deadline ended, readiness probes and API reads timed
+out, and execution, phase-input, recovery and chart scenarios timed out too.
+
+The `kubernetes-lab` partition now runs at most one scenario per CPU of the
+node container's Docker limit, whatever the host's `GOMAXPROCS`. Before a
+scenario's worker controllers start, the suite pulls its runner image into the
+node, so no helper Pod's first pull queues behind the kubelet's serialized
+pulls. The deadline-refusal scenarios are unchanged. Two consecutive batches at
+`92bb7500` under certified FIPS, with the host's default `GOMAXPROCS` (ten) and
+another project's acceptance suite on the same Docker host, each ran two
+scenarios at once and passed 37/37 scenarios and 661/661 steps. Their
+signed-token scenarios' two helper commands started within 5 and 11 seconds of
+the first bootstrap, and every helper found its runner image already on the
+node:
+
+| Run | Owner | Result | Before destroy | After |
+| --- | --- | --- | --- | --- |
+| Interrupted while building, not evidence | `iw-lab-a07187ae…` | no scenario ran | 4 containers, 4 volumes, 1 network | none; empty state |
+| Baseline, `af723bf8` | `iw-lab-8fe0dd36…` | 27/37 scenarios | 4 containers, 4 volumes, 1 network | none; empty state |
+| Bounded batch 1, `92bb7500` | `iw-lab-c099e047…` | 37/37, 661/661 steps | 4 containers, 4 volumes, 1 network | none; empty state |
+| Bounded batch 2, `92bb7500` | `iw-lab-a54fb1e9…` | 37/37, 661/661 steps | 4 containers, 4 volumes, 1 network | none; empty state |
 
 ## Capture provenance and open gaps
 
@@ -223,6 +253,4 @@ sessions from before this delivery's runs.
   the matrix keeps their requirements `unproven`.
 - The epic stays open until the maintainer closes it; child closure and this
   audit do not close it.
-- [#814](https://github.com/weaveplatform/infraweave/issues/814): the
-  initialization scenario's 45-second budget fails on a contended local node.
 - The two intent-project searches answer 501 until intent projects exist (P25).

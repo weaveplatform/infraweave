@@ -45,6 +45,13 @@ and fixture namespace, including nested capture replays.
 | `workers-aws`, `workers-azure`, `workers-google` | Required `managed-cloud-workers` partition against one cloud's committed `test/terraform/platform/workers/<cloud>` root and the local platform's control plane |
 | `workers-multicloud` | The same partition with all three clouds attached concurrently under one owner and one control plane |
 
+The `kubernetes` batch runs at most one scenario per CPU of its k3s node (two
+by default), whatever the host's `GOMAXPROCS`: every scenario's run and helper
+Pods share that node, and more at once spend the time scenarios give the
+product's own deadlines. Before a scenario's worker controllers start, the
+suite pulls the scenario's runner image into the node, so no helper or run Pod
+waits on the kubelet's one-at-a-time pulls.
+
 These are Gherkin batches. The ordinary quality gate still runs every existing
 component `TestAcc`, unit suite, partition and FIPS check. No existing check or
 coverage threshold is removed. The added required Terraform policy batch runs

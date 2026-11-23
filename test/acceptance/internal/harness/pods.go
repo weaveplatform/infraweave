@@ -219,6 +219,44 @@ func (l *Launchers) BootstrapImage(ctx context.Context, cluster *deps.Kubernetes
 	return ref, nil
 }
 
+// NodeImage pulls the released runner image into cluster's node once,
+// through the node's own container runtime, so the kubelet finds it
+// present when a run Pod or an initialization command's helper Pod starts
+// from it. The kubelet pulls one image at a time, so on a node that
+// concurrent scenarios share, a Pod's first pull otherwise queues behind
+// every other scenario's and spends a deadline its scenario sets for the
+// Pod's own work, such as a worker initialization policy's. A failed pull
+// is retried, as the kubelet would retry it, and only a pulled image is
+// remembered.
+func (l *Launchers) NodeImage(ctx context.Context, cluster *deps.Kubernetes, image string) error {
+	if !runnerReferences[image] {
+		return fmt.Errorf("%w: %q", ErrRunnerImage, image)
+	}
+	l.nodeMu.Lock()
+	defer l.nodeMu.Unlock()
+	key := cluster.Container + " " + image
+	if l.node[key] {
+		return nil
+	}
+	var err error
+	for range nodePulls {
+		if _, err = dockerCLI(ctx, nil, "exec", cluster.Container, "crictl", "pull", image); err == nil || ctx.Err() != nil {
+			break
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("pull runner image %s into the node: %w", image, err)
+	}
+	if l.node == nil {
+		l.node = map[string]bool{}
+	}
+	l.node[key] = true
+	return nil
+}
+
+// nodePulls is how many times NodeImage tries a pull.
+const nodePulls = 3
+
 // ociArchive is an OCI image layout, as a tar archive, of one layer that
 // holds binary at /usr/local/bin/infraweave for linux/arch, and its
 // manifest's digest.
@@ -315,10 +353,14 @@ func descriptor(mediaType string, b []byte) map[string]any {
 }
 
 // bootstrapState is the bootstrap images Launchers imported, by the
-// container of the node that holds each.
+// container of the node that holds each, and the runner images it pulled
+// into nodes, by node container and image. Pulls take their own lock, so
+// an import never waits behind a pull.
 type bootstrapState struct {
 	bootstrapMu sync.Mutex
 	bootstrap   map[string]string
+	nodeMu      sync.Mutex
+	node        map[string]bool
 }
 
 // ErrRoots is a trust bundle that holds no PEM certificate.

@@ -3,6 +3,7 @@ package harness
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net"
 	"runtime"
 	"sync/atomic"
@@ -10,19 +11,21 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 func TestUnitLiveLabScenariosOwnTheSharedIngressSequentially(t *testing.T) {
 	previous := runtime.GOMAXPROCS(2)
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	t.Run("parallel control collides", func(t *testing.T) {
-		status, collision, output := sharedIngressScenarios(t, featureConcurrency("core"))
+		status, collision, output := sharedIngressScenarios(t, featureConcurrency("core", 0))
 		if status == 0 || !collision {
 			t.Fatalf("parallel control did not collide on its actual listener: status=%d collision=%v\n%s", status, collision, output)
 		}
 	})
 	t.Run("live lab retains exclusive ingress", func(t *testing.T) {
-		status, collision, output := sharedIngressScenarios(t, featureConcurrency("vcs-lab"))
+		status, collision, output := sharedIngressScenarios(t, featureConcurrency("vcs-lab", 0))
 		if status != 0 || collision {
 			t.Fatalf("live lab shared its ingress between active scenarios: status=%d collision=%v\n%s", status, collision, output)
 		}
@@ -93,4 +96,37 @@ func sharedIngressScenarios(t *testing.T, concurrency int) (int, bool, string) {
 		t.Fatalf("ingress regression ran %d owners, want two", owners.Load())
 	}
 	return status, collided.Load(), output.String()
+}
+
+func TestUnitKubernetesLabScenariosRunAtMostOnePerNodeCPU(t *testing.T) {
+	previous := runtime.GOMAXPROCS(10)
+	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
+	for _, c := range []struct {
+		partition string
+		cpus      int
+		want      int
+	}{
+		{"kubernetes-lab", 2, 2},
+		{"kubernetes-lab", 16, 10},
+		{"kubernetes-lab", 0, 10},
+		{"core", 2, 10},
+		{"vcs-lab", 2, 1},
+	} {
+		if got := featureConcurrency(c.partition, c.cpus); got != c.want {
+			t.Errorf("featureConcurrency(%q, %d) = %d, want %d", c.partition, c.cpus, got, c.want)
+		}
+	}
+}
+
+func TestUnitLabNodeCPUsRoundUpItsDockerLimit(t *testing.T) {
+	for nano, want := range map[string]int{"2000000000\n": 2, "1500000000": 2, "0": 0} {
+		if got, err := nodeCPUs(nano); err != nil || got != want {
+			t.Errorf("nodeCPUs(%q) = %d, %v; want %d", nano, got, err, want)
+		}
+	}
+	for _, nano := range []string{"", "two", "-1"} {
+		if _, err := nodeCPUs(nano); !errors.Is(err, deps.ErrLab) {
+			t.Errorf("nodeCPUs(%q) = %v, want ErrLab", nano, err)
+		}
+	}
 }
