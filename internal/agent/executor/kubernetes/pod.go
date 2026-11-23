@@ -13,6 +13,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/bootstrap"
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 )
 
 // The run Pod's contract with its images. The bootstrap image is the
@@ -36,6 +37,8 @@ const (
 const (
 	LabelWorker       = "workers.infraweave.io/worker"
 	LabelRun          = "workers.infraweave.io/run"
+	LabelVendor       = "workers.infraweave.io/vendor"
+	LabelTool         = "workers.infraweave.io/tool"
 	AnnotationHandoff = "workers.infraweave.io/handoff"
 	handedOff         = "delivered"
 )
@@ -51,7 +54,56 @@ const (
 var (
 	binaryLimit = resource.MustParse("512Mi")
 	toolsLimit  = resource.MustParse("1100Mi")
+	scopedLimit = *resource.NewQuantity(phaseinputs.MaxFiles, resource.BinarySI)
 )
+
+// The file a Secret or ConfigMap volume projects its one key to, which
+// the runner container mounts at the volume's target.
+const volumeFile = "value"
+
+// volumes are the Pod's volumes, the runner's mounts of j's cluster
+// volumes, read-only, and of an in-memory emptyDir at each of j's scoped
+// directories, which the runner fills, and the bootstrap's mounts of
+// those emptyDirs. The runner mounts each one's ScopedFiles directory,
+// which the bootstrap creates for the run's user: kubelet owns the
+// emptyDir's own root, whose mode the runner could not change.
+func volumes(j executor.Job) ([]corev1.Volume, []corev1.VolumeMount, []corev1.VolumeMount) {
+	vs := make([]corev1.Volume, 0, len(j.Volumes)+len(j.Scoped))
+	ms := make([]corev1.VolumeMount, 0, len(j.Volumes)+len(j.Scoped))
+	// Group read and owner read: the Pod's fsGroup is the run's group.
+	mode := int32(0o440)
+	for i, v := range j.Volumes {
+		name := "mount-" + strconv.Itoa(i)
+		m := corev1.VolumeMount{Name: name, MountPath: v.Target, ReadOnly: true}
+		var src corev1.VolumeSource
+		items := []corev1.KeyToPath{{Key: v.Key, Path: volumeFile}}
+		switch v.Kind {
+		case executor.Secret:
+			src.Secret = &corev1.SecretVolumeSource{SecretName: v.Name, Items: items, DefaultMode: &mode}
+			m.SubPath = volumeFile
+		case executor.ConfigMap:
+			src.ConfigMap = &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: v.Name}, Items: items, DefaultMode: &mode,
+			}
+			m.SubPath = volumeFile
+		default:
+			src.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v.Name, ReadOnly: true}
+		}
+		vs = append(vs, corev1.Volume{Name: name, VolumeSource: src})
+		ms = append(ms, m)
+	}
+	boot := make([]corev1.VolumeMount, 0, len(j.Scoped))
+	for i, dir := range j.Scoped {
+		name := "scoped-" + strconv.Itoa(i)
+		size := scopedLimit.DeepCopy()
+		vs = append(vs, corev1.Volume{Name: name, VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory, SizeLimit: &size},
+		}})
+		ms = append(ms, corev1.VolumeMount{Name: name, MountPath: dir, SubPath: bootstrap.ScopedFiles})
+		boot = append(boot, corev1.VolumeMount{Name: name, MountPath: bootstrap.ScopedDir + "/" + strconv.Itoa(i)})
+	}
+	return vs, ms, boot
+}
 
 // PodName names the Pod of run's assignment at stateVersion: a confirmed
 // run's apply after its plan gets a new Pod, never the plan's again.
@@ -62,8 +114,8 @@ func PodName(run string, stateVersion int64) string {
 // pod is the run Pod of j under c, mounting each of tools over its
 // image's /bin/<name>, whose active deadline is active, rounded up to the
 // second. Its fixed security context, commands and volumes are not
-// configurable: a pool sets only resources, storage, placement and pull
-// secrets.
+// configurable: a pool sets only resources, storage, placement, pull
+// secrets and the objects its runners mount read-only.
 func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) *corev1.Pod {
 	no, yes := false, true
 	uid := UID
@@ -83,6 +135,8 @@ func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) 
 	for _, t := range tools {
 		mounts = append(mounts, corev1.VolumeMount{Name: volumeTools, MountPath: "/bin/" + t.Name, SubPath: t.Name, ReadOnly: true})
 	}
+	extra, extraMounts, bootMounts := volumes(j)
+	mounts = append(mounts, extraMounts...)
 	selector := maps.Clone(c.NodeSelector)
 	if len(tools) > 0 {
 		if selector == nil {
@@ -111,6 +165,7 @@ func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) 
 			Name: PodName(j.Run, j.StateVersion), Namespace: c.Namespace,
 			Labels: map[string]string{
 				LabelWorker: j.Worker, LabelRun: j.Run, "app.kubernetes.io/managed-by": "infraweave-worker-controller",
+				LabelVendor: j.Execution.Vendor, LabelTool: j.Execution.Tool,
 			},
 			OwnerReferences: []metav1.OwnerReference{owner},
 		},
@@ -127,11 +182,11 @@ func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) 
 			NodeSelector:     selector,
 			Tolerations:      c.Tolerations,
 			ImagePullSecrets: c.ImagePullSecrets,
-			Volumes: []corev1.Volume{
+			Volumes: append([]corev1.Volume{
 				{Name: volumeBinary, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &bin}}},
 				{Name: volumeTools, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &tl}}},
 				{Name: volumeWorkspace, VolumeSource: corev1.VolumeSource{EmptyDir: workspace}},
-			},
+			}, extra...),
 			InitContainers: []corev1.Container{{
 				Name:  BootstrapContainer,
 				Image: c.BootstrapImage,
@@ -140,11 +195,11 @@ func pod(c Config, j executor.Job, tools []executor.Tool, active time.Duration) 
 					"--state-version", strconv.FormatInt(j.StateVersion, 10), "--worker", j.Worker,
 				},
 				Stdin: true, StdinOnce: true,
-				VolumeMounts: []corev1.VolumeMount{
+				VolumeMounts: append([]corev1.VolumeMount{
 					{Name: volumeBinary, MountPath: BinaryDir},
 					{Name: volumeTools, MountPath: ToolsDir},
 					{Name: volumeWorkspace, MountPath: Workspace},
-				},
+				}, bootMounts...),
 				Resources:                c.Resources,
 				SecurityContext:          drop,
 				ImagePullPolicy:          corev1.PullIfNotPresent,

@@ -1351,7 +1351,8 @@ surfaces retain their separate delivery owners.
   1983, with the workspace at `/mnt/workspace`, the tool binaries mounted
   read-only, and the launcher's network, runtime and extra mount settings.
   Each container is labelled `io.infraweave.worker` and `io.infraweave.run`
-  with the worker's and the run's IDs.
+  with the worker's and the run's IDs, and `io.infraweave.vendor` and
+  `io.infraweave.tool` with what it executes (see *Phase-scoped inputs*).
 - **The handoff.** The launcher writes the run's endpoint, run token,
   assigned state and state version, the specification without its sealed
   part, the opened secrets, the pool's public key from its certificate,
@@ -1389,6 +1390,68 @@ surfaces retain their separate delivery owners.
   daemon. Shared server-issued preparingDeadline covers scheduling/preparation;
   run timeout and an absolute watchdog survive controller restarts. No runtime
   replays an ambiguous handoff or silently selects another pool/cloud.
+
+### Phase-scoped inputs
+
+A pool passes inputs of its own to its runs, scoped by phase: variables and
+files the run's specification does not carry, such as a cloud credential for
+applying alone.
+
+- **Names.** A configured variable name with the prefix `ro_` has read
+  exposure, `wo_` write exposure, and any other name all; the child sees the
+  name without its prefix. Explicit exposure and the prefix must agree. Two
+  names one phase would see under the same child name, a prefix with no name
+  after it, and a name the runner sets itself (`INFRAWEAVE_*`,
+  `TF_VAR_infraweave_*`, `TF_IN_AUTOMATION`, `TF_INPUT`, the state backend's
+  `TF_HTTP_*` credentials, Terragrunt's own settings and `SSL_CERT_FILE`) are
+  refused. A stack's or context's variable of the same name takes
+  precedence. A sensitive value enters the masker.
+- **Phases.** INITIALIZING and PLANNING expose all and read; APPLYING and
+  DESTROYING all and write; every phase of a task, its initialization
+  included, all and write; `after_run` the set of the phase before it. A
+  worker policy helper receives none. At each change of set, before any hook
+  of the phase, the runner unsets the other side's variables in its session,
+  removes the other side's files, checks they are gone and fails the phase
+  when one is not, then writes its own side's and exports its variables.
+  A run that plans and applies in one container switches in it; a confirmed
+  apply's container starts from the write set.
+- **Files.** A file of all exposure is a read-only mount, which refuses a
+  write with `EROFS`. A read or write file is never mounted: the launcher
+  reads its content, the handoff carries it, and the runner writes it at its
+  target, mode 0400, in an in-memory directory the run's user owns, which the
+  executor gives the run at the target's directory, and leaves that directory
+  mode 0500; a write is refused with `EACCES`. The directory holds nothing
+  else. Targets are absolute and canonical, never overlap each other, the
+  workspace, `/opt/infraweave`, `/run/infraweave`, the tool directories,
+  `/proc`, `/sys` or `/dev`, and a scoped directory is not `/`'s direct child,
+  so no saved workspace holds one. A scoped file is at most 1 MiB and a run's
+  at most 16 MiB. The modes guard against a stray write, not against the
+  run's own user, who may change them; a command a phase admits a file to can
+  copy it, as it can any other input.
+- **Docker.** `launcher.whitelist_envs` names variables of the launcher's own
+  environment; an unset one is skipped, and `launcher.mask_envs`, by the
+  configured or the child name, makes one sensitive.
+  `launcher.docker.extra_mounts` are bind mounts every phase sees read-only,
+  `<host path>:<container path>`, optionally with `:ro`, which they always
+  are; `ro_extra_mounts` and `wo_extra_mounts` name regular host files, read
+  afresh for each assignment and always sensitive. The scoped directory is a
+  tmpfs owned by UID 1983.
+- **Kubernetes.** A WorkerPool's `environment` names each variable's value as a
+  key of a Secret or ConfigMap in its namespace, `from: {kind, name, key}`,
+  sensitive when a Secret holds it; its `mounts` of all exposure are a
+  Secret's or ConfigMap's key, projected read-only, or a PersistentVolumeClaim,
+  mounted read-only, and its read and write mounts are a Secret's or
+  ConfigMap's key, which the controller reads for each assignment. Neither
+  names the credential Secret. The scoped directory is a directory the
+  bootstrap creates for UID 1983 in an in-memory emptyDir, since kubelet owns
+  the emptyDir's own root.
+- **What executes.** The container or Pod is labelled with its stack's vendor,
+  `terraform`, `opentofu` or `terragrunt`, else `unknown`, and the tool its
+  runner calls, `terraform` or `tofu`, else `unknown`; the launcher logs both
+  when the container starts, with the executor's runtime (`docker` or
+  `kubernetes`), the tool's version when it downloads a verified release, and
+  whether the tool is that release or the image's own. No backend this
+  record leaves unimplemented gets a label value of its own.
 
 ### Runner images
 
@@ -1627,7 +1690,7 @@ offers this policy is available to it alone; 0009 lists built-ins.
   (optional local file), `launcher.initialization_policy_engine` (`REGO_V1`,
   also accepts `REGO_V0`), `launcher.initialization_timeout` (60s, positive
   and at most 60s),
-  `launcher.mask_envs`, `launcher.whitelist_envs`,
+  `launcher.mask_envs`, `launcher.whitelist_envs` (see *Phase-scoped inputs*),
   `launcher.sensitive_output_upload` (off), `launcher.tool_mirror`,
   `launcher.ca_file`, `launcher.docker.config_dir`, `.network`, `.runtime`, `.runner_binary`,
   `.extra_mounts`, `.ro_extra_mounts` and `.wo_extra_mounts`. Environment variables are

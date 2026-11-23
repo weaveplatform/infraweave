@@ -14,9 +14,11 @@ import (
 // after its claim, which names the assignment, the image it starts from,
 // the host directory that is its workspace, the image's own when empty,
 // the other host paths it mounts, the verified tool executables among
-// them, the handoff its runner reads on standard input, where its output
-// goes, and the assignment's preparing deadline, none when zero, by which
-// the container must have taken its handoff.
+// them, the cluster objects it mounts, the directories it provides empty
+// for the runner's scoped files, the handoff its runner reads on standard
+// input, where its output goes, the assignment's preparing deadline, none
+// when zero, by which the container must have taken its handoff, and
+// what it executes, which labels it.
 type Job struct {
 	Worker            string
 	Run               string
@@ -25,10 +27,24 @@ type Job struct {
 	Workspace         string
 	Mounts            []Mount
 	Tools             []Tool
+	Volumes           []Volume
+	Scoped            []string
 	Handoff           []byte
 	Output            io.Writer
 	PreparingDeadline time.Time
+	Execution         Execution
 }
+
+// Execution names what a run container executes, as labels whose values
+// are bounded: the stack's vendor and the tool its runner calls, each
+// Unknown when the specification names another.
+type Execution struct {
+	Vendor string
+	Tool   string
+}
+
+// Unknown is an Execution label's value for a name outside its bounds.
+const Unknown = "unknown"
 
 // Tool is a verified tool executable at the host path Path, of the
 // release Version, which replaces the image's /bin/<Name>; its Mount is
@@ -46,6 +62,27 @@ type Mount struct {
 	Target   string
 	ReadOnly bool
 }
+
+// The kinds of a Volume's object.
+const (
+	Secret    = "Secret"
+	ConfigMap = "ConfigMap"
+	PVC       = "PVC"
+)
+
+// Volume is an object of the run's cluster namespace that the container
+// sees read-only at Target: a Secret's or ConfigMap's key Key as a file,
+// or a PersistentVolumeClaim, whose Key is empty, as a directory. An
+// executor that runs no Pods starts no job with one.
+type Volume struct {
+	Kind   string
+	Name   string
+	Key    string
+	Target string
+}
+
+// ErrVolume marks a job's mount or volume its executor cannot deliver.
+var ErrVolume = errors.New("the executor cannot deliver the mount")
 
 // Exit is how a container ended: its root process's exit code and why it
 // ended, as the next poll reports it.
@@ -87,6 +124,12 @@ type Executor interface {
 	// Find answers worker's container, running or ended but not removed,
 	// copying what it writes from now on to out; false when it has none.
 	Find(ctx context.Context, worker string, out io.Writer) (Container, bool, error)
+}
+
+// Named is an Executor that names its runtime, such as docker or
+// kubernetes, which the launcher logs beside each run it starts.
+type Named interface {
+	Runtime() string
 }
 
 // Command is one initialization command's helper: a fresh container of

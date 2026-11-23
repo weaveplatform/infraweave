@@ -72,13 +72,26 @@ type Resources struct {
 	Limits   corev1.ResourceList `json:"limits"`
 }
 
+// Environment is a passthrough variable of the pool's runs: its name,
+// which ro_ or wo_ may scope, the exposure that prefix declares, and the
+// same-namespace Secret or ConfigMap key that holds its value.
 type Environment struct {
-	Name     string `json:"name"`
-	Exposure string `json:"exposure"`
+	Name     string    `json:"name"`
+	Exposure string    `json:"exposure"`
+	From     ObjectKey `json:"from"`
+}
+
+// ObjectKey is a key of a same-namespace Secret or ConfigMap.
+type ObjectKey struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 // Mount resolves a same-namespace Secret/ConfigMap key or PVC. ReadOnly is
 // explicit and mandatory; no node/controller filesystem path is a source.
+// A mount of all exposure is a read-only volume of every run Pod; a read
+// or write one is a Secret's or ConfigMap's key its phases alone see.
 type Mount struct {
 	Kind     string  `json:"kind"`
 	Name     string  `json:"name"`

@@ -20,10 +20,23 @@
 // phase environment: the container's, the tool's automation switches,
 // TF_APPEND_USER_AGENT, TF_VAR_infraweave_api_endpoint derived from the
 // worker endpoint, and the launcher's API rate, sensitive-output and
-// binary-cache settings. The specification's variables follow, with
+// binary-cache settings, then the pool's passthrough variables of all
+// exposure. The specification's variables follow, with
 // their write-only values opened, so a stack variable replaces one of
 // those defaults. The in-run API token and backend's credentials come
 // last, where no stack variable replaces them.
+//
+// Each phase sees the pool's phase-scoped inputs its exposure admits, as
+// internal/agent/phaseinputs.Phase names it: before a phase's first step,
+// when its exposure differs from the phase before's, the runner unsets
+// the other side's passthrough variables in the session, removes the
+// other side's scoped files and checks that nothing is left at their
+// paths, then writes this side's files, read-only to the run's user in
+// directories it leaves unwritable, and exports this side's variables. A
+// passthrough variable the specification also names is never set, so
+// the stack's own value stays. The after_run hooks keep the phase
+// before's inputs, also in a new session. A scoped file that cannot be
+// written or removed fails the phase.
 //
 // A Terragrunt stack's run, whose specification names terragrunt, runs
 // Terragrunt's built-in workflow, each command through terragrunt run
@@ -89,7 +102,8 @@
 //
 // The session's output, and the runner's own lines, go to the run's log,
 // internal/agent/runlog, which masks the run's secrets: its write-only
-// values and files, its tokens, the values of the variables the
+// values and files, its tokens, its sensitive passthrough values and
+// scoped files, the values of the variables the
 // launcher's mask list names, and the well-known patterns when the stack
 // enables them. Each phase's lines are in its state's chunks, flushed
 // before the phase's report; the after_run hooks' go to standard output
@@ -109,6 +123,7 @@
 // writable by every user, so that launcher removes the workspace.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
+// ref: decision 0008 § "Phase-scoped inputs"
 // ref: decision 0008 § "Logs and artifacts"
 // ref: decision 0008 § "Stop and kill"
 // ref: decision 0013 § "Masking"
@@ -128,7 +143,7 @@
 //
 // # Dependencies
 //
-// It imports internal/agent/backend, client, handoff, runlog, vendors,
+// It imports internal/agent/backend, client, handoff, phaseinputs, runlog, vendors,
 // wire and workspace, internal/iac/plan and workflow, internal/kernel for
 // the objects' keys and names, platform/mask and platform/seal, and
 // github.com/google/pprof/profile to merge CPU profiles.

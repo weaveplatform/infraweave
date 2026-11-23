@@ -104,6 +104,9 @@ func New(core corev1client.CoreV1Interface, streams Streams, c Config) *Executor
 	return &Executor{core: core, streams: streams, c: c}
 }
 
+// Runtime names the Kubernetes runtime.
+func (e *Executor) Runtime() string { return "kubernetes" }
+
 // Configure replaces the configuration of the Pods started from now on,
 // as when a pool's settings change.
 func (e *Executor) Configure(c Config) {

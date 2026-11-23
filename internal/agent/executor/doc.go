@@ -1,6 +1,9 @@
 // Package executor is the launcher's port to the runtime that runs its
-// runs: an Executor starts a Job's container with the host paths it
-// mounts, handing its runner the launcher's handoff on standard input, and finds a worker's container
+// runs: an Executor starts a Job's container with the host paths or
+// cluster Volumes it mounts read-only, an empty in-memory directory owned
+// by the run's user at each of its Scoped directories, and labels naming
+// its Execution's vendor and tool, handing its runner the launcher's
+// handoff on standard input, and finds a worker's container
 // again after the launcher restarts; a Container waits for its end, stops
 // or kills its runner, and is removed. A Commander also runs an
 // initialization command's helper, a fresh container of the run's image

@@ -8,8 +8,17 @@
 // max_requests_burst API rate settings exposed to run clients (10 and
 // 100 by default, both positive), the worker's metadata, the admin
 // listener's address, the launcher.log.* settings of
-// platform/observe, and the run containers' launcher.docker.* network,
-// runtime and runner binary. Defaults are what
+// platform/observe, the launcher variables runs receive,
+// launcher.whitelist_envs, whose ro_ and wo_ prefixes scope a variable to
+// the read or the write phases under the name without it, and the run
+// containers' launcher.docker.* network, runtime, runner binary and
+// extra mounts: extra_mounts every phase sees read-only, and
+// ro_extra_mounts and wo_extra_mounts, host files the read or the write
+// phases alone see, each <host path>:<container path>, optionally with
+// :ro, which ParseMount reads and Docker.Mounts answers. Validate refuses
+// a whitelisted name that is not a variable's, that the runner sets
+// itself, or that one phase would see twice, an extra mount that does not
+// parse, and container paths internal/agent/phaseinputs refuses. Defaults are what
 // an empty configuration means, Validate rejects a setting the launcher
 // could not start with, Flags declares the launcher's flags, and Load
 // decodes them. The default runner image is unset: when neither
@@ -31,7 +40,8 @@
 //
 // # Dependencies
 //
-// It imports viper, pflag and platform/observe's log settings, and no
+// It imports viper, pflag, platform/observe's log settings and
+// internal/agent/phaseinputs' checks, and no
 // server package (repo layout, agent-isolation). internal/agent/cli calls
 // it.
 package config

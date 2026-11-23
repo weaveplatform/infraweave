@@ -54,6 +54,7 @@ type slot struct {
 	runTimeout time.Duration
 	l          *launcher.Launcher
 	exec       *kubernetes.Executor
+	inputs     *poolInputs
 	cancel     context.CancelFunc
 	done       chan struct{}
 	err        error
@@ -328,6 +329,8 @@ func (c *Controller) start(ctx context.Context, wp WorkerPool, h hosted, w Worke
 		runTimeout: lc.RunTimeout, done: make(chan struct{}),
 	}
 	s.exec = kubernetes.New(c.kube.Core, c.streams, c.executorConfig(wp, w, lc, s))
+	s.inputs = &poolInputs{core: c.kube.Core, namespace: w.Namespace}
+	s.inputs.set(wp.Spec)
 	slotNumber := w.Spec.Slot
 	owner := h.owner
 	// Run Pods are Linux whatever the controller runs on, so the worker
@@ -337,6 +340,7 @@ func (c *Controller) start(ctx context.Context, wp WorkerPool, h hosted, w Worke
 		Log: c.log.With("namespace", w.Namespace, "worker", w.Name),
 		Now: c.now, Version: c.version, OS: podOS, Arch: c.arch,
 		Endpoint: wp.Spec.Endpoint, Owner: &owner, Slot: &slotNumber, Retain: true, Store: s,
+		Inputs: s.inputs,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("worker controller: the slot's launcher: %w", err)
@@ -374,6 +378,7 @@ func (c *Controller) running(ctx context.Context, wp WorkerPool, h hosted, w Wor
 	c.mu.Unlock()
 	if s != nil && s.alive() && s.key == slotKey(h, wp.Spec.Endpoint) {
 		s.exec.Configure(c.executorConfig(wp, w, c.launcherConfig(h, w), s))
+		s.inputs.set(wp.Spec)
 		return s, nil
 	}
 	if s != nil && s.alive() && s.l.Status().Run != "" {

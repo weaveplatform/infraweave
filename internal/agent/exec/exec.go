@@ -17,6 +17,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/agent/client"
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/runlog"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
@@ -151,8 +152,9 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 }
 
 // run is one run's execution: its handoff, its log, its prepared
-// environment and session, the plan's JSON file, and whether the session
-// has initialized the workspace.
+// environment and session, the exposure of the phase it last executed,
+// the plan's JSON file, and whether the session has initialized the
+// workspace.
 type run struct {
 	h           handoff.Handoff
 	d           Deps
@@ -166,6 +168,7 @@ type run struct {
 	options     vendors.Options
 	temp        string
 	shell       *session
+	exposure    phaseinputs.Exposure
 	profiled    []profiled
 	profiles    int
 	stop        stop
@@ -336,6 +339,9 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	if detail, refused := r.preparePhase(ctx, state); refused {
 		return fail(detail)
 	}
+	if d := r.expose(ctx, state); d != "" || r.halted() {
+		return end(d)
+	}
 	if state == wire.WorkerStateINITIALIZING {
 		r.announce()
 	}
@@ -363,28 +369,16 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 	// A Terragrunt run keeps no outputs, so its applying reads and saves
 	// none.
 	outputs := state == wire.WorkerStateAPPLYING && !r.terragrunt()
-	var p plan.Plan
-	switch {
-	case state == wire.WorkerStatePLANNING && r.terragrunt():
-		var failure *planFailure
-		if p, failure = r.terragruntPlan(ctx); failure != nil {
-			if failure.step {
-				return end(failure.note)
-			}
-			return fail(failure.note)
+	p, failure := r.result(ctx, state, outputs)
+	if failure != nil {
+		if failure.step {
+			return end(failure.note)
 		}
+		return fail(failure.note)
+	}
+	if state == wire.WorkerStatePLANNING {
 		delta := deltaOf(p.Delta)
 		rep.Delta = &delta
-	case state == wire.WorkerStatePLANNING:
-		if p, err = r.plan(); err != nil {
-			return fail("The plan's JSON could not be read: " + err.Error())
-		}
-		delta := deltaOf(p.Delta)
-		rep.Delta = &delta
-	case outputs:
-		if err := r.outputs(); err != nil {
-			return fail("The outputs' JSON could not be read: " + err.Error())
-		}
 	}
 	if d := r.steps(ctx, after); d != "" || r.halted() {
 		return end(d)
@@ -400,6 +394,27 @@ func (r *run) phase(ctx context.Context, state wire.WorkerState, version int64) 
 		}
 	}
 	return rep
+}
+
+// result reads what the phase's steps produced: a planning phase's plan,
+// or an applying phase's outputs when it keeps them. A failure that is not
+// a step's is the phase's own.
+func (r *run) result(ctx context.Context, state wire.WorkerState, outputs bool) (plan.Plan, *planFailure) {
+	switch {
+	case state == wire.WorkerStatePLANNING && r.terragrunt():
+		return r.terragruntPlan(ctx)
+	case state == wire.WorkerStatePLANNING:
+		p, err := r.plan()
+		if err != nil {
+			return p, &planFailure{note: "The plan's JSON could not be read: " + err.Error()}
+		}
+		return p, nil
+	case outputs:
+		if err := r.outputs(); err != nil {
+			return plan.Plan{}, &planFailure{note: "The outputs' JSON could not be read: " + err.Error()}
+		}
+	}
+	return plan.Plan{}, nil
 }
 
 // phaseSteps groups the state's export, session initialization and phase
@@ -654,6 +669,10 @@ func (r *run) afterRun(ctx context.Context, final string) {
 			return
 		}
 		r.shell = s
+		if d := r.exportScoped(ctx); d != "" {
+			r.d.Log.WarnContext(ctx, "after_run hooks not run", "run", r.h.Run, "details", d)
+			return
+		}
 	}
 	if d := r.steps(ctx, []step{{
 		text: "export TF_VAR_infraweave_final_run_state=" + quote(final),
@@ -686,8 +705,10 @@ func (r *run) close(ctx context.Context) {
 
 // masker masks the run's secrets in its log: every write-only variable's
 // value and file's content, the in-run API token, the run token the state
-// backend's credentials carry, the source credential's token, and, when
-// the stack enables them, the well-known patterns.
+// backend's credentials carry, the source credential's token, every
+// sensitive passthrough variable's value and scoped file's content,
+// whatever phase they reach, and, when the stack enables them, the
+// well-known patterns.
 //
 // ref: decision 0013 § "Masking"
 func masker(h handoff.Handoff) *mask.Masker {
@@ -700,6 +721,16 @@ func masker(h handoff.Handoff) *mask.Masker {
 	}
 	if c := h.Secrets.SourceCredential; c != nil {
 		secrets = append(secrets, []byte(c.Token))
+	}
+	for _, v := range h.Inputs.Variables {
+		if v.Sensitive {
+			secrets = append(secrets, []byte(v.Value))
+		}
+	}
+	for _, f := range h.Inputs.Files {
+		if f.Sensitive {
+			secrets = append(secrets, f.Content)
+		}
 	}
 	m := mask.New(secrets...)
 	if h.Spec.Stack.EnableWellKnownSecretMasking {

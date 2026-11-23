@@ -37,7 +37,20 @@
 // workspace at /mnt/workspace, each binary mounted read-only at
 // /bin/<tool>, such as /bin/terraform and /bin/terragrunt, and the
 // handoff, which carries the pool's public key, so
-// the opened secrets reach the runner without touching the host's disk; a
+// the opened secrets reach the runner without touching the host's disk.
+// Its Inputs resolve each assignment's phase-scoped inputs afresh: Host,
+// the standalone launcher's, passes the variables of its own environment
+// launcher.whitelist_envs names, sensitive where launcher.mask_envs names
+// them, mounts launcher.docker.extra_mounts read-only, and reads the host
+// files of its ro_extra_mounts and wo_extra_mounts; a controller's slot
+// resolves its WorkerPool's. The handoff carries the variables and scoped
+// files, the container mounts the rest read-only and gets an empty
+// directory for each scoped file's directory, and inputs that cannot be read, or
+// whose names or targets conflict, fail the preparation before any
+// container starts. The container is labelled with its stack's vendor
+// and the tool its runner calls, and the launcher logs both, the tool's
+// release and whether it is the verified release or the image's own, and
+// the executor's runtime. A
 // preparation that fails, including an apply with no workspace saved and
 // a release whose signature or checksum does not verify, reports the run
 // failed in its preparing state, with the error as its note, and removes
@@ -104,15 +117,16 @@
 // bundle each handoff carries to the runner, starts and waits on
 // containers through the executor, reads and writes its State through
 // its Store, by default worker.json in launcher.cache_dir, and the tool
-// binaries and the runs' workspaces there. It logs registration, each
-// run's start, signals, drain changes, timeout kills and end, each line of the runner's output
+// binaries and the runs' workspaces there, and the host files a run's
+// scoped extra mounts name. It logs registration, each
+// run's start and what its container executes, signals, drain changes, timeout kills and end, each line of the runner's output
 // as "runner output", each workspace it cannot remove, each failed call
 // with its retry, and each signed URL the store refuses with its retry.
 //
 // # Dependencies
 //
 // It imports internal/agent/client, config, executor, handoff, initcommand,
-// initpolicy, signedrun, source, tools and wire, kernel's hosting owner, platform/rego
+// initpolicy, phaseinputs, signedrun, source, tools and wire, kernel's hosting owner, platform/rego
 // for the policy's commands, platform/seal to open
 // specifications, and go-jose to sign registrations; no server package.
 // internal/agent/cli runs it as infraweave launcher, and

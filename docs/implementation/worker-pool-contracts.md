@@ -210,11 +210,15 @@ The supported spec fields are:
   the run may fail its configured resource limit, not escape it. Policy helpers
   request 100m CPU/64 MiB and limit 1 CPU/256 MiB, 64 MiB ephemeral storage.
   Operators can raise typed resource values without relaxing fixed security.
-- `environment`: explicit list of source env names and exposure `all`, `read`,
-  `write`; `mounts`: typed existing Secret/ConfigMap key or PVC references,
-  target absolute path and exposure, with `readOnly` mandatory. Targets cannot
-  overlap infraweave binary/tools/handoff locations. Node/controller host paths,
-  custom sidecars, arbitrary command overrides and arbitrary PodSpec are refused.
+- `environment`: explicit list of variable names, exposure `all`, `read` or
+  `write` agreeing with the name's `ro_`/`wo_` prefix, and `from`, a typed
+  `{kind: Secret|ConfigMap, name, key}` reference in the pool's namespace that
+  is never the credential Secret; `mounts`: typed existing Secret/ConfigMap key
+  or PVC references, target absolute path and exposure, with `readOnly`
+  mandatory and a PVC of `all` exposure only. Targets cannot overlap infraweave
+  binary/tools/handoff locations, the workspace, `/proc`, `/sys` or `/dev`.
+  Node/controller host paths, custom sidecars, arbitrary command overrides and
+  arbitrary PodSpec are refused; no controller environment reaches a run.
 
 Managed flow reads the externally supplied key, builds its CSR, calls ordinary
 pool create and writes returned token into the referenced Secret. No private key
@@ -588,24 +592,44 @@ secrets retain existing sealing; no unfiltered controller environment is inherit
 | after_run | Same set as the immediately preceding execution phase; no switch to the opposite credential set |
 | Worker policy helper | No automatic passthrough/run secrets/mounts; explicit argv only |
 
-RO/WO is exposure by phase, independently of filesystem `readOnly` semantics.
-Read-exposed mounts must be read-only; write-exposed mounts may be read-write
-only on an explicitly declared per-assignment volume. No writable shared
-Secret/ConfigMap or host volume exists. Phase transition recomputes environment,
-removes the other side's mounted files and verifies absence before user hooks;
-the launcher excludes the declared inactive scoped files from a saved workspace
-and rematerializes only the next permitted set. This guarantee covers managed
-injection paths, not arbitrary user copies: commands already allowed a secret
-can copy or disclose it. Saved-workspace credential detection for run/source
+RO/WO is exposure by phase, independently of filesystem `readOnly` semantics,
+and every input is read-only to the run. An `all` file is a read-only mount
+(Docker `:ro` bind; Kubernetes read-only Secret/ConfigMap projection or PVC),
+which refuses a write with `EROFS`. A read or write file is never mounted,
+because a plan and its autodeployed apply share one container: the launcher
+or controller reads its content for the assignment, the handoff carries it,
+and the runner writes it mode 0400 in a Pod-local or container-local
+in-memory directory the run's user owns, leaving the directory mode 0500, so
+a write is refused with `EACCES`. Docker gives that directory as a tmpfs;
+Kubernetes as a directory the bootstrap creates in an in-memory emptyDir.
+No writable shared Secret/ConfigMap or host volume exists. A phase transition
+unsets the other side's variables in the runner's session, removes its files,
+verifies their absence, failing the phase otherwise, and only then writes the
+next permitted set, before user hooks; a confirmed apply's container starts
+from the write set. Targets cannot overlap the workspace, so no saved
+workspace holds a scoped file. Scoped files are at most 1 MiB each and 16 MiB
+per run. Modes stop a stray write, not the run's own user, who may change
+them. This guarantee covers managed injection paths, not arbitrary user
+copies: commands already allowed a secret can copy or disclose it. Saved-workspace credential detection for run/source
 tokens remains as implemented; it is not proof of complete secret scrubbing. These are chosen infraweave rules, not C66 parity proof.
 
 Worker traces/metrics name the actual vendor and runtime, with bounded labels.
-Expose signals only when the implemented vendor backend produced them. Shipped
+Expose signals only when the implemented vendor backend produced them. Each run
+container (Docker labels `io.infraweave.vendor`/`io.infraweave.tool`) and run
+Pod (`workers.infraweave.io/vendor`/`workers.infraweave.io/tool`) names its
+stack's vendor, `terraform`, `opentofu` or `terragrunt`, else `unknown`, and
+the tool its runner calls, `terraform` or `tofu`, else `unknown`; the launcher
+or controller logs both at container start with the runtime (`docker` or
+`kubernetes`), the verified release's version and whether the tool is that
+release or the image's own. Acceptance executes Terraform and OpenTofu on both
+runtimes; Terragrunt's labels name its driven tool as unit-proven. Shipped
 Terraform/OpenTofu/Terragrunt runner execution gets transport/lifecycle resource
 metrics; vendor-specific traces are eligible only when that driver's actual
 collector is implemented and exercised. Unsupported Pulumi/Ansible/Kubernetes
-backends remain unavailable until their phases; their published image is not a
-backend proof. No claim of captured Spacelift vendor parity is made for C69.
+backends remain unavailable until their phases and are labelled `unknown`;
+their published image is not a backend proof. The public observability scope
+stays unavailable. No claim of captured Spacelift vendor parity is made for
+C69.
 
 ## Hosting, chart and evidence
 

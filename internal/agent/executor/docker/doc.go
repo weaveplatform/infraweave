@@ -6,8 +6,11 @@
 // BinaryPath and run as the root process with the argument runner,
 // replacing the image's ENTRYPOINT and CMD, as UID and GID 1983, in
 // Workspace, which the job's workspace directory is bound to, with the
-// job's mounts bound, labelled with the worker and
-// the run, on the configured network and runtime. It attaches before it starts the container, writes
+// job's mounts bound, read-only where they say so, a tmpfs owned by UID
+// 1983 alone at each of the job's scoped directories, labelled with the
+// worker, the run, the vendor and the tool, on the configured network and
+// runtime. A job that names a cluster volume fails before anything
+// starts. Runtime names it docker. It attaches before it starts the container, writes
 // the job's handoff to the runner's standard input and closes it, so the
 // opened specification never reaches the container's configuration on
 // the host's disk, and copies the runner's output to the job's writer.
@@ -47,6 +50,6 @@
 //
 // # Dependencies
 //
-// It imports the moby client and API types, containerd's errdefs, and
-// internal/agent/executor. internal/agent/cli builds it for the launcher.
+// It imports the moby client and API types, containerd's errdefs,
+// internal/agent/executor and internal/agent/phaseinputs' size bound. internal/agent/cli builds it for the launcher.
 package docker

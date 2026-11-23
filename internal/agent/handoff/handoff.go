@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
@@ -49,6 +50,10 @@ type Handoff struct {
 	// PoolKey is the pool's public key, an uncompressed P-256 point, to
 	// which the runner seals a saved workspace's content key.
 	PoolKey []byte `json:"poolKey,omitempty"`
+	// Inputs are the pool's phase-scoped inputs with their values opened:
+	// the passthrough variables and scoped files the runner sets and
+	// removes as each phase's exposure admits them.
+	Inputs phaseinputs.Inputs `json:"inputs,omitzero"`
 }
 
 // MaxSize bounds a handoff the runner reads. A specification holds a

@@ -23,12 +23,20 @@ Feature: Native worker resource schemas
       | spec.credentialsRef.namespace          | "another-namespace"                                                                                | 400    |
       | spec.privateKey                        | "embedded-private-key"                                                                             | 400    |
       | spec.environment                       | [{"name":"VALUE","exposure":"root"}]                                                                | 422    |
+      | spec.environment                       | [{"name":"VALUE","exposure":"all"}]                                                                 | 422    |
+      | spec.environment                       | [{"name":"ro_TOKEN","exposure":"write","from":{"kind":"Secret","name":"inputs","key":"token"}}]       | 422    |
+      | spec.environment                       | [{"name":"TOKEN","exposure":"read","from":{"kind":"Secret","name":"inputs","key":"token"}}]           | 422    |
+      | spec.environment                       | [{"name":"wo_","exposure":"write","from":{"kind":"Secret","name":"inputs","key":"token"}}]            | 422    |
+      | spec.environment                       | [{"name":"TOKEN","exposure":"all","from":{"kind":"PVC","name":"data","key":"token"}}]                 | 422    |
+      | spec.environment                       | [{"name":"TOKEN","exposure":"all","from":{"kind":"Secret","name":"pool-credentials","key":"privateKey"}}] | 422 |
       | spec.mounts                            | [{"kind":"PVC","name":"data","target":"/data","exposure":"all","readOnly":false}]                     | 422    |
       | spec.mounts                            | [{"kind":"Secret","name":"data","target":"/data","exposure":"all","readOnly":true}]                    | 422    |
       | spec.mounts                            | [{"kind":"PVC","name":"data","target":"/opt/infraweave/tools","exposure":"all","readOnly":true}]         | 422    |
       | spec.mounts                            | [{"kind":"Secret","name":"pool-credentials","key":"privateKey","target":"/data","exposure":"all","readOnly":true}] | 422 |
       | spec.mounts                            | [{"kind":"PVC","name":"data","target":"/opt//infraweave/tools","exposure":"all","readOnly":true}]        | 422    |
       | spec.mounts                            | [{"kind":"PVC","name":"data","target":"/opt/../bin/terraform","exposure":"all","readOnly":true}]         | 422    |
+      | spec.mounts                            | [{"kind":"PVC","name":"data","target":"/data","exposure":"read","readOnly":true}]                      | 422    |
+      | spec.mounts                            | [{"kind":"Secret","name":"inputs","key":"token","target":"/mnt/workspace/token","exposure":"read","readOnly":true}] | 422 |
 
   Scenario: Unknown workload escape fields are rejected or safely pruned
     When strict unknown fields are refused and non-strict fields are pruned

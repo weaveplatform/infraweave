@@ -5,6 +5,8 @@
 // the INFRAWEAVE_LAUNCHER_* environment and the file --config names; a key
 // the configuration does not have fails the start. It builds the Docker
 // executor with launcher.docker's network, runtime and runner binary,
+// gives the launcher its own environment's whitelisted variables and
+// launcher.docker's extra mounts as each run's phase-scoped inputs,
 // binds the admin listener, and then runs the launcher until its context
 // ends or a cycle ends it. The admin listener answers /livez, /startupz once the worker
 // registered and Docker answered, and /readyz while the worker has a

@@ -109,6 +109,7 @@ func launch(cmd *cobra.Command, d deps) error {
 	l, err := launcher.NewContext(ctx, launcher.Deps{
 		Config: lc, Doer: d.doer, Executor: e, Log: log,
 		Version: buildinfo.Version(), OS: runtime.GOOS, Arch: runtime.GOARCH,
+		Inputs: launcher.Host{Config: lc},
 	})
 	if err != nil {
 		return err //nolint:wrapcheck // launcher names the setting
