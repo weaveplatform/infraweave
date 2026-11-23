@@ -2,24 +2,24 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.terraform.io/gitlabhq/gitlab" {
-  version     = "19.5.0"
-  constraints = "19.5.0"
+  version     = "19.6.0"
+  constraints = "19.6.0"
   hashes = [
-    "h1:6ie6B+DVLa/qnCYh8dZk9RpgZmndJwIyFr5RR1LA9vw=",
-    "h1:SkTTEtd3EoQgxpBvEwamiJafXXRJ8747dZvdV8SeLHA=",
-    "zh:0278045a4859a8d2f88a5ae46eeb96b7c0ad6a619a7481e4b582258b3d5b168a",
-    "zh:1f5a224ce4f162cd77961367849b53c48a59cc8a9ec2f714f0e70b9e506b223a",
-    "zh:318e86d25a82c8e7706c32a6caea4bbc7772ab3c91b944ede7f2b03543f71944",
-    "zh:404eceac159e8ddd422e7c0a816a6428d3998bc5dc16aa6b64c4d3cec4ebcad4",
-    "zh:91a2189577f72ee50a3aca8d90bf09308a70693f7dac7c08e7732ba92a641a21",
-    "zh:9244821a36d436cd3b39b99bba4bdcf4b30f7e7524111cfe5b80ba4de82331fc",
-    "zh:b0042b65017646fdf83da7a85f108da6f7ebb50a208c6324a3a183d1c364e7ac",
-    "zh:b1891e23b10d94e2e486af30448c2419e96c82f9008f5bcf8269a6bf4c24f35e",
-    "zh:b5f76ef322c440cf73768d50124fddad91d1a7df8ba14a1d79acef09b0c8bd0a",
-    "zh:b8e716ab68ff924530f0d50c2f28304d4b4ccf333c6019a70527f875b5445eb8",
-    "zh:d0698a9359a9707d9653929bb1ee58578b27ea238c14067b45b1a560ce77802a",
-    "zh:d6d09a3b9b709af0092bd9c6a23713e5f7e4f925cc38af45ab3e97a67e146f1f",
-    "zh:d82aec6a11918a7d87c2ec0f4401a6249361ca6bb773702fe65dba30d614ecd2",
+    "h1:hpFoyxbBmkK1ZJzf0IdeFYBz72pHb5RRjlMiPyJ5wn0=",
+    "h1:wj4irm6UoGi6fb0kpeBkHR0rABddlg+QypLehCX3r+E=",
+    "zh:2edda6fe5fbde419c206477562c544d4c1ef6deb715fa3dc327ad858b12d2a11",
+    "zh:421a3b26fd10e2c88cdd148f94dc90c48ac868a2adbf558e8341011dfd47a91d",
+    "zh:5620688708e7e0fab73a126f421744c28b52031eaa07645c431153165348b4f0",
+    "zh:5878487cd64ea1807a8065cfda1e6196fe6ee7c8d3f20e48a70355ee39b0b4d9",
+    "zh:6209ef424269ed5f26fb09109382b7b896421038b051d1f470e4d66e38b17770",
+    "zh:67d01431dbdb29dfd602f48a6f58697b5a300886349fa8077d9295ba18243d74",
+    "zh:72fdda7e6fc925b7def736c5ee86848aa69d5bd5d1610f77d2f260db65814831",
+    "zh:86af56bc6d8aec20c8271ac28523c570fd1a63a1ce2290aa57dc9a4968df0a9b",
+    "zh:916b29eef4677b359a6bcdca1e71dade79accca4e565405354a9e26cd1c0767d",
+    "zh:9e5a3a1c238a679b51d0ce1120dec334e2e9fec48aa8c9920ac27860ba5839e1",
+    "zh:b45d7a8165146a39ee789e9ef0aa047de66b4404ebbb6e59c2732255d372c14e",
+    "zh:cca4adf23bacc6deb6d81cd4bd92eb156eeace20ea948b2707e52d36c1a8f0ca",
+    "zh:d9c94d3a8d4ce3822f01a5ad237256432576cd614d631a8e620d9598379c4bee",
     "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
   ]
 }
