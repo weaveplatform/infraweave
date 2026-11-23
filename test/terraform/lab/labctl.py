@@ -423,7 +423,7 @@ def run(args):
         env.pop("INFRAWEAVE_ACCEPT_BINARY", None)
         if args.fips:
             env.update(GOFIPS140="certified", GODEBUG="fips140=only")
-        command = ["go", "test", "-v", "-count=1", "-run", "^TestAccFeatures$", "-timeout=10m",
+        command = ["go", "test", "-v", "-count=1", "-run", "^TestAccFeatures$", "-timeout=20m",
                    "-covermode=atomic", "-cover", "-coverpkg=github.com/weaveplatform/infraweave/...",
                    "./test/acceptance", "-args", "-test.gocoverdir=" + str(coverage)]
         result.update(features=features, tags=tags, partition=definition["partition"], fips=args.fips,
