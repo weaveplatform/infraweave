@@ -257,8 +257,15 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			t.Fatalf("%s: %v", envSeed, err)
 		}
 	}
-	fmt.Printf("acceptance: scenario order seed %d (%s=%d repeats it); partition %q\n",
-		seed, envSeed, seed, os.Getenv(EnvPartition))
+	partition, cpus := os.Getenv(EnvPartition), 0
+	if partition == kubernetesLab {
+		if cpus, err = s.labNodeCPUs(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	concurrency := featureConcurrency(partition, cpus)
+	fmt.Printf("acceptance: scenario order seed %d (%s=%d repeats it); partition %q; %d scenarios at once\n",
+		seed, envSeed, seed, partition, concurrency)
 	format := "pretty"
 	if s.cucumber != "" {
 		format += ",cucumber:" + s.cucumber
@@ -271,7 +278,7 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			Tags:        tags,
 			Strict:      true,
 			Randomize:   seed,
-			Concurrency: featureConcurrency(os.Getenv(EnvPartition)),
+			Concurrency: concurrency,
 		},
 	}.Run()
 	if s.Stress.store() {
@@ -308,13 +315,57 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 	}
 }
 
-func featureConcurrency(partition string) int {
-	// A provider's scenarios share its ingress port, test repositories and
-	// hook routing. Their teardown must finish before the next owner starts.
-	if partition == "vcs-lab" {
+// featureConcurrency is how many of partition's scenarios run at once,
+// where the lab cluster's one node, if the partition has one, has
+// nodeCPUs CPUs, or 0 when its CPUs are unbounded.
+func featureConcurrency(partition string, nodeCPUs int) int {
+	switch {
+	case partition == "vcs-lab":
+		// A provider's scenarios share its ingress port, test repositories
+		// and hook routing. Their teardown must finish before the next
+		// owner starts.
 		return 1
+	case partition == kubernetesLab && nodeCPUs > 0:
+		// Every scenario's run Pods, helper Pods and attach streams share
+		// the cluster's one node. Beyond one scenario per CPU, Pod start,
+		// bootstrap and API latency grow with the host's GOMAXPROCS until
+		// they spend deadlines a scenario sets for the product's own work,
+		// such as a worker initialization policy's, and the batch fails
+		// on a host with more CPUs than CI's. Bounded by the node, the
+		// batch loads it alike at any host concurrency.
+		return min(runtime.GOMAXPROCS(0), nodeCPUs)
 	}
 	return runtime.GOMAXPROCS(0)
+}
+
+// kubernetesLab is the partition whose scenarios share the Terraform-owned
+// lab cluster.
+const kubernetesLab = "kubernetes-lab"
+
+// labNodeCPUs is the CPU limit of the lab cluster's node container,
+// rounded up, or 0 when the container has none. The node's kubelet reports
+// the Docker host's CPUs as its capacity, not this limit, so the
+// container's limit is read from Docker.
+func (s *Suite) labNodeCPUs(ctx context.Context) (int, error) {
+	cluster, err := s.Deps.Kubernetes(ctx)
+	if err != nil {
+		return 0, err //nolint:wrapcheck // names the lab
+	}
+	out, err := dockerCLI(ctx, nil, "inspect", "--format", "{{.HostConfig.NanoCpus}}", cluster.Container)
+	if err != nil {
+		return 0, err
+	}
+	return nodeCPUs(string(out))
+}
+
+// nodeCPUs is the CPU count of a container whose Docker NanoCpus limit is
+// nano, rounded up.
+func nodeCPUs(nano string) (int, error) {
+	n, err := strconv.ParseInt(strings.TrimSpace(nano), 10, 64)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%w: the lab node's CPU limit %q", deps.ErrLab, strings.TrimSpace(nano))
+	}
+	return int((n + 1e9 - 1) / 1e9), nil
 }
 
 func (s *Suite) initScenario(sc *godog.ScenarioContext) {

@@ -151,6 +151,9 @@ func (c *controllerSteps) prepareChart(ctx context.Context) error {
 		if !slices.Contains(c.w.Tags, t.tag) || t.image == "" {
 			continue
 		}
+		if err := host.NodeImage(ctx, c.cluster, t.image); err != nil {
+			return err //nolint:wrapcheck // names the image
+		}
 		mirror, err := host.Mirror(ctx, c.w.Suite.Deps, t.tool)
 		if err != nil {
 			return err //nolint:wrapcheck // names the release

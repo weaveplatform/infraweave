@@ -115,12 +115,14 @@ func (c *controllerSteps) recordedBy(label, run string) []*corev1.Pod {
 
 // executes sets, for a scenario whose controllers execute runs, the
 // bootstrap image the suite imports into the cluster's node and the tool
-// mirror of the scenario's tool, and records the run Pods.
+// mirror of the scenario's tool, pulls the tool's runner image into the
+// node, and records the run Pods.
 func (c *controllerSteps) executes(ctx context.Context, settings map[string]any) error {
 	var tool *deps.Tool
+	var runner string
 	for _, t := range scenarioTools {
 		if slices.Contains(c.w.Tags, t.tag) && t.image != "" {
-			tool = &t.tool
+			tool, runner = &t.tool, t.image
 		}
 	}
 	if tool == nil {
@@ -129,6 +131,9 @@ func (c *controllerSteps) executes(ctx context.Context, settings map[string]any)
 	host, err := c.w.Suite.Launchers(ctx)
 	if err != nil {
 		return err //nolint:wrapcheck // names the build
+	}
+	if err := host.NodeImage(ctx, c.cluster, runner); err != nil {
+		return err //nolint:wrapcheck // names the image
 	}
 	mirror, err := host.Mirror(ctx, c.w.Suite.Deps, *tool)
 	if err != nil {
