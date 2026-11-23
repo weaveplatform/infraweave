@@ -13,7 +13,9 @@ Feature: Kubernetes run recovery
   deadline its claim issued, and a pending Pod the new leader finds
   without its handoff is deleted and its run failed. A drained worker
   finishes its run, through a lost connection to the installation, and
-  claims no other until it is undrained. Run Pods reach the servers only
+  claims no other until it is undrained; while it holds the run its
+  availableAt is absent, and once it reports itself idle availableAt is no
+  earlier than the read that saw it busy. Run Pods reach the servers only
   through the scenario's HTTPS front. The home key is space-admin on the
   account's top space.
   ref: decision 0008
@@ -106,6 +108,7 @@ Feature: Kubernetes run recovery
     When token "h" sends "POST /api/v1/stacks/slow/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "first"
     And the run "first" eventually has a handed-off Pod
+    And token "h" eventually reads the worker "w" of the pool "build" busy, with no availableAt, through A
     And token "h" sends "PUT /api/v1/worker-pools/{build}/workers/{w}/drain" with '{"drain":true}' through B
     Then it answers 200
     And the Worker of the WorkerPool "build" eventually reports Drained True "Drained"
@@ -113,6 +116,7 @@ Feature: Kubernetes run recovery
     When the HTTPS front answers 502 for 30 seconds
     Then token "h" eventually reads the run "first" in the state "FINISHED" through A
     And the run "first" ran in 1 Pod
+    And token "h" eventually reads the worker "w" of the pool "build" as "DRAINED", available since it was read busy, through B
     When token "h" sends "POST /api/v1/stacks/slow/runs" with '{"commitSha":"{seed}"}' through B
     And the answer's id names "second"
     Then the run "second" gets no Pod for 20 seconds

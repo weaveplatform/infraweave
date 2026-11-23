@@ -162,3 +162,16 @@ Feature: Pool projections count what the caller's account may read
     Then it answers a 422 problem "validation-failed"
     When token "h" sends "POST /api/v1/worker-pools/public/reset" with '{"certificateSigningRequest":"{csr}"}' through A
     Then it answers a 422 problem "validation-failed"
+
+  @op:searchWorkerPoolsSuggestions @op:workerPoolSearchUsersSuggestions @op:workerPoolSearchSchedulableRunsSuggestions @case:failure
+  Scenario: A private pool's suggestions refuse a predicate on a field their search does not filter
+    Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    When token "h" sends "POST /api/v1/worker-pools/search/suggestions" with '{"fields":["label"],"predicates":[{"field":"colour","constraint":{"stringMatches":["x"]}}]}' through B
+    Then it answers a 422 problem "validation-failed"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-users-suggestions?input=%7B%22predicates%22%3A%5B%7B%22field%22%3A%22colour%22%2C%22constraint%22%3A%7B%22stringMatches%22%3A%5B%22x%22%5D%7D%7D%5D%7D" through A
+    Then it answers a 422 problem "validation-failed"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}/search-schedulable-runs-suggestions?input=%7B%22predicates%22%3A%5B%7B%22field%22%3A%22position%22%2C%22constraint%22%3A%7B%22stringMatches%22%3A%5B%221%22%5D%7D%7D%5D%7D" through B
+    Then it answers a 422 problem "validation-failed"
+    When token "h" sends "GET /api/v1/worker-pools/nope/search-users-suggestions?input=%7B%7D" through A
+    Then it answers a 404 problem "not-found"
