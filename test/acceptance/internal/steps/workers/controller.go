@@ -122,6 +122,7 @@ func (c *controllerSteps) register(sc *godog.ScenarioContext) {
 	)
 	sc.Step(`^the run "(\w+)" eventually runs an initialization command Pod$`, c.helperRuns)
 	sc.Step(`^the run "(\w+)" eventually has no initialization command Pod$`, c.noHelper)
+	sc.Step(`^the active deadline of the run "(\w+)"'s initialization command Pod ends it$`, c.deadlineEnds)
 	c.registerPhaseInputs(sc)
 	sc.After(c.cleanup)
 }

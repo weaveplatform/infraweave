@@ -563,7 +563,11 @@ Pods. Helper Pods do not register protocol workers or expand private-worker quot
 
 The policy outcomes of a call are explicit. A command that ends by itself,
 including a nonzero exit, returns its status and output to the policy; a
-command that cannot start returns status 127 with the reason on stderr. Every
+command that cannot start returns status 127 with the reason on stderr. A
+command the helper kills, or never starts, because the helper itself is
+stopping, as its container's runtime or its Pod's active deadline stops it,
+did not end by itself: its status never reaches the policy, so a policy that
+denies only on a zero status cannot admit it. Every
 other outcome halts the evaluation, so no deny rule is left undefined, and fails
 the assignment's preparing state with `worker initialization policy evaluation
 failed:` and one fixed reason: more than eight calls, arguments beyond their
@@ -571,8 +575,9 @@ bounds, the call's deadline, cancellation, output beyond its bounds, an image
 that cannot be pulled, or a helper that fails. No reason names an argument,
 output or image. Docker helpers run with every capability dropped, no new
 privileges, 1 GiB memory and 512 processes; Kubernetes helper Pods have the run
-Pod's fixed security, the pool's resources and placement, and the call's
-remaining time as their active deadline. Helpers carry labels no run container
+Pod's fixed security, the pool's resources and placement, and an active
+deadline ten seconds beyond the call's remaining time, so the call's own
+deadline ends the call first and the Pod's ends only a helper its caller left. Helpers carry labels no run container
 or Pod carries, and a restarted launcher's or controller's recovery removes any
 helper of its worker before it looks for its run.
 

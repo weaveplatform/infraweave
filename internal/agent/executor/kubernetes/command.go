@@ -37,6 +37,15 @@ var CommandCommand = []string{BinaryDir + "/infraweave", "runner", "command"}
 // context has none, the bound of one call.
 const commandDeadline = 60 * time.Second
 
+// commandDeadlineMargin lengthens a helper Pod's active deadline beyond
+// its call's. Kubelet counts the deadline from the Pod's start, recorded
+// to the second, on the node's clock, so without a margin it can stop the
+// helper while the call's context still runs, and the call would end on
+// the helper's stop rather than on its own deadline. With the margin the
+// call's context ends first, and the active deadline only ends a helper
+// whose caller is gone.
+const commandDeadlineMargin = 10 * time.Second
+
 // commandWorkspace bounds the empty workspace a helper's bootstrap
 // extracts; the helper container does not mount it.
 var commandWorkspace = resource.MustParse("16Mi")
@@ -49,10 +58,10 @@ var _ executor.Commander = (*Executor)(nil)
 // receives only the infraweave executable and an empty workspace; the
 // helper container, of c.Image, mounts that executable read-only and
 // nothing else, and starts it as runner command. The Pod's active deadline
-// is the call's remaining time. Its standard input alone carries
-// c.Request, its standard output goes to c.Output, and the Pod is
-// deleted however the call ends. An image that cannot be pulled is
-// executor.ErrImage.
+// is the call's remaining time and commandDeadlineMargin. Its standard
+// input alone carries c.Request, its standard output goes to c.Output,
+// and the Pod is deleted however the call ends. An image that cannot be
+// pulled is executor.ErrImage.
 //
 // ref: decision 0009 § "The worker-side initialization policy"
 func (e *Executor) Command(ctx context.Context, cmd executor.Command) (err error) {
@@ -95,7 +104,7 @@ func (e *Executor) Command(ctx context.Context, cmd executor.Command) (err error
 }
 
 // commandPod is c's helper Pod under c, whose active deadline is
-// remaining, at least a second.
+// remaining and commandDeadlineMargin, rounded up to the second.
 func commandPod(c Config, cmd executor.Command, remaining time.Duration) *corev1.Pod {
 	no, yes := false, true
 	uid := UID
@@ -107,7 +116,7 @@ func commandPod(c Config, cmd executor.Command, remaining time.Duration) *corev1
 	helper := drop.DeepCopy()
 	// Verifiers write their caches under the user's home, as tools do.
 	helper.ReadOnlyRootFilesystem = &no
-	deadline := max(int64(math.Ceil(remaining.Seconds())), 1)
+	deadline := int64(math.Ceil((max(remaining, 0) + commandDeadlineMargin).Seconds()))
 	bin, ws := binaryLimit.DeepCopy(), commandWorkspace.DeepCopy()
 	owner := c.Owner
 	owner.Controller, owner.BlockOwnerDeletion = &yes, nil

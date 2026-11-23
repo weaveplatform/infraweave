@@ -36,7 +36,7 @@ func (k *kubelet) noPods(t *testing.T) {
 // TestUnitCommandPodRunsAnIsolatedHelper checks an initialization
 // command's helper Pod on a fake cluster: of the run's image, prepared
 // by the bootstrap with nothing but the executable, mounting that alone,
-// with a run Pod's security, the call's remaining time as its deadline
+// with a run Pod's security, a deadline beyond the call's remaining time
 // and labels no run Pod carries; its standard input alone carries the
 // request, and it is deleted once the call ends.
 func TestUnitCommandPodRunsAnIsolatedHelper(t *testing.T) {
@@ -66,7 +66,7 @@ func TestUnitCommandPodRunsAnIsolatedHelper(t *testing.T) {
 		t.Errorf("metadata %+v", p.ObjectMeta)
 	}
 	s := p.Spec
-	if *s.ActiveDeadlineSeconds < 25 || *s.ActiveDeadlineSeconds > 30 || *s.AutomountServiceAccountToken || *s.EnableServiceLinks ||
+	if *s.ActiveDeadlineSeconds < 35 || *s.ActiveDeadlineSeconds > 40 || *s.AutomountServiceAccountToken || *s.EnableServiceLinks ||
 		*s.ShareProcessNamespace || *s.SecurityContext.RunAsUser != UID || s.NodeSelector["pool"] != "build" ||
 		s.NodeSelector[corev1.LabelArchStable] != "" || s.ImagePullSecrets[0].Name != "pull" || s.RestartPolicy != corev1.RestartPolicyNever {
 		t.Errorf("spec %+v", s)
@@ -96,8 +96,22 @@ func TestUnitCommandPodRunsAnIsolatedHelper(t *testing.T) {
 	if err := e.Command(t.Context(), executor.Command{Worker: workerID, Run: runID, StateVersion: 4, Call: 1, Image: cmd.Image}); err != nil {
 		t.Fatalf("a helper without an output writer and deadline: %v", err)
 	}
-	if d := *k.created[1].Spec.ActiveDeadlineSeconds; d != int64(commandDeadline.Seconds()) {
+	if d := *k.created[1].Spec.ActiveDeadlineSeconds; d != int64((commandDeadline + commandDeadlineMargin).Seconds()) {
 		t.Errorf("deadline without the call's = %d", d)
+	}
+}
+
+// TestUnitCommandPodOutlastsItsCall checks that a helper Pod's active
+// deadline is strictly beyond its call's remaining time, by the margin
+// that lets the call's own deadline end it first, also for a call whose
+// time is already spent.
+func TestUnitCommandPodOutlastsItsCall(t *testing.T) {
+	c := newKubelet(t).executor(t).config()
+	for _, remaining := range []time.Duration{-time.Second, 0, time.Millisecond, 44*time.Second + 999*time.Millisecond, 45 * time.Second, commandDeadline} {
+		d := time.Duration(*commandPod(c, helperCommand(), remaining).Spec.ActiveDeadlineSeconds) * time.Second
+		if d < max(remaining, 0)+commandDeadlineMargin || d >= max(remaining, 0)+commandDeadlineMargin+time.Second {
+			t.Errorf("a call of %s has a Pod deadline of %s", remaining, d)
+		}
 	}
 }
 

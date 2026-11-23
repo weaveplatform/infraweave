@@ -15,7 +15,7 @@ or drain, carry the product or component in brackets. infraweave's own language 
 | Term | Meaning |
 |---|---|
 | Access propagation | A role binding applies to its space and every space below it; this is always on ([14](14-spaces-rbac-and-identity.md)) |
-| Action | A value of the GraphQL `Action` enum (155 values), the smallest permission in custom RBAC, such as `STACK_CREATE` or `RUN_TRIGGER` ([03](03-deploy-core-api-inventory.md) section 9, [14](14-spaces-rbac-and-identity.md)) |
+| Action | A value of the GraphQL `Action` enum (156 values), the smallest permission in custom RBAC, such as `STACK_CREATE` or `RUN_TRIGGER` ([03](03-deploy-core-api-inventory.md) section 9, [14](14-spaces-rbac-and-identity.md)) |
 | Action resource | A Terraform resource that performs a one-off operation when created (`spacelift_run`, `spacelift_task`, `spacelift_version`, `spacelift_worker_pool_recycle`); its read does nothing and its `keepers` map forces a new operation ([05](05-terraform-provider.md)) |
 | Active project | The Intent project that a caller's MCP or UI commands currently target (`isActive`, per caller) ([22](22-intelligence.md)) |
 | Admin consent | The Microsoft Entra step that installs a Spacelift Azure integration's application into the customer's tenant ([12](12-cloud-integrations-and-oidc.md)) |

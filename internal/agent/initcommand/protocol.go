@@ -58,6 +58,9 @@ const (
 	StatusTimeout = "timeout"
 	// StatusOutput is a command the helper ended for exceeding MaxOutput.
 	StatusOutput = "output-limit"
+	// StatusStopped is a command the helper ended, or never started,
+	// because the helper itself was stopping.
+	StatusStopped = "stopped"
 	// StatusRefused is a request the helper refused before starting it.
 	StatusRefused = "refused"
 )
