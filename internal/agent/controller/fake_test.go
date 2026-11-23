@@ -540,8 +540,9 @@ func (in *installation) pollRequests() []wire.PollRequest {
 	return append([]wire.PollRequest(nil), in.polls...)
 }
 
-// poll answers an idle worker a queued run of its pool, holding the poll
-// until there is one or its wait passes.
+// poll answers an idle worker that is not retiring a queued run of its
+// pool, holding the poll until there is one or its wait passes; a poll
+// that reports an exit answers at once.
 func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
 	if !in.enter(w, "poll") {
 		return
@@ -576,7 +577,8 @@ func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
 			reply(w, http.StatusOK, wire.PollResult{Drained: &drained})
 			return
 		}
-		if q := in.queued[pool]; !req.Busy && !drained && len(q) > 0 {
+		retiring := req.Retiring != nil && *req.Retiring
+		if q := in.queued[pool]; !req.Busy && !drained && !retiring && len(q) > 0 {
 			in.queued[pool] = q[1:]
 			in.mu.Unlock()
 			reply(w, http.StatusOK, wire.PollResult{Assignment: &q[0], Drained: &drained})
@@ -584,6 +586,10 @@ func (in *installation) poll(w http.ResponseWriter, r *http.Request) {
 		}
 		wake := in.wake
 		in.mu.Unlock()
+		if !req.Busy && req.Run != nil {
+			reply(w, http.StatusOK, wire.PollResult{Drained: &drained})
+			return
+		}
 		select {
 		case <-wake:
 		case <-hold.C:

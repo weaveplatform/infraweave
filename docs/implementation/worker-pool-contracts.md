@@ -265,7 +265,8 @@ Pod name/UID, handoff phase, original start, exit code/reason, acknowledgement.
 No token, private key, opened handoff, source credential or signed URL is in
 status. Capacity reconciliation creates slots 0..N-1, registrations enforce live
 organization limits, and excess slots retire without new claims, finish current
-work, report/deregister, then disappear. A refused fourth Business registration
+work, report/deregister, then disappear. A retiring slot's polls say `retiring`,
+so the server claims no run for them, and its exit poll answers at once. A refused fourth Business registration
 stays a visible limit denial; it does not change tier seeds.
 
 One WorkerPool owns its Worker resources; each Worker owns run/helper Pods in

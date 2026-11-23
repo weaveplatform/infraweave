@@ -429,7 +429,8 @@ func (*scheduler) Queued(context.Context) (map[kernel.ULID]int, error) {
 	return map[kernel.ULID]int{}, nil
 }
 
-// TestUnitProtocolAssignment checks that a poll that claims a run
+// TestUnitProtocolAssignment checks that a retiring poll that reports an
+// exit answers at once with no run, and that a poll that claims a run
 // answers it with its state, run token and preparing deadline.
 func TestUnitProtocolAssignment(t *testing.T) {
 	f := newFixture(t)
@@ -444,7 +445,14 @@ func TestUnitProtocolAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code, body := f.call(t, "/poll", tok.Raw, map[string]any{"busy": false})
+	code, body := f.call(t, "/poll", tok.Raw, map[string]any{
+		"busy": false, "retiring": true, "run": kernel.NewULID().String(),
+		"exit": map[string]any{"code": 0, "reason": "exited"}, "wait": 120,
+	})
+	if code != http.StatusOK || len(body) != 0 {
+		t.Errorf("retiring poll = %d %v", code, body)
+	}
+	code, body = f.call(t, "/poll", tok.Raw, map[string]any{"busy": false})
 	want := map[string]any{
 		"run": a.Run.String(), "state": "PREPARING_APPLY", "stateVersion": float64(7),
 		"runToken": "run." + a.Run.String(), "runTokenExpiresAt": float64(1e9),

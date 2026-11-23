@@ -106,6 +106,16 @@ func TestUnitLauncherServesAControllerSlot(t *testing.T) {
 		if s := l.Status(); s.Exit == nil || s.Exit.Reason != wire.Exited || s.Run != "run-1" {
 			t.Fatalf("status of an ended run: %+v", s)
 		}
+		w.wantPoll(t, false, "run-1", &wire.ContainerExit{Code: 0, Reason: wire.Exited})
+		polls := w.srv.Polls()
+		if r := polls[len(polls)-1].Request.Retiring; r == nil || !*r {
+			t.Fatalf("a retiring slot's exit poll does not say it retires: %v", r)
+		}
+		for _, p := range polls[:len(polls)-1] {
+			if p.Request.Retiring != nil {
+				t.Fatalf("a poll before Retire says it retires: %+v", p.Request)
+			}
+		}
 		w.answer(wire.PollResult{})
 		if err := <-done; err != nil {
 			t.Fatal(err)

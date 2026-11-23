@@ -592,7 +592,10 @@ type PollRequest struct {
 	// Exit How the container of the run a poll names ended: its root process's exit code, and why it ended.
 	Exit *ContainerExit `json:"exit,omitempty"`
 
-	// Run The ID of the run the launcher is executing, when busy; when not busy, the run whose container ended since the launcher's last poll, which exit describes.
+	// Retiring Whether the launcher is retiring: it takes no further run and exits once it holds none, so the poll is assigned no run.
+	Retiring *bool `json:"retiring,omitempty"`
+
+	// Run The ID of the run the launcher is executing, when busy; when not busy, the run whose container ended since the launcher's last poll, which exit describes. A poll that is not busy and names a run answers at once.
 	Run *string `json:"run,omitempty"`
 
 	// Version The launcher's version.
@@ -1242,7 +1245,7 @@ type ClientInterface interface {
 
 	// WorkerPollWithBody Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1251,7 +1254,7 @@ type ClientInterface interface {
 
 	// WorkerPoll Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1425,7 +1428,7 @@ func (c *Client) WorkerDeregister(ctx context.Context, reqEditors ...RequestEdit
 
 // WorkerPollWithBody Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1444,7 +1447,7 @@ func (c *Client) WorkerPollWithBody(ctx context.Context, contentType string, bod
 
 // WorkerPoll Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2303,7 +2306,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerPollWithBodyWithResponse Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -2312,7 +2315,7 @@ type ClientWithResponsesInterface interface {
 
 	// WorkerPollWithResponse Poll for runs and signals
 	//
-	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+	// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3666,7 +3669,7 @@ func (c *ClientWithResponses) WorkerDeregisterWithResponse(ctx context.Context, 
 
 // WorkerPollWithBodyWithResponse Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -3681,7 +3684,7 @@ func (c *ClientWithResponses) WorkerPollWithBodyWithResponse(ctx context.Context
 
 // WorkerPollWithResponse Poll for runs and signals
 //
-// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
+// Reports the worker's state and waits for something to answer: a run of its pool, a signal, a change of its drain flag, or the end of its wait, whichever comes first. An idle, undrained worker that holds no run is assigned its pool's next waiting run: the oldest of the first priority tier, with drift detection runs of normal or low priority skipped while the pool's running ones reach its drift detection run limit. A retiring worker is assigned no run. A poll that reports the end of a run's container answers at once, once the server has taken the exit. A poll whose session token has less than 15 minutes left answers at once with a renewed one, and a worker's next poll answers its held one at once. The answer is always 200.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

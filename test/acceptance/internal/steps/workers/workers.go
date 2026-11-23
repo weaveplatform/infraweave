@@ -102,7 +102,8 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the launcher "(\w+)" sends its registration again through ([AB])$`, w.replay)
 	w.hosting(sc)
 	sc.Step(`^the launcher "(\w+)" holds a poll with '([^']*)' through ([AB])$`, w.hold)
-	sc.Step(`^the held poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
+	sc.Step(`^the launcher "(\w+)" polls with '([^']*)' through ([AB])$`, w.pollAsync)
+	sc.Step(`^the (?:held )?poll of "(\w+)" answers within (\d+) seconds$`, w.answered)
 	sc.Step(`^public pool credential persistence is refused$`, func(ctx context.Context) error {
 		_, err := w.w.Query(ctx, `ALTER TABLE worker_public_pool ADD CONSTRAINT refuse_credential_rotation CHECK(version=1)`)
 		return err
@@ -366,13 +367,35 @@ func (w *workerSteps) replay(ctx context.Context, launcher, replica string) erro
 // server may hold, and returns once the server has marked the worker seen
 // by it, which a poll reporting busy shows.
 func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) error {
+	var in wire.WorkerPollJSONRequestBody
+	if err := json.Unmarshal([]byte(raw), &in); err != nil || !in.Busy {
+		return fmt.Errorf("%w: a held poll reports busy: %s", harness.ErrStep, raw)
+	}
+	if err := w.pollAsync(ctx, launcher, raw, replica); err != nil {
+		return err
+	}
+	return deps.Eventually(
+		ctx,
+		"the held poll's worker busy",
+		func(ctx context.Context) (bool, error) {
+			var busy bool
+			err := w.row(ctx, `SELECT busy FROM workers WHERE id = $1`,
+				[]any{harness.UUIDOf(w.w.IDs[launcher])}, &busy)
+			return busy, err
+		},
+	)
+}
+
+// pollAsync sends launcher's poll of raw, its placeholders resolved,
+// without waiting for its answer, which answered then waits for.
+func (w *workerSteps) pollAsync(ctx context.Context, launcher, raw, replica string) error {
 	c, err := w.wire(replica)
 	if err != nil {
 		return err
 	}
 	var in wire.WorkerPollJSONRequestBody
-	if err := json.Unmarshal([]byte(raw), &in); err != nil || !in.Busy {
-		return fmt.Errorf("%w: a held poll reports busy: %s", harness.ErrStep, raw)
+	if err := json.Unmarshal([]byte(w.w.Resolve(raw)), &in); err != nil {
+		return fmt.Errorf("%w: a poll's body: %s: %w", harness.ErrStep, raw, err)
 	}
 	token := w.w.Tokens[launcher]
 	done := make(chan harness.Response, 1)
@@ -389,20 +412,11 @@ func (w *workerSteps) hold(ctx context.Context, launcher, raw, replica string) e
 		}
 		done <- harness.Response{Status: resp.StatusCode(), Header: resp.HTTPResponse.Header, Body: resp.Body}
 	}()
-	return deps.Eventually(
-		ctx,
-		"the held poll's worker busy",
-		func(ctx context.Context) (bool, error) {
-			var busy bool
-			err := w.row(ctx, `SELECT busy FROM workers WHERE id = $1`,
-				[]any{harness.UUIDOf(w.w.IDs[launcher])}, &busy)
-			return busy, err
-		},
-	)
+	return nil
 }
 
-// answered waits up to secs for launcher's held poll to answer, and
-// makes its answer the last.
+// answered waits up to secs for launcher's poll to answer, and makes its
+// answer the last.
 func (w *workerSteps) answered(launcher string, secs int) error {
 	select {
 	case r := <-w.held[launcher]:
@@ -413,7 +427,7 @@ func (w *workerSteps) answered(launcher string, secs int) error {
 		return nil
 	case <-time.After(time.Duration(secs) * time.Second):
 		return fmt.Errorf(
-			"%w: the held poll of %q did not answer within %ds",
+			"%w: the poll of %q did not answer within %ds",
 			harness.ErrStep,
 			launcher,
 			secs,

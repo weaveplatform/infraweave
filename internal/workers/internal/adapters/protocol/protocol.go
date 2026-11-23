@@ -144,6 +144,9 @@ func (s Server) WorkerPoll(ctx context.Context, req gen.WorkerPollRequestObject)
 	if req.Body.Drained != nil {
 		in.Drained = *req.Body.Drained
 	}
+	if req.Body.Retiring != nil {
+		in.Retiring = *req.Body.Retiring
+	}
 	if req.Body.Wait != nil {
 		in.Wait = time.Duration(*req.Body.Wait) * time.Second
 	}

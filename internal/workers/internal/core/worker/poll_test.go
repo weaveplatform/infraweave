@@ -497,6 +497,45 @@ func TestUnitWorkerPollClaim(t *testing.T) {
 	})
 }
 
+// TestUnitWorkerPollRetiring checks that a poll that reports an exit
+// answers at once, that a retiring one claims no run, even with one
+// waiting, nor is woken for one, and that a poll that is not retiring
+// claims the run that waits.
+func TestUnitWorkerPollRetiring(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFixture(t, worker.Deps{})
+		sch := &scheduler{}
+		f.svc.BindScheduler(sch)
+		w, b := f.add()
+		run := kernel.NewULID()
+		exit := &workersapi.Exit{Code: 0, Reason: workersapi.ExitExited}
+
+		if h := <-f.poll(b, worker.PollInput{Run: &run, Exit: exit, Wait: worker.MaxWait}); h.err != nil ||
+			h.got.Assignment != nil || h.took != 0 {
+			t.Errorf("an exit with no run waiting = %+v", h)
+		}
+		a := sch.wait()
+		sch.claims = nil
+		if h := <-f.poll(b, worker.PollInput{Retiring: true, Run: &run, Exit: exit, Wait: worker.MaxWait}); h.err != nil ||
+			h.got.Assignment != nil || h.took != 0 {
+			t.Errorf("a retiring exit = %+v", h)
+		}
+		ch := f.poll(b, worker.PollInput{Retiring: true, Wait: worker.MinWait})
+		pending(t, ch)
+		f.svc.WakeOne(w.Pool)
+		pending(t, ch)
+		if h := <-ch; h.err != nil || h.got.Assignment != nil || h.took != worker.MinWait {
+			t.Errorf("a retiring idle poll = %+v", h)
+		}
+		if len(sch.claims) != 0 || f.store.workers[w.ID].Busy {
+			t.Errorf("a retiring worker claimed %+v", sch.claims)
+		}
+		if h := <-f.poll(b, worker.PollInput{Run: &run, Exit: exit}); !claimed(h, a) || h.took != 0 {
+			t.Errorf("an exit with a run waiting = %+v", h)
+		}
+	})
+}
+
 // TestUnitWorkerPollClaimPreparing checks that a claim issues its run's
 // preparing deadline from the pool's own preparing timeout, or else the
 // installation's default.
