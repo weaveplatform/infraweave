@@ -2,10 +2,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "features.schema.json",
   "title": "The feature catalogue",
-  "description": "Every feature of infraweave, decision 0021's catalogue and its one source: make generate writes internal/features/catalogue.gen.go from it. A capability gates a set of operations, an option one value of a field, a limit a quantity, and the switch turns entitlement enforcement on for the installation. A feature is in every seeded tier from lowestTier up; a limit's tier with no value has no limit. The id is the name features.disabled, the tier object and grants carry.",
+  "description": "Every feature of infraweave, decision 0021's catalogue and its one source: make generate writes internal/features/catalogue.gen.go from it. A capability gates a set of operations, an option one value of a field, a limit a quantity, and the switch turns entitlement enforcement on for the installation. A capability or an option with a preview member is a preview. A feature is in every seeded tier from lowestTier up; a limit's tier with no value has no limit. The id is the name features.disabled, the tier object and grants carry.",
   "x-id-pattern": "[a-z][a-z0-9]*(-[a-z0-9]+)*",
   "type": "object",
   "required": ["$schema", "records"],
+  "$defs": {
+    "httpsUrl": {
+      "description": "An absolute https URL.",
+      "type": "string",
+      "pattern": "^https://[^/?#\\s]+[^\\s]*$"
+    }
+  },
   "additionalProperties": false,
   "properties": {
     "$schema": {"const": "schema/features.schema.json"},
@@ -57,6 +64,18 @@
             "type": "string",
             "pattern": "^P[0-9]+[a-z]?$"
           },
+          "preview": {
+            "description": "For a capability or an option that ships before it is generally available: what the feature preview read shows for it. A preview reaches only the accounts whose admins opt in to feature previews; removing the member makes the feature generally available.",
+            "type": "object",
+            "required": ["name", "description", "docsUrl"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"description": "The preview's display name.", "type": "string", "minLength": 1},
+              "description": {"description": "What the preview does.", "$ref": "common.schema.json#/$defs/markdown"},
+              "docsUrl": {"description": "The preview's documentation.", "$ref": "#/$defs/httpsUrl"},
+              "imageUrl": {"description": "An image that illustrates the preview.", "$ref": "#/$defs/httpsUrl"}
+            }
+          },
           "notes": {"$ref": "common.schema.json#/$defs/markdown"}
         },
         "allOf": [
@@ -78,14 +97,14 @@
             "if": {"properties": {"kind": {"const": "limit"}}},
             "then": {
               "required": ["unit", "values"],
-              "not": {"anyOf": [{"required": ["gates"]}, {"required": ["field"]}, {"required": ["lowestTier"]}]}
+              "not": {"anyOf": [{"required": ["gates"]}, {"required": ["field"]}, {"required": ["lowestTier"]}, {"required": ["preview"]}]}
             }
           },
           {
             "if": {"properties": {"kind": {"const": "switch"}}},
             "then": {
               "required": ["gates"],
-              "not": {"anyOf": [{"required": ["field"]}, {"required": ["unit"]}, {"required": ["values"]}, {"required": ["lowestTier"]}, {"required": ["requires"]}]}
+              "not": {"anyOf": [{"required": ["field"]}, {"required": ["unit"]}, {"required": ["values"]}, {"required": ["lowestTier"]}, {"required": ["requires"]}, {"required": ["preview"]}]}
             }
           }
         ]

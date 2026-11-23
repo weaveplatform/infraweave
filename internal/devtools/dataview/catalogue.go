@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,12 +17,15 @@ import (
 
 // The catalogue's errors: a requirement, or a tier-feature record's
 // covering feature, that names no feature of features.json, which the
-// generated catalogue would carry as a dangling name.
+// generated catalogue would carry as a dangling name; and a preview marker
+// the feature preview read could not show, which features.schema.json
+// refuses too.
 var (
 	ErrUnknownRequirement = errors.New("dataview: a feature requires a name the catalogue lacks")
 	ErrUnknownTierFeature = errors.New(
 		"dataview: a tier-feature record names a feature the catalogue lacks",
 	)
+	ErrInvalidPreview = errors.New("dataview: an invalid preview marker")
 )
 
 // catalogueFeature is a features.json record as the generated catalogue
@@ -32,6 +36,35 @@ type catalogueFeature struct {
 	LowestTier string           `json:"lowestTier"`
 	Values     map[string]int64 `json:"values"`
 	Requires   []string         `json:"requires"`
+	Preview    *preview         `json:"preview"`
+}
+
+// preview is a record's preview marker.
+type preview struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	DocsURL     string `json:"docsUrl"`
+	ImageURL    string `json:"imageUrl"`
+}
+
+// check refuses a marker on a limit or the switch, a marker without its
+// name, description or documentation URL, and a URL that is not https.
+func (p *preview) check(id, kind string) error {
+	switch {
+	case kind != "capability" && kind != "option":
+		return fmt.Errorf("%w: %s is a %s", ErrInvalidPreview, id, kind)
+	case p.Name == "" || p.Description == "" || p.DocsURL == "":
+		return fmt.Errorf("%w: %s lacks its name, description or docsUrl", ErrInvalidPreview, id)
+	case !httpsURL(p.DocsURL) || p.ImageURL != "" && !httpsURL(p.ImageURL):
+		return fmt.Errorf("%w: %s has a URL that is not https", ErrInvalidPreview, id)
+	}
+	return nil
+}
+
+// httpsURL reports whether s is an absolute https URL.
+func httpsURL(s string) bool {
+	u, err := url.Parse(s)
+	return err == nil && u.Scheme == "https" && u.Host != ""
 }
 
 // tierFeature is a tier-feature record of capabilities.json: a
@@ -82,8 +115,9 @@ func WriteCatalogue(dataDir, out string) error {
 
 // Catalogue returns internal/features/catalogue.gen.go for the two
 // registers: every feature in name order, with its kind, lowest seeded
-// tier, requirements, seeded limit values by tier name, and the
-// BillingTierFeature values the tier-feature records say it covers.
+// tier, requirements, seeded limit values by tier name, the
+// BillingTierFeature values the tier-feature records say it covers, and
+// its preview marker.
 func Catalogue(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 	var fs struct {
 		Records []catalogueFeature `json:"records"`
@@ -153,6 +187,16 @@ func Catalogue(featuresJSON, capabilitiesJSON []byte) ([]byte, error) {
 		if v := covers[f.ID]; len(v) > 0 {
 			slices.Sort(v)
 			fmt.Fprintf(&b, ", TierFeatures: %s", goStrings(slices.Compact(v)))
+		}
+		if p := f.Preview; p != nil {
+			if err := p.check(f.ID, f.Kind); err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(&b, ", Preview: &Preview{Name: %q, Description: %q, DocsURL: %q", p.Name, p.Description, p.DocsURL)
+			if p.ImageURL != "" {
+				fmt.Fprintf(&b, ", ImageURL: %q", p.ImageURL)
+			}
+			b.WriteString("}")
 		}
 		b.WriteString("},\n")
 	}

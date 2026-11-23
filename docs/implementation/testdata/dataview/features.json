@@ -1,7 +1,8 @@
 {"records": [
   {"id": "stacks", "kind": "capability", "gates": "The Stacks tag", "lowestTier": "Free", "phase": "P5"},
   {"id": "audit-trail", "kind": "capability", "gates": "The [Audit](../research/a.md#x) tag | more", "lowestTier": "Enterprise", "phase": "P18b"},
-  {"id": "aggregated", "kind": "option", "field": "`vcsChecks: AGGREGATED`", "lowestTier": "Business", "phase": "P12"},
+  {"id": "aggregated", "kind": "option", "field": "`vcsChecks: AGGREGATED`", "lowestTier": "Business", "phase": "P12",
+   "preview": {"name": "Aggregated checks", "description": "One check per commit.", "docsUrl": "https://docs.example.com/checks"}},
   {"id": "seats", "kind": "limit", "unit": "members, [see](https://example.com/x)", "values": {"free": 2, "starter": 2}, "phase": "P3b"},
   {"id": "billing", "kind": "switch", "gates": "Enforcement", "phase": "P3b"}
 ]}

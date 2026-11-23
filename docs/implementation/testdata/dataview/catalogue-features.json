@@ -1,7 +1,10 @@
 {"records": [
   {"id": "stacks", "kind": "capability", "lowestTier": "Free", "phase": "P5"},
-  {"id": "drift", "kind": "capability", "lowestTier": "Business", "requires": ["pools"], "phase": "P16"},
+  {"id": "drift", "kind": "capability", "lowestTier": "Business", "requires": ["pools"], "phase": "P16",
+   "preview": {"name": "Drift detection", "description": "Finds resources that changed outside a run.", "docsUrl": "https://docs.example.com/drift"}},
   {"id": "pools", "kind": "capability", "lowestTier": "Business", "phase": "P9"},
+  {"id": "aggregated", "kind": "option", "lowestTier": "Business", "phase": "P12",
+   "preview": {"name": "Aggregated checks", "description": "One `\"check\"` per commit.", "docsUrl": "https://docs.example.com/checks", "imageUrl": "https://docs.example.com/checks.png"}},
   {"id": "seats", "kind": "limit", "values": {"free": 2, "business": 10}, "phase": "P3b"},
   {"id": "billing", "kind": "switch", "phase": "P3b"}
 ]}

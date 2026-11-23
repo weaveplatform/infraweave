@@ -10,7 +10,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | Feature | Kind | Gates | Free | Starter | Business | Enterprise | Phase |
 |---|---|---|---|---|---|---|---|
 | `stacks` | capability | The Stacks tag | ✓ | ✓ | ✓ | ✓ | P5 |
-| `aggregated` | option | `vcsChecks: AGGREGATED` | | | ✓ | ✓ | P12 |
+| `aggregated` | option, preview | `vcsChecks: AGGREGATED` | | | ✓ | ✓ | P12 |
 | `audit-trail` | capability | The [Audit](../research/a.md#x) tag \| more | | | | ✓ | P18b |
 
 ## Seeded limits

@@ -1,0 +1,8 @@
+{"$schema": "schema/features.schema.json", "records": [
+  {"id": "stacks", "kind": "capability", "gates": "The Stacks tag", "lowestTier": "Free", "phase": "P0",
+   "preview": {"name": "Stacks", "description": "Runs `terraform`.", "docsUrl": "https://docs.example.com/stacks"}},
+  {"id": "checks", "kind": "option", "field": "`vcsChecks: ALL`", "lowestTier": "Business", "phase": "P0",
+   "preview": {"name": "Checks", "description": "One check per commit.", "docsUrl": "https://docs.example.com/checks",
+     "imageUrl": "https://docs.example.com/checks.png"}},
+  {"id": "seats", "kind": "limit", "unit": "members", "values": {"free": 2}, "phase": "P0"},
+  {"id": "billing", "kind": "switch", "gates": "Enforcement", "phase": "P0"}]}

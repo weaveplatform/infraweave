@@ -53,6 +53,7 @@ type feature struct {
 	LowestTier string         `json:"lowestTier"`
 	Values     map[string]int `json:"values"`
 	Phase      string         `json:"phase"`
+	Preview    *struct{}      `json:"preview"`
 }
 
 type capability struct {
@@ -139,7 +140,7 @@ func tierIndex(name string) int {
 
 // matrix writes every capability and option against the tiers, ordered by
 // lowest seeded tier and then by name, so each tier's additions read as one
-// block.
+// block. A preview's kind reads "capability, preview" or "option, preview".
 func matrix(b *bytes.Buffer, all []feature) error {
 	type row struct {
 		f   feature
@@ -170,7 +171,11 @@ func matrix(b *bytes.Buffer, all []feature) error {
 	b.WriteString(strings.Repeat("---|", len(tiers)+1) + "\n")
 	for _, r := range rows {
 		gates := cmp.Or(r.f.Gates, r.f.Field)
-		fmt.Fprintf(b, "| `%s` | %s | %s |", r.f.ID, r.f.Kind, cell(gates))
+		kind := r.f.Kind
+		if r.f.Preview != nil {
+			kind += ", preview"
+		}
+		fmt.Fprintf(b, "| `%s` | %s | %s |", r.f.ID, kind, cell(gates))
 		for i := range tiers {
 			if i >= r.low {
 				b.WriteString(" ✓ |")

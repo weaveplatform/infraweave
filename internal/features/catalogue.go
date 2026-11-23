@@ -58,6 +58,25 @@ type Feature struct {
 	// TierFeatures are the BillingTierFeature values it covers, which
 	// tierFeatures reports.
 	TierFeatures []string
+	// Preview marks a capability or an option in preview; it is nil for a
+	// generally available feature, a limit and the switch.
+	Preview *Preview
+}
+
+// Preview is what the feature preview read shows for a feature in preview.
+// A preview reaches only the accounts whose admins opt in to feature
+// previews.
+//
+// ref: decision 0021
+type Preview struct {
+	// Name is the preview's display name.
+	Name string
+	// Description is markdown.
+	Description string
+	// DocsURL is an https URL.
+	DocsURL string
+	// ImageURL is an https URL, or empty when the preview has no image.
+	ImageURL string
 }
 
 // Gated reports whether the feature is one an entitlement holds or lacks:
@@ -66,6 +85,17 @@ func (f Feature) Gated() bool { return f.Kind == Capability || f.Kind == Option 
 
 // Catalogue is every feature, in name order.
 func Catalogue() []Feature { return slices.Clone(catalogue) }
+
+// Previews is every feature in preview, in catalogue order.
+func Previews() []Feature {
+	var out []Feature
+	for _, f := range catalogue {
+		if f.Preview != nil {
+			out = append(out, f)
+		}
+	}
+	return out
+}
 
 // Lookup returns the feature named name.
 func Lookup(name string) (Feature, bool) {

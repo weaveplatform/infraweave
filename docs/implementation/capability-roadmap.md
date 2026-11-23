@@ -110,11 +110,13 @@ default. It turns entitlement enforcement on, and the operator API sets it
 ### Previews
 
 A capability or an option that ships before it is generally available
-carries a `preview` member in its record: the name, description and
-documentation URL that `featurePreview` lists. A preview reaches an
-account only once an account admin opts the account in, and refuses it
-otherwise with `403 preview-not-enabled`, whether billing is on or off. A
-member's personal opt-out hides previews in that member's console and
+carries a `preview` member in its record: the name, description,
+documentation URL and optional image URL that `featurePreview` lists.
+[tiers.md](tiers.md) gives a preview's kind as `capability, preview` or
+`option, preview`. A preview reaches an account only once an account admin
+opts the account in, and refuses it otherwise with
+`403 preview-not-enabled`, whether billing is on or off. A member's
+personal opt-out hides previews in that member's console and
 `infraweavectl` only. Removing the member makes the feature generally
 available (decision
 [0021](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews),

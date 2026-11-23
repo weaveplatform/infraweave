@@ -7,8 +7,10 @@
 // its lowest seeded tier up and each limit's seeded value, with Enterprise
 // holding every gated feature and no limit; Gated is every capability and
 // option; Closed drops the features whose requirements an entitlement
-// lacks. Billing and Operator are the names the installation holds, which
-// features.disabled rejects.
+// lacks. A capability or an option in preview carries a Preview, the name,
+// description and https URLs the feature preview read shows for it, and
+// Previews lists those features in catalogue order. Billing and Operator
+// are the names the installation holds, which features.disabled rejects.
 //
 // ref: decision 0021
 //
