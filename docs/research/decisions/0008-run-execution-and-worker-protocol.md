@@ -39,9 +39,11 @@ facts shape the design.
 
 - **One transition table.** `internal/runs/internal/core/machine` holds the edges of the
   [run-transitions register](../../data/run-transitions.json) as data: report
-  08's T1 to T43
-  ([08 transition table](../reference/08-run-lifecycle.md#transition-table))
-  and T44, T45 and the C52 assignment refusal T46, each with the register's
+  08's T1 to T43 but its inferred `INITIALIZING` to `DESTROYING`, since a
+  destroy run plans first (see "The destroy trigger")
+  ([08 transition table](../reference/08-run-lifecycle.md#transition-table)),
+  and T44, T45, the C52 assignment refusal T46 and the destroy run's T47
+  and T48, each with the register's
   source state, target state and run
   types, and the driver allowed to take it. A pair not in the table is
   refused. `UNKNOWN` is served in the enum and never assigned; `PENDING` is
@@ -101,7 +103,7 @@ facts shape the design.
   | Drift run on a pool with drift runs disabled | created `QUEUED` and failed in the same transaction (T1 then T5), note explaining the limit | T1, T5 |
   | Task with `skipInitialization` | passes through `INITIALIZING`, which runs neither the vendor's init nor the `before_init` and `after_init` hooks and logs that initialization is skipped, as Spacelift's console shows (C42) | T13 |
   | `runRetry` | a new run of the retried run's type on its commit, with the runtime configuration the retried run recorded at its first handover (its hooks and settings as they were, not the stack's current ones) and its overrides; variables and files are read afresh, for a `PROPOSED` or `TRACKED` run that has ended other than in `FINISHED`, whose source still exists and, for a tracked run, whose commit is still the stack's tracked commit, as Spacelift's console retries ([32 section 17.3](../reference/32-spacelift-console-survey.md#173-run-states-discard-retry-and-targeted-replan)); a run without a record resolves afresh; `canRetry` and `retryBlocker` say whether and why not; a retry never triggers dependants, and a tracked run needs `RUN_RETRY_BLOCKING` as well | T1 |
-  | `DESTROY` run | no plan and no confirmation: `INITIALIZING` straight to `DESTROYING` | T14 |
+  | `DESTROY` run | plans the destroy, as the `runDestroyTrigger` description states: `INITIALIZING` to `PLANNING`, then the plan decision destroys in the planning container, or a plan policy's warning holds it in `UNCONFIRMED` until it is confirmed and its restored workspace destroys after `PREPARING_APPLY` | T12, T47, T20, T48 |
   | The `state` argument of `runStop` and `runKill` | the state the caller saw; a run that has left it answers `409` `invalid-state` with its current state | none |
   | `PARSE` run type | served in the enum, never created | none |
 
@@ -115,8 +117,8 @@ facts shape the design.
 | Approval policy | T5, T23, T24, T29, and the gates on T2 and T26 | Evaluated on entering `QUEUED`, `UNCONFIRMED` and `PENDING_REVIEW` and on each review ([09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated)) |
 | Server INITIALIZATION policy | T46 | The worker claim evaluates the READY run before assignment; C52 fixes the refusal boundary |
 | Worker claim | T7, T30, T33 | The poll claims the run (below) |
-| Worker report | T10, T11, T12 to T16, T18 for a tool error, T19, T32, T35 to T43, T44 | Runner or launcher reports through `/worker/v1` |
-| Server decision after planning | T17, T18 for a plan policy `deny`, T20, T21, T22 | The server evaluates plan policies on the reported plan ([0009](0009-policy-engine-opa.md)) and picks the edge |
+| Worker report | T10, T11, T12, T13, T15, T16, T18 for a tool error, T19, T32, T35 to T43, T44, T48 | Runner or launcher reports through `/worker/v1` |
+| Server decision after planning | T17, T18 for a plan policy `deny`, T20, T21, T22, T47 | The server evaluates plan policies on the reported plan ([0009](0009-policy-engine-opa.md)) and picks the edge |
 | Timers | T4, T9, T25, T27, T31, T34 and the 30-day rule | Periodic task `run.timers` (every minute, [0011](0011-persistent-work-queue.md)) |
 | Liveness | the `FAILED` edge out of whichever worker state the run is in | Periodic task `worker.reap` (below), for a lost run and an overdue preparation, and a poll that reports the run's container ended |
 
@@ -695,7 +697,7 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `logChunks`, how many chunks the runner cut the state's log into, which
   the state's transition keeps (see "Logs and artifacts").
   - **`started`** of the state a preparing run moves to ends the handover
-    (T10, T32, T35). `started` of the state the run is already in moves
+    (T10, T32, T35, T48). `started` of the state the run is already in moves
     nothing and answers that state.
   - **`succeeded`, `failed` and `stopped`** name the run's current state and
     take its worker-report edge: to the next phase, to `FAILED` or to
@@ -771,7 +773,7 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   without a `delta`, or any other report with one, answers `400`
   `invalid-request`. In that request's transaction the server evaluates the
   plan policies on the uploaded plan ([0009](0009-policy-engine-opa.md)),
-  records the receipts, and takes T17, T18, T20, T21 or T22 by the rules of
+  records the receipts, and takes T17, T18, T20, T21, T22 or T47 by the rules of
   [09 section 8](../reference/09-policies.md#8-where-each-type-is-evaluated).
   The run stays `PLANNING` until then, so a worker cannot skip a policy. With
   no plan policy attached, the decision reads the delta alone:
@@ -783,6 +785,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   | tracked | changes | autodeploy on and unlocked | T21 to `APPLYING` | `execute` |
   | tracked | changes | autodeploy off, or locked | T20 to `UNCONFIRMED` | `pause` |
   | test case | any | any | T21 to `APPLYING` | `execute` |
+  | destroy | any | any | T47 to `DESTROYING` | `execute` |
+
+  A plan policy's `deny` fails any run (T18). Its warning holds a tracked
+  run whose plan changes something, and any destroy run, in `UNCONFIRMED`
+  (T20).
 
   The run keeps its delta for its changes view. A `failed` or `stopped`
   report of `PLANNING` is taken as in any state.
@@ -1639,6 +1646,8 @@ the note `killed`.
   `deleting: true` and creates a `DESTROY` run on its tracked commit through
   a `stacksapi` back edge, which `runs` implements, so `stacks` never
   imports `runsapi` ([0004](0004-repository-architecture.md#constraints)).
+  The run takes the destroy trigger's path below: it plans the destroy,
+  and plan policies can deny it or hold it for confirmation.
 - The stack is deleted in the transaction of that run's `FINISHED`
   transition. A destroy run that ends in any other state clears `deleting`,
   and the stack stays with that run as its last.
@@ -1660,6 +1669,45 @@ the note `killed`.
 - An Ansible stack has nothing to destroy: `destroyResources: true` answers
   `422` `validation-failed` at `/destroyResources`, as Spacelift's console
   offers no destroy for one.
+
+### The destroy trigger
+
+- `runDestroyTrigger` (`POST /stacks/{stackId}/destroy-runs`, action
+  `RUN_DESTROY_TRIGGER`, `expensive`) creates a `DESTROY` run through the
+  creation destroy on delete takes, in the transaction that locks the
+  stack's row, and answers it `201`. It runs on the tracked commit, or the
+  head of the tracked branch while the stack tracks none, and queues
+  behind the stack's other runs as any blocking run does.
+- **The run plans the destroy first.** Its `PLANNING` renders the
+  workflow's `plan` with the template variable `destroy` true, so the
+  built-in templates add `-destroy` and the plan's JSON shows every
+  resource deleted. Plan policies evaluate it as any plan: `deny` fails it
+  (T18), a warning holds it in `UNCONFIRMED` (T20), where `runConfirm` and
+  `runDiscard` act as on a tracked run, and otherwise the decision destroys
+  in the planning container (T47). The runner saves every destroy run's
+  workspace with its plan, so a confirmed one destroys after its handover
+  (T48). `DESTROYING` runs the workflow's `destroy` command, which plans
+  again as it destroys.
+- **The stack is disabled once the run finishes**, in the transaction of
+  its `FINISHED` transition, as `stackDisable` disables it: its version and
+  `ETag` change and its `Changed` event names `disabled`. The run's
+  succeeded `DESTROYING` report clears the stack's outputs. A destroy run
+  that ends otherwise leaves the stack as it was.
+- **Refusals**, each before any run is created:
+  - a stack being deleted: `409` `invalid-state`;
+  - `protectFromDeletion`: `422` `validation-failed`, as its delete answers;
+  - a destroy run that has not ended: `409` `invalid-state` naming it;
+  - a stack that manages no resources, as no tracked run entered
+    `APPLYING` since it was created or its last destroy run finished:
+    `409` `invalid-state`;
+  - a disabled stack, or one with no commit to run on yet: `409`
+    `invalid-state`;
+    one locked by another caller: `409` `resource-locked` with `lockedBy`.
+- Spacelift also refuses a stack that has dependents and one whose vendor
+  cannot plan a destroy. Every served vendor plans a destroy, and stack
+  dependencies are not served, so neither refusal can arise.
+- `RUN_DESTROY_TRIGGER` falls back to `admin` until C312 records which
+  legacy role allows it.
 
 ### Signed runs
 

@@ -25,7 +25,8 @@ func params() workflow.Params {
 // and OpenTofu for each phase: init, then plan to PlanFile and its JSON
 // to the plan file, then apply of PlanFile, and destroy with no prompt,
 // each that locks waiting the lock timeout; planning without the lock,
-// without refreshing and against targets adds their flags. PERFORMING,
+// without refreshing and against targets adds their flags, and a
+// destroy's planning adds -destroy. PERFORMING,
 // whose command is the task's, has no workflow phase.
 func TestUnitVendorsCommands(t *testing.T) {
 	for _, tool := range []wire.RunSpecToolName{wire.Terraform, wire.Tofu} {
@@ -37,6 +38,8 @@ func TestUnitVendorsCommands(t *testing.T) {
 		replan := params()
 		replan.Lock, replan.Refresh, replan.Targets = false, false, []string{"a.b", "c[0]"}
 		replan.LockTimeout = 90 * time.Second
+		destroy := params()
+		destroy.Refresh, destroy.Destroy = false, true
 		for _, c := range []struct {
 			state wire.WorkerState
 			p     workflow.Params
@@ -54,6 +57,11 @@ func TestUnitVendorsCommands(t *testing.T) {
 				{Key: workflow.Plan, Line: bin + " plan -input=false -lock-timeout='1m30s' " +
 					"-lock='false' '-refresh=false' -out='infraweave.plan' '-target=a.b' " +
 					"'-target=c[0]'"},
+				{Key: workflow.ShowPlan, Line: bin + " show -json 'infraweave.plan'", Stdout: "/p"},
+			}},
+			{state: wire.WorkerStatePLANNING, p: destroy, want: []vendors.Command{
+				{Key: workflow.Plan, Line: bin + " plan -input=false -lock-timeout='5m0s' " +
+					"-lock='true' '-refresh=false' '-destroy' -out='infraweave.plan' "},
 				{Key: workflow.ShowPlan, Line: bin + " show -json 'infraweave.plan'", Stdout: "/p"},
 			}},
 			{state: wire.WorkerStateAPPLYING, p: params(), want: []vendors.Command{
@@ -88,7 +96,7 @@ func TestUnitVendorsCommands(t *testing.T) {
 // TestUnitVendorsTerragruntCommands renders a Terragrunt run's built-in
 // workflow: each phase's command through terragrunt run --all, planning
 // with TG_JSON_OUT_DIR naming the units' plans' directory and no
-// showPlan, applying with no saved plan and no getOutputs, and destroying
+// showPlan, a destroy's with -destroy, applying with no saved plan and no getOutputs, and destroying
 // as Terragrunt approves it. A workflow file's templates render in the
 // same phases.
 func TestUnitVendorsTerragruntCommands(t *testing.T) {
@@ -128,6 +136,13 @@ func TestUnitVendorsTerragruntCommands(t *testing.T) {
 				t.Errorf("%s = %q, %v", c.state, got, err)
 			}
 		}
+		o.Params.Destroy = true
+		planned, err := w.Commands(t.Context(), wire.WorkerStatePLANNING, o)
+		if err != nil || len(planned) != 1 || planned[0].Line != all+"plan -input=false "+
+			"-lock-timeout='5m0s' -lock='true' '-destroy' -out='tfplan.tfplan' " {
+			t.Errorf("destroy PLANNING = %q, %v", planned, err)
+		}
+		o.Params.Destroy = false
 		if _, err := w.Commands(t.Context(), wire.WorkerStatePERFORMING, o); !errors.Is(err,
 			vendors.ErrState) {
 			t.Errorf("PERFORMING: %v", err)

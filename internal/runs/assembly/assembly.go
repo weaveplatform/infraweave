@@ -226,7 +226,7 @@ func New(d Deps) *Domain {
 		DB: d.DB, Stacks: d.Stacks, Spaces: d.Spaces, Authz: d.Authz, Lifecycle: lc, Views: views,
 		Objects:  d.Objects,
 		Policies: d.PolicyEvaluator, TaskInputs: d.PolicyTaskInputs, Sessions: d.ReviewMetadata,
-		Snapshots: d.PolicyStacks, Now: d.Now,
+		Snapshots: d.PolicyStacks, Destroys: store, Now: d.Now,
 		Metadata: policyinput.Metadata{
 			Store: store, Objects: d.Objects, Pools: d.PolicyPools, Roles: d.PolicyRoles,
 			SpaceFacts: d.PolicySpaces, Contexts: d.PolicyContexts,

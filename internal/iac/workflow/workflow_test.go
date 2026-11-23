@@ -129,11 +129,11 @@ func TestUnitWorkflowDefaults(t *testing.T) {
 	}
 	values := workflow.Params{
 		PlanFileName: "p", Lock: true, Targets: []string{"a"}, WorkspaceName: "w",
-		LockTimeout: 90 * time.Second,
+		LockTimeout: 90 * time.Second, Destroy: true,
 	}.Values()
 	want := map[string]any{
 		"planFileName": "p", "lock": true, "refresh": false, "targets": []any{"a"},
-		"workspaceName": "w", "lockTimeout": "1m30s",
+		"workspaceName": "w", "lockTimeout": "1m30s", "destroy": true,
 	}
 	if !reflect.DeepEqual(values, want) {
 		t.Errorf("values %v", values)

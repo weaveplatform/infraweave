@@ -225,15 +225,11 @@ var edges = []Edge{
 		Drivers: by(DriverWorkerReport, DriverLiveness),
 	},
 	{
-		ID: "T12", From: initializing, To: planning, Types: types(proposed, tracked, test),
+		ID: "T12", From: initializing, To: planning, Types: types(proposed, tracked, test, destroy),
 		Drivers: by(DriverWorkerReport),
 	},
 	{
 		ID: "T13", From: initializing, To: performing, Types: types(task),
-		Drivers: by(DriverWorkerReport),
-	},
-	{
-		ID: "T14", From: initializing, To: destroying, Types: types(destroy),
 		Drivers: by(DriverWorkerReport),
 	},
 	{
@@ -249,18 +245,18 @@ var edges = []Edge{
 		Drivers: by(DriverDecision),
 	},
 	{
-		ID: "T18", From: planning, To: failed, Types: types(proposed, tracked, test),
+		ID: "T18", From: planning, To: failed, Types: types(proposed, tracked, test, destroy),
 		Drivers: by(DriverWorkerReport, DriverDecision, DriverLiveness),
 	},
 	{
-		ID: "T19", From: planning, To: stopped, Types: types(proposed, tracked),
+		ID: "T19", From: planning, To: stopped, Types: types(proposed, tracked, destroy),
 		Drivers: by(DriverAPI, DriverWorkerReport),
 	},
 	{
 		ID:      "T20",
 		From:    planning,
 		To:      unconfirmed,
-		Types:   types(tracked),
+		Types:   types(tracked, destroy),
 		Drivers: by(DriverDecision),
 	},
 	{
@@ -284,11 +280,12 @@ var edges = []Edge{
 		Drivers: by(DriverTimers),
 	},
 	{
-		ID: "T26", From: unconfirmed, To: confirmed, Types: types(tracked), Drivers: by(DriverAPI),
-		Guards: []Guard{GuardApproved},
+		ID: "T26", From: unconfirmed, To: confirmed, Types: types(tracked, destroy),
+		Drivers: by(DriverAPI),
+		Guards:  []Guard{GuardApproved},
 	},
 	{
-		ID: "T27", From: unconfirmed, To: discarded, Types: types(tracked),
+		ID: "T27", From: unconfirmed, To: discarded, Types: types(tracked, destroy),
 		Drivers: by(DriverAPI, DriverScheduler, DriverTimers),
 	},
 	{
@@ -296,7 +293,7 @@ var edges = []Edge{
 		Drivers: by(DriverAPI),
 	},
 	{
-		ID: "T29", From: unconfirmed, To: failed, Types: types(tracked),
+		ID: "T29", From: unconfirmed, To: failed, Types: types(tracked, destroy),
 		Drivers: by(DriverApproval),
 	},
 	{
@@ -312,16 +309,16 @@ var edges = []Edge{
 		Drivers: by(DriverWorkerReport),
 	},
 	{
-		ID: "T33", From: confirmed, To: preparingApply, Types: types(tracked),
+		ID: "T33", From: confirmed, To: preparingApply, Types: types(tracked, destroy),
 		Drivers: by(DriverWorkerClaim),
 	},
-	{ID: "T34", From: confirmed, To: failed, Types: types(tracked), Drivers: by(DriverTimers)},
+	{ID: "T34", From: confirmed, To: failed, Types: types(tracked, destroy), Drivers: by(DriverTimers)},
 	{
 		ID: "T35", From: preparingApply, To: applying, Types: types(tracked),
 		Drivers: by(DriverWorkerReport),
 	},
 	{
-		ID: "T36", From: preparingApply, To: failed, Types: types(tracked),
+		ID: "T36", From: preparingApply, To: failed, Types: types(tracked, destroy),
 		Drivers: by(DriverWorkerReport, DriverLiveness),
 	},
 	{
@@ -360,4 +357,12 @@ var edges = []Edge{
 	// liveness fails it in APPLYING, when no worker is left to destroy.
 	{ID: "T45", From: applying, To: failed, Types: types(test), Drivers: by(DriverLiveness)},
 	{ID: "T46", From: ready, To: failed, Types: all, Drivers: by(DriverInitialization)},
+	// A destroy run plans its destroy first: the plan decision destroys
+	// (T47) or waits for confirmation (T20), and a confirmed one destroys
+	// after its handover (T48), as a tracked run applies after T21 or T35.
+	{ID: "T47", From: planning, To: destroying, Types: types(destroy), Drivers: by(DriverDecision)},
+	{
+		ID: "T48", From: preparingApply, To: destroying, Types: types(destroy),
+		Drivers: by(DriverWorkerReport),
+	},
 }

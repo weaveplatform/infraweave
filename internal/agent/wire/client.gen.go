@@ -491,14 +491,14 @@ type Assignment struct {
 	// RunTokenExpiresAt When the run token expires, in Unix seconds.
 	RunTokenExpiresAt int64 `json:"runTokenExpiresAt"`
 
-	// State The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
+	// State The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies or, a destroy run, destroys, PREPARING_REPLAN for a run that plans again.
 	State AssignmentState `json:"state"`
 
 	// StateVersion The run's state version after the claim, which the run's specification is sealed for until the run reports it started.
 	StateVersion int64 `json:"stateVersion"`
 }
 
-// AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
+// AssignmentState The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies or, a destroy run, destroys, PREPARING_REPLAN for a run that plans again.
 type AssignmentState string
 
 // ContainerExit How the container of the run a poll names ended: its root process's exit code, and why it ended.

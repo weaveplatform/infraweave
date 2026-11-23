@@ -118,8 +118,8 @@ func TestUnitExecTaskSkipsInitialization(t *testing.T) {
 	}
 }
 
-// TestUnitExecDestroys destroys a destroy run's resources after
-// initialization, and a test run's after it applies, between the destroy
+// TestUnitExecDestroys destroys a destroy run's resources after it plans
+// the destroy, and a test run's after it applies, between the destroy
 // hooks; a failed destroy or task fails its phase, naming its exit
 // status, and runs no after-hook of it.
 func TestUnitExecDestroys(t *testing.T) {
@@ -133,12 +133,15 @@ func TestUnitExecDestroys(t *testing.T) {
 	}{
 		"a destroy run": {
 			typ:  wire.DESTROY,
-			then: map[wire.WorkerState]string{wire.WorkerStateINITIALIZING: "DESTROYING"},
+			then: map[wire.WorkerState]string{wire.WorkerStatePLANNING: "DESTROYING"},
 			events: []string{
-				"INITIALIZING started 3", "INITIALIZING succeeded 4", "DESTROYING succeeded 5",
+				"INITIALIZING started 3", "INITIALIZING succeeded 4", "PLANNING succeeded 5",
+				"DESTROYING succeeded 6",
 			},
 			traced: []string{
 				"init -input=false -lock-timeout=5m0s",
+				"plan -input=false -lock-timeout=5m0s -lock=true -destroy -out=infraweave.plan",
+				"show -json infraweave.plan",
 				"before_destroy DESTROYING",
 				"destroy -auto-approve -input=false -lock-timeout=5m0s",
 				"after_destroy",

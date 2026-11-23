@@ -92,7 +92,7 @@ doublestar globs stay as the standard mini-languages they are
 | Output references | Expression, optional on a reference | `value` (the referenced output), `outputs` (the upstream stack's outputs) | `serve`, at the downstream run's handover |
 | Notification text | Text template in every string a notification policy returns, and in the default messages | `event` (the event document of [0015](0015-events-notifications-webhooks-audit.md)), `logs(phase)` | `scheduler`, in the delivery job |
 | Environment interpolation | Text template in a variable's value | `env` (the run's other variables), `run`, `stack` | `serve`, at the run's handover ([0008](0008-run-execution-and-worker-protocol.md)) |
-| Workflow command templates | Text template, shell-quoted (below) | The vendor's run parameters: for the Terraform family `planFileName`, `lock`, `refresh`, `targets`, `workspaceName`, `lockTimeout`; for Kubernetes those of the seven Kubernetes keys (below) | The runner: checked at initialization, each command rendered when its phase runs |
+| Workflow command templates | Text template, shell-quoted (below) | The vendor's run parameters: for the Terraform family `planFileName`, `lock`, `refresh`, `targets`, `workspaceName`, `lockTimeout`, `destroy`; for Kubernetes those of the seven Kubernetes keys (below) | The runner: checked at initialization, each command rendered when its phase runs |
 
 - **Flows variables.** `outputs.<block>` holds each upstream block's output
   on the event's primary lineage, keyed by the block's camelCase name, as
@@ -325,9 +325,10 @@ templates.
   specifies; the run-all mode changes only the six phase-command templates.
 - **Variables** are the fixed run parameters, renamed to CEL identifiers:
   `planFileName`, `lock`, `refresh`, `targets` (a list), `workspaceName`
-  (the stack's `workspace` setting, else `default`) and `lockTimeout`
+  (the stack's `workspace` setting, else `default`), `lockTimeout`
   (`launcher.state_lock_timeout`, written as Go writes a duration, such as
-  `5m0s`, which both tools parse). No other variable, no secret and no
+  `5m0s`, which both tools parse) and `destroy` (true while a destroy run
+  plans its destroy). No other variable, no secret and no
   `now` or `random.*` is in scope, so rendering needs nothing the worker
   does not already hold and the same parameters always render the same
   line.
@@ -366,7 +367,7 @@ templates.
   single quotes escaped). A list renders as one quoted word per element. No
   function emits unquoted text, so a workspace name or target can never
   become shell syntax. The built-in plan command is
-  `terraform plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} ${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`.
+  `terraform plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} ${{ (refresh ? [] : ["-refresh=false"]) + (destroy ? ["-destroy"] : []) }} -out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`.
   A NUL byte cannot be in a shell word, so a value holding one fails the
   phase.
 

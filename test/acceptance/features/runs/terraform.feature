@@ -311,4 +311,4 @@ Feature: Runs of a Terraform stack end to end
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's first run names "destroy"
     And token "h" eventually finds no stack "infra" through A
-    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, DESTROYING, FINISHED"

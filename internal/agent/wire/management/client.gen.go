@@ -91,6 +91,7 @@ const (
 	RUNCANCELBLOCKING                        Action = "RUN_CANCEL_BLOCKING"
 	RUNCOMMENT                               Action = "RUN_COMMENT"
 	RUNCONFIRM                               Action = "RUN_CONFIRM"
+	RUNDESTROYTRIGGER                        Action = "RUN_DESTROY_TRIGGER"
 	RUNDISCARD                               Action = "RUN_DISCARD"
 	RUNKILL                                  Action = "RUN_KILL"
 	RUNKILLBLOCKING                          Action = "RUN_KILL_BLOCKING"
@@ -325,6 +326,8 @@ func (e Action) Valid() bool {
 	case RUNCOMMENT:
 		return true
 	case RUNCONFIRM:
+		return true
+	case RUNDESTROYTRIGGER:
 		return true
 	case RUNDISCARD:
 		return true

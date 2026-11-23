@@ -618,7 +618,7 @@ components:
           type: string
           enum: [PREPARING, PREPARING_APPLY, PREPARING_REPLAN]
           description: >-
-            The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies, PREPARING_REPLAN for a run that plans again.
+            The state the claim moved the run to: PREPARING for a run that plans or performs, PREPARING_APPLY for a confirmed run that applies or, a destroy run, destroys, PREPARING_REPLAN for a run that plans again.
         preparingDeadline:
           type: integer
           format: int64

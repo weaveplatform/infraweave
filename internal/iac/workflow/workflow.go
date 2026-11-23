@@ -77,6 +77,7 @@ var Variables = []Variable{
 	{Name: "targets", Schema: json.RawMessage(`{"type":"array","items":{"type":"string"}}`)},
 	{Name: "workspaceName", Schema: json.RawMessage(`{"type":"string"}`)},
 	{Name: "lockTimeout", Schema: json.RawMessage(`{"type":"string"}`)},
+	{Name: "destroy", Schema: json.RawMessage(`{"type":"boolean"}`)},
 }
 
 // Params are the values of Variables for one rendering.
@@ -93,6 +94,9 @@ type Params struct {
 	// LockTimeout is how long each command that locks the state waits for
 	// the lock, written as Go writes a duration, which both tools parse.
 	LockTimeout time.Duration
+	// Destroy is whether planning plans a destroy, as a destroy run's
+	// does: the plan removes every resource and output the state holds.
+	Destroy bool
 }
 
 // Values are p as the variables' values.
@@ -108,6 +112,7 @@ func (p Params) Values() map[string]any {
 		"targets":       targets,
 		"workspaceName": p.WorkspaceName,
 		"lockTimeout":   p.LockTimeout.String(),
+		"destroy":       p.Destroy,
 	}
 }
 
@@ -118,8 +123,8 @@ type Templates map[Key]string
 // Defaults are the built-in templates of the Terraform family under the
 // binary bin: Terraform's and OpenTofu's commands take the same
 // arguments. Each command that can lock the state waits lockTimeout, and
-// planning skips the lock only when lock is false; apply, which writes
-// the state, always locks.
+// planning skips the lock only when lock is false and plans a destroy
+// when destroy is true; apply, which writes the state, always locks.
 //
 // ref: decision 0010 § "How a run reaches it"
 // ref: report 20 section 3.2
@@ -129,8 +134,8 @@ func Defaults(bin string) Templates {
 		WorkspaceSelect: bin + " workspace select ${{ workspaceName }}",
 		WorkspaceNew:    bin + " workspace new -lock-timeout=${{ lockTimeout }} ${{ workspaceName }}",
 		Plan: bin + " plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} " +
-			`${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ` +
-			`${{ targets.map(t, "-target=" + t) }}`,
+			`${{ (refresh ? [] : ["-refresh=false"]) + (destroy ? ["-destroy"] : []) }} ` +
+			`-out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`,
 		ShowState:  bin + " show -json",
 		ShowPlan:   bin + " show -json ${{ planFileName }}",
 		GetOutputs: bin + " output -json",
@@ -164,8 +169,8 @@ func Terragrunt(runAll bool) Templates {
 		WorkspaceSelect: phase + "workspace select ${{ workspaceName }}",
 		WorkspaceNew:    phase + "workspace new -lock-timeout=${{ lockTimeout }} ${{ workspaceName }}",
 		Plan: phase + "plan -input=false -lock-timeout=${{ lockTimeout }} -lock=${{ lock }} " +
-			`${{ refresh ? [] : ["-refresh=false"] }} -out=${{ planFileName }} ` +
-			`${{ targets.map(t, "-target=" + t) }}`,
+			`${{ (refresh ? [] : ["-refresh=false"]) + (destroy ? ["-destroy"] : []) }} ` +
+			`-out=${{ planFileName }} ${{ targets.map(t, "-target=" + t) }}`,
 		ShowState:  unit + "show -json",
 		ShowPlan:   unit + "show -json ${{ planFileName }}",
 		GetOutputs: unit + "output -json",

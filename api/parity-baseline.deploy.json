@@ -292,7 +292,6 @@
       "searchManagedEntitiesGroupByTypes"
     ],
     "Runs": [
-      "runDestroyTrigger",
       "runExternalDependencyMarkAsCompleted",
       "runMinutesUsage",
       "runPluginLogsDownloadURL",

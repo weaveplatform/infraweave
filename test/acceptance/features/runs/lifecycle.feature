@@ -13,7 +13,8 @@ Feature: Every run type, action and timer through the run lifecycle
   straight from PLANNING; a task performs in PERFORMING, and one that
   skips initialization still passes through INITIALIZING, running no init
   command or hook and logging the skip (C42); a destroy run on a deleted
-  stack goes from INITIALIZING straight to DESTROYING (C34); a targeted
+  stack plans the destroy, then destroys in the planning container (C34);
+  a targeted
   replan loops back to UNCONFIRMED, and one whose handover stalls in
   PREPARING_REPLAN fails on the preparing timeout (C44); a stop ends the
   run STOPPED, and a kill FAILED with the
@@ -135,7 +136,7 @@ Feature: Every run type, action and timer through the run lifecycle
     And the run "skipped" wrote 0 state versions
 
   @op:stackDelete @case:success
-  Scenario: A stack deleted with its resources destroys them in a run that goes from INITIALIZING straight to DESTROYING
+  Scenario: A stack deleted with its resources destroys them in a run that plans the destroy first
     Given token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","autodeploy":true,"vendorConfig":{"terraform":{}}},"manageState":true}' through B
     And token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through A
     And the answer's id names "run"
@@ -145,7 +146,7 @@ Feature: Every run type, action and timer through the run lifecycle
     When token "h" sends "GET /api/v1/stacks/infra/runs" through B
     Then the answer's first run names "destroy"
     And token "h" eventually finds no stack "infra" through A
-    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, DESTROYING, FINISHED"
+    And the outbox holds the run "destroy"'s run_updated events of the states "QUEUED, READY, PREPARING, INITIALIZING, PLANNING, DESTROYING, FINISHED"
 
   @op:runTargetedReplan @op:runConfirm @case:success
   Scenario: A targeted replan loops back to UNCONFIRMED, and its confirmation applies
