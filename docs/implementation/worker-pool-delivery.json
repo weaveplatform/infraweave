@@ -1,0 +1,3183 @@
+{
+  "schemaVersion": 1,
+  "issue": 753,
+  "epic": 737,
+  "auditedOn": "2026-11-23",
+  "status": "local-delivery-proven; exact-head CI recorded on the delivery pull request; managed-cloud proof open",
+  "testedRevision": {
+    "code": "e5feb44b73ac46dc125370c63520d5c5582166b1",
+    "gate": null,
+    "note": "The pull request head adds only documentation after the gate revision; its exact-head CI is recorded on the pull request"
+  },
+  "baseline": {
+    "revision": "e95e9ad3",
+    "ci": "https://github.com/weaveplatform/infraweave/actions/runs/45218707334",
+    "jobs": 37,
+    "jobsPassed": 37,
+    "acceptance": {
+      "scenarios": 1208,
+      "steps": 28606
+    },
+    "kubernetesBatch": {
+      "scenarios": 37,
+      "steps": 659
+    }
+  },
+  "localRuns": {
+    "gate": null,
+    "kubernetesBatch": {
+      "revision": "e5feb44b73ac46dc125370c63520d5c5582166b1",
+      "dirty": false,
+      "passed": true,
+      "fips": true,
+      "terraformVersion": "1.17.2",
+      "opa": "v1.22.4",
+      "images": {
+        "postgres_image": "postgres:18.7@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a",
+        "objectstore_image": "rustfs/rustfs:1.0.6@sha256:ee717072290bec9b11abfc0365f8310b00df1cd9b3639943edae47bdef05044a",
+        "gitea_image": "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309",
+        "k3s_image": "rancher/k3s:v1.37.2-k3s1@sha256:21ea6e0fac4e3930c2ce8aa40ddd41a8b18cb3e9a0222c030dc005e7e88c4332"
+      },
+      "scenarios": 37,
+      "steps": 661,
+      "environment": {
+        "GOMAXPROCS": "2",
+        "GOFLAGS": "-p=1"
+      },
+      "failedAttempts": [
+        {
+          "owner": "iw-lab-b3180829ccb645248467c9caf8b350e8",
+          "scenarios": 37,
+          "passed": 36,
+          "failed": [
+            "features/workers/kubernetes_initialization.feature:71"
+          ],
+          "countedAsEvidence": false,
+          "issue": 814
+        },
+        {
+          "owner": "iw-lab-8a8e03799dde4d1b979cadf59c5a97b1",
+          "scenarios": 37,
+          "passed": 35,
+          "failed": [
+            "features/workers/kubernetes_initialization.feature:71",
+            "features/workers/kubernetes_recovery.feature:44"
+          ],
+          "countedAsEvidence": false,
+          "issue": 814
+        }
+      ]
+    },
+    "kubernetesControls": {
+      "revision": "e5feb44b73ac46dc125370c63520d5c5582166b1",
+      "dirty": false,
+      "passed": true,
+      "controls": [
+        "two independently owned clusters attached",
+        "foreign manifest refused without replacement",
+        "foreign cleanup journal refused before destroy",
+        "paused real cluster fails attachment",
+        "same owned cluster recovers without replacement",
+        "destroy and repeated cleanup preserve the second owner"
+      ]
+    }
+  },
+  "reportCounts": {
+    "main-cover-accept-core": {
+      "scenarios": 361,
+      "steps": 5209
+    },
+    "main-cover-accept-identity": {
+      "scenarios": 121,
+      "steps": 1948
+    },
+    "main-cover-accept-integrations": {
+      "scenarios": 373,
+      "steps": 10066
+    },
+    "main-cover-accept-runs": {
+      "scenarios": 101,
+      "steps": 3519
+    },
+    "main-cover-accept-terraform-plans": {
+      "scenarios": 49,
+      "steps": 1342
+    },
+    "main-cover-accept-terraform-vcs": {
+      "scenarios": 62,
+      "steps": 2239
+    },
+    "main-cover-accept-terraform": {
+      "scenarios": 141,
+      "steps": 4283
+    },
+    "focused-reads": {
+      "scenarios": 1,
+      "steps": 8
+    },
+    "focused-projections": {
+      "scenarios": 6,
+      "steps": 179
+    },
+    "focused-deregistration": {
+      "scenarios": 1,
+      "steps": 20
+    },
+    "kubernetes-batch": {
+      "scenarios": 37,
+      "steps": 661
+    }
+  },
+  "nativeSuites": {
+    "passed": 51,
+    "skipped": [],
+    "log": "focused native and C292 capture suites, certified FIPS, at e5feb44b"
+  },
+  "operationSummary": {
+    "accountScoped": 30,
+    "accountScopedComplete": 30,
+    "declaredStubs": 2,
+    "operator": 3,
+    "operatorComplete": 3,
+    "protocol": 12,
+    "protocolComplete": 11
+  },
+  "addedScenarios": [
+    {
+      "feature": "features/workers/pool_reads_unavailable.feature",
+      "scenario": "The public pool's account reads answer 503 while PostgreSQL is down",
+      "operations": [
+        "publicWorkerPool",
+        "defaultPublicWorkerPoolRunnerImage",
+        "outgoingIPAddresses"
+      ],
+      "case": "failure"
+    },
+    {
+      "feature": "features/workers/pool_projections.feature",
+      "scenario": "A private pool's suggestions refuse a predicate on a field their search does not filter",
+      "operations": [
+        "searchWorkerPoolsSuggestions",
+        "workerPoolSearchUsersSuggestions",
+        "workerPoolSearchSchedulableRunsSuggestions"
+      ],
+      "case": "failure"
+    },
+    {
+      "feature": "features/workers/kubernetes_recovery.feature",
+      "scenario": "A drained worker finishes its run, then claims no other until it is undrained",
+      "change": "asserts availableAt absent while the Kubernetes slot is busy and no earlier than the busy read once idle"
+    },
+    {
+      "feature": "features/workers/deregistration_unavailable.feature",
+      "scenario": "A worker's deregistration answers 503 while PostgreSQL is down and succeeds once it is back",
+      "operations": [
+        "workerDeregister"
+      ],
+      "case": "failure"
+    },
+    {
+      "feature": "features/workers/reset_session.feature",
+      "change": "tags workerDeregister, whose revoked-session refusal it already asserts",
+      "case": "denial"
+    }
+  ],
+  "operations": [
+    {
+      "operation": "accountUpdateDefaultWorkerPoolRunnerImages",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/account/update-default-worker-pool-runner-images",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 272,
+            "name": "An account admin sets the default runner images, which the default private runner image then answers"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 287,
+            "name": "Only an account admin sets the default runner images"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 294,
+            "name": "A default runner image with a space, too long, or an unknown field is refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "attachableWorkerPoolsInSpace",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/attachable-worker-pools-in-space",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 201,
+            "name": "A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 258,
+            "name": "A space reader lists only the attachable pools of the spaces it reads, and none of a space it cannot read"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 237,
+            "name": "A stack cannot name a pool its space does not reach, nor a pool that does not exist"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "defaultPrivateWorkerPoolRunnerImage",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/default-private-worker-pool-runner-image",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/organization/account_reads.feature",
+            "line": 11,
+            "name": "Each read answers the caller's account"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 272,
+            "name": "An account admin sets the default runner images, which the default private runner image then answers"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/organization/account_reads.feature",
+            "line": 21,
+            "name": "Each read needs a credential"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/organization/account_reads.feature",
+            "line": 29,
+            "name": "Each read answers 503 while PostgreSQL is down and it needs the database"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "defaultPublicWorkerPoolRunnerImage",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/default-public-worker-pool-runner-image",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 62,
+            "name": "The account reads answer its public runner image, the declared egress, its public quota and its usage cycles"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_reads_unavailable.feature",
+            "line": 14,
+            "name": "The public pool's account reads answer 503 while PostgreSQL is down"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "outgoingIPAddresses",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/outgoing-ip-addresses",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 62,
+            "name": "The account reads answer its public runner image, the declared egress, its public quota and its usage cycles"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_reads_unavailable.feature",
+            "line": 14,
+            "name": "The public pool's account reads answer 503 while PostgreSQL is down"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPool",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/public-worker-pool",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          },
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 62,
+            "name": "The account reads answer its public runner image, the declared egress, its public quota and its usage cycles"
+          },
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_reads_unavailable.feature",
+            "line": 14,
+            "name": "The public pool's account reads answer 503 while PostgreSQL is down"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "stackAttachableWorkerPools",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/stacks/{stackId}/attachable-worker-pools",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 201,
+            "name": "A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 258,
+            "name": "A space reader lists only the attachable pools of the spaces it reads, and none of a space it cannot read"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 237,
+            "name": "A stack cannot name a pool its space does not reach, nor a pool that does not exist"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPools",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 67,
+            "name": "Searches find the pools in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 182,
+            "name": "An organization on Starter or Free is refused private worker pools, and one on Business is not"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolCreate",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/worker-pools",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 95,
+            "name": "A managed pool is created once for its owner, found by it and bound to it"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 30,
+            "name": "Two releases run real work side by side, survive an upgrade and a restart, and one drains as it uninstalls"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 24,
+            "name": "Replicated controllers converge separate managed pools and resume their workers after the leader is replaced"
+          },
+          {
+            "uri": "features/workers/kubernetes_lab.feature",
+            "line": 19,
+            "name": "The current worker API creates and removes a pool beside the ready cluster"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 114,
+            "name": "A managed pool is hidden from a caller who cannot read its space"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 70,
+            "name": "A controller cannot use another account, a space its key cannot write, or a pool another owner holds"
+          },
+          {
+            "uri": "features/workers/kubernetes_lab.feature",
+            "line": 29,
+            "name": "The existing API denies pool creation to a space reader"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 182,
+            "name": "An organization on Starter or Free is refused private worker pools, and one on Business is not"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 123,
+            "name": "A managed pool needs an Idempotency-Key and a complete owner"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 89,
+            "name": "The private-workers limit, broken credentials and a blocked deletion stay visible until they are resolved"
+          },
+          {
+            "uri": "features/workers/kubernetes_lab.feature",
+            "line": 35,
+            "name": "The existing API refuses a malformed pool certificate request"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolManaged",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/managed",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 95,
+            "name": "A managed pool is created once for its owner, found by it and bound to it"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 30,
+            "name": "Two releases run real work side by side, survive an upgrade and a restart, and one drains as it uninstalls"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 24,
+            "name": "Replicated controllers converge separate managed pools and resume their workers after the leader is replaced"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 114,
+            "name": "A managed pool is hidden from a caller who cannot read its space"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 123,
+            "name": "A managed pool needs an Idempotency-Key and a complete owner"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 98,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 99,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 100,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 101,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 102,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 103,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 104,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 105,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 106,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 107,
+            "name": "Values the chart refuses fail the install before anything is created"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 110,
+            "name": "A pool whose credential Secret does not exist fails the install"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolSearchSchedulableRuns",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/public/search-schedulable-runs",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolSearchSchedulableRunsSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/public/search-schedulable-runs-suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolSearchUsers",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/public/search-users",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolSearchUsersSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/public/search-users-suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchWorkerPools",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/worker-pools/search",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 67,
+            "name": "Searches find the pools in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 182,
+            "name": "An organization on Starter or Free is refused private worker pools, and one on Business is not"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "searchWorkerPoolsSuggestions",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/worker-pools/search/suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 67,
+            "name": "Searches find the pools in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 167,
+            "name": "A private pool's suggestions refuse a predicate on a field their search does not filter"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolDelete",
+      "document": "api",
+      "method": "DELETE",
+      "path": "/api/v1/worker-pools/{workerPoolId}",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 30,
+            "name": "Two releases run real work side by side, survive an upgrade and a restart, and one drains as it uninstalls"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 24,
+            "name": "Replicated controllers converge separate managed pools and resume their workers after the leader is replaced"
+          },
+          {
+            "uri": "features/workers/kubernetes_lab.feature",
+            "line": 19,
+            "name": "The current worker API creates and removes a pool beside the ready cluster"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 201,
+            "name": "A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 89,
+            "name": "The private-workers limit, broken credentials and a blocked deletion stay visible until they are resolved"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPool",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          },
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 302,
+            "name": "A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolPatch",
+      "document": "api",
+      "method": "PATCH",
+      "path": "/api/v1/worker-pools/{workerPoolId}",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolUpdate",
+      "document": "api",
+      "method": "PUT",
+      "path": "/api/v1/worker-pools/{workerPoolId}",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 201,
+            "name": "A stack names a pool its space reaches, and the pool is neither deleted nor moved out of reach while it does"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 124,
+            "name": "Moving a pool needs WORKER_POOL_CREATE on the space it moves to"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolCycle",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/worker-pools/{workerPoolId}/cycle",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 302,
+            "name": "A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 338,
+            "name": "The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 381,
+            "name": "A drain of a worker the pool lacks, a cycle of no pool, a bad cursor and a malformed registration are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolReset",
+      "document": "api",
+      "method": "POST",
+      "path": "/api/v1/worker-pools/{workerPoolId}/reset",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 26,
+            "name": "An account admin creates a pool from a P-256 key, reads, changes, resets and deletes it"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 86,
+            "name": "A space reader reads the pools of its spaces alone and changes none, and another account sees none"
+          },
+          {
+            "uri": "features/workers/reset_session.feature",
+            "line": 4,
+            "name": "An old session stays revoked after a replacement certificate resumes the same worker"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 136,
+            "name": "A pool needs a P-256 key, a name of its own, a space and a positive preparing timeout"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchIntentProjects",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-intent-projects",
+      "class": "declared-stub",
+      "note": "Answers 501 until intent projects exist (P25); claimed by no capability state",
+      "cases": {
+        "success": [],
+        "denial": [],
+        "failure": []
+      },
+      "missing": [
+        "success",
+        "denial",
+        "failure"
+      ]
+    },
+    {
+      "operation": "workerPoolSearchIntentProjectsSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-intent-projects-suggestions",
+      "class": "declared-stub",
+      "note": "Answers 501 until intent projects exist (P25); claimed by no capability state",
+      "cases": {
+        "success": [],
+        "denial": [],
+        "failure": []
+      },
+      "missing": [
+        "success",
+        "denial",
+        "failure"
+      ]
+    },
+    {
+      "operation": "workerPoolSearchSchedulableRuns",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-schedulable-runs",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          },
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 122,
+            "name": "A private pool's projections answer as a pool that does not exist to a caller who cannot read it"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchSchedulableRunsSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-schedulable-runs-suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 31,
+            "name": "Each queue lists its waiting runs in claim order, and the public pool counts the runs its workers hold"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          },
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 122,
+            "name": "A private pool's projections answer as a pool that does not exist to a caller who cannot read it"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 167,
+            "name": "A private pool's suggestions refuse a predicate on a field their search does not filter"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchUsers",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-users",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          },
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 122,
+            "name": "A private pool's projections answer as a pool that does not exist to a caller who cannot read it"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchUsersSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-users-suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 25,
+            "name": "Each pool lists and counts the stacks that select it in the spaces the caller reads"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          },
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 122,
+            "name": "A private pool's projections answer as a pool that does not exist to a caller who cannot read it"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 167,
+            "name": "A private pool's suggestions refuse a predicate on a field their search does not filter"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchWorkers",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-workers",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 302,
+            "name": "A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 338,
+            "name": "The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 381,
+            "name": "A drain of a worker the pool lacks, a cycle of no pool, a bad cursor and a malformed registration are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolSearchWorkersSuggestions",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-pools/{workerPoolId}/search-workers-suggestions",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 302,
+            "name": "A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 338,
+            "name": "The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 381,
+            "name": "A drain of a worker the pool lacks, a cycle of no pool, a bad cursor and a malformed registration are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerDrainSet",
+      "document": "api",
+      "method": "PUT",
+      "path": "/api/v1/worker-pools/{workerPoolId}/workers/{workerId}/drain",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/kubernetes_recovery.feature",
+            "line": 105,
+            "name": "A drained worker finishes its run through a lost connection, and claims no other until it is undrained"
+          },
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 302,
+            "name": "A launcher registers and polls, an account admin drains, finds and cycles it, and it deregisters"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 338,
+            "name": "The worker API refuses a user token, a replayed registration and a replaced certificate, and a registration beyond private-workers"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pools.feature",
+            "line": 381,
+            "name": "A drain of a worker the pool lacks, a cycle of no pool, a bad cursor and a malformed registration are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerUsage",
+      "document": "api",
+      "method": "GET",
+      "path": "/api/v1/worker-usage",
+      "class": "account-scoped",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 62,
+            "name": "The account reads answer its public runner image, the declared egress, its public quota and its usage cycles"
+          }
+        ],
+        "denial": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 86,
+            "name": "A tier without the pool and account capabilities is refused every projection"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/pool_projections.feature",
+            "line": 136,
+            "name": "A stale cursor, a filter on an ordering field, a cycle out of reach and the public selector on a private route are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolCredentials",
+      "document": "operator",
+      "method": "GET",
+      "path": "/operator/v1/public-worker-pool",
+      "class": "operator",
+      "note": "Operator credential; an account credential is the wrong audience and answers 401, not a role 403",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 15,
+            "name": "Operator credentials create read and rotate the same installation pool across replicas"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 40,
+            "name": "An account credential cannot read create or reset installation credentials"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 49,
+            "name": "Missing credentials invalid requests and unconditional rotation fail without replacement"
+          },
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 77,
+            "name": "A real credential persistence failure rolls back and can be retried"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolCreate",
+      "document": "operator",
+      "method": "POST",
+      "path": "/operator/v1/public-worker-pool",
+      "class": "operator",
+      "note": "Operator credential; an account credential is the wrong audience and answers 401, not a role 403",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 15,
+            "name": "Operator credentials create read and rotate the same installation pool across replicas"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 40,
+            "name": "An account credential cannot read create or reset installation credentials"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 49,
+            "name": "Missing credentials invalid requests and unconditional rotation fail without replacement"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "publicWorkerPoolReset",
+      "document": "operator",
+      "method": "POST",
+      "path": "/operator/v1/public-worker-pool/reset",
+      "class": "operator",
+      "note": "Operator credential; an account credential is the wrong audience and answers 401, not a role 403",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 15,
+            "name": "Operator credentials create read and rotate the same installation pool across replicas"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 40,
+            "name": "An account credential cannot read create or reset installation credentials"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 49,
+            "name": "Rotation revokes old sessions even after the replacement key registers"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 49,
+            "name": "Missing credentials invalid requests and unconditional rotation fail without replacement"
+          },
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 77,
+            "name": "A real credential persistence failure rolls back and can be retried"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerDeregister",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/deregister",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 24,
+            "name": "An owner binds a pool, resumes its slots and releases it once no worker remains"
+          }
+        ],
+        "credentialRefusal": [],
+        "failure": [
+          {
+            "uri": "features/workers/deregistration_unavailable.feature",
+            "line": 10,
+            "name": "A worker's deregistration answers 503 while PostgreSQL is down and succeeds once it is back"
+          }
+        ]
+      },
+      "missing": [
+        "credentialRefusal"
+      ]
+    },
+    {
+      "operation": "workerPoll",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/poll",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/pool_queues.feature",
+            "line": 86,
+            "name": "A retiring worker's exit poll answers at once and leaves the waiting run queued"
+          },
+          {
+            "uri": "features/workers/public_execution.feature",
+            "line": 46,
+            "name": "Public execution respects the Free slot ceiling and resumes waiting work after release"
+          },
+          {
+            "uri": "features/workers/public_execution_admission.feature",
+            "line": 40,
+            "name": "Stopping a real public plan admits waiting work after its terminal report"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 19,
+            "name": "Public registration resumes the same worker without consuming private capacity"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 30,
+            "name": "Replays missing capabilities and wrong credential audiences are refused"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 49,
+            "name": "Rotation revokes old sessions even after the replacement key registers"
+          },
+          {
+            "uri": "features/workers/reset_session.feature",
+            "line": 4,
+            "name": "An old session stays revoked after a replacement certificate resumes the same worker"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/public_execution_admission.feature",
+            "line": 58,
+            "name": "Losing a real public launcher releases waiting work for a replacement"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolBind",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/pools/bind",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 24,
+            "name": "An owner binds a pool, resumes its slots and releases it once no worker remains"
+          },
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 95,
+            "name": "A managed pool is created once for its owner, found by it and bound to it"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 24,
+            "name": "Replicated controllers converge separate managed pools and resume their workers after the leader is replaced"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 52,
+            "name": "An existing pool is bound to its resource and released when the resource is deleted"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 53,
+            "name": "A bound pool refuses another owner, an ownerless registration and an account token"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 70,
+            "name": "A controller cannot use another account, a space its key cannot write, or a pool another owner holds"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 73,
+            "name": "Malformed proofs, a slot without an owner and a replaced certificate are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerPoolRelease",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/pools/release",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 24,
+            "name": "An owner binds a pool, resumes its slots and releases it once no worker remains"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 52,
+            "name": "An existing pool is bound to its resource and released when the resource is deleted"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 53,
+            "name": "A bound pool refuses another owner, an ownerless registration and an account token"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 73,
+            "name": "Malformed proofs, a slot without an owner and a replaced certificate are refused"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerRegister",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/register",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 24,
+            "name": "An owner binds a pool, resumes its slots and releases it once no worker remains"
+          },
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 95,
+            "name": "A managed pool is created once for its owner, found by it and bound to it"
+          },
+          {
+            "uri": "features/workers/kubernetes_chart.feature",
+            "line": 30,
+            "name": "Two releases run real work side by side, survive an upgrade and a restart, and one drains as it uninstalls"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 24,
+            "name": "Replicated controllers converge separate managed pools and resume their workers after the leader is replaced"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 52,
+            "name": "An existing pool is bound to its resource and released when the resource is deleted"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 19,
+            "name": "Public registration resumes the same worker without consuming private capacity"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 53,
+            "name": "A bound pool refuses another owner, an ownerless registration and an account token"
+          },
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 132,
+            "name": "Slots of every pool share the organization's private-workers limit"
+          },
+          {
+            "uri": "features/workers/public_pool.feature",
+            "line": 69,
+            "name": "Disabled public capacity cannot register even with valid operator-issued credentials"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 30,
+            "name": "Replays missing capabilities and wrong credential audiences are refused"
+          },
+          {
+            "uri": "features/workers/public_registration.feature",
+            "line": 49,
+            "name": "Rotation revokes old sessions even after the replacement key registers"
+          },
+          {
+            "uri": "features/workers/reset_session.feature",
+            "line": 4,
+            "name": "An old session stays revoked after a replacement certificate resumes the same worker"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/workers/hosting.feature",
+            "line": 73,
+            "name": "Malformed proofs, a slot without an owner and a replaced certificate are refused"
+          },
+          {
+            "uri": "features/workers/kubernetes_controller.feature",
+            "line": 89,
+            "name": "The private-workers limit, broken credentials and a blocked deletion stay visible until they are resolved"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerRunTokenKeys",
+      "document": "worker",
+      "method": "GET",
+      "path": "/worker/v1/run-token-keys",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/runs/signed.feature",
+            "line": 41,
+            "name": "The server-signed run token of the assignment is admitted, and a worker session reads only public keys"
+          },
+          {
+            "uri": "features/workers/kubernetes_initialization.feature",
+            "line": 71,
+            "name": "A run's signed token and initialization commands verify it in hardened helper Pods of its runner image"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/runs/signed.feature",
+            "line": 56,
+            "name": "Only a worker session reads the run token keys"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/runs/signed.feature",
+            "line": 63,
+            "name": "A deregistered worker's session reads no run token keys"
+          }
+        ]
+      },
+      "missing": []
+    },
+    {
+      "operation": "workerRunArtifacts",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/runs/{run}/artifacts",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/kubernetes_execution.feature",
+            "line": 49,
+            "name": "A tracked OpenTofu run plans in one Pod and applies in another that restores its sealed workspace"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/vendors/sanitization_fence.feature",
+            "line": 42,
+            "name": "Existing run tokens and previously uploaded objects need the resolved mode receipt"
+          }
+        ]
+      },
+      "native": [
+        "TestAccRunReports"
+      ],
+      "missing": []
+    },
+    {
+      "operation": "workerRunLogChunks",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/runs/{run}/log-chunks",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 55,
+            "name": "A state's log pages back every committed line in order, while the run is in the state and after it leaves"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 89,
+            "name": "Once the run leaves a state, its log downloads whole, the chunks' bytes in order"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 111,
+            "name": "A chunk the worker lost, and one its report counts but it never committed, each read and download as a line that says so"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 128,
+            "name": "An in-run token cannot read the stack's full run or task projections"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 163,
+            "name": "The run's own in-run API token reads its stack while the run plans, but neither the run nor its logs"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 183,
+            "name": "A caller who cannot read the run, an unknown run, a state no run has, a state version out of range, and a token that is not this log's are refused"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 209,
+            "name": "Deleting an ended run's logs answers each state's log as deleted, and a second deletion as done"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 228,
+            "name": "Deleting a run's logs needs SPACE_ADMIN on the account, which a space admin below it lacks"
+          },
+          {
+            "uri": "features/runs/logs.feature",
+            "line": 238,
+            "name": "A run that has not ended keeps its logs, and an unknown run's are not deleted"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": []
+      },
+      "native": [
+        "TestAccRunReports"
+      ],
+      "missing": []
+    },
+    {
+      "operation": "workerRunReport",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/runs/{run}/reports",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/protocol.feature",
+            "line": 42,
+            "name": "A launcher claims a run, opens its specification and runs it in a container that reports"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 48,
+            "name": "A missing current plan fails closed and its exact report can recover the committed answer"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 97,
+            "name": "A malformed artifact cannot make the authenticated worker bypass PLAN evaluation"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 98,
+            "name": "A unreadable artifact cannot make the authenticated worker bypass PLAN evaluation"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 99,
+            "name": "A missing-changes artifact cannot make the authenticated worker bypass PLAN evaluation"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 100,
+            "name": "A invalid-version artifact cannot make the authenticated worker bypass PLAN evaluation"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 103,
+            "name": "A replan cannot reuse its earlier recorded input or receipt"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 135,
+            "name": "A locked stack preserves confirmation even when PLAN allows autodeploy"
+          },
+          {
+            "uri": "features/policies/plan_reports.feature",
+            "line": 151,
+            "name": "An on-worker allow replays only the exact committed delta"
+          }
+        ]
+      },
+      "native": [
+        "TestAccRunReports"
+      ],
+      "missing": []
+    },
+    {
+      "operation": "workerRunSpec",
+      "document": "worker",
+      "method": "GET",
+      "path": "/worker/v1/runs/{run}/spec",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/protocol.feature",
+            "line": 42,
+            "name": "A launcher claims a run, opens its specification and runs it in a container that reports"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/runs/spec.feature",
+            "line": 37,
+            "name": "A raw Git stack's run fetches its source with no credential and mounts the newest listed Terraform"
+          },
+          {
+            "uri": "features/runs/spec.feature",
+            "line": 51,
+            "name": "A stack's version constraint, masking and image binary reach its run's specification"
+          },
+          {
+            "uri": "features/runs/spec.feature",
+            "line": 63,
+            "name": "A constraint no listed release meets refuses the specification, naming the constraint"
+          },
+          {
+            "uri": "features/runs/spec.feature",
+            "line": 75,
+            "name": "A run ID longer than any run's is refused naming its path, and another run's ID as another run's"
+          }
+        ]
+      },
+      "native": [
+        "TestAccRunSpec"
+      ],
+      "missing": []
+    },
+    {
+      "operation": "workerRunUploadURLs",
+      "document": "worker",
+      "method": "POST",
+      "path": "/worker/v1/runs/{run}/upload-urls",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/kubernetes_execution.feature",
+            "line": 49,
+            "name": "A tracked OpenTofu run plans in one Pod and applies in another that restores its sealed workspace"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": [
+          {
+            "uri": "features/vendors/sanitization_fence.feature",
+            "line": 42,
+            "name": "Existing run tokens and previously uploaded objects need the resolved mode receipt"
+          }
+        ]
+      },
+      "native": [
+        "TestAccRunReports"
+      ],
+      "missing": []
+    },
+    {
+      "operation": "workerRunWorkspace",
+      "document": "worker",
+      "method": "GET",
+      "path": "/worker/v1/runs/{run}/workspace",
+      "class": "protocol",
+      "note": "The worker API declares no 403: a pool certificate, worker session or run token admits the call, and a credential of another kind, run, owner or certificate generation answers 401",
+      "cases": {
+        "success": [
+          {
+            "uri": "features/workers/kubernetes_execution.feature",
+            "line": 49,
+            "name": "A tracked OpenTofu run plans in one Pod and applies in another that restores its sealed workspace"
+          }
+        ],
+        "credentialRefusal": [
+          {
+            "uri": "features/expressions/deploy.feature",
+            "line": 60,
+            "name": "A run token reads only its run's specification, and a worker's session token reads none"
+          }
+        ],
+        "failure": []
+      },
+      "native": [
+        "TestAccRunReports"
+      ],
+      "missing": []
+    }
+  ],
+  "requirements": [
+    {
+      "id": "public-pool-identity",
+      "source": "P14.1",
+      "owners": [
+        742
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 742,
+          "pullRequest": 768,
+          "mergeCommit": "e209b87d"
+        },
+        {
+          "issue": 766,
+          "pullRequest": 769,
+          "mergeCommit": "e69fc970"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/public_pool.feature",
+          "scenarios": 5,
+          "steps": 91,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/public_registration.feature",
+          "scenarios": 3,
+          "steps": 66,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/reset_session.feature",
+          "scenarios": 1,
+          "steps": 55,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccPublicPoolCredentials",
+        "TestAccPublicWorkerStorage",
+        "TestAccPublicResetDoesNotRefreshObsoleteWorkers",
+        "TestAccPublicWorkersShareGenerationFence"
+      ]
+    },
+    {
+      "id": "public-claim-limits",
+      "source": "P14.1",
+      "owners": [
+        743
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 743,
+          "pullRequest": 774,
+          "mergeCommit": "ba6bd781"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/public_execution.feature",
+          "scenarios": 3,
+          "steps": 75,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        },
+        {
+          "feature": "features/workers/public_execution_admission.feature",
+          "scenarios": 5,
+          "steps": 117,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccPublicCapacityConcurrentAccountsAndOrganizations",
+        "TestAccPublicClaimSkipsFullQuotaOwnerWithoutStarvingEligibleAccount",
+        "TestAccPublicClaimSkipsLockedRunAndRetriesAfterRelease",
+        "TestAccPublicTerminalAndWorkerLossReleaseCapacityAcrossReplicas",
+        "TestAccPublicAssignmentFailureConsumesNoCapacity",
+        "TestAccPublicClaimStorage",
+        "TestAccPublicClaimStorageUnavailable"
+      ]
+    },
+    {
+      "id": "public-restrictions",
+      "source": "P14.1",
+      "owners": [
+        743
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 743,
+          "pullRequest": 774,
+          "mergeCommit": "ba6bd781"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/public_admission.feature",
+          "scenarios": 3,
+          "steps": 55,
+          "sources": [
+            "main-cover-accept-integrations"
+          ]
+        },
+        {
+          "feature": "features/workers/public_execution.feature",
+          "scenarios": 3,
+          "steps": 75,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        },
+        {
+          "feature": "features/workers/public_execution_admission.feature",
+          "scenarios": 5,
+          "steps": 117,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccPublicCreationRefusesPriorityAndDriftBeforeWrites",
+        "TestAccPrivateCreationRetainsPriorityAndDrift",
+        "TestAccPriorityUsesImmutableRunPoolAfterStackMove",
+        "TestAccPublicSelectionExcludesIneligibleReadyRows"
+      ]
+    },
+    {
+      "id": "public-quota-projection",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 744,
+          "pullRequest": 778,
+          "mergeCommit": "e01013f3"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/pool_projections.feature",
+          "scenarios": 11,
+          "steps": 341,
+          "sources": [
+            "focused-projections",
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/pool_reads_unavailable.feature",
+          "scenarios": 1,
+          "steps": 8,
+          "sources": [
+            "focused-reads"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "public-default-image-egress",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 744,
+          "pullRequest": 778,
+          "mergeCommit": "e01013f3"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/pool_projections.feature",
+          "scenarios": 11,
+          "steps": 341,
+          "sources": [
+            "focused-projections",
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/pool_reads_unavailable.feature",
+          "scenarios": 1,
+          "steps": 8,
+          "sources": [
+            "focused-reads"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "public-queue-users",
+      "source": "P14.1",
+      "owners": [
+        744
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 744,
+          "pullRequest": 778,
+          "mergeCommit": "e01013f3"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/pool_queues.feature",
+          "scenarios": 2,
+          "steps": 109,
+          "sources": [
+            "main-cover-accept-integrations"
+          ]
+        },
+        {
+          "feature": "features/workers/pool_projections.feature",
+          "scenarios": 11,
+          "steps": 341,
+          "sources": [
+            "focused-projections",
+            "main-cover-accept-core"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccCaptures/C292"
+      ]
+    },
+    {
+      "id": "worker-usage",
+      "source": "P14.1",
+      "owners": [
+        744,
+        753
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 744,
+          "pullRequest": 778,
+          "mergeCommit": "e01013f3"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/pool_projections.feature",
+          "scenarios": 11,
+          "steps": 341,
+          "sources": [
+            "focused-projections",
+            "main-cover-accept-core"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccWorkerPoolSamples"
+      ]
+    },
+    {
+      "id": "managed-pool-ownership",
+      "source": "P14.2",
+      "owners": [
+        745
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 745,
+          "pullRequest": 777,
+          "mergeCommit": "8676d8e8"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/hosting.feature",
+          "scenarios": 7,
+          "steps": 161,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_controller.feature",
+          "scenarios": 4,
+          "steps": 102,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccManagedPoolConcurrentCreationAndResponseRecovery",
+        "TestAccManagedPoolLookupAuthorizationAndRetainedIdentity",
+        "TestAccManagedSettingsRequireExactOwnerAndVersion",
+        "TestAccManagedCreationFailureRollsBackAllOwnership",
+        "TestAccPoolBindingStorage",
+        "TestAccPoolBindingSerializesConcurrentBinds",
+        "TestAccPoolResetReleasesBinding"
+      ]
+    },
+    {
+      "id": "controller-resources",
+      "source": "P14.2",
+      "owners": [
+        745
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 745,
+          "pullRequest": 777,
+          "mergeCommit": "8676d8e8"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_controller.feature",
+          "scenarios": 4,
+          "steps": 102,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_schema.feature",
+          "scenarios": 6,
+          "steps": 18,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "capacity-finalizers",
+      "source": "P14.2",
+      "owners": [
+        745,
+        747
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 745,
+          "pullRequest": 777,
+          "mergeCommit": "8676d8e8"
+        },
+        {
+          "issue": 747,
+          "pullRequest": 786,
+          "mergeCommit": "ff16b11f"
+        },
+        {
+          "issue": 799,
+          "pullRequest": 802,
+          "mergeCommit": "2e3f020d"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_controller.feature",
+          "scenarios": 4,
+          "steps": 102,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_chart.feature",
+          "scenarios": 12,
+          "steps": 117,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/hosting.feature",
+          "scenarios": 7,
+          "steps": 161,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        },
+        {
+          "feature": "features/workers/pool_queues.feature",
+          "scenarios": 2,
+          "steps": 109,
+          "sources": [
+            "main-cover-accept-integrations"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "portable-preparation",
+      "source": "P14.2",
+      "owners": [
+        746
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 746,
+          "pullRequest": 779,
+          "mergeCommit": "20a2fe80"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_execution.feature",
+          "scenarios": 3,
+          "steps": 109,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_phase_inputs.feature",
+          "scenarios": 2,
+          "steps": 64,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccDockerExecutor"
+      ]
+    },
+    {
+      "id": "private-handoff",
+      "source": "P14.2",
+      "owners": [
+        746
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 746,
+          "pullRequest": 779,
+          "mergeCommit": "20a2fe80"
+        },
+        {
+          "issue": 801,
+          "pullRequest": 810,
+          "mergeCommit": "e95e9ad3"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_execution.feature",
+          "scenarios": 3,
+          "steps": 109,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_phase_inputs.feature",
+          "scenarios": 2,
+          "steps": 64,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_recovery.feature",
+          "scenarios": 4,
+          "steps": 138,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "execution-deadlines",
+      "source": "P14.2",
+      "owners": [
+        746,
+        747
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 746,
+          "pullRequest": 779,
+          "mergeCommit": "20a2fe80"
+        },
+        {
+          "issue": 747,
+          "pullRequest": 786,
+          "mergeCommit": "ff16b11f"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_recovery.feature",
+          "scenarios": 4,
+          "steps": 138,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_initialization.feature",
+          "scenarios": 3,
+          "steps": 80,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "pod-recovery-signals",
+      "source": "P14.2",
+      "owners": [
+        747
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 747,
+          "pullRequest": 786,
+          "mergeCommit": "ff16b11f"
+        },
+        {
+          "issue": 789,
+          "pullRequest": 794,
+          "mergeCommit": "512fa10f"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_recovery.feature",
+          "scenarios": 4,
+          "steps": 138,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_chart.feature",
+          "scenarios": 12,
+          "steps": 117,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "worker-artifacts",
+      "source": "P14.2",
+      "owners": [
+        748
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 748,
+          "pullRequest": 800,
+          "mergeCommit": "d81c199a"
+        },
+        {
+          "issue": null,
+          "pullRequest": 804,
+          "mergeCommit": "f4af4296"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_chart.feature",
+          "scenarios": 12,
+          "steps": 117,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "worker-policy-runtime",
+      "source": "P14.3",
+      "owners": [
+        749
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 749,
+          "pullRequest": 767,
+          "mergeCommit": "623abe6e"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/policies/worker_initialization.feature",
+          "scenarios": 16,
+          "steps": 346,
+          "sources": [
+            "main-cover-accept-terraform"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_initialization.feature",
+          "scenarios": 3,
+          "steps": 80,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "isolated-policy-exec",
+      "source": "P14.3",
+      "owners": [
+        750
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 750,
+          "pullRequest": 780,
+          "mergeCommit": "35fb4bab"
+        },
+        {
+          "issue": 796,
+          "pullRequest": 809,
+          "mergeCommit": "a8b92b3b"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/policies/worker_initialization.feature",
+          "scenarios": 16,
+          "steps": 346,
+          "sources": [
+            "main-cover-accept-terraform"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_initialization.feature",
+          "scenarios": 3,
+          "steps": 80,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "signed-run-admission",
+      "source": "P14.3",
+      "owners": [
+        751
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 751,
+          "pullRequest": 787,
+          "mergeCommit": "7cd1d91b"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/runs/signed.feature",
+          "scenarios": 9,
+          "steps": 208,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        },
+        {
+          "feature": "features/policies/worker_initialization.feature",
+          "scenarios": 16,
+          "steps": 346,
+          "sources": [
+            "main-cover-accept-terraform"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_initialization.feature",
+          "scenarios": 3,
+          "steps": 80,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "availability",
+      "source": "P14.4",
+      "owners": [
+        744,
+        747
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 744,
+          "pullRequest": 778,
+          "mergeCommit": "e01013f3"
+        },
+        {
+          "issue": 747,
+          "pullRequest": 786,
+          "mergeCommit": "ff16b11f"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_recovery.feature",
+          "scenarios": 4,
+          "steps": 138,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        },
+        {
+          "feature": "features/workers/protocol.feature",
+          "scenarios": 3,
+          "steps": 65,
+          "sources": [
+            "main-cover-accept-runs"
+          ]
+        },
+        {
+          "feature": "features/workers/pools.feature",
+          "scenarios": 16,
+          "steps": 452,
+          "sources": [
+            "main-cover-accept-core"
+          ]
+        }
+      ],
+      "native": [
+        "TestAccWorkers",
+        "TestAccWorkerReap"
+      ]
+    },
+    {
+      "id": "stage-inputs",
+      "source": "P14.5",
+      "owners": [
+        752
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 752,
+          "pullRequest": 798,
+          "mergeCommit": "9209b30a"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/phase_inputs.feature",
+          "scenarios": 3,
+          "steps": 83,
+          "sources": [
+            "main-cover-accept-runs",
+            "main-cover-accept-terraform"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_phase_inputs.feature",
+          "scenarios": 2,
+          "steps": 64,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "vendor-reporting",
+      "source": "P14.5",
+      "owners": [
+        752
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 752,
+          "pullRequest": 798,
+          "mergeCommit": "9209b30a"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/phase_inputs.feature",
+          "scenarios": 3,
+          "steps": 83,
+          "sources": [
+            "main-cover-accept-runs",
+            "main-cover-accept-terraform"
+          ]
+        },
+        {
+          "feature": "features/workers/kubernetes_phase_inputs.feature",
+          "scenarios": 2,
+          "steps": 64,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "api-local-final-proof",
+      "source": "P14.exit",
+      "owners": [
+        753
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 753,
+          "pullRequest": null,
+          "mergeCommit": null
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/pool_reads_unavailable.feature",
+          "scenarios": 1,
+          "steps": 8,
+          "sources": [
+            "focused-reads"
+          ]
+        },
+        {
+          "feature": "features/workers/pool_projections.feature",
+          "scenarios": 11,
+          "steps": 341,
+          "sources": [
+            "focused-projections",
+            "main-cover-accept-core"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "local-terraform-lab",
+      "source": "P14.extension",
+      "owners": [
+        741
+      ],
+      "delivery": "delivered",
+      "deliveredBy": [
+        {
+          "issue": 741,
+          "pullRequest": 763,
+          "mergeCommit": "26e13072"
+        },
+        {
+          "issue": 770,
+          "pullRequest": 771,
+          "mergeCommit": "8c221eb2"
+        }
+      ],
+      "features": [
+        {
+          "feature": "features/workers/kubernetes_lab.feature",
+          "scenarios": 3,
+          "steps": 33,
+          "sources": [
+            "kubernetes-batch"
+          ]
+        }
+      ],
+      "native": []
+    },
+    {
+      "id": "shared-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        754
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    },
+    {
+      "id": "eks-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        755
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    },
+    {
+      "id": "aks-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        756
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    },
+    {
+      "id": "gke-worker-hosting",
+      "source": "P14.extension",
+      "owners": [
+        757
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    },
+    {
+      "id": "cloud-lab-lifecycle",
+      "source": "P14.extension",
+      "owners": [
+        758
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    },
+    {
+      "id": "concurrent-cloud-proof",
+      "source": "P14.extension",
+      "owners": [
+        759
+      ],
+      "delivery": "unproven",
+      "evidence": "Managed-cloud hosting and its acceptance belong to their open owners; nothing here proves cloud execution"
+    }
+  ],
+  "capabilityStates": {
+    "tag:Worker Pools": "partial",
+    "tag:Account": "partial",
+    "resource:spacelift_worker_pool": "partial",
+    "resource:spacelift_worker_pool_recycle": "partial",
+    "resource:spacelift_default_runner_image": "partial",
+    "data-source:spacelift_worker_pool": "partial",
+    "data-source:spacelift_worker_pools": "partial",
+    "data-source:spacelift_ips": "partial",
+    "check": "specref parity --states --check passes"
+  },
+  "captureGaps": [
+    {
+      "id": "C21",
+      "status": "unavailable",
+      "proves": "infraweave's own controller traffic, ownership and registration"
+    },
+    {
+      "id": "C66",
+      "status": "unavailable",
+      "proves": "the chosen ro_/wo_/all phase rules on Docker and k3s; not parity"
+    },
+    {
+      "id": "C67",
+      "status": "unavailable",
+      "proves": "infraweave's issued preparing deadline and Pod activeDeadlineSeconds cap"
+    },
+    {
+      "id": "C68",
+      "status": "unavailable",
+      "proves": "infraweave's version 1 initialization input with authored V0/V1 programs"
+    },
+    {
+      "id": "C69",
+      "status": "unavailable",
+      "proves": "vendor and runtime labels for the implemented drivers only"
+    },
+    {
+      "id": "C292",
+      "status": "partial",
+      "proves": "the nine recorded public queue, used-by and suggestion exchanges replay; private reprioritization unobserved"
+    }
+  ],
+  "cleanup": {
+    "label": "io.infraweave.lab.owner",
+    "labelledAfter": {
+      "containers": 0,
+      "volumes": 0,
+      "networks": 0
+    },
+    "owners": [
+      {
+        "run": "controls A",
+        "owner": "iw-lab-aeb5a45bc6f34328a60fac0bcb28c2f3",
+        "before": {
+          "containers": 4,
+          "volumes": 4,
+          "networks": 1
+        },
+        "after": "empty"
+      },
+      {
+        "run": "controls B",
+        "owner": "iw-lab-2ba1b9ad3fe348f2951e4fbbaec9666b",
+        "before": {
+          "containers": 0,
+          "volumes": 0,
+          "networks": 0
+        },
+        "after": "empty"
+      },
+      {
+        "run": "batch attempt 1",
+        "owner": "iw-lab-b3180829ccb645248467c9caf8b350e8",
+        "before": {
+          "containers": 4,
+          "volumes": 4,
+          "networks": 1
+        },
+        "after": "empty"
+      },
+      {
+        "run": "batch attempt 2",
+        "owner": "iw-lab-8a8e03799dde4d1b979cadf59c5a97b1",
+        "before": {
+          "containers": 4,
+          "volumes": 4,
+          "networks": 1
+        },
+        "after": "empty"
+      },
+      {
+        "run": "passing batch",
+        "owner": "iw-lab-e416b57724de4401b3a017aa81fa329b",
+        "before": {
+          "containers": 4,
+          "volumes": 4,
+          "networks": 1
+        },
+        "after": "empty"
+      }
+    ],
+    "privateInputsRemoved": true,
+    "testcontainers": null
+  },
+  "openIssues": [
+    {
+      "issue": 814,
+      "summary": "initialization scenario's 45-second budget fails on a contended local node"
+    }
+  ],
+  "remainingOwners": [
+    755,
+    756,
+    757,
+    759
+  ]
+}

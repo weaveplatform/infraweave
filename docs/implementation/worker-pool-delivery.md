@@ -19,7 +19,7 @@ executed sources, none of them a synthetic fixture:
 | --- | --- | --- |
 | Main quality gate [CI 45218707334](https://github.com/weaveplatform/infraweave/actions/runs/45218707334) | `e95e9ad3` (#810) | All 37 jobs passed: seven acceptance partitions with **1,208 scenarios / 28,606 steps**, native and capture suites, certified FIPS for every suite, the Terraform policy and Kubernetes batches and the coverage gate |
 | Local `make gate` | ⟨GATE_REV⟩ | ⟨GATE_SUMMARY⟩ |
-| Local Terraform Kubernetes batch, certified FIPS | ⟨LAB_REV⟩, clean tree | ⟨LAB_SUMMARY⟩ |
+| Local Terraform Kubernetes batch, certified FIPS | `e5feb44b`, clean tree | Passed: **37 scenarios / 661 steps**, the six ownership and injected-failure controls, and absence readback for every owner |
 
 The local runs used native ARM64 Docker Desktop 29.6.1, official Terraform
 1.17.2 and the pinned `rancher/k3s:v1.37.2-k3s1` digest. The exact-head CI of
@@ -60,9 +60,16 @@ the normal API against real PostgreSQL:
   predicate on a field their search does not filter*: 422 for an unknown field
   and for the ordering-only `position`, 404 for a pool that does not exist.
 
+The worker protocol's `workerDeregister` had success evidence only. Its
+revoked-session refusal was already asserted by the reset-session scenario,
+which now names the operation, and
+`workers/deregistration_unavailable.feature` adds its failure: a registered
+worker's deregistration answers 503 while the server's own PostgreSQL is
+stopped, the worker stays registered, and the same session deregisters it with
+204 once PostgreSQL is back.
+
 Without the outage scenario, `data-source:spacelift_ips` computes only `stub`.
-The reset-session scenario now also names `workerDeregister`, whose refusal of a
-revoked session it already asserts. Protocol routes keep their classification:
+Protocol routes keep their classification:
 the run-scoped routes share the runner credential, whose refusal for a worker
 session, another run and an account token `expressions/deploy.feature` asserts,
 while fenced reports, uploads and artifacts answer 409/422 in
@@ -88,11 +95,13 @@ features and native `TestAcc` suites; the table summarizes them.
 | Phase-scoped inputs and vendor reporting | `phase_inputs` (Docker), `kubernetes_phase_inputs` (k3s) |
 | Local Terraform lab | `kubernetes_lab` plus the two-owner and injected-failure controls below |
 
-The concurrent-claim proof is native: real PostgreSQL, two application
-replicas and concurrent public workers contend for the last slots of two
-organizations' accounts; one organization's exhausted quota leaves the other
-eligible. The tier gate is exercised in both directions: a Bare tier is refused
-every pool projection with `feature-not-in-tier`, Starter and Free are refused
+The concurrent-claim proof is native over real PostgreSQL: fifty public
+workers poll at once across application replicas for three accounts' waiting
+runs. With pooled organization grants and lower account ceilings exactly 1, 2
+and 2 runs are assigned; with billing off every waiting run is assigned; no run
+is assigned twice. A separate suite shows an owner at its full quota is skipped
+without starving an eligible account. The tier gate is exercised in both
+directions: a Bare tier is refused every pool projection with `feature-not-in-tier`, Starter and Free are refused
 private pools, Business is admitted and its aggregate three private workers stop
 the fourth registration with `LimitReached`.
 
@@ -150,8 +159,10 @@ concurrently on the six-CPU host against the two-CPU cluster. Each failed
 `kubernetes_initialization`'s signed-token scenario because the second helper
 Pod's container started after the policy's 45-second deadline; the second
 attempt also timed out `kubernetes_recovery`'s adoption scenario. The batch
-then passed with CI's settings, `GOMAXPROCS=2` and `GOFLAGS=-p=1`. Neither
-failed attempt is counted as evidence. Each still destroyed its owned
+then passed with CI's settings, `GOMAXPROCS=2` and `GOFLAGS=-p=1`.
+[#814](https://github.com/weaveplatform/infraweave/issues/814) tracks that
+scenario's time budget under node contention. Neither failed attempt is counted
+as evidence. Each still destroyed its owned
 infrastructure and verified the readback, which is the failed-attempt cleanup
 evidence below.
 
@@ -205,4 +216,6 @@ Ordinary acceptance's testcontainers are reaped when each test process exits;
   the matrix keeps their requirements `unproven`.
 - The epic stays open until the maintainer closes it; child closure and this
   audit do not close it.
-⟨OPEN_ISSUES⟩
+- [#814](https://github.com/weaveplatform/infraweave/issues/814): the
+  initialization scenario's 45-second budget fails on a contended local node.
+- The two intent-project searches answer 501 until intent projects exist (P25).
