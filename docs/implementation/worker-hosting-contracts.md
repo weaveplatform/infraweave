@@ -20,7 +20,7 @@ a skipped cloud job cannot complete that delivery.
 | [#748](https://github.com/weaveplatform/infraweave/issues/748) | `deploy/helm/infraweave-workers` | One strict values schema, CRDs, controller, scoped RBAC, resources and Pod security contract across clouds; install/upgrade/finalizer proof |
 | [#755](https://github.com/weaveplatform/infraweave/issues/755) | `deploy/terraform/modules/workers/aws` | Ship `test/terraform/platform/workers/aws`, EKS Auto Mode create and explicit existing EKS cases, exact pins, cloud cleanup/readback |
 | [#756](https://github.com/weaveplatform/infraweave/issues/756) | `deploy/terraform/modules/workers/azure` | Ship `test/terraform/platform/workers/azure`, AKS create and explicit existing AKS cases, exact pins, cloud cleanup/readback |
-| [#757](https://github.com/weaveplatform/infraweave/issues/757) | `deploy/terraform/modules/workers/google` | Ship `test/terraform/platform/workers/google`, GKE Autopilot create and explicit existing GKE cases, exact pins, cloud cleanup/readback |
+| [#757](https://github.com/weaveplatform/infraweave/issues/757) | `deploy/terraform/modules/workers/google` | Ship `test/terraform/platform/workers/google`, GKE Standard create with an explicit node pool and explicit existing GKE cases, exact pins, cloud cleanup/readback |
 | [#741](https://github.com/weaveplatform/infraweave/issues/741) | `test/terraform/lab` Kubernetes extension | Local Kubernetes lifecycle and real application execution; supplies no managed-cloud evidence |
 | [#758](https://github.com/weaveplatform/infraweave/issues/758) | Existing lab lifecycle extended to cloud roots | Common manifest validation, private journals, failure/interruption cleanup, two-owner isolation and evidence retention |
 | [#759](https://github.com/weaveplatform/infraweave/issues/759) | Concurrent acceptance through those roots | Distinct stable pools executing simultaneously on all three clouds, selected-pool loss with no fallback, complete cleanup |
@@ -86,8 +86,8 @@ application/operator setup, never to a cloud-specific tier or cloud module.
 |---|---|---|---|
 | Cloud IDs/location | `account_id`, `region` | `tenant_id`, `subscription_id`, `location`, `resource_group_name` | `project_id`, `project_number`, regional `location` |
 | Cluster ID | EKS cluster ARN and name | Full AKS ARM resource ID and name | `projects/{project}/locations/{location}/clusters/{name}` |
-| Create profile | EKS Auto Mode | AKS with explicitly selected supported Linux node pool/profile and network-policy implementation | Regional GKE Autopilot |
-| Existing profile | Explicit EKS cluster; Auto Mode or declared managed-node profile verified by this delivery | Explicit AKS cluster and supported Linux node pools | Explicit GKE cluster; Autopilot or declared managed Standard profile verified by this delivery |
+| Create profile | EKS Auto Mode | AKS with explicitly selected supported Linux node pool/profile and network-policy implementation | Regional GKE Standard with an explicit node pool sized for 12 GiB ephemeral storage per run |
+| Existing profile | Explicit EKS cluster; Auto Mode or declared managed-node profile verified by this delivery | Explicit AKS cluster and supported Linux node pools | Explicit GKE Standard cluster and declared node pool verified by this delivery |
 | Existing network branch | `vpc_id`, control-plane/worker `subnet_ids`, security-group IDs and API access policy | VNet/subnet ARM IDs, resource-group ownership, network-policy/profile and API access policy | Network/subnetwork resource IDs and Pod/Service secondary-range names, API access policy |
 | Create network branch | Named VPC CIDR, subnet CIDRs/AZs, explicit routes/NAT or endpoints | Named VNet/subnet CIDRs, explicit egress/NAT and network-policy/profile | Named VPC/subnet CIDRs and Pod/Service secondary CIDRs, explicit egress/NAT |
 | Bootstrap/cloud identity | Caller IAM role ARN and short-lived authentication; cluster/node roles identified separately | Caller Entra principal/object ID; cluster/kubelet managed identity resource/principal IDs separately | Caller principal/service account and federation configuration; cluster/node service account resource separately |
@@ -95,7 +95,7 @@ application/operator setup, never to a cloud-specific tier or cloud module.
 
 Existing managed profiles are explicit opt-ins with their own real admission
 case; targeting a cluster by name is not proof that it meets this contract.
-No EKS self-managed-node, GKE Standard or alternate managed mode is silently
+No EKS self-managed-node, GKE Autopilot or alternate managed mode is silently
 substituted when the requested create profile is unavailable. No Windows,
 privileged DinD, host socket, hostPath, host namespace, node login or
 controller-to-run shared volume is required. All three profiles must support
@@ -108,9 +108,9 @@ can prevent sharing a volume across Pods; the contract transfers assets into
 one execution Pod instead. [AKS API access](https://learn.microsoft.com/en-us/azure/aks/concepts-security#secure-api-server-access-for-deployment-pipelines)
 requires both network reachability and authorization; cloud authentication does
 not replace scoped Kubernetes RBAC or the infraweave management key.
-[GKE Autopilot security](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security)
-restricts privileged/host workloads and provider-managed namespaces. These facts
-motivate the portable design; they are not infraweave execution evidence.
+The chart's Pods meet the Kubernetes [restricted Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
+so a GKE Standard node pool asks nothing of them that EKS or AKS does not. These
+facts motivate the portable design; they are not infraweave execution evidence.
 
 The storage contract distinguishes `emptyDir.sizeLimit`, container resource
 requests/limits, and actual node allocatable/free storage. An [emptyDir size
@@ -119,20 +119,21 @@ reservation and does not prove node capacity. Preserve the worker contract's
 12 GiB default resource budget; a 12 GiB emptyDir ceiling alone does not require
 a particular compute class.
 
-Google's [resource contract](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests#minimums_and_maximums)
-limits ordinary Autopilot Pods to 10 GiB total ephemeral-storage requests;
-[supported Performance profiles allow larger requests](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests#minimums_and_maximums).
-Autopilot also [enforces matching ephemeral-storage requests and limits](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests#requests_and_limits).
-Consequently the Google owner must resolve the actual rendered 12 GiB resource
-limit and admission mutation, not infer admission from emptyDir alone. Keeping
-requests above the ordinary ceiling requires a verified larger-storage profile,
-such as supported Performance compute. This is a compatibility decision for the
-Google delivery, not an accepted or tested runtime selection in this contract.
-That delivery records its machine/profile/version, actual minimum CPU/memory,
-init/main requests and limits, node allocatable capacity, preparation concurrency
-and cost envelope before the normal maintainer-approved apply. It must not
-silently shrink the default budget, add accelerators, substitute GKE Standard,
-introduce shared storage or relax source/tool bounds to pass admission. A budget
+Google's [Autopilot resource contract](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-resource-requests#minimums_and_maximums)
+limits ordinary Autopilot Pods to 10 GiB total ephemeral-storage requests, below
+the 12 GiB run budget, so the Google create profile is GKE Standard with an
+explicit node pool instead. On Standard, ephemeral storage is a node pool
+property rather than an admission rule: the pool's machine type and boot disk
+(or local SSD ephemeral storage) are sized so each node's allocatable ephemeral
+storage holds 12 GiB for every run it hosts at once, plus the controller's
+staging and the node's system reservations. The Google delivery resolves the
+actual rendered 12 GiB resource limit against that allocatable capacity, not
+against the emptyDir limit alone. It records its machine type, disk type and
+size, GKE version, actual minimum CPU/memory, init/main requests and limits,
+node allocatable capacity, runs per node, preparation concurrency and cost
+envelope before the normal maintainer-approved apply. It must not silently
+shrink the default budget, add accelerators, substitute Autopilot, introduce
+shared storage or relax source/tool bounds to fit a node. A budget
 or storage-design change requires explicit reconciliation here and in the
 worker contract. Controller staging receives the same admission/capacity check.
 
@@ -219,8 +220,10 @@ adding fields rejected by an existing strict consumer. The application harness
 still owns its source-built server/acceptance processes and real dependencies.
 The server HTTPS endpoint, store and source must actually be reachable from
 remote Pods, with declared TLS/egress; loopback endpoints from the local
-manifest are not usable remotely by assumption. The cloud test owner documents
-that lab connectivity prerequisite without building a full cloud server stack.
+manifest are not usable remotely by assumption. The cloud tests run against the
+platform scenario deployed in one cloud's dedicated account
+(`test/terraform/platform/<cloud>`), whose public HTTPS endpoint, object store
+and source the worker Pods on every cloud reach.
 
 ## Apply, run and destroy procedure
 

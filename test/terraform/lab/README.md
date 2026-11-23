@@ -192,9 +192,11 @@ API behavior, leaving controller/executor delivery to its implementation work.
 
 ## Managed cloud worker batches
 
-The `workers-*` batches attach Terraform-managed EKS, AKS and GKE worker
-hosting to the same lab. Each selects the `@managed-cloud-workers` scenarios
-in `features/workers/managed_cloud_workers.feature`, which ordinary and other
+The `workers-*` batches attach Terraform-managed EKS Auto Mode, AKS and GKE
+Standard worker hosting to the same lab, each in its cloud's dedicated
+account, subscription or project, which [`landing-zone`](../platform/README.md)
+creates. Each selects the `@managed-cloud-workers` scenarios in
+`features/workers/managed_cloud_workers.feature`, which ordinary and other
 lab partitions exclude. The committed definition fixes the clouds and the
 bounds a reviewer approves before any billable apply: parallel clouds, owner
 TTL, the vCPU quota headroom each cloud must have, configured pool capacity per
@@ -238,7 +240,8 @@ accounts but holds no credential:
  "deployment": {"cluster": {"mode": "create", "name": "..."}, "pools": [{"capacity": 2}], "...": "deployment/ stage variables"}}
 ```
 
-Identifiers follow the [hosting contract's three-cloud mapping](../../../docs/implementation/worker-hosting-contracts.md#three-cloud-mapping-and-compatibility):
+The identifiers name the landing zone's account, subscription or project.
+They follow the [hosting contract's three-cloud mapping](../../../docs/implementation/worker-hosting-contracts.md#three-cloud-mapping-and-compatibility):
 AWS `account_id`/`region`; Azure `tenant_id`/`subscription_id`/`location`/`resource_group_name`;
 Google `project_id`/`project_number`/`location`. The controller adds three
 variables to every stage and refuses inputs that set them: `ownership`
@@ -330,4 +333,5 @@ The `test/terraform/platform/workers` roots ship with their cloud deliveries;
 until then every `workers-*` batch fails preflight. The scenarios prove the
 attachment and the control plane's pool API beside it; worker execution on
 the cloud pools needs a server endpoint those Pods can reach, which the
-concurrent cloud proof supplies.
+platform scenario at `test/terraform/platform/<cloud>` supplies: one
+infraweave platform behind public HTTPS in one cloud's dedicated account.

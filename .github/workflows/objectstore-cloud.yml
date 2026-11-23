@@ -6,13 +6,15 @@ name: go | Object store contract in the clouds
 # identities a deployment grants: the writer (serve's grants, which hold no
 # delete, so the cloud must refuse one) and the deleter (scheduler's, which
 # deletes expired objects). GitHub's OIDC token is federated to each cloud;
-# no key is stored. test/terraform/platform/objectstore holds the Terraform that
-# provisions the buckets and the trust, and its outputs are this workflow's
-# environment secrets: none is a credential, but they name the clouds'
-# accounts, and a public repository's logs mask only secrets. A cloud
-# without them is skipped: its job passes having run nothing, and the
-# run's summary names what it lacks. The job is informational: the quality gate does not need it, and a failure
-# opens an issue per cloud, or comments on the open one.
+# no key is stored. test/terraform/platform/objectstore holds the Terraform
+# that provisions the buckets and the trust in each cloud's dedicated
+# account from test/terraform/platform/landing-zone, and its outputs are
+# this workflow's environment secrets: none is a credential, but they name
+# the clouds' accounts, and a public repository's logs mask only secrets. A
+# cloud without them is skipped: its job passes having run nothing, and the
+# run's summary names what it lacks. The job is informational: the quality
+# gate does not need it, and a failure opens an issue per cloud, or comments
+# on the open one.
 # ref: decisions 0016 and 0020
 on:
   schedule:

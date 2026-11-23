@@ -5,8 +5,9 @@ name: go | infraweave managed cloud worker labs
 # every selected cloud (committed root stages, private inputs, credentials
 # that resolve to the inputs' accounts, quota and any existing cluster)
 # before anything is provisioned, then applies each cloud's
-# test/terraform/platform/workers/<cloud> cluster and deployment stages beside
-# one local platform deployment, runs the @managed-cloud-workers scenarios,
+# test/terraform/platform/workers/<cloud> cluster and deployment stages, in
+# the cloud's dedicated account from test/terraform/platform/landing-zone,
+# beside one local platform deployment, runs the @managed-cloud-workers scenarios,
 # and destroys every owned cloud, verifying absence by cloud readback. The
 # workers-cloud environment's required reviewers approve the billable run,
 # and its branch rule admits only main. GitHub's OIDC token is federated to

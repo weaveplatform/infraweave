@@ -236,7 +236,7 @@ because they scale on different signals:
 
 P14 pulls forward only `deploy/terraform/modules/workers/{aws,azure,google}`
 and `deploy/helm/infraweave-workers`, with managed EKS Auto Mode, AKS and GKE
-Autopilot hosting or explicitly named existing managed clusters. The strict
+Standard hosting or explicitly named existing managed clusters. The strict
 chart/config/CRD/secret-reference contract is [worker pool contracts](../../implementation/worker-pool-contracts.md#hosting-chart-and-evidence).
 The [managed Kubernetes hosting contract](../../implementation/worker-hosting-contracts.md)
 settles shared semantic inputs/outputs, explicit cloud IDs, secret transport,
