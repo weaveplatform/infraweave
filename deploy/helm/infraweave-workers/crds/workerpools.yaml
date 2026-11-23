@@ -278,9 +278,39 @@ spec:
                       - all
                       - read
                       - write
+                    from:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                          - Secret
+                          - ConfigMap
+                        name:
+                          type: string
+                          minLength: 1
+                          maxLength: 253
+                          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+                        key:
+                          type: string
+                          minLength: 1
+                          maxLength: 253
+                          pattern: "^[-._a-zA-Z0-9]+$"
+                      required:
+                      - kind
+                      - name
+                      - key
                   required:
                   - name
                   - exposure
+                  - from
+                  x-kubernetes-validations:
+                  - rule: "self.name.startsWith('ro_') ? self.exposure == 'read' : (self.name.startsWith('wo_')
+                      ? self.exposure == 'write' : self.exposure == 'all')"
+                    message: A ro_ name has read exposure, a wo_ name write exposure
+                      and any other name all.
+                  - rule: self.name != 'ro_' && self.name != 'wo_'
+                    message: A prefix needs a name after it.
                 maxItems: 256
                 x-kubernetes-list-type: map
                 x-kubernetes-list-map-keys:
@@ -332,11 +362,14 @@ spec:
                       && !self.target.contains('/./') && !self.target.endsWith('/.')
                     message: Mount targets must use canonical absolute paths.
                   - rule: "['/opt/infraweave', '/run/infraweave', '/bin', '/usr/bin',
-                      '/usr/local/bin', '/sbin', '/usr/sbin'].all(p, self.target !=
-                      p && !self.target.startsWith(p + '/') && !p.startsWith(self.target
-                      + '/'))"
-                    message: Mount targets cannot overlap runtime binary, tools or
-                      handoff paths.
+                      '/usr/local/bin', '/sbin', '/usr/sbin', '/mnt/workspace', '/proc',
+                      '/sys', '/dev'].all(p, self.target != p && !self.target.startsWith(p
+                      + '/') && !p.startsWith(self.target + '/'))"
+                    message: Mount targets cannot overlap runtime binary, tools, handoff,
+                      workspace or kernel paths.
+                  - rule: self.kind != 'PVC' || self.exposure == 'all'
+                    message: A claim is mounted in every phase; read and write mounts
+                      are Secret or ConfigMap keys.
                   - rule: 'self.kind == ''PVC'' ? !has(self.key) : has(self.key)'
                     message: Secret/ConfigMap mounts select a key; PVC mounts do not.
                 maxItems: 128
@@ -358,6 +391,9 @@ spec:
             - rule: "!has(self.mounts) || self.mounts.all(m, m.kind != 'Secret' ||
                 m.name != self.credentialsRef.name)"
               message: Pool credentials cannot be mounted into workloads.
+            - rule: "!has(self.environment) || self.environment.all(e, e.from.kind
+                != 'Secret' || e.from.name != self.credentialsRef.name)"
+              message: Pool credentials cannot reach workloads' environment.
           status:
             type: object
             properties:

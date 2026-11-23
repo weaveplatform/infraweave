@@ -245,7 +245,7 @@
       "domain": "agent",
       "contract": "Explicit ro_/wo_/all exposure, phase table and typed portable mounts",
       "requiredEvidence": "Real plan/apply/TASK/after_run and restore secret-positive/negative assertions",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "vendor-reporting",
@@ -256,7 +256,7 @@
       "domain": "agent",
       "contract": "Actual implemented vendor/runtime signals only; no image-only backend claim",
       "requiredEvidence": "Executed per-vendor actual signal availability matrix",
-      "delivery": "unproven"
+      "delivery": "delivered"
     },
     {
       "id": "api-local-final-proof",

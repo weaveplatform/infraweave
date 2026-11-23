@@ -17,6 +17,7 @@ import (
 	"github.com/moby/moby/client"
 
 	"github.com/weaveplatform/infraweave/internal/agent/executor"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 )
 
@@ -32,11 +33,20 @@ const (
 	Workspace  = "/mnt/workspace"
 )
 
-// The labels that find a worker's container again.
+// The labels that find a worker's container again, and those that name
+// what it executes.
 const (
 	LabelWorker = "io.infraweave.worker"
 	LabelRun    = "io.infraweave.run"
+	LabelVendor = "io.infraweave.vendor"
+	LabelTool   = "io.infraweave.tool"
 )
+
+// scopedTmpfs are the options of each scoped directory's tmpfs: owned by
+// User alone, executing nothing, and as large as the scoped files may be
+// together.
+var scopedTmpfs = fmt.Sprintf("rw,noexec,nosuid,nodev,size=%d,mode=0700,uid=1983,gid=1983",
+	phaseinputs.MaxFiles)
 
 // The labels of an initialization command's helper: the worker and run
 // it serves. They differ from a run container's, so Find never answers a
@@ -127,6 +137,9 @@ func newExecutor(cli api, binary string, c Config) *Executor {
 // Close closes the connection to the daemon.
 func (e *Executor) Close() error { return e.cli.Close() } //nolint:wrapcheck // closing
 
+// Runtime names the Docker runtime.
+func (e *Executor) Runtime() string { return "docker" }
+
 // Ping checks that the daemon answers, for the launcher's readiness.
 func (e *Executor) Ping(ctx context.Context) error {
 	if _, err := e.cli.Ping(ctx, client.PingOptions{}); err != nil {
@@ -137,11 +150,24 @@ func (e *Executor) Ping(ctx context.Context) error {
 
 // Start pulls j's image when the host lacks it, creates its container
 // with the launcher's binary mounted read-only as its root process, j's
-// workspace at Workspace and j's mounts, starts it, writes j.Handoff to its standard input and
-// closes it, and copies its output to j.Output until it ends.
+// workspace at Workspace, j's mounts, a tmpfs at each of j's scoped
+// directories and labels naming its worker, run, vendor and tool, starts
+// it, writes j.Handoff to its standard input and closes it, and copies its
+// output to j.Output until it ends. A job with cluster volumes fails with
+// executor.ErrVolume: a Docker host has no cluster objects.
 func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Container, error) {
+	if len(j.Volumes) > 0 {
+		return nil, fmt.Errorf("docker: %w: run %s names a cluster volume", executor.ErrVolume, j.Run)
+	}
 	if err := e.image(ctx, j.Image); err != nil {
 		return nil, err
+	}
+	var tmpfs map[string]string
+	for _, dir := range j.Scoped {
+		if tmpfs == nil {
+			tmpfs = map[string]string{}
+		}
+		tmpfs[dir] = scopedTmpfs
 	}
 	binds := make([]string, 0, 2+len(j.Mounts))
 	binds = append(binds, e.binary+":"+BinaryPath+":ro")
@@ -157,12 +183,15 @@ func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Containe
 	}
 	created, err := e.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
-			Image:        j.Image,
-			User:         User,
-			Entrypoint:   []string{BinaryPath},
-			Cmd:          []string{"runner"},
-			WorkingDir:   Workspace,
-			Labels:       map[string]string{LabelWorker: j.Worker, LabelRun: j.Run},
+			Image:      j.Image,
+			User:       User,
+			Entrypoint: []string{BinaryPath},
+			Cmd:        []string{"runner"},
+			WorkingDir: Workspace,
+			Labels: map[string]string{
+				LabelWorker: j.Worker, LabelRun: j.Run,
+				LabelVendor: j.Execution.Vendor, LabelTool: j.Execution.Tool,
+			},
 			AttachStdin:  true,
 			AttachStdout: true,
 			AttachStderr: true,
@@ -171,6 +200,7 @@ func (e *Executor) Start(ctx context.Context, j executor.Job) (executor.Containe
 		},
 		HostConfig: &container.HostConfig{
 			Binds:       binds,
+			Tmpfs:       tmpfs,
 			NetworkMode: container.NetworkMode(e.c.Network),
 			Runtime:     e.c.Runtime,
 		},

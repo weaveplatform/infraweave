@@ -114,9 +114,13 @@ func TestUnitLoadPrecedence(t *testing.T) {
   ca_file: /etc/infraweave/ca.pem
   metadata:
     zone: a
+  whitelist_envs: [ro_TOKEN, wo_TOKEN, TF_PLUGIN_CACHE_DIR]
   docker:
     network: runs
     runner_binary: /opt/linux/infraweave
+    extra_mounts: ["/var/cache/plugins:/mnt/plugins:ro"]
+    ro_extra_mounts: ["/etc/keys/read.json:/mnt/keys/read.json"]
+    wo_extra_mounts: ["/etc/keys/write.json:/mnt/keys/write.json"]
 `)
 	c, err := load(t, "--config", f)
 	if err != nil {
@@ -134,6 +138,13 @@ func TestUnitLoadPrecedence(t *testing.T) {
 	}
 	if c.Launcher.MaxRequestsPerSecond != 12 || c.Launcher.MaxRequestsBurst != 120 {
 		t.Fatalf("file rate settings: %+v", c.Launcher)
+	}
+	all, read, write := c.Launcher.Docker.Mounts()
+	if !slices.Equal(c.Launcher.WhitelistEnvs, []string{"ro_TOKEN", "wo_TOKEN", "TF_PLUGIN_CACHE_DIR"}) ||
+		!slices.Equal(all, []config.Mount{{Source: "/var/cache/plugins", Target: "/mnt/plugins"}}) ||
+		!slices.Equal(read, []config.Mount{{Source: "/etc/keys/read.json", Target: "/mnt/keys/read.json"}}) ||
+		!slices.Equal(write, []config.Mount{{Source: "/etc/keys/write.json", Target: "/mnt/keys/write.json"}}) {
+		t.Fatalf("file inputs: %+v", c.Launcher)
 	}
 
 	t.Setenv("INFRAWEAVE_LAUNCHER_ADMIN_LISTEN", ":7001")
@@ -201,6 +212,24 @@ func TestUnitValidate(t *testing.T) {
 		"launcher.admin_listen \"9091\"":   func(l *config.Launcher) { l.AdminListen = "9091" },
 		"port must be":                     func(l *config.Launcher) { l.AdminListen = ":http" },
 		"launcher.log":                     func(l *config.Launcher) { l.Log.Level = "loud" },
+		"launcher.whitelist_envs: invalid phase-scoped inputs: \"9X\"": func(l *config.Launcher) {
+			l.WhitelistEnvs = []string{"9X"}
+		},
+		"runner sets": func(l *config.Launcher) { l.WhitelistEnvs = []string{"wo_INFRAWEAVE_API_TOKEN"} },
+		"collides":    func(l *config.Launcher) { l.WhitelistEnvs = []string{"TOKEN", "ro_TOKEN"} },
+		"launcher.docker.extra_mounts \"relative:/mnt\"": func(l *config.Launcher) {
+			l.Docker.ExtraMounts = []string{"relative:/mnt"}
+		},
+		"launcher.docker.ro_extra_mounts \"/a:/b:rw\"": func(l *config.Launcher) {
+			l.Docker.ROExtraMounts = []string{"/a:/b:rw"}
+		},
+		"launcher.docker.wo_extra_mounts \"/a\"": func(l *config.Launcher) {
+			l.Docker.WOExtraMounts = []string{"/a"}
+		},
+		"launcher.docker extra mounts": func(l *config.Launcher) {
+			l.Docker.ExtraMounts = []string{"/a:/mnt/keys"}
+			l.Docker.ROExtraMounts = []string{"/b:/mnt/keys/read"}
+		},
 	} {
 		l := valid()
 		edit(&l)

@@ -73,6 +73,8 @@ type world struct {
 	// store, when set, keeps the launchers' state instead of the cache
 	// directory.
 	store launcher.Store
+	// inputs, when set, resolves each assignment's phase-scoped inputs.
+	inputs launcher.Inputs
 }
 
 func newWorld(t *testing.T) *world {
@@ -104,7 +106,7 @@ func (w *world) launcher(t *testing.T) *launcher.Launcher {
 		Config: w.config(), Doer: w.srv.Client(), Executor: w.exec, Sources: w.sources,
 		Tools:   w.tools,
 		Log:     slog.New(slog.NewTextHandler(w.log, nil)),
-		Version: "1.2.3", OS: "linux", Arch: "arm64", Store: w.store,
+		Version: "1.2.3", OS: "linux", Arch: "arm64", Store: w.store, Inputs: w.inputs,
 	})
 	if err != nil {
 		t.Fatal(err)

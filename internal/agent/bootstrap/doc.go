@@ -19,7 +19,10 @@
 // length, a truncated or trailing stream and a hash mismatch, extracts
 // the workspace with the workspace package's safe rules, writes each
 // tool read-only once it is an ELF executable of the Pod's architecture,
-// and copies the receiving executable to where the runner starts it.
+// copies the receiving executable to where the runner starts it, and
+// creates in each scoped-input volume mounted under ScopedDir the
+// ScopedFiles directory, owned by the run's user, that the runner
+// container mounts where the run's phase-scoped files go.
 //
 // ref: docs/implementation/worker-pool-contracts.md § "Portable preparation, handoff and recovery"
 //
@@ -27,7 +30,7 @@
 //
 // Pack reads a directory and writes an io.Writer; Send writes an
 // io.Writer; Receive reads an io.Reader and writes the Pod's workspace,
-// tools and binary paths. Nothing is logged.
+// tools, binary and scoped-input paths. Nothing is logged.
 //
 // # Dependencies
 //

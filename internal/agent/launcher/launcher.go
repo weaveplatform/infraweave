@@ -25,6 +25,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/handoff"
 	"github.com/weaveplatform/infraweave/internal/agent/initcommand"
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/signedrun"
 	"github.com/weaveplatform/infraweave/internal/agent/source"
 	"github.com/weaveplatform/infraweave/internal/agent/tools"
@@ -49,7 +50,8 @@ import (
 // hosting owner and logical slot it registers, so registering again
 // resumes the slot's worker. Retain keeps the worker registered when Run
 // ends idle, for its controller to deregister. Store keeps the state a
-// restart resumes, worker.json in the cache directory when nil.
+// restart resumes, worker.json in the cache directory when nil. Inputs
+// resolves each assignment's phase-scoped inputs; none when nil.
 type Deps struct {
 	Config   config.Launcher
 	Doer     wire.HttpRequestDoer
@@ -66,6 +68,7 @@ type Deps struct {
 	Slot     *int32
 	Retain   bool
 	Store    Store
+	Inputs   Inputs
 }
 
 // Sources writes a run's workspace directory, which must not exist: its
@@ -920,6 +923,21 @@ func (l *Launcher) container(
 	ws string,
 	out *lines,
 ) (executor.Container, error) {
+	var res Resolved
+	if l.d.Inputs != nil {
+		var err error
+		if res, err = l.d.Inputs.Resolve(ctx); err == nil {
+			err = res.Check()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("the pool's phase-scoped inputs: %w", err)
+		}
+	}
+	defer func() {
+		for _, f := range res.Inputs.Files {
+			clear(f.Content)
+		}
+	}()
 	var mounts []executor.Mount
 	var verified []executor.Tool
 	for _, b := range binaries(spec) {
@@ -944,18 +962,29 @@ func (l *Launcher) container(
 		MaxRequestsPerSecond:  l.d.Config.MaxRequestsPerSecond,
 		MaxRequestsBurst:      l.d.Config.MaxRequestsBurst,
 		PoolKey:               l.id.open.PublicKey().Bytes(),
+		Inputs:                res.Inputs,
 	}); err != nil {
 		return nil, err //nolint:wrapcheck // handoff names the write
 	}
 	defer clear(h.Bytes())
+	exe := execution(spec)
 	c, err := l.d.Executor.Start(ctx, executor.Job{
 		Worker: l.st.Worker, Run: a.Run, StateVersion: a.StateVersion, Image: image, Workspace: ws,
-		Mounts: mounts, Tools: verified, Handoff: h.Bytes(), Output: out,
-		PreparingDeadline: l.st.PreparingDeadline,
+		Mounts: append(mounts, res.Mounts...), Tools: verified, Volumes: res.Volumes,
+		Scoped: phaseinputs.Dirs(res.Inputs.Files), Handoff: h.Bytes(), Output: out,
+		PreparingDeadline: l.st.PreparingDeadline, Execution: exe,
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the executor names the step
 	}
+	// The image's own binary's release is not known before it runs.
+	version := ""
+	if spec.Tool != nil && spec.Tool.Download {
+		version = spec.Tool.Version
+	}
+	l.d.Log.InfoContext(ctx, "run container started", "run", a.Run, "runtime", runtimeOf(l.d.Executor),
+		"vendor", exe.Vendor, "tool", exe.Tool, "tool_version", version, "tool_source", toolSource(spec),
+		"image", image)
 	return c, nil
 }
 

@@ -10,8 +10,14 @@
 // seccomp, restartPolicy Never and an active deadline of the time left
 // to the job's preparing deadline, or the configured preparation bound
 // when it has none, plus the configured execution bound, the run timeout
-// and cleanup after it. Its volumes
-// are Pod-local emptyDirs. Its bootstrap init container, of the
+// and cleanup after it. Its own volumes
+// are Pod-local emptyDirs; beside them the runner mounts each of the
+// job's Secret or ConfigMap keys as a read-only file and claims as
+// read-only directories, and at each of its scoped directories the
+// directory the bootstrap creates, for the run's user, in an in-memory
+// emptyDir of its own, which its runner fills and leaves unwritable. The Pod is labelled with the
+// worker, the run, the vendor and the tool, and Runtime names the
+// executor kubernetes. Its bootstrap init container, of the
 // same-version infraweave image, is attached once it runs and receives
 // the bootstrap package's stream of the workspace and the job's verified
 // tools; once it exits 0, the runner container starts the copied
@@ -66,6 +72,6 @@
 // # Dependencies
 //
 // It imports client-go's typed core client, rest and remotecommand,
-// k8s.io/api and apimachinery, internal/agent/bootstrap, executor and
-// wire. internal/agent/controller runs one per slot.
+// k8s.io/api and apimachinery, internal/agent/bootstrap, executor,
+// phaseinputs' size bound and wire. internal/agent/controller runs one per slot.
 package kubernetes

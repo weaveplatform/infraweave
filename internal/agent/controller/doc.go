@@ -50,6 +50,16 @@
 // retired Worker whose status records an assignment gets such a launcher
 // even when it has no other, so its run ends before its worker goes.
 //
+// Each slot's launcher resolves its WorkerPool's environment and mounts
+// for every assignment, in the pool's own namespace: a variable's value
+// is a Secret's or ConfigMap's key, sensitive when a Secret holds it, its
+// name's ro_ or wo_ prefix scoping it to the read or the write phases; a
+// mount of all exposure is a read-only volume of the run Pod, and a read
+// or write mount a Secret's or ConfigMap's key whose content the
+// handoff carries for the runner to write and remove by phase. A
+// reference the namespace does not hold fails the run's preparation with
+// a note that names the reference, never a value.
+//
 // A slot beyond the capacity, and every slot of a deleted pool, is
 // retired: its Worker is deleted; its launcher, once its run ends and
 // claiming none after it, is ended; its worker deregistered and then its
@@ -63,8 +73,8 @@
 //
 // # Input and output
 //
-// It reads the worker_controller configuration, WorkerPool, Worker and
-// Secret resources and the Lease through the Kubernetes API, writes
+// It reads the worker_controller configuration, WorkerPool, Worker,
+// Secret and ConfigMap resources and the Lease through the Kubernetes API, writes
 // finalizers and status with patches under strict field validation,
 // creates and deletes run Pods and streams into them, and calls the
 // worker API and the account API of each pool's endpoint over HTTPS
@@ -76,6 +86,6 @@
 //
 // It imports client-go's dynamic, core and coordination clients and
 // leader election, internal/agent/client, config, executor/kubernetes,
-// initpolicy, launcher, tools and the generated wire/management client,
+// initpolicy, launcher, phaseinputs, tools and the generated wire/management client,
 // kernel, and platform/observe and rego; no server package.
 package controller

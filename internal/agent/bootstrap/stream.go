@@ -209,12 +209,19 @@ func (d digest) hex() string { return hex.EncodeToString(d.sum(nil)) }
 // The run Pod's volumes, where the bootstrap container writes and the
 // runner container reads: the copied infraweave executable in BinaryDir,
 // the verified tools in ToolsDir, and the workspace. BinaryDir is also
-// where the Docker executor mounts the runner's executable.
+// where the Docker executor mounts the runner's executable. The bootstrap
+// container mounts each scoped-input volume under ScopedDir, and the
+// runner container mounts its ScopedFiles directory at the directory of
+// the scoped files it holds.
 const (
 	BinaryDir    = "/opt/infraweave/bin"
 	ToolsDir     = "/opt/infraweave/tools"
+	ScopedDir    = "/opt/infraweave/scoped"
+	ScopedFiles  = "files"
 	WorkspaceDir = "/mnt/workspace"
 )
 
 // PodPaths are the run Pod's volumes as Receive writes them.
-var PodPaths = Paths{Workspace: WorkspaceDir, Tools: ToolsDir, Binary: BinaryDir + "/infraweave"}
+var PodPaths = Paths{
+	Workspace: WorkspaceDir, Tools: ToolsDir, Binary: BinaryDir + "/infraweave", Scoped: ScopedDir,
+}

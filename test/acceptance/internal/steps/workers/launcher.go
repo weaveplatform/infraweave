@@ -65,6 +65,9 @@ type launcherSteps struct {
 	initializationPolicy  string
 	initializationEngine  string
 	initializationTimeout string
+	// phaseInputs gives the launchers started from now on the fixture's
+	// phase-scoped inputs.
+	phaseInputs bool
 }
 
 // launcher is one launcher of the scenario: its process, the directory
@@ -74,6 +77,8 @@ type launcher struct {
 	srv    *harness.Server
 	dir    string
 	config []byte
+	// env is the process environment the launcher adds to the suite's.
+	env []string
 }
 
 func (l *launcherSteps) register(sc *godog.ScenarioContext) {
@@ -97,6 +102,7 @@ func (l *launcherSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the run "(\w+)" has no run container$`, l.noContainer)
 	sc.Step(`^the launcher "(\w+)" masked its initialization token in print and reports$`, l.initializationMasked)
 	sc.Step(`^the run "(\w+)" never started a container$`, l.noRunContainer)
+	l.registerPhaseInputs(sc)
 	l.signed(sc)
 	sc.After(l.end)
 	sc.Step(`^two infraweave servers, A and B, on one database, with the settings '([^']*)'$`,
@@ -263,6 +269,12 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 	if keeps != "" {
 		settings["sensitive_output_upload"] = true
 	}
+	var env []string
+	if l.phaseInputs {
+		if env, err = hostPhaseInputs(dir, settings); err != nil {
+			return err
+		}
+	}
 	if quiet != "" {
 		settings["log_timeout"] = quiet
 	}
@@ -305,7 +317,7 @@ func (l *launcherSteps) startConfigured(ctx context.Context, token, name, pool, 
 	if err != nil {
 		return fmt.Errorf("launcher config: %w", err)
 	}
-	l.launchers[name] = &launcher{dir: dir, config: config}
+	l.launchers[name] = &launcher{dir: dir, config: config, env: env}
 	return l.run(ctx, name)
 }
 
@@ -386,7 +398,7 @@ func (l *launcherSteps) run(ctx context.Context, name string) error {
 		return err
 	}
 	if ln.srv, err = harness.StartLauncher(ctx, bin, ln.dir, w.Suite.CoverDir, ln.config,
-		host.Host, w.Environment()...); err != nil {
+		host.Host, append(w.Environment(), ln.env...)...); err != nil {
 		return err
 	}
 	//nolint:wrapcheck // names what it waited for

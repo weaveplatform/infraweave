@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/weaveplatform/infraweave/internal/agent/initpolicy"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/platform/observe"
 	"github.com/weaveplatform/infraweave/internal/platform/rego"
 	"github.com/weaveplatform/infraweave/internal/platform/runnerimages"
@@ -85,6 +86,12 @@ type Launcher struct {
 	// its log, whether or not they are secret, as SPACELIFT_MASK_ENVS
 	// does; the handoff carries the names.
 	MaskEnvs []string `mapstructure:"mask_envs"`
+	// WhitelistEnvs names the launcher's variables each run receives, as
+	// SPACELIFT_WHITELIST_ENVS does: a name prefixed ro_ reaches only the
+	// read phases and wo_ only the write phases, under the name without
+	// its prefix, and an unprefixed name every phase. A name the
+	// launcher's environment does not set passes nothing.
+	WhitelistEnvs []string `mapstructure:"whitelist_envs"`
 	// Metadata describes the worker at registration. Each
 	// INFRAWEAVE_LAUNCHER_METADATA_<key> variable adds <key>, as
 	// SPACELIFT_METADATA_<key> does.
@@ -109,6 +116,91 @@ type Docker struct {
 	// whose own build cannot run in a Linux container, such as one on
 	// macOS, names a statically linked Linux build of the same version.
 	RunnerBinary string `mapstructure:"runner_binary"`
+	// ExtraMounts are host paths every phase of each run sees, each
+	// <host path>:<container path>, optionally with :ro, which every one is:
+	// no run writes to a shared host path. ROExtraMounts and WOExtraMounts
+	// are host files the read phases or the write phases alone see: the
+	// runner writes each at its container path when its phase begins and
+	// removes it when a phase of the other side does.
+	ExtraMounts   []string `mapstructure:"extra_mounts"`
+	ROExtraMounts []string `mapstructure:"ro_extra_mounts"`
+	WOExtraMounts []string `mapstructure:"wo_extra_mounts"`
+}
+
+// Mount is one parsed extra mount: the host path and the container path.
+type Mount struct {
+	Source string
+	Target string
+}
+
+// errMount marks an extra mount that does not parse.
+var errMount = errors.New("want <absolute host path>:<container path>, optionally with :ro")
+
+// ParseMount parses an extra mount, <host path>:<container path>[:ro].
+// The container path follows the last colon, so a host path may hold
+// one, as a Windows drive does. The host path is absolute on the
+// launcher's own system or a rooted POSIX path, which a Docker daemon
+// running Linux containers resolves on a Windows host too.
+func ParseMount(s string) (Mount, error) {
+	rest := strings.TrimSuffix(s, ":ro")
+	i := strings.LastIndex(rest, ":")
+	if i <= 0 {
+		return Mount{}, errMount
+	}
+	m := Mount{Source: rest[:i], Target: rest[i+1:]}
+	absolute := filepath.IsAbs(m.Source) || strings.HasPrefix(m.Source, "/")
+	if !absolute || !strings.HasPrefix(m.Target, "/") {
+		return Mount{}, errMount
+	}
+	return m, nil
+}
+
+// Mounts are d's extra mounts parsed: every phase's, the read phases'
+// and the write phases'. Validate has checked that each parses.
+func (d Docker) Mounts() (all, read, write []Mount) {
+	parse := func(specs []string) []Mount {
+		out := make([]Mount, 0, len(specs))
+		for _, s := range specs {
+			if m, err := ParseMount(s); err == nil {
+				out = append(out, m)
+			}
+		}
+		return out
+	}
+	return parse(d.ExtraMounts), parse(d.ROExtraMounts), parse(d.WOExtraMounts)
+}
+
+// validate checks every extra mount's form and their container paths
+// together, as phaseinputs.CheckTargets does.
+func (d Docker) validate() []error {
+	var errs []error
+	for _, set := range []struct {
+		key   string
+		specs []string
+	}{{"extra_mounts", d.ExtraMounts}, {"ro_extra_mounts", d.ROExtraMounts}, {"wo_extra_mounts", d.WOExtraMounts}} {
+		for _, s := range set.specs {
+			if _, err := ParseMount(s); err != nil {
+				errs = append(errs, fmt.Errorf("%w: launcher.docker.%s %q: %w", ErrConfig, set.key, s, err))
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return errs
+	}
+	all, read, write := d.Mounts()
+	targets := func(ms ...[]Mount) []string {
+		var out []string
+		for _, list := range ms {
+			for _, m := range list {
+				out = append(out, m.Target)
+			}
+		}
+		return out
+	}
+	if err := phaseinputs.CheckTargets(targets(all), targets(read, write)); err != nil {
+		errs = append(errs, fmt.Errorf("%w: launcher.docker extra mounts: %w", ErrConfig, err))
+	}
+	return errs
 }
 
 // The poll's hold is between MinPoll and MaxPoll, the bounds the worker
@@ -223,6 +315,7 @@ func (c Launcher) Validate() error {
 			bad("launcher.mask_envs %q: want a variable's name", name)
 		}
 	}
+	errs = append(errs, c.validateInputs()...)
 	if len(c.Metadata) > MaxMetadata {
 		bad("launcher.metadata holds at most %d entries, got %d", MaxMetadata, len(c.Metadata))
 	}
@@ -241,6 +334,21 @@ func (c Launcher) Validate() error {
 		errs = append(errs, fmt.Errorf("%w: launcher.log: %w", ErrConfig, err))
 	}
 	return errors.Join(errs...)
+}
+
+// validateInputs refuses a whitelisted variable or an extra mount the
+// runner cannot expose by phase.
+func (c Launcher) validateInputs() []error {
+	var errs []error
+	for _, name := range c.WhitelistEnvs {
+		if _, _, err := phaseinputs.CheckVariable(name, ""); err != nil {
+			errs = append(errs, fmt.Errorf("%w: launcher.whitelist_envs: %w", ErrConfig, err))
+		}
+	}
+	if err := phaseinputs.CheckNames(c.WhitelistEnvs); err != nil {
+		errs = append(errs, fmt.Errorf("%w: launcher.whitelist_envs: %w", ErrConfig, err))
+	}
+	return append(errs, c.Docker.validate()...)
 }
 
 // Key reads the pool's private key PEM: PrivateKey itself when it is PEM

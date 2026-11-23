@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -18,11 +19,13 @@ import (
 // Paths are where Receive writes in its Pod: the workspace directory, the
 // directory that holds each tool under its name, and the path the
 // receiving executable copies itself to, which the run container starts
-// as its runner.
+// as its runner. Scoped, when set, is the directory under which each of
+// the Pod's scoped-input volumes is mounted.
 type Paths struct {
 	Workspace string
 	Tools     string
 	Binary    string
+	Scoped    string
 }
 
 // Expect is the assignment the receiving Pod was created for; a stream of
@@ -39,7 +42,10 @@ type Expect struct {
 // its decoded tar bounded by MaxDecoded, and each tool is written
 // read-only and executable once its length and SHA-256 match, as an ELF
 // executable of arch, GOARCH's name. self, the receiving executable, is
-// copied to p.Binary. Trailing bytes fail the stream. Every failure
+// copied to p.Binary. Each volume under p.Scoped gets a ScopedFiles
+// directory the run's user owns, which a volume's own root is not, so the
+// runner can leave the directory it mounts at unwritable once it writes a
+// phase's files. Trailing bytes fail the stream. Every failure
 // leaves the Pod's volumes to be discarded with it: nothing it wrote is
 // started.
 func Receive(r io.Reader, p Paths, want Expect, arch, self string) (Manifest, error) {
@@ -51,6 +57,9 @@ func Receive(r io.Reader, p Paths, want Expect, arch, self string) (Manifest, er
 		return Manifest{}, fmt.Errorf("%w: the manifest names another assignment than this Pod's", ErrStream)
 	}
 	if err := install(self, p.Binary); err != nil {
+		return Manifest{}, err
+	}
+	if err := scopedDirs(p.Scoped); err != nil {
 		return Manifest{}, err
 	}
 	if err := receiveWorkspace(r, m.Workspace, p.Workspace); err != nil {
@@ -69,6 +78,30 @@ func Receive(r io.Reader, p Paths, want Expect, arch, self string) (Manifest, er
 }
 
 // manifest reads and validates the stream's first frame.
+// scopedDirs creates ScopedFiles, for the run's user alone, in each
+// volume mounted under root; a Pod with no scoped inputs has no root.
+func scopedDirs(root string) error {
+	if root == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("the scoped-input volumes: %w", err)
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if err := os.Mkdir(filepath.Join(root, e.Name(), ScopedFiles), 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+			return fmt.Errorf("the scoped-input volume %s: %w", e.Name(), err)
+		}
+	}
+	return nil
+}
+
 func manifest(r io.Reader) (Manifest, error) {
 	f, err := readFrame(r, -1, MaxManifest)
 	if err != nil {

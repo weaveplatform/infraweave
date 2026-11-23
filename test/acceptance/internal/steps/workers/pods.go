@@ -207,7 +207,8 @@ func (c *controllerSteps) ran(ctx context.Context, run, pool, image, secret stri
 
 // hardened is why p is not a run or helper Pod as the executor builds
 // it, or "": its one container, named container, started from image, no
-// service account token, host namespace or host path, a fixed non-root
+// service account token, host namespace or host path, volumes that are
+// Pod-local or the pool's read-only inputs, a fixed non-root
 // user, the runtime's seccomp profile, and containers that drop every
 // capability, cannot escalate and take nothing from the environment or
 // arguments but the run's identity.
@@ -232,8 +233,12 @@ func hardened(p *corev1.Pod, image, container string) string {
 		return "runs without the fixed user or the runtime's seccomp profile"
 	}
 	for _, v := range s.Volumes {
-		if v.EmptyDir == nil {
-			return "mounts the volume " + v.Name + ", which is not an emptyDir"
+		// The pool's own inputs are its namespace's Secrets, ConfigMaps
+		// and claims, each read-only; everything else is Pod-local.
+		pool := v.Secret != nil || v.ConfigMap != nil ||
+			v.PersistentVolumeClaim != nil && v.PersistentVolumeClaim.ReadOnly
+		if v.EmptyDir == nil && !pool {
+			return "mounts the volume " + v.Name + ", which is neither Pod-local nor the pool's read-only input"
 		}
 	}
 	for _, ct := range slices.Concat(s.InitContainers, s.Containers) {

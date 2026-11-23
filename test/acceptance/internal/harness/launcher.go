@@ -154,20 +154,46 @@ func (l *Launchers) Network(ctx context.Context, scenario string, ports ...strin
 // RunImage reads the image used to create run's container. A scenario holds
 // the runner's report until this read, so the launcher cannot remove it first.
 func (l *Launchers) RunImage(ctx context.Context, run string) (string, error) {
+	c, err := l.RunContainer(ctx, run)
+	return c.Image, err
+}
+
+// RunContainer is what Docker records of a run's one container: its
+// image, labels, environment and command line, and its binds and tmpfs
+// mounts.
+type RunContainer struct {
+	Image  string
+	Labels map[string]string
+	Env    []string
+	Args   []string
+	Binds  []string
+	Tmpfs  map[string]string
+}
+
+// RunContainer inspects run's one container, which must exist.
+func (l *Launchers) RunContainer(ctx context.Context, run string) (RunContainer, error) {
 	list, err := l.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true, Filters: client.Filters{}.Add("label", docker.LabelRun+"="+run),
 	})
 	if err != nil {
-		return "", fmt.Errorf("docker: find run %s: %w", run, err)
+		return RunContainer{}, fmt.Errorf("docker: find run %s: %w", run, err)
 	}
 	if len(list.Items) != 1 {
-		return "", fmt.Errorf("%w: run %s has %d containers, want one", ErrStep, run, len(list.Items))
+		return RunContainer{}, fmt.Errorf("%w: run %s has %d containers, want one", ErrStep, run, len(list.Items))
 	}
 	c, err := l.cli.ContainerInspect(ctx, list.Items[0].ID, client.ContainerInspectOptions{})
 	if err != nil {
-		return "", fmt.Errorf("docker: inspect run %s: %w", run, err)
+		return RunContainer{}, fmt.Errorf("docker: inspect run %s: %w", run, err)
 	}
-	return c.Container.Config.Image, nil
+	cfg, host := c.Container.Config, c.Container.HostConfig
+	out := RunContainer{
+		Image: cfg.Image, Labels: cfg.Labels, Env: cfg.Env,
+		Args: append(append([]string{}, cfg.Entrypoint...), cfg.Cmd...),
+	}
+	if host != nil {
+		out.Binds, out.Tmpfs = host.Binds, host.Tmpfs
+	}
+	return out, nil
 }
 
 // RunContainerCount verifies run's actual Docker inventory, including stopped

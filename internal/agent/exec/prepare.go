@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/agent/backend"
+	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -213,7 +214,8 @@ func readFile(dir, name string, limit int64) ([]byte, error) {
 // automation switches, for a Terragrunt run the tool Terragrunt drives
 // and Terragrunt's own switch, the runner's user agent and API endpoint,
 // the launcher's run settings, SSL_CERT_FILE trusting the handoff's roots
-// when it has any, the specification's variables with the
+// when it has any, the passthrough variables every phase sees, the
+// specification's variables with the
 // write-only values opened, then the in-run API token and the state
 // backend's credentials, which no variable of the stack overrides.
 //
@@ -242,6 +244,11 @@ func (r *run) environment(creds []string) ([]string, error) {
 			return nil, err
 		}
 		env = append(env, "SSL_CERT_FILE="+bundle)
+	}
+	for _, v := range r.h.Inputs.Variables {
+		if v.Exposure == phaseinputs.All {
+			env = append(env, v.Name+"="+v.Value)
+		}
 	}
 	for _, v := range r.h.Spec.Environment {
 		switch {

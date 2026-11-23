@@ -479,6 +479,51 @@ func TestUnitRunPodWithoutToolsOrWorkspaceKeepsTheImagesOwn(t *testing.T) {
 	}
 }
 
+func TestUnitRunPodMountsItsVolumesAndScopedDirectories(t *testing.T) {
+	k := newKubelet(t)
+	e := k.executor(t)
+	if e.Runtime() != "kubernetes" {
+		t.Errorf("Runtime = %q", e.Runtime())
+	}
+	j := job(t)
+	j.Volumes = []executor.Volume{
+		{Kind: executor.Secret, Name: "keys", Key: "token", Target: "/mnt/token"},
+		{Kind: executor.ConfigMap, Name: "settings", Key: "app.conf", Target: "/etc/app.conf"},
+		{Kind: executor.PVC, Name: "cache", Target: "/mnt/cache"},
+	}
+	j.Scoped = []string{"/mnt/keys"}
+	j.Execution = executor.Execution{Vendor: "terraform", Tool: "terraform"}
+	c, err := e.Start(t.Context(), j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := k.created[0]
+	if p.Labels[LabelVendor] != "terraform" || p.Labels[LabelTool] != "terraform" {
+		t.Errorf("labels %v", p.Labels)
+	}
+	vs := p.Spec.Volumes[3:]
+	if len(vs) != 4 || vs[0].Secret == nil || vs[0].Secret.SecretName != "keys" || vs[0].Secret.Items[0].Key != "token" ||
+		vs[1].ConfigMap == nil || vs[1].ConfigMap.Name != "settings" ||
+		vs[2].PersistentVolumeClaim == nil || !vs[2].PersistentVolumeClaim.ReadOnly ||
+		vs[3].EmptyDir == nil || vs[3].EmptyDir.Medium != corev1.StorageMediumMemory {
+		t.Fatalf("volumes %+v", vs)
+	}
+	ms := p.Spec.Containers[0].VolumeMounts[3:]
+	if len(ms) != 4 || ms[0].MountPath != "/mnt/token" || ms[0].SubPath != "value" || !ms[0].ReadOnly ||
+		ms[1].SubPath != "value" || !ms[1].ReadOnly || ms[2].MountPath != "/mnt/cache" || ms[2].SubPath != "" ||
+		!ms[2].ReadOnly || ms[3].MountPath != "/mnt/keys" || ms[3].SubPath != bootstrap.ScopedFiles || ms[3].ReadOnly {
+		t.Fatalf("mounts %+v", ms)
+	}
+	boot := p.Spec.InitContainers[0].VolumeMounts
+	if len(boot) != 4 || boot[3].Name != vs[3].Name || boot[3].MountPath != bootstrap.ScopedDir+"/0" {
+		t.Fatalf("the bootstrap mounts %+v", boot)
+	}
+	k.exit(p.Name, 0)
+	if _, err := c.Wait(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUnitRunPodRefusesHostMountsAndConflictingArchitectures(t *testing.T) {
 	k := newKubelet(t)
 	j := job(t)

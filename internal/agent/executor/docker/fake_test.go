@@ -323,6 +323,31 @@ var errDaemon = errors.New("the daemon refused")
 // wait answers the daemon's errors, a gone container as missing and the
 // kernel's kill as out-of-memory; a signal or a remove the daemon refuses
 // fails, and one for a container that has ended or gone does not.
+func TestUnitDockerExecutorScopedInputsAndLabels(t *testing.T) {
+	ctx := t.Context()
+	d := &daemon{}
+	e := docker.NewWith(d, "/usr/local/bin/infraweave", docker.Config{})
+	job := executor.Job{
+		Worker: "w", Run: "r", Image: "img", Handoff: []byte("{}"),
+		Mounts:    []executor.Mount{{Source: "/srv/cache", Target: "/mnt/cache", ReadOnly: true}},
+		Scoped:    []string{"/mnt/keys", "/var/run/keys"},
+		Execution: executor.Execution{Vendor: "opentofu", Tool: "tofu"},
+	}
+	if _, err := e.Start(ctx, job); err != nil {
+		t.Fatal(err)
+	}
+	opts := "rw,noexec,nosuid,nodev,size=16777216,mode=0700,uid=1983,gid=1983"
+	if !slices.Contains(d.host.Binds, "/srv/cache:/mnt/cache:ro") ||
+		len(d.host.Tmpfs) != 2 || d.host.Tmpfs["/mnt/keys"] != opts || d.host.Tmpfs["/var/run/keys"] != opts ||
+		d.created.Labels[docker.LabelVendor] != "opentofu" || d.created.Labels[docker.LabelTool] != "tofu" {
+		t.Errorf("created %+v with %+v", d.created, d.host)
+	}
+	job.Volumes = []executor.Volume{{Kind: executor.PVC, Name: "data", Target: "/mnt/data"}}
+	if _, err := e.Start(ctx, job); !errors.Is(err, executor.ErrVolume) {
+		t.Errorf("a cluster volume: %v", err)
+	}
+}
+
 func TestUnitDockerExecutorFailures(t *testing.T) {
 	ctx := t.Context()
 	job := executor.Job{
@@ -358,8 +383,8 @@ func TestUnitDockerExecutorFailures(t *testing.T) {
 		d.host.NetworkMode != "runs" || d.host.Runtime != "runsc" {
 		t.Errorf("created %+v with %+v", d.created, d.host)
 	}
-	if c.Run() != "r" {
-		t.Errorf("Run = %q", c.Run())
+	if c.Run() != "r" || e.Runtime() != "docker" {
+		t.Errorf("Run = %q, Runtime = %q", c.Run(), e.Runtime())
 	}
 	if exit, err := c.Wait(ctx); err != nil || exit != (executor.Exit{Reason: wire.Exited}) {
 		t.Errorf("Wait = %+v, %v", exit, err)
