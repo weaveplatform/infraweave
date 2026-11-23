@@ -289,8 +289,9 @@ func (l *Launcher) Ready(ctx context.Context) error {
 }
 
 // Retire makes Run end once the launcher is idle: after the run it
-// executes, or the poll it holds, which executes a run it claims first.
-// A launcher that does not retain its worker deregisters it.
+// executes and the poll that reports its exit, which claims no run and
+// answers at once, or after the poll it holds, which executes a run it
+// claims first. A launcher that does not retain its worker deregisters it.
 func (l *Launcher) Retire() { l.retiring.Store(true) }
 
 // Status answers what the launcher last showed of its worker.
@@ -534,6 +535,14 @@ func (l *Launcher) poll(ctx context.Context) (wire.PollResult, error) {
 		Drained: &l.drained,
 		Version: &l.d.Version,
 		Wait:    &wait,
+	}
+	// A retiring launcher says so rather than reporting itself drained,
+	// which would misstate the worker's flag, or asking for a shorter hold:
+	// either would still let the poll claim a run. The server answers a
+	// poll that reports an exit at once, so the exit needs no shorter hold.
+	if l.retiring.Load() {
+		retiring := true
+		req.Retiring = &retiring
 	}
 	var done <-chan waited
 	reported := l.ended

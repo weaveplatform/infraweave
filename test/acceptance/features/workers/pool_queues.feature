@@ -6,6 +6,8 @@ Feature: Pool queues list the runs waiting for a worker
   creation; the public pool by creation alone. A position is read when
   the search is, and reserves nothing. The public pool's busy workers are
   the account's runs a public worker holds.
+  A retiring worker's poll claims none of the waiting runs, and a poll
+  that reports the end of a run's container answers at once.
   ref: decision 0008
 
   Background:
@@ -79,3 +81,35 @@ Feature: Pool queues list the runs waiting for a worker
     When token "m" sends "GET /api/v1/public-worker-pool" through A
     Then the answer's busyWorkers is '1'
     And the answer's pendingRuns is '0'
+
+  @op:workerPoll @case:success
+  Scenario: A retiring worker's exit poll answers at once and leaves the waiting run queued
+    Given token "h" sends "POST /api/v1/worker-pools" with '{"name":"Builders","space":"legacy","certificateSigningRequest":"{csr}"}' through A
+    And the answer's id names "pool"
+    And the answer's pool token names the pool "pool" and chains to the pool CA, its serial kept as "cert"
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Infra","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through B
+    And token "h" sends "POST /api/v1/stacks" with '{"input":{"name":"Other","repository":"infra","branch":"main","provider":"GIT","repositoryURL":"{infra.url}","space":"legacy","workerPool":"{pool}","vendorConfig":{"terraform":{}}},"manageState":true}' through A
+    And the launcher "l" registers with the key of "csr" and the certificate "cert" through A
+    When token "h" sends "POST /api/v1/stacks/infra/runs" with '{"commitSha":"{seed}"}' through B
+    And the answer's id names "first"
+    And token "h" eventually reads the run "first" in the state "READY" through A
+    And token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    Then the answer assigns the run "first", its run token kept as "rt"
+    When token "h" sends "POST /api/v1/stacks/other/runs" with '{"commitSha":"{seed}"}' through A
+    And the answer's id names "second"
+    And token "h" eventually reads the run "second" in the state "READY" through B
+    And the launcher "l" polls with '{"busy":false,"retiring":true,"run":"{first}","exit":{"code":1,"reason":"exited"},"wait":120}' through A
+    Then the poll of "l" answers within 5 seconds
+    And the answer is '{}'
+    And token "h" eventually reads the run "first" in the state "FAILED" through B
+    And the answer's last state transition's note is "container exited with code 1"
+    When token "h" sends "GET /api/v1/worker-pools/{pool}" through A
+    Then the answer's busyWorkers is '0'
+    And the answer's pendingRuns is '1'
+    When token "l" sends "POST /worker/v1/poll" with '{"busy":false,"wait":5}' through B
+    Then the answer assigns the run "second", its run token kept as "rt2"
+    When the launcher "l" polls with '{"busy":false,"run":"{second}","exit":{"code":2,"reason":"exited"},"wait":120}' through B
+    Then the poll of "l" answers within 5 seconds
+    And the answer is '{}'
+    And token "h" eventually reads the run "second" in the state "FAILED" through A
+    And the answer's last state transition's note is "container exited with code 2"

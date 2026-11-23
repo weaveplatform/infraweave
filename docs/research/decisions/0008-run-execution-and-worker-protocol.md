@@ -299,11 +299,12 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   | `POST /worker/v1/runs/{run}/artifacts` | runner, run token | Commits uploaded run artifacts, workspaces and observability artifacts and records them in `run_artifacts` |
   | `GET /worker/v1/runs/{run}/workspace` | launcher, run token | `307` to a pre-signed `GET` of the run's latest saved workspace; `404` when it has none |
 
-- **The poll.** The request carries `{busy, drained, run, version}`, where
-  `drained` is the drain flag the launcher last learned. The server updates
-  `workers.last_seen_at`, then answers at once when it has anything to say,
-  including a drain flag other than the one reported, or holds the request until
-  a wake-up or `poll_timeout`. The launcher asks for a hold
+- **The poll.** The request carries `{busy, drained, retiring, run, version}`,
+  where `drained` is the drain flag the launcher last learned and `retiring`
+  says the launcher takes no further run, so the poll claims none. The server
+  updates `workers.last_seen_at`, then answers at once when it has anything to
+  say, including a drain flag other than the one reported or the acceptance of
+  a reported exit, or holds the request until a wake-up or `poll_timeout`. The launcher asks for a hold
   between 5 and 120 seconds (default 60, Spacelift's default); the server caps it
   at `worker.poll_timeout_max`. A held poll holds no transaction or pooled
   connection ([0005](0005-persistence-postgresql.md)), and a worker's next
@@ -1376,7 +1377,11 @@ surfaces retain their separate delivery owners.
 - **A container that ends** cuts the launcher's held poll short. Its next
   poll carries `busy: false`, the run and `exit` with the code and the reason
   (`exited`, `killed`, `out-of-memory`, or `missing` with code `-1`), and the
-  launcher repeats it until the server answers.
+  launcher repeats it until the server answers. The server answers it at
+  once, after trying its claim, so the launcher stops showing the run as
+  soon as the exit is taken. A retiring launcher (a controller slot whose
+  pool is deleted, whose capacity drops or whose chart is uninstalled) marks
+  that poll `retiring`: it claims no run and the slot retires on its answer.
 - **The admin listener** (`launcher.admin_listen`, `:9091`, one above the
   server's) answers decision 0017's probes for the launcher.
 - **Kubernetes.** `infraweave worker-controller` is an agent-only launcher of

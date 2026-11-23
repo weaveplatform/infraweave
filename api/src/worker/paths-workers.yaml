@@ -78,13 +78,20 @@ components:
           description: >-
             The drain flag the launcher last learned. A poll whose worker's
             flag differs answers at once.
+        retiring:
+          type: boolean
+          default: false
+          description: >-
+            Whether the launcher is retiring: it takes no further run and
+            exits once it holds none, so the poll is assigned no run.
         run:
           type: string
           maxLength: 26
           description: >-
             The ID of the run the launcher is executing, when busy; when not
             busy, the run whose container ended since the launcher's last
-            poll, which exit describes.
+            poll, which exit describes. A poll that is not busy and names a
+            run answers at once.
         exit:
           $ref: '#/components/schemas/ContainerExit'
         version:
@@ -390,7 +397,9 @@ paths:
         run is assigned its pool's next waiting run: the oldest of the first
         priority tier, with drift detection runs of normal or low priority
         skipped while the pool's running ones reach its drift detection run
-        limit. A poll whose
+        limit. A retiring worker is assigned no run. A poll that reports the
+        end of a run's container answers at once, once the server has taken
+        the exit. A poll whose
         session token has less than 15 minutes left answers at once with a
         renewed one, and a worker's next poll answers its held one at once.
         The answer is always 200.

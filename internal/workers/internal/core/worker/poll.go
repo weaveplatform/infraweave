@@ -20,16 +20,22 @@ import (
 const SignalCycle = "cycle"
 
 // PollInput is what a poll reports: whether the launcher is busy, the
-// drain flag it last learned, the hold it asks for, DefaultWait when
-// zero, and, when not busy, the run whose container ended since its last
-// poll and how it ended.
+// drain flag it last learned, whether it is retiring and so takes no
+// further run, the hold it asks for, DefaultWait when zero, and, when not
+// busy, the run whose container ended since its last poll and how it
+// ended.
 type PollInput struct {
-	Busy    bool
-	Drained bool
-	Wait    time.Duration
-	Run     *kernel.ULID
-	Exit    *workersapi.Exit
+	Busy     bool
+	Drained  bool
+	Retiring bool
+	Wait     time.Duration
+	Run      *kernel.ULID
+	Exit     *workersapi.Exit
 }
+
+// reportsExit reports whether in is a poll that reports the end of a
+// run's container.
+func (in PollInput) reportsExit() bool { return !in.Busy && in.Run != nil }
 
 // PollResult is a poll's answer: the run it claimed for the worker, the
 // signals for the worker, its drain flag, and a renewed session token
@@ -65,12 +71,14 @@ func result(w Worker) PollResult {
 // Poll marks the session's worker seen with in's state and answers what
 // the server has to say to it. A poll that is not busy and names a run
 // fails the run, when the worker still holds it, as one whose container
-// ended without a report ending it. An idle, undrained worker's poll first
-// claims its pool's next run, and answers at once with it; a busy
-// worker's poll delivers its run's stop or kill, which it answers at once
-// with. A poll also answers at once with a renewed token when the
-// session's has less than RenewWithin left, with a cycle signal, or when
-// the worker's drain flag is not the one in reports; otherwise it holds
+// ended without a report ending it, and answers at once, since the
+// launcher keeps the exit until a poll that reports it is answered. An
+// idle, undrained worker's poll that is not retiring first claims its
+// pool's next run, and answers at once with it; a busy worker's poll
+// delivers its run's stop or kill, which it answers at once with. A poll
+// also answers at once with a renewed token when the session's has less
+// than RenewWithin left, with a cycle signal, or when the worker's drain
+// flag is not the one in reports; otherwise it holds
 // the request, with no transaction or pooled connection open, until a
 // wake-up for its pool, which it claims and delivers again on, the worker
 // is cycled or its drain flag changes, the same worker's next poll
@@ -88,7 +96,7 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 	// registered, so a change, or a run made ready, between Seen and the
 	// registration still ends the hold.
 	wake, ended, done := s.hub.wait(w.Pool, waiter{
-		worker: w.ID, registered: w.CreatedAt, claimant: w.idle(), public: w.Public,
+		worker: w.ID, registered: w.CreatedAt, claimant: w.idle() && !in.Retiring, public: w.Public,
 	})
 	defer done()
 	timer := time.NewTimer(s.hold(in.Wait))
@@ -100,9 +108,13 @@ func (s *Service) Poll(ctx context.Context, b accessapi.Bearer, in PollInput) (P
 		}
 		out := result(cur)
 		out.Token = renewed
-		a, ok, err := s.claim(ctx, cur, b)
-		if err != nil {
-			return PollResult{}, err
+		var a Assignment
+		var ok bool
+		if !in.Retiring {
+			a, ok, err = s.claim(ctx, cur, b)
+			if err != nil {
+				return PollResult{}, err
+			}
 		}
 		if a.Retry {
 			if s.shouldAnswer(out, in) {
@@ -203,8 +215,11 @@ func (s *Service) sessionReply(ctx context.Context, b accessapi.Bearer, out Poll
 
 // shouldAnswer applies the same delivery rules before normal holds and before
 // contention backoff, so a retry cannot hide a renewal, signal or drain change.
+// A poll that reports an exit answers once its claim is tried, since its
+// launcher shows the run until then, which holds up a slot retired meanwhile.
 func (s *Service) shouldAnswer(out PollResult, in PollInput) bool {
-	return out.Assignment != nil || out.Token != nil || len(out.Signals) > 0 || out.Drained != in.Drained || s.hub.stopped()
+	return out.Assignment != nil || out.Token != nil || len(out.Signals) > 0 ||
+		out.Drained != in.Drained || in.reportsExit() || s.hub.stopped()
 }
 
 // retryPoll waits outside the claim transaction. The original poll deadline
