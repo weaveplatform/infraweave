@@ -59,6 +59,14 @@
 // cleanup attempt is bounded by cleanup_timeout; a refusal is recorded in
 // the Terminating condition and the next pass retries it.
 //
+// A replica is Reachable while the API server has answered its Lease
+// within the lease duration, and Connected unless, leading, its last pass
+// failed to reach a pool's installation through a transport failure or a
+// 5xx answer; a refusal is the pool's condition, not the replica's
+// health. Uninstall deletes the WorkerPools a selector matches in the
+// watch namespaces and waits while the running controller finalizes
+// them, refusing while a watch namespace holds a pool it does not match.
+//
 // ref: docs/implementation/worker-controller-design.md
 //
 // # Input and output

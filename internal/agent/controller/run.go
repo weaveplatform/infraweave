@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/leaderelection"
@@ -106,6 +107,11 @@ type Controller struct {
 	starting sync.Mutex
 	synced   atomic.Bool
 	leading  atomic.Bool
+	// answered is when the Kubernetes API last answered this replica's
+	// Lease, in Unix nanoseconds, and unreached how many pools the last
+	// pass found no healthy installation for.
+	answered  atomic.Int64
+	unreached atomic.Int64
 }
 
 // New is a Controller over d.
@@ -193,6 +199,34 @@ func (c *Controller) Synced(context.Context) error {
 	return nil
 }
 
+// Reachable reports, for the readiness probe, whether the Kubernetes API
+// answered this replica's Lease within LeaseDuration. Leader and standby
+// alike read the Lease every RetryPeriod, so a replica that has lost its
+// API server, or its permission on the Lease, is unready within one lease:
+// it can neither lead nor take over.
+func (c *Controller) Reachable(context.Context) error {
+	at := c.answered.Load()
+	if at == 0 {
+		return errors.New("the Kubernetes API has not yet answered for the Lease") //nolint:err113 // a probe's reason
+	}
+	if since := c.now().Sub(time.Unix(0, at)); since > LeaseDuration {
+		return fmt.Errorf("the Kubernetes API has not answered for the Lease for %s", since.Round(time.Second)) //nolint:err113 // a probe's reason
+	}
+	return nil
+}
+
+// Connected reports, for the readiness probe, whether the leader's last
+// pass reached a healthy installation for every pool it reconciled: a
+// pool whose endpoint never answered, or answered with a server error,
+// makes the leader unready until a pass reaches it again. A standby
+// replica calls no installation and passes.
+func (c *Controller) Connected(context.Context) error {
+	if n := c.unreached.Load(); n > 0 && c.leading.Load() {
+		return fmt.Errorf("the installation of %d worker pools is unreachable", n) //nolint:err113 // a probe's reason
+	}
+	return nil
+}
+
 // Leading reports whether this replica holds the Lease.
 func (c *Controller) Leading() bool { return c.leading.Load() }
 
@@ -201,11 +235,11 @@ func (c *Controller) Leading() bool { return c.leading.Load() }
 // stands for election again; the Lease, resource versions and the
 // server's hosting binding fence any overlap of two leaders.
 func (c *Controller) Run(ctx context.Context) error {
-	lock := &resourcelock.LeaseLock{
+	lock := answeredLock{Interface: &resourcelock.LeaseLock{
 		LeaseMeta:  metaFor(c.settings.LeaderElection.Name, c.settings.LeaderElection.Namespace),
 		Client:     c.kube.Coordination,
 		LockConfig: resourcelock.ResourceLockConfig{Identity: c.identity},
-	}
+	}, answered: func() { c.answered.Store(c.now().UnixNano()) }}
 	for ctx.Err() == nil {
 		elector, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 			Lock: lock, LeaseDuration: LeaseDuration, RenewDeadline: RenewDeadline, RetryPeriod: RetryPeriod,
@@ -248,6 +282,7 @@ func (c *Controller) lead(ctx context.Context) {
 // run under ctx.
 func (c *Controller) Pass(ctx context.Context) {
 	listed := true
+	unreached := int64(0)
 	pools := map[types.UID]bool{}
 	for _, namespace := range c.settings.WatchNamespaces {
 		list, err := c.pools(ctx, namespace)
@@ -259,14 +294,50 @@ func (c *Controller) Pass(ctx context.Context) {
 		for _, wp := range list {
 			pools[wp.UID] = true
 			if err := c.reconcile(ctx, wp); err != nil && ctx.Err() == nil {
+				if f := (*fault)(nil); errors.As(err, &f) && f.unreached {
+					unreached++
+				}
 				c.log.WarnContext(ctx, "worker pool reconciliation", "namespace", wp.Namespace, "name", wp.Name, "error", err.Error())
 			}
 		}
 	}
+	c.unreached.Store(unreached)
 	if listed {
 		c.synced.Store(true)
 		c.stopSlots(func(s *slot) bool { return pools[s.pool] })
 	}
+}
+
+// answeredLock is a Lease lock that calls answered each time the
+// Kubernetes API answers it: a read, even of an absent Lease, a create or
+// an update.
+type answeredLock struct {
+	resourcelock.Interface
+	answered func()
+}
+
+func (l answeredLock) Get(ctx context.Context) (*resourcelock.LeaderElectionRecord, []byte, error) {
+	record, raw, err := l.Interface.Get(ctx)
+	if err == nil || apierrors.IsNotFound(err) {
+		l.answered()
+	}
+	return record, raw, err //nolint:wrapcheck // the elector reads the lock's own errors
+}
+
+func (l answeredLock) Create(ctx context.Context, record resourcelock.LeaderElectionRecord) error {
+	err := l.Interface.Create(ctx, record)
+	if err == nil {
+		l.answered()
+	}
+	return err //nolint:wrapcheck // the elector reads the lock's own errors
+}
+
+func (l answeredLock) Update(ctx context.Context, record resourcelock.LeaderElectionRecord) error {
+	err := l.Interface.Update(ctx, record)
+	if err == nil {
+		l.answered()
+	}
+	return err //nolint:wrapcheck // the elector reads the lock's own errors
 }
 
 func metaFor(name, namespace string) metav1.ObjectMeta {

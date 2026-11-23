@@ -71,9 +71,12 @@ const (
 )
 
 // fault is a reconciliation failure as a condition reports it.
+// unreached marks a call to the installation that no healthy server
+// answered, which the readiness probe reports.
 type fault struct {
 	reason, message string
 	err             error
+	unreached       bool
 }
 
 func (f *fault) Error() string { return f.reason + ": " + f.message }
@@ -90,7 +93,9 @@ func fail(reason, message string, err error) *fault {
 func remoteFault(op string, err error) *fault {
 	var e *client.Error
 	if !errors.As(err, &e) {
-		return fail(ReasonUnavailable, op+": the installation is unreachable.", err)
+		f := fail(ReasonUnavailable, op+": the installation is unreachable.", err)
+		f.unreached = true
+		return f
 	}
 	message := e.Error()
 	switch {
@@ -102,7 +107,11 @@ func remoteFault(op string, err error) *fault {
 		return fail(ReasonForbidden, message, err)
 	case e.Status == http.StatusConflict:
 		return fail(ReasonOwnershipConflict, message, err)
-	case e.Status >= http.StatusInternalServerError || e.Status == http.StatusTooManyRequests:
+	case e.Status >= http.StatusInternalServerError:
+		f := fail(ReasonUnavailable, message, err)
+		f.unreached = true
+		return f
+	case e.Status == http.StatusTooManyRequests:
 		return fail(ReasonUnavailable, message, err)
 	}
 	return fail(ReasonRefused, message, err)
