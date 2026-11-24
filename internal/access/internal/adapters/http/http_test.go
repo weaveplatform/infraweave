@@ -30,6 +30,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	managed "github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
@@ -298,6 +299,10 @@ type world struct {
 	// sso and party are the OIDC sign-in's store and provider.
 	sso   *ssoStore
 	party *relyingParty
+	// auth and oidc are the authentication and the OIDC sign-in the
+	// routes serve through.
+	auth *authn.Service
+	oidc *sso.SignIn
 }
 
 // public is the route class that takes no credential.
@@ -382,6 +387,7 @@ func newWorld(t *testing.T) *world {
 		CodeTTL: time.Minute, Now: func() time.Time { return t0 },
 	})
 	signIn := w.newSignIn(auth)
+	w.auth, w.oidc = auth, signIn
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
 			SignIn:   signIn,

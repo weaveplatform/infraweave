@@ -51,6 +51,11 @@ type SignInStore interface {
 	// identity's login as its admin login and records the entry. A
 	// re-authentication's rec.Member that the identity does not resolve
 	// to is ErrOtherMember; a full seats limit a *featuresapi.LimitError.
+	// With rec.Link, the identity must be a link member's, which the
+	// sign-in proves, and the second member's sign-in merges the link's
+	// other member into its member, whose session it then creates; the
+	// sessions the merge revokes are dropped from this replica's cache
+	// once it commits.
 	SignInIdentity(ctx context.Context, rec SignInRecord) (session.Session, error)
 	// ProvidersByClientID are the OIDC providers of every organization
 	// whose client ID is one of ids.
@@ -66,7 +71,8 @@ type SignInStore interface {
 	// and false when it holds none.
 	SessionIDToken(ctx context.Context, id kernel.ULID) (crypt.Value, bool, error)
 	// ExpireSignIns deletes the requests that ended, consumed or expired,
-	// and the logout tokens that expired, before before.
+	// the logout tokens that expired, and the links that expired without
+	// completing, before before.
 	ExpireSignIns(ctx context.Context, before time.Time) (int64, error)
 }
 
@@ -84,6 +90,11 @@ type SignInRecord struct {
 	// Member, when not zero, is the member a re-authentication must
 	// resolve to.
 	Member kernel.MemberID
+	// Link, when not zero, is the link a link's sign-in proves one member
+	// of; Prover is the member whose session the browser held, zero for
+	// none.
+	Link   kernel.ULID
+	Prover kernel.MemberID
 }
 
 // SignInDeps are what the sign-in needs.
@@ -120,6 +131,9 @@ type Start struct {
 	Provider     string
 	Purpose      string
 	ReturnTo     string
+	// Link is the link a link's sign-in proves, which the linking
+	// service names; a start through the sign-in pages names none.
+	Link kernel.ULID
 	// By is the browser's live session's principal, nil for none.
 	By *kernel.Principal
 }
@@ -190,8 +204,10 @@ func (s *SignIn) organization(ctx context.Context, slug string) (organization.Or
 // authorization request with a PKCE S256 challenge, a nonce and Scopes,
 // and max_age=0 with prompt=login for a fresh purpose. A sign-in needs the
 // provider enabled; enabling needs the browser to hold an organization
-// admin's session of the organization; re-authentication a member's. The
-// kind's feature refused is a *featuresapi.Refusal.
+// admin's session of the organization; re-authentication a member's. A
+// link's sign-in is started only with the link the linking service names,
+// never through the sign-in pages' purpose alone. The kind's feature
+// refused is a *featuresapi.Refusal.
 func (s *SignIn) Start(ctx context.Context, in Start) (Started, error) {
 	org, err := s.organization(ctx, in.Organization)
 	if err != nil {
@@ -205,7 +221,7 @@ func (s *SignIn) Start(ctx context.Context, in Start) (Started, error) {
 	if err != nil {
 		return Started{}, err
 	}
-	if p.Kind != OIDC || purpose == PurposeLink {
+	if p.Kind != OIDC || (purpose == PurposeLink) == in.Link.IsZero() {
 		return Started{}, fmt.Errorf("%w: a %s %s through %s", ErrNotOffered, p.Kind, purpose, p.Name)
 	}
 	if s.d.Features != nil {
@@ -227,7 +243,7 @@ func (s *SignIn) Start(ctx context.Context, in Start) (Started, error) {
 	now := s.d.Now()
 	state, cookie, nonce := random(), random(), random()
 	r := Request{
-		ID: kernel.NewULID(), OrganizationID: org.ID, ProviderID: p.ID, Purpose: purpose,
+		ID: kernel.NewULID(), OrganizationID: org.ID, ProviderID: p.ID, Purpose: purpose, LinkID: in.Link,
 		StateHash: digest(state), Nonce: nonce, Verifier: oauth2.GenerateVerifier(),
 		BrowserHash: digest(cookie), ReturnTo: returnTo, CreatedAt: now, ExpiresAt: now.Add(RequestTTL),
 	}
@@ -293,7 +309,9 @@ func (s *SignIn) redirectURI() string {
 // that started it: it redeems the code, verifies the ID token and its
 // claims, and signs the identity in as a browser session of actor kind
 // user in no account. An enabling sign-in enables the provider with the
-// login as its admin login. Every refusal leaves no session.
+// login as its admin login; a link's sign-in proves its member of the
+// link, and the second merges the link's members. Every refusal leaves no
+// session.
 func (s *SignIn) Callback(ctx context.Context, in Callback) (SignedIn, error) {
 	if in.State == "" || in.Cookie == "" {
 		return SignedIn{}, ErrRequest
@@ -339,6 +357,14 @@ func (s *SignIn) Callback(ctx context.Context, in Callback) (SignedIn, error) {
 			return SignedIn{}, fmt.Errorf("%w: re-authentication needs a member's session", ErrForbidden)
 		}
 		rec.Member = in.By.MemberID
+	case PurposeLink:
+		if !p.Enabled() {
+			return SignedIn{}, fmt.Errorf("%w: %s is not enabled", ErrNotOffered, p.Name)
+		}
+		rec.Link = r.LinkID
+		if in.By != nil && in.By.OrganizationID == p.OrganizationID {
+			rec.Prover = in.By.MemberID
+		}
 	default:
 		if !p.Enabled() {
 			return SignedIn{}, fmt.Errorf("%w: %s is not enabled", ErrNotOffered, p.Name)
@@ -488,7 +514,7 @@ func (s *SignIn) BackchannelLogout(ctx context.Context, raw string) error {
 }
 
 // Expire is authn.sessions.expire's part of the sign-in: it deletes the
-// requests and logout tokens that have ended.
+// requests, logout tokens and links that have ended.
 func (s *SignIn) Expire(ctx context.Context) error {
 	_, err := s.d.Store.ExpireSignIns(ctx, s.d.Now())
 	return err //nolint:wrapcheck // the store names the write

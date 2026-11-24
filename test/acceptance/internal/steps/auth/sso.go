@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -40,6 +41,8 @@ type ssoSteps struct {
 	callback *url.URL
 	// logoutToken is the last back-channel logout token sent.
 	logoutToken string
+	// counted is the home organization's live members when last counted.
+	counted int
 }
 
 // ssoProvider is a provider of the home organization and its issuer.
@@ -54,7 +57,8 @@ type ssoProvider struct {
 const ssoCallback = harness.PublicURL + "/auth/oidc/callback"
 
 func (s *ssoSteps) register(sc *godog.ScenarioContext) {
-	sc.Step(`^two infraweave servers, A and B, on one database, trusting the scenario's OIDC issuers$`, s.servers)
+	sc.Step(`^two infraweave servers, A and B, on one database, trusting the scenario's OIDC issuers(?:, with an expensive budget of (\d+))?$`,
+		s.servers)
 	sc.Step(`^the home organization has the OIDC provider "(\w+)" at the (in-process|navikt) issuer, (enabled with the admin login "[^"]+"|disabled)$`, s.provider)
 	sc.Step(`^(the browser|token "\w+") creates the OIDC settings "(\w+)" at the (in-process|navikt) issuer through ([AB])$`,
 		s.createSettings)
@@ -83,6 +87,7 @@ func (s *ssoSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the provider "(\w+)" logs out "([^"]+)"'s (session|subject) through ([AB])$`, s.backchannel)
 	sc.Step(`^replaying the logout token through ([AB]) answers 400$`, s.replay)
 	sc.Step(`^starting a sign-in through the provider "(\w+)" at ([AB]) eventually answers 403 with the code "([a-z-]+)"$`, s.eventuallyRefused)
+	s.registerLinking(sc)
 	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
 		if s.local != nil {
 			s.local.Close()
@@ -92,8 +97,11 @@ func (s *ssoSteps) register(sc *godog.ScenarioContext) {
 }
 
 // servers starts the in-process issuer and the shared navikt container,
-// and the scenario's two servers trusting both, with the operator key.
-func (s *ssoSteps) servers(ctx context.Context) error {
+// and the scenario's two servers trusting both, with the operator key and,
+// when budget names one, an expensive budget of that many requests that
+// refills too slowly to matter in a scenario, for a scenario whose
+// sign-ins spend more than the default's.
+func (s *ssoSteps) servers(ctx context.Context, budget string) error {
 	w := s.w
 	iss, err := deps.StartIssuer()
 	if err != nil {
@@ -110,8 +118,18 @@ func (s *ssoSteps) servers(ctx context.Context) error {
 	auth := harness.OperatorAuth()
 	auth["oidc_api_keys"] = map[string]any{"ca_file": ca}
 	w.Settings["auth"] = auth
-	if err := w.TwoReplicas(ctx); err != nil {
-		return err //nolint:wrapcheck // names itself
+	var rateLimit map[string]any
+	if budget != "" {
+		burst, err := strconv.Atoi(budget)
+		if err != nil {
+			return fmt.Errorf("%w: budget %q: %w", harness.ErrStep, budget, err)
+		}
+		rateLimit = map[string]any{"expensive": map[string]any{"rate": 1e-6, "burst": burst}}
+	}
+	for range 2 {
+		if err := w.Start(ctx, rateLimit); err != nil {
+			return err //nolint:wrapcheck // names itself
+		}
 	}
 	db, err := w.Querier(ctx)
 	if err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/holder"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/operator"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
@@ -154,6 +155,7 @@ type Domain struct {
 	orgAdmin       *orgadmin.Service
 	providers      *sso.Service
 	signIn         *sso.SignIn
+	linking        *linking.Service
 	settings       *settings.Service
 	users          *user.Service
 	groups         *group.Service
@@ -283,6 +285,10 @@ func New(d Deps) (*Domain, error) {
 		Drop: auth.Cache().Drop, PublicURL: d.PublicURL,
 		Idle: d.Settings.Session.IdleTimeout, MaxAge: d.Settings.Session.MaxAge, Now: now,
 	})
+	links := linking.NewService(linking.Deps{
+		Store: store, Admins: orgAdmin, SignIn: signIn, Drop: auth.Cache().Drop,
+		PublicURL: d.PublicURL, Now: now,
+	})
 	subjects := http.NewSubjects()
 	// A request names a space by its slug, as the API's Space ID is.
 	subjects.Register(accessapi.EntitySpace, func(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
@@ -310,7 +316,8 @@ func New(d Deps) (*Domain, error) {
 			Store: store, Admins: orgAdmin, Features: d.Features, Discovery: verifier,
 			Drop: auth.Cache().Drop, Now: now,
 		}),
-		signIn: signIn,
+		signIn:  signIn,
+		linking: links,
 		settings: settings.NewService(
 			settings.Deps{Store: store, Authz: decide, Admins: orgAdmin, Drop: auth.Cache().Drop, Now: now},
 		),
@@ -352,7 +359,8 @@ func (d *Domain) API() AccessAPI {
 		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
 		Settings: d.settings, Orgs: d.orgAdmin, Providers: d.providers, SignIn: d.signIn, Users: d.users,
 		Groups: d.groups, Roles: d.roles,
-		Bindings: d.bindings, Holders: d.holders, OAuth: d.oauth, Atomic: d.store.Atomic,
+		Bindings: d.bindings, Holders: d.holders, OAuth: d.oauth, Linking: d.linking,
+		Atomic: d.store.Atomic,
 	})
 }
 
@@ -388,7 +396,8 @@ func (d *Domain) Seats(ctx context.Context, org kernel.OrganizationID, acct kern
 
 // Routes mounts the domain's pages and protocols beside the APIs on r:
 // the break-glass login at accessapi.LoginPattern, the sign-in through an
-// organization's identity providers at the sign-in and OIDC patterns, the
+// organization's identity providers at the sign-in and OIDC patterns, an
+// identity link's page and its sign-ins at the link patterns, the
 // authorization server's endpoints at the OAuth patterns, and the
 // federation issuer's discovery document and JWKS at
 // FederationDiscoveryPatterns. A nil domain's answer 501, as its API
@@ -400,7 +409,7 @@ func (d *Domain) Routes(r chi.Router) {
 			accessapi.SignInProviderPattern, accessapi.OIDCCallbackPattern,
 			accessapi.OIDCBackchannelLogoutPattern, accessapi.OAuthMetadataPattern,
 			accessapi.OAuthRegisterPattern, accessapi.OAuthAuthorizePattern,
-			accessapi.OAuthTokenPattern,
+			accessapi.OAuthTokenPattern, accessapi.LinkPattern, accessapi.LinkProviderPattern,
 		}, d.FederationDiscoveryPatterns()...) {
 			r.HandleFunc(p, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 				problem.Write(w, problem.NotImplemented.New("No access domain serves this route."))
@@ -410,6 +419,7 @@ func (d *Domain) Routes(r chi.Router) {
 	}
 	http.NewLogin(d.authn, d.publicURL).Routes(r)
 	http.NewSignIn(d.signIn, d.authn).Routes(r)
+	http.NewLinking(d.linking, d.authn).Routes(r)
 	http.NewOAuth(d.oauth).Routes(r)
 	http.NewFederationDiscovery(d.federation, d.federationIssuer, d.federationJWKSURI).Routes(r)
 }

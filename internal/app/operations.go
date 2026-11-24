@@ -626,6 +626,16 @@ var apiOperations = sync.OnceValue(func() Operations {
 		Public: true, Cost: ratelimit.Expensive,
 	}
 	ops[http.MethodPost+" "+accessapi.OIDCBackchannelLogoutPattern] = Operation{Public: true}
+	// An identity link's page and its sign-ins are pages as a sign-in's
+	// are: the link's page takes no credential and names no feature, as
+	// the organization admin's link was gated already, and each start is
+	// an expensive draw on the client's address, as each costs a request
+	// to the provider.
+	// ref: decision 0006 § "Members and identity providers"
+	ops[http.MethodGet+" "+accessapi.LinkPattern] = Operation{Public: true}
+	ops[http.MethodGet+" "+accessapi.LinkProviderPattern] = Operation{
+		Public: true, Cost: ratelimit.Expensive,
+	}
 	// The authorization server for MCP clients takes no credential: a
 	// client registers, authorizes and redeems before it holds one. Each
 	// registration is an expensive draw on the client's address, because

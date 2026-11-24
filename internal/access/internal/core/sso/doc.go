@@ -43,7 +43,8 @@
 // answers the authorization request: a PKCE S256 challenge, a nonce,
 // Scopes, and max_age=0 with prompt=login for a Fresh purpose. A sign-in
 // needs the provider enabled, an enable an organization admin's browser
-// session, a re-authentication a member's; the kind's feature must be in
+// session, a re-authentication a member's, and a link's sign-in the link
+// the linking package names; the kind's feature must be in
 // the organization's tier; return_to must be a path (CheckReturnTo).
 // Callback consumes the request once, within RequestTTL, for the browser
 // holding the cookie, redeems the code through RelyingParty, and checks
@@ -55,9 +56,11 @@
 // member: the identity's, refused when deactivated; else the one pending
 // member invited under the login; else a new one. The store writes the
 // member and a WEB session of actor kind user in no account, replacing the
-// member's live one, with the groups as its original teams. LogoutURL is
-// the provider's end-session URL for a session, and BackchannelLogout ends
-// the sessions a verified logout token names, accepting each jti once.
+// member's live one, with the groups as its original teams. A link's
+// sign-in carries the link and the member whose session the browser
+// holds, for the store to prove and merge. LogoutURL is the provider's
+// end-session URL for a session, and BackchannelLogout ends the sessions
+// a verified logout token names, accepting each jti once.
 //
 // ref: decisions 0006 and 0021
 //

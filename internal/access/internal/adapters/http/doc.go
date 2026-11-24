@@ -154,6 +154,20 @@
 // Cache-Control: public, max-age=3600, the JWKS the published federation
 // keys alone, and a failed read of the keys the problem it is, which no
 // cache keeps.
+// organizationMemberLinkCreate, through linking.Service, opens a link that
+// merges the body's member into the path's for an organization admin and
+// answers its page's URL: a member of another organization answers 404,
+// the same member twice, a deactivated member or one without an identity
+// 422 validation-failed, and an open link of the pair 409 already-exists.
+// identityFederationUnlink removes the caller's member's identities of a
+// kind but the one its session signed in through and answers those left:
+// a principal that names no member answers 403, a kind the member holds
+// none of 404, and the session's own identity alone or the member's last
+// 422 validation-failed. The viewer's identity lists its member's
+// identities. Linking serves a link's page and its sign-in starts at
+// accessapi's link patterns, which answer pages as the sign-in's do, 410
+// link-ended for a link that expired or completed and 403 not-linked or
+// other-browser for a sign-in the link refuses.
 // OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
@@ -202,7 +216,7 @@
 // # Dependencies
 //
 // It imports the access domain's apikey, authn, breakglass, federation,
-// loopback, group, member, oauth, operator, orgadmin, organization, port, session,
+// linking, loopback, group, member, oauth, operator, orgadmin, organization, port, session,
 // settings, space, sso and user packages, accessapi,
 // featuresapi for limit-reached and a feature's refusal, internal/kernel, chi, go-jose for the federation keys, the generated servers of both APIs, and
 // platform/httpkit's apisearch, page, problem, ratelimit and strict. Only the access domain's assembly

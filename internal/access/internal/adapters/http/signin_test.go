@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -419,6 +420,9 @@ func TestUnitSignInRefusals(t *testing.T) {
 		errDown:                                   {status: http.StatusServiceUnavailable, code: "unavailable"},
 		errors.New("boom"):                        {status: http.StatusInternalServerError, code: "internal"},
 		fmt.Errorf("wrapped: %w", sso.ErrDeactivated): {status: http.StatusForbidden, code: "member-deactivated"},
+		linking.ErrEnded:        {status: http.StatusGone, code: "link-ended"},
+		linking.ErrNotLinked:    {status: http.StatusForbidden, code: "not-linked"},
+		linking.ErrOtherBrowser: {status: http.StatusForbidden, code: "other-browser"},
 	} {
 		if got := refusalOf(err); got.status != want.status || got.code != want.code || got.message == "" {
 			t.Errorf("refusalOf(%v) = %+v, want %+v", err, got, want)

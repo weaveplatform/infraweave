@@ -175,6 +175,7 @@ func TestUnitAPIOperations(t *testing.T) {
 			strings.HasSuffix(key, " "+fs.Pattern), signedState[key],
 			key == "GET "+accessapi.OAuthMetadataPattern, strings.Contains(key, " /oauth/"),
 			strings.Contains(key, " /auth/login"), strings.Contains(key, " /auth/oidc/"),
+			strings.Contains(key, " /auth/link/"),
 			strings.HasSuffix(key, " "+accessapi.FederationDiscoveryPattern),
 			strings.HasSuffix(key, " "+accessapi.FederationJWKSPattern),
 			op.Worker, op.State:

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
@@ -111,6 +112,8 @@ func (s *Store) ConsumeSignInRequest(ctx context.Context, stateHash, browserHash
 // one transaction. The organization's row lock, which invites take too,
 // orders sign-ins and invites of one login, so two never both create a
 // member for one identity or both pass the seats check for the last seat.
+// A link's sign-in needs an identity a member holds already and signs in
+// the member proveLink answers.
 //
 // ref: decision 0006 § "Human login"
 func (s *Store) SignInIdentity(ctx context.Context, rec sso.SignInRecord) (session.Session, error) {
@@ -133,13 +136,25 @@ func (s *Store) SignInIdentity(ctx context.Context, rec sso.SignInRecord) (sessi
 		if !rec.Member.IsZero() && m != rec.Member {
 			return sso.ErrOtherMember
 		}
+		if !rec.Link.IsZero() {
+			if bound == nil {
+				return fmt.Errorf("%w: no member holds the identity", linking.ErrNotLinked)
+			}
+			merged, err := s.proveLink(ctx, q, rec, m)
+			if err != nil {
+				return err
+			}
+			if merged != m {
+				m, res = merged, sso.ResolveExisting
+			}
+		}
 		if m, err = s.admitMember(ctx, q, org, res, m, id); err != nil {
 			return err
 		}
 		if bound == nil {
 			if _, err := q.Exec(ctx, `INSERT INTO member_identities
-					(organization_id, member_id, identity_provider_id, subject)
-				VALUES ($1, $2, $3, $4)`, org, m, p, id.Subject); err != nil {
+					(organization_id, member_id, identity_provider_id, subject, login)
+				VALUES ($1, $2, $3, $4, $5)`, org, m, p, id.Subject, id.Login); err != nil {
 				return fmt.Errorf("access: record identity: %w", sql.Unavailable(err))
 			}
 		}
@@ -327,7 +342,8 @@ func (s *Store) RevokeIdentitySessions(ctx context.Context, provider kernel.ULID
 }
 
 // ExpireSignIns deletes the sign-in requests that ended, consumed or
-// expired, before before, and the logout tokens expired before it.
+// expired, before before, the logout tokens expired before it, and the
+// links that expired before it without completing.
 func (s *Store) ExpireSignIns(ctx context.Context, before time.Time) (int64, error) {
 	q := tx.Q(ctx, s.db)
 	reqs, err := q.Exec(ctx, `DELETE FROM sso_requests
@@ -339,5 +355,10 @@ func (s *Store) ExpireSignIns(ctx context.Context, before time.Time) (int64, err
 	if err != nil {
 		return 0, fmt.Errorf("access: expire logout tokens: %w", sql.Unavailable(err))
 	}
-	return reqs.RowsAffected() + toks.RowsAffected(), nil
+	links, err := q.Exec(ctx, `DELETE FROM member_links
+		WHERE completed_at IS NULL AND expires_at < $1`, before)
+	if err != nil {
+		return 0, fmt.Errorf("access: expire links: %w", sql.Unavailable(err))
+	}
+	return reqs.RowsAffected() + toks.RowsAffected() + links.RowsAffected(), nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/holder"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -51,6 +52,7 @@ type Server struct {
 	bindings  *binding.Service
 	holders   *holder.Service
 	oauth     *oauth.Service
+	linking   *linking.Service
 	atomic    func(context.Context, func(context.Context) error) error
 }
 
@@ -64,8 +66,9 @@ type Accounts interface {
 // (nil answers none), Users and Groups the Managed Users tag, OAuth the consent
 // operations of the authorization server, Spaces the Spaces tag, Roles
 // the Roles tag, Bindings the role bindings of users, groups and API keys,
-// Holders the views of who holds a space, and Authz the actions each view
-// lists. Atomic runs a function in one
+// Holders the views of who holds a space, Linking the identity linking
+// operations and the viewer's identity (nil answers none), and Authz the
+// actions each view lists. Atomic runs a function in one
 // transaction, which the stores' writes in its context join, so an actor
 // and the bindings its input carries are written together or not at all.
 type Services struct {
@@ -84,6 +87,7 @@ type Services struct {
 	Bindings  *binding.Service
 	Holders   *holder.Service
 	OAuth     *oauth.Service
+	Linking   *linking.Service
 	Atomic    func(context.Context, func(context.Context) error) error
 }
 
@@ -93,7 +97,7 @@ func NewServer(sv Services) Server {
 		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
 		settings: sv.Settings, orgs: sv.Orgs, providers: sv.Providers, signIn: sv.SignIn,
 		users: sv.Users, groups: sv.Groups, roles: sv.Roles, bindings: sv.Bindings, oauth: sv.OAuth,
-		holders: sv.Holders, atomic: sv.Atomic,
+		holders: sv.Holders, linking: sv.Linking, atomic: sv.Atomic,
 	}
 }
 
@@ -299,6 +303,9 @@ func (s Server) userOf(ctx context.Context, p kernel.Principal, token string, un
 	}
 	u.ApiKeys, u.OwnedApiKeys = keyRefs(h.Created), keyRefs(h.Owned)
 	u.CanCreatePersonalApiKey = h.CanCreatePersonal
+	if err := s.identityOf(ctx, p, &u); err != nil {
+		return api.User{}, err
+	}
 	if u.Actions, err = s.spaceActions(ctx, p); err != nil {
 		return api.User{}, err
 	}

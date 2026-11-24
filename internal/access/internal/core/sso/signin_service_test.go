@@ -294,6 +294,12 @@ func TestUnitSignInStart(t *testing.T) {
 	if q.Get("max_age") != "0" || q.Get("prompt") != "login" {
 		t.Errorf("a re-authentication's request: %v", q)
 	}
+	link := kernel.NewULID()
+	q, _ = w.started(t, sso.Start{Purpose: "link", Link: link})
+	if r := w.st.reqs[len(w.st.reqs)-1]; q.Get("max_age") != "0" || q.Get("prompt") != "login" ||
+		r.Purpose != sso.PurposeLink || r.LinkID != link {
+		t.Errorf("a link's request: %v, stored %+v", q, r)
+	}
 	w.started(t, sso.Start{
 		Purpose: "enable", Provider: w.off.ID.String(), By: w.principal(kernel.PrincipalUser, w.admin),
 	})
@@ -322,6 +328,12 @@ func TestUnitSignInStartRefusals(t *testing.T) {
 		}, want: sso.ErrNotOffered},
 		"link": {in: func(w *signInWorld) sso.Start {
 			return sso.Start{Organization: "acme", Provider: w.on.ID.String(), Purpose: "link"}
+		}, want: sso.ErrNotOffered},
+		"a sign-in naming a link": {in: func(w *signInWorld) sso.Start {
+			return sso.Start{Organization: "acme", Provider: w.on.ID.String(), Link: kernel.NewULID()}
+		}, want: sso.ErrNotOffered},
+		"a link through a disabled provider": {in: func(w *signInWorld) sso.Start {
+			return sso.Start{Organization: "acme", Provider: w.off.ID.String(), Purpose: "link", Link: kernel.NewULID()}
 		}, want: sso.ErrNotOffered},
 		"SAML": {in: func(w *signInWorld) sso.Start {
 			return sso.Start{Organization: "acme", Provider: w.st.ps[2].ID.String()}
@@ -448,6 +460,29 @@ func TestUnitSignInCallbackPurposes(t *testing.T) {
 	q, cookie = w.started(t, sso.Start{Purpose: "reauthenticate", By: member})
 	if _, err := w.svc.Callback(ctx, sso.Callback{State: q.Get("state"), Cookie: cookie}); !errors.Is(err, sso.ErrForbidden) {
 		t.Errorf("a re-authentication's callback without the session: %v", err)
+	}
+
+	// A link's sign-in carries the link, and the member whose session the
+	// browser holds in the organization as the prover; another
+	// organization's session proves no member.
+	link := kernel.NewULID()
+	other := &kernel.Principal{Kind: kernel.PrincipalUser, OrganizationID: kernel.NewOrganizationID(), MemberID: kernel.NewMemberID()}
+	for _, c := range []struct {
+		by   *kernel.Principal
+		want kernel.MemberID
+	}{{member, member.MemberID}, {nil, kernel.MemberID{}}, {other, kernel.MemberID{}}} {
+		q, cookie = w.started(t, sso.Start{Purpose: "link", Link: link})
+		if _, err := w.svc.Callback(ctx, sso.Callback{State: q.Get("state"), Cookie: cookie, By: c.by}); err != nil {
+			t.Fatal(err)
+		}
+		if rec := w.st.recs[len(w.st.recs)-1]; rec.Link != link || rec.Prover != c.want || !rec.Member.IsZero() {
+			t.Errorf("a link's sign-in by %+v = link %s, prover %s", c.by, rec.Link, rec.Prover)
+		}
+	}
+	q, cookie = w.started(t, sso.Start{Purpose: "link", Link: link})
+	w.st.ps[0].EnabledAt = time.Time{}
+	if _, err := w.svc.Callback(ctx, sso.Callback{State: q.Get("state"), Cookie: cookie}); !errors.Is(err, sso.ErrNotOffered) {
+		t.Errorf("a link's callback through a provider disabled since its start: %v", err)
 	}
 }
 

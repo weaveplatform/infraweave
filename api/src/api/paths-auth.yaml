@@ -135,15 +135,15 @@ components:
       type: string
       x-graphql-type: FederationProvider
     Identity:
-      description: Identity represents a V2 identity record linked to a user via federation.
+      description: The identities that sign in as a member, one for each identity provider subject.
       properties:
         federations:
-          description: Federation records linking this identity to external providers.
+          description: The member's identities, oldest first.
           items:
             $ref: '#/components/schemas/IdentityFederation'
           type: array
         id:
-          description: ULID of the identity.
+          description: The member's ID.
           type: string
       required:
         - federations
@@ -151,13 +151,13 @@ components:
       type: object
       x-graphql-type: Identity
     IdentityFederation:
-      description: IdentityFederation represents the link between an identity and an external identity provider.
+      description: An identity that signs in as the member, an identity provider's subject.
       properties:
         externalID:
-          description: External ID from the identity provider.
+          description: The subject the identity provider names the person by.
           type: string
         externalUsername:
-          description: External username from the identity provider, if available.
+          description: The login the identity provider asserted at the identity's first sign-in, if it asserted one.
           nullable: true
           type: string
         provider:
@@ -786,5 +786,64 @@ paths:
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - idempotency-key
+        - rate-limit
+      x-rest-style: override
+  /identity-federations/{provider}:
+    delete:
+      description: |-
+        Remove the caller's member's identities at identity providers of the kind provider names, OIDC,
+        SAML or GITHUB_OAUTH, and revoke the sessions signed in through them, answering the identities that
+        remain. The identity the caller's session signed in through stays, and removing it alone, or the
+        member's last identities, answers 422 validation-failed; a member with no identity of the kind
+        answers 404. Only a credential that names a member may call it: a member's session or a personal
+        API key. Any other, such as the break-glass admin's session, an organization key's token or an API
+        key that is not personal, answers 403 forbidden.
+      operationId: identityFederationUnlink
+      x-infraweave-feature: auth
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: provider
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+          description: The identityFederationUnlink result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Unlink Identity Federation
+      x-bruno: Danger Zone/Unlink Identity Federation.bru
+      x-graphql:
+        field: identityFederationUnlink
+        operation: mutation
+        type: Mutation
+      x-infraweave-access: organization
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
         - rate-limit
       x-rest-style: override
