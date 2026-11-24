@@ -6,7 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
 	"github.com/weaveplatform/infraweave/internal/platform/seal"
@@ -254,4 +257,56 @@ func (w *workerSteps) open(csr string) (wire.RunSpecSecrets, error) {
 		return secrets, fmt.Errorf("%w: the secrets: %w", harness.ErrStep, err)
 	}
 	return secrets, nil
+}
+
+// awsVariables are the names the run receives the credentials of an AWS
+// role the server assumes in, none of which a worker's assumption sets.
+var awsVariables = []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SECURITY_TOKEN", "AWS_SESSION_TOKEN"}
+
+// assumes checks that the last answer, a run's specification, has its
+// worker assume role alone, for the integration kept as integration and
+// named name, with the external ID, session name, duration, region and
+// session tags given, the tags as key=value, comma-separated and sorted by
+// key; and that its clear part names no AWS credential variable.
+func (w *workerSteps) assumes(role, integration, name, external, session string, seconds int, region, tags string) error {
+	s, err := w.spec()
+	if err != nil {
+		return err
+	}
+	for _, v := range s.Environment {
+		if slices.Contains(awsVariables, v.Name) {
+			return fmt.Errorf("%w: the specification sets %s", harness.ErrStep, v.Name)
+		}
+	}
+	if s.CloudAssumptions == nil || len(*s.CloudAssumptions) != 1 {
+		return fmt.Errorf("%w: the specification assumes %+v", harness.ErrStep, s.CloudAssumptions)
+	}
+	a := (*s.CloudAssumptions)[0]
+	keys := slices.Sorted(maps.Keys(a.Tags))
+	got := make([]string, len(keys))
+	for n, k := range keys {
+		got[n] = k + "=" + a.Tags[k]
+	}
+	if a.RoleArn != role || a.IntegrationId != w.w.IDs[integration] || a.Integration != name ||
+		a.ExternalId != w.w.Resolve(external) || a.SessionName != w.w.Resolve(session) ||
+		int(a.DurationSeconds) != seconds || a.Region == nil || *a.Region != region ||
+		strings.Join(got, ",") != w.w.Resolve(tags) {
+		return fmt.Errorf("%w: the specification assumes %+v", harness.ErrStep, a)
+	}
+	return nil
+}
+
+// noAWS checks that the sealed part, opened with the key of csr, holds no
+// AWS credential variable.
+func (w *workerSteps) noAWS(csr string) error {
+	secrets, err := w.open(csr)
+	if err != nil {
+		return err
+	}
+	for name := range secrets.Environment {
+		if slices.Contains(awsVariables, name) {
+			return fmt.Errorf("%w: the secrets hold %s", harness.ErrStep, name)
+		}
+	}
+	return nil
 }

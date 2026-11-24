@@ -349,6 +349,7 @@ linters:
             - github.com/weaveplatform/infraweave/internal/access/api$
             - github.com/weaveplatform/infraweave/internal/stacks/api$
             - github.com/weaveplatform/infraweave/internal/configuration/api$
+            - github.com/weaveplatform/infraweave/internal/cloud/api$
             - github.com/weaveplatform/infraweave/internal/policies/api$
             - github.com/weaveplatform/infraweave/internal/workers/api$
             - github.com/weaveplatform/infraweave/internal/vendors/api$

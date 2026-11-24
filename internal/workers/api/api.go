@@ -172,6 +172,10 @@ type Spec struct {
 	Hooks       map[string][]string
 	Environment []Variable
 	Files       []File
+	// CloudAssumptions are the roles the run's worker assumes for the
+	// phase with its own credentials, for the cloud integrations that
+	// assume their role there; none of them is a secret.
+	CloudAssumptions []CloudAssumption
 }
 
 // PublicPoolPolicy constrains the resolved image on an installation worker.
@@ -284,6 +288,23 @@ type SpecCommit struct {
 	AuthorName  string
 	AuthorLogin *string
 	Timestamp   time.Time
+}
+
+// CloudAssumption is a role a Spec's worker assumes for the phase: the
+// integration's ID and name, the role, the external ID and RoleSessionName
+// it passes, the session's duration in seconds, the region whose STS
+// endpoint it calls, empty for the worker's default, and the session tags.
+//
+// ref: decision 0013 § "Delivery to runs"
+type CloudAssumption struct {
+	Integration     kernel.ULID
+	IntegrationName string
+	RoleARN         string
+	ExternalID      string
+	SessionName     string
+	DurationSeconds int32
+	Region          string
+	Tags            map[string]string
 }
 
 // Variable is an environment variable of a Spec: Value is nil when it is

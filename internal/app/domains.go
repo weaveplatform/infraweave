@@ -269,6 +269,8 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	access.ResolveSubjects(cloudassembly.Entity, cloud.SpaceOf())
 	access.ResolveSubjects(cloudassembly.AttachmentEntity, cloud.AttachmentSpaceOf())
 	stacks.BindAwsAttachments(cloud.StackAwsAttachments())
+	runs.BindCredentials(cloud.Credentials())
+	stacks.BindCredentials(cloud.StackCredentials())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:               db.Primary(),
 		Keys:             keys,

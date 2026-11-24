@@ -43,7 +43,7 @@ func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces,
 		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
 		edges: &edges{
 			config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}, policies: unbound{},
-			aws: unbound{},
+			aws: unbound{}, credentials: unbound{},
 		},
 	}
 }
@@ -422,6 +422,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
 	}
+	credentials, err := s.edges.credentials.CredentialVariables(ctx, p.AccountID, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the cloud domain names the read
+	}
 	blockers, err := s.edges.status.Blockers(ctx, p.AccountID, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the runs domain names the read
@@ -464,7 +468,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 		}
 		v.AttachedAwsIntegrations = awsAttachmentViews(aws[st.ID])
 		v.Config = elementViews(config[st.ID])
-		v.RuntimeConfig = runtimeViews(runtime[st.ID])
+		v.RuntimeConfig = runtimeViews(withComputed(runtime[st.ID], credentials[st.ID]))
 		v.Outputs = outputViews(outputs[st.ID])
 		v.IsStateRollback = rolledBack[st.ID]
 		v.PullRequests = requestViews(requests[st.ID])

@@ -253,8 +253,12 @@ func (w *World) objectStore(ctx context.Context, config []byte) ([]byte, error) 
 		}
 		w.Bucket = name
 	}
+	// Only the variables set here are replaced: a scenario's other AWS_
+	// settings, such as the region and blanked configuration files of a
+	// fake AWS STS, hold for the same processes.
 	w.env = append(slices.DeleteFunc(w.env, func(kv string) bool {
-		return strings.HasPrefix(kv, "AWS_")
+		return strings.HasPrefix(kv, "AWS_ACCESS_KEY_ID=") || strings.HasPrefix(kv, "AWS_SECRET_ACCESS_KEY=") ||
+			strings.HasPrefix(kv, "AWS_SESSION_TOKEN=") || strings.HasPrefix(kv, "AWS_EC2_METADATA_DISABLED=")
 	}), "AWS_ACCESS_KEY_ID="+store.AccessKey, "AWS_SECRET_ACCESS_KEY="+store.SecretKey,
 		"AWS_EC2_METADATA_DISABLED=true")
 	return withSection(config, "objectstore", map[string]any{

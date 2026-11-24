@@ -4,7 +4,9 @@
 // as StringLike matches, and a maximum session duration. It answers
 // AssumeRole and GetCallerIdentity over the awsQuery protocol as STS does,
 // so the SDK's own STS client is what calls it, and records every call
-// with its parameters, the region of its signature and its answer.
+// with its parameters, the region of its signature and its answer, with
+// the credentials an AssumeRole issued, which a test compares with what a
+// run received.
 // FailNext and FailRole make it answer with a server error, throttling, a
 // body that is not XML or no answer at all, so the client's handling of
 // each is tested without the real service.

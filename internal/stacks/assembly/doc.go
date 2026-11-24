@@ -10,8 +10,10 @@
 // stacksapi.StackConfiguration, the back edge the stack view reads a
 // stack's contexts and config elements through; BindAwsAttachments binds
 // the cloud domain's stacksapi.StackAwsAttachments, the back edge it
-// reads a stack's AWS integration attachments through; SetStackStatus
-// binds the
+// reads a stack's AWS integration attachments through, and
+// BindCredentials its stacksapi.StackCredentials, the back edge it reads
+// the computed cloud credential variables of a stack's runtimeConfig
+// through; SetStackStatus binds the
 // runs domain's stacksapi.StackStatus, the back edge it reads each
 // stack's blocker through; BindSources binds the vcs domain's
 // stacksapi.StackSources, which a stack's sync and set of its tracked

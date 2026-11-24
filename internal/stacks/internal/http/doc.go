@@ -17,7 +17,11 @@
 // out, its AWS integration attachments, stored and computed from labels,
 // from the stacksapi.StackAwsAttachments BindAwsAttachments binds, read
 // once for a whole page, without those whose integration lives in a space
-// the caller may not read, and empty until one is bound, its branch head and tracked commit as the vcs domain resolved
+// the caller may not read, and empty until one is bound, the computed
+// cloud credential variables the stacksapi.StackCredentials
+// BindCredentials binds names, listed in its runtimeConfig as computed
+// write-only elements unless a stored variable of the same name replaces
+// one, its branch head and tracked commit as the vcs domain resolved
 // them, its state and blocked from the runs domain's projection, its
 // blocker from the stacksapi.StackStatus SetStackStatus binds, none until
 // one is bound, with the blocker's plan delta while it waits in

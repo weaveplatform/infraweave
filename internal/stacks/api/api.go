@@ -441,6 +441,20 @@ type StackAwsAttachments interface {
 	AwsAttachments(ctx context.Context, p kernel.Principal, stacks []kernel.ULID) (map[kernel.ULID][]AwsAttachment, error)
 }
 
+// StackCredentials is what the stack view reads of the cloud domain,
+// which is constructed after stacks and implements it: the computed
+// environment variables each of the account's stacks' runs receive their
+// cloud credentials in, by name, keyed by stack ID, with a stack no cloud
+// integration serves absent. The stack's runtimeConfig lists each as a
+// computed element unless a stored variable of its name replaces it. The
+// stacks domain declares it, so the back edge internal/app binds after
+// construction adds no import.
+//
+// ref: decision 0004
+type StackCredentials interface {
+	CredentialVariables(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]string, error)
+}
+
 // StackStatus is what the stack view reads of the runs domain, which is
 // constructed after stacks and implements it: the run blocking each of
 // the account's stacks, the run that holds its run lock, keyed by stack

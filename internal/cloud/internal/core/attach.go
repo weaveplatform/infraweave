@@ -101,7 +101,7 @@ func (s *Service) trust(ctx context.Context, i Integration, st stacksapi.Stack, 
 	}
 	inv := &kernel.Invalid{}
 	for _, sd := range all {
-		err := s.roles.Assume(ctx, Assumption{
+		_, err := s.roles.Assume(ctx, Assumption{
 			RoleARN: i.RoleARN, ExternalID: sd.id, Region: region, Duration: trustDuration,
 			SessionName: SessionName(kernel.NewULID(), st.Slug, account),
 		})

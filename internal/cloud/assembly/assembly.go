@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/aws"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/http"
@@ -126,13 +127,16 @@ func (r roles) CallerAccount(ctx context.Context) (string, error) {
 	return account, mapped(err)
 }
 
-// Assume assumes a's role and discards the credentials.
-func (r roles) Assume(ctx context.Context, a core.Assumption) error {
-	_, err := r.c.AssumeRole(ctx, aws.AssumeInput{
+// Assume assumes a's role and answers the session's credentials.
+func (r roles) Assume(ctx context.Context, a core.Assumption) (core.Session, error) {
+	c, err := r.c.AssumeRole(ctx, aws.AssumeInput{
 		RoleARN: a.RoleARN, ExternalID: a.ExternalID, SessionName: a.SessionName,
-		Duration: a.Duration, Region: a.Region,
+		Duration: a.Duration, Region: a.Region, Tags: a.Tags,
 	})
-	return mapped(err)
+	if err != nil {
+		return core.Session{}, mapped(err)
+	}
+	return core.Session{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey, SessionToken: c.SessionToken}, nil
 }
 
 // mapped is the client's err as the service's refusals.
@@ -178,6 +182,15 @@ func (d *Domain) StackGuard() stacksapi.StackGuard { return d.svc.StackGuard() }
 // that its reader may see, a back edge internal/app binds into the stacks
 // domain, whose view lists them in a stack's attachedAwsIntegrations.
 func (d *Domain) StackAwsAttachments() stacksapi.StackAwsAttachments { return d.svc }
+
+// Credentials answers each run's phase its cloud credentials, a back edge
+// internal/app binds into the runs domain, whose handovers read it.
+func (d *Domain) Credentials() cloudapi.Credentials { return d.svc }
+
+// StackCredentials names the computed variables each stack's runs receive
+// their cloud credentials in, a back edge internal/app binds into the
+// stacks domain, whose view lists them in a stack's runtimeConfig.
+func (d *Domain) StackCredentials() stacksapi.StackCredentials { return d.svc }
 
 // SpaceOf finds an integration's space by its ID, which internal/app
 // registers with the access domain for Entity.

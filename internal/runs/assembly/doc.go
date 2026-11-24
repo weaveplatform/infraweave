@@ -7,7 +7,9 @@
 // runsapi.Updated with the outbox, and BindSources binds the vcs domain's
 // runsapi.RunSources and stacksapi.StackSources, back edges, so a run's
 // end releases its source credentials and a trigger resolves the commit
-// it names. Surfaces adds run to the configuration domain's environment
+// it names; BindCredentials binds the cloud domain's
+// cloudapi.Credentials, a back edge, so each handover hands its phase the
+// cloud credentials of its stack's attachments. Surfaces adds run to the configuration domain's environment
 // surface, for the expression registry internal/app builds. Purge deletes
 // a deleted account's runs, transitions, run locks, tracked runs and
 // outputs PurgeBatch rows at a time, as internal/app's runs.purge consumer
@@ -52,7 +54,7 @@
 // PlanningLogs supplies an account-bound bounded tail of an exact planning
 // transition's masked log, without full run views or signed URLs;
 // Stream is its migration stream, which
-// internal/app registers after configuration's.
+// internal/app registers after cloud's.
 //
 // # Input and output
 //
@@ -62,7 +64,7 @@
 //
 // # Dependencies
 //
-// It imports runsapi, stacksapi, configapi, workersapi, accessapi,
+// It imports runsapi, stacksapi, configapi, workersapi, accessapi, cloudapi,
 // internal/kernel, the domain's core, handover, lifecycle, schedule,
 // surface, timers, trigger, http and pg packages, platform/cron,
 // platform/crypt, platform/expr,

@@ -146,6 +146,16 @@ func (w *workerSteps) register(sc *godog.ScenarioContext) {
 		w.terragrunt,
 	)
 	sc.Step(
+		`^the specification has its worker assume the AWS role "([^"]+)" of the integration "(\w+)" named "([^"]+)" `+
+			`with the external ID "([^"]+)", the session name "([^"]+)", (\d+) seconds, the region "([^"]+)" `+
+			`and the session tags "([^"]*)", and sets no AWS variable$`,
+		w.assumes,
+	)
+	sc.Step(
+		`^the specification's sealed part opens with the key of "(\w+)" to no AWS credential$`,
+		w.noAWS,
+	)
+	sc.Step(
 		`^the specification's sealed part opens with the key of "(\w+)" to no source credential$`,
 		w.noCredential,
 	)

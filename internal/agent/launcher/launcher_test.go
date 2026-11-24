@@ -563,6 +563,34 @@ func TestUnitPublicRunnerImageAdmission(t *testing.T) {
 	}
 }
 
+// TestUnitLauncherRefusesACloudAssumption checks that a run whose
+// specification asks the worker to assume a cloud integration's role fails
+// in its preparing state with a note naming the integration, before any
+// tool, source or container.
+func TestUnitLauncherRefusesACloudAssumption(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		w := newWorld(t)
+		r := w.start(t)
+		run := newRun("run-1", wire.AssignmentStatePREPARING, "")
+		run.Spec.CloudAssumptions = &[]wire.RunSpecCloudAssumption{{
+			IntegrationId: "01JC0000000000000000000000", Integration: "Deploy",
+			RoleArn: "arn:aws:iam::222222222222:role/deploy", ExternalId: "ours", SessionName: "s",
+			DurationSeconds: 900, Tags: map[string]string{},
+		}}
+		w.queue(t, run)
+		reports := w.srv.Reports()
+		if len(reports) != 1 || reports[0].Report.Event != wire.Failed || reports[0].Report.Details == nil ||
+			*reports[0].Report.Details != "this launcher cannot assume a cloud integration's role on the worker: "+
+				"AWS integration Deploy (01JC0000000000000000000000) assumes role arn:aws:iam::222222222222:role/deploy there" {
+			t.Fatalf("reports: %+v", reports)
+		}
+		if len(w.exec.Jobs()) != 0 || len(w.tools.fetched()) != 0 {
+			t.Fatal("a refused assumption prepared the run")
+		}
+		r.stop(t)
+	})
+}
+
 var errRefused = errors.New(
 	"terraform 1.17.2 for linux/arm64: verify terraform_1.17.2_SHA256SUMS: " +
 		"the signature does not verify",

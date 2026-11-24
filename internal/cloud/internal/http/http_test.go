@@ -161,7 +161,9 @@ func (accounts) Slug(context.Context, kernel.AccountID) (string, error) { return
 type roles struct{ err error }
 
 func (r roles) CallerAccount(context.Context) (string, error) { return "111111111111", r.err }
-func (r roles) Assume(context.Context, core.Assumption) error { return r.err }
+func (r roles) Assume(context.Context, core.Assumption) (core.Session, error) {
+	return core.Session{}, r.err
+}
 
 // fixture is a server over the fakes, as acct's principal p.
 type fixture struct {

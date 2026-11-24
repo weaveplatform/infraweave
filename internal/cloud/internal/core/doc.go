@@ -22,7 +22,15 @@
 // external ID of each side, and a role that refuses answers TrustDetail.
 // ExternalID, LegacyExternalID and SessionName are the fixed formats role
 // assumption passes, and PolicyStatement the trust policy statement a
-// customer writes. A stack's legacy AWS role is a legacy integration bound
+// customer writes. ForPhase answers a run's phase the credentials of the
+// attachment that serves its side: it assumes an integration the server
+// assumes once, with PhaseAssumption's external ID, session name,
+// duration, region and session tags, and answers the four computed AWS
+// variables, each a secret and kept nowhere; it answers a worker's
+// integration as the assumption the worker makes; and a refusal or failure
+// of STS is a *kernel.Invalid naming the integration and STS's code.
+// CredentialVariables names those variables for each stack an attachment
+// serves. A stack's legacy AWS role is a legacy integration bound
 // to that stack. SpaceGuard and StackGuard refuse a space delete or move,
 // and a stack move, that would leave a stored attachment out of reach,
 // and delete a deleted stack's attachments and legacy integration. Every
@@ -35,7 +43,7 @@
 //
 // # Dependencies
 //
-// It imports the access and stacks api packages, internal/kernel and
-// platform/tx. The cloud domain's assembly constructs it over the pg
+// It imports the access, cloud and stacks api packages, internal/kernel
+// and platform/tx. The cloud domain's assembly constructs it over the pg
 // store and the STS client.
 package core
