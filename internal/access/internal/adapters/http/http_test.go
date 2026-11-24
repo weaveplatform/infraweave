@@ -616,10 +616,11 @@ func TestUnitViewer(t *testing.T) {
 func TestUnitViewerIdentityProvider(t *testing.T) {
 	w := newWorld(t)
 	ss, secret := w.member(w.acct)
+	w.people.kindErr = errors.New("down")
 	if rec := w.browse(t, http.MethodGet, "/viewer", secret, "", ""); rec.Code == http.StatusOK {
 		t.Errorf("a member the store cannot read = %d %s", rec.Code, rec.Body)
 	}
-	w.people.users[ss.MemberID] = managed.User{Member: member.Member{ID: ss.MemberID}}
+	w.people.kindErr = nil
 	if u := decode[api.User](t, w.browse(t, http.MethodGet, "/viewer", secret, "", "")); u.IdentityProvider != "EMPTY" {
 		t.Errorf("before a sign-in through a provider = %q", u.IdentityProvider)
 	}

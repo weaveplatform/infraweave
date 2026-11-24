@@ -22,7 +22,9 @@
 // Version is raised by every change of the account's admission of the
 // member; Update and Delete carry a kernel.Expect, and the store refuses
 // an admission whose version it does not accept with kernel.ErrStale,
-// changing nothing.
+// changing nothing. LastSignInKind reads the kind of the identity
+// provider a member's session's member last signed in through, for the
+// viewer, and nothing for any other principal.
 //
 // ref: decisions 0006, 0007 and 0022
 //
