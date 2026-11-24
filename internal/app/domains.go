@@ -10,6 +10,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	cloudassembly "github.com/weaveplatform/infraweave/internal/cloud/assembly"
 	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
 	eventsassembly "github.com/weaveplatform/infraweave/internal/events/assembly"
 	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
@@ -48,6 +49,7 @@ type Domains struct {
 	Policies      *policiesassembly.Domain
 	Runs          *runsassembly.Domain
 	State         *stateassembly.Domain
+	Cloud         *cloudassembly.Domain
 	VCS           *vcsassembly.Domain
 	Events        *eventsassembly.Domain
 	Expressions   *expressionsassembly.Domain
@@ -252,6 +254,20 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.BindManagedState(state.ManagedState())
 	stacks.BindStateRollbacks(state.StateRollbacks())
 	access.ResolveSubjects(stateassembly.Entity, state.SpaceOf())
+	cloud := cloudassembly.New(cloudassembly.Deps{
+		DB:           db.Primary(),
+		Spaces:       access.Spaces(),
+		Accounts:     access.Accounts(),
+		Stacks:       stacks.Stacks(),
+		Authz:        access.Authorizer(),
+		Features:     features.Entitlements(),
+		Organization: access.AccountOrganization,
+		Settings:     c.Cloud,
+	})
+	access.GuardSpaces(cloud.SpaceGuard())
+	stacks.GuardStacks(cloud.StackGuard())
+	access.ResolveSubjects(cloudassembly.Entity, cloud.SpaceOf())
+	access.ResolveSubjects(cloudassembly.AttachmentEntity, cloud.AttachmentSpaceOf())
 	vcs, err := vcsassembly.New(vcsassembly.Deps{
 		DB:               db.Primary(),
 		Keys:             keys,
@@ -309,6 +325,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Policies:      policies,
 		Runs:          runs,
 		State:         state,
+		Cloud:         cloud,
 		VCS:           vcs,
 		Events:        eventSinks,
 		Expressions:   expressionsassembly.New(registry),

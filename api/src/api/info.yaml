@@ -17,6 +17,13 @@ tags:
     description: Health and version endpoints that need no authentication.
   - name: handwritten
     description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.
+  - name: Cloud Integrations
+    description: >-
+      Roles in a cloud account that runs assume instead of holding long-lived
+      keys. An AWS integration lives in a space and attaches to the stacks
+      that reach it, for read phases, write phases or both; each attachment
+      assumes the role with an external ID fixed by the account, the
+      integration, the stack and the side.
   - name: Contexts
     description: >-
       Reusable bundles of environment variables, mounted files and hooks,

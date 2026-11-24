@@ -373,6 +373,21 @@ linters:
             - github.com/weaveplatform/infraweave/internal/kernel$
             - github.com/weaveplatform/infraweave/internal/kernel/
             - github.com/weaveplatform/infraweave/internal/platform/
+        graph-cloud:
+          list-mode: lax
+          files:
+            - "**/internal/cloud/**"
+          deny:
+            - pkg: github.com/weaveplatform/infraweave/internal
+              desc: cloud imports only the api/ packages its row of the declared graph names
+          allow:
+            - github.com/weaveplatform/infraweave/internal/cloud/
+            - github.com/weaveplatform/infraweave/internal/features/api$
+            - github.com/weaveplatform/infraweave/internal/access/api$
+            - github.com/weaveplatform/infraweave/internal/stacks/api$
+            - github.com/weaveplatform/infraweave/internal/kernel$
+            - github.com/weaveplatform/infraweave/internal/kernel/
+            - github.com/weaveplatform/infraweave/internal/platform/
         graph-vcs:
           list-mode: lax
           files:

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
+	cloudassembly "github.com/weaveplatform/infraweave/internal/cloud/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
@@ -87,6 +88,11 @@ type Config struct {
 	//
 	// ref: decision 0010
 	State stateassembly.Settings `mapstructure:"state"`
+	// Cloud is the cloud domain's: where the server reaches AWS STS to
+	// assume AWS integrations' roles.
+	//
+	// ref: decision 0006 "AWS external ID and session name"
+	Cloud cloudassembly.Settings `mapstructure:"cloud"`
 }
 
 // Server holds the server settings: the listeners under server.listen,
@@ -289,6 +295,7 @@ func Load(fs *pflag.FlagSet) (*Config, error) {
 		c.Run.Validate(),
 		c.Runs.Validate(),
 		c.State.Validate(),
+		c.Cloud.Validate(),
 		c.VCS.Validate(),
 		c.Policy.Validate(),
 		c.liveness(),

@@ -686,6 +686,7 @@ customer role:
 |---|---|
 | External ID, stack | `<account slug>@<integration ULID>@<stack slug>@<read or write>` |
 | External ID, module | `<account slug>@<integration ULID>@<module slug>@<read or write>` |
+| External ID, a stack's legacy AWS role | `<account slug>@<stack slug>`, for both sides |
 | Suffix | `read` for planning phases and proposed runs; `write` for applying, tasks, destroy runs and module test runs |
 | Assume role on worker | the integration's custom `externalId` when set |
 | `RoleSessionName` | `<run ULID>@<stack or module slug>@<account slug>`, cut to 64 characters |
@@ -694,6 +695,12 @@ customer role:
 server assumes roles with, read once through `sts:GetCallerIdentity`, so a
 customer can write it into a trust policy. Without AWS credentials it answers
 `403`, problem `installation-unsupported`.
+
+Attaching an integration the server assumes, changing an attachment's sides
+and setting a stack's legacy AWS role first assume the role with the external
+ID of each side, for 900 seconds, and discard the credentials; a role that
+refuses answers `422` with the detail `you need to configure trust
+relationship section in your AWS account` and a field error per side.
 
 ### Signing keys
 

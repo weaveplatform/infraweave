@@ -1,0 +1,1065 @@
+# Scaffolded by `specref scaffold --tag Cloud Integrations` from the Spacelift reference (schema-82108d354b04),
+# then curated to the AWS integration operations infraweave serves.
+# This fragment is infraweave's own: curate it freely. Scaffolding again with --force overwrites it.
+components:
+  schemas:
+    AwsIntegrationAttachRequest:
+      additionalProperties: false
+      description: The arguments of awsIntegrationAttach not carried in the path.
+      properties:
+        read:
+          description: Indicates whether this attachment is used for read operations. Defaults to `true`.
+          type: boolean
+          x-terraform:
+            - spacelift_aws_integration_attachment.read
+        write:
+          description: Indicates whether this attachment is used for write operations. Defaults to `true`.
+          type: boolean
+          x-terraform:
+            - spacelift_aws_integration_attachment.write
+      required:
+        - read
+        - write
+      type: object
+      x-graphql-args-of: awsIntegrationAttach
+    AwsIntegrationAttachmentUpdateRequest:
+      additionalProperties: false
+      description: The arguments of awsIntegrationAttachmentUpdate not carried in the path.
+      properties:
+        read:
+          type: boolean
+        write:
+          type: boolean
+      required:
+        - read
+        - write
+      type: object
+      x-graphql-args-of: awsIntegrationAttachmentUpdate
+    AwsIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of awsIntegrationCreate not carried in the path.
+      properties:
+        autoattachEnabled:
+          description: Enables `autoattach:` labels functionality for this integration.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_aws_integration.autoattach_enabled
+        durationSeconds:
+          description: >-
+            How long the assumed role's credentials stay valid, in seconds:
+            900 to 3600 when the server assumes the role, 900 to 43200 with
+            generateCredentialsInWorker. Defaults to 3600.
+          format: int32
+          nullable: true
+          type: integer
+          x-terraform:
+            - spacelift_aws_integration.duration_seconds
+        externalID:
+          description: >-
+            A custom external ID the private worker assumes the role with,
+            accepted only with generateCredentialsInWorker. Without one, the
+            generated external ID applies.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_aws_integration.external_id
+        generateCredentialsInWorker:
+          description: Generate AWS credentials in the private worker. Defaults to `false`.
+          type: boolean
+          x-terraform:
+            - spacelift_aws_integration.generate_credentials_in_worker
+        labels:
+          description: Labels to set on the integration
+          items:
+            type: string
+          type: array
+          x-terraform:
+            - spacelift_aws_integration.labels
+        name:
+          description: The friendly name of the integration
+          type: string
+          x-terraform:
+            - spacelift_aws_integration.name
+        region:
+          description: AWS region to select a regional AWS STS endpoint.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_aws_integration.region
+        roleArn:
+          description: ARN of the AWS IAM role to attach
+          type: string
+          x-terraform:
+            - spacelift_aws_integration.role_arn
+        space:
+          description: ID (slug) of the space the integration is in; the account's top space when absent.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_aws_integration.space_id
+        tagAssumeRole:
+          description: Whether role assumption tags the session with the run, the stack and the space. Defaults to `false`.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_aws_integration.tag_assume_role
+      required:
+        - generateCredentialsInWorker
+        - labels
+        - name
+        - roleArn
+      type: object
+      x-graphql-args-of: awsIntegrationCreate
+    AwsIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of awsIntegrationUpdate not carried in the path.
+      properties:
+        autoattachEnabled:
+          nullable: true
+          type: boolean
+        durationSeconds:
+          format: int32
+          type: integer
+        externalID:
+          type: string
+        generateCredentialsInWorker:
+          type: boolean
+        labels:
+          items:
+            type: string
+          type: array
+        name:
+          type: string
+        region:
+          nullable: true
+          type: string
+        roleArn:
+          type: string
+        space:
+          nullable: true
+          type: string
+        tagAssumeRole:
+          nullable: true
+          type: boolean
+      required:
+        - durationSeconds
+        - externalID
+        - generateCredentialsInWorker
+        - labels
+        - name
+        - roleArn
+      type: object
+      x-graphql-args-of: awsIntegrationUpdate
+    ExternalIdForStackResult:
+      description: |-
+        ExternalIdForStackResult contains information needed for creating AWS AssumeRole
+        policies for an integration stack attachment.
+      properties:
+        assumeRolePolicyStatement:
+          description: An example AssumeRole policy statement that allows the stack to assume the role.
+          type: string
+        externalId:
+          description: The external ID that would be used when assuming the role for the stack.
+          type: string
+      required:
+        - assumeRolePolicyStatement
+        - externalId
+      type: object
+      x-graphql-type: ExternalIdForStackResult
+    StackIntegrationAwsCreateRequest:
+      additionalProperties: false
+      description: The arguments of stackIntegrationAwsCreate not carried in the path.
+      properties:
+        durationSeconds:
+          description: AWS IAM role session duration in seconds
+          format: int32
+          nullable: true
+          type: integer
+          x-terraform:
+            - spacelift_aws_role.duration_seconds
+        externalID:
+          description: Custom external ID (works only for private workers).
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_aws_role.external_id
+        generateCredentialsInWorker:
+          description: Generate AWS credentials in the private worker. Defaults to `false`.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_aws_role.generate_credentials_in_worker
+        region:
+          description: AWS region to select a regional AWS STS endpoint.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_aws_role.region
+        roleArn:
+          description: ARN of the AWS IAM role to attach
+          type: string
+          x-terraform:
+            - spacelift_aws_role.role_arn
+      required:
+        - roleArn
+      type: object
+      x-graphql-args-of: stackIntegrationAwsCreate
+paths:
+  /aws-integration-attachments/{attachmentId}:
+    delete:
+      description: >-
+        Detaches an AWS integration from a stack, by the attachment's ID. An
+        attachment an autoattach label makes is refused; removing the label
+        from the integration or the stack detaches it.
+      operationId: awsIntegrationDetach
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AWS_INTEGRATION_DETACH
+      x-infraweave-subject: path:attachmentId:aws_integration_attachment
+      parameters:
+        - in: path
+          name: attachmentId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegrationStackAttachment'
+          description: The awsIntegrationDetach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Detach AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Detach AWS Integration.bru
+      x-graphql:
+        field: awsIntegrationDetach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: detach
+    put:
+      description: >-
+        Changes whether an attachment serves read phases, write phases or
+        both. At least one is set, a stack keeps at most one read and one
+        write attachment, and a side the server assumes is tested against the
+        role's trust policy first.
+      operationId: awsIntegrationAttachmentUpdate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AWS_INTEGRATION_UPDATE
+      x-infraweave-subject: path:attachmentId:aws_integration_attachment
+      parameters:
+        - in: path
+          name: attachmentId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              read: true
+              write: true
+            schema:
+              $ref: '#/components/schemas/AwsIntegrationAttachmentUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegrationStackAttachment'
+          description: The awsIntegrationAttachmentUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Attachment
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Update Attachment.bru
+      x-graphql:
+        field: awsIntegrationAttachmentUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
+  /aws-integration-by-name:
+    get:
+      description: >-
+        One AWS integration of the account, by its name. An integration in a
+        space the caller cannot read answers as one that does not exist.
+      operationId: awsIntegrationByName
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: name
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: The awsIntegrationByName result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get AWS Integration by Name
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Get AWS Integration by Name.bru
+      x-graphql:
+        field: awsIntegrationByName
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /aws-integrations:
+    get:
+      description: |-
+        The AWS integrations of the account in spaces the caller may read, by name. The legacy
+        integrations stackIntegrationAwsCreate binds to one stack are left out unless includeLegacy
+        is true.
+      operationId: awsIntegrations
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: includeLegacy
+          schema:
+            type: boolean
+          x-graphql-arg: includeLegacy
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegrationPage'
+          description: The awsIntegrations result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List AWS Integrations
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/List AWS Integrations.bru
+      x-graphql:
+        field: awsIntegrations
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Creates an AWS integration in a space, the account's top space when
+        none is named. The caller administers that space.
+      operationId: awsIntegrationCreate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:space
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              generateCredentialsInWorker: false
+              labels: []
+              name: my-aws-integration
+              roleArn: arn:aws:iam::123456789012:role/infraweave-role
+              space: root
+            schema:
+              $ref: '#/components/schemas/AwsIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Create AWS Integration.bru
+      x-graphql:
+        field: awsIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /aws-integrations-enabled:
+    get:
+      description: Whether the account may use AWS integrations.
+      operationId: awsIntegrationsEnabled
+      x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The awsIntegrationsEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Enabled AWS Integrations
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/List Enabled AWS Integrations.bru
+      x-graphql:
+        field: awsIntegrationsEnabled
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /aws-integrations/{awsIntegrationId}:
+    delete:
+      description: Deletes an AWS integration with its attachments, and answers it as it was.
+      operationId: awsIntegrationDelete
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:awsIntegrationId:aws_integration
+      parameters:
+        - in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: The awsIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Delete AWS Integration.bru
+      x-graphql:
+        field: awsIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: >-
+        One AWS integration of the account. An integration in a space the
+        caller cannot read answers as one that does not exist.
+      operationId: awsIntegration
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:awsIntegrationId:aws_integration
+      parameters:
+        - in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: The awsIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Get AWS Integration.bru
+      x-graphql:
+        field: awsIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: awsIntegrationPatch
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:awsIntegrationId:aws_integration
+      parameters:
+        - in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of AwsIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: The awsIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch AWS Integration
+      tags:
+        - Cloud Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: >-
+        Replaces an AWS integration's settings. A move to another space needs
+        the caller to administer that space too, and is refused when a stack
+        attached to the integration would no longer reach it. The role's
+        trust policy is not tested again; the next run that assumes it does.
+      operationId: awsIntegrationUpdate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:awsIntegrationId:aws_integration
+      parameters:
+        - in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              durationSeconds: 3600
+              externalID: ""
+              generateCredentialsInWorker: false
+              labels: []
+              name: my-aws-integration-updated
+              roleArn: arn:aws:iam::123456789012:role/infraweave-role
+              space: root
+            schema:
+              $ref: '#/components/schemas/AwsIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegration'
+          description: The awsIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Update AWS Integration.bru
+      x-graphql:
+        field: awsIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /aws-integrations/{awsIntegrationId}/attached-stack:
+    get:
+      description: One of the integration's stack attachments, by the attachment's ID.
+      operationId: awsIntegrationAttachedStack
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:awsIntegrationId:aws_integration
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegrationStackAttachment'
+          description: The attachedStack result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Aws integration attached stack
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: attachedStack
+        operation: query
+        type: AwsIntegration
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /aws-integrations/{awsIntegrationId}/external-id-for-stack:
+    get:
+      description: >-
+        The external ID role assumption uses for the integration on a stack,
+        for read, write or both, with an example trust policy statement that
+        names the AWS account of the installation's own identity and each
+        external ID asked for. Asked for both, it answers the write side's
+        external ID; a stack's legacy AWS role has one for both sides. An
+        installation without AWS credentials answers installation-unsupported.
+      operationId: awsIntegrationExternalIdForStack
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: query:stackId:stack
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stackId
+        - in: query
+          name: read
+          required: true
+          schema:
+            type: boolean
+          x-graphql-arg: read
+        - in: query
+          name: write
+          required: true
+          schema:
+            type: boolean
+          x-graphql-arg: write
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalIdForStackResult'
+          description: The externalIdForStack result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Aws integration external id for stack
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: externalIdForStack
+        operation: query
+        type: AwsIntegration
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /stacks/{stackId}/aws-integrations/{awsIntegrationId}:
+    put:
+      description: |-
+        Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+        read and write is true, and a stack has at most one read and one write attachment. The
+        integration lives in the stack's space or one the stack inherits from. For an integration the
+        server assumes, the role's trust policy is tested for each side first.
+      operationId: awsIntegrationAttach
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AWS_INTEGRATION_ATTACH
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - description: ID of the stack to attach the integration to
+          in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+          x-terraform:
+            - spacelift_aws_integration_attachment.stack_id
+        - in: path
+          name: awsIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              read: true
+              write: true
+            schema:
+              $ref: '#/components/schemas/AwsIntegrationAttachRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwsIntegrationStackAttachment'
+          description: The awsIntegrationAttach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Attach AWS Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Attach AWS Integration.bru
+      x-graphql:
+        field: awsIntegrationAttach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: attach
+  /stacks/{stackId}/aws-role:
+    delete:
+      description: >-
+        Deletes the stack's legacy AWS role, the integration
+        stackIntegrationAwsCreate made. Superseded by awsIntegrationDetach.
+      operationId: stackIntegrationAwsDelete
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AWS_INTEGRATION_DETACH
+      x-infraweave-subject: path:stackId:stack
+      deprecated: true
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackIntegrationAws'
+          description: The stackIntegrationAwsDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Detach from Stack
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Detach from Stack.bru
+      x-graphql:
+        field: stackIntegrationAwsDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
+    put:
+      description: >-
+        Sets the stack's legacy AWS role: an integration bound to this stack
+        alone, attached for read and write, with the external ID
+        <account>@<stack>. Superseded by awsIntegrationCreate and
+        awsIntegrationAttach.
+      operationId: stackIntegrationAwsCreate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AWS_INTEGRATION_ATTACH
+      x-infraweave-subject: path:stackId:stack
+      deprecated: true
+      parameters:
+        - in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              durationSeconds: 3600
+              externalID: null
+              generateCredentialsInWorker: false
+              region: null
+              roleArn: arn:aws:iam::123456789012:role/my-role
+            schema:
+              $ref: '#/components/schemas/StackIntegrationAwsCreateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackIntegrationAws'
+          description: The stackIntegrationAwsCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Attach to Stack
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/AWS/Attach to Stack.bru
+      x-graphql:
+        field: stackIntegrationAwsCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override

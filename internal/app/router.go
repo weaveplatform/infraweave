@@ -13,6 +13,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	cloudassembly "github.com/weaveplatform/infraweave/internal/cloud/assembly"
 	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
 	expressionsassembly "github.com/weaveplatform/infraweave/internal/expressions/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
@@ -61,6 +62,7 @@ type apiServer struct {
 	configurationassembly.ConfigurationAPI
 	runsassembly.RunsAPI
 	stateassembly.StateAPI
+	cloudassembly.CloudAPI
 	vcsassembly.VCSAPI
 	expressionsassembly.ExpressionsAPI
 	policiesassembly.PoliciesAPI
@@ -141,6 +143,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			ConfigurationAPI: d.Configuration.API(),
 			RunsAPI:          d.Runs.API(),
 			StateAPI:         d.State.API(),
+			CloudAPI:         d.Cloud.API(),
 			VCSAPI:           d.VCS.API(),
 			ExpressionsAPI:   d.Expressions.API(),
 			PoliciesAPI:      d.Policies.API(),

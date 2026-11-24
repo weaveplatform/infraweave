@@ -146,6 +146,49 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /installation-aws-account-id:
+    get:
+      description: >-
+        The AWS account of the identity the installation assumes AWS
+        integration roles with, for a role's trust policy to name. An
+        installation without AWS credentials answers 403
+        installation-unsupported.
+      operationId: installationAwsAccountId
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The installationAwsAccountId result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get AWS Account ID
+      tags:
+        - Account
+      x-bruno: Account/Get AWS Account ID.bru
+      x-graphql:
+        field: spaceliftAwsAccountId
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
   /name:
     get:
       description: The display name of the caller's account.
