@@ -24,7 +24,8 @@ import (
 // member, how many of the account's groups its latest groups match, and
 // its latest invitation to the account; the caller adds the WHERE.
 const userSelect = `SELECT u.account_id, m.organization_id, m.id, m.login, m.name, m.email,
-	m.status, m.created_at, m.last_seen_at, coalesce(u.slack_member_id, ''), u.latest_groups,
+	m.status, m.created_at, m.last_seen_at, coalesce(m.last_sign_in_kind, ''),
+	coalesce(u.slack_member_id, ''), u.latest_groups,
 	(SELECT count(*) FROM managed_user_groups g
 		WHERE g.account_id = u.account_id AND g.name = ANY(u.latest_groups)),
 	i.id, i.email, i.created_at, i.sent_at, u.version
@@ -44,7 +45,7 @@ func scanUser(r pgx.Row) (user.User, error) {
 	)
 	err := r.Scan(&u.AccountID, &u.Member.OrganizationID, &u.Member.ID, &u.Member.Login,
 		&u.Member.Name, &u.Member.Email, &u.Member.Status, &u.Member.CreatedAt,
-		&u.Member.LastSeenAt, &u.SlackMemberID, &u.LatestGroups, &groups,
+		&u.Member.LastSeenAt, &u.Member.LastSignInKind, &u.SlackMemberID, &u.LatestGroups, &groups,
 		&invID, &invMail, &created, &sent, &u.Version)
 	if err != nil {
 		return user.User{}, err //nolint:wrapcheck // the caller names the read
@@ -348,6 +349,16 @@ func (s *Store) RecordRequest(ctx context.Context, e kernel.AuditEntry) error {
 		return fmt.Errorf("record %s: %w", e.Action, err)
 	}
 	return nil
+}
+
+// LastSignInKind reads the kind of the identity provider the
+// organization's member id last signed in through, empty before the first
+// such sign-in.
+func (s *Store) LastSignInKind(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID) (string, error) {
+	var kind string
+	err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT coalesce(last_sign_in_kind, '') FROM members
+		WHERE organization_id = $1 AND id = $2`, org, id).Scan(&kind)
+	return kind, read(err, "member", id)
 }
 
 // recordAccount runs write, unless nil, and records e on its account's

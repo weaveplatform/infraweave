@@ -286,7 +286,9 @@ func principal(ctx context.Context) (kernel.Principal, error) {
 // field another domain decides is that domain's answer from the rule its
 // operations enforce, never a copy of the rule here, so the view and the
 // operation cannot disagree: the API keys p created and owns and whether
-// p may create a personal key are the apikey service's.
+// p may create a personal key are the apikey service's. identityProvider
+// is the kind of the identity provider p's member last signed in through,
+// EMPTY for a principal of no member and before such a sign-in.
 //
 // ref: decision 0007 § "Evaluation"
 func (s Server) userOf(ctx context.Context, p kernel.Principal, token string, until time.Time) (api.User, error) {
@@ -300,6 +302,11 @@ func (s Server) userOf(ctx context.Context, p kernel.Principal, token string, un
 	if u.Actions, err = s.spaceActions(ctx, p); err != nil {
 		return api.User{}, err
 	}
+	kind, err := s.users.LastSignInKind(ctx, p)
+	if err != nil {
+		return api.User{}, err //nolint:wrapcheck // the store marks an unreachable database
+	}
+	u.IdentityProvider = string(signedInThrough(kind))
 	return u, nil
 }
 

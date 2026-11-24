@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/breakglass"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/holder"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
@@ -605,6 +606,30 @@ func TestUnitViewer(t *testing.T) {
 	if u.Jwt != tok || u.Id != "api::"+w.key.String() ||
 		u.ValidUntil != int32(t0.Add(time.Hour).Unix()) {
 		t.Errorf("viewer = %+v", u)
+	}
+}
+
+// TestUnitViewerIdentityProvider answers, as identityProvider, the kind
+// of the identity provider a member's session's member last signed in
+// through, EMPTY before such a sign-in and for an API key, and refuses
+// the view when the member cannot be read.
+func TestUnitViewerIdentityProvider(t *testing.T) {
+	w := newWorld(t)
+	ss, secret := w.member(w.acct)
+	w.people.kindErr = errors.New("down")
+	if rec := w.browse(t, http.MethodGet, "/viewer", secret, "", ""); rec.Code == http.StatusOK {
+		t.Errorf("a member the store cannot read = %d %s", rec.Code, rec.Body)
+	}
+	w.people.kindErr = nil
+	if u := decode[api.User](t, w.browse(t, http.MethodGet, "/viewer", secret, "", "")); u.IdentityProvider != "EMPTY" {
+		t.Errorf("before a sign-in through a provider = %q", u.IdentityProvider)
+	}
+	w.people.users[ss.MemberID] = managed.User{Member: member.Member{ID: ss.MemberID, LastSignInKind: "OIDC"}}
+	if u := decode[api.User](t, w.browse(t, http.MethodGet, "/viewer", secret, "", "")); u.IdentityProvider != "OIDC" {
+		t.Errorf("after an OIDC sign-in = %q", u.IdentityProvider)
+	}
+	if u := w.exchange(t); u.IdentityProvider != "EMPTY" {
+		t.Errorf("an API key = %q", u.IdentityProvider)
 	}
 }
 

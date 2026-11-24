@@ -235,3 +235,90 @@ func TestAccAccountAdmissionPostgresOutagesLeaveNoPartialState(t *testing.T) {
 		})
 	}
 }
+
+// TestAccAccountEntryRecordsGroups checks that a member session's entry
+// writes the groups its sign-in reported as the entered account's
+// latest_groups, in the entry's transaction: another account keeps its
+// own, an unchanged list keeps the admission's version, a sign-in that
+// reported none writes none, unknown groups write nothing, and a failed
+// entry writes nothing.
+func TestAccAccountEntryRecordsGroups(t *testing.T) {
+	x := seed(t, pool(t), "entry-groups")
+	ctx := t.Context()
+	admit(t, x, x.member, "stale")
+	other := newAccount(t, x, "other-groups-account")
+	if err := x.s.CreateAccount(ctx, other, x.member, byAdmin(x, orgadmin.ActionAccountCreate)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := x.db.Exec(ctx, `UPDATE account_users SET latest_groups='{elsewhere}'
+		WHERE account_id=$1 AND member_id=$2`, other.ID, x.member); err != nil {
+		t.Fatal(err)
+	}
+	groups := func(acct kernel.AccountID) ([]string, int64) {
+		t.Helper()
+		var g []string
+		var v int64
+		if err := x.db.QueryRow(ctx, `SELECT latest_groups, version FROM account_users
+			WHERE account_id=$1 AND member_id=$2`, acct, x.member).Scan(&g, &v); err != nil {
+			t.Fatal(err)
+		}
+		return g, v
+	}
+	source := func(known bool, teams ...string) session.Session {
+		t.Helper()
+		ss := x.webSession(time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour))
+		member := true
+		ss.OriginalMember, ss.OriginalTeamsKnown, ss.OriginalTeams = &member, known, nil
+		if known {
+			ss.OriginalTeams = append([]string{}, teams...)
+		}
+		if err := x.s.CreateSession(ctx, ss); err != nil {
+			t.Fatal(err)
+		}
+		return ss
+	}
+	enter := func(src session.Session) session.Session {
+		t.Helper()
+		got, err := x.s.Enter(ctx, memberEntry(src), nil, src.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+
+	_, before := groups(x.acct)
+	entered := enter(source(true, "platform", "Ops"))
+	got, v := groups(x.acct)
+	if !slices.Equal(got, []string{"platform", "Ops"}) || v != before+1 ||
+		!slices.Equal(entered.Teams, []string{"platform", "Ops"}) {
+		t.Errorf("entry with groups wrote %v at version %d (from %d), teams %v", got, v, before, entered.Teams)
+	}
+	if g, _ := groups(other.ID); !slices.Equal(g, []string{"elsewhere"}) {
+		t.Errorf("an account not entered has the groups %v", g)
+	}
+
+	enter(source(true, "platform", "Ops"))
+	if g, again := groups(x.acct); again != v || !slices.Equal(g, []string{"platform", "Ops"}) {
+		t.Errorf("unchanged groups moved the version from %d to %d", v, again)
+	}
+
+	enter(source(false))
+	if g, unknown := groups(x.acct); unknown != v || !slices.Equal(g, []string{"platform", "Ops"}) {
+		t.Errorf("unknown groups wrote %v at version %d", g, unknown)
+	}
+
+	// The candidate's own ID is the source's, so the insertion fails after
+	// the groups are written; the transaction takes both back.
+	failing := source(true, "rolled-back")
+	if _, err := x.s.Enter(ctx, failing, nil, failing.ID); err == nil {
+		t.Fatal("a duplicate session entered")
+	}
+	if g, after := groups(x.acct); after != v || !slices.Equal(g, []string{"platform", "Ops"}) {
+		t.Errorf("a failed entry wrote %v at version %d", g, after)
+	}
+
+	enter(source(true))
+	if g, _ := groups(x.acct); g == nil || len(g) != 0 {
+		t.Errorf("a sign-in with no groups left %v", g)
+	}
+}

@@ -28,6 +28,8 @@ type people struct {
 	users  map[kernel.MemberID]managed.User
 	groups map[kernel.ULID]group.Group
 	trail  []kernel.AuditEntry
+	// kindErr fails LastSignInKind alone.
+	kindErr error
 }
 
 func newPeople(st *store, acct kernel.AccountID) *people {
@@ -140,6 +142,15 @@ func (p *people) PersonalAPIKeys(_ context.Context, _ kernel.AccountID, _ kernel
 func (p *people) RecordRequest(_ context.Context, e kernel.AuditEntry) error {
 	p.trail = append(p.trail, e)
 	return p.st.err()
+}
+
+// LastSignInKind is the member's LastSignInKind as the account's users
+// hold it, empty for a member they do not hold, and kindErr when set.
+func (p *people) LastSignInKind(_ context.Context, _ kernel.OrganizationID, id kernel.MemberID) (string, error) {
+	if p.kindErr != nil {
+		return "", p.kindErr
+	}
+	return p.users[id].Member.LastSignInKind, p.st.err()
 }
 
 func (p *people) Groups(_ context.Context, _ kernel.AccountID, after kernel.ULID, limit int) ([]group.Group, error) {

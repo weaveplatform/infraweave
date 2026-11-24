@@ -107,7 +107,7 @@ func (s *Store) ConsumeSignInRequest(ctx context.Context, stateHash, browserHash
 }
 
 // SignInIdentity resolves rec's identity to a member, records the identity and
-// the member's last_seen_at, and creates rec.Session for the member, in
+// the member's last_seen_at and last_sign_in_kind, and creates rec.Session for the member, in
 // one transaction. The organization's row lock, which invites take too,
 // orders sign-ins and invites of one login, so two never both create a
 // member for one identity or both pass the seats check for the last seat.
@@ -143,8 +143,8 @@ func (s *Store) SignInIdentity(ctx context.Context, rec sso.SignInRecord) (sessi
 				return fmt.Errorf("access: record identity: %w", sql.Unavailable(err))
 			}
 		}
-		if _, err := q.Exec(ctx, `UPDATE members SET last_seen_at = now()
-			WHERE organization_id = $1 AND id = $2`, org, m); err != nil {
+		if _, err := q.Exec(ctx, `UPDATE members SET last_seen_at = now(), last_sign_in_kind = $3
+			WHERE organization_id = $1 AND id = $2`, org, m, rec.Provider.Kind); err != nil {
 			return fmt.Errorf("access: record sign-in: %w", sql.Unavailable(err))
 		}
 		ss.MemberID, ss.ActorID = m, m.ULID

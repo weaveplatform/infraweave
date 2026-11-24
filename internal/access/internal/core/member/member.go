@@ -35,6 +35,10 @@ type Member struct {
 	CreatedAt      time.Time
 	// LastSeenAt is the member's latest sign-in; nil before the first.
 	LastSeenAt *time.Time
+	// LastSignInKind is the kind of the identity provider the member last
+	// signed in through, such as OIDC; empty before the first such
+	// sign-in.
+	LastSignInKind string
 }
 
 // CheckEmail checks an e-mail address field names: a bare address, or

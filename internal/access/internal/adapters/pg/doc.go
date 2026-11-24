@@ -83,8 +83,8 @@
 // is one UPDATE of a live, unconsumed row matching the state's and the
 // browser's hashes, so two callbacks consume it once. A sign-in takes the
 // organization's row lock, as an invite does, resolves the identity to a
-// member, checks a new member's seat, records the identity and
-// last_seen_at, creates the session and seals its ID token into
+// member, checks a new member's seat, records the identity,
+// last_seen_at and last_sign_in_kind, creates the session and seals its ID token into
 // sessions.idp_id_token_sealed, and, for an enable, sets the provider's
 // enabled_at and admin_login with its trail entry, all in one transaction;
 // an account switch carries the ID token to the session it creates.
@@ -98,7 +98,10 @@
 // other account admits takes; removing a managed user deletes its
 // invitations, disables its personal keys in the account as
 // DEPROVISIONED and revokes their and its sessions there. A group's
-// members are the admissions whose latest_groups hold its name. Creating
+// members are the admissions whose latest_groups hold its name, which a
+// member session's account entry writes, in the entry's transaction, from
+// the groups its sign-in reported, raising the admission's version when
+// they change; another account's admission keeps its own. Creating
 // a personal key share-locks the account, the owner's admission and the
 // member while it reads personalApiKeysEnabled and the owner's state,
 // and turning the setting off, removing the member and deactivating them

@@ -135,6 +135,18 @@ func (s *store) RecordRequest(_ context.Context, e kernel.AuditEntry) error {
 	return nil
 }
 
+// LastSignInKind answers OIDC for a member it holds, as a member signed
+// in through an OIDC provider, and port.ErrNotFound for any other.
+func (s *store) LastSignInKind(_ context.Context, _ kernel.OrganizationID, id kernel.MemberID) (string, error) {
+	if s.fail {
+		return "", errDown
+	}
+	if _, ok := s.users[id]; !ok {
+		return "", fmt.Errorf("%w: %s", port.ErrNotFound, id)
+	}
+	return "OIDC", nil
+}
+
 type world struct {
 	s       *store
 	svc     *user.Service
@@ -416,5 +428,29 @@ func TestUnitUserRequests(t *testing.T) {
 	if err := w.svc.RequestRoleChange(ctx, key, "", "legacy", "READ"); !errors.Is(err,
 		user.ErrNotMember) {
 		t.Errorf("an API key asks: %v", err)
+	}
+}
+
+// TestUnitUserLastSignInKind reads the kind of a member's last sign-in
+// for a member's session alone: an API key's session and the break-glass
+// admin's, which has no member, read none.
+func TestUnitUserLastSignInKind(t *testing.T) {
+	ctx := context.Background()
+	w := newWorld()
+	w.s.users[w.p.MemberID] = user.User{Member: member.Member{ID: w.p.MemberID}}
+	if got, err := w.svc.LastSignInKind(ctx, w.p); err != nil || got != "OIDC" {
+		t.Errorf("a member's session = %q, %v", got, err)
+	}
+	for name, p := range map[string]kernel.Principal{
+		"an API key":  {Kind: kernel.PrincipalAPIKey, MemberID: w.p.MemberID},
+		"break-glass": {Kind: kernel.PrincipalUser},
+	} {
+		if got, err := w.svc.LastSignInKind(ctx, p); err != nil || got != "" {
+			t.Errorf("%s = %q, %v", name, got, err)
+		}
+	}
+	w.s.fail = true
+	if _, err := w.svc.LastSignInKind(ctx, w.p); !errors.Is(err, errDown) {
+		t.Errorf("a store down = %v", err)
 	}
 }

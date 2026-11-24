@@ -247,9 +247,13 @@ func TestAccManagedUserGroups(t *testing.T) {
 		onTrail(x, user.ActionInvite)); err != nil {
 		t.Fatal(err)
 	}
-	// Alice's latest sign-in reported two identity-provider groups.
+	// Alice's latest sign-in, through a SAML provider, reported two
+	// identity-provider groups.
 	if _, err := db.Exec(ctx, `UPDATE account_users SET latest_groups = '{ops,dev}'
 		WHERE account_id = $1`, x.acct); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(ctx, `UPDATE members SET last_sign_in_kind = 'SAML' WHERE id = $1`, x.member); err != nil {
 		t.Fatal(err)
 	}
 	create := func(name string) (group.Group, error) {
@@ -290,7 +294,8 @@ func TestAccManagedUserGroups(t *testing.T) {
 		t.Errorf("groups after ops = %+v, %v", gs, err)
 	}
 	u, err := x.s.User(ctx, x.acct, x.member)
-	if err != nil || u.GroupCount != 1 || !slices.Equal(u.LatestGroups, []string{"ops", "dev"}) {
+	if err != nil || u.GroupCount != 1 || !slices.Equal(u.LatestGroups, []string{"ops", "dev"}) ||
+		u.Member.LastSignInKind != "SAML" {
 		t.Errorf("alice = %+v, %v", u, err)
 	}
 	if us, err := x.s.GroupUsers(ctx, x.acct, ops.ID, kernel.MemberID{}, 10); err != nil ||

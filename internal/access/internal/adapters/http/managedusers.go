@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/member"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	managed "github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -66,10 +67,28 @@ var userStatuses = map[member.Status]api.UserStatus{
 	member.Deactivated: api.UserStatusINACTIVE,
 }
 
+// signInKinds are the IdentityProvider values of the identity provider
+// kinds a member signs in through; the enum names GitHub OAuth GITHUB.
+var signInKinds = map[string]api.IdentityProvider{
+	string(sso.OIDC):        api.IdentityProviderOIDC,
+	string(sso.SAML):        api.IdentityProviderSAML,
+	string(sso.GitHubOAuth): api.IdentityProviderGITHUB,
+}
+
+// signedInThrough is kind, the kind of the identity provider a member
+// last signed in through, as an IdentityProvider: EMPTY before the
+// member's first sign-in through one.
+func signedInThrough(kind string) api.IdentityProvider {
+	if v, ok := signInKinds[kind]; ok {
+		return v
+	}
+	return identityProviderNone
+}
+
 // managedUser is u as Spacelift's ManagedUser, with acts as its
 // allowedActions and the access rules among held, its bindings. role is
-// USER; the managed-user record contains no identity-provider association,
-// so loginMethod is EMPTY.
+// USER, and loginMethod the kind of the identity provider the member last
+// signed in through.
 func managedUser(u managed.User, acts []api.Action, held []binding.Listed) api.ManagedUser {
 	out := api.ManagedUser{
 		AccessRules:          rules(held),
@@ -77,7 +96,7 @@ func managedUser(u managed.User, acts []api.Action, held []binding.Listed) api.M
 		GroupCount:           int32(min(u.GroupCount, 1<<31-1)), //nolint:gosec // clamped
 		Id:                   u.Member.ID.String(),
 		LatestGroups:         nonNil(u.LatestGroups),
-		LoginMethod:          identityProviderNone,
+		LoginMethod:          signedInThrough(u.Member.LastSignInKind),
 		Role:                 api.UserRoleUSER,
 		ScimGroupMemberships: []string{},
 		Status:               userStatuses[u.Member.Status],
