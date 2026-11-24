@@ -1,6 +1,7 @@
 package pg_test
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
 // newLink is an open link of x's organization merging other into m.
@@ -367,5 +369,351 @@ func TestAccUnlinkIdentities(t *testing.T) {
 	}
 	if n := trail(t, x, linking.ActionUnlink); n != 1 {
 		t.Errorf("refused unlinks recorded: %d entries", n)
+	}
+}
+
+// linkedPair is a link of x's organization merging bob into ada, two
+// members each signed in once through p, before either proves it.
+type linkedPair struct {
+	s      *pg.Store
+	p      sso.Provider
+	ada    session.Session
+	bob    session.Session
+	link   linking.Link
+	merges func() int
+}
+
+func newLinkedPair(t *testing.T, x seeded) linkedPair {
+	t.Helper()
+	s := x.s.WithSealer(keyring(t, x.db))
+	p := signInProvider(t, x, s)
+	ada, err := signedIn(t, s, x, p, "ada", "ada-sub", kernel.ULID{}, kernel.MemberID{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bob, err := signedIn(t, s, x, p, "bob", "bob-sub", kernel.ULID{}, kernel.MemberID{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := newLink(x, ada.MemberID, bob.MemberID)
+	if err := s.CreateLink(t.Context(), l, byAdmin(x, linking.ActionCreate)); err != nil {
+		t.Fatal(err)
+	}
+	return linkedPair{
+		s: s, p: p, ada: ada, bob: bob, link: l,
+		merges: func() int { return trail(t, x, linking.ActionMerge) },
+	}
+}
+
+// TestAccMergeRefusals checks the merge's refusals once bob has proved
+// the link: bob deactivated or removed since ends ada's sign-in with no
+// session and no merge, and a write the database refuses mid-merge rolls
+// the whole sign-in back, bob's identity, admission and session intact.
+//
+// ref: decision 0006 § "Members and identity providers"
+func TestAccMergeRefusals(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+
+	x := seed(t, db, "vandelay")
+	lp := newLinkedPair(t, x)
+	if _, err := signedIn(t, lp.s, x, lp.p, "bob", "bob-sub", lp.link.ID, kernel.MemberID{}); err != nil {
+		t.Fatal(err)
+	}
+	exec(t, x, `UPDATE members SET status = 'deactivated' WHERE id = $1`, lp.bob.MemberID)
+	refused := signInRecord(x, lp.p, "ada", "ada-sub")
+	refused.Link, refused.Prover = lp.link.ID, lp.bob.MemberID
+	if _, err := lp.s.SignInIdentity(ctx, refused); !errors.Is(err, sso.ErrDeactivated) {
+		t.Errorf("a merge of a member deactivated since = %v", err)
+	}
+	if _, err := lp.s.Session(ctx, refused.Session.ID); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("a refused merge left a session: %v", err)
+	}
+
+	x = seed(t, db, "kramerica")
+	lp = newLinkedPair(t, x)
+	if _, err := signedIn(t, lp.s, x, lp.p, "bob", "bob-sub", lp.link.ID, kernel.MemberID{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`DELETE FROM sessions WHERE member_id = $1`,
+		`DELETE FROM member_identities WHERE member_id = $1`,
+		`DELETE FROM members WHERE id = $1`,
+	} {
+		exec(t, x, q, lp.bob.MemberID)
+	}
+	if _, err := signedIn(t, lp.s, x, lp.p, "ada", "ada-sub", lp.link.ID, lp.bob.MemberID); !errors.Is(err, linking.ErrEnded) {
+		t.Errorf("a merge of a member removed since = %v", err)
+	}
+	if n := lp.merges(); n != 0 {
+		t.Errorf("%d merge entries after the refusals", n)
+	}
+
+	x = seed(t, db, "pendant")
+	lp = newLinkedPair(t, x)
+	admit(t, x, lp.bob.MemberID)
+	first, err := signedIn(t, lp.s, x, lp.p, "bob", "bob-sub", lp.link.ID, kernel.MemberID{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow := refuse(t, x, "DELETE", "members")
+	if _, err := signedIn(t, lp.s, x, lp.p, "ada", "ada-sub", lp.link.ID, lp.bob.MemberID); err == nil {
+		t.Fatal("a merge the database refuses succeeded")
+	}
+	allow()
+	if fs, err := lp.s.Identities(ctx, x.org, lp.bob.MemberID); err != nil || len(fs) != 1 {
+		t.Errorf("bob's identities after the rolled-back merge = %+v, %v", fs, err)
+	}
+	if n := countOf(t, x, `SELECT count(*) FROM account_users WHERE member_id = $1`, lp.bob.MemberID); n != 1 {
+		t.Errorf("bob holds %d admissions after the rolled-back merge", n)
+	}
+	if read, err := lp.s.Session(ctx, first.ID); err != nil || !read.Live(time.Now()) {
+		t.Errorf("bob's session after the rolled-back merge = %+v, %v", read, err)
+	}
+	if got, _, err := lp.s.Link(ctx, lp.link.ID); err != nil || !got.CompletedAt.IsZero() || !got.MemberSignedAt.IsZero() {
+		t.Errorf("the link after the rolled-back merge = %+v, %v", got, err)
+	}
+	if merged, err := signedIn(t, lp.s, x, lp.p, "ada", "ada-sub", lp.link.ID, lp.bob.MemberID); err != nil ||
+		merged.MemberID != lp.ada.MemberID || lp.merges() != 1 {
+		t.Errorf("the merge once the database allows it = %+v, %v", merged, err)
+	}
+}
+
+// refuse has the test's own database fail every statement of event on
+// table, standing in for a write the database refuses mid-transaction,
+// until the returned func drops the trigger.
+func refuse(t *testing.T, x seeded, event, table string) func() {
+	t.Helper()
+	exec(t, x, `CREATE OR REPLACE FUNCTION refuse() RETURNS trigger LANGUAGE plpgsql AS
+		$$BEGIN RAISE EXCEPTION 'refused'; END$$`)
+	exec(t, x, `CREATE TRIGGER refuse BEFORE `+event+` ON `+table+` FOR EACH STATEMENT
+		EXECUTE FUNCTION refuse()`)
+	return func() { exec(t, x, `DROP TRIGGER refuse ON `+table) }
+}
+
+// aborted runs fn in a transaction whose earlier statement failed, so
+// the first statement fn sends fails too.
+func aborted(x seeded, fn func(ctx context.Context) error) error {
+	return tx.Do(context.Background(), x.db, tx.Options{}, func(ctx context.Context) error {
+		_, _ = tx.Q(ctx, x.db).Exec(ctx, `SELECT 1/0`)
+		return fn(ctx)
+	})
+}
+
+// TestAccLinkingWritesRefused checks that each linking write the database
+// refuses part way fails the whole use, leaving the link, the members'
+// identities, sessions and admissions as they were.
+//
+// ref: decision 0006 § "Members and identity providers"
+func TestAccLinkingWritesRefused(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+
+	x := seed(t, db, "dunder")
+	other := addMember(t, x, "bob", "active")
+	exec(t, x, `INSERT INTO member_identities (organization_id, member_id, identity_provider_id, subject)
+		VALUES ($1, $2, $3, 'alice-sub'), ($1, $4, $3, 'bob-sub')`, x.org, x.member, seedProvider(t, db, x.org), other)
+	for _, write := range [][2]string{{"DELETE", "member_links"}, {"INSERT", "member_links"}} {
+		allow := refuse(t, x, write[0], write[1])
+		if err := x.s.CreateLink(ctx, newLink(x, x.member, other), byAdmin(x, linking.ActionCreate)); err == nil {
+			t.Errorf("a link whose %s of %s is refused opened", write[0], write[1])
+		}
+		allow()
+	}
+	if err := aborted(x, func(ctx context.Context) error {
+		return x.s.CreateLink(ctx, newLink(x, x.member, other), byAdmin(x, linking.ActionCreate))
+	}); err == nil {
+		t.Error("a link opened in an aborted transaction")
+	}
+	if n := countOf(t, x, `SELECT count(*) FROM member_links`); n != 0 || trail(t, x, linking.ActionCreate) != 0 {
+		t.Errorf("%d links after the refused writes", n)
+	}
+	expired := newLink(x, x.member, other)
+	expired.ExpiresAt = expired.CreatedAt.Add(-time.Minute)
+	if err := x.s.CreateLink(ctx, expired, byAdmin(x, linking.ActionCreate)); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"oidc_logout_tokens", "member_links"} {
+		allow := refuse(t, x, "DELETE", table)
+		if _, err := x.s.ExpireSignIns(ctx, time.Now()); err == nil {
+			t.Errorf("expiring sign-ins the database refuses to delete from %s succeeded", table)
+		}
+		allow()
+	}
+	if n := countOf(t, x, `SELECT count(*) FROM member_links`); n != 1 {
+		t.Errorf("%d links after a refused expiry", n)
+	}
+
+	x = seed(t, db, "wernham")
+	lp := newLinkedPair(t, x)
+	admit(t, x, lp.bob.MemberID)
+	allow := refuse(t, x, "UPDATE", "member_links")
+	if _, err := signedIn(t, lp.s, x, lp.p, "bob", "bob-sub", lp.link.ID, kernel.MemberID{}); err == nil {
+		t.Error("a link sign-in the database refuses to record succeeded")
+	}
+	allow()
+	if _, err := signedIn(t, lp.s, x, lp.p, "bob", "bob-sub", lp.link.ID, kernel.MemberID{}); err != nil {
+		t.Fatal(err)
+	}
+	allow = refuse(t, x, "UPDATE", "accounts")
+	if _, err := signedIn(t, lp.s, x, lp.p, "ada", "ada-sub", lp.link.ID, lp.bob.MemberID); err == nil {
+		t.Error("a merge whose authorization rebuild the database refuses succeeded")
+	}
+	allow()
+	exec(t, x, `CREATE TRIGGER refuse_merge_entry BEFORE INSERT ON organization_audit_trail_entries
+		FOR EACH ROW WHEN (NEW.action = '`+linking.ActionMerge+`') EXECUTE FUNCTION refuse()`)
+	if _, err := signedIn(t, lp.s, x, lp.p, "ada", "ada-sub", lp.link.ID, lp.bob.MemberID); err == nil {
+		t.Error("a merge the database refuses to audit succeeded")
+	}
+	exec(t, x, `DROP TRIGGER refuse_merge_entry ON organization_audit_trail_entries`)
+	if got, _, err := lp.s.Link(ctx, lp.link.ID); err != nil || !got.CompletedAt.IsZero() {
+		t.Errorf("the link after the refused merge = %+v, %v", got, err)
+	}
+	if n := countOf(t, x, `SELECT count(*) FROM members WHERE id = $1`, lp.bob.MemberID); n != 1 || lp.merges() != 0 {
+		t.Errorf("bob merged by a refused sign-in: %d", n)
+	}
+
+	x = seed(t, db, "athlead")
+	lp = newLinkedPair(t, x)
+	exec(t, x, `INSERT INTO member_identities (organization_id, member_id, identity_provider_id, subject)
+		VALUES ($1, $2, $3, 'ada-sub-2')`, x.org, lp.ada.MemberID, lp.p.ID)
+	unlink := func(ctx context.Context) error {
+		_, _, err := lp.s.UnlinkIdentities(ctx, x.org, lp.ada.MemberID, lp.ada.ID, sso.OIDC,
+			byAdmin(x, linking.ActionUnlink))
+		return err
+	}
+	for _, write := range [][2]string{{"DELETE", "member_identities"}, {"UPDATE", "sessions"}} {
+		allow := refuse(t, x, write[0], write[1])
+		if err := unlink(ctx); err == nil {
+			t.Errorf("an unlink whose %s of %s is refused succeeded", write[0], write[1])
+		}
+		allow()
+	}
+	if err := aborted(x, unlink); err == nil {
+		t.Error("an unlink in an aborted transaction succeeded")
+	}
+	if fs, err := lp.s.Identities(ctx, x.org, lp.ada.MemberID); err != nil || len(fs) != 2 ||
+		trail(t, x, linking.ActionUnlink) != 0 {
+		t.Errorf("ada's identities after the refused unlinks = %+v, %v", fs, err)
+	}
+}
+
+// held has a transaction of its own lock the rows query selects FOR
+// UPDATE until the returned func rolls it back.
+func held(t *testing.T, x seeded, query string, args ...any) func() {
+	t.Helper()
+	h, err := x.db.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Exec(t.Context(), query, args...); err != nil {
+		t.Fatal(err)
+	}
+	return func() { _ = h.Rollback(context.Background()) }
+}
+
+// TestAccLinkSignInWaitsForLocks checks that a link sign-in waits for the
+// link's row and both members' rows rather than proving or merging past a
+// concurrent change, failing when its context ends first with the link
+// unproved and no member merged.
+//
+// ref: decision 0006 § "Members and identity providers"
+func TestAccLinkSignInWaitsForLocks(t *testing.T) {
+	db := pool(t)
+	x := seed(t, db, "initech")
+	lp := newLinkedPair(t, x)
+	within := func(fn func(ctx context.Context) error) error {
+		ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+		defer cancel()
+		return fn(ctx)
+	}
+	signIn := func(login, subject string, prover kernel.MemberID) func(ctx context.Context) error {
+		return func(ctx context.Context) error {
+			rec := signInRecord(x, lp.p, login, subject)
+			rec.Link, rec.Prover = lp.link.ID, prover
+			_, err := lp.s.SignInIdentity(ctx, rec)
+			return err
+		}
+	}
+
+	release := held(t, x, `SELECT 1 FROM member_links WHERE id = $1 FOR UPDATE`, lp.link.ID)
+	if err := within(signIn("bob", "bob-sub", kernel.MemberID{})); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("a link sign-in while the link is locked = %v", err)
+	}
+	release()
+	if err := within(signIn("bob", "bob-sub", kernel.MemberID{})); err != nil {
+		t.Fatal(err)
+	}
+	release = held(t, x, `SELECT 1 FROM members WHERE id = $1 FOR UPDATE`, lp.bob.MemberID)
+	if err := within(signIn("ada", "ada-sub", lp.bob.MemberID)); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("a merge while the merged member is locked = %v", err)
+	}
+	release()
+	if got, _, err := lp.s.Link(t.Context(), lp.link.ID); err != nil || !got.CompletedAt.IsZero() || lp.merges() != 0 {
+		t.Errorf("the link after the waits = %+v, %v", got, err)
+	}
+}
+
+// TestAccUnlinkWithoutOwnIdentity checks an unlink by a session signed in
+// through no identity, as a session seeded without one is: it keeps none
+// of the kind, removing each, while the member's identity of another kind
+// remains.
+//
+// ref: decision 0006 § "Members and identity providers"
+func TestAccUnlinkWithoutOwnIdentity(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	x := seed(t, db, "pennypacker")
+	oidc, saml := seedProvider(t, db, x.org), kernel.NewULID()
+	exec(t, x, `INSERT INTO identity_providers (organization_id, id, kind, name, settings, secret_sealed)
+		VALUES ($1, $2, 'SAML', 'saml', '{}', '\x00')`, x.org, saml)
+	exec(t, x, `INSERT INTO member_identities (organization_id, member_id, identity_provider_id, subject)
+		VALUES ($1, $2, $3, 'alice-1'), ($1, $2, $3, 'alice-2'), ($1, $2, $4, 'alice-saml')`,
+		x.org, x.member, oidc, saml)
+	ss := x.webSession(time.Now().Add(time.Hour))
+	if err := x.s.CreateSession(ctx, ss); err != nil {
+		t.Fatal(err)
+	}
+	left, _, err := x.s.UnlinkIdentities(ctx, x.org, x.member, ss.ID, sso.OIDC, byAdmin(x, linking.ActionUnlink))
+	if err != nil || len(left) != 1 || left[0].Subject != "alice-saml" || left[0].Kind != sso.SAML {
+		t.Errorf("UnlinkIdentities = %+v, %v", left, err)
+	}
+	if read, err := x.s.Session(ctx, ss.ID); err != nil || !read.Live(time.Now()) {
+		t.Errorf("the caller's session = %+v, %v", read, err)
+	}
+}
+
+// TestAccLinkingStoreClosed checks that the linking store's reads and
+// writes on a closed pool fail as the store's own error, never as a
+// refusal a caller would answer as the client's fault.
+func TestAccLinkingStoreClosed(t *testing.T) {
+	ctx := t.Context()
+	p := pool(t)
+	x := seed(t, p, "closed-links")
+	p.Close()
+	for name, err := range map[string]error{
+		"create": x.s.CreateLink(ctx, newLink(x, x.member, kernel.NewMemberID()), byAdmin(x, linking.ActionCreate)),
+		"link": func() error {
+			_, _, err := x.s.Link(ctx, kernel.NewULID())
+			return err
+		}(),
+		"identities": func() error { _, err := x.s.Identities(ctx, x.org, x.member); return err }(),
+		"unlink": func() error {
+			_, _, err := x.s.UnlinkIdentities(ctx, x.org, x.member, kernel.NewULID(), sso.OIDC,
+				byAdmin(x, linking.ActionUnlink))
+			return err
+		}(),
+		"expire": func() error { _, err := x.s.ExpireSignIns(ctx, time.Now()); return err }(),
+	} {
+		refused := false
+		for _, r := range []error{
+			port.ErrNotFound, linking.ErrEnded, linking.ErrLinkExists,
+			linking.ErrNoMember, linking.ErrNoIdentity,
+		} {
+			refused = refused || errors.Is(err, r)
+		}
+		if err == nil || refused {
+			t.Errorf("%s on a closed pool = %v", name, err)
+		}
 	}
 }
