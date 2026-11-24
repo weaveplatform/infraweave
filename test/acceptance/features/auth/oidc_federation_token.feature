@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @docker @tofu @oidc
+@run-credentials @postgres @objectstore @vcs @docker @tofu @oidc
 Feature: Every run's OIDC federation token
   A run of an account whose tier has oidc-federation receives, at each
   handover that starts a phase, an OIDC federation token signed by the

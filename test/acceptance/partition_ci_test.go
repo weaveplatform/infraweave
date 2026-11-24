@@ -86,7 +86,7 @@ func TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload(t *testing.T) {
 	var stress []string
 	for _, partition := range harness.Partitions {
 		expected = append(expected, partition.Name)
-		if strings.HasPrefix(partition.Name, "terraform") || partition.Name == "runs" {
+		if strings.HasPrefix(partition.Name, "terraform") || partition.Name == "runs" || partition.Name == "run-credentials" {
 			stress = append(stress, partition.Name)
 		}
 	}

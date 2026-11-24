@@ -34,8 +34,10 @@ var Labs = []Partition{
 
 // Partitions are the pull request's CI jobs, in the order a scenario is
 // placed: the first partition that lists one of its tags takes it, so a
-// tagged plan-artifact and native VCS scenarios precede other @terraform work.
-// Other run scenarios go to runs; core takes every untagged scenario.
+// tagged plan-artifact and native VCS scenarios precede other @terraform work,
+// and @run-credentials scenarios, which hand runs OIDC federation tokens or
+// assumed cloud credentials, precede other run work. Other run scenarios go
+// to runs; core takes every untagged scenario.
 //
 // ref: decision 0016
 var Partitions = []Partition{
@@ -50,6 +52,12 @@ var Partitions = []Partition{
 	{
 		Name: "terraform",
 		Tags: []string{"@terraform"},
+	},
+	{
+		// Selects without provisioning: each of its scenarios also carries
+		// the run dependencies it needs, such as @docker and @tofu.
+		Name: "run-credentials",
+		Tags: []string{"@run-credentials"},
 	},
 	{
 		Name: "runs",
