@@ -17733,6 +17733,19 @@ type ClientInterface interface {
 	// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
 	OidcSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OidcSubjectTemplate Oidc Subject Template
+	//
+	// The subject template of the account's OIDC federation tokens, which every run of the account renders into
+	// its token's sub claim: the one accountSetOIDCSubjectTemplate set, or the default,
+	// space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}, when none is set. Unlike the
+	// tag's other operations, it reads the caller's account rather than the organization's identity providers,
+	// so the account's admins read it as well as the organization admins in the account. It needs a credential
+	// of the account: a session in no account, such as the break-glass admin's, answers 401, and a member who
+	// is neither answers 403.
+	//
+	// Corresponds with GET /oidc/subject-template (the `OidcSubjectTemplate` operationId).
+	OidcSubjectTemplate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// OnTrialUntil On Trial Until
 	//
 	// null: an infraweave account is never on a trial.
@@ -25295,6 +25308,29 @@ func (c *Client) OidcUpdate(ctx context.Context, body OidcUpdateJSONRequestBody,
 // Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
 func (c *Client) OidcSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOidcSettingsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcSubjectTemplate Oidc Subject Template
+//
+// The subject template of the account's OIDC federation tokens, which every run of the account renders into
+// its token's sub claim: the one accountSetOIDCSubjectTemplate set, or the default,
+// space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}, when none is set. Unlike the
+// tag's other operations, it reads the caller's account rather than the organization's identity providers,
+// so the account's admins read it as well as the organization admins in the account. It needs a credential
+// of the account: a session in no account, such as the break-glass admin's, answers 401, and a member who
+// is neither answers 403.
+//
+// Corresponds with GET /oidc/subject-template (the `OidcSubjectTemplate` operationId).
+func (c *Client) OidcSubjectTemplate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcSubjectTemplateRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -41021,6 +41057,33 @@ func NewOidcSettingsRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/oidc/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOidcSubjectTemplateRequest constructs an http.Request for the OidcSubjectTemplate method
+func NewOidcSubjectTemplateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oidc/subject-template")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -57618,6 +57681,21 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
 	OidcSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcSettingsResponse, error)
+
+	// OidcSubjectTemplateWithResponse Oidc Subject Template
+	//
+	// The subject template of the account's OIDC federation tokens, which every run of the account renders into
+	// its token's sub claim: the one accountSetOIDCSubjectTemplate set, or the default,
+	// space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}, when none is set. Unlike the
+	// tag's other operations, it reads the caller's account rather than the organization's identity providers,
+	// so the account's admins read it as well as the organization admins in the account. It needs a credential
+	// of the account: a session in no account, such as the break-glass admin's, answers 401, and a member who
+	// is neither answers 403.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /oidc/subject-template (the `OidcSubjectTemplate` operationId).
+	OidcSubjectTemplateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcSubjectTemplateResponse, error)
 
 	// OnTrialUntilWithResponse On Trial Until
 	//
@@ -78534,6 +78612,108 @@ func (r OidcSettingsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OidcSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OidcSubjectTemplateResponse200Headers the declared response headers of an HTTP 200 response for OidcSubjectTemplate
+type OidcSubjectTemplateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcSubjectTemplateResponse429Headers the declared response headers of an HTTP 429 response for OidcSubjectTemplate
+type OidcSubjectTemplateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcSubjectTemplateResponse503Headers the declared response headers of an HTTP 503 response for OidcSubjectTemplate
+type OidcSubjectTemplateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OidcSubjectTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OidcSubjectTemplateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OidcSubjectTemplateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OidcSubjectTemplateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OidcSubjectTemplateResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OidcSubjectTemplateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OidcSubjectTemplateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OidcSubjectTemplateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OidcSubjectTemplateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OidcSubjectTemplateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcSubjectTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcSubjectTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcSubjectTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcSubjectTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -108739,6 +108919,27 @@ func (c *ClientWithResponses) OidcSettingsWithResponse(ctx context.Context, reqE
 	return ParseOidcSettingsResponse(rsp)
 }
 
+// OidcSubjectTemplateWithResponse Oidc Subject Template
+//
+// The subject template of the account's OIDC federation tokens, which every run of the account renders into
+// its token's sub claim: the one accountSetOIDCSubjectTemplate set, or the default,
+// space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}, when none is set. Unlike the
+// tag's other operations, it reads the caller's account rather than the organization's identity providers,
+// so the account's admins read it as well as the organization admins in the account. It needs a credential
+// of the account: a session in no account, such as the break-glass admin's, answers 401, and a member who
+// is neither answers 403.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /oidc/subject-template (the `OidcSubjectTemplate` operationId).
+func (c *ClientWithResponses) OidcSubjectTemplateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcSubjectTemplateResponse, error) {
+	rsp, err := c.OidcSubjectTemplate(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcSubjectTemplateResponse(rsp)
+}
+
 // OnTrialUntilWithResponse On Trial Until
 //
 // null: an infraweave account is never on a trial.
@@ -136875,6 +137076,135 @@ func ParseOidcSettingsResponse(rsp *http.Response) (*OidcSettingsResponse, error
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OidcSettingsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOidcSubjectTemplateResponse parses an HTTP response from a OidcSubjectTemplateWithResponse call
+func ParseOidcSubjectTemplateResponse(rsp *http.Response) (*OidcSubjectTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcSubjectTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OidcSubjectTemplateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OidcSubjectTemplateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OidcSubjectTemplateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

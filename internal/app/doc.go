@@ -35,7 +35,8 @@
 // class read from the embedded spec's x-infraweave-cost, whether it is
 // public from its empty security, and which credentials of no account it
 // admits from its x-infraweave-access: organization, organization-admin
-// or organization-admin-person, with the
+// or organization-admin-person, while account-admin-or-organization-admin
+// admits none and leaves the decision to the operation's service, with the
 // access domain's break-glass login (accessapi.LoginPattern) public and
 // expensive beside them, and the federation issuer's discovery document
 // and JWKS public, standard and cacheable at the patterns the access

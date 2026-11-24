@@ -60,6 +60,10 @@ func operationViolations(where string, op *openapi3.Operation) []string {
 	case (access == "organization" || public) && a != accessapi.ActionAuthenticated:
 		out = append(out, fmt.Sprintf("%s: access %q, public %t with %s, not AUTHENTICATED",
 			where, access, public, action))
+	// Its service answers a refusal naming ACCOUNT_ADMIN, the action that
+	// admits the account's admins beside the organization's.
+	case access == "account-admin-or-organization-admin" && a != accessapi.ActionAccountAdmin:
+		out = append(out, fmt.Sprintf("%s: access %q with %s, not ACCOUNT_ADMIN", where, access, action))
 	}
 	if (s.Kind == accessapi.SubjectOrganization) != (access != "" || public) {
 		out = append(out, fmt.Sprintf("%s: subject %s with access %q, public %t",
@@ -148,6 +152,12 @@ paths:
       x-infraweave-action: ACCOUNT_ADMIN
       x-infraweave-subject: organization
       responses: {"200": {description: ok}}
+  /template:
+    get:
+      x-infraweave-access: account-admin-or-organization-admin
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: organization
+      responses: {"200": {description: ok}}
   /orgless:
     get:
       x-infraweave-action: AUTHENTICATED
@@ -195,6 +205,7 @@ func TestUnitAPIAuthorizationFixture(t *testing.T) {
 		"GET /noparam: subject path:id:stack names no path parameter",
 		"GET /noquery: subject query:space names no query parameter",
 		`GET /orgless: subject organization with access "", public false`,
+		`GET /template: access "account-admin-or-organization-admin" with AUTHENTICATED, not ACCOUNT_ADMIN`,
 		"GET /unknown names SPACE_FLY, which the catalogue lacks",
 		`GET /viewer: access "organization", public false with ACCOUNT_ADMIN, not AUTHENTICATED`,
 		"POST /nobody: subject body:space with no request body",

@@ -23,6 +23,10 @@ var (
 	// the account's serialization lock.
 	ErrSessionEnded = errors.New("the calling session has ended")
 	ErrNotAdmin     = errors.New("the calling session no longer administers the account")
+	// ErrNotTemplateReader refuses a reader of the OIDC subject template
+	// that is neither an account admin of its account nor an organization
+	// admin.
+	ErrNotTemplateReader = errors.New("neither an account admin nor an organization admin")
 )
 
 // Settings are an account's settings that no other domain owns. An account

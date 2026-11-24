@@ -29,8 +29,11 @@ const (
 	// SubjectAny is any space of the account: the action is allowed where
 	// the caller holds it in at least one, as an anywhere action is.
 	SubjectAny SubjectKind = "any"
-	// SubjectOrganization is no space: the operation acts on the caller's
-	// organization, and the organization's own rule decides it.
+	// SubjectOrganization is no space: the operation's service decides it
+	// by the organization's own rule. Such an operation acts on the
+	// caller's organization, or, with x-infraweave-access
+	// account-admin-or-organization-admin, reads an account setting that
+	// the organization's admins read beside the account's.
 	SubjectOrganization SubjectKind = "organization"
 	// SubjectList is no space: the handler filters what it lists with
 	// Reachable.

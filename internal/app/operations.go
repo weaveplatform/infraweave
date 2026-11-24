@@ -185,6 +185,10 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				admin = true
 			case v == "organization-admin-person":
 				person = true
+			case v == "account-admin-or-organization-admin":
+				// An account route whose service admits the organization
+				// admins in the account beside its account admins, so its
+				// organization subject leaves the decision to the service.
 			default:
 				return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
 					errSpec, method, path, v)

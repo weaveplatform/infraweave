@@ -3,11 +3,13 @@ package settings
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/federation"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -58,9 +60,25 @@ type Store interface {
 	DeleteAccount(ctx context.Context, acct kernel.AccountID, e kernel.OrganizationAuditEntry) ([]kernel.ULID, error)
 }
 
+// Authorizer decides an action on a space; accessapi.Authorizer is one.
+type Authorizer interface {
+	Authorize(ctx context.Context, p kernel.Principal, action accessapi.Action, space kernel.ULID) (bool, error)
+}
+
+// OrganizationAdmins admit the organization's admins; orgadmin.Service is
+// one.
+type OrganizationAdmins interface {
+	Admit(ctx context.Context, by orgadmin.Actor) error
+}
+
 // Deps are what the service needs.
 type Deps struct {
 	Store Store
+	// Authz and Admins decide who reads the OIDC subject template: the
+	// account's admins, by ACCOUNT_ADMIN on its top space as the template's
+	// setter is decided, and the organization's admins.
+	Authz  Authorizer
+	Admins OrganizationAdmins
 	// Drop drops a revoked session from this replica's cache at once; the
 	// other replicas drop it on its invalidation.
 	Drop func(kernel.ULID)
@@ -161,6 +179,38 @@ func (s *Service) SetOIDCSubjectTemplate(ctx context.Context, p kernel.Principal
 		return "", err //nolint:wrapcheck // as above
 	}
 	return EffectiveSubjectTemplate(template), nil
+}
+
+// OIDCSubjectTemplate is the subject template in effect for the OIDC
+// federation tokens of p's account: the one it set, or
+// federation.DefaultSubjectTemplate. The SSO tag serves it, whose other
+// operations only organization admins may call, but the template is the
+// account's own setting, so its account admins read it too; anyone else is
+// ErrNotTemplateReader, and so is a principal of no account, which has no
+// template to read.
+//
+// ref: decision 0006 § "Members and identity providers"
+func (s *Service) OIDCSubjectTemplate(ctx context.Context, p kernel.Principal) (string, error) {
+	if p.AccountID.IsZero() {
+		return "", ErrNotTemplateReader
+	}
+	admin, err := s.d.Authz.Authorize(ctx, p, accessapi.ActionAccountAdmin, p.AccountID.ULID)
+	if err != nil {
+		return "", err //nolint:wrapcheck // the authorizer marks an unreachable database
+	}
+	if !admin {
+		switch err := s.d.Admins.Admit(ctx, orgadmin.Actor{Principal: p}); {
+		case errors.Is(err, orgadmin.ErrForbidden):
+			return "", ErrNotTemplateReader
+		case err != nil:
+			return "", err //nolint:wrapcheck // the store names the read
+		}
+	}
+	st, err := s.d.Store.Settings(ctx, p.AccountID)
+	if err != nil {
+		return "", err //nolint:wrapcheck // as above
+	}
+	return EffectiveSubjectTemplate(st.OIDCSubjectTemplate), nil
 }
 
 // EffectiveSubjectTemplate is the template an account's stored template t

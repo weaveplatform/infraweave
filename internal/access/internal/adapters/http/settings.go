@@ -3,8 +3,10 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -33,7 +35,8 @@ func (s Server) current(ctx context.Context) (kernel.Principal, settings.Setting
 
 // settingError is err as the problem it answers: 422 for a value the
 // service refuses, 403 for a key or a run flipping what only a person
-// may, 409 for a deletion the account's state refuses, 404 for an account
+// may and, naming ACCOUNT_ADMIN, for a reader of the OIDC subject template
+// that is neither an account nor an organization admin, 409 for a deletion the account's state refuses, 404 for an account
 // that is gone, and err itself otherwise, which the store marks when the
 // database is unreachable.
 func settingError(err error) error {
@@ -47,6 +50,13 @@ func settingError(err error) error {
 		return problem.Unauthenticated.Error("The calling session has ended.") //nolint:wrapcheck // as above
 	case errors.Is(err, settings.ErrNotAdmin):
 		return problem.Forbidden.Error("Account administration is required.") //nolint:wrapcheck // as above
+	case errors.Is(err, settings.ErrNotTemplateReader):
+		p := problem.Forbidden.New(fmt.Sprintf(
+			"Reading the OIDC subject template needs %s, or the organization role organization-admin.",
+			accessapi.ActionAccountAdmin,
+		))
+		p.Action = string(accessapi.ActionAccountAdmin)
+		return &problem.Error{Problem: p}
 	case errors.Is(err, settings.ErrInvalidState):
 		return problem.InvalidState.Error(err.Error()) //nolint:wrapcheck // as above
 	case errors.Is(err, port.ErrNotFound):
@@ -188,6 +198,21 @@ func (s Server) AccountSetOIDCSubjectTemplate(ctx context.Context, req api.Accou
 		return nil, settingError(err)
 	}
 	return api.AccountSetOIDCSubjectTemplate200JSONResponse{Body: effective}, nil
+}
+
+// OidcSubjectTemplate answers the subject template in effect for the
+// account's OIDC federation tokens, to its account admins and the
+// organization admins in it.
+func (s Server) OidcSubjectTemplate(ctx context.Context, _ api.OidcSubjectTemplateRequestObject) (api.OidcSubjectTemplateResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	template, err := s.settings.OIDCSubjectTemplate(ctx, p)
+	if err != nil {
+		return nil, settingError(err)
+	}
+	return api.OidcSubjectTemplate200JSONResponse{Body: template}, nil
 }
 
 // OauthRedirectAllowedHosts lists the account's OAuth redirect allowlist

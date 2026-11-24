@@ -312,7 +312,7 @@ func New(d Deps) (*Domain, error) {
 		}),
 		signIn: signIn,
 		settings: settings.NewService(
-			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
+			settings.Deps{Store: store, Authz: decide, Admins: orgAdmin, Drop: auth.Cache().Drop, Now: now},
 		),
 		users:          user.NewService(user.Deps{Store: store, Drop: auth.Cache().Drop, Now: now}),
 		groups:         group.NewService(group.Deps{Store: store, Now: now}),
