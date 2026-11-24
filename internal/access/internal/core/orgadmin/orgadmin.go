@@ -169,6 +169,10 @@ type Actor struct {
 	RemoteIP  string
 }
 
+// Admit refuses a member without the organization role with ErrForbidden,
+// for the organization's other services that the tag serves.
+func (s *Service) Admit(ctx context.Context, by Actor) error { return s.admit(ctx, by) }
+
 // admit refuses a member without the organization role. Organization
 // tokens and the break-glass admin hold it by what they are; the
 // authenticator admits no other kind.

@@ -2,16 +2,17 @@
 // and the stores that implement the core's ports. The stream holds the
 // tenancy (organizations, accounts with their api_key_non_admin_managers and
 // allow_non_admin_space_creation settings, members, pending until an invited
-// member first signs in, their identities, and the members each account
-// admits, with each admission's latest_groups and slack_member_id), the
+// member first signs in, and the members each account admits, with each admission's latest_groups and slack_member_id), the
 // credentials (API keys, whose personal owner is a member rather than an
 // admission, so removing a managed user keeps the keys it disables,
 // sessions, signing keys and each organization's break-glass credential),
 // account_settings, a row created on the first write, so an account without
 // one reads each column's default, organization_admins and
 // organization_keys, account_invitations and managed_user_groups, the OAuth
-// clients, requests and spent refresh tokens, spaces and space_closure, and
-// roles, role_actions and role_bindings. Creating an account, with its
+// clients, requests and spent refresh tokens, spaces and space_closure,
+// roles, role_actions and role_bindings, and the organization's
+// identity_providers, one per kind its default by a partial unique index,
+// with the member_identities that sign in through each. Creating an account, with its
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A
@@ -42,7 +43,7 @@
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
 // port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
-// orgadmin.Store, settings.Store, space.Store, user.Store, group.Store,
+// orgadmin.Store, sso.Store, settings.Store, space.Store, user.Store, group.Store,
 // role.Store, binding.Store, holder.Store and authz.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
 // organization trail entry through platform/audit in the same
@@ -69,7 +70,14 @@
 // as a key's first use does; deactivating a member disables their
 // personal keys as DEPROVISIONED and revokes their and those keys'
 // sessions; disabling or deleting an organization key revokes its
-// sessions. user.Store's writes record their account trail entry in the
+// sessions. sso.Store's writes take the organization's row lock FOR NO KEY
+// UPDATE before they read its providers, so two writes never both make a
+// default of one kind, and record their trail entry in the same
+// transaction: a provider's secret is sealed into
+// identity_providers.secret_sealed, bound to its id, through the Sealer
+// WithSealer gives, and ProviderSecret opens it; deleting a provider
+// deletes its identities, revokes the sessions signed in through it and
+// makes the oldest remaining provider of its kind the default when it was. user.Store's writes record their account trail entry in the
 // same transaction: inviting a login takes its organization's row lock,
 // admits its member or a new pending one and checks the seat a member no
 // other account admits takes; removing a managed user deletes its
@@ -127,7 +135,7 @@
 // featuresapi, internal/kernel, platform/outbox, platform/sql/integrity,
 // pgx, and platform/sql, platform/sql/migrate, platform/sql/notify,
 // platform/tx, platform/audit for the account and organization trails,
-// platform/crypt for the sealed column and platform/crypt/signer for the
+// platform/crypt for the sealed columns and platform/crypt/signer for the
 // keys. Only the access domain's assembly
 // imports it.
 package pg

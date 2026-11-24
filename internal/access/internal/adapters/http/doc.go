@@ -28,7 +28,13 @@
 // member without organization-admin answers 403 forbidden, an account,
 // member or key of another organization 404, a slug in use or a claim of
 // a claimed account or a deletion of the last 409, and input the service
-// or features domain refuses 422 validation-failed. The Managed Users
+// or features domain refuses 422 validation-failed. The tag's identity
+// provider operations, through sso.Service, list, create, change and
+// delete the organization's providers and choose the default per kind,
+// never answering a secret: a provider of another organization answers
+// 404, a kind whose feature the organization lacks 403
+// feature-not-in-tier or feature-disabled, and invalid or immutable
+// settings 422 validation-failed naming the field. The Managed Users
 // operations, through the user and group services, invite, read, update,
 // remove and resend the invitation of the account's managed users, record
 // invite and role change requests, and manage its groups: a managed user
@@ -160,8 +166,8 @@
 //
 // It imports the access domain's apikey, authn, breakglass, loopback,
 // group, member, oauth, operator, orgadmin, organization, port, session,
-// settings, space and user packages, accessapi,
-// featuresapi for limit-reached, internal/kernel, chi, the generated servers of both APIs, and
+// settings, space, sso and user packages, accessapi,
+// featuresapi for limit-reached and a feature's refusal, internal/kernel, chi, the generated servers of both APIs, and
 // platform/httpkit's apisearch, page, problem, ratelimit and strict. Only the access domain's assembly
 // imports it.
 package http

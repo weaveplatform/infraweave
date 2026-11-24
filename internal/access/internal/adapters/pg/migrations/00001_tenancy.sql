@@ -61,25 +61,6 @@ CREATE TABLE members (
 COMMENT ON TABLE members IS
     'global: a member belongs to its organization and to every account that admits it';
 
--- The identities that sign in as a member: one row per identity provider
--- subject. Two identities are two members until an organization admin
--- links them; nothing matches them by email, since an identity provider
--- may let anyone claim any address.
--- ref: decision 0006
-CREATE TABLE member_identities (
-    organization_id      uuid        NOT NULL,
-    member_id            uuid        NOT NULL,
-    identity_provider_id uuid        NOT NULL,
-    subject              text        NOT NULL,
-    created_at           timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (identity_provider_id, subject),
-    FOREIGN KEY (organization_id, member_id)
-        REFERENCES members (organization_id, id) ON DELETE RESTRICT
-);
-COMMENT ON TABLE member_identities IS
-    'global: an identity signs in to the organization, whichever account the member enters';
-CREATE INDEX member_identities_member ON member_identities (organization_id, member_id);
-
 -- The members an account admits, which the API calls its users. A member
 -- enters an account only through a row here, and only a member of the
 -- account's own organization can have one.

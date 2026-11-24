@@ -43,7 +43,7 @@ func Stream() migrate.Stream {
 
 // SealedColumns are the access stream's sealed columns, which Reseal walks
 // with the platform's.
-func SealedColumns() []crypt.Column { return []crypt.Column{privateKey} }
+func SealedColumns() []crypt.Column { return []crypt.Column{privateKey, providerSecret} }
 
 // Keys are how the access domain finds the rows other domains hold by ID:
 // an account, an organization, and a space within its account.
@@ -77,6 +77,8 @@ type Store struct {
 	forget      func(kernel.AccountID)
 	login       accessapi.LoginEvaluator
 	dropSession func(kernel.ULID)
+	// seal seals and opens identity providers' secrets.
+	seal Sealer
 }
 
 // WithSessionInvalidations drops this replica's affected sessions after a

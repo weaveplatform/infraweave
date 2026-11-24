@@ -147,9 +147,9 @@ func indexOf(ids []kernel.OrganizationID, id kernel.OrganizationID) int {
 }
 
 // TestAccDeleteOrganization checks that deleting an organization deletes
-// its members, their identities, its accounts, their API keys and its
-// sessions, a session with a parent among them, and revokes each live
-// session, leaving another organization's untouched.
+// its members, their identities, its identity providers, its accounts,
+// their API keys and its sessions, a session with a parent among them, and
+// revokes each live session, leaving another organization's untouched.
 func TestAccDeleteOrganization(t *testing.T) {
 	ctx := t.Context()
 	db := pool(t)
@@ -162,7 +162,7 @@ func TestAccDeleteOrganization(t *testing.T) {
 	if err := s.CreateOrganization(ctx, keep, keepAcct, nil, created(keep)); err != nil {
 		t.Fatal(err)
 	}
-	member := kernel.NewMemberID()
+	member, provider := kernel.NewMemberID(), kernel.NewULID()
 	for _, stmt := range []struct {
 		sql  string
 		args []any
@@ -171,8 +171,10 @@ func TestAccDeleteOrganization(t *testing.T) {
 			VALUES ($1, $2, 'alice', 'Alice', 'alice@example.com', 'active')`, []any{o.ID, member}},
 		{`INSERT INTO account_users (account_id, organization_id, member_id)
 			VALUES ($1, $2, $3)`, []any{a.ID, o.ID, member}},
+		{`INSERT INTO identity_providers (organization_id, id, kind, name, settings, secret_sealed)
+			VALUES ($1, $2, 'OIDC', 'okta', '{}', '\x00')`, []any{o.ID, provider}},
 		{`INSERT INTO member_identities (organization_id, member_id, identity_provider_id, subject)
-			VALUES ($1, $2, gen_random_uuid(), 'alice')`, []any{o.ID, member}},
+			VALUES ($1, $2, $3, 'alice')`, []any{o.ID, member, provider}},
 	} {
 		if _, err := db.Exec(ctx, stmt.sql, stmt.args...); err != nil {
 			t.Fatal(err)
@@ -209,13 +211,14 @@ func TestAccDeleteOrganization(t *testing.T) {
 		t.Fatalf("DeleteOrganization = %v, %v", ids, err)
 	}
 	for table, where := range map[string]string{
-		"organizations":     "id = $1",
-		"accounts":          "organization_id = $1",
-		"members":           "organization_id = $1",
-		"member_identities": "organization_id = $1",
-		"account_users":     "organization_id = $1",
-		"sessions":          "organization_id = $1",
-		"api_keys":          "account_id = $1",
+		"organizations":      "id = $1",
+		"accounts":           "organization_id = $1",
+		"members":            "organization_id = $1",
+		"member_identities":  "organization_id = $1",
+		"identity_providers": "organization_id = $1",
+		"account_users":      "organization_id = $1",
+		"sessions":           "organization_id = $1",
+		"api_keys":           "account_id = $1",
 	} {
 		var n int
 		arg := any(o.ID)

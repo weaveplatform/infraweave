@@ -6,7 +6,8 @@
 // is its partial of the API's strict server, aliased AccessAPI, and
 // OperatorAPI its partial of the operator API's, aliased
 // AccessOperatorAPI, the API's partial serving the Organization tag
-// through the orgadmin service, the Managed Users tag through the user
+// through the orgadmin service and its identity providers through the sso
+// service, whose secrets Deps.Keys seals, the Managed Users tag through the user
 // and group services, the Roles tag through the role service, the role
 // binding operations through the binding service and the grant views
 // through the holder service; Bindings is the
@@ -72,10 +73,11 @@
 // # Dependencies
 //
 // It imports accessapi, featuresapi, whose Entitlements Deps.Features
-// carries for the organization's entitlement and the account limits, the
+// carries for the organization's entitlement, the account limits and the
+// features identity provider kinds need, the
 // access domain's adapters (oidc among them) and
 // its apikey, authn, authz, breakglass, group, operator, orgadmin, session,
-// settings, space, token and user packages, platform/cron and platform/queue for its
+// settings, space, sso, token and user packages, platform/cron and platform/queue for its
 // tasks, platform/outbox for its event, platform/crypt and
 // platform/crypt/signer, platform/sql/integrity, platform/sql/migrate,
 // platform/sql/notify, platform/httpkit/problem and chi. Only
