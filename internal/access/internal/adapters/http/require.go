@@ -65,9 +65,9 @@ func NewRequire(authz accessapi.Authorizer, subjects *Subjects) Require {
 // its subject:
 //   - account decides the action on the account's top space, and any in
 //     the space where the caller holds it, answering 403 when it may not;
-//   - organization and list pass: the organization's own rule decides an
-//     organization operation, and a list's handler filters with
-//     Reachable;
+//   - organization and list pass: the organization's own rule, in the
+//     operation's service, decides an organization operation, and a
+//     list's handler filters with Reachable;
 //   - a path, body or query subject finds the entity's space, answering
 //     404 for an entity the account lacks or one whose space the caller
 //     cannot read, with one body for both, then 403 when it may not

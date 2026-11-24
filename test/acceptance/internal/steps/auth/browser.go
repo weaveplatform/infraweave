@@ -79,7 +79,7 @@ func (b *browserSteps) register(sc *godog.ScenarioContext) {
 
 	sc.Step(`^the trail of "([a-z-]+)" holds the break-glass sign-ins "([^"]+)"$`, b.trail)
 	sc.Step(
-		`^the home account's member has a browser session, admitted to (home alone|home and sibling)$`,
+		`^the home account's member has a browser session, admitted to (home alone|home and sibling)(, with no role)?$`,
 		b.memberSession,
 	)
 	sc.Step(`^a member no account admits has a browser session$`, b.unadmitted)
@@ -437,10 +437,10 @@ func newSecret() (string, string) {
 }
 
 // memberSession seeds the home organization's member with a browser
-// session in the home account, admitted to the accounts named and
-// space-admin on home's top space, as the member who claimed it is, and
-// has the browser hold its cookie.
-func (b *browserSteps) memberSession(ctx context.Context, admitted string) error {
+// session in the home account, admitted to the accounts named and, unless
+// noRole is set, space-admin on home's top space, as the member who
+// claimed it is, and has the browser hold its cookie.
+func (b *browserSteps) memberSession(ctx context.Context, admitted, noRole string) error {
 	db, err := b.w.Querier(ctx)
 	if err != nil {
 		return err
@@ -465,6 +465,15 @@ func (b *browserSteps) memberSession(ctx context.Context, admitted string) error
 			harness.UUIDOf(harness.MemberID),
 		))
 	}
+	binding := fmt.Sprintf(`
+		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
+				created_by)
+			SELECT '%[1]s', gen_random_uuid(), 'user', '%[2]s', id, '%[1]s', 'binding', 'acceptance'
+			FROM roles WHERE account_id = '%[1]s' AND slug = 'space-admin';`,
+		harness.UUIDOf(harness.Home.Account), harness.UUIDOf(harness.MemberID))
+	if noRole != "" {
+		binding = ""
+	}
 	value, hash := newSecret()
 	// The session ends in whole seconds, as a CLI token's exp counts them.
 	if _, err := db.Query(ctx, fmt.Sprintf(
@@ -476,11 +485,7 @@ func (b *browserSteps) memberSession(ctx context.Context, admitted string) error
 				member_id, login, name, email, expires_at, idle_expires_at, secret_hash)
 			VALUES ('%[1]s', '%[3]s', '%[4]s', 'WEB', 'user', '%[2]s', '%[2]s', 'alice', 'Alice',
 				'alice@example.com', date_trunc('second', now()) + interval '10 hours',
-				now() + interval '10 hours', '\x%[5]s');
-		INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin,
-				created_by)
-			SELECT '%[3]s', gen_random_uuid(), 'user', '%[2]s', id, '%[3]s', 'binding', 'acceptance'
-			FROM roles WHERE account_id = '%[3]s' AND slug = 'space-admin';%[7]s`,
+				now() + interval '10 hours', '\x%[5]s');%[8]s%[7]s`,
 		harness.UUIDOf(
 			harness.Home.Org,
 		),
@@ -490,6 +495,7 @@ func (b *browserSteps) memberSession(ctx context.Context, admitted string) error
 		hash,
 		strings.Join(rows, ", "),
 		harness.AuthzChanged(harness.Home.Account),
+		binding,
 	)); err != nil {
 		return err //nolint:wrapcheck // the querier names the query
 	}

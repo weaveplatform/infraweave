@@ -281,7 +281,6 @@
     ],
     "SSO": [
       "createOauthClientForSCIM",
-      "oidcSubjectTemplate",
       "samlCreate",
       "samlDelete",
       "samlSettings",

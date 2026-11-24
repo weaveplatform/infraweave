@@ -188,6 +188,15 @@ compatibility path that infers a missing generation from mutable worker state.
   account admin without that role gets `403`, problem `forbidden`. The
   single-provider operations address the organization's default provider
   of that kind, and the organization API lists them all.
+  `oidcSubjectTemplate`, also under the `SSO` tag, is the one exception:
+  it reads the federation subject template, the caller's account's own
+  setting ([OIDC federation token](#oidc-federation-token)), so the
+  account's admins (`ACCOUNT_ADMIN` on the account, as
+  `accountSetOIDCSubjectTemplate` needs) read it beside the organization
+  admins in that account. It is an account route: a session in no
+  account, the break-glass admin's among them, is no credential and gets
+  `401`, problem `unauthenticated`, and anyone else in the account gets
+  `403`, problem `forbidden`, naming `ACCOUNT_ADMIN`.
 
 ### Sessions
 
@@ -543,9 +552,9 @@ assertion.
 - **Organization principals.** The routes of the `Organization` tag accept
   an organization token, a break-glass session, and a member session or CLI
   token whose member holds the organization admin role, whichever account
-  it is in. The `SSO` tag's routes accept the last two only, and every
-  account route treats an organization token or a break-glass session as no
-  credential.
+  it is in. The `SSO` tag's routes accept the last two only, except
+  `oidcSubjectTemplate`, which is an account route. Every account route
+  treats an organization token or a break-glass session as no credential.
 - The caller key for decision 0003's idempotency keys and rate-limit buckets
   is `<kind>:<actor ID>`, so all sessions of one API key share one budget.
 - A request with no credential on a route that needs one answers `401`,
@@ -685,6 +694,8 @@ server.
 - **Subject template.** The account setting `oidc_subject_template`, empty
   meaning the default
   `space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}`.
+  `accountSetOIDCSubjectTemplate` sets it and `oidcSubjectTemplate` reads
+  the template in effect.
   Validation is report 12's
   ([6.5](../reference/12-cloud-integrations-and-oidc.md#65-subject-and-subject-templates)):
   at most 1000 characters, known placeholders only, the restricted character
@@ -891,7 +902,9 @@ captures block their affected P13b implementation; P13 adds no login bypass.
 - **Reference SSO operations need the organization role.** They read and
   change the identity providers every account of the organization signs in
   through, so an account admin of one account must not see or change
-  them.
+  them. `oidcSubjectTemplate` reads no provider but the account's own
+  federation subject template, which its account admins set, so they read
+  it too.
 - **A built-in authorization server, minimal.** MCP clients expect metadata
   discovery and dynamic registration, and the console already holds the
   session a consent page needs. PKCE `S256` only, public clients only,
@@ -923,7 +936,7 @@ Departures from Spacelift, for the plan's deviations register:
 | The federation audience defaults to the host plus the account slug, and claims name the account's top space by its slug | One installation hosts many accounts under one issuer; Spacelift's account host plays both roles on SaaS |
 | The authorization server trusts loopback and the account's allowlist only, with no built-in client hosts | No client host is trusted without the account's decision |
 | The break-glass login belongs to an organization, the operator holds it, and it is an organization admin with no account role | An installation-wide admin would reach every customer, and an organization-held credential would be lost with the admins it exists to replace |
-| The SSO operations need the organization admin role, reads included | The identity providers are the organization's, shared by all its accounts |
+| The SSO operations need the organization admin role, reads included, except `oidcSubjectTemplate`, which the account's admins also read | The identity providers are the organization's, shared by all its accounts; the federation subject template is the account's own setting |
 
 ## Constraints
 
@@ -978,7 +991,8 @@ Departures from Spacelift, for the plan's deviations register:
   `retiring` kept until the last token expires.
 - Break-glass tests: only the operator API sets or replaces the credential;
   an organization admin's attempt answers `403`; a break-glass session
-  reaches the `Organization` and `SSO` tags, no account, and takes no seat.
+  reaches the `Organization` and `SSO` tags, no account (so not
+  `oidcSubjectTemplate`), and takes no seat.
 - Break-glass password tests: a known password verifies against a hash made
   by `infraweave auth hash-password`; a wrong one fails; a hash below 600,000
   iterations, with an unknown prefix or with a short salt is refused; all of

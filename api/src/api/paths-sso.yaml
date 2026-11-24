@@ -5,6 +5,9 @@
 # tag's identity provider operations list beside its others. Only an
 # organization admin in person reaches them: a member's session or CLI
 # token whose member holds organization-admin, or the break-glass admin.
+# oidcSubjectTemplate is the exception: it reads the account's own
+# federation subject template, so it needs a credential of the account, and
+# the account's admins read it beside the organization admins in it.
 # ref: decision 0006 § "Members and identity providers"
 components:
   schemas:
@@ -336,6 +339,58 @@ paths:
         operation: query
         type: Query
       x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - rate-limit
+      x-rest-style: singleton
+  /oidc/subject-template:
+    get:
+      description: |-
+        The subject template of the account's OIDC federation tokens, which every run of the account renders into
+        its token's sub claim: the one accountSetOIDCSubjectTemplate set, or the default,
+        space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}, when none is set. Unlike the
+        tag's other operations, it reads the caller's account rather than the organization's identity providers,
+        so the account's admins read it as well as the organization admins in the account. It needs a credential
+        of the account: a session in no account, such as the break-glass admin's, answers 401, and a member who
+        is neither answers 403.
+      operationId: oidcSubjectTemplate
+      x-infraweave-feature: oidc-federation
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The oidcSubjectTemplate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oidc Subject Template
+      tags:
+        - SSO
+      x-bruno: Advanced/SSO/Oidc Subject Template.bru
+      x-graphql:
+        field: oidcSubjectTemplate
+        operation: query
+        type: Query
+      x-infraweave-access: account-admin-or-organization-admin
       x-infraweave-cost: standard
       x-infraweave-divergence:
         - DV-110

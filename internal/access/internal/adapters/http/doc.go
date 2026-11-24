@@ -43,7 +43,10 @@
 // organization-admin answers 403 forbidden, no default OIDC provider 404,
 // a second 409 already-exists, and invalid settings or a host whose
 // discovery document is unusable 422 validation-failed naming the body's
-// field. The Managed Users
+// field. The SSO tag's oidcSubjectTemplate, through the settings service,
+// answers the subject template in effect for the caller's account to its
+// account admins and the organization admins in it: anyone else answers
+// 403 forbidden naming ACCOUNT_ADMIN. The Managed Users
 // operations, through the user and group services, invite, read, update,
 // remove and resend the invitation of the account's managed users, record
 // invite and role change requests, and manage its groups: a managed user

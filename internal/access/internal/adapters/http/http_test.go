@@ -286,12 +286,15 @@ type world struct {
 	secret string
 	grants *grants
 	// authz holds every assignable action on the account's top space.
-	authz  *grantsOf
-	tree   *spaceTree
-	people *people
-	roles  *roleBook
-	binds  *bindBook
-	held   *heldBook
+	authz *grantsOf
+	// orgAdmins admit the organization admins the settings service asks
+	// about.
+	orgAdmins *orgAdmits
+	tree      *spaceTree
+	people    *people
+	roles     *roleBook
+	binds     *bindBook
+	held      *heldBook
 	// sso and party are the OIDC sign-in's store and provider.
 	sso   *ssoStore
 	party *relyingParty
@@ -366,8 +369,10 @@ func newWorld(t *testing.T) *world {
 		Store: st, Authz: w.authz, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
 	})
 	w.cfg = &configs{s: settings.Defaults()}
+	w.orgAdmins = &orgAdmits{}
 	cfg := settings.NewService(settings.Deps{
-		Store: w.cfg, Drop: auth.Cache().Drop, Now: func() time.Time { return t0 },
+		Store: w.cfg, Authz: w.authz, Admins: w.orgAdmins, Drop: auth.Cache().Drop,
+		Now: func() time.Time { return t0 },
 	})
 	w.grants = newGrants()
 	w.grants.admission = st

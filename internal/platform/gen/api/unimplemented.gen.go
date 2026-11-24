@@ -718,6 +718,10 @@ func (UnimplementedStrict) OidcSettings(context.Context, OidcSettingsRequestObje
 	return nil, &problem.NotImplementedError{OperationID: "oidcSettings", Route: "GET /oidc/settings"}
 }
 
+func (UnimplementedStrict) OidcSubjectTemplate(context.Context, OidcSubjectTemplateRequestObject) (OidcSubjectTemplateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oidcSubjectTemplate", Route: "GET /oidc/subject-template"}
+}
+
 func (UnimplementedStrict) OnTrialUntil(context.Context, OnTrialUntilRequestObject) (OnTrialUntilResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "onTrialUntil", Route: "GET /on-trial-until"}
 }

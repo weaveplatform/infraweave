@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/federation"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -346,6 +350,10 @@ func TestUnitSettingsNoPrincipal(t *testing.T) {
 			})
 			return err
 		},
+		"subject template": func() error {
+			_, err := s.OidcSubjectTemplate(ctx, api.OidcSubjectTemplateRequestObject{})
+			return err
+		},
 		"hosts": func() error {
 			_, err := s.OauthRedirectAllowedHosts(ctx, api.OauthRedirectAllowedHostsRequestObject{})
 			return err
@@ -393,5 +401,62 @@ func TestUnitSettingsNoPrincipal(t *testing.T) {
 			pe.Problem.Status != http.StatusUnauthorized {
 			t.Errorf("%s without a principal: %v", name, pe)
 		}
+	}
+}
+
+// orgAdmits is the organization admin decision the settings service asks
+// for, admitting everyone while admit is set, with err when it is not nil.
+type orgAdmits struct {
+	admit bool
+	err   error
+}
+
+func (o *orgAdmits) Admit(context.Context, orgadmin.Actor) error {
+	switch {
+	case o.err != nil:
+		return o.err
+	case !o.admit:
+		return orgadmin.ErrForbidden
+	}
+	return nil
+}
+
+// TestUnitOIDCSubjectTemplateRead reads the subject template through the
+// router as an account admin and as an organization admin, and checks the
+// refusal of anyone else names ACCOUNT_ADMIN.
+func TestUnitOIDCSubjectTemplateRead(t *testing.T) {
+	w := newWorld(t)
+	bearer := "Bearer " + w.exchange(t).Jwt
+	read := func() *httptest.ResponseRecorder {
+		t.Helper()
+		return w.do(t, http.MethodGet, "/oidc/subject-template", bearer, "")
+	}
+	top := w.acct.ULID
+	held := w.authz.on[top]
+	w.authz.on[top] = append(slices.Clone(held), accessapi.ActionAccountAdmin)
+	if rec := read(); rec.Code != http.StatusOK ||
+		rec.Body.String() != fmt.Sprintf("%q\n", federation.DefaultSubjectTemplate) {
+		t.Errorf("the default to an account admin: %d %s", rec.Code, rec.Body)
+	}
+	w.authz.on[top] = held
+	w.orgAdmins.admit = true
+	w.cfg.s.OIDCSubjectTemplate = "stack|{callerId}"
+	if rec := read(); rec.Code != http.StatusOK || rec.Body.String() != "\"stack|{callerId}\"\n" {
+		t.Errorf("the set template to an organization admin: %d %s", rec.Code, rec.Body)
+	}
+	w.orgAdmins.admit = false
+	rec := read()
+	if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+		p.Type != problem.Forbidden.New("").Type || p.Action != string(accessapi.ActionAccountAdmin) {
+		t.Errorf("neither admin: %d %s", rec.Code, rec.Body)
+	}
+	w.orgAdmins.err = fmt.Errorf("down: %w", kernel.ErrUnavailable)
+	if rec := read(); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("the organization admins unreachable: %d %s", rec.Code, rec.Body)
+	}
+	w.orgAdmins.err, w.orgAdmins.admit = nil, true
+	w.cfg.gone = true
+	if rec := read(); rec.Code != http.StatusNotFound {
+		t.Errorf("a gone account: %d %s", rec.Code, rec.Body)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/federation"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -297,5 +298,74 @@ func TestUnitAuthorizationScheme(t *testing.T) {
 	m.err = errors.New("failed transaction")
 	if _, err := svc.SetAuthorizationScheme(t.Context(), kernel.Principal{}, accessapi.ManagedUsers, ""); !errors.Is(err, m.err) || len(*dropped) != 1 {
 		t.Fatalf("failed switch = %v, dropped %v", err, *dropped)
+	}
+}
+
+// templateDecider is the account admin and organization admin decision
+// TestUnitOIDCSubjectTemplate sets, with the errors each answers.
+type templateDecider struct {
+	admin, orgAdmin    bool
+	authzErr, admitErr error
+	asked              accessapi.Action
+	space              kernel.ULID
+}
+
+func (d *templateDecider) Authorize(_ context.Context, _ kernel.Principal, a accessapi.Action, space kernel.ULID) (bool, error) {
+	d.asked, d.space = a, space
+	return d.admin, d.authzErr
+}
+
+func (d *templateDecider) Admit(context.Context, orgadmin.Actor) error {
+	switch {
+	case d.admitErr != nil:
+		return d.admitErr
+	case !d.orgAdmin:
+		return orgadmin.ErrForbidden
+	}
+	return nil
+}
+
+// TestUnitOIDCSubjectTemplate checks the read answers the stored template
+// or the default to an account admin and an organization admin, and
+// refuses everyone else and a principal of no account.
+func TestUnitOIDCSubjectTemplate(t *testing.T) {
+	ctx := t.Context()
+	m := &mem{s: Defaults()}
+	d := &templateDecider{admin: true}
+	svc := NewService(Deps{Store: m, Authz: d, Admins: d})
+	member := kernel.Principal{
+		Kind: kernel.PrincipalUser, OrganizationID: kernel.NewOrganizationID(),
+		AccountID: kernel.NewAccountID(), MemberID: kernel.NewMemberID(),
+	}
+	if tpl, err := svc.OIDCSubjectTemplate(ctx, member); err != nil || tpl != federation.DefaultSubjectTemplate ||
+		d.asked != accessapi.ActionAccountAdmin || d.space != member.AccountID.ULID {
+		t.Errorf("the default to an account admin = %q, %v, decided %s on %s", tpl, err, d.asked, d.space)
+	}
+	m.s.OIDCSubjectTemplate = "stack|{callerId}"
+	*d = templateDecider{orgAdmin: true}
+	if tpl, err := svc.OIDCSubjectTemplate(ctx, member); err != nil || tpl != "stack|{callerId}" {
+		t.Errorf("the set template to an organization admin = %q, %v", tpl, err)
+	}
+
+	errDown := errors.New("down")
+	for name, tc := range map[string]struct {
+		d    templateDecider
+		p    kernel.Principal
+		want error
+	}{
+		"neither":     {templateDecider{}, member, ErrNotTemplateReader},
+		"no account":  {templateDecider{admin: true, orgAdmin: true}, kernel.Principal{Kind: kernel.PrincipalBreakGlass}, ErrNotTemplateReader},
+		"authz down":  {templateDecider{authzErr: errDown}, member, errDown},
+		"admins down": {templateDecider{admitErr: errDown}, member, errDown},
+		"store down":  {templateDecider{admin: true}, member, errDown},
+	} {
+		*d = tc.d
+		m.err = nil
+		if name == "store down" {
+			m.err = errDown
+		}
+		if tpl, err := svc.OIDCSubjectTemplate(ctx, tc.p); !errors.Is(err, tc.want) || tpl != "" {
+			t.Errorf("%s = %q, %v; want %v", name, tpl, err, tc.want)
+		}
 	}
 }

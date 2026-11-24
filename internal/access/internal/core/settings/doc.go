@@ -9,6 +9,10 @@
 // person flips NonHumanKeyManagers, a key or a run being ErrNotHuman; and
 // an account is deleted only while marked and not its organization's last,
 // ErrInvalidState otherwise. No waiting period follows the mark.
+// OIDCSubjectTemplate reads the template in effect for the SSO tag, to the
+// account's admins, decided through Authorizer, and the organization's,
+// admitted through OrganizationAdmins; anyone else is
+// ErrNotTemplateReader.
 //
 // ref: decisions 0006 and 0007
 //
@@ -20,7 +24,7 @@
 //
 // # Dependencies
 //
-// It imports internal/kernel, the access domain's federation package and
-// the standard library. The access domain's
+// It imports internal/kernel, the access domain's api, federation and
+// orgadmin packages and the standard library. The access domain's
 // adapters and assembly import it.
 package settings

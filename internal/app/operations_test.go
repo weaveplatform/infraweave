@@ -287,6 +287,12 @@ func TestUnitOperationsOf(t *testing.T) {
 	if op := ops["POST /oidc"]; err != nil || !op.OrganizationAdminPerson || op.OrganizationAdmin {
 		t.Errorf("x-infraweave-access organization-admin-person: %+v %v", ops, err)
 	}
+	ops, err = operationsOf(doc("/oidc/subject-template", &openapi3.Operation{
+		Extensions: map[string]any{"x-infraweave-access": "account-admin-or-organization-admin"},
+	}), "", false)
+	if op, ok := ops["POST /oidc/subject-template"]; err != nil || !ok || op.access() != accessapi.Account {
+		t.Errorf("x-infraweave-access account-admin-or-organization-admin: %+v %v", ops, err)
+	}
 	for _, bad := range []any{"account", true} {
 		_, err := operationsOf(doc("/things", &openapi3.Operation{
 			Extensions: map[string]any{"x-infraweave-access": bad},
