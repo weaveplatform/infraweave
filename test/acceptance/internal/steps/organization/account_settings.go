@@ -12,6 +12,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/pkg/sdk"
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
+	"github.com/weaveplatform/infraweave/test/deps"
 )
 
 // settingsSteps send the account settings' requests with a token or in
@@ -28,6 +29,10 @@ func (s *settingsSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
 		`^"([A-Z]+) ([^"]+)" through ([AB]) in the browser answers '([^']*)'$`,
 		s.browserAnswers,
+	)
+	sc.Step(
+		`^"([A-Z]+) ([^"]+)" through ([AB]) in the browser eventually answers '([^']*)'$`,
+		s.browserEventually,
 	)
 	sc.Step(
 		`^"GET ([^"]+)" through ([AB]) with token "(\w+)" answers a time within the last minute$`,
@@ -67,6 +72,20 @@ func (s *settingsSteps) browserAnswers(ctx context.Context, method, path, replic
 		return err
 	}
 	return harness.Answered(r, method+" "+path+" in the browser", want)
+}
+
+// browserEventually polls until the browser's request answers want, for
+// a read through one replica of a setting changed through the other, which
+// the replica's cache holds until the change's invalidation reaches it.
+func (s *settingsSteps) browserEventually(ctx context.Context, method, path, replica, want string) error {
+	return deps.Eventually(ctx, method+" "+path+" in the browser to answer "+want,
+		func(ctx context.Context) (bool, error) {
+			r, err := s.w.BrowserDo(ctx, replica, method, path, harness.PublicURL, nil)
+			if err != nil {
+				return false, err
+			}
+			return harness.Answered(r, method+" "+path+" in the browser", want) == nil, nil
+		})
 }
 
 // recent checks an answer of Unix seconds within the last minute, as a
