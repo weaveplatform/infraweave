@@ -65,6 +65,9 @@ type store struct {
 	down          bool
 	// full refuses a key's use as the seats limit would.
 	full *featuresapi.LimitError
+	// seatless refuses a member's new session as an entry whose admission
+	// through the account's groups finds no seat would.
+	seatless *featuresapi.LimitError
 	// peopleOnly lets only people manage API keys.
 	peopleOnly bool
 	// owners are the members the account admits as personal keys'
@@ -108,6 +111,9 @@ func (s *store) TouchAPIKey(context.Context, kernel.ULID) error {
 func (s *store) CreateSession(_ context.Context, ss session.Session) error {
 	if err := s.err(); err != nil {
 		return err
+	}
+	if s.seatless != nil && !ss.MemberID.IsZero() {
+		return fmt.Errorf("enter account %s: %w", ss.AccountID, s.seatless)
 	}
 	if !ss.MemberID.IsZero() && ss.Channel != session.ChannelUnknown {
 		for id, o := range s.sessions {

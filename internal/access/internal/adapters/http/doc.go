@@ -8,7 +8,9 @@
 // to the CLI's key, answering 403 to any other credential and 422 naming
 // pubKey to a key it cannot seal to; authAccounts and authSessionAccount
 // list the accounts that admit the caller's member and switch to one,
-// any other answering 404; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
+// any other answering 404, and an entry, a CLI token or an OAuth consent
+// whose admission through the account's managed user groups finds no seat
+// answering 403 limit-reached; apiKeys, apiKeyCreate, apiKey, apiKeyUpdate,
 // apiKeyReset, apiKeyDelete and apiKeyEnableNonAdminManagers manage the
 // account's API keys, where a key of another account answers 404, input
 // the service refuses 422 validation-failed, and an API key or run 403

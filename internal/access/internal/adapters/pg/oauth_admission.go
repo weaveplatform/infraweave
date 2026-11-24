@@ -18,6 +18,9 @@ import (
 
 // Approve records original authentication facts with the code, under the same
 // account fence as policy changes. The browser's grants are never transferred.
+// A member that only the account's managed user groups admit gains its
+// admission in the same transaction, refused with a *featuresapi.LimitError
+// when its seat does not fit.
 func (s *Store) Approve(ctx context.Context, p kernel.Principal, d oauth.Request, now time.Time) error {
 	var denied *session.LoginDenied
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
@@ -35,10 +38,11 @@ func (s *Store) Approve(ctx context.Context, p kernel.Principal, d oauth.Request
 			ActorKind: p.Kind, ActorID: p.ActorID, MemberID: p.MemberID,
 			CreatedAt: now, ExpiresAt: now, IPAddress: accessapi.ClientAddr(ctx),
 		}
-		if err := entryMember(ctx, q, &candidate, scheme); err != nil {
-			if errors.Is(err, session.ErrNotAdmitted) {
-				return oauth.ErrNotAdmitted
-			}
+		admitted, err := entryMember(ctx, q, &candidate, scheme)
+		if errors.Is(err, session.ErrNotAdmitted) {
+			return oauth.ErrNotAdmitted
+		}
+		if err != nil {
 			return err
 		}
 		if err := entrySource(ctx, q, &candidate, p.SessionID); err != nil {
@@ -46,6 +50,18 @@ func (s *Store) Approve(ctx context.Context, p kernel.Principal, d oauth.Request
 				return oauth.ErrNotAdmitted
 			}
 			return err
+		}
+		// The code's redemption reads the member's admission, so a member
+		// that only the account's groups admit gains it here, as an entry
+		// would.
+		if !admitted {
+			err := s.admitThroughGroups(ctx, q, candidate, true)
+			if errors.Is(err, session.ErrNotAdmitted) {
+				return oauth.ErrNotAdmitted
+			}
+			if err != nil {
+				return err
+			}
 		}
 		r, err := scanRequest(q.QueryRow(ctx, `SELECT `+requestColumns+requestFrom+`
 			WHERE r.id=$1 FOR UPDATE OF r`, d.ID))

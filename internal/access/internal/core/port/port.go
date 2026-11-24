@@ -27,6 +27,10 @@ var ErrCredentialChanged = errors.New("credential changed")
 // AccountEntry fences the active strategy and credential while evaluating and
 // storing a new account session. The returned session contains its effective
 // identity; credential is nil for an organization-authenticated member.
+// A member that only one of the account's managed user groups admits gains
+// its admission on Enter, which a full seats limit refuses with a
+// *featuresapi.LimitError; AdmittedAccounts lists that account and writes
+// nothing.
 type AccountEntry interface {
 	Enter(ctx context.Context, s session.Session, credential *apikey.Key, source kernel.ULID) (session.Session, error)
 	AdmittedAccounts(ctx context.Context, identity session.Session) ([]session.Admitted, error)

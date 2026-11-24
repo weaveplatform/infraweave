@@ -382,7 +382,7 @@ components:
 paths:
   /auth/accounts:
     get:
-      description: The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+      description: The accounts that admit the caller's member, evaluated now, in slug order, among them those that admit it through a managed user group its sign-in's groups name. A credential that is not a member's, such as a break-glass session, sees none.
       operationId: authAccounts
       x-infraweave-feature: auth
       x-infraweave-action: AUTHENTICATED
@@ -686,7 +686,10 @@ paths:
         Replace the caller's session with a new one for an account that admits its member, in the same channel
         and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
         and carries no jwt; any other carries the new token. An account that does not admit the member answers
-        404, as does a credential that is not a member's.
+        404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+        not one of its managed users when a group its sign-in reported names a managed user group of the account
+        that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+        seat left answers 403 limit-reached.
       operationId: authSessionAccount
       x-infraweave-feature: auth
       x-infraweave-action: AUTHENTICATED

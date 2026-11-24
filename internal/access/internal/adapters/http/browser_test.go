@@ -21,6 +21,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/loopback"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/httpkit/problem"
@@ -299,6 +300,11 @@ func TestUnitCliConfirmationToken(t *testing.T) {
 	w.st.sessions[ending.ID] = ending
 	wantUnauthenticated(t, w.browse(t, http.MethodPost, path, endingSecret, publicURL, body), false)
 
+	w.st.seatless = &featuresapi.LimitError{Limit: featuresapi.Seats, Scope: featuresapi.ScopeOrganization, Value: 2}
+	refusedAs(t, "a CLI session beyond the seats limit",
+		w.browse(t, http.MethodPost, path, secret, publicURL, body), http.StatusForbidden, "limit-reached")
+	w.st.seatless = nil
+
 	w.st.down = true
 	if rec := w.browse(
 		t,
@@ -369,6 +375,16 @@ func TestUnitSwitchAccount(t *testing.T) {
 	w.st.sessions[short.ID] = short
 	wantUnauthenticated(t, w.do(t, http.MethodPost, path,
 		fmt.Sprintf("Bearer user %s %s", short.ID, audience), to(home.ID.String())), false)
+
+	// An entry whose admission through the account's groups finds no seat
+	// names the limit.
+	w.st.seatless = &featuresapi.LimitError{Limit: featuresapi.Seats, Scope: featuresapi.ScopeAccount, Value: 1}
+	rec = w.browse(t, http.MethodPost, path, set.Value, publicURL, to(home.ID.String()))
+	if p := decode[problem.Problem](t, rec); rec.Code != http.StatusForbidden ||
+		p.Type != problem.LimitReached.New("").Type || p.Limit != featuresapi.Seats || p.Scope != "account" {
+		t.Errorf("a switch beyond the seats limit: %d %s", rec.Code, rec.Body)
+	}
+	w.st.seatless = nil
 
 	w.st.down = true
 	for _, r := range [][2]string{{http.MethodGet, "/auth/accounts"}, {http.MethodPost, path}} {
