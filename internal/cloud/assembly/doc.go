@@ -1,7 +1,8 @@
 // Package assembly constructs the cloud domain, the AWS integrations that
 // stacks attach, after state. API is its partial of the API's strict
 // server, aliased CloudAPI; Stream is its migration stream, which
-// internal/app registers after state's; Held are its columns for the
+// internal/app registers after policies' and before runs', whose
+// handovers import its api/; Held are its columns for the
 // orphan count; SpaceGuard and StackGuard are its say in space and stack
 // deletes and moves; SpaceOf and AttachmentSpaceOf find the space the
 // access domain decides an integration's and an attachment's operations

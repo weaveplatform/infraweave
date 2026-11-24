@@ -54,7 +54,7 @@
 // PlanningLogs supplies an account-bound bounded tail of an exact planning
 // transition's masked log, without full run views or signed URLs;
 // Stream is its migration stream, which
-// internal/app registers after configuration's.
+// internal/app registers after cloud's.
 //
 // # Input and output
 //

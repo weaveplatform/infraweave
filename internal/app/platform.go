@@ -47,9 +47,9 @@ func Streams() []migrate.Stream {
 		stacksassembly.Stream(),
 		configurationassembly.Stream(),
 		policiesassembly.Stream(),
+		cloudassembly.Stream(),
 		runsassembly.Stream(),
 		stateassembly.Stream(),
-		cloudassembly.Stream(),
 		vcsassembly.Stream(),
 		eventsassembly.Stream(),
 	}
