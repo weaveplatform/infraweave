@@ -52,6 +52,8 @@ func (s *stsSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^AWS STS was asked to assume the role "([^"]+)" with the external ID "([^"]+)"$`, s.asked)
 	sc.Step(`^the answer lists the AWS integrations "([^"]*)"$`, s.lists)
 	sc.Step(`^the answer's attached stacks are "([^"]*)"$`, s.attached)
+	sc.Step(`^the stack "([^"]+)" lists the AWS integrations "([^"]*)"$`, s.stackLists)
+	sc.Step(`^the stack "([^"]+)" shows the AWS integration "([^"]+)" with the external ID "([^"]+)"$`, s.stackExternalID)
 }
 
 // serve starts the fake and points the scenario's servers at it, with the
@@ -200,4 +202,83 @@ func splitList(s string) []string {
 		return []string{}
 	}
 	return strings.Split(s, ", ")
+}
+
+// stackAttachment is an AWS integration attachment as a stack answers it.
+type stackAttachment struct {
+	Name           string `json:"name"`
+	ExternalID     string `json:"externalId"`
+	Read           bool   `json:"read"`
+	Write          bool   `json:"write"`
+	IsAutoattached bool   `json:"isAutoattached"`
+}
+
+// stackAttachments are the attachedAwsIntegrations of the stack slug in
+// the last answer, a stack or a page of stacks.
+func (s *stsSteps) stackAttachments(slug string) ([]stackAttachment, error) {
+	type stack struct {
+		ID       string            `json:"id"`
+		Attached []stackAttachment `json:"attachedAwsIntegrations"`
+	}
+	var v struct {
+		stack
+		Items []stack `json:"items"`
+	}
+	r := s.w.Last()
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &v) != nil {
+		return nil, fmt.Errorf("%w: answered %d %s", harness.ErrStep, r.Status, r.Body)
+	}
+	for _, st := range append(v.Items, v.stack) {
+		if st.ID == slug {
+			return st.Attached, nil
+		}
+	}
+	return nil, fmt.Errorf("%w: the answer holds no stack %s: %s", harness.ErrStep, slug, r.Body)
+}
+
+// stackLists checks the AWS integrations the stack slug lists in the last
+// answer as name:sides[:auto], comma-separated, in order.
+func (s *stsSteps) stackLists(slug, want string) error {
+	all, err := s.stackAttachments(slug)
+	if err != nil {
+		return err
+	}
+	got := make([]string, 0, len(all))
+	for _, a := range all {
+		item := a.Name + ":"
+		if a.Read {
+			item += "r"
+		}
+		if a.Write {
+			item += "w"
+		}
+		if a.IsAutoattached {
+			item += ":auto"
+		}
+		got = append(got, item)
+	}
+	if !slices.Equal(got, splitList(want)) {
+		return fmt.Errorf("%w: stack %s lists %q, want %q", harness.ErrStep, slug, strings.Join(got, ", "), want)
+	}
+	return nil
+}
+
+// stackExternalID checks the external ID the stack slug's attachment of
+// the integration name shows in the last answer, after the scenario's
+// names resolve.
+func (s *stsSteps) stackExternalID(slug, name, want string) error {
+	all, err := s.stackAttachments(slug)
+	if err != nil {
+		return err
+	}
+	want = s.w.Resolve(want)
+	for _, a := range all {
+		if a.Name == name {
+			if a.ExternalID != want {
+				return fmt.Errorf("%w: %s shows the external ID %q, want %q", harness.ErrStep, name, a.ExternalID, want)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: stack %s lists no AWS integration %s", harness.ErrStep, slug, name)
 }

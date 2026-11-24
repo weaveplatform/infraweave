@@ -21,9 +21,9 @@ import (
 // viewOf is st as the API answers it, in the space slug, with the
 // actions held there and whether the caller starred it, its state and
 // whether a run blocks it, versions, a Terragrunt stack's effective
-// versions, and no contexts, config elements, blocker, outputs or
-// rollback, which views reads from the configuration, runs and state
-// domains. Other attachment, dependency and managed-resource projections
+// versions, and no contexts, config elements, AWS integration
+// attachments, blocker, outputs or rollback, which views reads from the
+// configuration, cloud, runs and state domains. Other attachment, dependency and managed-resource projections
 // start empty for the owning domain to populate.
 func viewOf(st core.Stack, space string, held []accessapi.Action, starred bool, versions api.EffectiveTerragruntVersionResult) (api.Stack, error) {
 	vendor, err := vendorView(st, versions)

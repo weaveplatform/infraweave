@@ -16,7 +16,8 @@
 // what the stack view reads of the configuration domain, a back edge that
 // domain implements, with AttachedContext and ConfigElement its answers,
 // and StackStatus what it reads of the runs domain, the run blocking each
-// stack. StackDestroyer is what a delete with destroyResources creates its
+// stack. StackAwsAttachments is what it reads of the cloud domain, the
+// AwsAttachment list of each stack its caller may read. StackDestroyer is what a delete with destroyResources creates its
 // destroy run through, another back edge the runs domain implements, with
 // Undestroyable for a stack that cannot run one. ManagedState is what a
 // stack's creation opens its default workspace through when infraweave
@@ -43,6 +44,7 @@
 // stacks in the declared graph import it; the stacks domain's assembly
 // implements Stacks, those domains StackGuard, the configuration domain
 // StackConfiguration, the runs domain StackStatus and StackDestroyer, the
-// state domain ManagedState and StateRollbacks, and the vcs domain
-// StackSources and StackIntegrations.
+// state domain ManagedState and StateRollbacks, the cloud domain
+// StackAwsAttachments, and the vcs domain StackSources and
+// StackIntegrations.
 package api

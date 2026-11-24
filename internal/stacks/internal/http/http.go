@@ -36,11 +36,15 @@ type Server struct {
 // authz, naming spaces through spaces and resolving a Terragrunt stack's
 // effective versions in catalog. Its stacks have no configuration until
 // BindConfiguration binds a reader, no blocker until SetStackStatus binds
-// one, and no rollback until BindStateRollbacks binds one.
+// one, no rollback until BindStateRollbacks binds one, and no AWS
+// integration attachment until BindAwsAttachments binds a reader.
 func New(svc *core.Service, authz accessapi.Authorizer, spaces accessapi.Spaces, catalog vendorsapi.Catalog) Server {
 	return Server{
 		stacks: svc, authz: authz, spaces: spaces, catalog: catalog,
-		edges: &edges{config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}, policies: unbound{}},
+		edges: &edges{
+			config: unbound{}, status: unbound{}, rollbacks: unbound{}, requests: unbound{}, policies: unbound{},
+			aws: unbound{},
+		},
 	}
 }
 
@@ -406,6 +410,10 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the policies reader names the read
 	}
+	aws, err := s.edges.aws.AwsAttachments(ctx, p, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the cloud domain names the read
+	}
 	config, err := s.edges.config.Config(ctx, p.AccountID, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // as above
@@ -454,6 +462,7 @@ func (s Server) views(ctx context.Context, p kernel.Principal, all ...core.Stack
 		for _, c := range attached[st.ID] {
 			v.AttachedContexts = append(v.AttachedContexts, contextView(c))
 		}
+		v.AttachedAwsIntegrations = awsAttachmentViews(aws[st.ID])
 		v.Config = elementViews(config[st.ID])
 		v.RuntimeConfig = runtimeViews(runtime[st.ID])
 		v.Outputs = outputViews(outputs[st.ID])

@@ -12,7 +12,12 @@
 // autoattach:<label>, autoattach_read:<label> or autoattach_write:<label>
 // serves every stack in reach that carries the label, on the sides the
 // label names; such an attachment is computed when it is read, never
-// stored, and a stored attachment outranks it. Attaching an integration
+// stored, and a stored attachment outranks it. Attached computes the
+// attachments of a whole set of stacks from one read of their stored
+// attachments and one of the integrations that may attach to them, and
+// AwsAttachments answers the stack view those of each stack whose
+// integration lives in a space its caller may read, with
+// AttachmentExternalID the external ID each shows. Attaching an integration
 // the server assumes first assumes its role through Roles with the
 // external ID of each side, and a role that refuses answers TrustDetail.
 // ExternalID, LegacyExternalID and SessionName are the fixed formats role
