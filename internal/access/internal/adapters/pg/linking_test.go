@@ -238,9 +238,23 @@ func TestAccMemberMerge(t *testing.T) {
 	if _, err := signedIn(t, s, x, p, "ada", "ada-sub", l.ID, kernel.NewMemberID()); !errors.Is(err, linking.ErrOtherBrowser) {
 		t.Errorf("ada's sign-in from another browser = %v", err)
 	}
+	// The merge removes bob's feature preview setting in the account that
+	// admits him, in its transaction: a failure there merges nothing.
+	pv := &previews{removeErr: errors.New("features down")}
+	s.WithFeatures(pv)
+	if _, err := signedIn(t, s, x, p, "ada", "ada-sub", l.ID, b); !errors.Is(err, pv.removeErr) {
+		t.Fatalf("a merge whose setting removal fails = %v", err)
+	}
+	if n := countOf(t, x, `SELECT count(*) FROM members WHERE id = $1`, b); n != 1 {
+		t.Error("a failed merge deleted bob's member")
+	}
+	pv.removed, pv.removeErr = nil, nil
 	merged, err := signedIn(t, s, x, p, "ada", "ada-sub", l.ID, b)
 	if err != nil || merged.MemberID != a {
 		t.Fatalf("ada's link sign-in = %+v, %v", merged, err)
+	}
+	if want := [][2]kernel.ULID{{x.acct.ULID, b.ULID}}; !slices.Equal(pv.removed, want) || !pv.removedTx {
+		t.Errorf("settings removed = %v, in a transaction %t; want %v", pv.removed, pv.removedTx, want)
 	}
 
 	got, _, err := s.Link(ctx, l.ID)

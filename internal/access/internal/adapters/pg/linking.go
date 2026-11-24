@@ -259,7 +259,9 @@ func (s *Store) proveLink(ctx context.Context, q tx.Querier, rec sso.SignInRecor
 // users with their invitations, user role bindings, personal keys,
 // organization role and created organization keys move to the member;
 // where the member holds the same account user, binding or role already,
-// the member's stays and the other's is dropped. Every account whose
+// the member's stays and the other's is dropped. The other member's
+// feature preview setting in each account that admits it is removed
+// through the features domain. Every account whose
 // admissions or bindings change has its authorization snapshot rebuilt.
 // Both members must be live: a deactivated one ends the sign-in with
 // sso.ErrDeactivated, and one that is gone with linking.ErrEnded.
@@ -293,6 +295,15 @@ func (s *Store) merge(ctx context.Context, q tx.Querier, l linking.Link) error {
 	accounts, err := pgx.CollectRows(rows, pgx.RowTo[kernel.AccountID])
 	if err != nil {
 		return fmt.Errorf("access: read merged member's accounts: %w", sql.Unavailable(err))
+	}
+	rows, err = q.Query(ctx, `SELECT account_id FROM account_users WHERE organization_id = $1 AND member_id = $2`,
+		org, gone)
+	if err != nil {
+		return fmt.Errorf("access: read merged member's admissions: %w", sql.Unavailable(err))
+	}
+	admitted, err := pgx.CollectRows(rows, pgx.RowTo[kernel.AccountID])
+	if err != nil {
+		return fmt.Errorf("access: read merged member's admissions: %w", sql.Unavailable(err))
 	}
 	revoked, err := revoke(ctx, q, `organization_id = $1 AND (member_id = $2
 		OR (actor_kind = 'api_key' AND actor_id IN (SELECT id FROM api_keys WHERE owner_user_id = $2)))`,
@@ -360,6 +371,16 @@ func (s *Store) merge(ctx context.Context, q tx.Querier, l linking.Link) error {
 	} {
 		if _, err := q.Exec(ctx, st.query, st.args...); err != nil {
 			return fmt.Errorf("access: merge member %s's %s: %w", gone, st.what, sql.Unavailable(err))
+		}
+	}
+	// The features domain keys a member's feature preview setting by the
+	// member's ID without a foreign key, so the merged member's would
+	// outlive it; the member keeps its own setting in each account.
+	if s.features != nil {
+		for _, acct := range admitted {
+			if err := s.features.RemoveMember(ctx, acct, gone); err != nil {
+				return fmt.Errorf("access: remove the merged member's feature preview setting: %w", err)
+			}
 		}
 	}
 	for _, acct := range accounts {

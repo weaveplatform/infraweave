@@ -102,8 +102,10 @@
 // member merges: the other member's identities, admissions, user role
 // bindings, invitations, personal keys and organization role move to the
 // member, the member's row winning a conflict; the other member's
-// sessions and its personal keys' are revoked, its row deleted, and each
-// affected account's authorization rebuilt, with the merge's trail entry.
+// sessions and its personal keys' are revoked, its feature preview
+// setting in each account that admits it removed through the features
+// domain, its row deleted, and each affected account's authorization
+// rebuilt, with the merge's trail entry.
 // Unlinking locks the member's identities, deletes those of the kind but
 // the session's own, and revokes the sessions signed in through them, with
 // its trail entry. user.Store's writes record their account trail entry in the
