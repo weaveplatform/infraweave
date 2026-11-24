@@ -36,9 +36,10 @@ output "platform" {
       container   = azurerm_storage_container.platform.name
     }
     keys = {
-      vault_url = azurerm_key_vault.platform.vault_uri
-      kek       = azurerm_key_vault_key.kek.versionless_id
-      signing   = azurerm_key_vault_key.signing.id
+      vault_url  = azurerm_key_vault.platform.vault_uri
+      kek        = azurerm_key_vault_key.kek.versionless_id
+      signing    = azurerm_key_vault_key.signing.id
+      federation = azurerm_key_vault_key.federation.id
     }
     database = {
       server = azurerm_postgresql_flexible_server.platform.fqdn

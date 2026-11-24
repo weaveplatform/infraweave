@@ -160,8 +160,9 @@ resource "google_storage_bucket_iam_member" "objectstore" {
 }
 
 # Cloud KMS: the KEK the keyring's data keys are wrapped under
-# (secrets.kek.provider gcpkms) and the key api tokens are signed with
-# (auth.signing.backend kms). Cloud KMS never deletes a key ring or a key,
+# (secrets.kek.provider gcpkms), the key api tokens are signed with
+# (auth.signing.backend kms) and the key OIDC federation tokens are signed
+# with, RS256 (auth.federation.kms_keys). Cloud KMS never deletes a key ring or a key,
 # only key versions, so each owner gets its own ring.
 
 resource "google_kms_key_ring" "platform" {
@@ -203,17 +204,41 @@ resource "google_kms_crypto_key" "signing" {
   destroy_scheduled_duration = "86400s"
 }
 
+# The federation keys sign auth.federation.algorithm, RS256, which needs
+# RSASSA-PKCS1-v1_5 on at least 3072 bits; the first version is the one
+# auth.federation.kms_keys names.
+resource "google_kms_crypto_key" "federation" {
+  name     = "federation"
+  key_ring = google_kms_key_ring.platform.id
+  purpose  = "ASYMMETRIC_SIGN"
+  labels   = local.kms_labels
+
+  version_template {
+    algorithm        = "RSA_SIGN_PKCS1_3072_SHA256"
+    protection_level = "SOFTWARE"
+  }
+
+  destroy_scheduled_duration = "86400s"
+}
+
 resource "google_kms_crypto_key_iam_member" "kek" {
   crypto_key_id = google_kms_crypto_key.kek.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = google_service_account.platform.member
 }
 
-# The signer reads the version's public key once at start and signs with
+# The signer reads each version's public key once at start and signs with
 # AsymmetricSign; it never verifies through Cloud KMS.
 resource "google_kms_crypto_key_iam_member" "signing" {
   for_each      = toset(["roles/cloudkms.signer", "roles/cloudkms.publicKeyViewer"])
   crypto_key_id = google_kms_crypto_key.signing.id
+  role          = each.value
+  member        = google_service_account.platform.member
+}
+
+resource "google_kms_crypto_key_iam_member" "federation" {
+  for_each      = toset(["roles/cloudkms.signer", "roles/cloudkms.publicKeyViewer"])
+  crypto_key_id = google_kms_crypto_key.federation.id
   role          = each.value
   member        = google_service_account.platform.member
 }
@@ -316,8 +341,9 @@ resource "google_artifact_registry_repository" "ghcr" {
   depends_on = [google_project_service.apis]
 }
 
-# The server's configuration. auth.signing.kms_keys is a list of mappings,
-# which no INFRAWEAVE_* variable can carry, so the whole configuration is
+# The server's configuration. auth.signing.kms_keys and
+# auth.federation.kms_keys are lists of mappings, which no INFRAWEAVE_*
+# variable can carry, so the whole configuration is
 # one strict YAML file mounted from Secret Manager and named by --config.
 # It holds no credential: the database, the bucket and the keys are all
 # reached through the service account.
@@ -354,6 +380,13 @@ locals {
         kms_keys = [{
           provider = "gcpkms"
           ref      = "${google_kms_crypto_key.signing.id}/cryptoKeyVersions/1"
+        }]
+      }
+      federation = {
+        algorithm = "RS256"
+        kms_keys = [{
+          provider = "gcpkms"
+          ref      = "${google_kms_crypto_key.federation.id}/cryptoKeyVersions/1"
         }]
       }
       operator = {
@@ -498,6 +531,7 @@ resource "google_cloud_run_v2_service" "platform" {
     google_sql_user.platform,
     google_kms_crypto_key_iam_member.kek,
     google_kms_crypto_key_iam_member.signing,
+    google_kms_crypto_key_iam_member.federation,
     google_storage_bucket_iam_member.objectstore,
     google_service_account_iam_member.sign_own_urls,
   ]

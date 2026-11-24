@@ -30,8 +30,9 @@ output "platform" {
       region = var.region
     }
     keys = {
-      kek     = aws_kms_key.kek.arn
-      signing = aws_kms_key.signing.arn
+      kek        = aws_kms_key.kek.arn
+      signing    = aws_kms_key.signing.arn
+      federation = aws_kms_key.federation.arn
     }
     log_group = aws_cloudwatch_log_group.server.name
   }
@@ -68,6 +69,7 @@ locals {
       { kind = "s3:bucket", id = aws_s3_bucket.objects.arn },
       { kind = "kms:key", id = aws_kms_key.kek.arn },
       { kind = "kms:key", id = aws_kms_key.signing.arn },
+      { kind = "kms:key", id = aws_kms_key.federation.arn },
       { kind = "logs:log-group", id = aws_cloudwatch_log_group.server.arn },
       { kind = "ecs:cluster", id = aws_ecs_cluster.platform.arn },
       { kind = "ecs:service", id = aws_ecs_service.platform.id },

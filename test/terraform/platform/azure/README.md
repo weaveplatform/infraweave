@@ -20,8 +20,8 @@ Everything except the DNS records lives in one resource group,
 | Custom domain | `domain_name`, with an `asuid` TXT record and a CNAME in the borrowed `dns_zone`, and a managed certificate that Container Apps issues and renews |
 | PostgreSQL Flexible Server 18 | `postgres_sku`, private access only, through the delegated subnet and a private DNS zone linked to the VNet; Entra authentication only, with the app's identity as its Entra administrator; database `infraweave` |
 | Storage account and container `infraweave` | Shared keys off, so every request and every signed URL goes through Entra ID; a public endpoint, since worker Pods on other clouds fetch the signed URLs |
-| Key Vault | Azure RBAC, purged on destroy; an RSA 3072 key `kek` and an EC P-256 key `signing` |
-| Role assignments | For the app's identity: blob read, write, add and delete on the container; Storage Blob Delegator on the account; wrap and unwrap on `kek`; read and sign on `signing`. For whoever applies the root: Key Vault Crypto Officer on the vault, to create the keys |
+| Key Vault | Azure RBAC, purged on destroy; an RSA 3072 key `kek`, an EC P-256 key `signing` for API tokens, and an RSA 3072 key `federation` for OIDC federation tokens |
+| Role assignments | For the app's identity: blob read, write, add and delete on the container; Storage Blob Delegator on the account; wrap and unwrap on `kek`; read and sign on `signing` and on `federation`. For whoever applies the root: Key Vault Crypto Officer on the vault, to create the keys |
 
 The server's configuration is a YAML file that Container Apps mounts from
 an app secret at `/etc/infraweave/config`, and the app passes it to the
@@ -36,11 +36,12 @@ decodes:
 | `objectstore.driver`, `objectstore.azureblob` | `azureblob`, with the account URL and container |
 | `secrets.kek.provider`, `secrets.kek.azurekv` | `azurekv`, with the vault URL and `kek` |
 | `auth.signing.backend`, `auth.signing.kms_keys` | `kms`, with `azurekv` and the signing key's versioned ID |
+| `auth.federation.algorithm`, `auth.federation.kms_keys` | `RS256`, with `azurekv` and the federation key's versioned ID |
 | `auth.operator.keys` | `operator_keys` |
 | `log.level` | `log_level` |
 
 The configuration can't come from `INFRAWEAVE_*` variables, because
-`auth.signing.kms_keys` is a list of objects and no variable can carry one.
+`auth.signing.kms_keys` and `auth.federation.kms_keys` are lists of objects and no variable can carry one.
 `AZURE_CLIENT_ID` selects the identity for azidentity's default chain,
 which the PostgreSQL token, the Blob Storage driver and both Key Vault
 backends all use. No password, account key or connection secret exists.
@@ -90,7 +91,7 @@ the `api`, `operator`, `worker` and `state` endpoints, `ca_certificate = null`
 (the managed certificate chains to a public root), the tenant, subscription
 and location, the app's default FQDN and egress addresses, the storage
 account URL and container, the vault URL with the `kek` key's versionless
-ID and the `signing` key's versioned ID, the database server, name and
+ID and the `signing` and `federation` keys' versioned IDs, the database server, name and
 user, the app identity's client and principal IDs, and the Log Analytics
 workspace ID.
 

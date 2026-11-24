@@ -1,9 +1,10 @@
 # The server: an ECS Fargate service of two tasks running infraweave all,
 # each holding the same configuration file.
 #
-# The configuration's auth.signing.kms_keys is a list of mappings, which no
-# INFRAWEAVE_* environment variable can carry, so the server reads a file
-# named by --config. Fargate mounts no file from outside the task, so each
+# The configuration's auth.signing.kms_keys and auth.federation.kms_keys
+# are lists of mappings, which no INFRAWEAVE_* environment variable can
+# carry, so the server reads a file named by --config. Fargate mounts no
+# file from outside the task, so each
 # task's bootstrap container writes it into a volume the server container
 # mounts read-only, and runs to completion before the server starts. The
 # same container creates the server's database role: RDS creates only the
@@ -58,6 +59,10 @@ locals {
       signing = {
         backend  = "kms"
         kms_keys = [{ provider = "awskms", ref = aws_kms_key.signing.arn }]
+      }
+      federation = {
+        algorithm = "RS256"
+        kms_keys  = [{ provider = "awskms", ref = aws_kms_key.federation.arn }]
       }
       operator = {
         keys = var.operator_keys
@@ -178,12 +183,12 @@ data "aws_iam_policy_document" "task" {
       values   = ["data-key"]
     }
   }
-  # The awskms signing backend reads the public key at start and signs
-  # digests.
+  # The awskms signing backend reads each key's public half at start and
+  # signs digests: the api-token key's and the federation key's.
   statement {
     sid       = "Signing"
     actions   = ["kms:GetPublicKey", "kms:Sign"]
-    resources = [aws_kms_key.signing.arn]
+    resources = [aws_kms_key.signing.arn, aws_kms_key.federation.arn]
   }
   statement {
     sid       = "Database"
