@@ -595,6 +595,23 @@ var apiOperations = sync.OnceValue(func() Operations {
 		Public: true,
 		Cost:   ratelimit.Expensive,
 	}
+	// The sign-in through an organization's identity providers is pages
+	// and a provider's protocol, not operations of either API: none takes a
+	// credential, since a browser signs in to get one and a provider's
+	// logout token is its own. Each start and each callback is an
+	// expensive draw on the client's address, as each costs a request to
+	// the provider; none names a feature, as the start checks the
+	// provider kind's feature in the tier of the organization it names.
+	// ref: decision 0006 § "Human login"
+	ops[http.MethodGet+" "+accessapi.SignInPattern] = Operation{Public: true}
+	ops[http.MethodGet+" "+accessapi.SignInOrganizationPattern] = Operation{Public: true}
+	ops[http.MethodGet+" "+accessapi.SignInProviderPattern] = Operation{
+		Public: true, Cost: ratelimit.Expensive,
+	}
+	ops[http.MethodGet+" "+accessapi.OIDCCallbackPattern] = Operation{
+		Public: true, Cost: ratelimit.Expensive,
+	}
+	ops[http.MethodPost+" "+accessapi.OIDCBackchannelLogoutPattern] = Operation{Public: true}
 	// The authorization server for MCP clients takes no credential: a
 	// client registers, authorizes and redeems before it holds one. Each
 	// registration is an expensive draw on the client's address, because

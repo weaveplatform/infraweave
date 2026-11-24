@@ -85,9 +85,11 @@ type AccountUsage struct {
 type Store interface {
 	Organization(ctx context.Context, id kernel.OrganizationID) (organization.Organization, error)
 	RenameOrganization(ctx context.Context, org kernel.OrganizationID, name string, e kernel.OrganizationAuditEntry) (organization.Organization, error)
-	// IsOrganizationAdmin reports whether the member holds the
-	// organization role.
-	IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) (bool, error)
+	// IsOrganizationAdmin reports whether the member, acting through the
+	// session sess, holds the organization role: through an
+	// organization_admins row, or because sess signed in through one of the
+	// organization's identity providers as its admin login.
+	IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID, sess kernel.ULID) (bool, error)
 
 	// OrganizationAccounts are up to limit of org's accounts in ID order
 	// from the first after after.
@@ -182,7 +184,7 @@ func (s *Service) admit(ctx context.Context, by Actor) error {
 	case kernel.PrincipalOrganization, kernel.PrincipalBreakGlass:
 		return nil
 	case kernel.PrincipalUser:
-		ok, err := s.d.Store.IsOrganizationAdmin(ctx, p.OrganizationID, p.MemberID)
+		ok, err := s.d.Store.IsOrganizationAdmin(ctx, p.OrganizationID, p.MemberID, p.SessionID)
 		if err != nil {
 			return err //nolint:wrapcheck // the store names the read
 		}

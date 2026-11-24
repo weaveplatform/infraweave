@@ -28,17 +28,42 @@
 // organization trail entry, and deleting a provider drops the sessions
 // the store revokes from the replica's cache at once.
 //
+// SignIn signs people in through an organization's OIDC providers. Start
+// stores a Request, bound to a new RequestCookie value by its SHA-256, and
+// answers the authorization request: a PKCE S256 challenge, a nonce,
+// Scopes, and max_age=0 with prompt=login for a Fresh purpose. A sign-in
+// needs the provider enabled, an enable an organization admin's browser
+// session, a re-authentication a member's; the kind's feature must be in
+// the organization's tier; return_to must be a path (CheckReturnTo).
+// Callback consumes the request once, within RequestTTL, for the browser
+// holding the cookie, redeems the code through RelyingParty, and checks
+// the ID token beyond the relying party's checks (CheckIDToken: the nonce,
+// a non-empty sub, azp for several audiences, auth_time within Skew for a
+// Fresh purpose). Settings.Identity maps the claims: the subject from the
+// mapping's subject claim, a verified email only, the groups as strings
+// unless _claim_names replaced them, and sid. ResolveMember decides the
+// member: the identity's, refused when deactivated; else the one pending
+// member invited under the login; else a new one. The store writes the
+// member and a WEB session of actor kind user in no account, replacing the
+// member's live one, with the groups as its original teams. LogoutURL is
+// the provider's end-session URL for a session, and BackchannelLogout ends
+// the sessions a verified logout token names, accepting each jti once.
+//
 // ref: decisions 0006 and 0021
 //
 // # Input and output
 //
-// None of its own: Service reads and writes through Store and checks
-// features through featuresapi.Options. NewSigningKey reads crypto/rand,
-// and kernel.NewULID the clock and crypto/rand.
+// None of its own: Service and SignIn read and write through their stores,
+// check features through featuresapi.Options, and reach a provider only
+// through RelyingParty. NewSigningKey and SignIn's states, nonces and
+// cookie values read crypto/rand, and kernel.NewULID the clock and
+// crypto/rand.
 //
 // # Dependencies
 //
-// It imports the standard library, internal/kernel, internal/features/api
-// and the access domain's orgadmin, organization and port packages. The
-// access domain's HTTP adapter, pg adapter and assembly use it.
+// It imports the standard library, golang.org/x/oauth2, internal/kernel,
+// internal/features/api, internal/platform/crypt, the access domain's api
+// package and its member, orgadmin, organization, port and session
+// packages. The access domain's HTTP adapter, pg adapter, OIDC adapter and
+// assembly use it.
 package sso

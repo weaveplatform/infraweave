@@ -220,6 +220,8 @@ the owning record beside it.
 | `slack_integrations` | `tokens_sealed` | team | decision 0015 |
 | `identity_providers` | `secret_sealed` (an OIDC client secret, a SAML SP private key or a GitHub OAuth secret) | kind, name and the rest of the settings | [0006](0006-authentication-and-tokens.md) |
 | `signing_keys` | `private_key_sealed` | public key, `kid`, state | [0006](0006-authentication-and-tokens.md) |
+| `sso_requests` | `pkce_verifier_sealed`, a started sign-in's PKCE verifier | organization, provider, purpose, the state's and the browser cookie's SHA-256, expiry | [0006](0006-authentication-and-tokens.md) |
+| `sessions` | `idp_id_token_sealed`, the ID token a browser session signed in with, for a logout's `id_token_hint` | every other session column | [0006](0006-authentication-and-tokens.md) |
 | `ai_integrations` | `credentials_sealed` | provider, base URL, models | decision 0019 |
 | `flows_secrets` | `value_sealed` | name | decision 0018 |
 | `runs` | `artifact_key_sealed`; `env_overrides_sealed`, a proposed run's overrides or a trigger's runtime configuration variables | | [0008](0008-run-execution-and-worker-protocol.md) |

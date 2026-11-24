@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -190,10 +191,16 @@ func TestUnitStream(t *testing.T) {
 	if pg.Stream().Name != "access" {
 		t.Errorf("stream %q", pg.Stream().Name)
 	}
-	cols := pg.SealedColumns()
-	if len(cols) != 2 || cols[0].Table != "signing_keys" || cols[0].Name != "private_key_sealed" ||
-		cols[1].Table != "identity_providers" || cols[1].Name != "secret_sealed" {
-		t.Errorf("SealedColumns = %+v", cols)
+	got := make([]string, 0, len(pg.SealedColumns()))
+	for _, c := range pg.SealedColumns() {
+		got = append(got, c.Table+"."+c.Name)
+	}
+	want := []string{
+		"signing_keys.private_key_sealed", "identity_providers.secret_sealed",
+		"sso_requests.pkce_verifier_sealed", "sessions.idp_id_token_sealed",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("SealedColumns = %v, want %v", got, want)
 	}
 }
 

@@ -1386,6 +1386,15 @@
       "why": "Features are account-scoped, so one member's choice must not change what runs and automations set up by others can do",
       "impact": "Preview keys are infraweave feature names; a client that relied on a personal opt-out to stop server behaviour sees only its views change",
       "source": "[0021 Feature previews](../research/decisions/0021-capability-scope-and-supersession.md#feature-previews)"
+    },
+    {
+      "id": "DV-138",
+      "group": "Identity and access: decisions 0006 and 0007",
+      "spacelift": "`logout` answers the ended `Session`; the console then leaves for Spacelift's own sign-in page",
+      "infraweave": "`logout` also answers `logoutUrl` when the session signed in through an OIDC provider that advertises an `end_session_endpoint`: that endpoint with `id_token_hint`, `client_id` and `post_logout_redirect_uri` set to `server.public_url`, so the console can end the provider's session too. Other sessions answer no `logoutUrl`",
+      "why": "An organization's own identity provider keeps a session that infraweave's logout alone would leave signed in",
+      "impact": "An additive, optional member; a client that ignores it ends only the infraweave session",
+      "source": "[0006 Human login](../research/decisions/0006-authentication-and-tokens.md#human-login)"
     }
   ]
 }

@@ -8499,6 +8499,9 @@ type Session struct {
 	// Login Login of the session creator.
 	Login string `json:"login"`
 
+	// LogoutUrl Where a browser ends the session at the identity provider it signed in through, set only by logout and only when that provider advertises an end-session endpoint. It carries the session's ID token as id_token_hint and the public URL as post_logout_redirect_uri.
+	LogoutUrl *string `json:"logoutUrl,omitempty"`
+
 	// Name Full name of the session creator.
 	Name string `json:"name"`
 
@@ -16218,7 +16221,7 @@ type ClientInterface interface {
 
 	// Logout Logout
 	//
-	// End the current session. A browser session's answer also clears its cookie.
+	// End the current session. A browser session's answer also clears its cookie, and a session signed in through an OIDC provider with an end-session endpoint answers logoutUrl.
 	//
 	// Corresponds with POST /auth/logout (the `Logout` operationId).
 	Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -21952,7 +21955,7 @@ func (c *Client) CliConfirmationToken(ctx context.Context, params *CliConfirmati
 
 // Logout Logout
 //
-// End the current session. A browser session's answer also clears its cookie.
+// End the current session. A browser session's answer also clears its cookie, and a session signed in through an OIDC provider with an end-session endpoint answers logoutUrl.
 //
 // Corresponds with POST /auth/logout (the `Logout` operationId).
 func (c *Client) Logout(ctx context.Context, params *LogoutParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -55542,7 +55545,7 @@ type ClientWithResponsesInterface interface {
 
 	// LogoutWithResponse Logout
 	//
-	// End the current session. A browser session's answer also clears its cookie.
+	// End the current session. A browser session's answer also clears its cookie, and a session signed in through an OIDC provider with an end-session endpoint answers logoutUrl.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -104970,7 +104973,7 @@ func (c *ClientWithResponses) CliConfirmationTokenWithResponse(ctx context.Conte
 
 // LogoutWithResponse Logout
 //
-// End the current session. A browser session's answer also clears its cookie.
+// End the current session. A browser session's answer also clears its cookie, and a session signed in through an OIDC provider with an end-session endpoint answers logoutUrl.
 //
 // Returns a wrapper object for the known response body format(s).
 //

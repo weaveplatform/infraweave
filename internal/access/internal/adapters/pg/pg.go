@@ -43,7 +43,9 @@ func Stream() migrate.Stream {
 
 // SealedColumns are the access stream's sealed columns, which Reseal walks
 // with the platform's.
-func SealedColumns() []crypt.Column { return []crypt.Column{privateKey, providerSecret} }
+func SealedColumns() []crypt.Column {
+	return []crypt.Column{privateKey, providerSecret, requestVerifier, sessionIDToken}
+}
 
 // Keys are how the access domain finds the rows other domains hold by ID:
 // an account, an organization, and a space within its account.

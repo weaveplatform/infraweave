@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -64,6 +63,9 @@ type Verifier struct {
 
 	mu      sync.Mutex
 	issuers map[string]*issuer
+	// docs are the discovery documents Discover read, by the host it was
+	// given.
+	docs map[string]discovered
 }
 
 var _ port.OIDC = (*Verifier)(nil)
@@ -114,6 +116,7 @@ func New(o Options) (*Verifier, error) {
 		},
 		now:     now,
 		issuers: map[string]*issuer{},
+		docs:    map[string]discovered{},
 	}, nil
 }
 
@@ -207,11 +210,8 @@ func (v *Verifier) fetch(ctx context.Context, iss string) (jose.JSONWebKeySet, e
 		Issuer  string `json:"issuer"`
 		JWKSURI string `json:"jwks_uri"` //nolint:tagliatelle // fixed by OpenID Connect Discovery
 	}
-	if err := v.get(
-		ctx,
-		strings.TrimSuffix(iss, "/")+"/.well-known/openid-configuration",
-		&disc,
-	); err != nil {
+	_, at := locate(iss)
+	if err := v.get(ctx, at, &disc); err != nil {
 		return jose.JSONWebKeySet{}, err
 	}
 	if disc.Issuer != iss {

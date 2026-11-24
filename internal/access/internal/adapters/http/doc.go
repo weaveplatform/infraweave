@@ -117,6 +117,21 @@
 // metadata, registration, authorization and token endpoints at
 // accessapi's OAuth patterns, which answer OAuth's JSON errors, 401 for
 // invalid_client and 400 otherwise, and never cache a token answer.
+// SignIn serves the sign-in through an organization's identity providers
+// at accessapi's sign-in and OIDC patterns, through sso.SignIn: the
+// organization's choice, sent on when the installation has one; its
+// enabled providers, sent on when it has one; a start, which sets the
+// __Host-infraweave_sso cookie and answers 302 to the provider; and the
+// callback, which sets the session's cookie and answers 302 to return_to.
+// Every refusal answers a page naming its code, never a problem: 400 for
+// a request this browser did not start or that expired, 401 for a token
+// that fails a check, 403 for a deactivated member, another member, a
+// browser that may not start the purpose, a full seats limit
+// (limit-reached) or a kind outside the tier (feature-not-in-tier), 404
+// for no such organization, provider or purpose, 502 for a provider that
+// failed and 503 for an unreachable database. The back-channel logout
+// answers 200, or 400 invalid_request for a logout token it refuses.
+// logout's Session also answers logoutUrl, through sso.SignIn.LogoutURL.
 // OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,

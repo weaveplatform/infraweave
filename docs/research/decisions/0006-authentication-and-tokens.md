@@ -346,13 +346,17 @@ only the break-glass login works. The facts behind the choices below are in
   go-oidc's own remote key set is not used. Beyond go-oidc's issuer,
   audience, expiry and algorithm checks, the callback refuses an ID token
   whose nonce differs, whose `sub` is empty, whose `azp` is not the client
-  when it has more than one audience, or whose `auth_time` is missing or
-  older than the request's `max_age`; clock skew is 60 seconds.
-- **Claims.** The stable subject is the issuer's `sub`; `member_identities`
-  keys on it alone. `login` comes from `preferred_username`, then `email`,
-  then `sub`; `name` from `name`; `email` from `email`. A provider's
-  claim mapping, as Spacelift's `claimMapping` entries carry it, may name
-  other claims for `login`, `name`, `email` and the groups. The e-mail is
+  when it has more than one audience, or, when the request carried
+  `max_age`, whose `auth_time` is missing or older than it; clock skew is
+  60 seconds.
+- **Claims.** The stable subject comes from the claim the provider's claim
+  mapping names as `subject`: `sub` by default, and `oid` for Microsoft
+  Entra ID, whose `sub` differs for each application. `member_identities`
+  keys on it alone, and an ID token without it is refused. `login` comes
+  from `preferred_username`, then `email`, then `sub`; `name` from `name`;
+  `email` from `email`. A provider's claim mapping, as Spacelift's
+  `claimMapping` entries carry it, may name other claims for `login`,
+  `name`, `email` and the groups. The e-mail is
   shown and offered for invitations only when `email_verified` is `true`;
   nothing is linked or matched by it. The groups come from the mapped
   claim, `groups` by default, as strings; a missing claim, or one replaced
@@ -374,11 +378,14 @@ only the break-glass login works. The facts behind the choices below are in
 
 **Logout.** `POST /auth/logout` revokes the session and, when the provider
 advertises an `end_session_endpoint`, answers its URL with the ID token hint
-and the public URL as `post_logout_redirect_uri`. A provider that sends
+and the public URL as `post_logout_redirect_uri`, as the `Session`'s
+additive `logoutUrl` (DV-138). The ID token is sealed beside the session
+and carried to each session an account switch replaces it with. A provider that sends
 back-channel logout tokens posts them to `/auth/oidc/backchannel-logout`;
 go-oidc's `VerifyLogout` checks the token, each `jti` is accepted once, and
 the sessions with that provider and `sid`, or that subject when it names no
-`sid`, are revoked. Front-channel logout is not offered, because it relies
+`sid`, are revoked. The token's subject is the provider's `sub`, so the
+fallback finds sessions only when the claim mapping's `subject` is `sub`. Front-channel logout is not offered, because it relies
 on third-party cookies.
 
 **SAML sign-in.** `github.com/crewjam/saml`'s `x/samlsp`, with

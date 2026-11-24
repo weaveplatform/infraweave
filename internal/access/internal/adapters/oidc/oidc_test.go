@@ -41,6 +41,13 @@ type idp struct {
 	jwks            func(w http.ResponseWriter)
 	// kids are the key IDs the JWKS publishes, rsa's then ec's.
 	kids [2]string
+	// doc are discovery document members beside issuer and jwks_uri; an
+	// empty value removes one.
+	doc map[string]string
+	// token answers the token endpoint.
+	token http.HandlerFunc
+	// discoveries counts the discovery document's reads.
+	discoveries atomic.Int32
 }
 
 func newIDP(t *testing.T) *idp {
@@ -63,8 +70,21 @@ func newIDP(t *testing.T) *idp {
 		if i.jwksURI != "" {
 			jwks = i.jwksURI
 		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"issuer": iss, "jwks_uri": jwks})
+		i.discoveries.Add(1)
+		doc := map[string]string{
+			"issuer": iss, "jwks_uri": jwks, "authorization_endpoint": i.srv.URL + "/authorize",
+			"token_endpoint": i.srv.URL + "/token", "end_session_endpoint": i.srv.URL + "/logout",
+		}
+		for k, v := range i.doc {
+			if v == "" {
+				delete(doc, k)
+			} else {
+				doc[k] = v
+			}
+		}
+		_ = json.NewEncoder(w).Encode(doc)
 	})
+	r.Post("/token", func(w http.ResponseWriter, r *http.Request) { i.token(w, r) })
 	r.Get("/jwks", func(w http.ResponseWriter, _ *http.Request) {
 		i.fetches.Add(1)
 		if i.jwks != nil {

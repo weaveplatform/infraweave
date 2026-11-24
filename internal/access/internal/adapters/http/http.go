@@ -44,6 +44,7 @@ type Server struct {
 	settings  *settings.Service
 	orgs      *orgadmin.Service
 	providers *sso.Service
+	signIn    *sso.SignIn
 	users     *managed.Service
 	groups    *group.Service
 	roles     *role.Service
@@ -59,7 +60,8 @@ type Accounts interface {
 }
 
 // Services are what the partial serves through: Orgs the Organization
-// tag, Providers its identity provider operations, Users and Groups the Managed Users tag, OAuth the consent
+// tag, Providers its identity provider operations, SignIn the logout's logoutUrl
+// (nil answers none), Users and Groups the Managed Users tag, OAuth the consent
 // operations of the authorization server, Spaces the Spaces tag, Roles
 // the Roles tag, Bindings the role bindings of users, groups and API keys,
 // Holders the views of who holds a space, and Authz the actions each view
@@ -75,6 +77,7 @@ type Services struct {
 	Settings  *settings.Service
 	Orgs      *orgadmin.Service
 	Providers *sso.Service
+	SignIn    *sso.SignIn
 	Users     *managed.Service
 	Groups    *group.Service
 	Roles     *role.Service
@@ -88,7 +91,7 @@ type Services struct {
 func NewServer(sv Services) Server {
 	return Server{
 		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
-		settings: sv.Settings, orgs: sv.Orgs, providers: sv.Providers,
+		settings: sv.Settings, orgs: sv.Orgs, providers: sv.Providers, signIn: sv.SignIn,
 		users: sv.Users, groups: sv.Groups, roles: sv.Roles, bindings: sv.Bindings, oauth: sv.OAuth,
 		holders: sv.Holders, atomic: sv.Atomic,
 	}
@@ -240,7 +243,8 @@ func (s Server) SessionDeleteAll(ctx context.Context, _ api.SessionDeleteAllRequ
 }
 
 // Logout revokes the caller's own session, and clears a browser
-// session's cookie.
+// session's cookie. A session signed in through an OIDC provider that
+// advertises an end-session endpoint also answers logoutUrl.
 func (s Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.LogoutResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -255,6 +259,11 @@ func (s Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.Logo
 		return nil, err
 	}
 	out := api.Logout200JSONResponse{Body: view(ss, p.SessionID, acts)}
+	if s.signIn != nil {
+		if u := s.signIn.LogoutURL(ctx, ss); u != "" {
+			out.Body.LogoutUrl = &u
+		}
+	}
 	if from(ctx).browser {
 		c := clearedCookie()
 		out.Headers.SetCookie = &c

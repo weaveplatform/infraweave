@@ -291,6 +291,9 @@ type world struct {
 	roles  *roleBook
 	binds  *bindBook
 	held   *heldBook
+	// sso and party are the OIDC sign-in's store and provider.
+	sso   *ssoStore
+	party *relyingParty
 }
 
 // public is the route class that takes no credential.
@@ -372,8 +375,10 @@ func newWorld(t *testing.T) *world {
 		PublicURL: publicURL, AccessTTL: time.Hour, RefreshTTL: 30 * 24 * time.Hour,
 		CodeTTL: time.Minute, Now: func() time.Time { return t0 },
 	})
+	signIn := w.newSignIn(auth)
 	strict := api.NewStrictHandlerWithOptions(
 		full{Server: NewServer(Services{
+			SignIn:   signIn,
 			Auth:     auth,
 			Keys:     keys,
 			Authz:    w.authz,
@@ -405,6 +410,7 @@ func newWorld(t *testing.T) *world {
 	)
 	r := chi.NewRouter()
 	NewLogin(auth, publicURL).Routes(r)
+	NewSignIn(signIn, auth).Routes(r)
 	NewOAuth(grants).Routes(r)
 	r.Mount("/", NewAuthenticator(auth, publicURL).Middleware(access)(api.Handler(strict)))
 	w.h = r
