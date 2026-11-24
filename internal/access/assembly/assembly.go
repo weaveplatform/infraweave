@@ -30,6 +30,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/token"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
@@ -115,7 +116,8 @@ type Deps struct {
 	// Events receives an accessapi.Deleted for each account a deletion
 	// removes.
 	Events *outbox.Outbox
-	// Keys seals the signing keys' private halves; crypt.Keyring is one.
+	// Keys seals the signing keys' private halves and identity providers'
+	// secrets; crypt.Keyring is one.
 	Keys pg.Sealer
 	// KMS are the opened keys of auth.signing.kms_keys, in its order,
 	// under the kms backend.
@@ -147,6 +149,7 @@ type Domain struct {
 	keys           *apikey.Service
 	orgs           *operator.Service
 	orgAdmin       *orgadmin.Service
+	providers      *sso.Service
 	settings       *settings.Service
 	users          *user.Service
 	groups         *group.Service
@@ -184,7 +187,7 @@ func New(d Deps) (*Domain, error) {
 		now = time.Now
 	}
 	manual := d.Settings.Signing.Rotation == RotationManual
-	store := pg.New(d.DB).WithFeatures(d.Features).WithEvents(d.Events)
+	store := pg.New(d.DB).WithFeatures(d.Features).WithEvents(d.Events).WithSealer(d.Keys)
 	decide := authz.NewService(store)
 	store.WithSnapshots(decide.Drop)
 	refs := make([]string, 0, len(d.KMS))
@@ -253,6 +256,9 @@ func New(d Deps) (*Domain, error) {
 		CodeTTL:    d.Settings.Tokens.OAuthCode.TTL,
 		Now:        now,
 	})
+	orgAdmin := orgadmin.NewService(orgadmin.Deps{
+		Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
+	})
 	subjects := http.NewSubjects()
 	// A request names a space by its slug, as the API's Space ID is.
 	subjects.Register(accessapi.EntitySpace, func(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
@@ -274,8 +280,9 @@ func New(d Deps) (*Domain, error) {
 		subjects:  subjects,
 		keys:      keys,
 		orgs:      orgs,
-		orgAdmin: orgadmin.NewService(orgadmin.Deps{
-			Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
+		orgAdmin:  orgAdmin,
+		providers: sso.NewService(sso.Deps{
+			Store: store, Admins: orgAdmin, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 		}),
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
@@ -305,7 +312,7 @@ func (d *Domain) API() AccessAPI {
 	}
 	return http.NewServer(http.Services{
 		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
-		Settings: d.settings, Orgs: d.orgAdmin, Users: d.users, Groups: d.groups, Roles: d.roles,
+		Settings: d.settings, Orgs: d.orgAdmin, Providers: d.providers, Users: d.users, Groups: d.groups, Roles: d.roles,
 		Bindings: d.bindings, Holders: d.holders, OAuth: d.oauth, Atomic: d.store.Atomic,
 	})
 }

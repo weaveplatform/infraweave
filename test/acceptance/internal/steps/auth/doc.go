@@ -1,7 +1,7 @@
 // Package auth holds the acceptance steps of features/auth: the token
 // exchange and API sessions, API keys and personal keys, browser sign-in
-// and its sessions, break-glass sign-in, the OAuth server and signing
-// tokens with a KMS key.
+// and its sessions, break-glass sign-in, the organization's identity
+// providers, the OAuth server and signing tokens with a KMS key.
 //
 // # Input and output
 //
@@ -11,6 +11,6 @@
 //
 // # Dependencies
 //
-// It builds on harness.World and harness.Jar, test/deps for Vault, and
-// kernel for the IDs it seeds.
+// It builds on harness.World and harness.Jar, test/deps for Vault and the
+// waits on another replica, and kernel for the IDs it seeds.
 package auth

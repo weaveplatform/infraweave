@@ -332,6 +332,9 @@ func TestUnitAdmit(t *testing.T) {
 		if !errors.Is(err, c.err) || (c.err == nil && o.Slug != "acme") {
 			t.Errorf("%s = %+v, %v, want %v", name, o, err, c.err)
 		}
+		if err := w.s.Admit(ctx, c.by); !errors.Is(err, c.err) {
+			t.Errorf("Admit %s = %v, want %v", name, err, c.err)
+		}
 	}
 	w.st.fail = "IsOrganizationAdmin"
 	if _, err := w.s.Organization(

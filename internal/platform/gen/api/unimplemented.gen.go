@@ -690,6 +690,26 @@ func (UnimplementedStrict) OrganizationAccountLimitSet(context.Context, Organiza
 	return nil, &problem.NotImplementedError{OperationID: "organizationAccountLimitSet", Route: "PUT /organization/accounts/{account}/limits/{limit}"}
 }
 
+func (UnimplementedStrict) OrganizationIdentityProviders(context.Context, OrganizationIdentityProvidersRequestObject) (OrganizationIdentityProvidersResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationIdentityProviders", Route: "GET /organization/identity-providers"}
+}
+
+func (UnimplementedStrict) OrganizationIdentityProviderCreate(context.Context, OrganizationIdentityProviderCreateRequestObject) (OrganizationIdentityProviderCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationIdentityProviderCreate", Route: "POST /organization/identity-providers"}
+}
+
+func (UnimplementedStrict) OrganizationIdentityProviderDelete(context.Context, OrganizationIdentityProviderDeleteRequestObject) (OrganizationIdentityProviderDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationIdentityProviderDelete", Route: "DELETE /organization/identity-providers/{providerId}"}
+}
+
+func (UnimplementedStrict) OrganizationIdentityProviderUpdate(context.Context, OrganizationIdentityProviderUpdateRequestObject) (OrganizationIdentityProviderUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationIdentityProviderUpdate", Route: "PATCH /organization/identity-providers/{providerId}"}
+}
+
+func (UnimplementedStrict) OrganizationIdentityProviderSetDefault(context.Context, OrganizationIdentityProviderSetDefaultRequestObject) (OrganizationIdentityProviderSetDefaultResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationIdentityProviderSetDefault", Route: "POST /organization/identity-providers/{providerId}/default"}
+}
+
 func (UnimplementedStrict) OrganizationKeys(context.Context, OrganizationKeysRequestObject) (OrganizationKeysResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organizationKeys", Route: "GET /organization/keys"}
 }

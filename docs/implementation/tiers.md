@@ -65,7 +65,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `notification-policies` | option | Policy `type: NOTIFICATION` | | ✓ | ✓ | ✓ | P18 |
 | `notifications` | capability | The Notifications tag | | ✓ | ✓ | ✓ | P18 |
 | `oidc-federation` | capability | The OIDC token in every run, the subject template and the discovery documents | | ✓ | ✓ | ✓ | P15 |
-| `oidc-sso` | capability | OIDC single sign-on | | ✓ | ✓ | ✓ | P23 |
+| `oidc-sso` | capability | OIDC single sign-on, and creating an organization's OIDC identity providers | | ✓ | ✓ | ✓ | P23 |
 | `policies` | capability | The Policies tag | | ✓ | ✓ | ✓ | P13 |
 | `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | P10 |
 | `webhooks` | capability | The Webhooks tag | | ✓ | ✓ | ✓ | P18 |
@@ -83,7 +83,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `multiple-vcs-integrations` | option | `isDefault: false` on a VCS integration | | | | ✓ | P12 |
 | `oidc-api-keys` | option | API key type `OIDC` | | | | ✓ | P3 |
 | `repos` | capability | The Repos tag | | | | ✓ | P19b |
-| `saml-sso` | capability | SAML single sign-on and its settings | | | | ✓ | P23 |
+| `saml-sso` | capability | SAML single sign-on and its settings, and creating an organization's SAML identity providers | | | | ✓ | P23 |
 | `scim` | capability | SCIM v2 provisioning and its OAuth client | | | | ✓ | P23 |
 | `servicenow` | capability | The External Integrations tag and the blueprint attachments to it | | | | ✓ | P21 |
 | `vcs-agent-pools` | capability | The VCS Agent Pools tag | | | | ✓ | P19b |

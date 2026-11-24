@@ -1548,6 +1548,27 @@ func (e OpenTofuWorkflowTool) Valid() bool {
 	}
 }
 
+// Defines values for OrganizationIdentityProviderKind.
+const (
+	OrganizationIdentityProviderKindGITHUBOAUTH OrganizationIdentityProviderKind = "GITHUB_OAUTH"
+	OrganizationIdentityProviderKindOIDC        OrganizationIdentityProviderKind = "OIDC"
+	OrganizationIdentityProviderKindSAML        OrganizationIdentityProviderKind = "SAML"
+)
+
+// Valid indicates whether the value is a known member of the OrganizationIdentityProviderKind enum.
+func (e OrganizationIdentityProviderKind) Valid() bool {
+	switch e {
+	case OrganizationIdentityProviderKindGITHUBOAUTH:
+		return true
+	case OrganizationIdentityProviderKindOIDC:
+		return true
+	case OrganizationIdentityProviderKindSAML:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OrganizationMemberStatus.
 const (
 	OrganizationMemberStatusACTIVE      OrganizationMemberStatus = "ACTIVE"
@@ -6030,6 +6051,121 @@ type OrganizationAccountUsage struct {
 
 	// Limits Every limit of the feature catalogue, in name order; value is the account's limit, null where none is set.
 	Limits []OrganizationLimit `json:"limits"`
+}
+
+// OrganizationIdentityProvider An identity provider of the organization: an OIDC, SAML or GitHub OAuth sign-in front end. Its secret is never answered. A provider stays disabled until a first sign-in through it succeeds.
+type OrganizationIdentityProvider struct {
+	// AdminLogin The login of the first sign-in that succeeded through the provider, or null while it is disabled.
+	AdminLogin *string `json:"adminLogin,omitempty"`
+
+	// CreatedAt Unix seconds of the provider's creation.
+	CreatedAt int64 `json:"createdAt"`
+
+	// Enabled Whether a sign-in through the provider has succeeded, which enables it.
+	Enabled bool `json:"enabled"`
+
+	// Id The provider's ID.
+	Id string `json:"id"`
+
+	// IsDefault Whether the provider is the default of its kind, which the SSO operations address.
+	IsDefault bool `json:"isDefault"`
+
+	// Kind The provider's kind, which never changes.
+	Kind OrganizationIdentityProviderKind `json:"kind"`
+
+	// Name The provider's display name.
+	Name string `json:"name"`
+
+	// Settings The provider's settings; each kind answers its own. OIDC answers identityProviderHost, clientId and claimMapping; SAML idpMetadata or idpMetadataURL, nameIDFormat and claimMapping; GitHub OAuth baseUrl, clientId and organization.
+	Settings OrganizationIdentityProviderSettings `json:"settings"`
+}
+
+// OrganizationIdentityProviderCreateRequest A new identity provider. OIDC and GitHub OAuth take their client secret in secret; a SAML provider takes none, since its service provider signing key is generated.
+type OrganizationIdentityProviderCreateRequest struct {
+	// Kind The provider's kind, which never changes.
+	Kind OrganizationIdentityProviderKind `json:"kind"`
+
+	// Name At most 100 characters, not blank.
+	Name string `json:"name"`
+
+	// Secret The OIDC or GitHub OAuth client secret, which is stored sealed and never answered.
+	Secret *string `json:"secret,omitempty"`
+
+	// Settings A provider's settings. Each kind takes its own, and a setting of another kind is refused. OIDC takes identityProviderHost and clientId; SAML exactly one of idpMetadata and idpMetadataURL, and nameIDFormat; GitHub OAuth clientId, organization and baseUrl. OIDC and SAML take claimMapping, whose entries map the targets subject, login, name, email and groups to the claim or attribute named in value. Without an entry, login reads preferred_username, then email, then sub; name reads name, email reads email and groups reads groups; an OIDC subject reads sub, while a SAML subject reads the NameID under PERSISTENT and must be mapped under TRANSIENT and EMAIL_ADDRESS.
+	Settings OrganizationIdentityProviderSettingsInput `json:"settings"`
+}
+
+// OrganizationIdentityProviderKind The provider's kind, which never changes.
+type OrganizationIdentityProviderKind string
+
+// OrganizationIdentityProviderList Every identity provider of the organization, oldest first.
+type OrganizationIdentityProviderList struct {
+	Items []OrganizationIdentityProvider `json:"items"`
+}
+
+// OrganizationIdentityProviderSettings The provider's settings; each kind answers its own. OIDC answers identityProviderHost, clientId and claimMapping; SAML idpMetadata or idpMetadataURL, nameIDFormat and claimMapping; GitHub OAuth baseUrl, clientId and organization.
+type OrganizationIdentityProviderSettings struct {
+	// BaseUrl GitHub OAuth. The GitHub server's https URL.
+	BaseUrl      *string       `json:"baseUrl,omitempty"`
+	ClaimMapping *ClaimMapping `json:"claimMapping,omitempty"`
+
+	// ClientId OIDC and GitHub OAuth. The OAuth client ID.
+	ClientId *string `json:"clientId,omitempty"`
+
+	// IdentityProviderHost OIDC. The https issuer or discovery URL.
+	IdentityProviderHost *string `json:"identityProviderHost,omitempty"`
+
+	// IdpMetadata SAML. The identity provider's metadata XML.
+	IdpMetadata *string `json:"idpMetadata,omitempty"`
+
+	// IdpMetadataURL SAML. The https URL the identity provider's metadata is read from.
+	IdpMetadataURL *string `json:"idpMetadataURL,omitempty"`
+
+	// NameIDFormat SAML. The NameID format the service provider asks for, TRANSIENT, EMAIL_ADDRESS or PERSISTENT.
+	NameIDFormat *string `json:"nameIDFormat,omitempty"`
+
+	// Organization GitHub OAuth. The login of the GitHub organization whose members sign in.
+	Organization *string `json:"organization,omitempty"`
+}
+
+// OrganizationIdentityProviderSettingsInput A provider's settings. Each kind takes its own, and a setting of another kind is refused. OIDC takes identityProviderHost and clientId; SAML exactly one of idpMetadata and idpMetadataURL, and nameIDFormat; GitHub OAuth clientId, organization and baseUrl. OIDC and SAML take claimMapping, whose entries map the targets subject, login, name, email and groups to the claim or attribute named in value. Without an entry, login reads preferred_username, then email, then sub; name reads name, email reads email and groups reads groups; an OIDC subject reads sub, while a SAML subject reads the NameID under PERSISTENT and must be mapped under TRANSIENT and EMAIL_ADDRESS.
+type OrganizationIdentityProviderSettingsInput struct {
+	// BaseUrl GitHub OAuth. The GitHub server's https URL; https://github.com when absent.
+	BaseUrl      *string            `json:"baseUrl,omitempty"`
+	ClaimMapping *ClaimMappingInput `json:"claimMapping,omitempty"`
+
+	// ClientId OIDC and GitHub OAuth. The OAuth client ID.
+	ClientId *string `json:"clientId,omitempty"`
+
+	// IdentityProviderHost OIDC. The https issuer or discovery URL.
+	IdentityProviderHost *string `json:"identityProviderHost,omitempty"`
+
+	// IdpMetadata SAML. The identity provider's metadata XML, an EntityDescriptor or EntitiesDescriptor.
+	IdpMetadata *string `json:"idpMetadata,omitempty"`
+
+	// IdpMetadataURL SAML. The https URL the identity provider's metadata is read from.
+	IdpMetadataURL *string `json:"idpMetadataURL,omitempty"`
+
+	// NameIDFormat SAML. TRANSIENT when absent, EMAIL_ADDRESS or PERSISTENT.
+	NameIDFormat *string `json:"nameIDFormat,omitempty"`
+
+	// Organization GitHub OAuth. The login of the GitHub organization whose members sign in.
+	Organization *string `json:"organization,omitempty"`
+}
+
+// OrganizationIdentityProviderUpdateRequest A merge patch of an identity provider. It changes the name, the claim mapping, the secret and a SAML provider's metadata or metadata URL, either of which replaces the other. The kind, identityProviderHost, clientId, nameIDFormat, baseUrl and organization never change: a value other than the provider's is refused, and changing one takes deleting the provider and creating another.
+type OrganizationIdentityProviderUpdateRequest struct {
+	// Kind The provider's kind, which never changes.
+	Kind *OrganizationIdentityProviderKind `json:"kind,omitempty"`
+
+	// Name At most 100 characters, not blank.
+	Name *string `json:"name,omitempty"`
+
+	// Secret A new OIDC or GitHub OAuth client secret.
+	Secret *string `json:"secret,omitempty"`
+
+	// Settings A provider's settings. Each kind takes its own, and a setting of another kind is refused. OIDC takes identityProviderHost and clientId; SAML exactly one of idpMetadata and idpMetadataURL, and nameIDFormat; GitHub OAuth clientId, organization and baseUrl. OIDC and SAML take claimMapping, whose entries map the targets subject, login, name, email and groups to the claim or attribute named in value. Without an entry, login reads preferred_username, then email, then sub; name reads name, email reads email and groups reads groups; an OIDC subject reads sub, while a SAML subject reads the NameID under PERSISTENT and must be mapped under TRANSIENT and EMAIL_ADDRESS.
+	Settings *OrganizationIdentityProviderSettingsInput `json:"settings,omitempty"`
 }
 
 // OrganizationKey An organization key, whose token reaches the Organization tag alone. Its secret is answered once, at creation.
@@ -10938,6 +11074,9 @@ type Limit = int32
 // OrganizationAccountSlug defines model for OrganizationAccountSlug.
 type OrganizationAccountSlug = string
 
+// OrganizationIdentityProviderID defines model for OrganizationIdentityProviderID.
+type OrganizationIdentityProviderID = string
+
 // OrganizationKeyID defines model for OrganizationKeyID.
 type OrganizationKeyID = string
 
@@ -11764,6 +11903,24 @@ type OrganizationAccountCreateParams struct {
 
 // OrganizationAccountClaimParams defines parameters for OrganizationAccountClaim.
 type OrganizationAccountClaimParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// OrganizationIdentityProviderCreateParams defines parameters for OrganizationIdentityProviderCreate.
+type OrganizationIdentityProviderCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// OrganizationIdentityProviderUpdateParams defines parameters for OrganizationIdentityProviderUpdate.
+type OrganizationIdentityProviderUpdateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// OrganizationIdentityProviderSetDefaultParams defines parameters for OrganizationIdentityProviderSetDefault.
+type OrganizationIdentityProviderSetDefaultParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
@@ -13167,6 +13324,12 @@ type OrganizationAccountClaimJSONRequestBody = OrganizationAccountClaimRequest
 
 // OrganizationAccountLimitSetJSONRequestBody defines body for OrganizationAccountLimitSet for application/json ContentType.
 type OrganizationAccountLimitSetJSONRequestBody = OrganizationAccountLimitRequest
+
+// OrganizationIdentityProviderCreateJSONRequestBody defines body for OrganizationIdentityProviderCreate for application/json ContentType.
+type OrganizationIdentityProviderCreateJSONRequestBody = OrganizationIdentityProviderCreateRequest
+
+// OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody defines body for OrganizationIdentityProviderUpdate for application/merge-patch+json ContentType.
+type OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody = OrganizationIdentityProviderUpdateRequest
 
 // OrganizationKeyCreateJSONRequestBody defines body for OrganizationKeyCreate for application/json ContentType.
 type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
@@ -17258,6 +17421,72 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /organization/accounts/{account}/limits/{limit} (the `OrganizationAccountLimitSet` operationId).
 	OrganizationAccountLimitSet(ctx context.Context, account OrganizationAccountSlug, limit OrganizationLimitName, body OrganizationAccountLimitSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviders Organization Identity Providers
+	//
+	// Every identity provider of the organization, oldest first, with its settings and never its secret.
+	//
+	// Corresponds with GET /organization/identity-providers (the `OrganizationIdentityProviders` operationId).
+	OrganizationIdentityProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderCreateWithBody Organization Identity Provider Create
+	//
+	// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+	// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+	// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+	OrganizationIdentityProviderCreateWithBody(ctx context.Context, params *OrganizationIdentityProviderCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderCreate Organization Identity Provider Create
+	//
+	// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+	// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+	// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+	OrganizationIdentityProviderCreate(ctx context.Context, params *OrganizationIdentityProviderCreateParams, body OrganizationIdentityProviderCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderDelete Organization Identity Provider Delete
+	//
+	// Delete an identity provider with the identities that sign in through it, revoking every session
+	// signed in through it. Deleting a kind's default makes the oldest remaining provider of the kind its
+	// default.
+	//
+	// Corresponds with DELETE /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderDelete` operationId).
+	OrganizationIdentityProviderDelete(ctx context.Context, providerId OrganizationIdentityProviderID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderUpdateWithBody Organization Identity Provider Update
+	//
+	// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+	// member the patch leaves out keeps its value.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+	OrganizationIdentityProviderUpdateWithBody(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBody Organization Identity Provider Update
+	//
+	// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+	// member the patch leaves out keeps its value.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+	OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, body OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationIdentityProviderSetDefault Organization Identity Provider Set Default
+	//
+	// Make an identity provider the default of its kind, in place of the one that was. Making the default
+	// the default is no change.
+	//
+	// Corresponds with POST /organization/identity-providers/{providerId}/default (the `OrganizationIdentityProviderSetDefault` operationId).
+	OrganizationIdentityProviderSetDefault(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderSetDefaultParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OrganizationKeys Organization Keys
 	//
@@ -24377,6 +24606,142 @@ func (c *Client) OrganizationAccountLimitSetWithBody(ctx context.Context, accoun
 // Corresponds with PUT /organization/accounts/{account}/limits/{limit} (the `OrganizationAccountLimitSet` operationId).
 func (c *Client) OrganizationAccountLimitSet(ctx context.Context, account OrganizationAccountSlug, limit OrganizationLimitName, body OrganizationAccountLimitSetJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOrganizationAccountLimitSetRequest(c.Server, account, limit, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviders Organization Identity Providers
+//
+// Every identity provider of the organization, oldest first, with its settings and never its secret.
+//
+// Corresponds with GET /organization/identity-providers (the `OrganizationIdentityProviders` operationId).
+func (c *Client) OrganizationIdentityProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProvidersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderCreateWithBody Organization Identity Provider Create
+//
+// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+func (c *Client) OrganizationIdentityProviderCreateWithBody(ctx context.Context, params *OrganizationIdentityProviderCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderCreate Organization Identity Provider Create
+//
+// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+func (c *Client) OrganizationIdentityProviderCreate(ctx context.Context, params *OrganizationIdentityProviderCreateParams, body OrganizationIdentityProviderCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderDelete Organization Identity Provider Delete
+//
+// Delete an identity provider with the identities that sign in through it, revoking every session
+// signed in through it. Deleting a kind's default makes the oldest remaining provider of the kind its
+// default.
+//
+// Corresponds with DELETE /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderDelete` operationId).
+func (c *Client) OrganizationIdentityProviderDelete(ctx context.Context, providerId OrganizationIdentityProviderID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderDeleteRequest(c.Server, providerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderUpdateWithBody Organization Identity Provider Update
+//
+// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+// member the patch leaves out keeps its value.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+func (c *Client) OrganizationIdentityProviderUpdateWithBody(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderUpdateRequestWithBody(c.Server, providerId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBody Organization Identity Provider Update
+//
+// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+// member the patch leaves out keeps its value.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+func (c *Client) OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBody(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, body OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderUpdateRequestWithApplicationMergePatchPlusJSONBody(c.Server, providerId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationIdentityProviderSetDefault Organization Identity Provider Set Default
+//
+// Make an identity provider the default of its kind, in place of the one that was. Making the default
+// the default is no change.
+//
+// Corresponds with POST /organization/identity-providers/{providerId}/default (the `OrganizationIdentityProviderSetDefault` operationId).
+func (c *Client) OrganizationIdentityProviderSetDefault(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderSetDefaultParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationIdentityProviderSetDefaultRequest(c.Server, providerId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -39229,6 +39594,233 @@ func NewOrganizationAccountLimitSetRequestWithBody(server string, account Organi
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewOrganizationIdentityProvidersRequest constructs an http.Request for the OrganizationIdentityProviders method
+func NewOrganizationIdentityProvidersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/identity-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOrganizationIdentityProviderCreateRequest calls the generic OrganizationIdentityProviderCreate builder with application/json body
+func NewOrganizationIdentityProviderCreateRequest(server string, params *OrganizationIdentityProviderCreateParams, body OrganizationIdentityProviderCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOrganizationIdentityProviderCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewOrganizationIdentityProviderCreateRequestWithBody constructs an http.Request for the OrganizationIdentityProviderCreate method, with any body, and a specified content type
+func NewOrganizationIdentityProviderCreateRequestWithBody(server string, params *OrganizationIdentityProviderCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/identity-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewOrganizationIdentityProviderDeleteRequest constructs an http.Request for the OrganizationIdentityProviderDelete method
+func NewOrganizationIdentityProviderDeleteRequest(server string, providerId OrganizationIdentityProviderID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/identity-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOrganizationIdentityProviderUpdateRequestWithApplicationMergePatchPlusJSONBody calls the generic OrganizationIdentityProviderUpdate builder with application/merge-patch+json body
+func NewOrganizationIdentityProviderUpdateRequestWithApplicationMergePatchPlusJSONBody(server string, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, body OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOrganizationIdentityProviderUpdateRequestWithBody(server, providerId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewOrganizationIdentityProviderUpdateRequestWithBody constructs an http.Request for the OrganizationIdentityProviderUpdate method, with any body, and a specified content type
+func NewOrganizationIdentityProviderUpdateRequestWithBody(server string, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/identity-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewOrganizationIdentityProviderSetDefaultRequest constructs an http.Request for the OrganizationIdentityProviderSetDefault method
+func NewOrganizationIdentityProviderSetDefaultRequest(server string, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderSetDefaultParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/identity-providers/%s/default", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -54790,6 +55382,78 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /organization/accounts/{account}/limits/{limit} (the `OrganizationAccountLimitSet` operationId).
 	OrganizationAccountLimitSetWithResponse(ctx context.Context, account OrganizationAccountSlug, limit OrganizationLimitName, body OrganizationAccountLimitSetJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationAccountLimitSetResponse, error)
+
+	// OrganizationIdentityProvidersWithResponse Organization Identity Providers
+	//
+	// Every identity provider of the organization, oldest first, with its settings and never its secret.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /organization/identity-providers (the `OrganizationIdentityProviders` operationId).
+	OrganizationIdentityProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OrganizationIdentityProvidersResponse, error)
+
+	// OrganizationIdentityProviderCreateWithBodyWithResponse Organization Identity Provider Create
+	//
+	// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+	// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+	// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+	OrganizationIdentityProviderCreateWithBodyWithResponse(ctx context.Context, params *OrganizationIdentityProviderCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderCreateResponse, error)
+
+	// OrganizationIdentityProviderCreateWithResponse Organization Identity Provider Create
+	//
+	// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+	// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+	// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+	OrganizationIdentityProviderCreateWithResponse(ctx context.Context, params *OrganizationIdentityProviderCreateParams, body OrganizationIdentityProviderCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderCreateResponse, error)
+
+	// OrganizationIdentityProviderDeleteWithResponse Organization Identity Provider Delete
+	//
+	// Delete an identity provider with the identities that sign in through it, revoking every session
+	// signed in through it. Deleting a kind's default makes the oldest remaining provider of the kind its
+	// default.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderDelete` operationId).
+	OrganizationIdentityProviderDeleteWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderDeleteResponse, error)
+
+	// OrganizationIdentityProviderUpdateWithBodyWithResponse Organization Identity Provider Update
+	//
+	// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+	// member the patch leaves out keeps its value.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+	OrganizationIdentityProviderUpdateWithBodyWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderUpdateResponse, error)
+
+	// OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Identity Provider Update
+	//
+	// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+	// member the patch leaves out keeps its value.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+	OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, body OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderUpdateResponse, error)
+
+	// OrganizationIdentityProviderSetDefaultWithResponse Organization Identity Provider Set Default
+	//
+	// Make an identity provider the default of its kind, in place of the one that was. Making the default
+	// the default is no change.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /organization/identity-providers/{providerId}/default (the `OrganizationIdentityProviderSetDefault` operationId).
+	OrganizationIdentityProviderSetDefaultWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderSetDefaultParams, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderSetDefaultResponse, error)
 
 	// OrganizationKeysWithResponse Organization Keys
 	//
@@ -74793,6 +75457,579 @@ func (r OrganizationAccountLimitSetResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OrganizationAccountLimitSetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationIdentityProvidersResponse200Headers the declared response headers of an HTTP 200 response for OrganizationIdentityProviders
+type OrganizationIdentityProvidersResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProvidersResponse429Headers the declared response headers of an HTTP 429 response for OrganizationIdentityProviders
+type OrganizationIdentityProvidersResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProvidersResponse503Headers the declared response headers of an HTTP 503 response for OrganizationIdentityProviders
+type OrganizationIdentityProvidersResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationIdentityProvidersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationIdentityProviderList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OrganizationIdentityProvidersResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationIdentityProvidersResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationIdentityProvidersResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OrganizationIdentityProvidersResponse) GetJSON200() *OrganizationIdentityProviderList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationIdentityProvidersResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationIdentityProvidersResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationIdentityProvidersResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationIdentityProvidersResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationIdentityProvidersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationIdentityProvidersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationIdentityProvidersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationIdentityProvidersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationIdentityProvidersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationIdentityProviderCreateResponse201Headers the declared response headers of an HTTP 201 response for OrganizationIdentityProviderCreate
+type OrganizationIdentityProviderCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderCreateResponse429Headers the declared response headers of an HTTP 429 response for OrganizationIdentityProviderCreate
+type OrganizationIdentityProviderCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderCreateResponse503Headers the declared response headers of an HTTP 503 response for OrganizationIdentityProviderCreate
+type OrganizationIdentityProviderCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationIdentityProviderCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *OrganizationIdentityProvider
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *OrganizationIdentityProviderCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationIdentityProviderCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationIdentityProviderCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r OrganizationIdentityProviderCreateResponse) GetJSON201() *OrganizationIdentityProvider {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationIdentityProviderCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationIdentityProviderCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationIdentityProviderCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationIdentityProviderCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationIdentityProviderCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationIdentityProviderDeleteResponse200Headers the declared response headers of an HTTP 200 response for OrganizationIdentityProviderDelete
+type OrganizationIdentityProviderDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderDeleteResponse429Headers the declared response headers of an HTTP 429 response for OrganizationIdentityProviderDelete
+type OrganizationIdentityProviderDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderDeleteResponse503Headers the declared response headers of an HTTP 503 response for OrganizationIdentityProviderDelete
+type OrganizationIdentityProviderDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationIdentityProviderDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationIdentityProvider
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OrganizationIdentityProviderDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationIdentityProviderDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationIdentityProviderDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetJSON200() *OrganizationIdentityProvider {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationIdentityProviderDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationIdentityProviderDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationIdentityProviderDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationIdentityProviderDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationIdentityProviderDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationIdentityProviderUpdateResponse200Headers the declared response headers of an HTTP 200 response for OrganizationIdentityProviderUpdate
+type OrganizationIdentityProviderUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderUpdateResponse429Headers the declared response headers of an HTTP 429 response for OrganizationIdentityProviderUpdate
+type OrganizationIdentityProviderUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderUpdateResponse503Headers the declared response headers of an HTTP 503 response for OrganizationIdentityProviderUpdate
+type OrganizationIdentityProviderUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationIdentityProviderUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationIdentityProvider
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OrganizationIdentityProviderUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationIdentityProviderUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationIdentityProviderUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetJSON200() *OrganizationIdentityProvider {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationIdentityProviderUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationIdentityProviderUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationIdentityProviderUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationIdentityProviderUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationIdentityProviderUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationIdentityProviderSetDefaultResponse200Headers the declared response headers of an HTTP 200 response for OrganizationIdentityProviderSetDefault
+type OrganizationIdentityProviderSetDefaultResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderSetDefaultResponse429Headers the declared response headers of an HTTP 429 response for OrganizationIdentityProviderSetDefault
+type OrganizationIdentityProviderSetDefaultResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationIdentityProviderSetDefaultResponse503Headers the declared response headers of an HTTP 503 response for OrganizationIdentityProviderSetDefault
+type OrganizationIdentityProviderSetDefaultResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationIdentityProviderSetDefaultResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OrganizationIdentityProvider
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OrganizationIdentityProviderSetDefaultResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationIdentityProviderSetDefaultResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationIdentityProviderSetDefaultResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetJSON200() *OrganizationIdentityProvider {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationIdentityProviderSetDefaultResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationIdentityProviderSetDefaultResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationIdentityProviderSetDefaultResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationIdentityProviderSetDefaultResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationIdentityProviderSetDefaultResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -102700,6 +103937,120 @@ func (c *ClientWithResponses) OrganizationAccountLimitSetWithResponse(ctx contex
 	return ParseOrganizationAccountLimitSetResponse(rsp)
 }
 
+// OrganizationIdentityProvidersWithResponse Organization Identity Providers
+//
+// Every identity provider of the organization, oldest first, with its settings and never its secret.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /organization/identity-providers (the `OrganizationIdentityProviders` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OrganizationIdentityProvidersResponse, error) {
+	rsp, err := c.OrganizationIdentityProviders(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProvidersResponse(rsp)
+}
+
+// OrganizationIdentityProviderCreateWithBodyWithResponse Organization Identity Provider Create
+//
+// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderCreateWithBodyWithResponse(ctx context.Context, params *OrganizationIdentityProviderCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderCreateResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderCreateResponse(rsp)
+}
+
+// OrganizationIdentityProviderCreateWithResponse Organization Identity Provider Create
+//
+// Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+// provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+// provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /organization/identity-providers (the `OrganizationIdentityProviderCreate` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderCreateWithResponse(ctx context.Context, params *OrganizationIdentityProviderCreateParams, body OrganizationIdentityProviderCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderCreateResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderCreateResponse(rsp)
+}
+
+// OrganizationIdentityProviderDeleteWithResponse Organization Identity Provider Delete
+//
+// Delete an identity provider with the identities that sign in through it, revoking every session
+// signed in through it. Deleting a kind's default makes the oldest remaining provider of the kind its
+// default.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderDelete` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderDeleteWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderDeleteResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderDelete(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderDeleteResponse(rsp)
+}
+
+// OrganizationIdentityProviderUpdateWithBodyWithResponse Organization Identity Provider Update
+//
+// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+// member the patch leaves out keeps its value.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderUpdateWithBodyWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderUpdateResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderUpdateWithBody(ctx, providerId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderUpdateResponse(rsp)
+}
+
+// OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBodyWithResponse Organization Identity Provider Update
+//
+// Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+// member the patch leaves out keeps its value.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /organization/identity-providers/{providerId} (the `OrganizationIdentityProviderUpdate` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderUpdateParams, body OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderUpdateResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderUpdateWithApplicationMergePatchPlusJSONBody(ctx, providerId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderUpdateResponse(rsp)
+}
+
+// OrganizationIdentityProviderSetDefaultWithResponse Organization Identity Provider Set Default
+//
+// Make an identity provider the default of its kind, in place of the one that was. Making the default
+// the default is no change.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /organization/identity-providers/{providerId}/default (the `OrganizationIdentityProviderSetDefault` operationId).
+func (c *ClientWithResponses) OrganizationIdentityProviderSetDefaultWithResponse(ctx context.Context, providerId OrganizationIdentityProviderID, params *OrganizationIdentityProviderSetDefaultParams, reqEditors ...RequestEditorFn) (*OrganizationIdentityProviderSetDefaultResponse, error) {
+	rsp, err := c.OrganizationIdentityProviderSetDefault(ctx, providerId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationIdentityProviderSetDefaultResponse(rsp)
+}
+
 // OrganizationKeysWithResponse Organization Keys
 //
 // The organization's keys, oldest first, with no secret.
@@ -129543,6 +130894,714 @@ func ParseOrganizationAccountLimitSetResponse(rsp *http.Response) (*Organization
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OrganizationAccountLimitSetResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationIdentityProvidersResponse parses an HTTP response from a OrganizationIdentityProvidersWithResponse call
+func ParseOrganizationIdentityProvidersResponse(rsp *http.Response) (*OrganizationIdentityProvidersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationIdentityProvidersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationIdentityProviderList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OrganizationIdentityProvidersResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationIdentityProvidersResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationIdentityProvidersResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationIdentityProviderCreateResponse parses an HTTP response from a OrganizationIdentityProviderCreateWithResponse call
+func ParseOrganizationIdentityProviderCreateResponse(rsp *http.Response) (*OrganizationIdentityProviderCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationIdentityProviderCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest OrganizationIdentityProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers OrganizationIdentityProviderCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationIdentityProviderCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationIdentityProviderCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationIdentityProviderDeleteResponse parses an HTTP response from a OrganizationIdentityProviderDeleteWithResponse call
+func ParseOrganizationIdentityProviderDeleteResponse(rsp *http.Response) (*OrganizationIdentityProviderDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationIdentityProviderDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationIdentityProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OrganizationIdentityProviderDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationIdentityProviderDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationIdentityProviderDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationIdentityProviderUpdateResponse parses an HTTP response from a OrganizationIdentityProviderUpdateWithResponse call
+func ParseOrganizationIdentityProviderUpdateResponse(rsp *http.Response) (*OrganizationIdentityProviderUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationIdentityProviderUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationIdentityProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OrganizationIdentityProviderUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationIdentityProviderUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationIdentityProviderUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationIdentityProviderSetDefaultResponse parses an HTTP response from a OrganizationIdentityProviderSetDefaultWithResponse call
+func ParseOrganizationIdentityProviderSetDefaultResponse(rsp *http.Response) (*OrganizationIdentityProviderSetDefaultResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationIdentityProviderSetDefaultResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OrganizationIdentityProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OrganizationIdentityProviderSetDefaultResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationIdentityProviderSetDefaultResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationIdentityProviderSetDefaultResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

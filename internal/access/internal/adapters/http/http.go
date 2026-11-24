@@ -22,6 +22,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	managed "github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -35,20 +36,21 @@ import (
 // operation it implements shadows the router's 501, and an operation two
 // domains implement fails to compile.
 type Server struct {
-	auth     *authn.Service
-	keys     *apikey.Service
-	authz    accessapi.Authorizer
-	spaces   *space.Service
-	accounts Accounts
-	settings *settings.Service
-	orgs     *orgadmin.Service
-	users    *managed.Service
-	groups   *group.Service
-	roles    *role.Service
-	bindings *binding.Service
-	holders  *holder.Service
-	oauth    *oauth.Service
-	atomic   func(context.Context, func(context.Context) error) error
+	auth      *authn.Service
+	keys      *apikey.Service
+	authz     accessapi.Authorizer
+	spaces    *space.Service
+	accounts  Accounts
+	settings  *settings.Service
+	orgs      *orgadmin.Service
+	providers *sso.Service
+	users     *managed.Service
+	groups    *group.Service
+	roles     *role.Service
+	bindings  *binding.Service
+	holders   *holder.Service
+	oauth     *oauth.Service
+	atomic    func(context.Context, func(context.Context) error) error
 }
 
 // Accounts reads an account; port.Tenancy is one.
@@ -57,7 +59,7 @@ type Accounts interface {
 }
 
 // Services are what the partial serves through: Orgs the Organization
-// tag, Users and Groups the Managed Users tag, OAuth the consent
+// tag, Providers its identity provider operations, Users and Groups the Managed Users tag, OAuth the consent
 // operations of the authorization server, Spaces the Spaces tag, Roles
 // the Roles tag, Bindings the role bindings of users, groups and API keys,
 // Holders the views of who holds a space, and Authz the actions each view
@@ -65,27 +67,28 @@ type Accounts interface {
 // transaction, which the stores' writes in its context join, so an actor
 // and the bindings its input carries are written together or not at all.
 type Services struct {
-	Auth     *authn.Service
-	Keys     *apikey.Service
-	Authz    accessapi.Authorizer
-	Spaces   *space.Service
-	Accounts Accounts
-	Settings *settings.Service
-	Orgs     *orgadmin.Service
-	Users    *managed.Service
-	Groups   *group.Service
-	Roles    *role.Service
-	Bindings *binding.Service
-	Holders  *holder.Service
-	OAuth    *oauth.Service
-	Atomic   func(context.Context, func(context.Context) error) error
+	Auth      *authn.Service
+	Keys      *apikey.Service
+	Authz     accessapi.Authorizer
+	Spaces    *space.Service
+	Accounts  Accounts
+	Settings  *settings.Service
+	Orgs      *orgadmin.Service
+	Providers *sso.Service
+	Users     *managed.Service
+	Groups    *group.Service
+	Roles     *role.Service
+	Bindings  *binding.Service
+	Holders   *holder.Service
+	OAuth     *oauth.Service
+	Atomic    func(context.Context, func(context.Context) error) error
 }
 
 // NewServer returns the partial serving through sv.
 func NewServer(sv Services) Server {
 	return Server{
 		auth: sv.Auth, keys: sv.Keys, authz: sv.Authz, spaces: sv.Spaces, accounts: sv.Accounts,
-		settings: sv.Settings, orgs: sv.Orgs,
+		settings: sv.Settings, orgs: sv.Orgs, providers: sv.Providers,
 		users: sv.Users, groups: sv.Groups, roles: sv.Roles, bindings: sv.Bindings, oauth: sv.OAuth,
 		holders: sv.Holders, atomic: sv.Atomic,
 	}

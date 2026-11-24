@@ -293,7 +293,7 @@
     {
       "id": "oidc-sso",
       "kind": "capability",
-      "gates": "OIDC single sign-on",
+      "gates": "OIDC single sign-on, and creating an organization's OIDC identity providers",
       "lowestTier": "Starter",
       "phase": "P23"
     },
@@ -407,7 +407,7 @@
     {
       "id": "saml-sso",
       "kind": "capability",
-      "gates": "SAML single sign-on and its settings",
+      "gates": "SAML single sign-on and its settings, and creating an organization's SAML identity providers",
       "lowestTier": "Enterprise",
       "phase": "P23"
     },

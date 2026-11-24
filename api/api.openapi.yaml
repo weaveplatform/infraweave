@@ -8842,6 +8842,240 @@ paths:
       x-infraweave-access: organization-admin
       x-infraweave-cost: standard
       x-upstream: none
+  /organization/identity-providers:
+    get:
+      description: |-
+        Every identity provider of the organization, oldest first, with its settings and never its secret.
+      operationId: organizationIdentityProviders
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationIdentityProviderList'
+          description: The organizationIdentityProviders result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Identity Providers
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    post:
+      description: |-
+        Create an identity provider, stored disabled until a first sign-in through it succeeds. The first
+        provider of a kind is that kind's default. An OIDC provider needs the oidc-sso feature and a SAML
+        provider saml-sso; a SAML provider's service provider signing key, RSA-2048, is generated.
+      operationId: organizationIdentityProviderCreate
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationIdentityProviderCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationIdentityProvider'
+          description: The organizationIdentityProviderCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Identity Provider Create
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/identity-providers/{providerId}:
+    delete:
+      description: |-
+        Delete an identity provider with the identities that sign in through it, revoking every session
+        signed in through it. Deleting a kind's default makes the oldest remaining provider of the kind its
+        default.
+      operationId: organizationIdentityProviderDelete
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationIdentityProviderID'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationIdentityProvider'
+          description: The organizationIdentityProviderDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Identity Provider Delete
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+    patch:
+      description: |-
+        Change an identity provider's name, claim mapping, secret, or SAML metadata or metadata URL. A
+        member the patch leaves out keeps its value.
+      operationId: organizationIdentityProviderUpdate
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationIdentityProviderID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/OrganizationIdentityProviderUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationIdentityProvider'
+          description: The organizationIdentityProviderUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Identity Provider Update
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/identity-providers/{providerId}/default:
+    post:
+      description: |-
+        Make an identity provider the default of its kind, in place of the one that was. Making the default
+        the default is no change.
+      operationId: organizationIdentityProviderSetDefault
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationIdentityProviderID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationIdentityProvider'
+          description: The organizationIdentityProviderSetDefault result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Identity Provider Set Default
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
   /organization/keys:
     get:
       description: |-
@@ -22451,6 +22685,13 @@ components:
       required: true
       schema:
         type: string
+    OrganizationIdentityProviderID:
+      description: The identity provider's ID.
+      in: path
+      name: providerId
+      required: true
+      schema:
+        type: string
     OrganizationKeyID:
       description: The organization key's ID.
       in: path
@@ -28239,6 +28480,153 @@ components:
       required:
         - account
         - limits
+      type: object
+    OrganizationIdentityProvider:
+      description: >-
+        An identity provider of the organization: an OIDC, SAML or GitHub OAuth sign-in front end. Its secret is never answered. A provider stays disabled until a first sign-in through it succeeds.
+      properties:
+        adminLogin:
+          description: The login of the first sign-in that succeeded through the provider, or null while it is disabled.
+          nullable: true
+          type: string
+        createdAt:
+          description: Unix seconds of the provider's creation.
+          format: int64
+          type: integer
+        enabled:
+          description: Whether a sign-in through the provider has succeeded, which enables it.
+          type: boolean
+        id:
+          description: The provider's ID.
+          type: string
+        isDefault:
+          description: Whether the provider is the default of its kind, which the SSO operations address.
+          type: boolean
+        kind:
+          $ref: '#/components/schemas/OrganizationIdentityProviderKind'
+        name:
+          description: The provider's display name.
+          type: string
+        settings:
+          $ref: '#/components/schemas/OrganizationIdentityProviderSettings'
+      required:
+        - createdAt
+        - enabled
+        - id
+        - isDefault
+        - kind
+        - name
+        - settings
+      type: object
+    OrganizationIdentityProviderCreateRequest:
+      additionalProperties: false
+      description: >-
+        A new identity provider. OIDC and GitHub OAuth take their client secret in secret; a SAML provider takes none, since its service provider signing key is generated.
+      properties:
+        kind:
+          $ref: '#/components/schemas/OrganizationIdentityProviderKind'
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+        secret:
+          description: The OIDC or GitHub OAuth client secret, which is stored sealed and never answered.
+          type: string
+        settings:
+          $ref: '#/components/schemas/OrganizationIdentityProviderSettingsInput'
+      required:
+        - kind
+        - name
+        - settings
+      type: object
+    OrganizationIdentityProviderKind:
+      description: The provider's kind, which never changes.
+      enum:
+        - GITHUB_OAUTH
+        - OIDC
+        - SAML
+      type: string
+    OrganizationIdentityProviderList:
+      description: Every identity provider of the organization, oldest first.
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/OrganizationIdentityProvider'
+          type: array
+      required:
+        - items
+      type: object
+    OrganizationIdentityProviderSettings:
+      description: >-
+        The provider's settings; each kind answers its own. OIDC answers identityProviderHost, clientId and claimMapping; SAML idpMetadata or idpMetadataURL, nameIDFormat and claimMapping; GitHub OAuth baseUrl, clientId and organization.
+      properties:
+        baseUrl:
+          description: GitHub OAuth. The GitHub server's https URL.
+          type: string
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMapping'
+        clientId:
+          description: OIDC and GitHub OAuth. The OAuth client ID.
+          type: string
+        identityProviderHost:
+          description: OIDC. The https issuer or discovery URL.
+          type: string
+        idpMetadata:
+          description: SAML. The identity provider's metadata XML.
+          type: string
+        idpMetadataURL:
+          description: SAML. The https URL the identity provider's metadata is read from.
+          type: string
+        nameIDFormat:
+          description: SAML. The NameID format the service provider asks for, TRANSIENT, EMAIL_ADDRESS or PERSISTENT.
+          type: string
+        organization:
+          description: GitHub OAuth. The login of the GitHub organization whose members sign in.
+          type: string
+      type: object
+    OrganizationIdentityProviderSettingsInput:
+      additionalProperties: false
+      description: >-
+        A provider's settings. Each kind takes its own, and a setting of another kind is refused. OIDC takes identityProviderHost and clientId; SAML exactly one of idpMetadata and idpMetadataURL, and nameIDFormat; GitHub OAuth clientId, organization and baseUrl. OIDC and SAML take claimMapping, whose entries map the targets subject, login, name, email and groups to the claim or attribute named in value. Without an entry, login reads preferred_username, then email, then sub; name reads name, email reads email and groups reads groups; an OIDC subject reads sub, while a SAML subject reads the NameID under PERSISTENT and must be mapped under TRANSIENT and EMAIL_ADDRESS.
+      properties:
+        baseUrl:
+          description: GitHub OAuth. The GitHub server's https URL; https://github.com when absent.
+          type: string
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMappingInput'
+        clientId:
+          description: OIDC and GitHub OAuth. The OAuth client ID.
+          type: string
+        identityProviderHost:
+          description: OIDC. The https issuer or discovery URL.
+          type: string
+        idpMetadata:
+          description: SAML. The identity provider's metadata XML, an EntityDescriptor or EntitiesDescriptor.
+          type: string
+        idpMetadataURL:
+          description: SAML. The https URL the identity provider's metadata is read from.
+          type: string
+        nameIDFormat:
+          description: SAML. TRANSIENT when absent, EMAIL_ADDRESS or PERSISTENT.
+          type: string
+        organization:
+          description: GitHub OAuth. The login of the GitHub organization whose members sign in.
+          type: string
+      type: object
+    OrganizationIdentityProviderUpdateRequest:
+      additionalProperties: false
+      description: >-
+        A merge patch of an identity provider. It changes the name, the claim mapping, the secret and a SAML provider's metadata or metadata URL, either of which replaces the other. The kind, identityProviderHost, clientId, nameIDFormat, baseUrl and organization never change: a value other than the provider's is refused, and changing one takes deleting the provider and creating another.
+      properties:
+        kind:
+          $ref: '#/components/schemas/OrganizationIdentityProviderKind'
+        name:
+          description: At most 100 characters, not blank.
+          type: string
+        secret:
+          description: A new OIDC or GitHub OAuth client secret.
+          type: string
+        settings:
+          $ref: '#/components/schemas/OrganizationIdentityProviderSettingsInput'
       type: object
     OrganizationKey:
       description: An organization key, whose token reaches the Organization tag alone. Its secret is answered once, at creation.

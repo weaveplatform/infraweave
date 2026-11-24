@@ -191,7 +191,8 @@ func TestUnitStream(t *testing.T) {
 		t.Errorf("stream %q", pg.Stream().Name)
 	}
 	cols := pg.SealedColumns()
-	if len(cols) != 1 || cols[0].Table != "signing_keys" || cols[0].Name != "private_key_sealed" {
+	if len(cols) != 2 || cols[0].Table != "signing_keys" || cols[0].Name != "private_key_sealed" ||
+		cols[1].Table != "identity_providers" || cols[1].Name != "secret_sealed" {
 		t.Errorf("SealedColumns = %+v", cols)
 	}
 }

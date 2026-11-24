@@ -101,7 +101,7 @@ func TestAccReviewMetadataUsesOneAdmittedIdentityAcrossSessions(t *testing.T) {
 	if _, err := x.db.Exec(ctx, `INSERT INTO account_users (organization_id,account_id,member_id) VALUES ($1,$2,$3)`, x.org, x.acct, x.member); err != nil {
 		t.Fatal(err)
 	}
-	provider := kernel.NewULID()
+	provider := seedProvider(t, x.db, x.org)
 	if _, err := x.db.Exec(
 		ctx,
 		`INSERT INTO member_identities (organization_id,member_id,identity_provider_id,subject) VALUES ($1,$2,$3,'subject-a')`,
