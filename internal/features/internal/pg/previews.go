@@ -39,7 +39,7 @@ func (s *Store) SetFeaturePreviews(ctx context.Context, acct kernel.AccountID, e
 			DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = now()`, acct, enabled); err != nil {
 			return fmt.Errorf("features: %w", sql.Unavailable(err))
 		}
-		return tell(ctx, q, core.AccountKey(acct))
+		return s.tell(ctx, q, core.AccountKey(acct))
 	})
 	if err != nil {
 		return fmt.Errorf("set the feature previews of account %s: %w", acct, err)
@@ -60,7 +60,8 @@ func (s *Store) PersonalFeaturePreviews(ctx context.Context, acct kernel.Account
 }
 
 // SetPersonalFeaturePreviews sets member's setting in acct: an opt-out is
-// a row, so opting back in deletes it.
+// a row, so opting back in deletes it. It tells no replica: no feature
+// lookup reads a member's setting, so no snapshot holds it.
 func (s *Store) SetPersonalFeaturePreviews(ctx context.Context, acct kernel.AccountID, member kernel.MemberID, enabled bool) error {
 	if enabled {
 		return s.RemoveMember(ctx, acct, member)
@@ -74,7 +75,9 @@ func (s *Store) SetPersonalFeaturePreviews(ctx context.Context, acct kernel.Acco
 	return nil
 }
 
-// RemoveMember deletes member's setting in acct.
+// RemoveMember deletes member's setting in acct. Like
+// SetPersonalFeaturePreviews, it tells no replica, since no snapshot holds
+// a member's setting.
 func (s *Store) RemoveMember(ctx context.Context, acct kernel.AccountID, member kernel.MemberID) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx,
 		`DELETE FROM member_feature_preview_opt_outs WHERE account_id = $1 AND member_id = $2`,

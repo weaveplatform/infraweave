@@ -58,8 +58,8 @@ func TestAccOperatorTiers(t *testing.T) {
 		!maps.Equal(h.Limits, gold.Limits) || h.Organizations != 0 {
 		t.Errorf("created %+v", h)
 	}
-	if got := notified(); got != nil {
-		t.Errorf("a new tier, which no organization holds, notified %v", got)
+	if got := notified(); !slices.Equal(got, []string{core.TiersKey}) {
+		t.Errorf("a new tier notified %v", got)
 	}
 
 	org, other := kernel.NewOrganizationID(), kernel.NewOrganizationID()

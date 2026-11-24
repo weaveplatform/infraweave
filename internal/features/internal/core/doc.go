@@ -21,9 +21,10 @@
 // organization's pool or the account's limit, pool first; Quota reads the
 // value of a limit it applies to an account. The replica
 // keeps a snapshot of each entitlement, each account's opt-in, the switch
-// and the tiers, which Invalidate and Flush drop, and which an operator's
-// write drops on its own replica once it commits, so that replica reads
-// the write before the notification arrives. The operator's edits run through Service too:
+// and the tiers, which Invalidate and Flush drop. New hands Invalidate to
+// the Store's OnCommit, so each write of what a snapshot holds, whoever
+// makes it, drops it on its own replica once it commits, and that replica
+// reads the write before the notification arrives. The operator's edits run through Service too:
 // CheckTier holds a tier to the catalogue (gated features, each once, and
 // limits of zero or more), Enterprise cannot be edited or deleted
 // (ErrInvalidState), and OrganizationEntitlement is what an organization's
@@ -45,6 +46,6 @@
 //
 // # Dependencies
 //
-// It imports the catalogue (internal/features), featuresapi,
-// internal/kernel and platform/tx. The features domain's assembly constructs it.
+// It imports the catalogue (internal/features), featuresapi and
+// internal/kernel. The features domain's assembly constructs it.
 package core

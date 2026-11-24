@@ -26,7 +26,7 @@ func (s *store) CreateTier(_ context.Context, t root.Tier) error {
 	if s.opErr == nil {
 		s.held = append(s.held, core.Held{Tier: t})
 	}
-	return s.opErr
+	return s.committed(s.opErr, core.TiersKey)
 }
 
 func (s *store) ReplaceTier(_ context.Context, t root.Tier) error {
@@ -36,12 +36,12 @@ func (s *store) ReplaceTier(_ context.Context, t root.Tier) error {
 			s.held[i].Tier = t
 		}
 	}
-	return s.opErr
+	return s.committed(s.opErr, core.TiersKey)
 }
 
 func (s *store) DeleteTier(_ context.Context, name string) error {
 	s.calls = append(s.calls, "delete tier "+name)
-	return s.opErr
+	return s.committed(s.opErr, core.TiersKey)
 }
 
 func (s *store) BillingState(context.Context) (core.Billing, error) {
@@ -56,36 +56,36 @@ func (s *store) SetBilling(_ context.Context, enabled bool, tier *string) error 
 			s.billing.DefaultTier = *tier
 		}
 	}
-	return s.opErr
+	return s.committed(s.opErr, core.BillingKey)
 }
 
 func (s *store) Grants(context.Context, kernel.OrganizationID) (core.Grants, error) {
 	return s.grants, s.grantsErr
 }
 
-func (s *store) SetTier(_ context.Context, _ kernel.OrganizationID, tier string) error {
+func (s *store) SetTier(_ context.Context, org kernel.OrganizationID, tier string) error {
 	s.calls = append(s.calls, "tier "+tier)
-	return s.opErr
+	return s.committed(s.opErr, core.InvalidateKey(org))
 }
 
-func (s *store) GrantFeature(_ context.Context, _ kernel.OrganizationID, f string) error {
+func (s *store) GrantFeature(_ context.Context, org kernel.OrganizationID, f string) error {
 	s.calls = append(s.calls, "grant "+f)
-	return s.opErr
+	return s.committed(s.opErr, core.InvalidateKey(org))
 }
 
-func (s *store) RevokeFeature(_ context.Context, _ kernel.OrganizationID, f string) error {
+func (s *store) RevokeFeature(_ context.Context, org kernel.OrganizationID, f string) error {
 	s.calls = append(s.calls, "revoke "+f)
-	return s.opErr
+	return s.committed(s.opErr, core.InvalidateKey(org))
 }
 
-func (s *store) GrantLimit(_ context.Context, _ kernel.OrganizationID, l string, _ *int64) error {
+func (s *store) GrantLimit(_ context.Context, org kernel.OrganizationID, l string, _ *int64) error {
 	s.calls = append(s.calls, "grant "+l)
-	return s.opErr
+	return s.committed(s.opErr, core.InvalidateKey(org))
 }
 
-func (s *store) RevokeLimit(_ context.Context, _ kernel.OrganizationID, l string) error {
+func (s *store) RevokeLimit(_ context.Context, org kernel.OrganizationID, l string) error {
 	s.calls = append(s.calls, "revoke "+l)
-	return s.opErr
+	return s.committed(s.opErr, core.InvalidateKey(org))
 }
 
 func TestUnitCheckTier(t *testing.T) {

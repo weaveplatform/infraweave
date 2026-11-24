@@ -15,13 +15,24 @@ import (
 )
 
 // Store is what the service needs of storage; pg.Store is one. Every
-// method joins the transaction ctx carries.
+// method joins the transaction ctx carries. A write of what the replica's
+// snapshot holds, an entitlement, an account's opt-in, the switch or a
+// tier, notifies its payload on infraweave_invalidate and hands it to
+// OnCommit's drop once it commits; a write of what no snapshot holds, an
+// account's limits or a member's setting, does neither.
 type Store interface {
 	OperatorStore
+	// OnCommit makes drop take the payload of each write's notification
+	// once the write commits, so the replica that wrote drops its
+	// snapshot without waiting for the notification to come back.
+	OnCommit(drop func(payload string))
 	// CreateOrganization gives org its entitlement on the default tier.
 	CreateOrganization(ctx context.Context, org kernel.OrganizationID) error
+	// DeleteOrganization deletes org's rows and notifies
+	// InvalidateKey(org).
 	DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error
 	SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error
+	// DeleteAccount deletes acct's rows and notifies AccountKey(acct).
 	DeleteAccount(ctx context.Context, acct kernel.AccountID) error
 	// Entitlement reads org's tier, grants and limits, locking its row
 	// until ctx's transaction ends when lock is set.
@@ -33,7 +44,7 @@ type Store interface {
 	// Tiers reads every tier's content.
 	Tiers(ctx context.Context) ([]features.Tier, error)
 	// Seed installs the seeded tiers, or brings forward those the operator
-	// has not changed.
+	// has not changed, and notifies TiersKey when it changed one.
 	Seed(ctx context.Context, seeds []features.Tier) error
 	PreviewStore
 }
@@ -62,7 +73,9 @@ func AccountKey(acct kernel.AccountID) string {
 }
 
 // TiersKey is the payload that makes every replica drop every snapshot
-// after a tier's content changes, which reaches every organization on it.
+// after a tier is created, changed or deleted: a change reaches every
+// organization on the tier, and each refusal names the tiers that hold
+// the feature.
 const TiersKey = invalidatePrefix + "tiers"
 
 // BillingKey is the payload that makes every replica drop every snapshot
@@ -94,13 +107,18 @@ var _ featuresapi.Entitlements = (*Service)(nil)
 // New returns the service on store, running a limit check in a
 // transaction through inTx, with disabled the installation's
 // features.disabled, which no entitlement holds. The features in preview
-// are the compiled catalogue's until WithPreviews replaces them.
+// are the compiled catalogue's until WithPreviews replaces them. It makes
+// each of store's committed writes drop what it changed from the
+// service's snapshot, so a read on this replica after a write here
+// answers the write.
 func New(store Store, inTx Transactor, disabled []string) *Service {
-	return &Service{
+	s := &Service{
 		store: store, inTx: inTx, disabled: disabled, previews: features.Previews,
 		orgs:     map[kernel.OrganizationID]featuresapi.Entitlement{},
 		accounts: map[kernel.AccountID]bool{},
 	}
+	store.OnCommit(s.Invalidate)
+	return s
 }
 
 // WithPreviews makes previews, in catalogue order, the features the

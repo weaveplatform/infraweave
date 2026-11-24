@@ -19,7 +19,6 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/sql"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
-	"github.com/weaveplatform/infraweave/internal/platform/sql/notify"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
@@ -77,10 +76,22 @@ type DB interface {
 
 // Store keeps tiers, entitlements, grants, account limits and feature
 // preview settings in PostgreSQL. Every method joins the transaction ctx carries.
-type Store struct{ db DB }
+type Store struct {
+	db DB
+	// drop takes the payload of each infraweave_invalidate notification
+	// the store sends, once the write that sends it commits.
+	drop func(payload string)
+}
 
-// New returns the store on db.
-func New(db DB) *Store { return &Store{db: db} }
+// New returns the store on db, whose writes drop no snapshot of this
+// replica until OnCommit names what does.
+func New(db DB) *Store { return &Store{db: db, drop: func(string) {}} }
+
+// OnCommit makes drop take the payload of each infraweave_invalidate
+// notification a write sends, once the write commits, and never when it
+// rolls back. The service the store serves sets it once, before any
+// write.
+func (s *Store) OnCommit(drop func(payload string)) { s.drop = drop }
 
 // foreignKeyViolation is SQLSTATE 23503: here a tier or an entitlement
 // that does not exist.
@@ -99,7 +110,9 @@ func write(err error, what string) error {
 }
 
 // CreateOrganization gives org its entitlement on the default tier,
-// Enterprise while the operator has named none.
+// Enterprise while the operator has named none. It tells no replica: a
+// snapshot never holds an organization without an entitlement, since a
+// read of one answers featuresapi.ErrNotFound and keeps nothing.
 func (s *Store) CreateOrganization(ctx context.Context, org kernel.OrganizationID) error {
 	_, err := tx.Q(ctx, s.db).
 		Exec(ctx, `INSERT INTO organization_entitlements (organization_id, tier)
@@ -116,7 +129,8 @@ var deleteOrganization = []string{
 	`DELETE FROM organization_entitlements WHERE organization_id = $1`,
 }
 
-// DeleteOrganization deletes org's entitlement, grants and account limits.
+// DeleteOrganization deletes org's entitlement, grants and account limits
+// and tells every replica to drop its snapshot of the entitlement.
 func (s *Store) DeleteOrganization(ctx context.Context, org kernel.OrganizationID) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -125,7 +139,7 @@ func (s *Store) DeleteOrganization(ctx context.Context, org kernel.OrganizationI
 				return fmt.Errorf("features: %w", sql.Unavailable(err))
 			}
 		}
-		return nil
+		return s.tell(ctx, q, core.InvalidateKey(org))
 	})
 	if err != nil {
 		return fmt.Errorf("delete organization %s: %w", org, err)
@@ -133,7 +147,9 @@ func (s *Store) DeleteOrganization(ctx context.Context, org kernel.OrganizationI
 	return nil
 }
 
-// SetAccountLimit sets acct's limit on limit.
+// SetAccountLimit sets acct's limit on limit. It tells no replica: no
+// snapshot holds an account's limits, which Quota and CheckLimit read from
+// storage each time.
 func (s *Store) SetAccountLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, value int64) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx, `
 		INSERT INTO account_limits (organization_id, account_id, limit_name, value)
@@ -143,7 +159,8 @@ func (s *Store) SetAccountLimit(ctx context.Context, org kernel.OrganizationID, 
 	return write(err, "entitlement of organization "+org.String())
 }
 
-// ClearAccountLimit deletes acct's limit on limit.
+// ClearAccountLimit deletes acct's limit on limit. Like SetAccountLimit,
+// it tells no replica, since no snapshot holds an account's limits.
 func (s *Store) ClearAccountLimit(ctx context.Context, acct kernel.AccountID, limit string) error {
 	if _, err := tx.Q(ctx, s.db).Exec(ctx,
 		`DELETE FROM account_limits WHERE account_id = $1 AND limit_name = $2`,
@@ -183,7 +200,7 @@ func (s *Store) DeleteAccount(ctx context.Context, acct kernel.AccountID) error 
 				return fmt.Errorf("features: %w", sql.Unavailable(err))
 			}
 		}
-		return tell(ctx, q, core.AccountKey(acct))
+		return s.tell(ctx, q, core.AccountKey(acct))
 	})
 	if err != nil {
 		return fmt.Errorf("delete account %s: %w", acct, err)
@@ -306,10 +323,7 @@ func (s *Store) Seed(ctx context.Context, seeds []features.Tier) error {
 		}
 		// Delivered on commit, so a replica already serving drops the
 		// tiers and entitlements it read before this release's seeds.
-		if err := notify.Notify(ctx, q, notify.Invalidate, core.TiersKey); err != nil {
-			return fmt.Errorf("features: %w", sql.Unavailable(err))
-		}
-		return nil
+		return s.tell(ctx, q, core.TiersKey)
 	})
 	if err != nil {
 		return fmt.Errorf("seed the tiers: %w", err)

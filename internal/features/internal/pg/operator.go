@@ -88,7 +88,8 @@ func content(ctx context.Context, q tx.Querier, t features.Tier) error {
 	return nil
 }
 
-// CreateTier creates t; a name another tier has is core.ErrExists.
+// CreateTier creates t and tells every replica; a name another tier has
+// is core.ErrExists.
 func (s *Store) CreateTier(ctx context.Context, t features.Tier) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
@@ -102,7 +103,12 @@ func (s *Store) CreateTier(ctx context.Context, t features.Tier) error {
 		if err != nil {
 			return fmt.Errorf("features: %w", sql.Unavailable(err))
 		}
-		return content(ctx, q, t)
+		if err := content(ctx, q, t); err != nil {
+			return err
+		}
+		// No organization holds the new tier, but a refusal names the
+		// tiers that hold a feature from each replica's snapshot of them.
+		return s.tell(ctx, q, core.TiersKey)
 	})
 	if err != nil {
 		return fmt.Errorf("create tier %q: %w", t.Name, err)
@@ -133,7 +139,7 @@ func (s *Store) ReplaceTier(ctx context.Context, t features.Tier) error {
 			SET entitlement_version = entitlement_version + 1 WHERE tier = $1`, t.Name); err != nil {
 			return fmt.Errorf("features: %w", sql.Unavailable(err))
 		}
-		return tell(ctx, q, core.TiersKey)
+		return s.tell(ctx, q, core.TiersKey)
 	})
 	if err != nil {
 		return fmt.Errorf("replace tier %q: %w", t.Name, err)
@@ -169,7 +175,7 @@ func (s *Store) DeleteTier(ctx context.Context, name string) error {
 		case tag.RowsAffected() == 0:
 			return fmt.Errorf("%w: tier %q", featuresapi.ErrNotFound, name)
 		}
-		return tell(ctx, q, core.TiersKey)
+		return s.tell(ctx, q, core.TiersKey)
 	})
 	if err != nil {
 		return fmt.Errorf("delete tier %q: %w", name, err)
@@ -201,7 +207,7 @@ func (s *Store) SetBilling(ctx context.Context, enabled bool, defaultTier *strin
 		if err != nil {
 			return write(err, "tier "+deref(defaultTier))
 		}
-		return tell(ctx, q, core.BillingKey)
+		return s.tell(ctx, q, core.BillingKey)
 	})
 	if err != nil {
 		return fmt.Errorf("set billing: %w", err)
@@ -253,7 +259,7 @@ func (s *Store) Grants(ctx context.Context, org kernel.OrganizationID) (core.Gra
 // every replica; an organization without an entitlement is
 // featuresapi.ErrNotFound. The lock orders the write after a limit check
 // already counting under it.
-func touch(ctx context.Context, q tx.Querier, org kernel.OrganizationID) error {
+func (s *Store) touch(ctx context.Context, q tx.Querier, org kernel.OrganizationID) error {
 	tag, err := q.Exec(ctx, `UPDATE organization_entitlements
 		SET entitlement_version = entitlement_version + 1 WHERE organization_id = $1`, org)
 	switch {
@@ -262,15 +268,23 @@ func touch(ctx context.Context, q tx.Querier, org kernel.OrganizationID) error {
 	case tag.RowsAffected() == 0:
 		return fmt.Errorf("%w: entitlement of organization %s", featuresapi.ErrNotFound, org)
 	}
-	return tell(ctx, q, core.InvalidateKey(org))
+	return s.tell(ctx, q, core.InvalidateKey(org))
 }
 
-// tell notifies infraweave_invalidate with payload, delivered when the
-// transaction commits.
-func tell(ctx context.Context, q tx.Querier, payload string) error {
+// tell notifies infraweave_invalidate with payload, delivered to every
+// replica's listener when the transaction commits, and hands payload to
+// this replica's drop once it commits. The notification reaches this
+// replica too, but some time after the commit, and until it arrives a
+// read here would answer from the snapshot of before the write: an
+// account limit set right after billing is switched on would pass the
+// organization's pool. Every write of what a snapshot holds sends its
+// payload through tell, so none can drop the other replicas' snapshots
+// and keep this one's.
+func (s *Store) tell(ctx context.Context, q tx.Querier, payload string) error {
 	if err := notify.Notify(ctx, q, notify.Invalidate, payload); err != nil {
 		return fmt.Errorf("features: %w", sql.Unavailable(err))
 	}
+	tx.AfterCommit(ctx, func(context.Context) { s.drop(payload) })
 	return nil
 }
 
@@ -278,7 +292,7 @@ func tell(ctx context.Context, q tx.Querier, payload string) error {
 func (s *Store) change(ctx context.Context, org kernel.OrganizationID, what string, fn func(context.Context, tx.Querier) error) error {
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		q := tx.Q(ctx, s.db)
-		if err := touch(ctx, q, org); err != nil {
+		if err := s.touch(ctx, q, org); err != nil {
 			return err
 		}
 		return fn(ctx, q)
