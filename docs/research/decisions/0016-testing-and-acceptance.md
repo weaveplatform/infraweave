@@ -262,8 +262,10 @@ everywhere, and the reason names where the contract checks it instead.
 ### Docker: skip locally, never in CI
 
 - Without a reachable Docker daemon, the harness skips every scenario that
-  carries a dependency tag other than `@oidc` and `@ai`, and prints the
-  tags it skipped. Untagged, `@oidc` and `@ai` scenarios still run.
+  carries a dependency tag other than `@ai` and the in-process VCS fakes'
+  (`@github`, `@gitlab`, `@bitbucket-cloud`, `@bitbucket-dc`,
+  `@azure-devops`), and prints the tags it skipped. `@oidc` needs Docker for
+  the navikt container. Untagged and `@ai` scenarios still run.
 - CI sets `INFRAWEAVE_ACCEPT_REQUIRE_DOCKER=1`. With it set, an unreachable
   daemon fails `TestAccFeatures` before the first scenario, and any skipped
   scenario fails the run, so a CI pass always means every scenario ran.

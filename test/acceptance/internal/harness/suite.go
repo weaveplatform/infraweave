@@ -174,12 +174,14 @@ func CtlBinary(ctx context.Context) (string, error) {
 
 // DockerTags are the scenario's dependency tags that need a Docker daemon.
 // @identity only routes work and provisions no service. These are every
-// dependency tag except @oidc, @github, @gitlab, @bitbucket-cloud,
-// @bitbucket-dc and @azure-devops, which run in process, and @ai, whose provider is a fake on loopback.
+// dependency tag except @github, @gitlab, @bitbucket-cloud, @bitbucket-dc
+// and @azure-devops, which run in process, and @ai, whose provider is a
+// fake on loopback. @oidc needs Docker for navikt's mock-oauth2-server,
+// beside its in-process issuer.
 func DockerTags(tags []string) []string {
 	var out []string
 	for _, t := range tags {
-		if !Exempt(t) && t != "@identity" && t != "@oidc" && t != "@ai" && t != "@github" && t != "@gitlab" &&
+		if !Exempt(t) && t != "@identity" && t != "@ai" && t != "@github" && t != "@gitlab" &&
 			t != "@bitbucket-cloud" && t != "@bitbucket-dc" &&
 			t != "@azure-devops" {
 			out = append(out, t)

@@ -54,6 +54,12 @@ const (
 	//
 	// ref: decision 0016
 	ImageGitea = "gitea/gitea:28.4.0@sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309"
+	// ImageOAuth2Mock is navikt's mock-oauth2-server, the third-party
+	// OpenID Provider @oidc signs browsers in through: its issuers are path
+	// segments, and its sign-in form takes the subject and claims.
+	//
+	// ref: decision 0016
+	ImageOAuth2Mock = "ghcr.io/navikt/mock-oauth2-server:7.0.1@sha256:eb07a0a65007c34c40c7b849592a47e6299128a514a5c6c582a53451cc6e3390"
 	// ImageMoto is the AWS emulator whose KMS the awskms KEK provider's
 	// suite runs against. LocalStack's image needs a licence token to
 	// start, which no public pull request has.

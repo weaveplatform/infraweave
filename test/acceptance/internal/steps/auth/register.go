@@ -17,4 +17,5 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&oauthSteps{w: w}).register(sc)
 	(&kmsSteps{w: w}).register(sc)
 	(&providerSteps{w: w}).register(sc)
+	(&issuerSteps{w: w}).register(sc)
 }

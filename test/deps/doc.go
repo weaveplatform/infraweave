@@ -5,7 +5,14 @@
 // from a migrated template, a caller's own PostgreSQL on a fixed port
 // that stops, starts and pauses, and one below the supported floor;
 // RustFS; Vault in dev mode with the Transit engine; Gitea, serving HTTPS
-// under a CA made for the run; and the in-process OIDC issuer. images.go
+// under a CA made for the run; and navikt's mock-oauth2-server over TLS,
+// whose every path segment is an OpenID Provider of its own. Issuer is
+// the in-process OpenID Provider, which a scenario starts as its own: it
+// runs the authorization code flow with PKCE for the identities a scenario
+// queues, with the faults each chooses, serves RP-initiated logout and
+// sends back-channel logout tokens. SignIn plays the browser at either
+// provider, filling in navikt's sign-in form, and CodeFlow plays the
+// relying party, exchanging the code and verifying the ID token. images.go
 // pins each image by digest, and Postgres picks the PostgreSQL major the
 // INFRAWEAVE_POSTGRES variable names. tools.go pins the Terraform,
 // OpenTofu and Terragrunt releases @terraform, @tofu and @terragrunt run,
@@ -26,7 +33,8 @@
 //
 // It starts and removes containers through the Docker daemon
 // testcontainers finds, writes the Gitea CA's files to a temporary
-// directory, calls Vault's and Gitea's APIs, and downloads the tools'
+// directory, calls Vault's, Gitea's and the OpenID Providers' APIs, trusts
+// the certificate navikt's server presents at start, and downloads the tools'
 // archives, SHA256SUMS and signatures over HTTPS into the user's cache
 // directory. It logs nothing.
 //
@@ -41,7 +49,7 @@
 // # Dependencies
 //
 // testcontainers-go and the moby client run the containers, and the
-// OIDC issuer serves on httptest. It imports platform/sql for the pool
+// in-process OIDC issuer serves on httptest with chi. It imports platform/sql for the pool
 // size each server opens, which sizes PostgreSQL's max_connections, and
 // nothing of the acceptance suite, which imports it.
 package deps

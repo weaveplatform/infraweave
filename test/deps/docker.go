@@ -218,8 +218,8 @@ type Dependencies struct {
 	lab          *labManifest
 	labNamespace string
 
-	pgOnce, storeOnce, oidcOnce, vaultOnce, giteaOnce sync.Once
-	tools                                             tools
+	pgOnce, storeOnce, oidcOnce, mockOnce, vaultOnce, giteaOnce sync.Once
+	tools                                                       tools
 
 	pg       *Database
 	pgErr    error
@@ -228,6 +228,8 @@ type Dependencies struct {
 	storeErr error
 	issuer   *Issuer
 	oidcErr  error
+	mock     *OAuth2Mock
+	mockErr  error
 	vault    *Vault
 	vaultErr error
 	gitea    *Gitea

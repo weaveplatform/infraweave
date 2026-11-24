@@ -143,6 +143,7 @@ jobs:
           pin gitea/gitea gitea/gitea '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin atlassian/bitbucket atlassian/bitbucket '^[0-9]+\.[0-9]+\.[0-9]+$'
           pin gitlab/gitlab-ce gitlab/gitlab-ce '^[0-9]+\.[0-9]+\.[0-9]+-ce\.0$'
+          repin ghcr.io/navikt/mock-oauth2-server "$(gh api repos/navikt/mock-oauth2-server/releases/latest -q .tag_name)"
           k3s=$(gh api repos/k3s-io/k3s/releases/latest -q .tag_name)
           repin rancher/k3s "${k3s/+/-}"
           # Azurite publishes to the Microsoft Artifact Registry, not
