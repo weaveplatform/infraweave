@@ -78,6 +78,12 @@ CREATE TABLE sessions (
     original_teams       text[]      CHECK (original_teams_known OR original_teams IS NULL),
     identity_provider_id uuid,
     idp_subject          text,
+    -- The provider's session the ID token named as sid, which a
+    -- back-channel logout names, and the ID token itself, sealed to the
+    -- row's id, which RP-initiated logout sends as id_token_hint.
+    -- ref: decision 0013
+    idp_sid              text,
+    idp_id_token_sealed  bytea,
     oauth_client_id      text,
     scopes               text[]      NOT NULL DEFAULT '{}',
     ip_address           inet,
@@ -109,6 +115,9 @@ CREATE INDEX sessions_account ON sessions (organization_id, account_id) WHERE ac
 CREATE INDEX sessions_member ON sessions (organization_id, member_id) WHERE member_id IS NOT NULL;
 CREATE INDEX sessions_actor ON sessions (actor_kind, actor_id);
 CREATE INDEX sessions_parent ON sessions (parent_session_id) WHERE parent_session_id IS NOT NULL;
+-- A back-channel logout's scan for a provider's sessions by sid or subject.
+CREATE INDEX sessions_identity ON sessions (identity_provider_id, idp_sid)
+    WHERE identity_provider_id IS NOT NULL;
 CREATE UNIQUE INDEX sessions_secret ON sessions (secret_hash) WHERE secret_hash IS NOT NULL;
 -- authn.sessions.expire's scan for sessions 30 days past their end.
 CREATE INDEX sessions_expires ON sessions (expires_at);

@@ -153,6 +153,7 @@ type Domain struct {
 	orgs           *operator.Service
 	orgAdmin       *orgadmin.Service
 	providers      *sso.Service
+	signIn         *sso.SignIn
 	settings       *settings.Service
 	users          *user.Service
 	groups         *group.Service
@@ -265,6 +266,11 @@ func New(d Deps) (*Domain, error) {
 	orgAdmin := orgadmin.NewService(orgadmin.Deps{
 		Store: store, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 	})
+	signIn := sso.NewSignIn(sso.SignInDeps{
+		Store: store, Party: verifier, Admins: orgAdmin, Features: d.Features,
+		Drop: auth.Cache().Drop, PublicURL: d.PublicURL,
+		Idle: d.Settings.Session.IdleTimeout, MaxAge: d.Settings.Session.MaxAge, Now: now,
+	})
 	subjects := http.NewSubjects()
 	// A request names a space by its slug, as the API's Space ID is.
 	subjects.Register(accessapi.EntitySpace, func(ctx context.Context, acct kernel.AccountID, slug string) (kernel.ULID, error) {
@@ -291,6 +297,7 @@ func New(d Deps) (*Domain, error) {
 		providers: sso.NewService(sso.Deps{
 			Store: store, Admins: orgAdmin, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 		}),
+		signIn: signIn,
 		settings: settings.NewService(
 			settings.Deps{Store: store, Drop: auth.Cache().Drop, Now: now},
 		),
@@ -328,7 +335,8 @@ func (d *Domain) API() AccessAPI {
 	}
 	return http.NewServer(http.Services{
 		Auth: d.authn, Keys: d.keys, Authz: d.authz, Spaces: d.spaces, Accounts: d.store,
-		Settings: d.settings, Orgs: d.orgAdmin, Providers: d.providers, Users: d.users, Groups: d.groups, Roles: d.roles,
+		Settings: d.settings, Orgs: d.orgAdmin, Providers: d.providers, SignIn: d.signIn, Users: d.users,
+		Groups: d.groups, Roles: d.roles,
 		Bindings: d.bindings, Holders: d.holders, OAuth: d.oauth, Atomic: d.store.Atomic,
 	})
 }
@@ -364,14 +372,17 @@ func (d *Domain) Seats(ctx context.Context, org kernel.OrganizationID, acct kern
 }
 
 // Routes mounts the domain's pages and protocols beside the APIs on r:
-// the break-glass login at accessapi.LoginPattern and the authorization
-// server's endpoints at the OAuth patterns. A nil domain's answer 501, as
+// the break-glass login at accessapi.LoginPattern, the sign-in through an
+// organization's identity providers at the sign-in and OIDC patterns, and
+// the authorization server's endpoints at the OAuth patterns. A nil domain's answer 501, as
 // its API partial's operations do, so the routes the controls know of
 // exist.
 func (d *Domain) Routes(r chi.Router) {
 	if d == nil {
 		for _, p := range []string{
-			accessapi.LoginPattern, accessapi.OAuthMetadataPattern,
+			accessapi.LoginPattern, accessapi.SignInPattern, accessapi.SignInOrganizationPattern,
+			accessapi.SignInProviderPattern, accessapi.OIDCCallbackPattern,
+			accessapi.OIDCBackchannelLogoutPattern, accessapi.OAuthMetadataPattern,
 			accessapi.OAuthRegisterPattern, accessapi.OAuthAuthorizePattern,
 			accessapi.OAuthTokenPattern,
 		} {
@@ -382,6 +393,7 @@ func (d *Domain) Routes(r chi.Router) {
 		return
 	}
 	http.NewLogin(d.authn, d.publicURL).Routes(r)
+	http.NewSignIn(d.signIn, d.authn).Routes(r)
 	http.NewOAuth(d.oauth).Routes(r)
 }
 
@@ -526,10 +538,10 @@ func (d *Domain) AccountOrganization(ctx context.Context, acct kernel.AccountID)
 
 // Cron is the domain's periodic tasks: authn.sessions.expire, hourly,
 // which also deletes the authorization server's ended requests and unused
-// clients, and authn.keys.rotate, daily, unless auth.signing.rotation is
-// manual, which rotates the api-token keys and then the federation keys,
-// each in its own transaction, the second whether or not the first
-// fails.
+// clients, the ended OIDC sign-in requests and the expired back-channel
+// logout tokens, and authn.keys.rotate, daily, unless auth.signing.rotation
+// is manual, which rotates the api-token keys and then the federation keys,
+// each in its own transaction, the second whether or not the first fails.
 func (d *Domain) Cron() []cron.Task {
 	tasks := make([]cron.Task, 0, 2)
 	tasks = append(tasks, cron.Task{
@@ -537,7 +549,7 @@ func (d *Domain) Cron() []cron.Task {
 		Every: expireEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
 			//nolint:wrapcheck // each names itself
-			return errors.Join(d.authn.Expire(ctx), d.oauth.Expire(ctx))
+			return errors.Join(d.authn.Expire(ctx), d.oauth.Expire(ctx), d.signIn.Expire(ctx))
 		},
 	})
 	if d.manual {

@@ -37,11 +37,20 @@ func (s *Store) RenameOrganization(ctx context.Context, org kernel.OrganizationI
 }
 
 // IsOrganizationAdmin reports whether the member holds organization-admin
-// in org.
-func (s *Store) IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID) (bool, error) {
+// in org: through an organization_admins row, or because sess, its live
+// session, signed in through one of org's identity providers with that
+// provider's admin login, which holds the role without a row and only in
+// that session's line of account switches.
+//
+// ref: decision 0007 § "Tenancy"
+func (s *Store) IsOrganizationAdmin(ctx context.Context, org kernel.OrganizationID, member kernel.MemberID, sess kernel.ULID) (bool, error) {
 	var ok bool
 	if err := tx.Q(ctx, s.db).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM organization_admins
-		WHERE organization_id = $1 AND member_id = $2)`, org, member).Scan(&ok); err != nil {
+			WHERE organization_id = $1 AND member_id = $2)
+		OR EXISTS (SELECT 1 FROM sessions ss JOIN identity_providers p
+				ON p.organization_id = ss.organization_id AND p.id = ss.identity_provider_id
+			WHERE ss.id = $3 AND ss.organization_id = $1 AND ss.member_id = $2
+				AND p.admin_login = ss.login)`, org, member, sess).Scan(&ok); err != nil {
 		return false, fmt.Errorf("access: read organization admins: %w", sql.Unavailable(err))
 	}
 	return ok, nil

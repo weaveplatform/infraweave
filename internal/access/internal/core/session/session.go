@@ -51,10 +51,13 @@ type Session struct {
 	// independently of the member's other linked identities.
 	IdentityProviderID kernel.ULID
 	IDPSubject         *string
-	Scopes             []string
-	IPAddress          string
-	CreatedAt          time.Time
-	ExpiresAt          time.Time
+	// IDPSID is the provider's session the ID token named as sid, which a
+	// back-channel logout ends the session by; empty when it named none.
+	IDPSID    string
+	Scopes    []string
+	IPAddress string
+	CreatedAt time.Time
+	ExpiresAt time.Time
 	// IdleExpiresAt ends a browser session that goes unused; zero for
 	// sessions that have no idle limit.
 	IdleExpiresAt time.Time

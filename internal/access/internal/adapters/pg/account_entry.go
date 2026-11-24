@@ -40,6 +40,13 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 		if err := s.CreateSession(ctx, entered); err != nil {
 			return err
 		}
+		if !source.IsZero() {
+			// The logout of the entered session hints the provider with the
+			// ID token its source was signed in with.
+			if err := s.carryIDToken(ctx, tx.Q(ctx, s.db), source, entered.ID); err != nil {
+				return err
+			}
+		}
 		return s.installLoginGrants(ctx, entered, grants)
 	})
 	if err != nil {
@@ -138,7 +145,7 @@ func entrySource(ctx context.Context, q tx.Querier, next *session.Session, id ke
 	next.Login, next.Name, next.Email = cur.Login, cur.Name, cur.Email
 	next.OriginalMember, next.OriginalTeamsKnown = cur.OriginalMember, cur.OriginalTeamsKnown
 	next.OriginalTeams = slices.Clone(cur.OriginalTeams)
-	next.IdentityProviderID, next.IDPSubject = cur.IdentityProviderID, cur.IDPSubject
+	next.IdentityProviderID, next.IDPSubject, next.IDPSID = cur.IdentityProviderID, cur.IDPSubject, cur.IDPSID
 	next.Admin, next.Teams = false, slices.Clone(cur.Teams)
 	if cur.OriginalTeamsKnown {
 		next.Teams = slices.Clone(cur.OriginalTeams)

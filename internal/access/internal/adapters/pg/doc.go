@@ -77,7 +77,22 @@
 // identity_providers.secret_sealed, bound to its id, through the Sealer
 // WithSealer gives, and ProviderSecret opens it; deleting a provider
 // deletes its identities, revokes the sessions signed in through it and
-// makes the oldest remaining provider of its kind the default when it was. user.Store's writes record their account trail entry in the
+// makes the oldest remaining provider of its kind the default when it was.
+// sso.SignInStore keeps a started sign-in in sso_requests, its PKCE
+// verifier sealed into pkce_verifier_sealed bound to its id; consuming it
+// is one UPDATE of a live, unconsumed row matching the state's and the
+// browser's hashes, so two callbacks consume it once. A sign-in takes the
+// organization's row lock, as an invite does, resolves the identity to a
+// member, checks a new member's seat, records the identity and
+// last_seen_at, creates the session and seals its ID token into
+// sessions.idp_id_token_sealed, and, for an enable, sets the provider's
+// enabled_at and admin_login with its trail entry, all in one transaction;
+// an account switch carries the ID token to the session it creates.
+// IsOrganizationAdmin also admits a session signed in through one of the
+// organization's providers as that provider's admin login. A back-channel
+// logout's jti is kept in oidc_logout_tokens until it expires, its primary
+// key accepting each once. ExpireSignIns deletes the ended requests and
+// the expired logout tokens. user.Store's writes record their account trail entry in the
 // same transaction: inviting a login takes its organization's row lock,
 // admits its member or a new pending one and checks the seat a member no
 // other account admits takes; removing a managed user deletes its

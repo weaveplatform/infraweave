@@ -63,7 +63,7 @@ func (s *store) RenameOrganization(_ context.Context, _ kernel.OrganizationID, n
 	return s.org, nil
 }
 
-func (s *store) IsOrganizationAdmin(_ context.Context, _ kernel.OrganizationID, m kernel.MemberID) (bool, error) {
+func (s *store) IsOrganizationAdmin(_ context.Context, _ kernel.OrganizationID, m kernel.MemberID, _ kernel.ULID) (bool, error) {
 	return s.admins[m], s.down("IsOrganizationAdmin")
 }
 

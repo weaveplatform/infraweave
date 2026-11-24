@@ -112,6 +112,22 @@ var ErrNoSubject = errors.New("no such subject")
 // ref: decision 0006 § "The break-glass admin"
 const LoginPattern = "/admin-login/{organization}"
 
+// The routes of a sign-in through an organization's identity providers,
+// outside the API's base URL, pages for a browser rather than operations
+// of the API: the organization's choice, its providers' list, a sign-in's
+// start, the one callback of every OIDC provider, which the state routes
+// to its request, and the back-channel logout every OIDC provider posts
+// to. None takes a credential.
+//
+// ref: decision 0006 § "Human login"
+const (
+	SignInPattern                = "/auth/login"
+	SignInOrganizationPattern    = "/auth/login/{organization}"
+	SignInProviderPattern        = "/auth/login/{organization}/{providerId}"
+	OIDCCallbackPattern          = "/auth/oidc/callback"
+	OIDCBackchannelLogoutPattern = "/auth/oidc/backchannel-logout"
+)
+
 // The routes of the authorization server for MCP clients, outside the
 // API's base URL as the OAuth protocol places them: RFC 8414 metadata, RFC
 // 7591 registration, and the authorization and token endpoints. None takes

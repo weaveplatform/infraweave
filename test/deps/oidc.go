@@ -68,6 +68,9 @@ type Issuer struct {
 	requests []AuthorizeRequest
 	logouts  []LogoutRequest
 	issued   []IssuedToken
+	// fetches counts the JWKS's reads, so a scenario sees a relying party
+	// refetch the key set, or not.
+	fetches int
 }
 
 // Identity is who the issuer signs in at its next authorization request:
@@ -274,6 +277,13 @@ func (i *Issuer) Logouts() []LogoutRequest {
 	return append([]LogoutRequest(nil), i.logouts...)
 }
 
+// JWKSFetches is how many times the JWKS was read.
+func (i *Issuer) JWKSFetches() int {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.fetches
+}
+
 // Issued are the ID tokens the token endpoint answered, in order.
 func (i *Issuer) Issued() []IssuedToken {
 	i.mu.Lock()
@@ -336,6 +346,7 @@ func (i *Issuer) discovery(w http.ResponseWriter, _ *http.Request) {
 func (i *Issuer) jwks(w http.ResponseWriter, _ *http.Request) {
 	i.mu.Lock()
 	key, kid, cert, certs := i.key, i.kid, i.cert, i.certs
+	i.fetches++
 	i.mu.Unlock()
 	jwk := map[string]any{
 		"kty": "RSA",

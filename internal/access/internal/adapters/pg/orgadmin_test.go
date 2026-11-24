@@ -62,7 +62,7 @@ func TestAccOrganizationAdmins(t *testing.T) {
 	s := x.s
 	bob := addMember(t, x, "bob", "deactivated")
 
-	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member); err != nil || ok {
+	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member, kernel.ULID{}); err != nil || ok {
 		t.Errorf("before a grant = %t, %v", ok, err)
 	}
 	for range 2 {
@@ -77,11 +77,11 @@ func TestAccOrganizationAdmins(t *testing.T) {
 		by != "break_glass:x" {
 		t.Errorf("created_by = %q, %v", by, err)
 	}
-	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member); err != nil || !ok {
+	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member, kernel.ULID{}); err != nil || !ok {
 		t.Errorf("after a grant = %t, %v", ok, err)
 	}
 	// The role is the organization's: it is nothing in another one.
-	if ok, err := s.IsOrganizationAdmin(ctx, other.org, x.member); err != nil || ok {
+	if ok, err := s.IsOrganizationAdmin(ctx, other.org, x.member, kernel.ULID{}); err != nil || ok {
 		t.Errorf("in another organization = %t, %v", ok, err)
 	}
 	if err := s.SetOrganizationAdmin(ctx, other.org, x.member, true, "x",
@@ -127,7 +127,7 @@ func TestAccOrganizationAdmins(t *testing.T) {
 		byAdmin(x, orgadmin.ActionAdminRevoke)); err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member); err != nil || ok {
+	if ok, err := s.IsOrganizationAdmin(ctx, x.org, x.member, kernel.ULID{}); err != nil || ok {
 		t.Errorf("after a revoke = %t, %v", ok, err)
 	}
 
@@ -522,7 +522,7 @@ func TestAccOrganizationAdminUnavailable(t *testing.T) {
 	e := kernel.OrganizationAuditEntry{OrganizationID: org}
 	a := account.Account{OrganizationID: org, ID: acct, Slug: "closed", Name: "x"}
 	for name, call := range map[string]func() error{
-		"is admin":    func() error { _, err := s.IsOrganizationAdmin(ctx, org, m); return err },
+		"is admin":    func() error { _, err := s.IsOrganizationAdmin(ctx, org, m, kernel.ULID{}); return err },
 		"accounts":    func() error { _, err := s.OrganizationAccounts(ctx, org, acct, 1); return err },
 		"by slug":     func() error { _, err := s.AccountBySlug(ctx, org, "closed"); return err },
 		"create":      func() error { return s.CreateAccount(ctx, a, m, e) },
