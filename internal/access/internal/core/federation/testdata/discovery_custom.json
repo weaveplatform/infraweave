@@ -1,0 +1,30 @@
+{
+  "issuer": "https://id.example.com/federation",
+  "jwks_uri": "https://keys.example.net/iw/jwks.json",
+  "response_types_supported": [
+    "id_token"
+  ],
+  "subject_types_supported": [
+    "public"
+  ],
+  "id_token_signing_alg_values_supported": [
+    "ES256",
+    "RS256"
+  ],
+  "claims_supported": [
+    "iss",
+    "sub",
+    "aud",
+    "exp",
+    "iat",
+    "jti",
+    "nbf",
+    "spaceId",
+    "spacePath",
+    "callerType",
+    "callerId",
+    "runType",
+    "runId",
+    "scope"
+  ]
+}

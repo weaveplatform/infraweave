@@ -3801,7 +3801,7 @@
       "infraweave": {
         "feature": "`oidc-federation`",
         "phase": "P15",
-        "delivers": "Run OIDC token and subject template"
+        "delivers": "Run OIDC token and subject template; the discovery document and JWKS are served ungated"
       }
     },
     {

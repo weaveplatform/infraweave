@@ -33,8 +33,8 @@
 // 3 hours), the OIDC federation token's auth.tokens.federation.ttl (an
 // hour), auth.run_api_token.issuer, auth.session's
 // idle_timeout and max_age (10 hours each), and the signing
-// backend, rotation and kms_keys, auth.federation's issuer, jwks_uri,
-// audience, algorithm (RS256 by default, PS256 or ES256) and kms_keys,
+// backend, rotation and kms_keys, auth.federation's issuer, whose path
+// must be plain segments, jwks_uri, audience, algorithm (RS256 by default, PS256 or ES256) and kms_keys,
 // which the kms backend requires, and auth.oidc_api_keys' allowed_issuers
 // and ca_file, and auth.operator.keys, each a ULID and the lower-case hex
 // SHA-256 of its secret, which Validate checks; New reads ca_file and fails when it
@@ -48,8 +48,10 @@
 // the tokens of the API keys its clients send for this replica; Tokens
 // mints the worker protocol's tokens, and BindRuns binds the runs an
 // in-run API token's authentication reads; Routes
-// mounts the break-glass login at accessapi.LoginPattern and the
-// authorization server for MCP clients at the OAuth patterns;
+// mounts the break-glass login at accessapi.LoginPattern, the
+// authorization server for MCP clients at the OAuth patterns, and the
+// federation issuer's discovery document and JWKS at
+// FederationDiscoveryPatterns, under the issuer's path too;
 // HashPassword and VerifyPassword are the break-glass password hash, which infraweave auth hash-password prints; WatchSessions keeps the
 // replica's session cache in step with infraweave_invalidate.
 // Authorizer is the authorization evaluator for every domain, from the

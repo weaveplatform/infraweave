@@ -217,6 +217,30 @@ server, which `GET /.well-known/oauth-authorization-server` describes.
   member's in the account, listed by `GET /sessions`, which removing or
   deactivating the member ends.
 
+#### OIDC federation discovery
+
+A cloud, Vault or Kubernetes registers the installation as one OIDC
+identity provider, whose issuer is `auth.federation.issuer`.
+
+- **Discovery document.** `GET /.well-known/openid-configuration` answers
+  `issuer`, `jwks_uri` (`auth.federation.jwks_uri`, or
+  `<issuer>/.well-known/jwks`), `response_types_supported: ["id_token"]`,
+  `subject_types_supported: ["public"]`,
+  `id_token_signing_alg_values_supported`, the algorithms of the published
+  keys, and `claims_supported`, the federation token's claims.
+- **Keys.** `GET /.well-known/jwks` answers the federation signing keys
+  alone, `next`, `active` and `retiring`, sorted by `kid`, each with `use:
+  sig` and `alg`, and never a certificate or a private member. The first
+  read creates the first federation key, and a `next` key is listed 48 hours
+  before it signs.
+- **Controls.** Both answer `GET` and `HEAD` with no credential and
+  `Cache-Control: public, max-age=3600`, whatever the organization's tier,
+  each request drawing on the client address's standard budget. An issuer
+  with a path, such as `https://host/federation`, serves both under that
+  path too; an issuer on another host is the proxy's to route. With
+  `auth.signing.rotation: manual`, the JWKS answer is what an operator
+  uploads to a relying party that cannot reach the server.
+
 #### The operator API
 
 The operator API under `/operator/v1` creates the installation's
@@ -288,8 +312,8 @@ To bootstrap an installation:
 | `auth.session.max_age` | | `INFRAWEAVE_AUTH_SESSION_MAX_AGE` | `10h`: a browser session's absolute lifetime, which its CLI tokens share; must be positive |
 | `auth.signing.backend` | | `INFRAWEAVE_AUTH_SIGNING_BACKEND` | `local`: signing keys generated in process and sealed under the keyring; `kms` signs through the KMS keys of `auth.signing.kms_keys`, whose private halves never enter infraweave |
 | `auth.signing.rotation` | | `INFRAWEAVE_AUTH_SIGNING_ROTATION` | `automatic`: the daily `authn.keys.rotate` task replaces each local signing key, `api-token` and `federation` alike, every 90 days, and moves to a KMS key added to `auth.signing.kms_keys` or `auth.federation.kms_keys`; `manual` never replaces one, and is refused with `kms` |
-| `auth.federation.issuer` | | `INFRAWEAVE_AUTH_FEDERATION_ISSUER` | `server.public_url`: the `iss` of OIDC federation tokens; an absolute `http` or `https` URL without a query or fragment, `https` for a cloud relying party |
-| `auth.federation.jwks_uri` | | `INFRAWEAVE_AUTH_FEDERATION_JWKS_URI` | `<issuer>/.well-known/jwks`: the discovery document's `jwks_uri`; an absolute `http` or `https` URL without a query or fragment |
+| `auth.federation.issuer` | | `INFRAWEAVE_AUTH_FEDERATION_ISSUER` | `server.public_url`: the `iss` of OIDC federation tokens and the `issuer` of their discovery document; an absolute `http` or `https` URL without a query or fragment, `https` for a cloud relying party. A path, of segments of letters, digits and `-._~`, serves the discovery routes under it too |
+| `auth.federation.jwks_uri` | | `INFRAWEAVE_AUTH_FEDERATION_JWKS_URI` | `<issuer>/.well-known/jwks`: the discovery document's `jwks_uri`, answered verbatim; an absolute `http` or `https` URL without a query or fragment, for a JWKS the operator serves elsewhere |
 | `auth.federation.audience` | | `INFRAWEAVE_AUTH_FEDERATION_AUDIENCE` | the issuer's host: the prefix of a federation token's `aud`, which the account's slug follows |
 | `auth.federation.algorithm` | | `INFRAWEAVE_AUTH_FEDERATION_ALGORITHM` | `RS256`: what the federation signing keys sign, `RS256` or `PS256` on RSA 3072, or `ES256` on P-256. The first federation token signed, or the first read of the published keys, creates the first federation key; the daily rotation never does. Each successor is published 48 hours before it signs. A change applies to the next key under `local`; under `kms` every reference opens for the new algorithm at start, and a key created for another refuses to sign |
 | `auth.oidc_api_keys.allowed_issuers` | | `INFRAWEAVE_AUTH_OIDC_API_KEYS_ALLOWED_ISSUERS` (comma-separated) | none: an OIDC API key may name any `https` issuer; when set, only these, at creation and at every exchange |

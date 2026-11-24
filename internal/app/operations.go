@@ -626,6 +626,8 @@ var apiOperations = sync.OnceValue(func() Operations {
 	}
 	ops[http.MethodGet+" "+accessapi.OAuthAuthorizePattern] = Operation{Public: true}
 	ops[http.MethodPost+" "+accessapi.OAuthTokenPattern] = Operation{Public: true}
+	maps.Copy(ops, federationDiscoveryOperations(
+		[]string{accessapi.FederationDiscoveryPattern, accessapi.FederationJWKSPattern}))
 	// The fs driver's signed URLs carry their credential in the token,
 	// which the driver verifies; a bearer check in front would answer 401
 	// to every one. Each draws on the standard budget of the client's
@@ -690,6 +692,31 @@ var apiOperations = sync.OnceValue(func() Operations {
 	ops[http.MethodPut+" "+stateapi.UploadPattern] = Operation{Public: true, OwnBodyBound: true}
 	return ops
 })
+
+// federationDiscoveryOperations are the route-table entries of the
+// federation issuer's discovery document and JWKS at patterns, for GET
+// and HEAD. They depart from the shared controls:
+//   - Authentication: none; a relying party fetches both with no
+//     credential.
+//   - Feature gates: none; one issuer serves every organization of the
+//     installation, so no organization's tier is in scope. oidc-federation
+//     gates where a token is minted and the subject template.
+//   - Uncacheable answers: both answer Cache-Control: public,
+//     max-age=3600; they are the same for every caller and hold no
+//     credential.
+//
+// Each request is a standard draw on the client's address.
+//
+// ref: decision 0003 § "API surfaces"; decision 0006 § "OIDC federation token"
+func federationDiscoveryOperations(patterns []string) Operations {
+	ops := make(Operations, 2*len(patterns))
+	for _, p := range patterns {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			ops[method+" "+p] = Operation{Public: true, Cost: ratelimit.Standard}
+		}
+	}
+	return ops
+}
 
 // Guards hold the state of the API's controls: the operator's switch, the
 // rate-limit buckets and the idempotency keys. serve keeps all three in

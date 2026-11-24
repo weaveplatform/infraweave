@@ -167,6 +167,9 @@ type Domain struct {
 	// publicURL is server.public_url, whose origin a browser session's
 	// write must carry.
 	publicURL string
+	// federationIssuer is auth.federation.issuer, or server.public_url
+	// when it is empty, and federationJWKSURI auth.federation.jwks_uri.
+	federationIssuer, federationJWKSURI string
 }
 
 // BindLoginEvaluator supplies account-entry evaluation after policies exists.
@@ -185,6 +188,10 @@ func New(d Deps) (*Domain, error) {
 	runIssuer := d.Settings.RunAPIToken.Issuer
 	if runIssuer == "" {
 		runIssuer = d.PublicURL
+	}
+	federationIssuer := d.Settings.Federation.Issuer
+	if federationIssuer == "" {
+		federationIssuer = d.PublicURL
 	}
 	now := d.Now
 	if now == nil {
@@ -313,8 +320,10 @@ func New(d Deps) (*Domain, error) {
 		spaces: space.NewService(
 			space.Deps{Store: store, Authz: decide, Now: now},
 		),
-		manual:    manual,
-		publicURL: d.PublicURL,
+		manual:            manual,
+		publicURL:         d.PublicURL,
+		federationIssuer:  federationIssuer,
+		federationJWKSURI: d.Settings.Federation.JWKSURI,
 	}, nil
 }
 
@@ -373,19 +382,20 @@ func (d *Domain) Seats(ctx context.Context, org kernel.OrganizationID, acct kern
 
 // Routes mounts the domain's pages and protocols beside the APIs on r:
 // the break-glass login at accessapi.LoginPattern, the sign-in through an
-// organization's identity providers at the sign-in and OIDC patterns, and
-// the authorization server's endpoints at the OAuth patterns. A nil domain's answer 501, as
-// its API partial's operations do, so the routes the controls know of
-// exist.
+// organization's identity providers at the sign-in and OIDC patterns, the
+// authorization server's endpoints at the OAuth patterns, and the
+// federation issuer's discovery document and JWKS at
+// FederationDiscoveryPatterns. A nil domain's answer 501, as its API
+// partial's operations do, so the routes the controls know of exist.
 func (d *Domain) Routes(r chi.Router) {
 	if d == nil {
-		for _, p := range []string{
+		for _, p := range append([]string{
 			accessapi.LoginPattern, accessapi.SignInPattern, accessapi.SignInOrganizationPattern,
 			accessapi.SignInProviderPattern, accessapi.OIDCCallbackPattern,
 			accessapi.OIDCBackchannelLogoutPattern, accessapi.OAuthMetadataPattern,
 			accessapi.OAuthRegisterPattern, accessapi.OAuthAuthorizePattern,
 			accessapi.OAuthTokenPattern,
-		} {
+		}, d.FederationDiscoveryPatterns()...) {
 			r.HandleFunc(p, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
 				problem.Write(w, problem.NotImplemented.New("No access domain serves this route."))
 			})
@@ -395,6 +405,18 @@ func (d *Domain) Routes(r chi.Router) {
 	http.NewLogin(d.authn, d.publicURL).Routes(r)
 	http.NewSignIn(d.signIn, d.authn).Routes(r)
 	http.NewOAuth(d.oauth).Routes(r)
+	http.NewFederationDiscovery(d.federation, d.federationIssuer, d.federationJWKSURI).Routes(r)
+}
+
+// FederationDiscoveryPatterns are the routes Routes serves the federation
+// issuer's discovery document and JWKS at, for GET and HEAD:
+// accessapi's federation patterns and, for an issuer with a path, both
+// under that path too. A nil domain's are accessapi's.
+func (d *Domain) FederationDiscoveryPatterns() []string {
+	if d == nil {
+		return http.FederationDiscoveryPatterns("")
+	}
+	return http.FederationDiscoveryPatterns(d.federationIssuer)
 }
 
 // Authenticator is the middleware that authenticates the API's requests.

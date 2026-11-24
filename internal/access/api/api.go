@@ -141,6 +141,19 @@ const (
 	OAuthTokenPattern     = "/oauth/token" //nolint:gosec // a route, not a credential
 )
 
+// The federation issuer's discovery routes, outside the API's base URL
+// where OIDC discovery looks for them: the discovery document, at the
+// path a relying party appends to the issuer, and the JWKS of the
+// federation keys. Neither takes a credential. An issuer with a path
+// serves both under that path too, as the access domain's
+// FederationDiscoveryPatterns say.
+//
+// ref: decision 0006 § "OIDC federation token"
+const (
+	FederationDiscoveryPattern = "/.well-known/openid-configuration"
+	FederationJWKSPattern      = "/.well-known/jwks"
+)
+
 // Authorizer decides the authorization checks the same way for every
 // domain: whether a principal may perform an action in a space, every
 // space of its account in which it may, for filtering a list by
