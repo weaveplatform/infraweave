@@ -60,6 +60,17 @@ can select `-run '^TestUnit'` and `make accept` `-run '^TestAcc'`.
   Teams, cloud STS endpoints and AI model providers each get a fake in a
   `…fake` package beside their client, with fault modes (5xx, timeout,
   malformed body, slow body, rate-limit response) selectable per request.
+  The GitHub fake also serves GitHub's OAuth authorize and token routes and
+  its user, e-mail, team and organization membership reads, for the GitHub
+  OAuth sign-in (decision 0006).
+- Security-key ceremonies use `github.com/descope/virtualwebauthn` as the
+  authenticator, in unit tests and in acceptance steps that act as the
+  browser; the console's journeys use Chrome's virtual authenticator
+  through Playwright. Both sign with P-256 or RSA-2048 under SHA-256, so
+  they run in the certified FIPS mode.
+- A SCIM compliance run with `scim2-tester` against a subprocess server is
+  an optional job; it does not block merges, and `auth/scim.feature`
+  carries the request sequences of Entra ID and Okta that must pass.
 - SQL is not mocked. Code that talks to PostgreSQL or object storage keeps
   its decision logic in plain functions with unit tests, and its queries
   are covered by the contract suites below.
@@ -141,7 +152,8 @@ everywhere, and the reason names where the contract checks it instead.
 | `@terraform-plans` | the same real dependencies as its `@terraform` plan-artifact scenarios | selects the plan-artifact workload into its own required partition; it never replaces the actual dependency tags |
 | `@tofu` | a pinned OpenTofu release, checked the same way | a real run (below) |
 | `@terragrunt` | a pinned Terragrunt release, checked against its signed `SHA256SUMS`, beside `@terraform` or `@tofu` | a Terragrunt stack's run and its units' workspaces |
-| `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims | SSO login, OIDC API keys, verifying infraweave's own run tokens from its JWKS (decision 0006) |
+| `@oidc` | an in-process chi OIDC issuer: discovery, JWKS, token minting with chosen claims, and an authorization code flow with PKCE whose faults a step chooses (`x5c` in the JWKS, a rotated or unknown key, a wrong nonce, issuer or algorithm, a missing `auth_time`); and the navikt mock-oauth2-server container at its committed digest, whose issuers are path segments and whose sign-in form takes the subject and claims | SSO sign-in, logout and linking through a third-party issuer, faults through the in-process one; OIDC API keys; verifying infraweave's own run tokens from its JWKS (decision 0006) |
+| `@saml` | an in-process SAML identity provider on `github.com/crewjam/saml/x/samlidp`, signing with SHA-256 under an RSA-2048 key, whose subject, NameID format and attributes a step chooses | SAML sign-in, its refusals and IdP-initiated redirects (decision 0006) |
 | `@vault` | Vault in dev mode, with the Transit engine mounted and a Transit key per scenario | the `vault` KEK provider: rewrapping the data keys to Vault, and servers that run on it ([0013](0013-secrets-at-rest.md)) |
 | `@vcs` | Gitea container as the raw Git host, with a repository seeded per scenario; each provider's chi fake sends signed deliveries over HTTP and records received checks, statuses and comments | provider-shaped intake and feedback through the real server; raw Git stays under `sourcetest` (decision 0012) |
 | `@vcs-lab` | nothing: the scenario reads the repositories the `vcs-lab` job created from its environment | the same scenarios against the real providers; only the `vcs-lab` job runs them, and every partition excludes the tag |
