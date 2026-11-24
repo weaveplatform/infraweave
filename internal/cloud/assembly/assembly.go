@@ -174,6 +174,11 @@ func (d *Domain) SpaceGuard() accessapi.SpaceGuard { return d.svc.SpaceGuard() }
 // moves, which internal/app registers there.
 func (d *Domain) StackGuard() stacksapi.StackGuard { return d.svc.StackGuard() }
 
+// StackAwsAttachments answers each stack's AWS integration attachments
+// that its reader may see, a back edge internal/app binds into the stacks
+// domain, whose view lists them in a stack's attachedAwsIntegrations.
+func (d *Domain) StackAwsAttachments() stacksapi.StackAwsAttachments { return d.svc }
+
 // SpaceOf finds an integration's space by its ID, which internal/app
 // registers with the access domain for Entity.
 func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.svc.SpaceOf }

@@ -406,6 +406,41 @@ type StackConfiguration interface {
 	RuntimeConfig(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]ConfigElementWithSource, error)
 }
 
+// AwsAttachment is an AWS integration attachment as the stack view reads
+// it: the attachment's ID, the integration it attaches with that
+// integration's name, role, session duration in seconds, labels and
+// whether a private worker assumes its role or it is a stack's legacy AWS
+// role, the external ID its role is assumed with, the sides it serves,
+// and whether the integration's labels attach it rather than a stored
+// attachment.
+type AwsAttachment struct {
+	ID           string
+	Integration  kernel.ULID
+	Name         string
+	RoleARN      string
+	ExternalID   string
+	Duration     int32
+	Labels       []string
+	Worker       bool
+	Legacy       bool
+	Read, Write  bool
+	Autoattached bool
+}
+
+// StackAwsAttachments is what the stack view reads of the cloud domain,
+// which is constructed after stacks and implements it: the AWS
+// integration attachments that serve each of the account's stacks,
+// stored and computed from labels, keyed by stack ID, with a stack none
+// serves absent. It leaves out an attachment whose integration lives in a
+// space the principal may not read, and reads a whole page of stacks in a
+// fixed number of queries. The stacks domain declares it, so the back
+// edge internal/app binds after construction adds no import.
+//
+// ref: decision 0004
+type StackAwsAttachments interface {
+	AwsAttachments(ctx context.Context, p kernel.Principal, stacks []kernel.ULID) (map[kernel.ULID][]AwsAttachment, error)
+}
+
 // StackStatus is what the stack view reads of the runs domain, which is
 // constructed after stacks and implements it: the run blocking each of
 // the account's stacks, the run that holds its run lock, keyed by stack

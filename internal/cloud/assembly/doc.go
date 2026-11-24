@@ -7,7 +7,9 @@
 // access domain decides an integration's and an attachment's operations
 // on; Purge deletes a deleted account's integrations and attachments
 // PurgeBatch rows at a time, which internal/app runs for each
-// accessapi.Deleted. Settings are cloud.aws, where the server reaches
+// accessapi.Deleted; StackAwsAttachments is the
+// stacksapi.StackAwsAttachments internal/app binds into stacks, whose view
+// lists each stack's attachments. Settings are cloud.aws, where the server reaches
 // AWS STS with the credentials of the SDK's default chain.
 //
 // # Input and output

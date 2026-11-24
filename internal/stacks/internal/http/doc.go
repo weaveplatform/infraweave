@@ -14,7 +14,10 @@
 // there, its attached contexts and config elements from the
 // stacksapi.StackConfiguration BindConfiguration binds, read once for a
 // whole page and empty until one is bound, with a write-only value left
-// out, its branch head and tracked commit as the vcs domain resolved
+// out, its AWS integration attachments, stored and computed from labels,
+// from the stacksapi.StackAwsAttachments BindAwsAttachments binds, read
+// once for a whole page, without those whose integration lives in a space
+// the caller may not read, and empty until one is bound, its branch head and tracked commit as the vcs domain resolved
 // them, its state and blocked from the runs domain's projection, its
 // blocker from the stacksapi.StackStatus SetStackStatus binds, none until
 // one is bound, with the blocker's plan delta while it waits in

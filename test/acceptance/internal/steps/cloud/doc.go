@@ -1,6 +1,6 @@
 // Package cloud holds the acceptance steps of features/cloud: AWS
-// integrations and the AWS STS their trust checks assume roles through,
-// which a fake serves.
+// integrations, the attachments a stack lists, and the AWS STS their
+// trust checks assume roles through, which a fake serves.
 //
 // # Input and output
 //

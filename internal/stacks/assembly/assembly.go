@@ -145,6 +145,11 @@ func (d *Domain) BindConfiguration(c stacksapi.StackConfiguration) {
 	d.api.BindConfiguration(c)
 }
 
+// BindAwsAttachments binds the cloud domain's reader of each stack's AWS
+// integration attachments, a back edge internal/app binds after it
+// constructs that domain; until then a stack lists none.
+func (d *Domain) BindAwsAttachments(a stacksapi.StackAwsAttachments) { d.api.BindAwsAttachments(a) }
+
 // BindPolicies binds readable policy attachments after policies construction.
 func (d *Domain) BindPolicies(p stacksapi.StackPolicies) { d.api.BindPolicies(p) }
 

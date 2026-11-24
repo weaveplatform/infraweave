@@ -8,10 +8,11 @@ import (
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
 
-// unbound is the configuration, run status and state of a server whose
-// configuration, runs and state domains are not bound: no stack has a
-// context, a config element or an output, no run blocks one, no run
-// exists, and no stack is rolled back.
+// unbound is the configuration, run status, state and cloud integrations
+// of a server whose configuration, runs, state and cloud domains are not
+// bound: no stack has a context, a config element, an output or an AWS
+// integration attachment, no run blocks one, no run exists, and no stack
+// is rolled back.
 type unbound struct{}
 
 func (unbound) AttachedPolicies(context.Context, kernel.Principal, []kernel.ULID) (map[kernel.ULID][]stacksapi.AttachedPolicy, error) {
@@ -50,9 +51,14 @@ func (unbound) RuntimeConfig(context.Context, kernel.AccountID, []kernel.ULID) (
 	return map[kernel.ULID][]stacksapi.ConfigElementWithSource{}, nil
 }
 
+func (unbound) AwsAttachments(context.Context, kernel.Principal, []kernel.ULID) (map[kernel.ULID][]stacksapi.AwsAttachment, error) {
+	return map[kernel.ULID][]stacksapi.AwsAttachment{}, nil
+}
+
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
+	aws       stacksapi.StackAwsAttachments
 	policies  stacksapi.StackPolicies
 	requests  stacksapi.PullRequestReader
 	config    stacksapi.StackConfiguration
@@ -86,6 +92,26 @@ func (s Server) BindPullRequests(r stacksapi.PullRequestReader) { s.edges.reques
 // BindConfiguration makes c the configuration every copy of s reads. It
 // runs during construction, before the server serves a request.
 func (s Server) BindConfiguration(c stacksapi.StackConfiguration) { s.edges.config = c }
+
+// BindAwsAttachments makes a what every copy of s reads a stack's AWS
+// integration attachments through. It runs during construction, before
+// the server serves a request.
+func (s Server) BindAwsAttachments(a stacksapi.StackAwsAttachments) { s.edges.aws = a }
+
+// awsAttachmentViews are a stack's AWS integration attachments as the API
+// answers them.
+func awsAttachmentViews(as []stacksapi.AwsAttachment) []api.StackAwsIntegrationAttachment {
+	out := make([]api.StackAwsIntegrationAttachment, 0, len(as))
+	for _, a := range as {
+		out = append(out, api.StackAwsIntegrationAttachment{
+			Id: a.ID, IntegrationId: a.Integration.String(), Name: a.Name, RoleArn: a.RoleARN,
+			ExternalId: a.ExternalID, DurationSeconds: a.Duration, Labels: orEmpty(a.Labels),
+			GenerateCredentialsInWorker: a.Worker, Legacy: a.Legacy, Read: a.Read, Write: a.Write,
+			IsAutoattached: a.Autoattached,
+		})
+	}
+	return out
+}
 
 // SetStackStatus makes st the run status every copy of s reads. It runs
 // during construction, before the server serves a request.
