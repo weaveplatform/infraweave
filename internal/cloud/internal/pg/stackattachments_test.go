@@ -81,6 +81,23 @@ func TestAccStackAttachments(t *testing.T) {
 	if none, err := f.svc.AwsAttachments(ctx, f.admin, nil); err != nil || len(none) != 0 {
 		t.Fatalf("no stacks' attachments = %+v, %v", none, err)
 	}
+	bare := stacksapi.Stack{ID: kernel.NewULID(), Account: f.acct, Slug: "bare", Name: "Bare", Space: f.sp["hidden"]}
+	f.stacks.all["bare"] = bare
+	if none, err := f.svc.AwsAttachments(ctx, f.admin, []kernel.ULID{bare.ID}); err != nil || len(none) != 0 {
+		t.Fatalf("an unattached stack's attachments = %+v, %v", none, err)
+	}
+	nodes, err := f.spaces.Tree(ctx, f.acct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := core.Tree{}
+	for _, n := range nodes {
+		tree[n.ID] = n
+	}
+	one, err := f.svc.Effective(ctx, f.acct, f.web, []string{"prod"}, tree)
+	if err != nil || len(one) != 2 || one[0].ID != direct.ID || one[1].Integration != worker.ID || !one[1].Auto {
+		t.Fatalf("web's effective attachments = %+v, %v", one, err)
+	}
 
 	f.accountsBroken(t)
 	if _, err := f.svc.AwsAttachments(ctx, f.admin, []kernel.ULID{f.web.ID}); !errors.Is(err, errBroken) {
