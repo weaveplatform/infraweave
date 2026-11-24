@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/go-chi/chi/v5"
+	jose "github.com/go-jose/go-jose/v4"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek/kektest"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
@@ -25,10 +27,12 @@ import (
 )
 
 const (
-	// KeyEnv names the key version the live test signs with, by its key
-	// ID, https://<vault>/keys/<name>/<version>, which
+	// KeyEnv names the EC P-256 key version the live test signs ES256
+	// with, and RSAKeyEnv the RSA 3072 one it signs RS256 and PS256 with,
+	// each by its key ID, https://<vault>/keys/<name>/<version>, which
 	// test/terraform/platform/kek/azure creates.
-	KeyEnv = "INFRAWEAVE_TEST_AZUREKV_SIGNING_KEY"
+	KeyEnv    = "INFRAWEAVE_TEST_AZUREKV_SIGNING_KEY"
+	RSAKeyEnv = "INFRAWEAVE_TEST_AZUREKV_FEDERATION_KEY"
 	// RecordEnv set to 1 makes the live test write the fixture.
 	RecordEnv = "INFRAWEAVE_TEST_RECORD"
 	fixture   = "testdata/azurekv.json"
@@ -54,10 +58,11 @@ func options(srv *httptest.Server) azurekv.Options {
 	}
 }
 
-// fake models Key Vault's getKey and sign for one EC key version, signing
-// with f. key and sign, when set, edit the answers.
+// fake models Key Vault's getKey and sign for one key version, signing
+// with f under alg. key and sign, when set, edit the answers.
 type fake struct {
 	f    signertest.Fake
+	alg  jose.SignatureAlgorithm
 	key  func(map[string]any)
 	sign func(map[string]any)
 	t    *testing.T
@@ -78,10 +83,17 @@ func (k *fake) open(t *testing.T, ref string) (*azurekv.Signer, error) {
 		switch {
 		case req.Method == http.MethodGet && strings.Count(req.URL.Path, "/") == 3:
 			b64 := base64.RawURLEncoding.EncodeToString
-			key := map[string]any{
-				"kid": kid, "kty": "EC", "crv": "P-256", "key_ops": []string{"sign", "verify"},
-				"x": b64(k.f.Key.X.FillBytes(make([]byte, 32))),
-				"y": b64(k.f.Key.Y.FillBytes(make([]byte, 32))),
+			key := map[string]any{"kid": kid, "key_ops": []string{"sign", "verify"}}
+			if pub := k.f.RSA(); pub != nil {
+				key["kty"], key["n"] = "RSA", b64(pub.N.Bytes())
+				key["e"] = b64(big.NewInt(int64(pub.E)).Bytes())
+			} else {
+				point, err := k.f.ECDSA().Bytes()
+				if err != nil {
+					k.t.Error(err)
+				}
+				key["kty"], key["crv"] = "EC", "P-256"
+				key["x"], key["y"] = b64(point[1:33]), b64(point[33:])
 			}
 			if k.key != nil {
 				k.key(key)
@@ -94,13 +106,13 @@ func (k *fake) open(t *testing.T, ref string) (*azurekv.Signer, error) {
 			}
 			_ = json.NewDecoder(req.Body).Decode(&in)
 			digest, _ := base64.RawURLEncoding.DecodeString(in.Value)
-			if in.Alg != "ES256" {
+			if in.Alg != string(k.alg) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			reply = map[string]any{
 				"kid":   kid,
-				"value": base64.RawURLEncoding.EncodeToString(k.f.Raw(k.t, digest)),
+				"value": base64.RawURLEncoding.EncodeToString(k.f.Raw(k.t, k.alg, digest)),
 			}
 			if k.sign != nil {
 				k.sign(reply)
@@ -114,20 +126,28 @@ func (k *fake) open(t *testing.T, ref string) (*azurekv.Signer, error) {
 	})
 	srv := httptest.NewTLSServer(r)
 	t.Cleanup(srv.Close)
-	return azurekv.New(t.Context(), strings.ReplaceAll(ref, "{vault}", srv.URL), options(srv))
+	return azurekv.New(t.Context(), strings.ReplaceAll(ref, "{vault}", srv.URL), k.alg, options(srv))
 }
 
-func newFake(t *testing.T) *fake { return &fake{f: signertest.NewFake(t), t: t} }
+func newFake(t *testing.T) *fake {
+	return &fake{f: signertest.NewFake(t), alg: signer.ES256, t: t}
+}
+
+func newRSAFake(t *testing.T, alg jose.SignatureAlgorithm) *fake {
+	return &fake{f: signertest.NewRSAFake(t, false), alg: alg, t: t}
+}
 
 const ref = "{vault}/keys/signing/0123456789abcdef"
 
-// TestUnitAzureKV runs the contract against the fake.
+// TestUnitAzureKV runs the contract against the fake for each algorithm.
 func TestUnitAzureKV(t *testing.T) {
-	s, err := newFake(t).open(t, ref)
-	if err != nil {
-		t.Fatal(err)
+	for _, k := range []*fake{newFake(t), newRSAFake(t, signer.RS256), newRSAFake(t, signer.PS256)} {
+		s, err := k.open(t, ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		signertest.Contract(t, s, k.alg, "azurekv:https://127.0.0.1:")
 	}
-	signertest.Contract(t, s, "azurekv:https://127.0.0.1:")
 }
 
 // TestUnitAzureKVRecorded runs the contract against Key Vault's recorded
@@ -144,16 +164,16 @@ func TestUnitAzureKVRecorded(t *testing.T) {
 	}
 	path, _, _ := strings.Cut(exchanges[0].Path, "?")
 	srv := kektest.Replay(t, fixture, true)
-	s, err := azurekv.New(t.Context(), srv.URL+path, options(srv))
+	s, err := azurekv.New(t.Context(), srv.URL+path, signer.ES256, options(srv))
 	if err != nil {
 		t.Fatal(err)
 	}
-	signertest.Contract(t, s, "azurekv:"+srv.URL+path)
+	signertest.Contract(t, s, signer.ES256, "azurekv:"+srv.URL+path)
 }
 
-// TestUnitAzureKVRefused checks that a reference without a version, a key
-// of another type or curve, and a signature of the wrong length are
-// refused, naming the reference.
+// TestUnitAzureKVRefused checks that a reference without a version, an
+// algorithm Key Vault does not sign, a key that cannot sign the algorithm,
+// and a signature of the wrong length are refused, naming the reference.
 func TestUnitAzureKVRefused(t *testing.T) {
 	for _, r := range []string{
 		"", "http://v.vault.azure.net/keys/k/1", "https://v.vault.azure.net/keys/k",
@@ -163,6 +183,7 @@ func TestUnitAzureKVRefused(t *testing.T) {
 		if _, err := azurekv.New(
 			t.Context(),
 			r,
+			signer.ES256,
 			azurekv.Options{Credential: token{}},
 		); !errors.Is(
 			err,
@@ -171,13 +192,26 @@ func TestUnitAzureKVRefused(t *testing.T) {
 			t.Errorf("%q: %v", r, err)
 		}
 	}
-	for name, change := range map[string]func(map[string]any){
-		"RSA":       func(k map[string]any) { k["kty"] = "RSA" },
-		"P-384":     func(k map[string]any) { k["crv"] = "P-384" },
-		"off curve": func(k map[string]any) { k["x"] = base64.RawURLEncoding.EncodeToString(make([]byte, 32)) },
+	if _, err := azurekv.New(t.Context(), "https://v.vault.azure.net/keys/k/1", jose.HS256,
+		azurekv.Options{Credential: token{}}); !errors.Is(err, signer.ErrAlgorithm) {
+		t.Errorf("HS256: %v", err)
+	}
+	for name, tc := range map[string]struct {
+		k      *fake
+		change func(map[string]any)
+	}{
+		"RSA for ES256": {newFake(t), func(k map[string]any) { k["kty"] = "RSA" }},
+		"P-384":         {newFake(t), func(k map[string]any) { k["crv"] = "P-384" }},
+		"oct":           {newFake(t), func(k map[string]any) { k["kty"] = "oct" }},
+		"off curve":     {newFake(t), func(k map[string]any) { k["x"] = base64.RawURLEncoding.EncodeToString(make([]byte, 32)) }},
+		"EC for RS256":  {&fake{f: signertest.NewFake(t), alg: signer.RS256, t: t}, nil},
+		"RSA 2048":      {&fake{f: signertest.NewRSA2048Fake(t), alg: signer.PS256, t: t}, nil},
+		"no exponent":   {newRSAFake(t, signer.RS256), func(k map[string]any) { delete(k, "e") }},
+		"wide exponent": {newRSAFake(t, signer.RS256), func(k map[string]any) { k["e"] = "AQAAAAAB" }},
+		"RSA-HSM 2048":  {&fake{f: signertest.NewRSA2048Fake(t), alg: signer.RS256, t: t}, func(k map[string]any) { k["kty"] = "RSA-HSM" }},
 	} {
-		k := newFake(t)
-		k.key = change
+		k := tc.k
+		k.key = tc.change
 		if _, err := k.open(
 			t,
 			ref,
@@ -206,7 +240,7 @@ func TestUnitAzureKVRefused(t *testing.T) {
 // TestUnitAzureKVUnreachable checks that a vault the backend cannot reach
 // fails naming the reference.
 func TestUnitAzureKVUnreachable(t *testing.T) {
-	_, err := azurekv.New(t.Context(), "https://127.0.0.1:1/keys/signing/1", azurekv.Options{
+	_, err := azurekv.New(t.Context(), "https://127.0.0.1:1/keys/signing/1", signer.ES256, azurekv.Options{
 		Credential: token{},
 		Client: &azkeys.ClientOptions{ClientOptions: azcore.ClientOptions{
 			Retry: policy.RetryOptions{MaxRetries: -1},
@@ -242,9 +276,27 @@ func TestAccAzureKVLive(t *testing.T) {
 			ClientOptions: azcore.ClientOptions{Transport: &http.Client{Transport: rec}},
 		}
 	}
-	s, err := azurekv.New(t.Context(), key, o)
+	s, err := azurekv.New(t.Context(), key, signer.ES256, o)
 	if err != nil {
 		t.Fatal(err)
 	}
-	signertest.Contract(t, s, "azurekv:"+key)
+	signertest.Contract(t, s, signer.ES256, "azurekv:"+key)
+}
+
+// TestAccAzureKVLiveRSA runs the contract against Key Vault's RSA key with
+// azidentity's default chain, under RS256 and PS256.
+func TestAccAzureKVLiveRSA(t *testing.T) {
+	key := os.Getenv(RSAKeyEnv)
+	for _, alg := range []jose.SignatureAlgorithm{signer.RS256, signer.PS256} {
+		t.Run(string(alg), func(t *testing.T) {
+			if key == "" {
+				t.Skipf("%s is not set: no Key Vault RSA key to sign %s with", RSAKeyEnv, alg)
+			}
+			s, err := azurekv.New(t.Context(), key, alg, azurekv.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			signertest.Contract(t, s, alg, "azurekv:"+key)
+		})
+	}
 }

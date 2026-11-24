@@ -21,16 +21,16 @@ the same project never collide.
 | Artifact Registry | A remote Docker repository proxying `https://ghcr.io`, since Cloud Run cannot pull from GHCR. Cloud Run pulls the pinned digest through it. |
 | Cloud SQL | PostgreSQL 18, Enterprise edition, zonal, private IP only, TLS required, IAM database authentication on. The database `infraweave` and the service account's IAM user, a member of `cloudsqlsuperuser`. |
 | GCS | A bucket with uniform access and public access prevention, emptied on destroy. |
-| Cloud KMS | A key ring with a symmetric key, `kek`, and an `EC_SIGN_P256_SHA256` key, `signing`. |
+| Cloud KMS | A key ring with a symmetric key, `kek`, an `EC_SIGN_P256_SHA256` key, `signing`, for API tokens, and an `RSA_SIGN_PKCS1_3072_SHA256` key, `federation`, for OIDC federation tokens. |
 | Secret Manager | The server's configuration file, mounted into the service. |
-| Identity | One runtime service account: `roles/cloudsql.instanceUser` conditioned to the instance; a custom role with `storage.objects.get`, `create` and `delete` on the bucket; Token Creator on itself, for keyless V4 signed URLs; Encrypter/Decrypter on `kek`; Signer and Public Key Viewer on `signing`; Secret Accessor on the configuration. |
+| Identity | One runtime service account: `roles/cloudsql.instanceUser` conditioned to the instance; a custom role with `storage.objects.get`, `create` and `delete` on the bucket; Token Creator on itself, for keyless V4 signed URLs; Encrypter/Decrypter on `kek`; Signer and Public Key Viewer on `signing` and `federation`; Secret Accessor on the configuration. |
 
 The root also enables the APIs it uses, and leaves them enabled on destroy.
 
 ### Server configuration
 
-`auth.signing.kms_keys` is a list of mappings, which no `INFRAWEAVE_*`
-variable can carry, so the whole configuration is one strict YAML file in
+`auth.signing.kms_keys` and `auth.federation.kms_keys` are lists of
+mappings, which no `INFRAWEAVE_*` variable can carry, so the whole configuration is one strict YAML file in
 Secret Manager, mounted at `/etc/infraweave/infraweave.yaml` and passed as
 `--config`. It holds no credential:
 
@@ -44,6 +44,7 @@ Secret Manager, mounted at `/etc/infraweave/infraweave.yaml` and passed as
 | `objectstore.driver`, `objectstore.gcs.bucket` | `gcs`, the bucket |
 | `secrets.kek.provider`, `secrets.kek.gcpkms.key_name` | `gcpkms`, the `kek` key |
 | `auth.signing.backend`, `auth.signing.kms_keys` | `kms`, `gcpkms` with the `signing` key's first version |
+| `auth.federation.algorithm`, `auth.federation.kms_keys` | `RS256`, `gcpkms` with the `federation` key's first version |
 | `auth.operator.keys` | `operator_keys` |
 
 ## Image
@@ -86,7 +87,7 @@ the owner search would never read the batch absent.
   `region`, `public_url`, the `api`, `worker` and `state` endpoints under
   it, `domain_name`, `load_balancer_ip`, the Cloud Run `service`, the
   `service_account`, the mapped `image`, the `bucket`, the `kms` key ring,
-  `kek` and `signing_key` version, the `database` instance, connection
+  `kek`, and the `signing_key` and `federation_key` versions, the `database` instance, connection
   name, private IP, name and user, and the `network` and `subnetwork`.
   Worker clusters reach `public_url` and trust it through the system roots.
 - `inventory`: `{kind, id, scope, owned, owner, lifecycle}` for every

@@ -390,6 +390,24 @@ func TestUnitLoadRejects(t *testing.T) {
 			"auth.signing.rotation",
 		},
 		{"relative issuer", "auth:\n  api_issuer: /iss\n", nil, "auth.api_issuer"},
+		{
+			"unknown federation algorithm",
+			"auth:\n  federation:\n    algorithm: RS512\n",
+			nil,
+			"auth.federation.algorithm",
+		},
+		{
+			"federation issuer with a query",
+			"auth:\n  federation:\n    issuer: https://iw.example.com/?a=1\n",
+			nil,
+			"auth.federation.issuer",
+		},
+		{
+			"kms without federation keys",
+			"auth:\n  signing:\n    backend: kms\n    kms_keys:\n      - {provider: vault, ref: transit/s/1}\n",
+			nil,
+			"auth.federation.kms_keys is required by auth.signing.backend kms",
+		},
 		{"short poll hold", "worker:\n  poll_timeout_max: 1s\n", nil, "worker.poll_timeout_max"},
 		{
 			"offline within a held poll",
@@ -552,8 +570,15 @@ auth:
       ttl: 2h
   signing:
     rotation: manual
+  federation:
+    issuer: https://iw.example.com/federation
+    jwks_uri: https://keys.example.com/jwks
+    audience: iw.example.com
+    algorithm: PS256
 `)
 	t.Setenv("INFRAWEAVE_AUTH_TOKENS_API_TTL", "3h")
+	t.Setenv("INFRAWEAVE_AUTH_TOKENS_FEDERATION_TTL", "20m")
+	t.Setenv("INFRAWEAVE_AUTH_FEDERATION_ALGORITHM", "ES256")
 	c, err := loadArgs(t, "--config", file)
 	if err != nil {
 		t.Fatal(err)
@@ -563,6 +588,14 @@ auth:
 		auth.APIIssuer != "https://issuer.example.com" || auth.Tokens.API.TTL != 3*time.Hour ||
 		auth.Signing.Rotation != "manual" || auth.Signing.Backend != "local" {
 		t.Errorf("auth = %+v, public URL %q", c.Auth, c.Server.PublicURL)
+	}
+	if f := auth.Federation; f.Issuer != "https://iw.example.com/federation" ||
+		f.JWKSURI != "https://keys.example.com/jwks" || f.Audience != "iw.example.com" ||
+		f.Algorithm != "ES256" || auth.Tokens.Federation.TTL != 20*time.Minute {
+		t.Errorf("auth.federation = %+v, federation ttl %s", f, auth.Tokens.Federation.TTL)
+	}
+	if d := Defaults().Auth; d.Federation.Algorithm != "RS256" || d.Tokens.Federation.TTL != time.Hour {
+		t.Errorf("federation defaults = %+v, %s; want RS256 and an hour", d.Federation, d.Tokens.Federation.TTL)
 	}
 	if err := c.Server.RequirePublicURL(); err != nil {
 		t.Error(err)

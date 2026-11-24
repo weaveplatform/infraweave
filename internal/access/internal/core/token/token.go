@@ -2,13 +2,11 @@ package token
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
 	"strconv"
-	"sync"
 	"time"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -115,26 +113,21 @@ type wire struct {
 // Service issues and verifies the api-token purpose's JWTs and rotates its
 // keys.
 type Service struct {
-	store  Store
+	keys   *keySet
 	issuer string
 	// runIssuer is an in-run API token's iss, auth.run_api_token.issuer.
 	runIssuer string
-	policy    Policy
 	now       func() time.Time
-
-	signMu   sync.Mutex
-	active   signer.Signer
-	loadedAt time.Time
-
-	verifyMu   sync.Mutex
-	public     map[string]jose.JSONWebKey
-	reloadedAt time.Time
 }
 
 // New returns the service over store. issuer is every token's iss, and
-// now is the clock.
+// now is the clock. The api-token purpose's keys sign ES256 whatever
+// policy's Algorithm.
 func New(store Store, issuer string, policy Policy, now func() time.Time) *Service {
-	return &Service{store: store, issuer: issuer, runIssuer: issuer, policy: policy, now: now}
+	policy.Algorithm = signer.ES256
+	return &Service{
+		keys: newKeySet(store, APIToken, policy, now), issuer: issuer, runIssuer: issuer, now: now,
+	}
 }
 
 // WithRunIssuer makes iss the iss of in-run API tokens, which a run's
@@ -162,10 +155,6 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 		r.Kind == KindWorker && r.WorkerSerial <= 0 || r.Kind != KindWorker && r.WorkerSerial != 0 {
 		return "", Claims{}, fmt.Errorf("%w: %+v", ErrRequest, r)
 	}
-	sg, err := s.signer(ctx)
-	if err != nil {
-		return "", Claims{}, err
-	}
 	now := s.now().UTC().Truncate(time.Second)
 	c := Claims{
 		Issuer:       s.issuerOf(r.Kind),
@@ -178,18 +167,11 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 		IssuedAt:     now,
 		Expiry:       now.Add(r.TTL),
 	}
-	js, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signer.ES256, Key: opaque{ctx: ctx, s: sg}},
-		(&jose.SignerOptions{}).WithType("JWT"),
-	)
-	if err != nil {
-		return "", Claims{}, fmt.Errorf("issue token: %w", err)
-	}
 	var serial json.RawMessage
 	if c.Kind == KindWorker {
 		serial = strconv.AppendInt(nil, c.WorkerSerial, 10)
 	}
-	raw, err := jwt.Signed(js).Claims(wire{
+	raw, err := s.keys.sign(ctx, wire{
 		Claims: jwt.Claims{
 			Issuer:    c.Issuer,
 			Subject:   c.Subject,
@@ -202,67 +184,16 @@ func (s *Service) Issue(ctx context.Context, r Request) (string, Claims, error) 
 		Kind:         c.Kind,
 		Scope:        c.Scope,
 		WorkerSerial: serial,
-	}).Serialize()
+	})
 	if err != nil {
-		return "", Claims{}, fmt.Errorf("issue token: %w", err)
+		return "", Claims{}, err
 	}
 	return raw, c, nil
 }
 
-// signer returns the active key's signer, reading which key is active at
-// most every SignerRefresh.
-func (s *Service) signer(ctx context.Context) (signer.Signer, error) {
-	s.signMu.Lock()
-	defer s.signMu.Unlock()
-	now := s.now()
-	if s.active != nil && now.Sub(s.loadedAt) < SignerRefresh {
-		return s.active, nil
-	}
-	id, err := s.activeKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-	sg, err := s.store.Signer(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("open signing key %s: %w", id, err)
-	}
-	s.active, s.loadedAt = sg, now
-	return sg, nil
-}
-
-// activeKey returns the active key's ID, creating the first key when the
-// purpose has none. Bootstrapping goes through Rotate, so replicas that
-// start together on an empty table agree on one key.
-func (s *Service) activeKey(ctx context.Context) (kernel.ULID, error) {
-	for range 2 {
-		keys, err := s.store.Keys(ctx, APIToken)
-		if err != nil {
-			return kernel.ULID{}, fmt.Errorf("read signing keys: %w", err)
-		}
-		for _, k := range keys {
-			if k.State == StateActive {
-				return k.ID, nil
-			}
-		}
-		if err := s.store.Rotate(ctx, APIToken, func(keys []Key) []Step {
-			return Policy{Manual: true, Refs: s.policy.Refs}.Plan(keys, s.now())
-		}); err != nil {
-			return kernel.ULID{}, fmt.Errorf("create the first signing key: %w", err)
-		}
-	}
-	return kernel.ULID{}, ErrNoKey
-}
-
-// Rotate is authn.keys.rotate: it applies the rotation due now.
-func (s *Service) Rotate(ctx context.Context) error {
-	now := s.now()
-	if err := s.store.Rotate(ctx, APIToken, func(keys []Key) []Step {
-		return s.policy.Plan(keys, now)
-	}); err != nil {
-		return fmt.Errorf("rotate signing keys: %w", err)
-	}
-	return nil
-}
+// Rotate applies the api-token purpose's rotation due now, one half of
+// authn.keys.rotate.
+func (s *Service) Rotate(ctx context.Context) error { return s.keys.rotate(ctx) }
 
 // Verify checks raw's signature against the key its kid names, and its
 // claims: ES256 only, the issuer of its iw_kind, exactly the one audience given, a
@@ -274,7 +205,7 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 		return Claims{}, fmt.Errorf("%w: %w", ErrToken, err)
 	}
 	kid := tok.Headers[0].KeyID // a compact JWS has exactly one signature
-	key, ok, err := s.publicKey(ctx, kid)
+	key, ok, err := s.keys.publicKey(ctx, kid)
 	if err != nil {
 		return Claims{}, err
 	}
@@ -337,7 +268,7 @@ func (s *Service) Verify(ctx context.Context, raw, audience string) (Claims, err
 // that are not retired, as ES256 signing keys. It reads the store each
 // call, so a key a rotation publishes is answered at once.
 func (s *Service) VerifyingKeys(ctx context.Context) (string, []jose.JSONWebKey, error) {
-	keys, err := s.store.Keys(ctx, APIToken)
+	keys, err := s.keys.store.Keys(ctx, APIToken)
 	if err != nil {
 		return "", nil, fmt.Errorf("read signing keys: %w", err)
 	}
@@ -348,51 +279,4 @@ func (s *Service) VerifyingKeys(ctx context.Context) (string, []jose.JSONWebKey,
 		out = append(out, pub)
 	}
 	return s.issuer, out, nil
-}
-
-// publicKey returns the public key kid names from this replica's cache,
-// reloading the cache when kid is unknown and the last reload is at least
-// reloadEvery old.
-func (s *Service) publicKey(ctx context.Context, kid string) (jose.JSONWebKey, bool, error) {
-	s.verifyMu.Lock()
-	defer s.verifyMu.Unlock()
-	if k, ok := s.public[kid]; ok {
-		return k, true, nil
-	}
-	now := s.now()
-	if s.public != nil && now.Sub(s.reloadedAt) < reloadEvery {
-		return jose.JSONWebKey{}, false, nil
-	}
-	keys, err := s.store.Keys(ctx, APIToken)
-	if err != nil {
-		return jose.JSONWebKey{}, false, fmt.Errorf("read signing keys: %w", err)
-	}
-	s.public = make(map[string]jose.JSONWebKey, len(keys))
-	for _, k := range keys {
-		s.public[k.Public.KeyID] = k.Public
-	}
-	s.reloadedAt = now
-	k, ok := s.public[kid]
-	return k, ok, nil
-}
-
-// opaque signs a JWS through a Signer: go-jose hands it the signing input,
-// and it signs the input's SHA-256.
-type opaque struct {
-	ctx context.Context //nolint:containedctx // go-jose's OpaqueSigner takes no context
-	s   signer.Signer
-}
-
-func (o opaque) Public() *jose.JSONWebKey {
-	k := o.s.Public()
-	return &k
-}
-
-func (o opaque) Algs() []jose.SignatureAlgorithm {
-	return []jose.SignatureAlgorithm{jose.SignatureAlgorithm(o.s.Public().Algorithm)}
-}
-
-func (o opaque) SignPayload(payload []byte, _ jose.SignatureAlgorithm) ([]byte, error) {
-	digest := sha256.Sum256(payload)
-	return o.s.Sign(o.ctx, digest[:]) //nolint:wrapcheck // go-jose wraps it
 }

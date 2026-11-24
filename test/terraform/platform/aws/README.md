@@ -16,8 +16,8 @@ draws it.
 | Server | an ECS Fargate cluster and a service of two tasks running `infraweave all`, each with a bootstrap container that writes the configuration file and creates the database role first; one CloudWatch log group |
 | Database | RDS for PostgreSQL 18 in the private subnets, with IAM database authentication, `rds.force_ssl`, encrypted storage, no backups, and its master password in a Secrets Manager secret RDS manages |
 | Objects | an S3 bucket that blocks public access, enforces bucket-owner ownership, refuses plain HTTP and empties on destroy |
-| Keys | a symmetric KMS key, the KEK, and an `ECC_NIST_P256` `SIGN_VERIFY` KMS key for token signing, each with an alias |
-| Identity | a task execution role (log writes, the master secret) and a task role, the server's identity: the bucket's objects, `kms:Encrypt` and `kms:Decrypt` on the KEK under the `infraweave=data-key` encryption context, `kms:GetPublicKey` and `kms:Sign` on the signing key, and `rds-db:connect` as the server's database role. Both trust only ECS tasks of this account and region |
+| Keys | a symmetric KMS key, the KEK, an `ECC_NIST_P256` `SIGN_VERIFY` KMS key for API token signing, and an `RSA_3072` `SIGN_VERIFY` KMS key for OIDC federation token signing, each with an alias |
+| Identity | a task execution role (log writes, the master secret) and a task role, the server's identity: the bucket's objects, `kms:Encrypt` and `kms:Decrypt` on the KEK under the `infraweave=data-key` encryption context, `kms:GetPublicKey` and `kms:Sign` on the signing and federation keys, and `rds-db:connect` as the server's database role. Both trust only ECS tasks of this account and region |
 
 Every resource name starts with `iwlab-` and ten hex digits of the owner's
 SHA-256, so two owners' platforms fit in one account. Every taggable
@@ -27,7 +27,7 @@ tasks included through the service's tag propagation.
 ### Server configuration
 
 The tasks run with `--config /etc/infraweave/config.yaml`. The file is the
-only way in for `auth.signing.kms_keys`, a list of mappings that no
+only way in for `auth.signing.kms_keys` and `auth.federation.kms_keys`, lists of mappings that no
 `INFRAWEAVE_*` variable carries, and Fargate mounts no file from outside a
 task. Each task's bootstrap container (`bootstrap_image`, which needs `sh` and
 `psql`) writes the file into task storage that the server container mounts
@@ -45,6 +45,7 @@ advisory lock, before the server container starts. The file sets:
 | `objectstore.driver`, `objectstore.s3.bucket`, `objectstore.s3.region` | `s3`, the bucket, `region` | `internal/platform/objectstore/config.go` |
 | `secrets.kek.provider`, `secrets.kek.awskms.key_id`, `.region` | `awskms`, the KEK's ARN, `region` | `internal/platform/crypt/kek/kek.go` |
 | `auth.signing.backend`, `auth.signing.kms_keys` | `kms`, `[{provider: awskms, ref: <signing key ARN>}]` | `internal/access/assembly/settings.go` |
+| `auth.federation.algorithm`, `auth.federation.kms_keys` | `RS256`, `[{provider: awskms, ref: <federation key ARN>}]` | `internal/access/assembly/settings.go` |
 | `auth.operator.keys` | `operator_keys` | `internal/access/assembly/settings.go` |
 
 The server container's environment adds `AWS_REGION`, which the IAM token
@@ -94,7 +95,7 @@ organization's own domain is enough.
 | `endpoints` | `{api, operator, worker, state}`: `/api/v1`, `/operator/v1`, `/worker/v1` and `/state/v1` below `public_url` |
 | `egress_ips` | the NAT gateway's address, which the tasks reach GHCR and the VCS providers from |
 | `bucket` | `{name, region}` |
-| `keys` | `{kek, signing}` key ARNs |
+| `keys` | `{kek, signing, federation}` key ARNs |
 | `log_group` | the tasks' log group |
 
 `inventory` lists every resource the root creates as `{kind, id, scope, owned,

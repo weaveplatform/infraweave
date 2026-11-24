@@ -34,6 +34,10 @@ const (
 	defaultWorkerTTL = time.Hour
 	defaultRunTTL    = 24 * time.Hour
 	defaultRunAPITTL = 3 * time.Hour
+	// The OIDC federation token's lifetime and its keys' algorithm.
+	// ref: decision 0006 § "Signing keys"
+	defaultFederationTTL       = time.Hour
+	defaultFederationAlgorithm = "RS256"
 	// A browser session's limits: idle and absolute. At the defaults both
 	// fall together; idle_timeout ends a session first only when an operator
 	// sets it below max_age.
@@ -57,9 +61,38 @@ type Settings struct {
 	Tokens      TokenSettings       `mapstructure:"tokens"`
 	Session     SessionSettings     `mapstructure:"session"`
 	Signing     SigningSettings     `mapstructure:"signing"`
+	Federation  FederationSettings  `mapstructure:"federation"`
 	OIDCAPIKeys OIDCAPIKeySettings  `mapstructure:"oidc_api_keys"`
 	Operator    OperatorSettings    `mapstructure:"operator"`
 }
+
+// FederationSettings are auth.federation: the OIDC federation tokens'
+// issuer, discovery and audience, and their signing keys' algorithm and,
+// under the kms backend, KMS keys.
+//
+// ref: decision 0006 § "OIDC federation token"
+type FederationSettings struct {
+	// Issuer is the federation token's iss; empty means
+	// server.public_url.
+	Issuer string `mapstructure:"issuer"`
+	// JWKSURI is the discovery document's jwks_uri; empty means the
+	// issuer's /.well-known/jwks.
+	JWKSURI string `mapstructure:"jwks_uri"`
+	// Audience is the prefix of a federation token's aud, which the
+	// account's slug follows; empty means the issuer's host.
+	Audience string `mapstructure:"audience"`
+	// Algorithm is what the federation keys sign: RS256 (RSA 3072, the
+	// default), PS256 or ES256 (P-256).
+	Algorithm string `mapstructure:"algorithm"`
+	// KMSKeys are the kms backend's federation keys, oldest first, in
+	// auth.signing.kms_keys' form, each able to sign Algorithm; the
+	// newest signs once it has been published for 48 hours.
+	KMSKeys []KMSKey `mapstructure:"kms_keys"`
+}
+
+// federationAlgorithms are the algorithms auth.federation.algorithm
+// names.
+var federationAlgorithms = []string{"RS256", "PS256", "ES256"}
 
 // OperatorSettings are auth.operator.
 type OperatorSettings struct {
@@ -114,6 +147,9 @@ type TokenSettings struct {
 	Worker Lifetime `mapstructure:"worker"`
 	Run    Lifetime `mapstructure:"run"`
 	RunAPI Lifetime `mapstructure:"run_api"`
+	// Federation is an OIDC federation token's, which bounds how long a
+	// retiring federation key stays published.
+	Federation Lifetime `mapstructure:"federation"`
 }
 
 // longest is the longest lifetime of a token the api-token signing keys
@@ -175,16 +211,19 @@ func DefaultSettings() Settings {
 			Worker:       Lifetime{TTL: defaultWorkerTTL},
 			Run:          Lifetime{TTL: defaultRunTTL},
 			RunAPI:       Lifetime{TTL: defaultRunAPITTL},
+			Federation:   Lifetime{TTL: defaultFederationTTL},
 		},
-		Session: SessionSettings{IdleTimeout: defaultIdleTimeout, MaxAge: defaultMaxAge},
-		Signing: SigningSettings{Backend: BackendLocal, Rotation: RotationAutomatic},
+		Session:    SessionSettings{IdleTimeout: defaultIdleTimeout, MaxAge: defaultMaxAge},
+		Signing:    SigningSettings{Backend: BackendLocal, Rotation: RotationAutomatic},
+		Federation: FederationSettings{Algorithm: defaultFederationAlgorithm},
 	}
 }
 
 // Validate rejects a lifetime that is not positive, an unknown backend or
-// rotation, an issuer that is not an absolute http or https URL, and an
-// allowed OIDC issuer that is not an absolute https URL. Errors name the
-// key.
+// rotation, an issuer or federation JWKS URI that is not an absolute http
+// or https URL, an unknown federation algorithm, federation KMS keys the
+// backend does not take or lacks, and an allowed OIDC issuer that is not
+// an absolute https URL. Errors name the key.
 func (s Settings) Validate() error {
 	var errs []error
 	if s.Tokens.API.TTL <= 0 {
@@ -201,6 +240,7 @@ func (s Settings) Validate() error {
 		{"auth.tokens.worker.ttl", s.Tokens.Worker.TTL},
 		{"auth.tokens.run.ttl", s.Tokens.Run.TTL},
 		{"auth.tokens.run_api.ttl", s.Tokens.RunAPI.TTL},
+		{"auth.tokens.federation.ttl", s.Tokens.Federation.TTL},
 		{"auth.session.idle_timeout", s.Session.IdleTimeout},
 		{"auth.session.max_age", s.Session.MaxAge},
 	} {
@@ -216,6 +256,7 @@ func (s Settings) Validate() error {
 			ErrConfig, s.Signing.Rotation, RotationAutomatic, RotationManual))
 	}
 	errs = append(errs, s.Signing.validateBackend()...)
+	errs = append(errs, s.Federation.validate(s.Signing)...)
 	if s.APIIssuer != "" {
 		if !absoluteURL(s.APIIssuer) {
 			errs = append(
@@ -297,28 +338,13 @@ func sha256Hex(s string) ([sha256.Size]byte, bool) {
 // to it.
 func (s SigningSettings) validateBackend() []error {
 	switch s.Backend {
-	case BackendLocal:
-		if len(s.KMSKeys) > 0 {
-			return []error{
-				fmt.Errorf("%w: auth.signing.kms_keys is set, but auth.signing.backend is %s",
-					ErrConfig, BackendLocal),
-			}
-		}
-		return nil
-	case BackendKMS:
+	case BackendLocal, BackendKMS:
 	default:
 		return []error{fmt.Errorf("%w: auth.signing.backend is %q, want %s or %s",
 			ErrConfig, s.Backend, BackendLocal, BackendKMS)}
 	}
-	var errs []error
-	if len(s.KMSKeys) == 0 {
-		errs = append(
-			errs,
-			fmt.Errorf("%w: auth.signing.kms_keys is required by auth.signing.backend %s",
-				ErrConfig, BackendKMS),
-		)
-	}
-	if s.Rotation == RotationManual {
+	errs := validateKMSKeys("auth.signing.kms_keys", s.Backend, s.KMSKeys)
+	if s.Backend == BackendKMS && s.Rotation == RotationManual {
 		errs = append(errs, fmt.Errorf(
 			"%w: auth.signing.rotation %s does not apply to auth.signing.backend %s, which rotates when a key is added",
 			ErrConfig,
@@ -326,27 +352,75 @@ func (s SigningSettings) validateBackend() []error {
 			BackendKMS,
 		))
 	}
+	return errs
+}
+
+// validateKMSKeys checks the KMS key list at key under backend: none
+// under the local backend, and under the kms backend at least one, each
+// of a known provider, with a reference, and named once. A kms
+// installation without federation keys would otherwise keep a federation
+// private key in its database.
+func validateKMSKeys(key, backend string, keys []KMSKey) []error {
+	if backend == BackendLocal {
+		if len(keys) > 0 {
+			return []error{fmt.Errorf("%w: %s is set, but auth.signing.backend is %s",
+				ErrConfig, key, BackendLocal)}
+		}
+		return nil
+	}
+	var errs []error
+	if len(keys) == 0 {
+		errs = append(errs, fmt.Errorf("%w: %s is required by auth.signing.backend %s",
+			ErrConfig, key, BackendKMS))
+	}
 	seen := map[string]bool{}
-	for i, k := range s.KMSKeys {
+	for i, k := range keys {
 		switch {
 		case !slices.Contains(kmsProviders, k.Provider):
 			errs = append(
 				errs,
-				fmt.Errorf("%w: auth.signing.kms_keys[%d].provider is %q, want one of %s",
-					ErrConfig, i, k.Provider, strings.Join(kmsProviders, ", ")),
+				fmt.Errorf("%w: %s[%d].provider is %q, want one of %s",
+					ErrConfig, key, i, k.Provider, strings.Join(kmsProviders, ", ")),
 			)
 		case k.Ref == "":
-			errs = append(
-				errs,
-				fmt.Errorf("%w: auth.signing.kms_keys[%d].ref is required", ErrConfig, i),
-			)
+			errs = append(errs, fmt.Errorf("%w: %s[%d].ref is required", ErrConfig, key, i))
 		case seen[k.String()]:
-			errs = append(
-				errs,
-				fmt.Errorf("%w: auth.signing.kms_keys[%d] repeats %s", ErrConfig, i, k),
-			)
+			errs = append(errs, fmt.Errorf("%w: %s[%d] repeats %s", ErrConfig, key, i, k))
 		}
 		seen[k.String()] = true
+	}
+	return errs
+}
+
+// validate checks auth.federation: an issuer and JWKS URI that are
+// absolute http or https URLs without a query or fragment, a known
+// algorithm, and KMS keys as validateKMSKeys checks them under the
+// signing backend, none of them an api-token key: the purposes' keys stay
+// apart. A relying party in a cloud needs https, which the deployment
+// provides.
+func (f FederationSettings) validate(s SigningSettings) []error {
+	var errs []error
+	for _, u := range []struct{ key, v string }{
+		{"auth.federation.issuer", f.Issuer}, {"auth.federation.jwks_uri", f.JWKSURI},
+	} {
+		if u.v != "" && !absoluteURL(u.v) {
+			errs = append(errs, fmt.Errorf("%w: %s %q is not an absolute http or https URL",
+				ErrConfig, u.key, u.v))
+		}
+	}
+	if !slices.Contains(federationAlgorithms, f.Algorithm) {
+		errs = append(errs, fmt.Errorf("%w: auth.federation.algorithm is %q, want one of %s",
+			ErrConfig, f.Algorithm, strings.Join(federationAlgorithms, ", ")))
+	}
+	if s.Backend != BackendLocal && s.Backend != BackendKMS {
+		return errs
+	}
+	errs = append(errs, validateKMSKeys("auth.federation.kms_keys", s.Backend, f.KMSKeys)...)
+	for i, k := range f.KMSKeys {
+		if slices.Contains(s.KMSKeys, k) {
+			errs = append(errs, fmt.Errorf("%w: auth.federation.kms_keys[%d] %s is also in auth.signing.kms_keys",
+				ErrConfig, i, k))
+		}
 	}
 	return errs
 }

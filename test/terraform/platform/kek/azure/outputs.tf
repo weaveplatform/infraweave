@@ -9,3 +9,9 @@ output "key_url" {
 output "signing_key_id" {
   value = azurerm_key_vault_key.signing.id
 }
+
+# INFRAWEAVE_TEST_AZUREKV_FEDERATION_KEY, which the signing live test signs
+# RS256 and PS256 with: the RSA key's ID with its version.
+output "federation_key_id" {
+  value = azurerm_key_vault_key.federation.id
+}

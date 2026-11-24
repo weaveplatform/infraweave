@@ -17,7 +17,7 @@ func TestUnitLocalBrokenKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	//nolint:staticcheck // an invalid key on purpose, which only the raw scalar makes
-	l := newLocal("broken", &ecdsa.PrivateKey{PublicKey: good.PublicKey, D: big.NewInt(0)})
+	l := newLocal("broken", ES256, &ecdsa.PrivateKey{PublicKey: good.PublicKey, D: big.NewInt(0)})
 	if _, err := l.PrivateKey(); err == nil {
 		t.Error("PrivateKey of a zero scalar succeeded")
 	}

@@ -29,9 +29,10 @@ output "platform" {
     image           = local.image
     bucket          = google_storage_bucket.objectstore.name
     kms = {
-      key_ring    = google_kms_key_ring.platform.id
-      kek         = google_kms_crypto_key.kek.id
-      signing_key = "${google_kms_crypto_key.signing.id}/cryptoKeyVersions/1"
+      key_ring       = google_kms_key_ring.platform.id
+      kek            = google_kms_crypto_key.kek.id
+      signing_key    = "${google_kms_crypto_key.signing.id}/cryptoKeyVersions/1"
+      federation_key = "${google_kms_crypto_key.federation.id}/cryptoKeyVersions/1"
     }
     database = {
       instance        = google_sql_database_instance.platform.name
@@ -64,6 +65,7 @@ output "inventory" {
       { kind = "custom-role", id = google_project_iam_custom_role.objectstore.id },
       { kind = "kms-crypto-key", id = google_kms_crypto_key.kek.id },
       { kind = "kms-crypto-key", id = google_kms_crypto_key.signing.id },
+      { kind = "kms-crypto-key", id = google_kms_crypto_key.federation.id },
       { kind = "sql-instance", id = "projects/${var.project_id}/instances/${google_sql_database_instance.platform.name}" },
       { kind = "artifact-registry-repository", id = google_artifact_registry_repository.ghcr.id },
       { kind = "secret", id = "secrets/${google_secret_manager_secret.config.secret_id}" },

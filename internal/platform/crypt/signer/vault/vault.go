@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -18,10 +19,14 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 )
 
-// keyType is the Transit key type that signs ES256.
-const keyType = "ecdsa-p256"
+// keyTypes are the Transit key types that sign each algorithm.
+var keyTypes = map[jose.SignatureAlgorithm][]string{
+	signer.ES256: {"ecdsa-p256"},
+	signer.RS256: {"rsa-3072", "rsa-4096"},
+	signer.PS256: {"rsa-3072", "rsa-4096"},
+}
 
-// Signer signs with one version of an ecdsa-p256 Transit key.
+// Signer signs with one version of a Transit key under one algorithm.
 type Signer struct {
 	client      *kekvault.Client
 	mount, name string
@@ -35,15 +40,20 @@ var _ signer.KMS = (*Signer)(nil)
 // Options are what a test changes: the KEK provider's.
 type Options = kekvault.Options
 
-// New opens ref, <mount>/<key name>/<version>, on the Vault c's address
-// and auth method name: the vault KEK provider's settings, whose Transit
-// key it does not need. It reads the version's public key once. A
-// reference without a version is signer.ErrRef, since a Transit key's
-// latest version changes when it rotates while signing_keys holds the
-// public half of one; a key that is not ecdsa-p256, or has no such
-// version, is signer.ErrKey.
-func New(ctx context.Context, c kek.VaultConfig, ref string, o Options) (*Signer, error) {
+// New opens ref, <mount>/<key name>/<version>, to sign alg, on the Vault
+// c's address and auth method name: the vault KEK provider's settings,
+// whose Transit key it does not need. It reads the version's public key
+// once. A reference without a version is signer.ErrRef, since a Transit
+// key's latest version changes when it rotates while signing_keys holds
+// the public half of one; a key whose type cannot sign alg, which takes
+// ecdsa-p256 for ES256 and rsa-3072 or rsa-4096 for RS256 and PS256, or
+// that has no such version, is signer.ErrKey.
+func New(ctx context.Context, c kek.VaultConfig, ref string, alg jose.SignatureAlgorithm, o Options) (*Signer, error) {
 	s := &Signer{ref: kek.Vault + ":" + ref}
+	types, ok := keyTypes[alg]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s: %q", signer.ErrAlgorithm, s.ref, alg)
+	}
 	i := strings.LastIndex(ref, "/")
 	j := strings.LastIndex(ref[:max(i, 0)], "/")
 	var err error
@@ -68,8 +78,9 @@ func New(ctx context.Context, c kek.VaultConfig, ref string, o Options) (*Signer
 	if err := s.client.Do(ctx, http.MethodGet, s.path("keys"), nil, &key); err != nil {
 		return nil, fmt.Errorf("%s: read key: %w", s.ref, err)
 	}
-	if key.Type != keyType {
-		return nil, fmt.Errorf("%w: %s is %s, want %s", signer.ErrKey, s.ref, key.Type, keyType)
+	if !slices.Contains(types, key.Type) {
+		return nil, fmt.Errorf("%w: %s is %s, want one of %s to sign %s",
+			signer.ErrKey, s.ref, key.Type, strings.Join(types, ", "), alg)
 	}
 	//nolint:tagliatelle // Vault's format
 	var version struct {
@@ -88,11 +99,11 @@ func New(ctx context.Context, c kek.VaultConfig, ref string, o Options) (*Signer
 			s.version,
 		)
 	}
-	pub, err := signer.ParsePKIX(s.ref, block.Bytes)
+	pub, err := signer.ParsePKIX(s.ref, alg, block.Bytes)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // names the reference
 	}
-	s.jwk = signer.JWK(pub, "")
+	s.jwk = signer.JWK(pub, "", alg)
 	return s, nil
 }
 
@@ -105,22 +116,31 @@ func (s *Signer) Ref() string { return s.ref }
 func (s *Signer) Public() jose.JSONWebKey { return s.jwk }
 
 // Sign asks Transit to sign digest as prehashed SHA-256 with the key's
-// version, marshaled as JWS's r || s, which Transit answers as
-// vault:v<version>:<base64url>.
+// version, marshaled as JWS carries it, which Transit answers as
+// vault:v<version>:<base64url>. An RSA key signs with pkcs1v15 for RS256
+// and with pss for PS256, whose salt Transit makes as long as the digest
+// only when salt_length says hash.
 func (s *Signer) Sign(ctx context.Context, digest []byte) ([]byte, error) {
-	if err := signer.CheckDigest(digest); err != nil {
+	if err := signer.CheckDigest(s.jwk.Algorithm, digest); err != nil {
 		return nil, err //nolint:wrapcheck // names itself
 	}
 	var out struct {
 		Signature string `json:"signature"`
 	}
-	if err := s.client.Do(ctx, http.MethodPost, s.path("sign"), map[string]any{
+	in := map[string]any{
 		"input":                base64.StdEncoding.EncodeToString(digest),
 		"prehashed":            true,
 		"hash_algorithm":       "sha2-256",
 		"marshaling_algorithm": "jws",
 		"key_version":          s.version,
-	}, &out); err != nil {
+	}
+	switch s.jwk.Algorithm {
+	case string(signer.RS256):
+		in["signature_algorithm"] = "pkcs1v15"
+	case string(signer.PS256):
+		in["signature_algorithm"], in["salt_length"] = "pss", "hash"
+	}
+	if err := s.client.Do(ctx, http.MethodPost, s.path("sign"), in, &out); err != nil {
 		return nil, fmt.Errorf("%s: sign: %w", s.ref, err)
 	}
 	enc, ok := strings.CutPrefix(out.Signature, "vault:v"+strconv.Itoa(s.version)+":")
@@ -132,7 +152,7 @@ func (s *Signer) Sign(ctx context.Context, digest []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w: %w", s.ref, signer.ErrSignature, err)
 	}
-	sig, err := signer.Raw(raw)
+	sig, err := signer.Raw(s.jwk, raw)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", s.ref, err)
 	}

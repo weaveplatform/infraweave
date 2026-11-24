@@ -15,6 +15,7 @@ import (
 
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/go-chi/chi/v5"
+	jose "github.com/go-jose/go-jose/v4"
 	"google.golang.org/api/option"
 	htransport "google.golang.org/api/transport/http"
 
@@ -26,9 +27,13 @@ import (
 )
 
 const (
-	// KeyEnv names the CryptoKeyVersion the live test signs with, which
-	// test/terraform/platform/kek/google creates.
-	KeyEnv = "INFRAWEAVE_TEST_GCPKMS_SIGNING_KEY"
+	// KeyEnv names the EC_SIGN_P256_SHA256 CryptoKeyVersion the live test
+	// signs ES256 with, PKCS1KeyEnv the RSA_SIGN_PKCS1_3072_SHA256 one it
+	// signs RS256 with and PSSKeyEnv the RSA_SIGN_PSS_3072_SHA256 one it
+	// signs PS256 with, which test/terraform/platform/kek/google creates.
+	KeyEnv      = "INFRAWEAVE_TEST_GCPKMS_SIGNING_KEY"
+	PKCS1KeyEnv = "INFRAWEAVE_TEST_GCPKMS_FEDERATION_PKCS1_KEY"
+	PSSKeyEnv   = "INFRAWEAVE_TEST_GCPKMS_FEDERATION_PSS_KEY"
 	// RecordEnv set to 1 makes the live test write the fixture.
 	RecordEnv = "INFRAWEAVE_TEST_RECORD"
 	fixture   = "testdata/gcpkms.json"
@@ -40,10 +45,12 @@ const (
 func crc(b []byte) string { return strconv.FormatInt(kekgcpkms.CRC32C(b).GetValue(), 10) }
 
 // fake models Cloud KMS's GetPublicKey and AsymmetricSign over REST for
-// one version, signing with f. change, when set, edits each answer.
+// one version of algorithm, signing with f under alg. change, when set,
+// edits each answer.
 type fake struct {
 	f         signertest.Fake
 	algorithm kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm
+	alg       jose.SignatureAlgorithm
 	change    func(op string, reply map[string]any)
 	t         *testing.T
 }
@@ -71,7 +78,7 @@ func (k *fake) open(t *testing.T) (*gcpkms.Signer, error) {
 				} `json:"digest"`
 			}
 			_ = json.NewDecoder(req.Body).Decode(&in)
-			sig := k.f.DER(k.t, in.Digest.Sha256)
+			sig := k.f.DER(k.t, k.alg, in.Digest.Sha256)
 			reply["signature"] = base64.StdEncoding.EncodeToString(sig)
 			reply["signatureCrc32c"], reply["verifiedDigestCrc32c"] = crc(sig), true
 		default:
@@ -85,7 +92,7 @@ func (k *fake) open(t *testing.T) (*gcpkms.Signer, error) {
 	})
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
-	s, err := gcpkms.New(t.Context(), recorded, option.WithEndpoint(srv.URL),
+	s, err := gcpkms.New(t.Context(), recorded, k.alg, option.WithEndpoint(srv.URL),
 		option.WithoutAuthentication())
 	if s != nil {
 		t.Cleanup(func() { _ = s.Close() })
@@ -97,17 +104,29 @@ func newFake(t *testing.T) *fake {
 	return &fake{
 		f:         signertest.NewFake(t),
 		algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
+		alg:       signer.ES256,
 		t:         t,
 	}
 }
 
-// TestUnitGCPKMS runs the contract against the fake.
+// newRSAFake is a version of algorithm, an RSA 3072 one, for alg.
+func newRSAFake(t *testing.T, algorithm kmspb.CryptoKeyVersion_CryptoKeyVersionAlgorithm, alg jose.SignatureAlgorithm) *fake {
+	return &fake{f: signertest.NewRSAFake(t, false), algorithm: algorithm, alg: alg, t: t}
+}
+
+// TestUnitGCPKMS runs the contract against the fake for each algorithm.
 func TestUnitGCPKMS(t *testing.T) {
-	s, err := newFake(t).open(t)
-	if err != nil {
-		t.Fatal(err)
+	for _, k := range []*fake{
+		newFake(t),
+		newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_3072_SHA256, signer.RS256),
+		newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256, signer.PS256),
+	} {
+		s, err := k.open(t)
+		if err != nil {
+			t.Fatal(err)
+		}
+		signertest.Contract(t, s, k.alg, "gcpkms:"+recorded)
 	}
-	signertest.Contract(t, s, "gcpkms:"+recorded)
 }
 
 // TestUnitGCPKMSRecorded runs the contract against Cloud KMS's recorded
@@ -117,31 +136,46 @@ func TestUnitGCPKMSRecorded(t *testing.T) {
 		t.Skipf("%s is not recorded yet: run TestAccGCPKMSLive with %s=1", fixture, RecordEnv)
 	}
 	srv := kektest.Replay(t, fixture, false)
-	s, err := gcpkms.New(t.Context(), recorded, option.WithEndpoint(srv.URL),
+	s, err := gcpkms.New(t.Context(), recorded, signer.ES256, option.WithEndpoint(srv.URL),
 		option.WithoutAuthentication())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	signertest.Contract(t, s, "gcpkms:"+recorded)
+	signertest.Contract(t, s, signer.ES256, "gcpkms:"+recorded)
 }
 
-// TestUnitGCPKMSRefused checks that a reference that is not a version, a
-// version of another algorithm, and answers whose integrity fields do not
-// confirm them are refused, naming the reference.
+// TestUnitGCPKMSRefused checks that a reference that is not a version,
+// an algorithm Cloud KMS does not sign, a version whose algorithm signs
+// another, a key its algorithm belies, and answers whose integrity fields
+// do not confirm them are refused, naming the reference.
 func TestUnitGCPKMSRefused(t *testing.T) {
 	for _, name := range []string{"", "projects/p/locations/l/keyRings/r/cryptoKeys/k"} {
-		if _, err := gcpkms.New(t.Context(), name); !errors.Is(err, signer.ErrRef) {
+		if _, err := gcpkms.New(t.Context(), name, signer.ES256); !errors.Is(err, signer.ErrRef) {
 			t.Errorf("%q: %v", name, err)
 		}
 	}
-	k := newFake(t)
-	k.algorithm = kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256
-	if _, err := k.open(
-		t,
-	); !errors.Is(err, signer.ErrKey) ||
+	if _, err := gcpkms.New(t.Context(), recorded, jose.HS256); !errors.Is(err, signer.ErrAlgorithm) ||
 		!strings.Contains(err.Error(), recorded) {
-		t.Errorf("RSA: %v", err)
+		t.Errorf("HS256: %v", err)
+	}
+	for name, k := range map[string]*fake{
+		"PSS for ES256":   newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256, signer.ES256),
+		"PSS for RS256":   newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PSS_3072_SHA256, signer.RS256),
+		"PKCS1 for PS256": newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_3072_SHA256, signer.PS256),
+		"PKCS1 2048":      newRSAFake(t, kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_2048_SHA256, signer.RS256),
+		"P-256 for RS256": {
+			f: signertest.NewFake(t), algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
+			alg: signer.RS256, t: t,
+		},
+		"algorithm belied": {
+			f: signertest.NewRSA2048Fake(t), algorithm: kmspb.CryptoKeyVersion_RSA_SIGN_PKCS1_3072_SHA256,
+			alg: signer.RS256, t: t,
+		},
+	} {
+		if _, err := k.open(t); !errors.Is(err, signer.ErrKey) || !strings.Contains(err.Error(), recorded) {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 	for name, change := range map[string]func(map[string]any){
 		"PEM changed":  func(r map[string]any) { r["pemCrc32c"] = "1" },
@@ -177,7 +211,7 @@ func TestUnitGCPKMSRefused(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	k = newFake(t)
+	k := newFake(t)
 	k.change = func(op string, r map[string]any) {
 		if op == "sign" {
 			r["signature"] = base64.StdEncoding.EncodeToString([]byte("sig"))
@@ -196,7 +230,7 @@ func TestUnitGCPKMSRefused(t *testing.T) {
 // TestUnitGCPKMSUnreachable checks that a Cloud KMS the backend cannot
 // reach fails naming the reference.
 func TestUnitGCPKMSUnreachable(t *testing.T) {
-	if _, err := gcpkms.New(t.Context(), recorded, option.WithEndpoint("http://127.0.0.1:1"),
+	if _, err := gcpkms.New(t.Context(), recorded, signer.ES256, option.WithEndpoint("http://127.0.0.1:1"),
 		option.WithoutAuthentication()); err == nil || !strings.Contains(err.Error(), recorded) {
 		t.Errorf("New: %v", err)
 	}
@@ -205,9 +239,27 @@ func TestUnitGCPKMSUnreachable(t *testing.T) {
 var project = regexp.MustCompile(`^projects/([^/]+)/`)
 
 // TestAccGCPKMSLive runs the contract against Cloud KMS with Application
-// Default Credentials, and with RecordEnv=1 records the fixture
+// Default Credentials, ES256 on the P-256 version and RS256 and PS256 on
+// the RSA ones, and with RecordEnv=1 records the ES256 fixture
 // TestUnitGCPKMSRecorded replays.
 func TestAccGCPKMSLive(t *testing.T) {
+	for env, alg := range map[string]jose.SignatureAlgorithm{
+		PKCS1KeyEnv: signer.RS256,
+		PSSKeyEnv:   signer.PS256,
+	} {
+		t.Run(string(alg), func(t *testing.T) {
+			key := os.Getenv(env)
+			if key == "" {
+				t.Skipf("%s is not set: no Cloud KMS key to sign %s with", env, alg)
+			}
+			s, err := gcpkms.New(t.Context(), key, alg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = s.Close() })
+			signertest.Contract(t, s, alg, "gcpkms:"+key)
+		})
+	}
 	key := os.Getenv(KeyEnv)
 	if key == "" {
 		t.Skipf("%s is not set: no Cloud KMS signing key to test against", KeyEnv)
@@ -226,12 +278,12 @@ func TestAccGCPKMSLive(t *testing.T) {
 		}
 		opts = append(opts, option.WithHTTPClient(&http.Client{Transport: authed}))
 	}
-	s, err := gcpkms.New(t.Context(), key, opts...)
+	s, err := gcpkms.New(t.Context(), key, signer.ES256, opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	signertest.Contract(t, s, "gcpkms:"+key)
+	signertest.Contract(t, s, signer.ES256, "gcpkms:"+key)
 }
 
 // rsaPEM is an RSA public key, which an EC_SIGN_P256_SHA256 version never

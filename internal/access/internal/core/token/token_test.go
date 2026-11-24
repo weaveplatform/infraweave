@@ -73,11 +73,9 @@ func forge(t *testing.T, s *memStore, kid string, alg jose.SignatureAlgorithm, k
 		if err != nil {
 			t.Fatal(err)
 		}
-		k, err := x509.ParsePKCS8PrivateKey(der)
-		if err != nil {
+		if key, err = x509.ParsePKCS8PrivateKey(der); err != nil {
 			t.Fatal(err)
 		}
-		key = k.(*ecdsa.PrivateKey)
 	}
 	js, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: key},
 		(&jose.SignerOptions{}).WithHeader(jose.HeaderKey("kid"), kid))

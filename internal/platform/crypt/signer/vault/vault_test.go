@@ -2,6 +2,7 @@ package vault_test
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	jose "github.com/go-jose/go-jose/v4"
 
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek/kektest"
@@ -19,41 +21,54 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer/vault"
 )
 
-// TestAccVault runs the contract against Transit with an ecdsa-p256 key,
-// and checks that the version a reference names keeps signing after the
-// key rotates, and that a key of another type or a version it lacks is
-// refused.
+// TestAccVault runs the contract against Transit with an ecdsa-p256 key
+// under ES256 and an rsa-3072 key under RS256 and PS256, and checks that
+// the version a reference names keeps signing after the key rotates, and
+// that a key whose type cannot sign the algorithm, an rsa-2048 key among
+// them, or a version it lacks is refused.
 func TestAccVault(t *testing.T) {
 	l := kektest.StartVault(t)
 	l.Do(http.MethodPost, "transit/keys/signing", map[string]any{"type": "ecdsa-p256"})
+	l.Do(http.MethodPost, "transit/keys/federation", map[string]any{"type": "rsa-3072"})
+	l.Do(http.MethodPost, "transit/keys/short", map[string]any{"type": "rsa-2048"})
 	t.Setenv("VAULT_TOKEN", kektest.VaultRoot)
 	c := l.Config()
-	s, err := vault.New(t.Context(), c, "transit/signing/1", vault.Options{})
+	s, err := vault.New(t.Context(), c, "transit/signing/1", signer.ES256, vault.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	signertest.Contract(t, s, "vault:transit/signing/1")
+	signertest.Contract(t, s, signer.ES256, "vault:transit/signing/1")
+	for _, alg := range []jose.SignatureAlgorithm{signer.RS256, signer.PS256} {
+		rs, err := vault.New(t.Context(), c, "transit/federation/1", alg, vault.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		signertest.Contract(t, rs, alg, "vault:transit/federation/1")
+	}
 
 	l.Do(http.MethodPost, "transit/keys/signing/rotate", map[string]any{})
-	again, err := vault.New(t.Context(), c, "transit/signing/1", vault.Options{})
+	again, err := vault.New(t.Context(), c, "transit/signing/1", signer.ES256, vault.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if pub, ok := again.Public().Key.(*ecdsa.PublicKey); !ok || !pub.Equal(s.Public().Key) {
 		t.Error("version 1's public key changed when the key rotated")
 	}
-	signertest.Contract(t, again, "vault:transit/signing/1")
+	signertest.Contract(t, again, signer.ES256, "vault:transit/signing/1")
 
-	for ref, want := range map[string]error{
-		"transit/kek/1":     signer.ErrKey,
-		"transit/signing/3": signer.ErrKey,
+	for ref, alg := range map[string]jose.SignatureAlgorithm{
+		"transit/kek/1":        signer.ES256,
+		"transit/signing/3":    signer.ES256,
+		"transit/signing/1":    signer.RS256,
+		"transit/federation/1": signer.ES256,
+		"transit/short/1":      signer.PS256,
 	} {
-		if _, err := vault.New(t.Context(), c, ref, vault.Options{}); !errors.Is(err, want) ||
+		if _, err := vault.New(t.Context(), c, ref, alg, vault.Options{}); !errors.Is(err, signer.ErrKey) ||
 			!strings.Contains(err.Error(), "vault:"+ref) {
-			t.Errorf("%s: %v", ref, err)
+			t.Errorf("%s for %s: %v", ref, alg, err)
 		}
 	}
-	if _, err := vault.New(t.Context(), c, "transit/missing/1", vault.Options{}); err == nil ||
+	if _, err := vault.New(t.Context(), c, "transit/missing/1", signer.ES256, vault.Options{}); err == nil ||
 		!strings.Contains(err.Error(), "vault:transit/missing/1") {
 		t.Errorf("a missing key: %v", err)
 	}
@@ -74,6 +89,7 @@ func TestUnitVaultRefs(t *testing.T) {
 			t.Context(),
 			c,
 			ref,
+			signer.ES256,
 			vault.Options{},
 		); !errors.Is(
 			err,
@@ -86,12 +102,62 @@ func TestUnitVaultRefs(t *testing.T) {
 		t.Context(),
 		kek.VaultConfig{},
 		"transit/signing/1",
+		signer.ES256,
 		vault.Options{},
 	); !errors.Is(
 		err,
 		kek.ErrConfig,
 	) {
 		t.Errorf("no address: %v", err)
+	}
+	if _, err := vault.New(t.Context(), c, "transit/signing/1", jose.HS256, vault.Options{}); !errors.Is(err, signer.ErrAlgorithm) ||
+		!strings.Contains(err.Error(), "vault:transit/signing/1") {
+		t.Errorf("HS256: %v", err)
+	}
+}
+
+// TestUnitVaultRSA checks that an rsa-3072 key signs RS256 with pkcs1v15
+// and PS256 with pss and a salt as long as the digest, and that Transit's
+// answer is the signature JWS carries.
+func TestUnitVaultRSA(t *testing.T) {
+	t.Setenv("VAULT_TOKEN", "token")
+	f := signertest.NewRSAFake(t, false)
+	r := chi.NewRouter()
+	r.Get("/v1/transit/keys/federation", func(w http.ResponseWriter, _ *http.Request) {
+		p := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: f.PKIX(t)})
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			"type": "rsa-3072",
+			"keys": map[string]any{"1": map[string]any{"public_key": string(p)}},
+		}})
+	})
+	r.Post("/v1/transit/sign/federation", func(w http.ResponseWriter, req *http.Request) {
+		var in struct {
+			Input              []byte `json:"input"`
+			SignatureAlgorithm string `json:"signature_algorithm"` //nolint:tagliatelle // Vault's
+			SaltLength         string `json:"salt_length"`         //nolint:tagliatelle // Vault's
+		}
+		_ = json.NewDecoder(req.Body).Decode(&in)
+		alg := map[string]jose.SignatureAlgorithm{"pkcs1v15/": signer.RS256, "pss/hash": signer.PS256}[in.SignatureAlgorithm+"/"+in.SaltLength]
+		if alg == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		sig := base64.RawURLEncoding.EncodeToString(f.Raw(t, alg, in.Input))
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"signature": "vault:v1:" + sig}})
+	})
+	srv := httptest.NewServer(r)
+	t.Cleanup(srv.Close)
+	c := kek.Defaults().Vault
+	c.Address = srv.URL
+	for _, alg := range []jose.SignatureAlgorithm{signer.RS256, signer.PS256} {
+		s, err := vault.New(t.Context(), c, "transit/federation/1", alg, vault.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		signertest.Contract(t, s, alg, "vault:transit/federation/1")
+	}
+	if _, err := vault.New(t.Context(), c, "transit/federation/1", signer.ES256, vault.Options{}); !errors.Is(err, signer.ErrKey) {
+		t.Errorf("rsa-3072 for ES256: %v", err)
 	}
 }
 
@@ -117,7 +183,7 @@ func TestUnitVaultSignatures(t *testing.T) {
 	t.Cleanup(srv.Close)
 	c := kek.Defaults().Vault
 	c.Address = srv.URL
-	s, err := vault.New(t.Context(), c, "transit/signing/1", vault.Options{})
+	s, err := vault.New(t.Context(), c, "transit/signing/1", signer.ES256, vault.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

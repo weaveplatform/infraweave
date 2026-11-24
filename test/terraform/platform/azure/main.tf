@@ -220,11 +220,24 @@ resource "azurerm_key_vault_key" "signing" {
   depends_on = [azurerm_role_assignment.caller]
 }
 
+# The federation keys sign auth.federation.algorithm, RS256, which needs an
+# RSA key of at least 3072 bits.
+resource "azurerm_key_vault_key" "federation" {
+  name         = "federation"
+  key_vault_id = azurerm_key_vault.platform.id
+  key_type     = "RSA"
+  key_size     = 3072
+  key_opts     = ["sign", "verify"]
+  tags         = local.tags
+
+  depends_on = [azurerm_role_assignment.caller]
+}
+
 # The app's grants, each the calls the server makes and no more, assigned
 # at the narrowest scope that holds them: blobs are read, written and
 # deleted in the one container (serve writes, the scheduler deletes, and
-# all is both); the KEK only wraps and unwraps; the signing key is read
-# for its public half and signs. Each role is defined on its resource,
+# all is both); the KEK only wraps and unwraps; the signing and
+# federation keys are read for their public halves and sign. Each role is defined on its resource,
 # where it alone is assignable, and is named for the owner, since custom
 # role names are unique across the tenant.
 locals {
@@ -244,6 +257,11 @@ locals {
     signing = {
       defined_on   = azurerm_key_vault.platform.id
       scope        = azurerm_key_vault_key.signing.resource_versionless_id
+      data_actions = ["${local.keys}/read", "${local.keys}/sign/action"]
+    }
+    federation = {
+      defined_on   = azurerm_key_vault.platform.id
+      scope        = azurerm_key_vault_key.federation.resource_versionless_id
       data_actions = ["${local.keys}/read", "${local.keys}/sign/action"]
     }
   }
@@ -312,8 +330,9 @@ resource "azurerm_container_app_environment" "platform" {
 }
 
 # The server's configuration, the strict YAML file --config names. Every
-# key is one internal/app/config.Load decodes; auth.signing.kms_keys is a
-# list of objects, which no INFRAWEAVE_* variable can carry, so the whole
+# key is one internal/app/config.Load decodes; auth.signing.kms_keys and
+# auth.federation.kms_keys are lists of objects, which no INFRAWEAVE_*
+# variable can carry, so the whole
 # configuration is a file rather than the environment.
 locals {
   # The listeners: ingress targets the API's, and the probes the admin
@@ -366,6 +385,10 @@ locals {
         backend = "kms"
         # The signing backend takes a key ID with its version.
         kms_keys = [{ provider = "azurekv", ref = azurerm_key_vault_key.signing.id }]
+      }
+      federation = {
+        algorithm = "RS256"
+        kms_keys  = [{ provider = "azurekv", ref = azurerm_key_vault_key.federation.id }]
       }
       operator = {
         keys = var.operator_keys

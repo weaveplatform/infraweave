@@ -30,13 +30,17 @@
 // server's auth.tokens.oauth_access.ttl, oauth_refresh.ttl and
 // oauth_code.ttl (an hour, 30 days and a minute), the worker protocol's
 // auth.tokens.worker.ttl, run.ttl and run_api.ttl (an hour, 24 hours and
-// 3 hours), auth.run_api_token.issuer, auth.session's
+// 3 hours), the OIDC federation token's auth.tokens.federation.ttl (an
+// hour), auth.run_api_token.issuer, auth.session's
 // idle_timeout and max_age (10 hours each), and the signing
-// backend, rotation and kms_keys, and auth.oidc_api_keys' allowed_issuers
+// backend, rotation and kms_keys, auth.federation's issuer, jwks_uri,
+// audience, algorithm (RS256 by default, PS256 or ES256) and kms_keys,
+// which the kms backend requires, and auth.oidc_api_keys' allowed_issuers
 // and ca_file, and auth.operator.keys, each a ULID and the lower-case hex
 // SHA-256 of its secret, which Validate checks; New reads ca_file and fails when it
 // holds no certificate; Deps.KMS are the
-// kms backend's keys, which internal/app opens. Authenticator is the
+// kms backend's keys of both purposes, which internal/app opens, and the
+// settings' kms_keys say which purpose each is for. Authenticator is the
 // middleware internal/app puts in front of the API,
 // OperatorAuthenticator the one in front of the operator API,
 // WorkerAuthenticator the one in front of the worker API and
@@ -60,7 +64,9 @@
 // their versions every 5 seconds for a lost one. Cron is its
 // periodic tasks: ExpireSessions, authn.sessions.expire, hourly, which
 // also deletes ended authorization requests and unused OAuth clients, and
-// RotateKeys, authn.keys.rotate, daily unless rotation is manual.
+// RotateKeys, authn.keys.rotate, daily unless rotation is manual, which
+// rotates the api-token keys and the federation keys, each in its own
+// transaction.
 //
 // ref: decisions 0006 and 0007
 //

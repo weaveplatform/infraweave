@@ -84,7 +84,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		return fmt.Errorf("config: %w", err)
 	}
 	defer closeKEK()
-	kms, closeKMS, err := openSigners(ctx, c.Auth.Signing, c.Secrets.KEK.Vault)
+	kms, closeKMS, err := openSigners(ctx, c.Auth, c.Secrets.KEK.Vault)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}

@@ -45,8 +45,10 @@
 // stream after the platform's, loads the keyring
 // through the KEK provider secrets.kek.provider names, which it requires
 // (openKEK), and reloads it on each change to encryption_keys, opens each
-// KMS signing key of auth.signing.kms_keys under the kms backend
-// (openSigners), so a key that cannot sign ES256 stops the start, opens the
+// KMS signing key of auth.signing.kms_keys and auth.federation.kms_keys
+// under the kms backend (openSigners), so a key that cannot sign its
+// purpose's algorithm, ES256 or auth.federation.algorithm, stops the
+// start, opens the
 // object store
 // objectstore.driver names, which it requires (openObjects), registers the
 // probe checks every
