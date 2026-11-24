@@ -14,9 +14,17 @@ import (
 // ref: decision 0006 § "Signing keys"
 type Purpose string
 
-// APIToken is the purpose of every API-facing JWT: API, organization, CLI,
-// in-run, worker and run tokens. Its keys are never published.
-const APIToken Purpose = "api-token"
+// The purposes. Each has its own keys, rotated apart.
+const (
+	// APIToken is the purpose of every API-facing JWT: API, organization,
+	// CLI, in-run, worker and run tokens. Its keys sign ES256 and are never
+	// published.
+	APIToken Purpose = "api-token"
+	// Federation is the purpose of the OIDC federation tokens runs present
+	// to cloud providers. Its keys sign auth.federation.algorithm and are
+	// published to every relying party.
+	Federation Purpose = "federation"
+)
 
 // State is where a signing key is in its rotation.
 type State string
@@ -87,6 +95,9 @@ type Step struct {
 	// Ref is the KMS key a new key under the kms backend signs with; empty
 	// when the local backend generates it.
 	Ref string
+	// Algorithm is the JWS algorithm a new key the local backend generates
+	// signs with; a KMS key's is the one its reference was opened for.
+	Algorithm jose.SignatureAlgorithm
 }
 
 // Policy is how rotation runs for one installation.
@@ -96,9 +107,13 @@ type Policy struct {
 	Manual bool
 	// TokenLife is the longest lifetime of a token the purpose's keys sign.
 	TokenLife time.Duration
-	// Refs are the kms backend's keys, auth.signing.kms_keys, oldest
-	// first; empty under the local backend.
+	// Refs are the kms backend's keys of the purpose, auth.signing.kms_keys
+	// or auth.federation.kms_keys, oldest first; empty under the local
+	// backend.
 	Refs []string
+	// Algorithm is the JWS algorithm the purpose's keys sign with, which
+	// each new key's Step carries.
+	Algorithm jose.SignatureAlgorithm
 }
 
 // Plan is the rotation due at now over keys, a purpose's keys that are not
@@ -134,7 +149,7 @@ func (p Policy) Plan(keys []Key, now time.Time) []Step {
 	case active == nil && next != nil:
 		return append(steps, Step{ID: next.ID, State: StateActive, At: now})
 	case active == nil:
-		return append(steps, Step{State: StateActive, At: now})
+		return append(steps, Step{State: StateActive, At: now, Algorithm: p.Algorithm})
 	case p.Manual:
 		return steps
 	case next != nil:
@@ -150,7 +165,7 @@ func (p Policy) Plan(keys []Key, now time.Time) []Step {
 		}
 		return steps
 	case now.Sub(active.ActivatedAt) >= KeyLifetime-NextLead:
-		return append(steps, Step{State: StateNext, At: now})
+		return append(steps, Step{State: StateNext, At: now, Algorithm: p.Algorithm})
 	}
 	return steps
 }
@@ -168,7 +183,7 @@ func (p Policy) planKMS(keys []Key, active, next *Key, now time.Time) []Step {
 	case active == nil && next != nil:
 		return []Step{{ID: next.ID, State: StateActive, At: now}}
 	case active == nil:
-		return []Step{{State: StateActive, At: now, Ref: newest}}
+		return []Step{{State: StateActive, At: now, Ref: newest, Algorithm: p.Algorithm}}
 	case p.Manual:
 		return nil
 	case next != nil:
@@ -185,7 +200,7 @@ func (p Policy) planKMS(keys []Key, active, next *Key, now time.Time) []Step {
 			{ID: next.ID, State: StateActive, At: now},
 		}
 	case !slices.ContainsFunc(keys, func(k Key) bool { return k.Ref == newest }):
-		return []Step{{State: StateNext, At: now, Ref: newest}}
+		return []Step{{State: StateNext, At: now, Ref: newest, Algorithm: p.Algorithm}}
 	}
 	return nil
 }

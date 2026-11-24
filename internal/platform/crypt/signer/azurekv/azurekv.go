@@ -2,10 +2,14 @@ package azurekv
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rsa"
 	"fmt"
+	"math/big"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
@@ -16,7 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
 )
 
-// Signer signs with one version of a Key Vault EC key on P-256.
+// Signer signs with one version of a Key Vault key under one algorithm.
 type Signer struct {
 	client        *azkeys.Client
 	name, version string
@@ -30,11 +34,13 @@ var _ signer.KMS = (*Signer)(nil)
 type Options = kekazurekv.Options
 
 // New opens keyID, a key version's ID,
-// https://<vault>/keys/<name>/<version>, reading its public key once. A
-// key ID without a version is signer.ErrRef, since a key's current
-// version changes when it is rotated while signing_keys holds the public
-// half of one; a key that is not EC or EC-HSM on P-256 is signer.ErrKey.
-func New(ctx context.Context, keyID string, o Options) (*Signer, error) {
+// https://<vault>/keys/<name>/<version>, to sign alg, reading its public
+// key once. A key ID without a version is signer.ErrRef, since a key's
+// current version changes when it is rotated while signing_keys holds the
+// public half of one; a key that cannot sign alg, which takes an EC or
+// EC-HSM key on P-256 for ES256 and an RSA or RSA-HSM key of at least
+// signer.RSABits for RS256 and PS256, is signer.ErrKey.
+func New(ctx context.Context, keyID string, alg jose.SignatureAlgorithm, o Options) (*Signer, error) {
 	ref := kek.AzureKV + ":" + keyID
 	u, err := url.Parse(keyID)
 	var parts []string
@@ -49,6 +55,9 @@ func New(ctx context.Context, keyID string, o Options) (*Signer, error) {
 			ref,
 		)
 	}
+	if !slices.Contains(signer.Algorithms, alg) {
+		return nil, fmt.Errorf("%w: %s: %q", signer.ErrAlgorithm, ref, alg)
+	}
 	client, err := kekazurekv.NewClient("https://"+u.Host, o)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ref, err)
@@ -62,23 +71,43 @@ func New(ctx context.Context, keyID string, o Options) (*Signer, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.jwk = signer.JWK(pub, "")
+	if err := signer.CheckPublic(ref, alg, pub); err != nil {
+		return nil, err //nolint:wrapcheck // names the reference
+	}
+	s.jwk = signer.JWK(pub, "", alg)
 	return s, nil
 }
 
-// public is k's P-256 public key. ParseUncompressedPublicKey checks that
-// the point is on the curve.
-func public(ref string, k *azkeys.JSONWebKey) (*ecdsa.PublicKey, error) {
-	if k == nil || k.Kty == nil || (*k.Kty != azkeys.KeyTypeEC && *k.Kty != azkeys.KeyTypeECHSM) ||
-		k.Crv == nil || *k.Crv != azkeys.CurveNameP256 {
-		return nil, fmt.Errorf("%w: %s is not an EC key on P-256", signer.ErrKey, ref)
+// public is k's public key: an EC key's on P-256, whose point
+// ParseUncompressedPublicKey checks is on the curve, or an RSA key's.
+func public(ref string, k *azkeys.JSONWebKey) (crypto.PublicKey, error) {
+	var kty azkeys.KeyType
+	if k != nil && k.Kty != nil {
+		kty = *k.Kty
 	}
-	point := append(append([]byte{4}, k.X...), k.Y...)
-	pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), point)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s: %w", signer.ErrKey, ref, err)
+	switch kty {
+	case azkeys.KeyTypeEC, azkeys.KeyTypeECHSM:
+		if k.Crv == nil || *k.Crv != azkeys.CurveNameP256 {
+			return nil, fmt.Errorf("%w: %s is an EC key on a curve other than P-256", signer.ErrKey, ref)
+		}
+		point := append(append([]byte{4}, k.X...), k.Y...)
+		pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), point)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %w", signer.ErrKey, ref, err)
+		}
+		return pub, nil
+	case azkeys.KeyTypeRSA, azkeys.KeyTypeRSAHSM:
+		// An exponent wider than four bytes overflows rsa.PublicKey's int
+		// on every platform; Key Vault's is 65537.
+		if len(k.N) == 0 || len(k.E) == 0 || len(k.E) > 4 {
+			return nil, fmt.Errorf("%w: %s: malformed RSA public key", signer.ErrKey, ref)
+		}
+		return &rsa.PublicKey{
+			N: new(big.Int).SetBytes(k.N),
+			E: int(new(big.Int).SetBytes(k.E).Int64()),
+		}, nil
 	}
-	return pub, nil
+	return nil, fmt.Errorf("%w: %s is a key of type %q", signer.ErrKey, ref, kty)
 }
 
 // Ref is azurekv:<key version ID>.
@@ -87,13 +116,13 @@ func (s *Signer) Ref() string { return s.ref }
 // Public is the key's public JWK, without a kid.
 func (s *Signer) Public() jose.JSONWebKey { return s.jwk }
 
-// Sign asks Key Vault to sign digest with ES256, whose answer is already
-// JWS's r || s.
+// Sign asks Key Vault to sign digest with the key's algorithm, whose
+// answer is already JWS's form.
 func (s *Signer) Sign(ctx context.Context, digest []byte) ([]byte, error) {
-	if err := signer.CheckDigest(digest); err != nil {
+	if err := signer.CheckDigest(s.jwk.Algorithm, digest); err != nil {
 		return nil, err //nolint:wrapcheck // names itself
 	}
-	alg := azkeys.SignatureAlgorithmES256
+	alg := azkeys.SignatureAlgorithm(s.jwk.Algorithm)
 	resp, err := s.client.Sign(ctx, s.name, s.version, azkeys.SignParameters{
 		Algorithm: &alg,
 		Value:     digest,
@@ -101,7 +130,7 @@ func (s *Signer) Sign(ctx context.Context, digest []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", s.ref, err)
 	}
-	sig, err := signer.Raw(resp.Result)
+	sig, err := signer.Raw(s.jwk, resp.Result)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", s.ref, err)
 	}

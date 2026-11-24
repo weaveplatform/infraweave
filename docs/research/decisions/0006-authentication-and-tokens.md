@@ -715,23 +715,42 @@ customer can write it into a trust policy. Without AWS credentials it answers
   `retiring` and stays published until every token it signed has expired plus
   24 hours, then `retired`. `auth.signing.rotation: manual` disables the task
   for relying parties that hold an uploaded copy of the JWKS.
-- **Backends.** `auth.signing.backend: local` (default) generates keys in
-  process and seals them; `kms` takes operator-supplied key references
-  (`awskms`, `gcpkms`, `azurekv`, `vault` transit), signs through the KMS,
-  and rotates only when the operator adds a reference.
-  - **References** in `auth.signing.kms_keys`, a list of `{provider, ref}`
-    oldest first, each name one fixed key pair, because the row's
+- **Algorithms.** `auth.federation.algorithm` picks the federation keys'
+  algorithm: `RS256` (RSASSA-PKCS1-v1_5, the default) or `PS256`
+  (RSASSA-PSS with a salt as long as the digest), each on RSA 3072, or
+  `ES256` on P-256; all sign SHA-256, and FIPS 140-3 approves each
+  ([0013](0013-secrets-at-rest.md)). Each `signing_keys` row's `algorithm`
+  is its key's. The `api-token` keys sign ES256 whatever the setting.
+- **Backends.** `auth.signing.backend: local` (default) generates keys of
+  both purposes in process and seals them; `kms` takes operator-supplied
+  key references (`awskms`, `gcpkms`, `azurekv`, `vault` transit), signs
+  through the KMS, and rotates only when the operator adds a reference.
+  The first start creates each backend's first `federation` key, so the
+  JWKS is never empty; the first `api-token` key is created when the first
+  token is signed.
+  - **References** name one fixed key pair each, because the row's
     `public_jwk` is read once: an AWS KMS key ID or ARN (not an alias), a
     Cloud KMS CryptoKeyVersion, a Key Vault key ID with its version, and a
     Transit key's `<mount>/<name>/<version>`. `kms_key_ref` stores
-    `<provider>:<ref>`.
-  - **Rotation.** The newest reference no key holds becomes the `next` key
-    and signs once published for 48 hours, as a local key does, whatever
-    the active key's age; with no key it is active at once. The daily task
-    makes the move, so `rotation: manual` is refused with `kms`.
+    `<provider>:<ref>`. Each purpose has its own list of `{provider, ref}`,
+    oldest first: `auth.signing.kms_keys` for `api-token` and
+    `auth.federation.kms_keys` for `federation`, and no reference is in
+    both, since the purposes' keys stay apart. With `kms` and no
+    `auth.federation.kms_keys` the start stops, naming the setting, so a
+    KMS installation never keeps a federation private key in its database.
+  - **Rotation.** The newest reference of a purpose that no key of it holds
+    becomes its `next` key and signs once published for 48 hours, as a
+    local key does, whatever the active key's age; with no key it is active
+    at once. The daily task moves both purposes, each in its own
+    transaction, so `rotation: manual` is refused with `kms`.
   - **Start.** Each replica reads every reference's public key at start,
-    and a key that is not ECDSA P-256 for signing stops it, naming the
-    reference. Credentials and clients are the KEK providers'
+    and a key that cannot sign its purpose's algorithm stops it, naming the
+    reference: ECDSA P-256 for `api-token` and for `federation` under
+    ES256, and RSA of at least 3072 bits for `federation` under RS256 and
+    PS256 (AWS KMS `RSA_3072` or `RSA_4096`; Cloud KMS
+    `RSA_SIGN_PKCS1_3072_SHA256` for RS256 and `RSA_SIGN_PSS_3072_SHA256`
+    for PS256, or their 4096 forms; a Key Vault RSA key; Transit `rsa-3072`
+    or `rsa-4096`). Credentials and clients are the KEK providers'
     ([0013](0013-secrets-at-rest.md)); `vault` keys use
     `secrets.kek.vault`'s address and auth.
 - **Verification** caches public keys per replica; an unknown `kid` reloads
@@ -740,11 +759,15 @@ customer can write it into a trust policy. Without AWS credentials it answers
 ### Configuration
 
 Strict YAML under `auth`: `api_issuer`, `run_api_token.issuer`,
-`tokens.<kind>.ttl` (including `oauth_access`, `oauth_refresh` and
-`oauth_code`), `session.idle_timeout`, `session.max_age`,
+`tokens.<kind>.ttl` (including `oauth_access`, `oauth_refresh`,
+`oauth_code` and `federation`, an hour by default), `session.idle_timeout`, `session.max_age`,
 `oidc_api_keys.allowed_issuers`, `oidc_api_keys.ca_file`, `federation.issuer`, `federation.jwks_uri`,
-`federation.audience`, `federation.algorithm`, `signing.backend`,
-`signing.rotation`, `signing.kms_keys`, `operator.keys`. Identity providers,
+`federation.audience`, `federation.algorithm` (`RS256`, `PS256` or
+`ES256`), `federation.kms_keys`, `signing.backend`,
+`signing.rotation`, `signing.kms_keys`, `operator.keys`. A
+`federation.issuer` or `federation.jwks_uri` that is not an absolute
+`http` or `https` URL without a query or fragment stops the start; cloud
+relying parties need `https`, which the deployment provides. Identity providers,
 MFA enforcement, session limits and break-glass credentials are
 organization data, not configuration; the operator API writes the
 break-glass credential.

@@ -28,9 +28,9 @@ it creates.
 | `workers-identity/aws` | `managed-cloud-workers` | the GitHub OIDC provider, unless the account has one; a role assumable only from the repository's `workers-cloud` environment, for four-hour sessions, that builds EKS clusters, their VPC networking and log groups, and IAM roles under one path and name prefix that must carry the root's permissions boundary, in one region, and reads the quotas and owner tags preflight and cleanup check |
 | `workers-identity/azure` | `managed-cloud-workers` | a resource group for the worker stages; a user-assigned identity, in a resource group of its own, whose federated credential admits only the repository's `workers-cloud` environment, with Contributor on the worker group, the right to assign AKS's roles there to managed identities, and quota, inventory and cluster reads on the subscription; nothing is registered in the tenant's directory |
 | `workers-identity/google` | `managed-cloud-workers` | a workload identity pool and provider admitting only this repository's `managed-cloud-workers.yml` on `main` in the `workers-cloud` environment; a service account with GKE, network and asset inventory roles on the project that may act only as the node service account the root also creates |
-| `kek/google` | the `gcpkms` KEK and signing live tests, run by a maintainer | a key ring, `infraweave-ci`, with a symmetric CryptoKey, `kek`, and an `EC_SIGN_P256_SHA256` CryptoKey, `signing`, whose versions are destroyed a day after the key is; Cloud KMS never deletes a key ring, so a later apply adopts it |
-| `kek/azure` | the `azurekv` KEK and signing live tests, run by a maintainer | a resource group with a vault that authorizes through Azure RBAC and is purged when destroyed, an RSA key, `kek`, an EC key on P-256, `signing`, and Key Vault Crypto Officer on the vault for whoever applies the root |
-| `kek/aws` | the `awskms` signing live test, run by a maintainer | an `ECC_NIST_P256` KMS key for `SIGN_VERIFY`, deleted seven days after it is destroyed |
+| `kek/google` | the `gcpkms` KEK and signing live tests, run by a maintainer | a key ring, `infraweave-ci`, with a symmetric CryptoKey, `kek`, an `EC_SIGN_P256_SHA256` CryptoKey, `signing`, and `RSA_SIGN_PKCS1_3072_SHA256` and `RSA_SIGN_PSS_3072_SHA256` CryptoKeys, `federation-pkcs1` and `federation-pss`, whose versions are destroyed a day after the key is; Cloud KMS never deletes a key ring, so a later apply adopts it |
+| `kek/azure` | the `azurekv` KEK and signing live tests, run by a maintainer | a resource group with a vault that authorizes through Azure RBAC and is purged when destroyed, an RSA key, `kek`, an EC key on P-256, `signing`, an RSA 3072 signing key, `federation`, and Key Vault Crypto Officer on the vault for whoever applies the root |
+| `kek/aws` | the `awskms` signing live test, run by a maintainer | an `ECC_NIST_P256` and an `RSA_3072` KMS key for `SIGN_VERIFY`, each deleted seven days after it is destroyed |
 
 Each root signs in with its provider's own credentials (`gcloud auth
 application-default login`, an AWS profile, `az login`) and takes the rest
@@ -145,9 +145,13 @@ The `kek` roots' outputs are the live tests' variables:
 |---|---|---|---|
 | `kek/google` | `key_name` | `INFRAWEAVE_TEST_GCPKMS_KEY` | `TestAccGCPKMSLive` in `crypt/kek/gcpkms` |
 | | `signing_key` | `INFRAWEAVE_TEST_GCPKMS_SIGNING_KEY` | `TestAccGCPKMSLive` in `crypt/signer/gcpkms` |
+| | `federation_pkcs1_key` | `INFRAWEAVE_TEST_GCPKMS_FEDERATION_PKCS1_KEY` | `TestAccGCPKMSLive` in `crypt/signer/gcpkms`, RS256 |
+| | `federation_pss_key` | `INFRAWEAVE_TEST_GCPKMS_FEDERATION_PSS_KEY` | `TestAccGCPKMSLive` in `crypt/signer/gcpkms`, PS256 |
 | `kek/azure` | `key_url` | `INFRAWEAVE_TEST_AZUREKV_URL` | `TestAccAzureKVLive` in `crypt/kek/azurekv` |
 | | `signing_key_id` | `INFRAWEAVE_TEST_AZUREKV_SIGNING_KEY` | `TestAccAzureKVLive` in `crypt/signer/azurekv` |
-| `kek/aws` | `signing_key_arn` | `INFRAWEAVE_TEST_AWSKMS_SIGNING_KEY` | `TestAccAWSKMSLive` in `crypt/signer/awskms` |
+| | `federation_key_id` | `INFRAWEAVE_TEST_AZUREKV_FEDERATION_KEY` | `TestAccAzureKVLiveRSA` in `crypt/signer/azurekv` |
+| `kek/aws` | `signing_key_arn` | `INFRAWEAVE_TEST_AWSKMS_SIGNING_KEY` | `TestAccAWSKMSLive` in `crypt/signer/awskms`, ES256 |
+| | `federation_key_arn` | `INFRAWEAVE_TEST_AWSKMS_FEDERATION_KEY` | `TestAccAWSKMSLive` in `crypt/signer/awskms`, RS256 and PS256 |
 
 With `INFRAWEAVE_TEST_RECORD=1` as well, each Google and Azure live test
 rewrites the recorded fixture its unit test replays, with the project and

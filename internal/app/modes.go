@@ -84,7 +84,7 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 		return fmt.Errorf("config: %w", err)
 	}
 	defer closeKEK()
-	kms, closeKMS, err := openSigners(ctx, c.Auth.Signing, c.Secrets.KEK.Vault)
+	kms, closeKMS, err := openSigners(ctx, c.Auth, c.Secrets.KEK.Vault)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
@@ -136,6 +136,12 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	// first a no-op.
 	if err := domains.Features.Seed(ctx); err != nil {
 		return err //nolint:wrapcheck // names the seed
+	}
+	// A relying party fetches the federation keys before any run presents
+	// a token, so the first start creates the first one, through the KMS
+	// key that opened above under the kms backend.
+	if err := domains.Access.EnsureFederationKey(ctx); err != nil {
+		return err //nolint:wrapcheck // names the purpose
 	}
 	if m.API {
 		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error

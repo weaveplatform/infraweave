@@ -23,9 +23,12 @@ var (
 	// in.
 	ErrStep = errors.New("invalid rotation step")
 	// ErrKMSRef reports a key whose kms_key_ref no configured KMS key
-	// opens: the operator removed it from auth.signing.kms_keys while it
-	// still signs.
-	ErrKMSRef = errors.New("signing key's KMS key is not in auth.signing.kms_keys")
+	// opens: the operator removed it from auth.signing.kms_keys or
+	// auth.federation.kms_keys while it still signs.
+	ErrKMSRef = errors.New("signing key's KMS key is not configured")
+	// ErrKMSAlgorithm reports a key whose KMS key is opened for an
+	// algorithm other than the one the key was created for.
+	ErrKMSAlgorithm = errors.New("signing key's KMS key is opened for another algorithm")
 )
 
 // privateKey is the sealed private half of a local signing key, bound to
@@ -42,10 +45,11 @@ type Sealer interface {
 	OpenColumn(ctx context.Context, c crypt.Column, pk []string, sealed []byte) (crypt.Value, error)
 }
 
-// SigningKeys is token.Store on PostgreSQL. A key the local backend
-// generates has its private half sealed in private_key_sealed; a key of
-// the kms backend has its KMS key's Ref in kms_key_ref, and signs through
-// the opened KMS key of that Ref.
+// SigningKeys is token.Store on PostgreSQL, for every purpose. A key the
+// local backend generates has its private half sealed in
+// private_key_sealed; a key of the kms backend has its KMS key's Ref in
+// kms_key_ref, and signs through the opened KMS key of that Ref. Each row's
+// algorithm is its key's, which opens the sealed half.
 type SigningKeys struct {
 	db   DB
 	seal Sealer
@@ -55,7 +59,7 @@ type SigningKeys struct {
 var _ token.Store = (*SigningKeys)(nil)
 
 // NewSigningKeys returns the store on db, sealing under seal and signing
-// through kms, the kms backend's opened keys.
+// through kms, the kms backend's opened keys of every purpose.
 func NewSigningKeys(db DB, seal Sealer, kms []signer.KMS) *SigningKeys {
 	s := &SigningKeys{db: db, seal: seal, kms: make(map[string]signer.KMS, len(kms))}
 	for _, k := range kms {
@@ -110,16 +114,17 @@ ORDER BY created_at, id`, purpose)
 	return keys, nil
 }
 
-// Signer opens the private half of the key id: its sealed local key, or
-// the KMS key its kms_key_ref names, under its kid.
+// Signer opens the private half of the key id: its sealed local key under
+// its algorithm, or the KMS key its kms_key_ref names, under its kid.
 func (s *SigningKeys) Signer(ctx context.Context, id kernel.ULID) (signer.Signer, error) {
 	var (
 		sealed []byte
 		ref    *string
+		alg    string
 	)
 	err := tx.Q(ctx, s.db).QueryRow(ctx,
-		`SELECT private_key_sealed, kms_key_ref FROM signing_keys WHERE id = $1`, id).
-		Scan(&sealed, &ref)
+		`SELECT private_key_sealed, kms_key_ref, algorithm FROM signing_keys WHERE id = $1`, id).
+		Scan(&sealed, &ref, &alg)
 	if err := read(err, "signing key", id); err != nil {
 		return nil, err
 	}
@@ -128,13 +133,22 @@ func (s *SigningKeys) Signer(ctx context.Context, id kernel.ULID) (signer.Signer
 		if !ok {
 			return nil, fmt.Errorf("access: signing key %s: %w: %s", id, ErrKMSRef, *ref)
 		}
+		// The row's public_jwk, which the keys publish, names the
+		// algorithm the key was created for; a KMS key opened for another,
+		// after auth.federation.algorithm changed, would sign tokens no
+		// published key verifies.
+		if got := k.Public().Algorithm; got != alg {
+			return nil, fmt.Errorf("access: signing key %s: %w: %s is opened for %s, but the key signs %s",
+				id, ErrKMSAlgorithm, *ref, got, alg)
+		}
 		return signer.WithKeyID(k, id.String()), nil
 	}
 	der, err := s.seal.OpenColumn(ctx, privateKey, []string{id.UUID()}, sealed)
 	if err != nil {
 		return nil, fmt.Errorf("access: open signing key %s: %w", id, err)
 	}
-	return signer.ParseLocal(id.String(), der.Reveal()) //nolint:wrapcheck // names the key
+	//nolint:wrapcheck // names the key
+	return signer.ParseLocal(jose.SignatureAlgorithm(alg), id.String(), der.Reveal())
 }
 
 // Rotate runs plan over purpose's keys and applies its steps in one
@@ -192,7 +206,8 @@ func (s *SigningKeys) apply(ctx context.Context, purpose token.Purpose, step tok
 }
 
 // create inserts a key: the KMS key step.Ref names, or else one it
-// generates, sealing its private half.
+// generates for step.Algorithm, sealing its private half. The row's
+// algorithm is the key's public JWK's.
 func (s *SigningKeys) create(ctx context.Context, purpose token.Purpose, step token.Step) error {
 	id := kernel.NewULID()
 	var (
@@ -207,7 +222,7 @@ func (s *SigningKeys) create(ctx context.Context, purpose token.Purpose, step to
 		}
 		public, ref = signer.WithKeyID(k, id.String()).Public(), &step.Ref
 	} else {
-		l, err := signer.GenerateLocal(id.String())
+		l, err := signer.GenerateLocal(step.Algorithm, id.String())
 		if err != nil {
 			return err //nolint:wrapcheck // names itself
 		}
@@ -232,7 +247,7 @@ func (s *SigningKeys) create(ctx context.Context, purpose token.Purpose, step to
 INSERT INTO signing_keys
     (id, purpose, algorithm, public_jwk, private_key_sealed, kms_key_ref, state, created_at, activated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		id, purpose, signer.ES256, jwk, sealed, ref, step.State, step.At, activated); err != nil {
+		id, purpose, public.Algorithm, jwk, sealed, ref, step.State, step.At, activated); err != nil {
 		return fmt.Errorf("insert key %s: %w", id, sql.Unavailable(err))
 	}
 	return nil

@@ -71,7 +71,7 @@ func (m *memStore) Rotate(_ context.Context, p token.Purpose, plan func([]token.
 	for _, s := range steps {
 		if s.ID.IsZero() {
 			id := kernel.NewULID()
-			l, err := signer.GenerateLocal(id.String())
+			l, err := signer.GenerateLocal(s.Algorithm, id.String())
 			if err != nil {
 				return err //nolint:wrapcheck // a test store
 			}

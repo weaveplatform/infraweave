@@ -3,11 +3,17 @@ package pg_test
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/pg"
@@ -89,8 +95,8 @@ func TestAccSigningKeysRotate(t *testing.T) {
 		return func([]token.Key) []token.Step { return steps }
 	}
 	if err := store.Rotate(ctx, token.APIToken, plan(
-		token.Step{State: token.StateActive, At: now},
-		token.Step{State: token.StateNext, At: now.Add(time.Hour)},
+		token.Step{State: token.StateActive, At: now, Algorithm: signer.ES256},
+		token.Step{State: token.StateNext, At: now.Add(time.Hour), Algorithm: signer.ES256},
 	)); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +139,7 @@ func TestAccSigningKeysRotate(t *testing.T) {
 
 	// A step no rotation makes rolls the whole rotation back.
 	err = store.Rotate(ctx, token.APIToken, plan(
-		token.Step{State: token.StateNext, At: later},
+		token.Step{State: token.StateNext, At: later, Algorithm: signer.ES256},
 		token.Step{ID: b.ID, State: token.StateNext, At: later},
 	))
 	if !errors.Is(err, pg.ErrStep) {
@@ -190,9 +196,17 @@ func TestAccSigningKeysBroken(t *testing.T) {
 	db := pool(t)
 	// A key that cannot be sealed is not stored.
 	err := pg.NewSigningKeys(db, failingSealer{}, nil).Rotate(ctx, token.APIToken,
-		func([]token.Key) []token.Step { return []token.Step{{State: token.StateActive, At: time.Now()}} })
+		func([]token.Key) []token.Step {
+			return []token.Step{{State: token.StateActive, At: time.Now(), Algorithm: signer.ES256}}
+		})
 	if !errors.Is(err, errSeal) {
 		t.Errorf("Rotate = %v, want the keyring's error", err)
+	}
+	// A key of no algorithm is not generated.
+	err = pg.NewSigningKeys(db, keyring(t, db), nil).Rotate(ctx, token.Federation,
+		func([]token.Key) []token.Step { return []token.Step{{State: token.StateActive, At: time.Now()}} })
+	if !errors.Is(err, signer.ErrAlgorithm) {
+		t.Errorf("Rotate(no algorithm) = %v, want ErrAlgorithm", err)
 	}
 	// A stored public key that does not parse fails the read.
 	if _, err := db.Exec(ctx, `
@@ -231,7 +245,12 @@ type kmsKey struct {
 
 func newKMSKey(t *testing.T, ref string) kmsKey {
 	t.Helper()
-	l, err := signer.GenerateLocal("")
+	return newKMSKeyFor(t, signer.ES256, ref)
+}
+
+func newKMSKeyFor(t *testing.T, alg jose.SignatureAlgorithm, ref string) kmsKey {
+	t.Helper()
+	l, err := signer.GenerateLocal(alg, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,5 +336,148 @@ func TestAccSigningKeysKMS(t *testing.T) {
 		})
 	if !errors.Is(err, pg.ErrKMSRef) {
 		t.Errorf("a step naming an unopened KMS key = %v, want ErrKMSRef", err)
+	}
+}
+
+// federationClaims are a federation token's claims, which the store's
+// caller sets.
+func federationClaims() jwt.Claims {
+	now := time.Now()
+	return jwt.Claims{
+		Issuer: "https://iw.example.com", Subject: "space:root", Audience: jwt.Audience{"iw.example.com/acme"},
+		IssuedAt: jwt.NewNumericDate(now), Expiry: jwt.NewNumericDate(now.Add(time.Hour)),
+	}
+}
+
+// Under the local backend each purpose's first key is of its algorithm,
+// RS256 on RSA 3072 for federation and ES256 for api-token, with its
+// private half sealed; a federation token verifies against the published
+// key on another replica.
+func TestAccSigningKeysFederation(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	keys := keyring(t, db)
+	for _, alg := range []jose.SignatureAlgorithm{signer.RS256, signer.PS256, signer.ES256} {
+		if _, err := db.Exec(ctx, `DELETE FROM signing_keys`); err != nil {
+			t.Fatal(err)
+		}
+		fed := token.NewFederation(pg.NewSigningKeys(db, keys, nil),
+			token.Policy{TokenLife: time.Hour, Algorithm: alg}, time.Now)
+		raw, err := fed.Sign(ctx, federationClaims())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := token.New(pg.NewSigningKeys(db, keys, nil), "https://iw.example.com",
+			token.Policy{TokenLife: time.Hour}, time.Now).Issue(ctx, request()); err != nil {
+			t.Fatal(err)
+		}
+		got, err := db.Query(ctx, `
+SELECT purpose, algorithm, private_key_sealed IS NOT NULL AND kms_key_ref IS NULL, public_jwk->>'alg'
+FROM signing_keys WHERE state = 'active' ORDER BY purpose`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var rows []string
+		for got.Next() {
+			var purpose, algorithm, jwkAlg string
+			var sealed bool
+			if err := got.Scan(&purpose, &algorithm, &sealed, &jwkAlg); err != nil {
+				t.Fatal(err)
+			}
+			rows = append(rows, fmt.Sprintf("%s %s %v %s", purpose, algorithm, sealed, jwkAlg))
+		}
+		if want := []string{"api-token ES256 true ES256", fmt.Sprintf("federation %s true %s", alg, alg)}; !slices.Equal(rows, want) {
+			t.Errorf("%s: active keys %q, want %q", alg, rows, want)
+		}
+		other := token.NewFederation(pg.NewSigningKeys(db, keys, nil),
+			token.Policy{TokenLife: time.Hour, Algorithm: alg}, time.Now)
+		published, err := other.FederationKeys(ctx)
+		if err != nil || len(published) != 1 {
+			t.Fatalf("%s: FederationKeys = %+v, %v", alg, published, err)
+		}
+		if pub, ok := published[0].Key.(*rsa.PublicKey); alg != signer.ES256 && (!ok || pub.N.BitLen() != signer.RSABits) {
+			t.Errorf("%s: published key is %T", alg, published[0].Key)
+		}
+		parsed, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{alg})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var claims jwt.Claims
+		if err := parsed.Claims(published[0].Key, &claims); err != nil || claims.Subject != "space:root" {
+			t.Errorf("%s: the token against the published key: %+v, %v", alg, claims, err)
+		}
+	}
+}
+
+// Replicas that start together on an empty table, each creating its
+// first api-token and federation keys, agree on one active key of each
+// purpose: concurrent rotations of both purposes queue on one lock.
+func TestAccSigningKeysPurposesConcurrent(t *testing.T) {
+	db := pool(t)
+	keys := keyring(t, db)
+	const replicas = 4
+	var wg sync.WaitGroup
+	errs := make([]error, 2*replicas)
+	for i := range replicas {
+		fed := token.NewFederation(pg.NewSigningKeys(db, keys, nil),
+			token.Policy{TokenLife: time.Hour, Algorithm: signer.ES256}, time.Now)
+		api := token.New(pg.NewSigningKeys(db, keys, nil), "https://iw.example.com",
+			token.Policy{TokenLife: time.Hour}, time.Now)
+		wg.Go(func() { errs[2*i] = fed.Bootstrap(t.Context()) })
+		wg.Go(func() { _, _, errs[2*i+1] = api.Issue(t.Context(), request()) })
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		t.Fatal(err)
+	}
+	for _, purpose := range []token.Purpose{token.APIToken, token.Federation} {
+		var n int
+		if err := db.QueryRow(t.Context(),
+			`SELECT count(*) FROM signing_keys WHERE purpose = $1`, purpose).Scan(&n); err != nil || n != 1 {
+			t.Errorf("%s: %d keys, %v; want one", purpose, n, err)
+		}
+	}
+}
+
+// Under the kms backend a federation key's row holds its RSA KMS key's
+// reference and algorithm, apart from the api-token key's.
+func TestAccSigningKeysFederationKMS(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	keys := keyring(t, db)
+	api, fed := newKMSKey(t, "vault:transit/a/1"), newKMSKeyFor(t, signer.RS256, "vault:transit/rsa/1")
+	store := pg.NewSigningKeys(db, keys, []signer.KMS{api, fed})
+	f := token.NewFederation(store, token.Policy{
+		TokenLife: time.Hour, Algorithm: signer.RS256, Refs: []string{fed.Ref()},
+	}, time.Now)
+	if err := f.Bootstrap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := f.Sign(ctx, federationClaims())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ref, alg string
+	if err := db.QueryRow(ctx, `SELECT kms_key_ref, algorithm FROM signing_keys WHERE purpose = 'federation'`).
+		Scan(&ref, &alg); err != nil || ref != fed.Ref() || alg != "RS256" {
+		t.Fatalf("the federation row: %q, %q, %v", ref, alg, err)
+	}
+	parsed, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{signer.RS256})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims jwt.Claims
+	if err := parsed.Claims(fed.Public().Key, &claims); err != nil {
+		t.Errorf("the token against the KMS key: %v", err)
+	}
+
+	// The same reference opened for PS256, after the algorithm changed,
+	// does not sign for the RS256 key.
+	pss := newKMSKeyFor(t, signer.PS256, fed.Ref())
+	_, err = token.NewFederation(pg.NewSigningKeys(db, keys, []signer.KMS{pss}), token.Policy{
+		TokenLife: time.Hour, Algorithm: signer.PS256, Refs: []string{fed.Ref()},
+	}, time.Now).Sign(ctx, federationClaims())
+	if !errors.Is(err, pg.ErrKMSAlgorithm) || !strings.Contains(err.Error(), fed.Ref()) {
+		t.Errorf("Sign through a KMS key opened for another algorithm = %v, want ErrKMSAlgorithm", err)
 	}
 }

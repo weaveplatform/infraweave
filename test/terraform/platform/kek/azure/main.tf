@@ -1,7 +1,8 @@
-# The Azure keys the azurekv live tests use, which their recorded fixtures
-# were recorded against: an RSA key the KEK provider wraps data keys with
-# (decision 0013), and an EC key on P-256 the signing backend signs tokens
-# with (decision 0006), in a vault that authorizes through Azure RBAC, with
+# The Azure keys the azurekv live tests use: an RSA key the KEK provider
+# wraps data keys with (decision 0013), an EC key on P-256 the signing
+# backend signs ES256 with, which their recorded fixtures were recorded
+# against, and an RSA 3072 key it signs the federation keys' RS256 and
+# PS256 with (decision 0006), in a vault that authorizes through Azure RBAC, with
 # Key Vault Crypto Officer, which creates the keys and uses them, for
 # whoever applies this root, who runs the tests. No key material leaves Key
 # Vault, and nothing is registered in the tenant's directory.
@@ -52,6 +53,16 @@ resource "azurerm_key_vault_key" "signing" {
   key_vault_id = azurerm_key_vault.kek.id
   key_type     = "EC"
   curve        = "P-256"
+  key_opts     = ["sign", "verify"]
+
+  depends_on = [azurerm_role_assignment.caller]
+}
+
+resource "azurerm_key_vault_key" "federation" {
+  name         = "federation"
+  key_vault_id = azurerm_key_vault.kek.id
+  key_type     = "RSA"
+  key_size     = 3072
   key_opts     = ["sign", "verify"]
 
   depends_on = [azurerm_role_assignment.caller]

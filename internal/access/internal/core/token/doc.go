@@ -1,5 +1,6 @@
-// Package token issues and verifies the API-facing JWTs and rotates the
-// keys that sign them.
+// Package token issues and verifies the API-facing JWTs, signs the OIDC
+// federation tokens, and rotates the keys of both purposes, APIToken and
+// Federation, apart.
 //
 // Service.Issue signs a Request with the api-token purpose's active key
 // (ES256, through go-jose and a platform/crypt/signer Signer), creating the
@@ -17,13 +18,24 @@
 // them at most once a second; a replica rereads which key is active every
 // SignerRefresh.
 //
+// FederationService holds the Federation purpose's keys, which sign
+// Policy.Algorithm (auth.federation.algorithm: RS256 on RSA 3072 by
+// default, PS256 or ES256). Bootstrap creates the first key at start,
+// Sign signs a caller's claims as a JWT with the active key,
+// FederationKeys answers the published keys, next, active and retiring,
+// as JWKs with kid, use sig and alg, from a per-replica cache reread
+// every SignerRefresh, and FederationKey finds one by kid, an unknown kid
+// reloading the cache at most once a second.
+//
 // Keys pass through StateNext, StateActive, StateRetiring and
 // StateRetired. Policy.Plan is the rotation due at a time: a next key
 // KeyLifetime minus NextLead into the active key's life, a promotion once
 // the active key is KeyLifetime old and the next key has verified for
 // MinPublished, and retirement RetireGrace after the last token a retiring
 // key can have signed expires. Manual rotation creates the first key and
-// replaces none. Service.Rotate is authn.keys.rotate.
+// replaces none. Service.Rotate and FederationService.Rotate are the two
+// halves of authn.keys.rotate, each in its own Store.Rotate transaction;
+// each new key's Step carries its purpose's Algorithm.
 //
 // ref: decision 0006
 //

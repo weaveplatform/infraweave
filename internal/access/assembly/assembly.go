@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	jose "github.com/go-jose/go-jose/v4"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/adapters/http"
@@ -119,8 +120,9 @@ type Deps struct {
 	// Keys seals the signing keys' private halves and identity providers'
 	// secrets; crypt.Keyring is one.
 	Keys pg.Sealer
-	// KMS are the opened keys of auth.signing.kms_keys, in its order,
-	// under the kms backend.
+	// KMS are the opened keys of auth.signing.kms_keys and
+	// auth.federation.kms_keys under the kms backend, each opened for its
+	// purpose's algorithm.
 	KMS      []signer.KMS
 	Settings Settings
 	// PublicURL is server.public_url, the issuer when auth.api_issuer is
@@ -138,9 +140,10 @@ type Deps struct {
 
 // Domain is the access domain, constructed once per process.
 type Domain struct {
-	store  *pg.Store
-	tokens *token.Service
-	authn  *authn.Service
+	store      *pg.Store
+	tokens     *token.Service
+	federation *token.FederationService
+	authn      *authn.Service
 	// exchanges keeps the tokens of API keys the state backend's clients
 	// send with every request.
 	exchanges      *authn.Exchanges
@@ -190,15 +193,18 @@ func New(d Deps) (*Domain, error) {
 	store := pg.New(d.DB).WithFeatures(d.Features).WithEvents(d.Events).WithSealer(d.Keys)
 	decide := authz.NewService(store)
 	store.WithSnapshots(decide.Drop)
-	refs := make([]string, 0, len(d.KMS))
-	for _, k := range d.KMS {
-		refs = append(refs, k.Ref())
-	}
-	tokens := token.New(pg.NewSigningKeys(d.DB, d.Keys, d.KMS), issuer, token.Policy{
+	signingKeys := pg.NewSigningKeys(d.DB, d.Keys, d.KMS)
+	tokens := token.New(signingKeys, issuer, token.Policy{
 		Manual:    manual,
 		TokenLife: d.Settings.Tokens.longest(),
-		Refs:      refs,
+		Refs:      kmsRefs(d.Settings.Signing.KMSKeys),
 	}, now).WithRunIssuer(runIssuer)
+	federation := token.NewFederation(signingKeys, token.Policy{
+		Manual:    manual,
+		TokenLife: d.Settings.Tokens.Federation.TTL,
+		Refs:      kmsRefs(d.Settings.Federation.KMSKeys),
+		Algorithm: jose.SignatureAlgorithm(d.Settings.Federation.Algorithm),
+	}, now)
 	var roots []byte
 	if f := d.Settings.OIDCAPIKeys.CAFile; f != "" {
 		var err error
@@ -272,15 +278,16 @@ func New(d Deps) (*Domain, error) {
 		subjects.Register(entity, bindingSpace(store, kind))
 	}
 	return &Domain{
-		store:     store,
-		tokens:    tokens,
-		authn:     auth,
-		exchanges: authn.NewExchanges(auth),
-		authz:     decide,
-		subjects:  subjects,
-		keys:      keys,
-		orgs:      orgs,
-		orgAdmin:  orgAdmin,
+		store:      store,
+		tokens:     tokens,
+		federation: federation,
+		authn:      auth,
+		exchanges:  authn.NewExchanges(auth),
+		authz:      decide,
+		subjects:   subjects,
+		keys:       keys,
+		orgs:       orgs,
+		orgAdmin:   orgAdmin,
 		providers: sso.NewService(sso.Deps{
 			Store: store, Admins: orgAdmin, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
 		}),
@@ -302,6 +309,24 @@ func New(d Deps) (*Domain, error) {
 		manual:    manual,
 		publicURL: d.PublicURL,
 	}, nil
+}
+
+// EnsureFederationKey creates the first federation signing key when there
+// is none, of auth.federation.algorithm, or from the newest of
+// auth.federation.kms_keys under the kms backend, so a relying party finds
+// a published key from the first start on. Replicas that start together
+// agree on one key.
+func (d *Domain) EnsureFederationKey(ctx context.Context) error {
+	return d.federation.Bootstrap(ctx) //nolint:wrapcheck // names the purpose
+}
+
+// kmsRefs are keys as signing_keys.kms_key_ref stores them, oldest first.
+func kmsRefs(keys []KMSKey) []string {
+	refs := make([]string, 0, len(keys))
+	for _, k := range keys {
+		refs = append(refs, k.String())
+	}
+	return refs
 }
 
 // API is the domain's partial of the API's strict server; a nil domain's
@@ -511,7 +536,9 @@ func (d *Domain) AccountOrganization(ctx context.Context, acct kernel.AccountID)
 // Cron is the domain's periodic tasks: authn.sessions.expire, hourly,
 // which also deletes the authorization server's ended requests and unused
 // clients, and authn.keys.rotate, daily, unless auth.signing.rotation is
-// manual.
+// manual, which rotates the api-token keys and then the federation keys,
+// each in its own transaction, the second whether or not the first
+// fails.
 func (d *Domain) Cron() []cron.Task {
 	tasks := make([]cron.Task, 0, 2)
 	tasks = append(tasks, cron.Task{
@@ -529,7 +556,8 @@ func (d *Domain) Cron() []cron.Task {
 		Kind:  RotateKeys,
 		Every: token.RotateEvery,
 		Handler: func(ctx context.Context, _ queue.Job) error {
-			return d.tokens.Rotate(ctx) //nolint:wrapcheck // names itself
+			//nolint:wrapcheck // each names its purpose
+			return errors.Join(d.tokens.Rotate(ctx), d.federation.Rotate(ctx))
 		},
 	})
 }

@@ -138,6 +138,32 @@ func TestUnitSettings(t *testing.T) {
 		"max age":     {func(s *Settings) { s.Session.MaxAge = -time.Hour }, "auth.session.max_age"},
 		"backend":     {func(s *Settings) { s.Signing.Backend = "hsm" }, "auth.signing.backend"},
 		"no kms keys": {func(s *Settings) { s.Signing.Backend = BackendKMS }, "auth.signing.kms_keys is required"},
+		"no federation kms keys": {func(s *Settings) {
+			s.Signing.Backend = BackendKMS
+			s.Signing.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}}
+		}, "auth.federation.kms_keys is required by auth.signing.backend kms"},
+		"local federation keys": {
+			func(s *Settings) { s.Federation.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/f/1"}} },
+			"auth.federation.kms_keys is set, but auth.signing.backend is local",
+		},
+		"federation provider": {func(s *Settings) {
+			s.Signing.Backend = BackendKMS
+			s.Signing.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}}
+			s.Federation.KMSKeys = []KMSKey{{Provider: "pkcs11", Ref: "k"}}
+		}, "auth.federation.kms_keys[0].provider"},
+		"federation key shared": {func(s *Settings) {
+			s.Signing.Backend = BackendKMS
+			s.Signing.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}}
+			s.Federation.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}}
+		}, "auth.federation.kms_keys[0] vault:transit/k/1 is also in auth.signing.kms_keys"},
+		"federation algorithm": {func(s *Settings) { s.Federation.Algorithm = "HS256" }, "auth.federation.algorithm"},
+		"federation issuer": {
+			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com/#f" }, "auth.federation.issuer",
+		},
+		"federation jwks_uri": {
+			func(s *Settings) { s.Federation.JWKSURI = "keys.example.com/jwks" }, "auth.federation.jwks_uri",
+		},
+		"federation ttl": {func(s *Settings) { s.Tokens.Federation.TTL = 0 }, "auth.tokens.federation.ttl"},
 		"local keys": {
 			func(s *Settings) { s.Signing.KMSKeys = []KMSKey{{Provider: "vault", Ref: "transit/k/1"}} },
 			"auth.signing.kms_keys is set",
@@ -201,8 +227,18 @@ func TestUnitSettings(t *testing.T) {
 		{Provider: "awskms", Ref: "k1"},
 		{Provider: "vault", Ref: "transit/k/2"},
 	}
+	s.Federation = FederationSettings{
+		Issuer:    "https://iw.example.com/federation",
+		JWKSURI:   "http://keys.example.com/jwks",
+		Algorithm: "PS256",
+		KMSKeys:   []KMSKey{{Provider: "awskms", Ref: "rsa"}},
+	}
 	if err := s.Validate(); err != nil {
-		t.Errorf("two KMS keys: %v", err)
+		t.Errorf("two KMS keys and a federation key: %v", err)
+	}
+	s.Signing.Backend = "hsm"
+	if err := s.Validate(); err == nil || strings.Contains(err.Error(), "auth.federation.kms_keys") {
+		t.Errorf("an unknown backend: %v, want it named alone", err)
 	}
 	s = DefaultSettings()
 	id := kernel.NewULID()

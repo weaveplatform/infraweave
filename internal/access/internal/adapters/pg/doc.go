@@ -114,11 +114,14 @@
 // account_users. Every revocation sends session:<id> on
 // infraweave_invalidate in its own transaction, and a member's new
 // session in a channel revokes their live one there. SigningKeys
-// implements token.Store: under the local backend it generates each key
-// and seals its private half into signing_keys.private_key_sealed bound
-// to the key's id; under the kms backend it stores a KMS key's reference
-// in kms_key_ref and signs through the opened KMS key of that reference
-// (ErrKMSRef when none is). It applies a rotation under a SHARE ROW
+// implements token.Store for the api-token and federation purposes: under
+// the local backend it generates each key for its step's algorithm and
+// seals its private half into signing_keys.private_key_sealed bound to
+// the key's id; under the kms backend it stores a KMS key's reference in
+// kms_key_ref and signs through the opened KMS key of that reference
+// (ErrKMSRef when none is, ErrKMSAlgorithm when it is opened for another
+// algorithm). Each row's algorithm is its key's, under which a sealed
+// half opens. It applies a rotation under a SHARE ROW
 // EXCLUSIVE lock, so replicas rotating together, the first key's creation
 // among them, take turns while verifiers keep reading.
 //
