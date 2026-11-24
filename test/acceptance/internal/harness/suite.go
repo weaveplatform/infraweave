@@ -30,7 +30,9 @@ const (
 	envSeed          = "INFRAWEAVE_ACCEPT_SEED"
 	EnvFeatures      = "INFRAWEAVE_ACCEPT_FEATURES"
 	// EnvTags narrows the partition's scenarios to those matching a
-	// further tag expression, such as one provider's @lab: tag.
+	// further tag expression, such as one provider's @lab: tag, in
+	// Cucumber's syntax or godog's (GodogTags). A run it narrows to no
+	// scenario fails.
 	EnvTags     = "INFRAWEAVE_ACCEPT_TAGS"
 	EnvOut      = "INFRAWEAVE_ACCEPT_OUT"
 	EnvCucumber = "INFRAWEAVE_ACCEPT_CUCUMBER"
@@ -236,6 +238,12 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 	t.Helper()
 	s := newSuite(t)
 	s.areas = areas
+	// A selection of no scenario fails before the Docker daemon is asked
+	// for, so it fails the same way on a host without one.
+	tags, err := Selection(s.features, os.Getenv(EnvPartition), os.Getenv(EnvTags))
+	if err != nil {
+		t.Fatal(err)
+	}
 	s.dockerErr = errNoDocker
 	if os.Getenv(EnvNoDocker) != "1" {
 		s.dockerErr = deps.DockerReachable(t.Context())
@@ -248,11 +256,6 @@ func Features(t *testing.T, areas []func(*godog.ScenarioContext, *World)) {
 			t.Error(err)
 		}
 	})
-	tags, err := TagExpression(os.Getenv(EnvPartition))
-	if err != nil {
-		t.Fatal(err)
-	}
-	tags = And(tags, os.Getenv(EnvTags))
 	seed := time.Now().UnixNano()
 	if v := os.Getenv(envSeed); v != "" {
 		if seed, err = strconv.ParseInt(v, 10, 64); err != nil {

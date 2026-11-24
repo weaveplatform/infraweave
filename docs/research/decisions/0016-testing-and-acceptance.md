@@ -569,6 +569,13 @@ coverage it would contribute is not waived.
   expanded scenario to prove exactly one owning job, no missing cases,
   and conjunction with focus tags. Comma alternatives distribute their
   exclusions and focus conditions into every arm.
+  `INFRAWEAVE_ACCEPT_TAGS` names the focus as a Cucumber tag expression
+  (`@op:a or (@op:b and not @quarantine)`), in which godog's `,`, `&&` and
+  `~` also stand for or, and and not. Godog's filter reads only that
+  older syntax and takes any other text as part of a tag name, so the
+  harness translates the expression into it, and a focus that selects no
+  scenario of the partition fails the run, naming the expression, rather
+  than passing having tested nothing.
   `TestUnitTerraformSplitCoverage` proves the disjoint union of the three
   Terraform jobs equals the complete original `@terraform` selection, using
   actual expanded scenarios rather than a fixed count. The plan-artifact

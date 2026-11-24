@@ -104,7 +104,7 @@ build:
 		done; \
 	done
 
-## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|identity|terraform-plans|terraform-vcs|terraform|runs|integrations for one CI partition, vcs-lab for the labs'); coverage and cucumber.json to cover/accept
+## accept: every TestAcc test: the Gherkin features against the built binary, with Docker dependencies (make accept PARTITION=core|identity|terraform-plans|terraform-vcs|terraform|runs|integrations for one CI partition, vcs-lab for the labs'; INFRAWEAVE_ACCEPT_TAGS='@a or (@b and not @c)' narrows it with Cucumber's or, and, not and parentheses, or godog's , && ~, and fails when it selects no scenario); coverage and cucumber.json to cover/accept
 # atomic matches the counter mode -race forces on the unit run; covdata
 # refuses to merge profiles whose modes differ.
 # Feature partitions run Gherkin alone; accept-native runs captures and the

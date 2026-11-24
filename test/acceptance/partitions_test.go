@@ -172,6 +172,96 @@ func TestUnitTagExpression(t *testing.T) {
 	}
 }
 
+// Godog's filter reads only ",", "&&" and "~"; Cucumber's operators are
+// distributed into that form, with every negation on a tag.
+//
+// ref: decision 0016
+func TestUnitGodogTags(t *testing.T) {
+	for expr, want := range map[string]string{
+		"@lab:github":                       "@lab:github",
+		"@op:a or @op:b":                    "@op:a,@op:b",
+		"@op:a and not @op:b":               "@op:a && ~@op:b",
+		"not (@op:a or @op:b)":              "~@op:a && ~@op:b",
+		"not (@op:a and @op:b)":             "~@op:a,~@op:b",
+		"not not @op:a":                     "@op:a",
+		"(@a or @b) and (@c or @d)":         "@a && @c,@a && @d,@b && @c,@b && @d",
+		"@a or @b and @c":                   "@a,@b && @c",
+		"(@vcs-lab) and (@lab:gitlab)":      "@vcs-lab && @lab:gitlab",
+		"@a,@b":                             "@a,@b",
+		"~@a&&@b, @c":                       "~@a && @b,@c",
+		"  @op:a   or\t@op:b  ":             "@op:a,@op:b",
+		"not (@a and (@b or not @c)) or @d": "~@a,~@b && @c,@d",
+	} {
+		if got, err := harness.GodogTags(expr); err != nil || got != want {
+			t.Errorf("GodogTags(%q) = %q, %v; want %q", expr, got, err, want)
+		}
+	}
+	for _, expr := range []string{
+		"", "@a or", "@a and and @b", "op:a", "@", "(@a or @b", "@a)", "@a @b", "not", "@a,,@b", "@a &&",
+	} {
+		if got, err := harness.GodogTags(expr); !errors.Is(err, harness.ErrTagExpression) {
+			t.Errorf("GodogTags(%q) = %q, %v; want %v", expr, got, err, harness.ErrTagExpression)
+		}
+	}
+}
+
+// A focus that selects nothing fails the run before it starts, naming the
+// expression; the selected scenarios are those godog's own filter picks.
+//
+// ref: decision 0016
+func TestUnitSelection(t *testing.T) {
+	dir := filepath.Join("testdata", "selection")
+	first, second, both := "The first operation's", "The second operation's", "Both operations'"
+	for _, tc := range []struct {
+		partition, focus string
+		want             []string
+	}{
+		{"core", "@op:first or @op:second", []string{first, second, both}},
+		{"core", "@op:first,@op:second", []string{first, second, both}},
+		{"core", "@op:first and not @op:second", []string{first}},
+		{"core", "~@op:first && @op:second", []string{second}},
+		{"core", "not (@op:first or @op:second)", []string{"Neither operation's"}},
+		{"vcs-lab", "@op:first", []string{"A lab's first operation's"}},
+		{"core", "", []string{first, second, both, "Neither operation's"}},
+	} {
+		expr, err := harness.Selection(dir, tc.partition, tc.focus)
+		if err != nil {
+			t.Errorf("Selection(%q, %q): %v", tc.partition, tc.focus, err)
+			continue
+		}
+		suite := godog.TestSuite{Options: &godog.Options{Paths: []string{dir}, Tags: expr}}
+		features, err := suite.RetrieveFeatures()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, f := range features {
+			for _, p := range f.Pickles {
+				got = append(got, p.Name)
+			}
+		}
+		slices.Sort(got)
+		slices.Sort(tc.want)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("Selection(%q, %q) = %q selects %q, want %q", tc.partition, tc.focus, expr, got, tc.want)
+		}
+	}
+
+	_, err := harness.Selection(dir, "core", "@no-such-tag")
+	if !errors.Is(err, harness.ErrNoScenario) || !strings.Contains(err.Error(), `INFRAWEAVE_ACCEPT_TAGS="@no-such-tag"`) {
+		t.Errorf("a focus that selects nothing: %v", err)
+	}
+	if _, err := harness.Selection(dir, "core", "@op:first or"); !errors.Is(err, harness.ErrTagExpression) {
+		t.Errorf("a focus that does not parse: %v", err)
+	}
+	if _, err := harness.Selection(dir, "everything", "@op:first"); !errors.Is(err, harness.ErrUnknownPartition) {
+		t.Errorf("an unknown partition: %v", err)
+	}
+	if _, err := harness.Selection(filepath.Join(dir, "absent"), "core", "@op:first"); err == nil {
+		t.Error("features that do not exist selected scenarios")
+	}
+}
+
 func TestUnitDockerTags(t *testing.T) {
 	got := harness.DockerTags([]string{
 		"@postgres", "@identity", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
