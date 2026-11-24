@@ -38,14 +38,15 @@ func Run(ctx context.Context, in io.Reader, doer func(roots *x509.CertPool) wire
 	}
 	c := client.New(h.Endpoint, doer(roots))
 	return exec.Run(ctx, h, exec.Deps{ //nolint:wrapcheck // exec names the step
-		Reports:   c,
-		Logs:      c,
-		Uploads:   c,
-		Log:       log,
-		Out:       os.Stdout,
-		Workspace: ".",
-		Environ:   os.Environ(),
-		Stop:      stop,
+		Reports:    c,
+		Logs:       c,
+		Uploads:    c,
+		Federation: c,
+		Log:        log,
+		Out:        os.Stdout,
+		Workspace:  ".",
+		Environ:    os.Environ(),
+		Stop:       stop,
 	})
 }
 

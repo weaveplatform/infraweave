@@ -29,6 +29,18 @@ components:
             The request this problem answers, as urn:infraweave:request: and
             the request ID the X-Request-Id response header carries and the
             server logs.
+        feature:
+          type: string
+          description: >-
+            The feature of feature-disabled and feature-not-in-tier, a name
+            of the feature catalogue.
+        tiers:
+          type: array
+          items:
+            type: string
+          description: >-
+            For feature-not-in-tier, the tiers that include the feature,
+            smallest first.
         limit:
           type: string
           description: The limit of limit-reached, such as private-workers.
@@ -171,6 +183,24 @@ components:
             title: invalid state
             status: 409
             detail: The run is not on a worker.
+            instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
+    FeatureRefused:
+      description: >-
+        The run's account may not use the feature the call needs: its
+        organization's tier does not include it, feature-not-in-tier,
+        naming the tiers that do, or the operator switched it off,
+        feature-disabled.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: urn:infraweave:problem:feature-not-in-tier
+            title: feature not in tier
+            status: 403
+            detail: The organization's tier does not include oidc-federation.
+            feature: oidc-federation
+            tiers: [Starter, Business, Enterprise]
             instance: urn:infraweave:request:MSVOJ63PHPYPDOE6VID5JWYBBI
     NotFound:
       description: No such resource.

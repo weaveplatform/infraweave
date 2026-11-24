@@ -14,9 +14,10 @@
 //
 // It reads the handoff from an io.Reader, the container's standard input,
 // and the process's working directory and environment. The run's phases
-// write to standard output, and its reports, log and artifacts reach the
-// worker API with the run token, over a client Client makes that trusts
-// the handoff's roots beside the system's.
+// write to standard output, and its reports, log and artifacts, and the
+// requests that refresh its OIDC federation token, reach the worker API
+// with the run token, over a client Client makes that trusts the
+// handoff's roots beside the system's.
 //
 // # Dependencies
 //

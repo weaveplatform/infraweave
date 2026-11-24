@@ -2,7 +2,8 @@
 // API: Client calls register, poll, deregister, the run token keys, read
 // with at most MaxRunTokenKeys of their answer, a run's specification,
 // its reports, its upload declarations, its log chunks' and artifacts'
-// commits and its saved workspace's location through the generated
+// commits, its saved workspace's location and the reissue of its OIDC
+// federation token through the generated
 // internal/agent/wire client, setting each call's bearer token, and
 // answers an *Error with the status and problem detail of any response
 // other than the one the call expects. Workspace answers the redirect's

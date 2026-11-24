@@ -200,8 +200,8 @@ func (r *run) sealArtifact(object, name string, write func(io.Writer) error) (up
 // alike, sealed to the pool's key for the run
 // at version, leaving out what workspace.Write does and naming each such
 // entry in the run's log, and answers its upload. No file of it may hold
-// the run token, the source credential's token or the OIDC federation
-// token, whose own file workspace.Write leaves out.
+// the run token, the source credential's token or an OIDC federation
+// token the run's phases held, whose own file workspace.Write leaves out.
 func (r *run) sealWorkspace(version int64) (upload, error) {
 	pool, err := ecdh.P256().NewPublicKey(r.h.PoolKey)
 	if err != nil {
@@ -211,9 +211,7 @@ func (r *run) sealWorkspace(version int64) (upload, error) {
 	if c := r.h.Secrets.SourceCredential; c != nil {
 		banned = append(banned, []byte(c.Token))
 	}
-	if t := r.h.Secrets.OidcToken; t != nil {
-		banned = append(banned, []byte(*t))
-	}
+	banned = append(banned, r.oidcTokens()...)
 	var left []string
 	u, err := r.sealed(wire.UploadKindWorkspace, WorkspaceName, func(w io.Writer) error {
 		var err error

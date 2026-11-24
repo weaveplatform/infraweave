@@ -216,6 +216,10 @@ type world struct {
 	plan      string
 	environ   []string
 	out       lockedBuffer
+	// fed reissues federation tokens, and logs takes the runner's log;
+	// a world without them refreshes no token and discards the log.
+	fed  exec.Federation
+	logs *lockedBuffer
 }
 
 // lockedBuffer is the session's output: the shell's and a syntax check's
@@ -316,8 +320,12 @@ func (w *world) workflow(content string) {
 // run runs the world's run and answers Run's error.
 func (w *world) run() error {
 	w.t.Helper()
+	log := slog.New(slog.DiscardHandler)
+	if w.logs != nil {
+		log = slog.New(slog.NewTextHandler(w.logs, nil))
+	}
 	return exec.Run(w.t.Context(), w.h, exec.Deps{
-		Reports: w.w, Logs: w.w, Uploads: w.w, Log: slog.New(slog.DiscardHandler), Out: &w.out,
+		Reports: w.w, Logs: w.w, Uploads: w.w, Federation: w.fed, Log: log, Out: &w.out,
 		Workspace: w.workspace, Environ: w.environ,
 	})
 }

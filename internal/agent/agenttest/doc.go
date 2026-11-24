@@ -14,7 +14,8 @@
 // an in-memory store that checks each PUT against its declaration and
 // serves a GET with no bearer token, indexes uploaded log chunks once,
 // records artifacts and workspaces, redirects a run's workspace request
-// to the last one it recorded, and records every call. SaveWorkspace
+// to the last one it recorded, reissues a run's federation token, and
+// records every call. SaveWorkspace
 // records a workspace as if a runner had, and Pool.PublicKey is the key
 // a runner seals one to. Refuse makes calls fail with a status, Renew
 // hands a worker a new session token, and Lose forgets every worker.

@@ -144,6 +144,25 @@ func (s Server) WorkerRunWorkspace(ctx context.Context, req gen.WorkerRunWorkspa
 	}, nil
 }
 
+// WorkerRunOIDCToken reissues the OIDC federation token of the phase the
+// run the run token names is in.
+//
+// ref: decision 0006 § "OIDC federation token"
+func (s Server) WorkerRunOIDCToken(ctx context.Context, req gen.WorkerRunOIDCTokenRequestObject) (gen.WorkerRunOIDCTokenResponseObject, error) {
+	b, err := bearer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	run, _ := kernel.ParseULID(req.Run)
+	tok, err := s.svc.FederationToken(ctx, b, run)
+	if err != nil {
+		return nil, s.answer(ctx, err)
+	}
+	return gen.WorkerRunOIDCToken200JSONResponse{Body: gen.OIDCToken{
+		Token: tok.Raw, ExpiresAt: tok.Expires.Unix(),
+	}}, nil
+}
+
 func receipt(mode *gen.PlanSanitization) workersapi.SanitizationMode {
 	if mode == nil {
 		return ""

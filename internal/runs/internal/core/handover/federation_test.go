@@ -9,10 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	"github.com/weaveplatform/infraweave/internal/runs/internal/core/handover"
+	"github.com/weaveplatform/infraweave/internal/runs/internal/core/lifecycle"
+	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
@@ -199,5 +204,154 @@ func TestUnitHandoverFederationGate(t *testing.T) {
 		if _, err := w.firstHandover(t, w.run.ID); !errors.Is(err, down) {
 			t.Errorf("%s down: %v", name, err)
 		}
+	}
+}
+
+// reissue reissues id's federation token in a transaction.
+func (w *world) reissue(t *testing.T, id kernel.ULID) (workersapi.FederationToken, error) {
+	t.Helper()
+	var tok workersapi.FederationToken
+	err := tx.Do(t.Context(), db{}, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		tok, err = w.svc.FederationToken(ctx, id)
+		return err
+	})
+	return tok, err
+}
+
+// TestUnitHandoverFederationReissue checks that a run in each phase state
+// receives a token minted as its handover's was, for its stack in the
+// stack's space with the stack's autodeploy, but naming the phase's own
+// state, from which the access domain picks the scope; and that only
+// the account's feature check precedes the mint.
+func TestUnitHandoverFederationReissue(t *testing.T) {
+	org := kernel.NewOrganizationID()
+	for _, tc := range []struct {
+		typ        kernel.RunType
+		state      kernel.RunState
+		autodeploy bool
+	}{
+		{kernel.RunTypeProposed, kernel.RunStateInitializing, false},
+		{kernel.RunTypeTracked, kernel.RunStatePlanning, false},
+		{kernel.RunTypeTracked, kernel.RunStateApplying, false},
+		{kernel.RunTypeTracked, kernel.RunStatePlanning, true},
+		{kernel.RunTypeTask, kernel.RunStatePerforming, false},
+		{kernel.RunTypeDestroy, kernel.RunStateDestroying, false},
+	} {
+		w := newWorld(t)
+		f := &features{}
+		federated(t, w, f, org, nil)
+		w.store.run.Type, w.store.run.State = tc.typ, tc.state
+		w.stacks.settings.Autodeploy = tc.autodeploy
+		got, err := w.reissue(t, w.run.ID)
+		want := workersapi.FederationToken{Raw: "oidc-" + string(tc.state), Expires: time.Unix(2e9+7, 0)}
+		if err != nil || got != want {
+			t.Errorf("%s in %s = %+v, %v; want %+v", tc.typ, tc.state, got, err, want)
+			continue
+		}
+		wantReq := accessapi.FederationRequest{
+			Account: w.run.Account, Run: w.run.ID, RunType: tc.typ,
+			CallerType: accessapi.FederationStack, Caller: "infra", Space: w.space,
+			Phase: tc.state, Autodeploy: tc.autodeploy,
+		}
+		if len(w.tokens.federation) != 1 || w.tokens.federation[0] != wantReq {
+			t.Errorf("%s in %s: requests %+v, want %+v", tc.typ, tc.state, w.tokens.federation, wantReq)
+		}
+		if len(f.asked) != 1 || f.asked[0] != org.String()+" "+featuresapi.OIDCFederation {
+			t.Errorf("%s in %s: features asked %v", tc.typ, tc.state, f.asked)
+		}
+		if len(w.tokens.got) != 0 {
+			t.Errorf("%s in %s: in-run tokens minted %+v", tc.typ, tc.state, w.tokens.got)
+		}
+	}
+}
+
+// TestUnitHandoverFederationReissueRefused checks that a run no account
+// has, one off its worker, one waiting for a person or ended answers
+// ErrNotOnWorker; one preparing, or a parse run, ErrNotInPhase; an
+// account whose tier lacks the feature, or a service with no features
+// bound, the features domain's refusal; and that a call outside a
+// transaction, a failed read of the run, the organization, the feature,
+// the stack and a failed mint each fail, none but the last asking for a
+// token.
+func TestUnitHandoverFederationReissueRefused(t *testing.T) {
+	org := kernel.NewOrganizationID()
+	for name, tc := range map[string]struct {
+		set  func(w *world)
+		id   func(w *world) kernel.ULID
+		want error
+	}{
+		"no such run":  {id: func(*world) kernel.ULID { return kernel.NewULID() }, want: workersapi.ErrNotOnWorker},
+		"off a worker": {set: func(w *world) { w.store.run.WorkerPool = nil }, want: workersapi.ErrNotOnWorker},
+		"unconfirmed": {
+			set:  func(w *world) { w.store.run.State = kernel.RunStateUnconfirmed },
+			want: workersapi.ErrNotOnWorker,
+		},
+		"finished": {
+			set:  func(w *world) { w.store.run.State = kernel.RunStateFinished },
+			want: workersapi.ErrNotOnWorker,
+		},
+		"preparing": {
+			set:  func(w *world) { w.store.run.State = kernel.RunStatePreparingApply },
+			want: workersapi.ErrNotInPhase,
+		},
+		"a parse run": {
+			set: func(w *world) {
+				w.store.run.Type, w.store.run.State = kernel.RunTypeParse, kernel.RunStatePlanning
+			},
+			want: workersapi.ErrNotInPhase,
+		},
+		"a store down": {set: func(w *world) { w.store.err = errDown }, want: errDown},
+		"the organization down": {
+			set:  func(w *world) { federated(t, w, &features{}, org, errDown) },
+			want: errDown,
+		},
+		"the features down": {
+			set:  func(w *world) { federated(t, w, &features{err: errDown}, org, nil) },
+			want: errDown,
+		},
+		"the stack down": {set: func(w *world) { w.stacks.fail = "Settings" }, want: errDown},
+		"the mint down":  {set: func(w *world) { w.tokens.federationErr = errDown }, want: errDown},
+	} {
+		w := newWorld(t)
+		federated(t, w, &features{}, org, nil)
+		w.store.run.State = kernel.RunStatePlanning
+		if tc.set != nil {
+			tc.set(w)
+		}
+		id := w.run.ID
+		if tc.id != nil {
+			id = tc.id(w)
+		}
+		_, err := w.reissue(t, id)
+		if !errors.Is(err, tc.want) {
+			t.Errorf("%s = %v, want %v", name, err, tc.want)
+		}
+		if n := len(w.tokens.federation); n != 0 && name != "the mint down" {
+			t.Errorf("%s minted %d tokens", name, n)
+		}
+	}
+
+	for name, f := range map[string]*features{
+		"lacking": {refused: map[string]bool{featuresapi.OIDCFederation: true}},
+		"unbound": nil,
+	} {
+		w := newWorld(t)
+		if f != nil {
+			federated(t, w, f, org, nil)
+		}
+		w.store.run.State = kernel.RunStateApplying
+		_, err := w.reissue(t, w.run.ID)
+		if r, ok := errors.AsType[*featuresapi.Refusal](err); !ok || r.Feature != featuresapi.OIDCFederation ||
+			len(w.tokens.federation) != 0 {
+			t.Errorf("%s = %v, requests %+v", name, err, w.tokens.federation)
+		}
+	}
+
+	w := newWorld(t)
+	federated(t, w, &features{}, org, nil)
+	w.store.run.State = kernel.RunStatePlanning
+	if _, err := w.svc.FederationToken(t.Context(), w.run.ID); !errors.Is(err, lifecycle.ErrNoTransaction) {
+		t.Errorf("outside a transaction = %v", err)
 	}
 }

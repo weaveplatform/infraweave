@@ -177,3 +177,31 @@ func TestUnitWorkerRunSpecFails(t *testing.T) {
 		t.Errorf("pool gone = %v", err)
 	}
 }
+
+// TestUnitWorkerFederationToken checks that a run token's bearer gets the
+// federation token the scheduler reissues for its run, in a transaction;
+// that another run's token is refused before the scheduler is asked; and
+// that a service with no scheduler bound, and the scheduler's refusal,
+// answer as the runs domain would.
+func TestUnitWorkerFederationToken(t *testing.T) {
+	f, sch, run, _ := specFixture(t)
+	want := workersapi.FederationToken{Raw: "oidc", Expires: time.Unix(2e9, 0)}
+	sch.federation = want
+	got, err := f.svc.FederationToken(t.Context(), accessapi.Bearer{ID: run}, run)
+	if err != nil || got != want || len(sch.reissued) != 1 || sch.reissued[0] != run || !sch.inTx {
+		t.Errorf("FederationToken = %+v, %v; reissued %v in a transaction %t", got, err, sch.reissued, sch.inTx)
+	}
+	if _, err := f.svc.FederationToken(t.Context(), accessapi.Bearer{ID: kernel.NewULID()},
+		run); !errors.Is(err, worker.ErrUnauthenticated) || len(sch.reissued) != 1 {
+		t.Errorf("another run's token = %v, reissued %v", err, sch.reissued)
+	}
+	if _, err := newFixture(t, worker.Deps{}).svc.FederationToken(t.Context(), accessapi.Bearer{ID: run},
+		run); !errors.Is(err, workersapi.ErrNotOnWorker) {
+		t.Errorf("no scheduler = %v", err)
+	}
+	sch.federationErr = workersapi.ErrNotInPhase
+	if _, err := f.svc.FederationToken(t.Context(), accessapi.Bearer{ID: run},
+		run); !errors.Is(err, workersapi.ErrNotInPhase) {
+		t.Errorf("a run in no phase = %v", err)
+	}
+}

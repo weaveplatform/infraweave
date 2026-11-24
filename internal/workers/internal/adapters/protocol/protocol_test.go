@@ -404,11 +404,16 @@ func TestUnitProtocolHold(t *testing.T) {
 }
 
 // scheduler hands out run once, and hands over handover, or fails with
-// err.
+// err; it reissues federation, or fails with err too.
 type scheduler struct {
-	run      *workersapi.Assignment
-	handover workersapi.Handover
-	err      error
+	run        *workersapi.Assignment
+	handover   workersapi.Handover
+	federation workersapi.FederationToken
+	err        error
+}
+
+func (s *scheduler) FederationToken(context.Context, kernel.ULID) (workersapi.FederationToken, error) {
+	return s.federation, s.err
 }
 
 func (s *scheduler) Handover(context.Context, kernel.ULID) (workersapi.Handover, error) {

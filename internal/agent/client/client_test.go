@@ -113,6 +113,14 @@ func TestUnitClientCalls(t *testing.T) {
 	if got := srv.Chunks(); len(got) != 1 || string(got[0].Body) != "a line\n" {
 		t.Fatalf("indexed %+v", got)
 	}
+	if tok, err := c.OIDCToken(ctx, "token", "run-1"); err != nil || tok.Token != "oidc-1" || tok.ExpiresAt == 0 {
+		t.Fatalf("OIDCToken: %+v, %v", tok, err)
+	}
+	srv.Refuse("oidc-token", http.StatusForbidden, 1)
+	if _, err := c.OIDCToken(ctx, "token", "run-1"); client.Status(err) != http.StatusForbidden ||
+		!strings.HasPrefix(err.Error(), "reissue the federation token: 403 ") {
+		t.Fatalf("OIDCToken refused: %v", err)
+	}
 	if _, err := c.Workspace(ctx, "token", "run-1"); client.Status(err) != http.StatusNotFound {
 		t.Fatalf("Workspace of a run that saved none: %v", err)
 	}
@@ -248,6 +256,10 @@ func TestUnitClientCalls(t *testing.T) {
 			_, err := c.Workspace(ctx, "wrong", "run-1")
 			return err
 		},
+		"reissue the federation token": func() error {
+			_, err := c.OIDCToken(ctx, "wrong", "run-1")
+			return err
+		},
 	} {
 		err := call()
 		var e *client.Error
@@ -297,6 +309,7 @@ func TestUnitClientFailures(t *testing.T) {
 			"chunks":    c.LogChunks(ctx, "t", "r", wire.LogChunksRequest{}),
 			"artifacts": c.Artifacts(ctx, "t", "r", wire.ArtifactsRequest{}),
 			"workspace": func() error { _, err := c.Workspace(ctx, "t", "r"); return err }(),
+			"oidc":      func() error { _, err := c.OIDCToken(ctx, "t", "r"); return err }(),
 			"no file":   c.PutFile(ctx, wire.SignedUpload{Url: "http://store.invalid/k"}, "/gone"),
 			"a file": c.PutFile(ctx, wire.SignedUpload{Url: "http://store.invalid/k"},
 				"client_test.go"),

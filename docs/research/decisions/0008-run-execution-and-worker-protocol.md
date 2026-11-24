@@ -300,6 +300,7 @@ queue lease ([27 section 10](../reference/27-reference-materials.md#10-work-queu
   | `POST /worker/v1/runs/{run}/log-chunks` | runner, run token | Commits uploaded chunks and indexes them in `run_log_chunks` |
   | `POST /worker/v1/runs/{run}/artifacts` | runner, run token | Commits uploaded run artifacts, workspaces and observability artifacts and records them in `run_artifacts` |
   | `GET /worker/v1/runs/{run}/workspace` | launcher, run token | `307` to a pre-signed `GET` of the run's latest saved workspace; `404` when it has none |
+  | `POST /worker/v1/runs/{run}/oidc-token` | runner, run token | A new OIDC federation token, `{token, expiresAt}`, for the phase the run is in (`INITIALIZING`, `PLANNING`, `APPLYING`, `PERFORMING` or `DESTROYING`): the claims and scope of the phase's handover token, the account's current subject template rendered again, and a fresh `jti`, `iat`, `nbf` and `exp` ([0006](0006-authentication-and-tokens.md#oidc-federation-token)); `409` `invalid-state` in any other state or for a run that receives no token, `403` `feature-not-in-tier` or `feature-disabled` for an account that may no longer federate. Each call is a `standard` draw on the run |
 
 - **The poll.** The request carries `{busy, drained, retiring, run, version}`,
   where `drained` is the drain flag the launcher last learned and `retiring`
@@ -644,7 +645,12 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `/mnt/workspace/infraweave.oidc`, mode `0400`, before the phase's hooks
   and sets `INFRAWEAVE_OIDC_TOKEN` after the stack's variables, as it
   does `INFRAWEAVE_API_TOKEN`, and the masker hides it. A run of an account
-  without the feature, and a parse run, gets neither and goes on.
+  without the feature, and a parse run, gets neither and goes on. A phase
+  that outlives the token has the file refreshed through
+  `POST /worker/v1/runs/{run}/oidc-token`, as 0006's refresh says: the
+  runner masks the new token, writes it to `.infraweave.oidc.next` and
+  renames that over the file, so a reader never sees a partial token, and
+  `INFRAWEAVE_OIDC_TOKEN` keeps the phase start's.
   P17 adds `TG_TF_REGISTRY_TOKEN` with
   the module registry's in-run credential, which
   [0014](0014-module-and-provider-registry.md) has the runner write into
@@ -681,10 +687,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `.terragrunt-cache` too, which it otherwise keeps, and leaves out and
   logs a link that
   leaves the workspace, a device, a pipe or a socket. It leaves out
-  `infraweave.oidc` at the workspace's root too, unlogged, so a restored
-  workspace never carries an earlier phase's federation token. A file,
-  link or name that holds the run token, the source credential or the
-  federation token fails the planning,
+  `infraweave.oidc` and `.infraweave.oidc.next` at the workspace's root
+  too, unlogged, so a restored workspace never carries an earlier phase's
+  federation token. A file, link or name that holds the run token, the
+  source credential or a federation token the phase held fails the
+  planning,
   naming the path but never the value, as does a sealed workspace over
   2 GiB. The runner uploads it to `workspaces` before it reports the plan,
   since the plan's answer is not known yet. For `PREPARING_APPLY` and

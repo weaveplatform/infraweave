@@ -87,6 +87,7 @@ func (r *run) setUp(ctx context.Context) string {
 	if err := r.oidcToken(); err != nil {
 		return fmt.Sprintf("The OIDC federation token cannot be written: %v.", err)
 	}
+	r.refresh(ctx)
 	if r.terragrunt() && !r.h.Spec.Terragrunt.RunAll {
 		info, err := os.Stat(filepath.Join(r.dir, backend.UnitFile))
 		if err != nil || !info.Mode().IsRegular() {
