@@ -9,8 +9,10 @@
 // (RecordArtifact), its browser (Jar) and the settings sections
 // every server it starts reads, with the Fakes its tags start merged in.
 // Tenants are the accounts seeded through SQL with their API keys;
-// Partitions are CI's slices of the features; captures.go loads and
-// replays the capture fixtures. Launchers are what a @docker scenario
+// Partitions are CI's slices of the features, and Selection narrows one by
+// the tag expression EnvTags names, which GodogTags translates into
+// godog's filter syntax, failing a narrowing that selects no scenario;
+// captures.go loads and replays the capture fixtures. Launchers are what a @docker scenario
 // runs in Docker: the minimal runner image, the Linux builds of the
 // launcher's runner, the runner images of deploy/images (Build), and a
 // tool's process (RunTool) in a container of one; RunnerContract holds a

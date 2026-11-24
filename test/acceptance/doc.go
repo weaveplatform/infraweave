@@ -19,7 +19,10 @@
 // scenarios, which reach the real VCS providers only the scheduled vcs-lab
 // job provisions, and which every other run excludes.
 // INFRAWEAVE_ACCEPT_TAGS narrows a run further, as the job does to one
-// provider's @lab: tag.
+// provider's @lab: tag, with a Cucumber tag expression such as
+// "@op:a or (@op:b and not @quarantine)"; godog's ",", "&&" and "~" mean
+// or, and and not there too. A narrowed run that selects no scenario
+// fails, naming the expression.
 // INFRAWEAVE_ACCEPT_PROGRESS=1 also writes incremental, body-free progress to
 // out/progress.jsonl, retaining completed boundaries if the process times out.
 //
