@@ -405,6 +405,11 @@ const (
 	// they work in an account or not, and organization tokens'. The
 	// Organization tag's service refuses a member without the role.
 	ReachOrganizationAdmin
+	// ReachOrganizationAdminPerson admits the sessions of the people who
+	// may hold the organization role, a member's and the break-glass
+	// admin's, and no organization token's. The SSO tag's service refuses
+	// a member without the role.
+	ReachOrganizationAdminPerson
 )
 
 // Authenticate is the principal an API token acts as on a route of reach,
@@ -428,6 +433,12 @@ func reaches(reach Reach) func(session.Session) bool {
 		case ReachOrganizationAdmin:
 			switch ss.ActorKind {
 			case kernel.PrincipalUser, kernel.PrincipalBreakGlass, kernel.PrincipalOrganization:
+				return !ss.OrganizationID.IsZero()
+			}
+			return false
+		case ReachOrganizationAdminPerson:
+			switch ss.ActorKind {
+			case kernel.PrincipalUser, kernel.PrincipalBreakGlass:
 				return !ss.OrganizationID.IsZero()
 			}
 			return false

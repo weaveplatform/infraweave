@@ -1,0 +1,343 @@
+# The SSO tag's OIDC operations and Account Settings' hasSSO, curated from
+# the reference's. Each acts on the identity providers of the caller's
+# organization, never on its account, and the single-provider operations
+# address the organization's default OIDC provider, which the Organization
+# tag's identity provider operations list beside its others. Only an
+# organization admin in person reaches them: a member's session or CLI
+# token whose member holds organization-admin, or the break-glass admin.
+# ref: decision 0006 § "Members and identity providers"
+components:
+  schemas:
+    OIDCSettings:
+      description: The settings of the organization's default OIDC provider, which never include its client secret.
+      properties:
+        adminLogin:
+          description: |-
+            The login of the first sign-in through the provider, which enabled it and always holds the
+            organization role, so settings that break sign-in cannot lock the organization out. Null until
+            that sign-in succeeds.
+          nullable: true
+          type: string
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMapping'
+        clientId:
+          description: The client ID the identity provider issued for the authorization code flow.
+          type: string
+        identityProviderHost:
+          description: The provider's https issuer, or its discovery document's URL (e.g. https://accounts.google.com).
+          type: string
+      required:
+        - adminLogin
+        - claimMapping
+        - clientId
+        - identityProviderHost
+      type: object
+      x-graphql-type: OIDCSettings
+    OIDCUpdateInput:
+      additionalProperties: false
+      description: The claim mapping that replaces the provider's.
+      properties:
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMappingInput'
+      type: object
+      x-graphql-type: OIDCUpdateInput
+    OidcCreateRequest:
+      additionalProperties: false
+      description: The new default OIDC provider.
+      properties:
+        claimMapping:
+          $ref: '#/components/schemas/ClaimMappingInput'
+        clientCredentials:
+          description: The client secret, stored sealed and never answered.
+          type: string
+        clientId:
+          description: The client ID the identity provider issued.
+          type: string
+        identityProviderHost:
+          description: |-
+            The provider's https issuer, or its discovery document's URL ending in
+            /.well-known/openid-configuration. The document must name this issuer exactly.
+          type: string
+      required:
+        - clientCredentials
+        - clientId
+        - identityProviderHost
+      type: object
+      x-graphql-args-of: oidcCreate
+paths:
+  /has-sso:
+    get:
+      description: |-
+        Whether the organization has single sign-on: true when one of its OIDC or SAML providers is
+        enabled, which a first successful sign-in through the provider does.
+      operationId: hasSSO
+      x-infraweave-feature: account-settings
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The hasSSO result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Has SSO
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Has SSO.bru
+      x-graphql:
+        field: hasSSO
+        operation: query
+        type: Query
+      x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - rate-limit
+      x-rest-style: read
+  /oidc:
+    delete:
+      description: |-
+        Delete the organization's default OIDC provider with the identities that sign in through it,
+        revoking every session signed in through it, and answer its settings as they were. The oldest
+        remaining OIDC provider, if any, becomes the default.
+      operationId: oidcDelete
+      x-infraweave-feature: oidc-sso
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCSettings'
+          description: The oidcDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oidc Delete
+      tags:
+        - SSO
+      x-bruno: Danger Zone/Oidc Delete.bru
+      x-graphql:
+        field: oidcDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - rate-limit
+      x-rest-style: singleton
+    post:
+      description: |-
+        Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+        Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+        exactly. A first sign-in enables it: the saving admin's browser opens
+        /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+        organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+        provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+        already-exists; a different host or client means deleting it first.
+      operationId: oidcCreate
+      x-infraweave-feature: oidc-sso
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              clientCredentials: example
+              clientId: example
+              identityProviderHost: https://accounts.google.com
+            schema:
+              $ref: '#/components/schemas/OidcCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCSettings'
+          description: The oidcCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oidc Create
+      tags:
+        - SSO
+      x-bruno: Advanced/SSO/Oidc Create.bru
+      x-graphql:
+        field: oidcCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+    put:
+      description: |-
+        Replace the claim mapping of the organization's default OIDC provider; a body without
+        claimMapping restores every claim's default. The next sign-in through the provider reads its
+        claims through the new mapping. Its host and client never change: delete the provider and
+        create another.
+      operationId: oidcUpdate
+      x-infraweave-feature: oidc-sso
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      requestBody:
+        content:
+          application/json:
+            example:
+              claimMapping:
+                entries:
+                  - name: groups
+                    value: roles
+            schema:
+              $ref: '#/components/schemas/OIDCUpdateInput'
+        required: true
+        x-graphql-arg: input
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCSettings'
+          description: The oidcUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/Problem'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oidc Update
+      tags:
+        - SSO
+      x-bruno: Danger Zone/Oidc Update.bru
+      x-graphql:
+        field: oidcUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - rate-limit
+      x-rest-style: singleton
+  /oidc/settings:
+    get:
+      description: The settings of the organization's default OIDC provider; 404 when it has none.
+      operationId: oidcSettings
+      x-infraweave-feature: oidc-sso
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCSettings'
+          description: The oidcSettings result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Oidc Settings
+      tags:
+        - SSO
+      x-bruno: Advanced/SSO/Oidc Settings.bru
+      x-graphql:
+        field: oidcSettings
+        operation: query
+        type: Query
+      x-infraweave-access: organization-admin-person
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - DV-110
+        - rate-limit
+      x-rest-style: singleton

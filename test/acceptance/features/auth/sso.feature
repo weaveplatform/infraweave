@@ -17,9 +17,15 @@ Feature: Sign-in through an organization's OIDC provider
   login holds organization-admin without a row, and an organization admin's
   enabling sign-in enables a provider. Logout answers the provider's
   end-session URL; a back-channel logout ends the provider's sessions on
-  every replica, once per token. Each scenario's issuers are its own: the
-  in-process issuer, whose faults a step chooses, and an issuer in navikt's
-  mock-oauth2-server.
+  every replica, once per token. Organization admins in person, a member's
+  session or CLI token whose member holds organization-admin or the
+  break-glass admin, configure the default OIDC provider through the SSO
+  tag: saving it reads its discovery document and stores it disabled, the
+  saving admin's enabling sign-in turns single sign-on on, a new claim
+  mapping applies at the next sign-in, and deleting it unlinks single
+  sign-on, ending its sessions on every replica. Each scenario's issuers
+  are its own: the in-process issuer, whose faults a step chooses, and an
+  issuer in navikt's mock-oauth2-server.
   ref: decision 0006 § "Human login"
 
   Background:
@@ -194,3 +200,130 @@ Feature: Sign-in through an organization's OIDC provider
     And the browser signs in through the provider "okta" at B
     When the provider "okta" logs out "nora"'s subject through A
     Then the browser's session is refused through B within a second
+
+  @op:oidcSettings @op:oidcCreate @op:oidcUpdate @op:oidcDelete @op:hasSSO @case:success
+  Scenario: An organization admin replaces the OIDC settings, enables them with a first sign-in, maps the groups claim and unlinks single sign-on
+    Given the home account's member has a browser session, admitted to home alone
+    And the home account's member holds organization-admin
+    And the browser asks through A for a CLI token sealed to a new RSA key, as token "adm"
+    When token "adm" sends "GET /api/v1/has-sso" through B
+    Then the answer is 'true'
+    When token "adm" sends "GET /api/v1/oidc/settings" through A
+    Then the answer's adminLogin is '"root"'
+    And the answer's clientId is '"infraweave-okta"'
+    When token "adm" sends "DELETE /api/v1/oidc" through B
+    Then the answer's adminLogin is '"root"'
+    When token "adm" creates the OIDC settings "nav" at the navikt issuer through A
+    Then it answers 201
+    And the answer's adminLogin is 'null'
+    And the answer's claimMapping is '{"entries":[]}'
+    When token "adm" sends "GET /api/v1/oidc/settings" through B
+    Then the answer's adminLogin is 'null'
+    And the answer's clientId is '"infraweave-nav"'
+    When token "adm" sends "GET /api/v1/has-sso" through A
+    Then the answer is 'false'
+    When the browser starts signing in through the provider "nav" at A
+    Then the sign-in answers 404 with the code "not-found"
+    Given the provider "nav" signs in "ada-sub" next with the claims '{"preferred_username":"ada"}'
+    When the browser starts signing in through the provider "nav" at B with "purpose=enable"
+    And the provider sends the browser back to A
+    Then the sign-in sends the browser to "/"
+    And the home organization's trail holds 1 "identity_provider.enable" entry
+    When token "adm" sends "GET /api/v1/has-sso" through B
+    Then the answer is 'true'
+    When token "adm" sends "GET /api/v1/oidc/settings" through A
+    Then the answer's adminLogin is '"ada"'
+    When token "adm" sends "PUT /api/v1/oidc" with '{"claimMapping":{"entries":[{"name":"groups","value":"roles"}]}}' through B
+    Then the answer's claimMapping is '{"entries":[{"name":"groups","value":"roles"}]}'
+    Given the provider "nav" signs in "nora-sub" next with the claims '{"preferred_username":"nora","roles":["ops"],"groups":["dev"]}'
+    When the browser signs in through the provider "nav" at A
+    Then the browser's session is "nora"'s, signed in through "nav" with the teams "ops"
+    And the member "nora" is active with 1 identity
+    When token "adm" sends "DELETE /api/v1/oidc" through A
+    Then the answer's adminLogin is '"ada"'
+    And the browser's session is refused through B within a second
+    And no live session is signed in through "nav"
+    And the member "nora" is active with 0 identities
+    When token "adm" sends "GET /api/v1/has-sso" through B
+    Then the answer is 'false'
+
+  @op:oidcSettings @op:oidcUpdate @op:hasSSO @case:success
+  Scenario: The break-glass admin reads and changes the OIDC settings
+    Given the password "correct horse" hashed by infraweave auth hash-password
+    And the operator key is exchanged through A for token "op"
+    And token "op" sets the break-glass login of "acme" to "admin" through A
+    When the browser signs in to "acme" as "admin" with the password "correct horse" through B
+    And the browser sends "GET /api/v1/oidc/settings" through A
+    Then the answer's adminLogin is '"root"'
+    When the browser sends "PUT /api/v1/oidc" with '{"claimMapping":{"entries":[{"name":"subject","value":"oid"}]}}' through B
+    Then the answer's claimMapping is '{"entries":[{"name":"subject","value":"oid"}]}'
+    When the browser sends "GET /api/v1/has-sso" through A
+    Then the answer is 'true'
+
+  @op:oidcSettings @op:oidcCreate @op:oidcUpdate @op:oidcDelete @op:hasSSO @case:denial
+  Scenario: An account admin without the organization role is refused every single sign-on operation, and a tier without oidc-sso refuses the OIDC settings
+    Given the home account's member has a browser session, admitted to home alone
+    When the browser sends "GET /api/v1/oidc/settings" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    When the browser sends "GET /api/v1/has-sso" through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"https://acme.okta.com","clientId":"a","clientCredentials":"s"}' through A
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "PUT /api/v1/oidc" with '{}' through B
+    Then it answers a 403 problem "forbidden"
+    When the browser sends "DELETE /api/v1/oidc" through A
+    Then it answers a 403 problem "forbidden"
+    And the answer's action is '"ORGANIZATION_ADMIN"'
+    And the home organization's trail holds 0 "identity_provider.delete" entries
+    Given the home account's member holds organization-admin
+    And the operator key is exchanged through A for token "op"
+    When token "op" creates the tier "Gold" with the feature "account-settings" through A
+    And token "op" gives the home organization the tier "Gold" through A
+    And token "op" turns billing on through A
+    Then the browser's "GET /api/v1/oidc/settings" with '' through B eventually answers a 403 problem "feature-not-in-tier"
+    And the problem names the feature "oidc-sso"
+    When the browser sends "GET /api/v1/has-sso" through A
+    Then the answer is 'true'
+
+  @op:oidcSettings @op:oidcCreate @op:oidcUpdate @op:oidcDelete @op:hasSSO @case:failure
+  Scenario: A second OIDC provider, a bad host, an invalid claim mapping and missing settings are refused, and an organization token is no credential
+    Given the home account's member has a browser session, admitted to home alone
+    And the home account's member holds organization-admin
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"{okta issuer}","clientId":"other","clientCredentials":"s"}' through A
+    Then it answers a 409 problem "already-exists"
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"http://acme.okta.com","clientId":"a","clientCredentials":"s"}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem's detail names "identityProviderHost"
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"https://acme.okta.com","clientId":"a","clientCredentials":"s","claimMapping":{"entries":[{"name":"teams","value":"groups"}]}}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem's detail names "claimMapping.entries[0].name"
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"https://acme.okta.com","clientId":"a","clientCredentials":"s","colour":"red"}' through B
+    Then it answers a 400 problem "invalid-request"
+    And the problem refuses the field "/colour" as "unknown-field"
+    When the browser sends "PUT /api/v1/oidc" with '{"claimMapping":{"entries":[{"name":"groups","value":""}]}}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem's detail names "claimMapping.entries[0].value"
+    When the browser sends "DELETE /api/v1/oidc" through B
+    Then it answers 200
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"{okta issuer}/","clientId":"infraweave-okta","clientCredentials":"s"}' through A
+    Then it answers a 422 problem "validation-failed"
+    And the problem's detail names "identityProviderHost"
+    When the browser sends "POST /api/v1/oidc" with '{"identityProviderHost":"https://127.0.0.1:9","clientId":"a","clientCredentials":"s"}' through B
+    Then it answers a 422 problem "validation-failed"
+    And the problem's detail names "identityProviderHost"
+    When the browser sends "GET /api/v1/oidc/settings" through A
+    Then it answers a 404 problem "not-found"
+    When the browser sends "PUT /api/v1/oidc" with '{}' through B
+    Then it answers a 404 problem "not-found"
+    When the browser sends "DELETE /api/v1/oidc" through A
+    Then it answers a 404 problem "not-found"
+    And the home organization's trail holds 0 "identity_provider.create" entries
+    When the browser sends "GET /api/v1/has-sso" through B
+    Then the answer is 'false'
+    When the browser creates the organization key "k" through A
+    And the organization key "k" exchanges through B for token "org"
+    And token "org" sends "GET /api/v1/has-sso" through A
+    Then it answers a 401 problem "unauthenticated"
+    When token "org" sends "GET /api/v1/oidc/settings" through B
+    Then it answers a 401 problem "unauthenticated"

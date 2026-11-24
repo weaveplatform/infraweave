@@ -56,9 +56,10 @@ func TestUnitOrganizationKeyExchange(t *testing.T) {
 		t.Errorf("touched organization keys %d, API keys %d", w.f.orgTouched, w.f.touched)
 	}
 	for reach, ok := range map[authn.Reach]bool{
-		authn.ReachAccount:           false,
-		authn.ReachOrganization:      false,
-		authn.ReachOrganizationAdmin: true,
+		authn.ReachAccount:                 false,
+		authn.ReachOrganization:            false,
+		authn.ReachOrganizationAdmin:       true,
+		authn.ReachOrganizationAdminPerson: false,
 	} {
 		p, _, err := w.s.Authenticate(t.Context(), g.Token, reach)
 		if ok && (err != nil || p.Kind != kernel.PrincipalOrganization) {

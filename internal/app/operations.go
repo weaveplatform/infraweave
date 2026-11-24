@@ -102,6 +102,13 @@ type Operation struct {
 	//
 	// ref: decision 0006
 	OrganizationAdmin bool
+	// OrganizationAdminPerson marks an operation whose x-infraweave-access
+	// is organization-admin-person, the SSO tag's: it serves the people
+	// that may hold the organization role, a member's session or CLI token
+	// and the break-glass admin, and no organization token.
+	//
+	// ref: decision 0006 § "The principal"
+	OrganizationAdminPerson bool
 	// Body is the request body of an operation whose JSON body schema sets
 	// additionalProperties: false, which strictBodies checks before the
 	// handler; nil for every other operation, whose body the generated
@@ -169,13 +176,15 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				}
 			}
 			style, _ := op.Extensions["x-rest-style"].(string)
-			var org, admin bool
+			var org, admin, person bool
 			switch v, ok := op.Extensions["x-infraweave-access"]; {
 			case !ok:
 			case v == "organization":
 				org = true
 			case v == "organization-admin":
 				admin = true
+			case v == "organization-admin-person":
+				person = true
 			default:
 				return nil, fmt.Errorf("%w: %s %s has x-infraweave-access %v",
 					errSpec, method, path, v)
@@ -208,18 +217,19 @@ func operationsOf(doc *openapi3.T, base string, authorized bool) (Operations, er
 				semanticBodyFields = []string{"/runtimeConfig"}
 			}
 			ops[method+" "+base+path] = Operation{
-				Cost:               cost,
-				Search:             style == "search" || strings.HasSuffix(path, "/search"),
-				Unkeyed:            unkeyed,
-				Public:             op.Security != nil && len(*op.Security) == 0,
-				Organization:       org,
-				OrganizationAdmin:  admin,
-				Body:               strictBody(body),
-				SemanticBodyFields: semanticBodyFields,
-				Path:               strictParams(op, openapi3.ParameterInPath),
-				Query:              strictParams(op, openapi3.ParameterInQuery),
-				Gate:               gate,
-				Required:           required,
+				Cost:                    cost,
+				Search:                  style == "search" || strings.HasSuffix(path, "/search"),
+				Unkeyed:                 unkeyed,
+				Public:                  op.Security != nil && len(*op.Security) == 0,
+				Organization:            org,
+				OrganizationAdmin:       admin,
+				OrganizationAdminPerson: person,
+				Body:                    strictBody(body),
+				SemanticBodyFields:      semanticBodyFields,
+				Path:                    strictParams(op, openapi3.ParameterInPath),
+				Query:                   strictParams(op, openapi3.ParameterInQuery),
+				Gate:                    gate,
+				Required:                required,
 			}
 		}
 	}
@@ -893,6 +903,8 @@ func (o Operation) access() accessapi.Access {
 		return accessapi.Organization
 	case o.OrganizationAdmin:
 		return accessapi.OrganizationAdmin
+	case o.OrganizationAdminPerson:
+		return accessapi.OrganizationAdminPerson
 	}
 	return accessapi.Account
 }

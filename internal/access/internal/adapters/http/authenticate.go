@@ -227,9 +227,10 @@ func (a Authenticator) basic(r *http.Request, addr string) (kernel.Principal, to
 
 // reaches is the sessions each access admits.
 var reaches = map[accessapi.Access]authn.Reach{
-	accessapi.Account:           authn.ReachAccount,
-	accessapi.Organization:      authn.ReachOrganization,
-	accessapi.OrganizationAdmin: authn.ReachOrganizationAdmin,
+	accessapi.Account:                 authn.ReachAccount,
+	accessapi.Organization:            authn.ReachOrganization,
+	accessapi.OrganizationAdmin:       authn.ReachOrganizationAdmin,
+	accessapi.OrganizationAdminPerson: authn.ReachOrganizationAdminPerson,
 }
 
 // cookie is the browser session's cookie value when the request may use

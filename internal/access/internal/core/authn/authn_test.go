@@ -590,6 +590,15 @@ func TestUnitAuthenticate(t *testing.T) {
 	); !errors.Is(err, authn.ErrUnauthenticated) {
 		t.Errorf("API key on an organization admin route = %v", err)
 	}
+	// The SSO tag's routes refuse an organization's and an API key's
+	// token alike.
+	for name, tok := range map[string]string{"organization": org, "API key": raw} {
+		if _, _, err := w.s.Authenticate(
+			t.Context(), tok, authn.ReachOrganizationAdminPerson,
+		); !errors.Is(err, authn.ErrUnauthenticated) {
+			t.Errorf("%s token on an organization admin person route = %v", name, err)
+		}
+	}
 
 	for _, op := range []string{"Verify", "Session"} {
 		w.s.Cache().Flush()

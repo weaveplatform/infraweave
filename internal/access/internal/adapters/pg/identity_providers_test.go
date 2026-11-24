@@ -233,6 +233,67 @@ func defaultsOf(t *testing.T, s *pg.Store, org kernel.OrganizationID) []string {
 	return out
 }
 
+// TestAccDefaultProviderCreate creates a kind's default once: a second
+// create of the kind, sequential or concurrent, is sso.ErrDefaultExists
+// and writes neither a provider nor a trail entry, while another kind or
+// organization is unaffected.
+//
+// ref: decision 0006 § "Members and identity providers"
+func TestAccDefaultProviderCreate(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	x := seed(t, db, "endframe")
+	other := seed(t, db, "aviato-inc")
+	s := x.s.WithSealer(keyring(t, db))
+	t1 := time.Now().UTC().Truncate(time.Second)
+
+	results := make(chan error, 2)
+	for i := range 2 {
+		go func() {
+			_, err := s.CreateDefaultProvider(ctx, x.provider(sso.OIDC, "okta", t1.Add(time.Duration(i)*time.Second)),
+				[]byte("secret"), byAdmin(x, sso.ActionCreate))
+			results <- err
+		}()
+	}
+	var created, refused int
+	for range 2 {
+		switch err := <-results; {
+		case err == nil:
+			created++
+		case errors.Is(err, sso.ErrDefaultExists):
+			refused++
+		default:
+			t.Errorf("a concurrent create = %v", err)
+		}
+	}
+	if created != 1 || refused != 1 {
+		t.Errorf("concurrent creates: %d created, %d refused", created, refused)
+	}
+	if defaults := defaultsOf(t, s, x.org); !slices.Equal(defaults, []string{"okta"}) {
+		t.Errorf("defaults = %v", defaults)
+	}
+	if _, err := s.CreateDefaultProvider(ctx, x.provider(sso.OIDC, "entra", t1), []byte("s"),
+		byAdmin(x, sso.ActionCreate)); !errors.Is(err, sso.ErrDefaultExists) {
+		t.Errorf("a second default = %v", err)
+	}
+	if ps, err := s.Providers(ctx, x.org); err != nil || len(ps) != 1 {
+		t.Errorf("Providers = %+v, %v", ps, err)
+	}
+	if n := trail(t, x, sso.ActionCreate); n != 1 {
+		t.Errorf("creations on the trail = %d", n)
+	}
+	for _, c := range []struct {
+		x    seeded
+		kind sso.Kind
+	}{{x, sso.SAML}, {other, sso.OIDC}} {
+		got, err := s.CreateDefaultProvider(ctx, c.x.provider(c.kind, "p", t1), []byte("s"),
+			byAdmin(c.x, sso.ActionCreate))
+		if err != nil || !got.Default {
+			t.Errorf("a %s default in %s = %+v, %v", c.kind, c.x.org, got, err)
+		}
+	}
+}
+
 // TestAccIdentityProviderContract holds the schema to one default per kind
 // in an organization and to identities naming a provider of their own
 // organization.
@@ -301,10 +362,14 @@ func TestAccIdentityProvidersUnavailable(t *testing.T) {
 	e := kernel.OrganizationAuditEntry{OrganizationID: org}
 	pr := sso.Provider{OrganizationID: org, ID: id, Kind: sso.OIDC}
 	for name, call := range map[string]func() error{
-		"providers":   func() error { _, err := s.Providers(ctx, org); return err },
-		"provider":    func() error { _, err := s.Provider(ctx, org, id); return err },
-		"secret":      func() error { _, err := s.ProviderSecret(ctx, org, id); return err },
-		"create":      func() error { _, err := s.CreateProvider(ctx, pr, []byte("s"), e); return err },
+		"providers": func() error { _, err := s.Providers(ctx, org); return err },
+		"provider":  func() error { _, err := s.Provider(ctx, org, id); return err },
+		"secret":    func() error { _, err := s.ProviderSecret(ctx, org, id); return err },
+		"create":    func() error { _, err := s.CreateProvider(ctx, pr, []byte("s"), e); return err },
+		"create default": func() error {
+			_, err := s.CreateDefaultProvider(ctx, pr, []byte("s"), e)
+			return err
+		},
 		"update":      func() error { _, err := s.UpdateProvider(ctx, pr, []byte("s"), e); return err },
 		"delete":      func() error { _, _, err := s.DeleteProvider(ctx, org, id, e); return err },
 		"set default": func() error { _, err := s.SetDefaultProvider(ctx, org, id, e); return err },

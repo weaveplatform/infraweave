@@ -29,6 +29,13 @@ const (
 	// every other route refuses. An API key's or a run's token works in an
 	// account, and is refused.
 	OrganizationAdmin
+	// OrganizationAdminPerson routes, the SSO tag's, admit the people who
+	// may hold the organization role: a member's session or CLI token,
+	// whichever account it is in, and the break-glass admin's session. An
+	// organization token, an API key's and a run's are refused.
+	//
+	// ref: decision 0006 § "The principal"
+	OrganizationAdminPerson
 	// Worker routes, the worker API's, admit worker session tokens alone,
 	// which every other route refuses.
 	Worker
