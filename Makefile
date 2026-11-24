@@ -37,6 +37,10 @@ init:
 	$(GO) mod tidy
 	@echo "renamed to github.com/weaveplatform/$(NAME); review README.md and CODEOWNERS"
 
+## mod-download: download every module the build, the tests and the go run tools need, retrying the module proxy (CI then builds from the module cache alone)
+mod-download:
+	bash .github/actions/go-mod-download/download.sh $(GO_RUN_TOOLS)
+
 ## fmt: apply the formatters configured in .golangci.yml
 fmt:
 	$(GOLANGCI_LINT) fmt --config .golangci.yml ./...
@@ -166,6 +170,10 @@ bundle:
 # ours, its dependencies would be upgraded past what it was released with.
 # deps-refresh.yml moves it to the latest release.
 OAPI_CODEGEN := github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.2
+
+# Every package@version a target runs with go run. go.mod does not list
+# their modules, so make mod-download fetches each one's graph by name.
+GO_RUN_TOOLS := $(OAPI_CODEGEN)
 
 # One per api/src/<service>/; each needs api/oapi-{server,client}-<service>.yaml.
 SPECS := $(patsubst api/src/%/info.yaml,%,$(wildcard api/src/*/info.yaml))
