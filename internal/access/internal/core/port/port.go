@@ -38,6 +38,23 @@ type Tenancy interface {
 	Account(ctx context.Context, id kernel.AccountID) (account.Account, error)
 }
 
+// FederationSubject is what an OIDC federation token names of its
+// account: the account's slug, its subject template, empty for the
+// default, and the slugs of the spaces from its top space down to the
+// caller's.
+type FederationSubject struct {
+	Account  string
+	Template string
+	Spaces   []string
+}
+
+// FederationSubjects reads what an OIDC federation token of a run in a
+// space of an account names of them; a space the account lacks is
+// ErrNotFound.
+type FederationSubjects interface {
+	FederationSubject(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (FederationSubject, error)
+}
+
 // Sessions stores sessions. Every revocation sends session.Key on
 // infraweave_invalidate in its own transaction, so no replica's cache
 // outlives the commit by more than the message's delivery.

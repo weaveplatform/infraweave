@@ -29,7 +29,15 @@
 // computed variable no stack, context or run variable names goes into the
 // Spec by name and into the secrets by value when it is a secret, and a
 // role the run's worker assumes goes into the Spec's CloudAssumptions;
-// a refusal fails the handover. A constraint no
+// a refusal fails the handover. When the run's account has the
+// oidc-federation feature, which the features domain decides at each
+// handover, the OIDC federation token of the phase the handover starts
+// goes into the secrets beside the in-run API token: the access domain
+// picks its scope from the run's type, the state and the stack's
+// autodeploy, so a tracked run that waits for confirmation plans with a
+// read token and its PREPARING_APPLY handover mints a write token. A run
+// of an account without the feature, or a parse run, receives none and
+// goes on. A constraint no
 // listed release meets is a *kernel.Invalid naming the setting it comes
 // from. The workers domain seals the secrets to the pool's key.
 //
@@ -40,7 +48,8 @@
 // # Input and output
 //
 // New takes the Store, the stacks domain's Stacks, the access domain's
-// Spaces and in-run token minting, the configuration domain's
+// Spaces and in-run and federation token minting, the features domain's
+// Options and the account's organization, the configuration domain's
 // Environment and the vendors domain's Catalog; BindExpressions takes the
 // expression registry, BindSources the vcs domain's RunSources, and
 // BindCredentials the cloud domain's Credentials.
@@ -64,8 +73,8 @@
 //
 // # Dependencies
 //
-// It imports the access, cloud, configuration, runs, stacks, vendors and
-// workers api packages, iac/terragrunt, iac/version, internal/kernel,
+// It imports the access, cloud, configuration, features, runs, stacks,
+// vendors and workers api packages, iac/terragrunt, iac/version, internal/kernel,
 // platform/crypt, platform/expr,
 // platform/tx and the domain's lifecycle and surface packages. The
 // domain's assembly constructs it over the pg adapter.

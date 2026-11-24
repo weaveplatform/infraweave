@@ -17,7 +17,9 @@ Feature: A stack's own config elements and resolved environment
   member key holds only the bindings a scenario gives it. Team inherits
   from acme; stack infra lives in legacy and stack hidden in team.
   Its runtimeConfig lists the winning stored sources with their context
-  attachments and the computed run metadata without a value. Its config
+  attachments and the computed run metadata without a value, the OIDC
+  federation token among it, since billing is off and the account has
+  oidc-federation. Its config
   keeps only its own elements. Direct, list and search reads share this
   resolved view.
 
@@ -246,11 +248,12 @@ Feature: A stack's own config elements and resolved environment
     And the stack "infra" read through A with token "h" eventually attaches the contexts "shared, auto:automatic"
     When token "h" sends "GET /api/v1/stacks/infra" through A
     Then it answers 200
-    And the stack "infra" in the answer lists runtime elements "AUTO, CTX_ONLY, INFRAWEAVE_API_TOKEN, LEVEL, TF_VAR_infraweave_account_name, TF_VAR_infraweave_api_endpoint, TF_VAR_infraweave_commit_branch, TF_VAR_infraweave_commit_sha, TF_VAR_infraweave_local_preview, TF_VAR_infraweave_project_root, TF_VAR_infraweave_repository, TF_VAR_infraweave_run_id, TF_VAR_infraweave_run_state, TF_VAR_infraweave_run_trigger, TF_VAR_infraweave_run_type, TF_VAR_infraweave_space_id, TF_VAR_infraweave_stack_branch, TF_VAR_infraweave_stack_id, TF_VAR_infraweave_stack_labels, TF_VAR_infraweave_stack_labels_list, TF_VAR_infraweave_workspace_root, TOKEN, a.txt"
+    And the stack "infra" in the answer lists runtime elements "AUTO, CTX_ONLY, INFRAWEAVE_API_TOKEN, INFRAWEAVE_OIDC_TOKEN, LEVEL, TF_VAR_infraweave_account_name, TF_VAR_infraweave_api_endpoint, TF_VAR_infraweave_commit_branch, TF_VAR_infraweave_commit_sha, TF_VAR_infraweave_local_preview, TF_VAR_infraweave_project_root, TF_VAR_infraweave_repository, TF_VAR_infraweave_run_id, TF_VAR_infraweave_run_state, TF_VAR_infraweave_run_trigger, TF_VAR_infraweave_run_type, TF_VAR_infraweave_space_id, TF_VAR_infraweave_stack_branch, TF_VAR_infraweave_stack_id, TF_VAR_infraweave_stack_labels, TF_VAR_infraweave_stack_labels_list, TF_VAR_infraweave_workspace_root, TOKEN, a.txt"
     And the stack "infra" in the answer has runtime sources:
       | AUTO | {"value":"automatic","runtime":false,"writeOnly":false} | auto:automatic |
       | CTX_ONLY | {"value":"context","runtime":false,"writeOnly":false} | shared |
       | INFRAWEAVE_API_TOKEN | {"value":null,"runtime":true,"writeOnly":true,"category":"INFRAWEAVE_ENVIRONMENT"} | computed |
+      | INFRAWEAVE_OIDC_TOKEN | {"value":null,"runtime":true,"writeOnly":true,"category":"INFRAWEAVE_ENVIRONMENT"} | computed |
       | LEVEL | {"value":"stack","runtime":false,"writeOnly":false} | stack |
       | TF_VAR_infraweave_run_type | {"value":"stack","runtime":false,"category":null} | stack |
       | TOKEN | {"value":null,"runtime":false,"writeOnly":true} | stack |

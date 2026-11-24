@@ -653,11 +653,14 @@ server.
   `auth.federation.jwks_uri` overrides the discovery document's `jwks_uri`,
   as self-hosted Spacelift's `FEDERATION_CUSTOM_ISSUER` and
   `FEDERATION_CUSTOM_JWKS_URI` do.
-- **Audience.** `auth.federation.audience`, default the issuer's host
-  without scheme, followed by `/` and the run's account slug. Spacelift's
-  default audience is its account's host, so a trust policy that checks the
-  audience accepts only one account's tokens; the account slug keeps that
-  property on an installation that hosts many accounts.
+- **Audience.** One string: `auth.federation.audience`, default the
+  issuer's host without scheme, followed by `/` and the run's account
+  slug. The setting is a prefix, not the whole audience, so a custom
+  setting keeps the account slug too and one account's token never
+  satisfies another account's trust policy. Spacelift's default audience
+  is its account's host, so a trust policy that checks the audience
+  accepts only one account's tokens; the account slug keeps that property
+  on an installation that hosts many accounts.
 - **Discovery.** `GET /.well-known/openid-configuration` returns `issuer`,
   `jwks_uri`, `response_types_supported: ["id_token"]`,
   `subject_types_supported: ["public"]`,

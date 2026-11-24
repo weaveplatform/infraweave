@@ -5,7 +5,9 @@
 // APIKeys a personal key's owner as the key's account admits them;
 // BreakGlass reads an organization's break-glass credential and records
 // its sign-ins; OrganizationKeys reads an organization key and records
-// its use; OIDC verifies an issuer's JWT for an OIDC API key.
+// its use; OIDC verifies an issuer's JWT for an OIDC API key; and
+// FederationSubjects reads the account slug, subject template and space
+// ancestry an OIDC federation token names.
 //
 // ref: decision 0004
 //

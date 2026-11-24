@@ -10,18 +10,25 @@
 // token's; KeySet builds the JWKS of the published keys, sorted by kid,
 // with use sig and the public members alone, ErrUnpublishable for a key
 // with no public half; and IssuerPath is the issuer's path, under which
-// the discovery routes are served too.
+// the discovery routes are served too. And the token itself: NewToken
+// builds the claim set of an Issue, exactly Claims, as a Token, whose
+// aud is Audience's, auth.federation.audience or the issuer's host
+// followed by "/" and the account's slug, whose spacePath is SpacePath's
+// of the space's ancestry, and whose scope is Scope's for the run's type,
+// the phase its handover starts and its stack's autodeploy; a parse run
+// gets none, ErrNoToken.
 //
 // ref: decision 0006 § "OIDC federation token"
-// ref: report 12 section 6.5
+// ref: report 12 sections 6.3, 6.4 and 6.5
 //
 // # Input and output
 //
-// None: pure functions over strings and keys.
+// None: pure functions over strings, keys and the request's time.
 //
 // # Dependencies
 //
-// It imports github.com/go-jose/go-jose/v4 for the keys and the standard
-// library. The access domain's settings service, its HTTP adapter's
-// discovery routes and the federation token's issuer import it.
+// It imports github.com/go-jose/go-jose/v4 for the keys, internal/kernel
+// for the run's identifiers, type and state, and the standard library.
+// The access domain's settings service, its HTTP adapter's discovery
+// routes and the federation token's issuer in authn import it.
 package federation

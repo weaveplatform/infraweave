@@ -62,6 +62,30 @@ type InRunRequest struct {
 	Slug    string
 }
 
+// The callerType of a federation token: a stack's run, or a module's test
+// run.
+const (
+	FederationStack  = "stack"
+	FederationModule = "module"
+)
+
+// FederationRequest names the run an OIDC federation token is minted for:
+// its account, the run, its type, its caller, FederationStack or
+// FederationModule, by slug, the caller's space, whose ancestry the
+// access domain reads, the state whose handover starts the phase, and
+// whether the stack deploys automatically, which with the type and the
+// state pick the token's scope.
+type FederationRequest struct {
+	Account    kernel.AccountID
+	Run        kernel.ULID
+	RunType    kernel.RunType
+	CallerType string
+	Caller     string
+	Space      kernel.ULID
+	Phase      kernel.RunState
+	Autodeploy bool
+}
+
 // Tokens mints and verifies the tokens the worker protocol hands out. A
 // worker session token names a worker and positive certificate serial, and lives
 // auth.tokens.worker.ttl; a
@@ -69,9 +93,11 @@ type InRunRequest struct {
 // accepted only while the caller finds the run in a worker state. An
 // in-run API token is an API token of a session with actor kind run,
 // living auth.tokens.run_api.ttl, which authenticates only while
-// Runs.RunAccess finds its run live.
+// Runs.RunAccess finds its run live. An OIDC federation token is signed
+// by the active federation key, lives auth.tokens.federation.ttl and has
+// no session row: nothing stores it, and only its expiry bounds it.
 //
-// ref: decision 0006 § "Token kinds", § "In-run API token"
+// ref: decision 0006 § "Token kinds", § "In-run API token", § "OIDC federation token"
 type Tokens interface {
 	WorkerToken(ctx context.Context, worker kernel.ULID, serial int64) (Token, error)
 	// VerifyWorker is the worker a worker session token names; any other
@@ -82,6 +108,10 @@ type Tokens interface {
 	// ErrInvalidToken.
 	VerifyRun(ctx context.Context, raw string) (Bearer, error)
 	InRunToken(ctx context.Context, r InRunRequest) (Token, error)
+	// FederationToken is an OIDC federation token for r's run. A parse
+	// run, which gets none, and an incomplete request are refused, as is
+	// a space the account lacks.
+	FederationToken(ctx context.Context, r FederationRequest) (Token, error)
 	// RunTokenKeys are what verifies a run token apart from the server.
 	RunTokenKeys(ctx context.Context) (RunTokenKeys, error)
 }

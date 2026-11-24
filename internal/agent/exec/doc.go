@@ -12,6 +12,9 @@
 // Before its first executable phase the runner checks the project root under the
 // workspace's source/ checkout, then writes the specification's mounted
 // files under the workspace. A file under source/ replaces the checkout's.
+// When the handoff carries an OIDC federation token it writes it at
+// workspace.OIDCTokenFile, /mnt/workspace/infraweave.oidc, mode 0400,
+// before any hook runs.
 // It reads the project root's
 // .infraweave/workflow.yml when it has one, which a stack whose workflow
 // tool is CUSTOM must, and checks every template of it, or of the tool's
@@ -23,7 +26,8 @@
 // binary-cache settings, then the pool's passthrough variables of all
 // exposure. The specification's variables follow, with
 // their write-only values opened, so a stack variable replaces one of
-// those defaults. The in-run API token and backend's credentials come
+// those defaults. The in-run API token, INFRAWEAVE_OIDC_TOKEN when the
+// handoff carries a federation token, and backend's credentials come
 // last, where no stack variable replaces them.
 //
 // Each phase sees the pool's phase-scoped inputs its exposure admits, as
@@ -74,7 +78,9 @@
 // key the run's artifact key derives for its object, which the server
 // opens, and, for a tracked run whose plan changes something and for any
 // destroy run, the workspace with the binary plan, sealed to the pool's public key through
-// internal/agent/workspace, which the server cannot open. Each is written
+// internal/agent/workspace, which the server cannot open, without the
+// federation token's file, and failing on any other file that holds the
+// run token, the source credential or the federation token. Each is written
 // to the run's temporary directory, declared, PUT to its pre-signed URL
 // and recorded, every step taken again for up to ten minutes while the
 // worker API or the store is unavailable or the store refuses the URL's
@@ -104,7 +110,7 @@
 //
 // The session's output, and the runner's own lines, go to the run's log,
 // internal/agent/runlog, which masks the run's secrets: its write-only
-// values and files, its tokens, its sensitive passthrough values and
+// values and files, its tokens, the OIDC federation token among them, its sensitive passthrough values and
 // scoped files, the values of the variables the
 // launcher's mask list names, and the well-known patterns when the stack
 // enables them. Each phase's lines are in its state's chunks, flushed

@@ -174,8 +174,9 @@ infraweave/
 │   │   └── api/ assembly/ internal/{core,operator,http,pg}/ catalogue.gen.go
 │   ├── expressions/               flat: the expression and policy check endpoints over each domain's Surfaces() (P6, P13)
 │   │   └── assembly/ internal/{core,http}/   no api/: no domain calls it
-│   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, the OAuth
-│   │                              authorization server, spaces, RBAC, the Organization tag (P3 to P4b, P13b, P23)
+│   ├── access/                    hexagon: organizations, accounts, members, groups, API keys, sessions, tokens, OIDC run
+│   │                              tokens, the OAuth authorization server, spaces, RBAC, the Organization tag (P3 to P4b,
+│   │                              P13b, P15, P23)
 │   │   ├── api/                   Authenticator, Authorizer, Spaces, Tokens, identity reads, events
 │   │   ├── assembly/              New(Deps); Routes; Consumers; Cron; Close; AccessAPI alias
 │   │   └── internal/
@@ -205,7 +206,7 @@ infraweave/
 │   │                              adapters/{http,github,gitlab,bitbucketcloud,bitbucketdc,azuredevops,rawgit,agentgateway,pg}}/
 │   ├── policies/                  flat: policies, attachments, inputs, combination, samples, simulation (P13, P13b)
 │   │   └── api/ assembly/ internal/{core,inputs,combine,sample,http,pg}/
-│   ├── cloud/                     flat: AWS, Azure, GCP integrations, attachments, OIDC run tokens (P15)
+│   ├── cloud/                     flat: AWS, Azure, GCP integrations, attachments, which present the OIDC run tokens access issues (P15)
 │   │   └── api/ assembly/ awsfake/ internal/{core,oidc,aws,azure,gcp,http,pg}/
 │   ├── schedules/                 flat: scheduled runs, tasks, deletes, drift detection (P16)
 │   │   └── api/ assembly/ internal/{core,http,pg}/

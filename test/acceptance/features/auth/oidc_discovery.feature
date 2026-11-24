@@ -14,8 +14,8 @@ Feature: The federation issuer's discovery document and JWKS
   organization's tier, each request a standard draw on the client's
   address. An issuer with a path serves both under that path too. The
   scenarios sign tokens with a signing key's private half, opened from
-  signing_keys under the scenario's keyring as the servers open it: the
-  federation token's own issuance is not served yet.
+  signing_keys under the scenario's keyring as the servers open it;
+  oidc_federation_token.feature verifies the tokens runs receive.
   ref: decision 0006
   ref: decision 0003
 

@@ -704,7 +704,8 @@ func (r *run) close(ctx context.Context) {
 }
 
 // masker masks the run's secrets in its log: every write-only variable's
-// value and file's content, the in-run API token, the run token the state
+// value and file's content, the in-run API token, the OIDC federation
+// token, the run token the state
 // backend's credentials carry, the source credential's token, every
 // sensitive passthrough variable's value and scoped file's content,
 // whatever phase they reach, and, when the stack enables them, the
@@ -713,6 +714,9 @@ func (r *run) close(ctx context.Context) {
 // ref: decision 0013 § "Masking"
 func masker(h handoff.Handoff) *mask.Masker {
 	secrets := [][]byte{[]byte(h.RunToken), []byte(h.Secrets.ApiToken)}
+	if t := h.Secrets.OidcToken; t != nil {
+		secrets = append(secrets, []byte(*t))
+	}
 	for _, v := range h.Secrets.Environment {
 		secrets = append(secrets, []byte(v))
 	}

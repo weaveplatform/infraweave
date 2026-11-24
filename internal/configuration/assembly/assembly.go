@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/core"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/http"
 	"github.com/weaveplatform/infraweave/internal/configuration/internal/pg"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/expr"
@@ -43,15 +44,20 @@ const (
 // domains below it: the database, the keys every element's value is
 // sealed under, the spaces a context lives in and holds, the stacks it
 // attaches to and holds, the authorizer that decides the checks beyond
-// each route's, and the outbox its writes append configapi.Changed to.
+// each route's, the outbox its writes append configapi.Changed to, and
+// the features domain's options and the account's organization, which
+// decide whether a stack's runtime configuration lists the OIDC
+// federation token.
 type Deps struct {
-	DB     pg.DB
-	Keys   pg.Sealer
-	Spaces accessapi.Spaces
-	Stacks stacksapi.Stacks
-	Authz  accessapi.Authorizer
-	Events *outbox.Outbox
-	Now    func() time.Time
+	DB           pg.DB
+	Keys         pg.Sealer
+	Spaces       accessapi.Spaces
+	Stacks       stacksapi.Stacks
+	Authz        accessapi.Authorizer
+	Events       *outbox.Outbox
+	Now          func() time.Time
+	Features     featuresapi.Options
+	Organization func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
 }
 
 // Domain is the configuration domain, constructed once per process.
@@ -66,7 +72,7 @@ func New(d Deps) *Domain {
 	store := pg.New(d.DB, d.Keys)
 	svc := core.New(core.Deps{
 		Store: store, DB: d.DB, Spaces: d.Spaces, Stacks: d.Stacks, Authz: d.Authz,
-		Events: d.Events, Now: d.Now,
+		Events: d.Events, Now: d.Now, Features: d.Features, Organization: d.Organization,
 	})
 	return &Domain{svc: svc, store: store, api: http.New(svc, d.Authz, d.Spaces)}
 }

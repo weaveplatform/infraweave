@@ -10,10 +10,13 @@
 // The providers of each .terraform directory are left out, since init
 // installs them again from the lock file, including those of each copy
 // of a Terragrunt unit in its .terragrunt-cache, which is otherwise kept
-// with the plan Terragrunt saved there; so are a link that leaves the
-// workspace, a device, a pipe and a socket, which Write answers by path.
-// A file, link or name that holds one of the run's credentials the
-// runner names, its run token and its source credential, fails the save.
+// with the plan Terragrunt saved there; so is OIDCTokenFile, the OIDC
+// federation token the runner writes at the workspace's root, so a
+// restored workspace never carries an earlier phase's; and so are a link
+// that leaves the workspace, a device, a pipe and a socket, which Write
+// answers by path. A file, link or name that holds one of the run's
+// credentials the runner names, its run token, its source credential and
+// its OIDC federation token, fails the save.
 // Read restores a saved workspace into a new directory, reading the
 // stream to its end so any alteration fails it, and Extract, which Read
 // and a local preview's archive share, writes a tar through an os.Root,

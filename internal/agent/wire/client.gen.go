@@ -913,6 +913,12 @@ type RunSpecSecrets struct {
 	// Files Each write-only file's content, by path.
 	Files map[string][]byte `json:"files"`
 
+	// OidcToken The OIDC federation token of the phase, which the run's container receives as INFRAWEAVE_OIDC_TOKEN and in /mnt/workspace/infraweave.oidc. Absent when the account's tier lacks oidc-federation.
+	OidcToken *string `json:"oidcToken,omitempty"`
+
+	// OidcTokenExpiresAt When the OIDC federation token expires, in Unix seconds. Absent with oidcToken.
+	OidcTokenExpiresAt *int64 `json:"oidcTokenExpiresAt,omitempty"`
+
 	// SourceCredential The HTTPS credential that reads the run's source, which the worker presents to source.url. Absent when the repository needs none.
 	SourceCredential *RunSpecSourceCredential `json:"sourceCredential,omitempty"`
 }

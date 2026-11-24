@@ -1,0 +1,16 @@
+{
+  "iss": "https://infraweave.example.com",
+  "sub": "space:prod-01KAPROD000000000000000000:stack:infra:run_type:TRACKED:scope:read",
+  "aud": "infraweave.example.com/acme",
+  "exp": 1795525200,
+  "iat": 1795521600,
+  "jti": "01KAJT10000000000000000002",
+  "nbf": 1795521600,
+  "spaceId": "prod-01KAPROD000000000000000000",
+  "spacePath": "/acme/legacy/prod-01KAPROD000000000000000000",
+  "callerType": "stack",
+  "callerId": "infra",
+  "runType": "TRACKED",
+  "runId": "01KAXRN0000000000000000001",
+  "scope": "read"
+}

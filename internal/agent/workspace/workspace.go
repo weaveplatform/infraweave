@@ -27,6 +27,13 @@ const (
 	header  = len(magic) + 1 + 8 + 2
 )
 
+// OIDCTokenFile is where the runner writes the phase's OIDC federation
+// token, relative to the workspace. Write leaves it out, so a restored
+// workspace never carries a token of an earlier phase.
+//
+// ref: decision 0006 § "OIDC federation token"
+const OIDCTokenFile = "infraweave.oidc" //nolint:gosec // a file name, not a credential
+
 // MaxSize is the largest saved workspace, the worker API's bound on a
 // workspace upload.
 //
@@ -71,7 +78,9 @@ type Options struct {
 // to o.Pool for o.Run at o.StateVersion, so only the pool's private key
 // opens it. Directories, regular files and links that stay in dir are
 // archived; the providers of each .terraform directory are left out,
-// since init installs them again from the lock file, as is every other
+// since init installs them again from the lock file, and so is
+// OIDCTokenFile, unreported, since the next container receives a token of
+// its own and the file holds one of o.Forbidden; as is every other
 // entry, which Write answers by path: a link that leaves dir, a device,
 // a pipe or a socket. A file, link or name that holds one of o.Forbidden
 // fails the write with ErrSecret naming its path, and a sealed workspace
@@ -168,6 +177,10 @@ func archive(tw *tar.Writer, dir string, banned [][]byte) ([]string, error) {
 				path.Dir(p))
 		case d.IsDir() && path.Base(p) == "providers" && path.Base(path.Dir(p)) == ".terraform":
 			return fs.SkipDir
+		case p == OIDCTokenFile && d.IsDir():
+			return fs.SkipDir
+		case p == OIDCTokenFile:
+			return nil
 		}
 		name := filepath.FromSlash(p)
 		info, err := d.Info()

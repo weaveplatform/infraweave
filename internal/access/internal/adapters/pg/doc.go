@@ -42,7 +42,8 @@
 // authz.Store.
 // Creating an organization creates its entitlement through
 // featuresapi.Entitlements in the same transaction. Store implements port.Tenancy, port.Sessions,
-// port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
+// port.FederationSubjects, reading an account's slug, subject template
+// and a space's ancestry in one statement, port.APIKeys, port.OrganizationKeys, apikey.Store, operator.Store,
 // orgadmin.Store, sso.Store, settings.Store, space.Store, user.Store, group.Store,
 // role.Store, binding.Store, holder.Store and authz.Store, with an
 // OIDC key's claim mapping as jsonb. operator.Store's writes record their
