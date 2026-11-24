@@ -90,10 +90,12 @@ func (s *Session) Exec(ctx context.Context, argv []string) (rego.Command, error)
 	}()
 	out, rerr := readOutput(pr, s.calls, MaxCombined-s.output)
 	if rerr != nil {
-		// Ending the read fails the helper's next write; cancelling ends
-		// the helper itself.
-		_ = pr.CloseWithError(rerr)
+		// Cancelling ends the helper; ending the read then fails the write
+		// it blocks in. In this order the helper's context is done before
+		// any of its writes fails, so the helper ends for the cancellation
+		// even when its executor returns as soon as a write fails.
 		cancel()
+		_ = pr.CloseWithError(rerr)
 	}
 	err = <-ran
 	s.output += out.size()

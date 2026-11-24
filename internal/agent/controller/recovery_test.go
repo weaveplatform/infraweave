@@ -179,6 +179,32 @@ func TestUnitSlotsRetireAResumedRun(t *testing.T) {
 	}
 }
 
+// TestUnitSlotIsBusyUntilItsLauncherShowsTheRun checks that a slot whose
+// launcher has not yet shown a run counts as busy with the run its
+// Worker records until it loads it, and with the run it loaded after,
+// and that a slot whose launcher ended is never busy.
+func TestUnitSlotIsBusyUntilItsLauncherShowsTheRun(t *testing.T) {
+	s := &slot{l: &launcher.Launcher{}, done: make(chan struct{})}
+	idle := Worker{}
+	assigned := Worker{Status: WorkerStatus{Assignment: &AssignmentStatus{RunID: "run"}}}
+	if s.busy(idle) || !s.busy(assigned) {
+		t.Fatal("an unloaded slot does not follow its Worker's assignment")
+	}
+	s.loaded, s.st.Run = true, "run"
+	if !s.busy(idle) {
+		t.Fatal("a loaded slot with a run is idle")
+	}
+	s.st.Run = ""
+	if s.busy(assigned) {
+		t.Fatal("a loaded idle slot follows its Worker's former assignment")
+	}
+	s.st.Run = "run"
+	close(s.done)
+	if s.busy(assigned) {
+		t.Fatal("a slot whose launcher ended is busy")
+	}
+}
+
 // TestUnitSlotsRecordDrainAndConnection checks that a Worker's
 // conditions show whether the installation drains it and answers its
 // polls, and that a drained worker does not count as ready.

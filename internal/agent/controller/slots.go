@@ -259,6 +259,27 @@ func (s *slot) alive() bool {
 	}
 }
 
+// busy reports whether the slot's launcher runs and executes a run or
+// has one to resume, which blocks the slot's retirement. The launcher
+// shows the run it resumes only once it has loaded w's assignment and
+// registered, so until then the run the slot loaded, or before that the
+// one w records, counts; otherwise a pass right after a new leader
+// starts the slot would retire it and abandon the run.
+func (s *slot) busy(w Worker) bool {
+	if !s.alive() {
+		return false
+	}
+	if s.l.Status().Run != "" {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.loaded {
+		return w.Status.Assignment != nil
+	}
+	return s.st.Run != ""
+}
+
 // stop cancels the slot's launcher and waits for it to end.
 func (s *slot) stop() {
 	s.cancel()
@@ -437,7 +458,7 @@ func (c *Controller) release(ctx context.Context, wp WorkerPool, h *hosted, w Wo
 		return errBusy
 	}
 	defer c.starting.Unlock()
-	if s.alive() && s.l.Status().Run != "" {
+	if s.busy(w) {
 		s.l.Retire()
 		return errBusy
 	}
