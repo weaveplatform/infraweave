@@ -155,9 +155,14 @@ func (s *SigningKeys) Signer(ctx context.Context, id kernel.ULID) (signer.Signer
 // transaction. SHARE ROW EXCLUSIVE conflicts with itself and with every
 // write but not with reads, so concurrent rotations, the first key's
 // creation among them, queue behind each other while verifiers keep
-// reading; the second sees what the first committed.
+// reading; the second sees what the first committed. The transaction is
+// its own even when ctx carries a caller's, such as a run's handover
+// whose token creates the first federation key: a replica caches the key
+// it creates, so a key that rolled back with its caller would sign tokens
+// no published key verifies, and the table lock would be held for the
+// caller's whole transaction.
 func (s *SigningKeys) Rotate(ctx context.Context, purpose token.Purpose, plan func([]token.Key) []token.Step) error {
-	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+	err := tx.Do(tx.Detached(ctx), s.db, tx.Options{}, func(ctx context.Context) error {
 		if _, err := tx.Q(ctx, s.db).Exec(ctx,
 			`LOCK TABLE signing_keys IN SHARE ROW EXCLUSIVE MODE`); err != nil {
 			return sql.Unavailable(err) //nolint:wrapcheck // wrapped below

@@ -142,6 +142,22 @@ func In(ctx context.Context) bool {
 	return ok
 }
 
+// Detached is ctx with its values, deadline and cancellation but no
+// transaction, for a Do whose commit must not wait for, or roll back
+// with, the caller's: work every replica relies on once it exists, such
+// as the first signing key a token is signed with.
+func Detached(ctx context.Context) context.Context { return detached{ctx} }
+
+// detached hides the transaction of the context it wraps.
+type detached struct{ context.Context }
+
+func (d detached) Value(key any) any {
+	if _, ok := key.(ctxKey); ok {
+		return nil
+	}
+	return d.Context.Value(key)
+}
+
 // AfterCommit runs f once the transaction on ctx commits, and never when
 // it rolls back; a retried attempt drops what its failed attempts
 // registered. With no transaction on ctx there is nothing to wait for, and

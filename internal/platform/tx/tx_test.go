@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -584,5 +585,36 @@ func TestUnitTxOutsideATransaction(t *testing.T) {
 	tx.AfterCommit(t.Context(), func(context.Context) { now = true })
 	if !now {
 		t.Error("AfterCommit without a transaction did not run at once")
+	}
+}
+
+// TestAccTxDetached checks that a Do under a detached context commits on
+// its own, so its row survives the caller's rollback, while the context
+// keeps its other values.
+func TestAccTxDetached(t *testing.T) {
+	pool := setup(t)
+	type key struct{}
+	refused := errors.New("refused")
+	err := tx.Do(t.Context(), pool, tx.Options{}, func(ctx context.Context) error {
+		if _, err := tx.Q(ctx, pool).Exec(ctx, `INSERT INTO t (k) VALUES (1)`); err != nil {
+			return err
+		}
+		inner := tx.Detached(context.WithValue(ctx, key{}, "kept"))
+		if tx.In(inner) || inner.Value(key{}) != "kept" {
+			t.Errorf("detached: in a transaction %v, value %v", tx.In(inner), inner.Value(key{}))
+		}
+		if err := tx.Do(inner, pool, tx.Options{}, func(ctx context.Context) error {
+			_, err := tx.Q(ctx, pool).Exec(ctx, `INSERT INTO t (k) VALUES (2)`)
+			return err
+		}); err != nil {
+			return err
+		}
+		return refused
+	})
+	if !errors.Is(err, refused) {
+		t.Fatal(err)
+	}
+	if got := rows(t, pool); !slices.Equal(got, []int{2}) {
+		t.Errorf("rows = %v, want the detached insert alone", got)
 	}
 }

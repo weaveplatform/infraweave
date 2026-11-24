@@ -23,6 +23,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/kek"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt/signer"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
 const audience = "https://iw.example.com/api/v1"
@@ -476,5 +477,29 @@ func TestAccSigningKeysFederationKMS(t *testing.T) {
 	}, time.Now).Sign(ctx, federationClaims())
 	if !errors.Is(err, pg.ErrKMSAlgorithm) || !strings.Contains(err.Error(), fed.Ref()) {
 		t.Errorf("Sign through a KMS key opened for another algorithm = %v, want ErrKMSAlgorithm", err)
+	}
+}
+
+// TestAccSigningKeysRotateApart checks that a rotation asked inside a
+// caller's transaction commits on its own, so the first key a token is
+// signed with survives that transaction's rollback.
+func TestAccSigningKeysRotateApart(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	store := pg.NewSigningKeys(db, keyring(t, db), nil)
+	refused := errors.New("the handover failed")
+	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+		if err := store.Rotate(ctx, token.Federation, func([]token.Key) []token.Step {
+			return []token.Step{{State: token.StateActive, At: time.Now(), Algorithm: signer.ES256}}
+		}); err != nil {
+			return err
+		}
+		return refused
+	})
+	if !errors.Is(err, refused) {
+		t.Fatal(err)
+	}
+	if keys, err := store.Keys(ctx, token.Federation); err != nil || len(keys) != 1 || keys[0].State != token.StateActive {
+		t.Errorf("keys after the caller's rollback = %+v, %v", keys, err)
 	}
 }
