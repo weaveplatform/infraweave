@@ -80,6 +80,7 @@ is used for signatures only; nothing infraweave seals uses JWE.
 | Terraform CLI token | `terraform login` against the registry's `login.v1` service | 30 days | the API base URL | member login | yes, channel `TERRAFORM_CLI` |
 | MCP access token | the token endpoint of the [authorization server](#the-oauth-authorization-server-for-mcp) | 1 hour | the MCP resource URL the grant names | member login | yes, the grant's, channel `UNKNOWN` |
 | MCP refresh token | the same token endpoint | 30 days without use, rotated on every use | none: opaque | n/a | the grant's |
+| SCIM token | the client-credentials grant at the same token endpoint, with a SCIM client's ID and secret | 1 hour | the SCIM base URL | `scim::<client ULID>` | yes, actor kind `scim`, channel `UNKNOWN` |
 | In-run API token | injected into runs as `INFRAWEAVE_API_TOKEN` | 3 hours, and only while the run is `PLANNING`, `APPLYING` or `PERFORMING` | the API base URL | `<stack or module slug>/<run ULID>` | yes, actor kind `run` |
 | OIDC federation token | injected into runs as `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` | 1 hour | the federation audience | the rendered subject template | no |
 | Worker session token | launcher registration ([0008](0008-run-execution-and-worker-protocol.md)) | 1 hour, renewed in poll responses | `infraweave-worker` | worker ULID | no |
@@ -99,7 +100,7 @@ carries:
 | `sub` | as in the table |
 | `jti` | the session ULID; revoking the session revokes the token |
 | `iat`, `nbf`, `exp` | Unix seconds; `nbf` equals `iat` |
-| `iw_kind` | `user`, `api_key`, `organization_key`, `oauth` or `run`; the worker protocol's tokens carry `worker` and `runner` |
+| `iw_kind` | `user`, `api_key`, `organization_key`, `oauth`, `scim` or `run`; the worker protocol's tokens carry `worker` and `runner` |
 
 Nothing about access lives in the token: the session row, which names the
 organization and the account, and 0007's evaluator decide every request, so
@@ -312,11 +313,139 @@ grants (decision 0007). The front ends are:
 | Break-glass admin of an organization, at `/admin-login/{organization}`: a login and a PBKDF2-HMAC-SHA256 hash (below) that the operator holds, sets and replaces through the operator API ([0021](0021-capability-scope-and-supersession.md)); none disables it | `crypto/pbkdf2` |
 | FIDO2 security keys for MFA | `github.com/go-webauthn/webauthn` |
 
-The SCIM server, the SAML claim mapping and the WebAuthn ceremonies are outside
-this record; each produces or narrows the identity above. Before any identity
-provider is configured, the organization reports its provider as `EMPTY`, as
-self-hosted Spacelift reports for its account, and only the break-glass login
-works.
+Before any identity provider is configured, the organization reports its
+provider as `EMPTY`, as self-hosted Spacelift reports for its account, and
+only the break-glass login works. The facts behind the choices below are in
+[report 36](../reference/36-identity-provider-integration.md).
+
+**OIDC sign-in.**
+
+- **Routes.** `/auth/login/{organization}` lists the organization's
+  providers, or goes straight to the default one when there is only one;
+  `/auth/login/{organization}/{provider ID}` starts a sign-in; every OIDC
+  provider redirects back to `/auth/oidc/callback`. The `state` names the
+  request, so one callback serves every organization.
+- **The request.** Starting a sign-in stores a row of
+  `sso_requests(id, organization_id, identity_provider_id, purpose,
+  link_id, state_hash, nonce, pkce_verifier_sealed, browser_hash,
+  return_to, created_at, expires_at, consumed_at)` and sets the cookie
+  `__Host-infraweave_sso` (`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`)
+  whose SHA-256 is `browser_hash`. The callback consumes the row once,
+  within 10 minutes, and only from the browser holding that cookie, so a
+  code cannot be replayed or carried to another browser. The authorization
+  request carries a PKCE `S256` challenge, the nonce, the scopes `openid`,
+  `email`, `profile` and `groups`, and `max_age=0` with `prompt=login` when
+  the purpose is linking or re-authentication. `return_to` is a path on
+  the public URL, never another host.
+- **Verification.** `github.com/coreos/go-oidc/v3`'s `oidc.NewVerifier`
+  takes the key set of the OIDC adapter, the same one OIDC API keys use: it
+  fetches only over HTTPS, caps each document at 1 MiB, caches a JWKS for an
+  hour, refetches for an unknown `kid` at most once a minute, and removes
+  `x5c`, `x5t` and `x5t#S256` from each key before parsing it, because
+  go-jose hashes `x5c` with SHA-1, which the certified FIPS mode refuses.
+  go-oidc's own remote key set is not used. Beyond go-oidc's issuer,
+  audience, expiry and algorithm checks, the callback refuses an ID token
+  whose nonce differs, whose `sub` is empty, whose `azp` is not the client
+  when it has more than one audience, or whose `auth_time` is missing or
+  older than the request's `max_age`; clock skew is 60 seconds.
+- **Claims.** The stable subject is the issuer's `sub`; `member_identities`
+  keys on it alone. `login` comes from `preferred_username`, then `email`,
+  then `sub`; `name` from `name`; `email` from `email`. A provider's
+  claim mapping, as Spacelift's `claimMapping` entries carry it, may name
+  other claims for `login`, `name`, `email` and the groups. The e-mail is
+  shown and offered for invitations only when `email_verified` is `true`;
+  nothing is linked or matched by it. The groups come from the mapped
+  claim, `groups` by default, as strings; a missing claim, or one replaced
+  by `_claim_names`, means no groups, not a failed sign-in. The ID token's
+  `sid` is kept in the session for back-channel logout. The provider's
+  access and refresh tokens are discarded.
+- **The member.** The verified identity resolves to a member through
+  `member_identities`. An unknown subject creates an `active` member with
+  that identity, unless SCIM manages the provider; a `pending` member
+  invited under that login becomes `active`; a `deactivated` member is
+  refused. The sign-in sets `members.last_seen_at` and creates a `WEB`
+  session of actor kind `user` with no account, carrying the provider, the
+  subject, the groups as its original teams, and `original_member`; account
+  switching then enters an account as for any member session.
+- **Saving a provider.** `oidcCreate` and `oidcUpdate` store the provider
+  disabled, and the saving admin's next sign-in through it, started from
+  the answer, enables it. Until one sign-in succeeds, a misconfigured
+  provider never replaces a working one.
+
+**Logout.** `POST /auth/logout` revokes the session and, when the provider
+advertises an `end_session_endpoint`, answers its URL with the ID token hint
+and the public URL as `post_logout_redirect_uri`. A provider that sends
+back-channel logout tokens posts them to `/auth/oidc/backchannel-logout`;
+go-oidc's `VerifyLogout` checks the token, each `jti` is accepted once, and
+the sessions with that provider and `sid`, or that subject when it names no
+`sid`, are revoked. Front-channel logout is not offered, because it relies
+on third-party cookies.
+
+**SAML sign-in.** `github.com/crewjam/saml`'s `x/samlsp`, with
+`github.com/russellhaering/goxmldsig` required at 1.6.1 or later.
+
+- **Routes.** Each organization is its own service provider: its entity ID
+  and metadata are at `/auth/saml/{organization}/metadata`, and its
+  assertion consumer service at `/auth/saml/{organization}/acs`, with the
+  HTTP-POST binding only.
+- **Requests.** A sign-in is SP-initiated: the `sso_requests` row holds
+  the AuthnRequest ID, signed with SHA-256, and the response must name it
+  and the expected issuer. A response with no request ID, an IdP-initiated
+  one, answers `303` to the organization's sign-in instead; only its
+  unverified issuer picks the provider, and nothing else of it is read.
+- **Verification.** SHA-1 signatures and digests are refused. The service
+  provider publishes no encryption key, so no assertion arrives encrypted,
+  because AES-GCM and RSA-OAEP with SHA-1 fail in the certified FIPS mode.
+  Each assertion ID is accepted once, across replicas, through a
+  PostgreSQL replay store. Metadata given as a URL is fetched over HTTPS
+  through the installation's outbound client, refreshed hourly and capped
+  in size; metadata naming more than one identity provider is refused.
+  Clock skew is 60 seconds.
+- **Subject and claims.** A persistent NameID is the subject. Under the
+  transient (the default) and e-mail formats the subject is the attribute
+  the claim mapping names, and a response without it is refused. The claim
+  mapping names the attributes for `login`, `name`, `email` and the groups,
+  read as for OIDC.
+- **Keys.** The service provider's signing key, RSA-2048 or P-256, is
+  generated when the provider is created and sealed as the provider's
+  secret ([0013](0013-secrets-at-rest.md)).
+
+**GitHub OAuth.** `golang.org/x/oauth2`, with the endpoints built from the
+GitHub base URL so GitHub Enterprise Server works, and `go-github` for the
+user. `oauthRedirect` answers the authorize URL, with PKCE and an
+`sso_requests` row whose state is its `temporaryToken`; GitHub returns to
+`/auth/github/callback`, and `oauthToken` serves a client that exchanges the
+code itself. `oauthUser` takes a GitHub token instead of a code. Either way
+the subject is GitHub's numeric user ID, the groups are the user's teams in
+the provider's GitHub organization as `<org>/<team>`, and a user outside
+that organization is refused. An admin of that GitHub organization signs in
+holding `organization-admin`.
+
+**SCIM.** `github.com/elimity-com/scim`, mounted at `/scim/v2` on the same
+router. A SCIM client belongs to one of the organization's identity
+providers: `scim_clients(organization_id, id, identity_provider_id,
+secret_hash, created_at)`, its secret shown once and stored as a SHA-256.
+The client exchanges its ID and secret through the client-credentials grant
+at `/oauth/token` for a token of actor kind `scim` that lasts an hour and
+that only `/scim/v2` accepts. Users map to members with that provider's
+identity, `externalId` or `userName` the subject; groups map to the IdP
+groups the members report. Filters accept `eq` on `userName`, `externalId`,
+`displayName` and `id`, and `members[value eq "…"]`; Entra ID's capitalised
+operations and string booleans are read as their standard forms.
+`active: false` and a delete deactivate the member, as
+`organizationMemberDeactivate` does.
+
+**Security keys.** `github.com/go-webauthn/webauthn`, limited to EdDSA, ES256
+and RS256 credentials with attestation conveyance `none`; a registration
+whose attestation statement names another format than `none`, `packed` or
+`fido-u2f`, or another algorithm, is refused before the library verifies
+it. Keys belong to the member: `security_keys(organization_id, member_id,
+id, name, credential_id, public_key, sign_count, created_at, last_used_at)`.
+When the organization enforces MFA, a sign-in through a provider is
+completed only after a key assertion, and a member with no key registers
+one first; the session records the assertion's time. Re-authentication for
+linking and enforcing asks the provider for `prompt=login` and a key
+assertion.
 
 **The break-glass admin.**
 
@@ -357,8 +486,8 @@ works.
 
 | Field | Meaning |
 |---|---|
-| `Kind` | `user`, `api_key`, `run`, `organization`, `break_glass`, `operator`, `worker`, `runner`, `anonymous` |
-| `ActorID` | user ULID, API key ULID, organization key ULID, organization ULID for `break_glass`, run ULID for `run` and `runner`, or worker ULID |
+| `Kind` | `user`, `api_key`, `run`, `organization`, `break_glass`, `operator`, `scim`, `worker`, `runner`, `anonymous` |
+| `ActorID` | user ULID, API key ULID, organization key ULID, organization ULID for `break_glass`, SCIM client ULID for `scim`, run ULID for `run` and `runner`, or worker ULID |
 | `SessionID` | the session ULID |
 | `OrganizationID`, `AccountID`, `MemberID` | from the session; `AccountID` is empty for an organization or break-glass principal and for a member session no account admits; `MemberID` is empty for both of the first two |
 | `Login`, `Teams`, `Admin` | from the session |

@@ -9542,7 +9542,7 @@
           "file": "docs/implementation/plan.md",
           "present": [
             "Slack channel access rules on managed user groups: `managedUserGroupIntegrations`,",
-            "IdP groups at login map onto each account's managed user groups (P3b)"
+            "so they map onto that account's managed user groups"
           ]
         }
       ]
@@ -10417,7 +10417,7 @@
         {
           "file": "docs/research/decisions/0006-authentication-and-tokens.md",
           "present": [
-            "`break_glass`, `operator`, `worker`, `runner`, `anonymous`",
+            "`break_glass`, `operator`, `scim`, `worker`, `runner`, `anonymous`",
             "in the installation's configuration, `auth.operator.keys`",
             "it is exchanged at `POST /auth/token` for an API token whose audience is the operator API"
           ]

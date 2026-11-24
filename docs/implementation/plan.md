@@ -153,7 +153,7 @@ and lint is clean.
 | P12 VCS integrations | Done | Epic [#313](https://github.com/weaveplatform/infraweave/issues/313). Done: [#314](https://github.com/weaveplatform/infraweave/issues/314) the plan and decisions rewritten with P12 before runs and every provider a peer; [#315](https://github.com/weaveplatform/infraweave/issues/315) VCS integrations stored with sealed credentials, one default per provider; [#316](https://github.com/weaveplatform/infraweave/issues/316) GitHub, [#317](https://github.com/weaveplatform/infraweave/issues/317) GitLab, [#321](https://github.com/weaveplatform/infraweave/issues/321) Bitbucket Cloud, [#322](https://github.com/weaveplatform/infraweave/issues/322) Bitbucket Data Center and [#323](https://github.com/weaveplatform/infraweave/issues/323) Azure DevOps, each with its integration operations and provider; [#318](https://github.com/weaveplatform/infraweave/issues/318) repositories, branches and users browsed through every provider's integrations; [#319](https://github.com/weaveplatform/infraweave/issues/319) private stacks tracked on every provider, each run handed its source credential; [#320](https://github.com/weaveplatform/infraweave/issues/320) every provider proved by `vcs-lab` against real repositories that Terraform provisions. The Bitbucket Data Center lab is optional: it runs only where the `vcs-lab` environment holds a licence, and is skipped otherwise |
 | P12b VCS events and feedback | Done | Epic [#529](https://github.com/weaveplatform/infraweave/issues/529): durable webhook intake, push-created runs and native feedback on every provider. [#634](https://github.com/weaveplatform/infraweave/pull/634) records the operation, capture, parity and real-provider evidence for [#550](https://github.com/weaveplatform/infraweave/issues/550) and [#551](https://github.com/weaveplatform/infraweave/issues/551), including final gate and main lab results. Bitbucket Data Center is optional when no licence is configured |
 | P13 Policy engine and workflow policies | Done | **M4**. Epic [#635](https://github.com/weaveplatform/infraweave/issues/635); the [delivery audit](policy-workflow-delivery.md) links main `3ff32129`, 1,066 passing API/workflow scenarios, strict capture replays, all four required native providers and verified cleanup. Full certified-FIPS/quality CI passes at 95.4% total / ≥90% per package; this final audit merges only after its own unchanged quality gate. Approved experimental producer evidence and later phase owners remain explicit. |
-| P13b Login, task and initialization policies, sampling and simulation | In progress | Epic [#636](https://github.com/weaveplatform/infraweave/issues/636); LOGIN admission, account scheme switching, TASK/server INITIALIZATION, sealed evidence, simulation, catalogue and page projections have integrated acceptance proof. [Delivery audit](policy-workbench-delivery.md) records the 31-operation baseline and executable capture/OPA matrix; #666 still requires final combined CI and the main real-provider lab. |
+| P13b Login, task and initialization policies, sampling and simulation | Done | Epic [#636](https://github.com/weaveplatform/infraweave/issues/636), closed with its delivery gate [#666](https://github.com/weaveplatform/infraweave/issues/666); LOGIN admission, account scheme switching, TASK/server INITIALIZATION, sealed evidence, simulation, catalogue and page projections have integrated acceptance proof. [Delivery audit](policy-workbench-delivery.md) records the 31-operation baseline and executable capture/OPA matrix; #666 passed the final combined CI and the main real-provider lab. |
 | P14 Public worker pool, Kubernetes workers and signed runs | In progress | Epic [#737](https://github.com/weaveplatform/infraweave/issues/737); the public worker pool, pooled public limits, pool projections, the Kubernetes controller, Pod execution and recovery, the worker chart, worker initialization with isolated commands, signed-run admission and phase-scoped inputs are delivered on Docker and the Terraform-owned k3s lab. The [delivery audit](worker-pool-delivery.md) records every pool operation's success, denial and failure evidence and the requirement matrix; EKS/AKS/GKE hosting and the concurrent three-cloud proof remain with #755–#759. |
 | P15 Cloud integrations and OIDC federation | Not started | |
 | P16 Scheduling, drift detection and stack dependencies | Not started | |
@@ -169,7 +169,7 @@ and lint is clean.
 | P21 Blueprints, templates and external integrations | Not started | |
 | P22 Resources, search and console support | Not started | |
 | P22b Scans | Not started | **M7** |
-| P23 Organization identity providers, SCIM and MFA | Not started | |
+| P23 Organization identity providers, SCIM and MFA | In progress | Brought forward ahead of the cloud worker proofs; report [36](../research/reference/36-identity-provider-integration.md) holds its library and test identity provider research |
 | P24 infraweave Terraform provider | Not started | |
 | P24b infraweavectl | Not started | **M8** |
 | P24c Console | Not started | **M9** |
@@ -357,6 +357,7 @@ assigns a domain to another phase, this plan's assignment holds.
 | P12, P13, P17, P20, P22, P24 and P25 each split in two; P18 splits in four | Size: each part is a few pull requests. P18's parts are events, audit and observability, the Flows engine, and Flows apps and agents |
 | A minimal Terragrunt vendor moves from P20 to P11 | P11's exit runs `state/terragrunt_units.feature` and captures C113 and C114, which need a Terragrunt stack whose units each reach their own workspace, and P20 depends on P11. P11 takes the vendor, its release index, a run specification that names Terragrunt and its tool, the launcher's verification and the runner's `run --all` with a backend per unit; P20 keeps smart sanitization, `MANUALLY_PROVISIONED`, `skipReplan`, explicit stacks, the version operations, the changes view, outputs and the policy input (maintainer, 2026-11-16) |
 | P28 added | Decision [0016](../research/decisions/0016-testing-and-acceptance.md) replays captures as fixtures, and report [30](../research/reference/30-open-questions.md) lists 269 of them; qualification closes the loop once an authorized account is available |
+| P23 brought forward ahead of the cloud worker proofs, with P15's account subject template | A platform deployed to a cloud needs a real sign-in to onboard an account, and only P23 makes a member `active`; P23 depends only on P3b and P13b, both done, and its `oidcSubjectTemplate` reads the subject template P15 stores, so that part of P15 task 1 lands first (maintainer, 2026-11-24) |
 | Report 26's provisional Terraform phases remapped | The reference rows `spacelift_worker_pool`, `spacelift_worker_pools` and `spacelift_worker_pool_recycle` to P8; `spacelift_ips` to P14; `spacelift_current_stack` and `spacelift_current_space` to P9, where the in-run token first exists; `spacelift_idp_group_mapping` to P3b; the Billing tag to P3b, with `usage` in P18b; the OAuth tag to P18, with the Slack redirect; the Worker Pools tag to P8. [capabilities.json](../data/capabilities.json) is the assignment |
 
 ## Adding a domain
@@ -2613,7 +2614,8 @@ and shows the subject template's default
    with report 12's claims and scope table, injected as
    `INFRAWEAVE_OIDC_TOKEN` and `/mnt/workspace/infraweave.oidc` and refreshed
    in long runs; the subject template with `accountSetOIDCSubjectTemplate`
-   and its validation. Tests: golden claims and placeholders. Feature:
+   and its validation, which is built ahead of the rest of this phase
+   because P23's `oidcSubjectTemplate` reads it. Tests: golden claims and placeholders. Feature:
    `auth/oidc_federation.feature` (a Vault container's `jwt` auth accepts the
    token with `bound_claims` on `spacePath`). Records DV-016.
 2. `internal/cloud` (flat domain): AWS integrations and attachments with the
@@ -3725,7 +3727,7 @@ today are plugins (P20b) whose results plan policies read (P13).
 
 Decisions: [0006](../research/decisions/0006-authentication-and-tokens.md), [0007](../research/decisions/0007-authorization-spaces-and-roles.md), [0013](../research/decisions/0013-secrets-at-rest.md).
 
-**Depends on:** P13b, P3b.
+**Depends on:** P13b, P3b, and the account subject template of P15 task 1, built ahead of the rest of P15.
 
 Authentication at the organization: its identity providers, provisioning
 through SCIM, enforced multi-factor authentication with security keys and
@@ -3750,12 +3752,19 @@ and group mappings, and shows web sessions ending 10 hours after sign-in
    SAML takes the NameID formats transient (the default), e-mail address
    and persistent, static metadata XML or a metadata URL (C283), and claim
    mappings; OIDC requires the `openid` and `email` scopes and requests
-   `profile` and `groups`.
-   Feature: `auth/sso.feature` (`@oidc`, and a SAML IdP served by the
-   test). Records DV-110.
-2. IdP groups at login map onto each account's managed user groups (P3b),
-   which `infraweave_idp_group_mapping` manages, when the member enters
-   that account.
+   `profile` and `groups`. Sign-in follows decision 0006's
+   "Human login": `sso_requests` holds each request's state, nonce and
+   PKCE verifier, the first sign-in creates or activates the member and
+   writes `member_identities`, and logout is RP-initiated and
+   back-channel. The OIDC key set first stops go-jose hashing `x5c` with
+   SHA-1, which also repairs OIDC API keys from issuers that publish it.
+   Feature: `auth/sso.feature` (`@oidc` with the in-process issuer and the
+   navikt container, `@saml`, and the GitHub fake's OAuth routes). Records
+   DV-110.
+2. IdP groups at login, read through each provider's groups claim, become
+   the session's original teams and the member's `latest_groups` in each
+   account it enters, so they map onto that account's managed user groups
+   (P3b), which `infraweave_idp_group_mapping` manages, by exact name.
 3. Identity linking in the `Organization` tag: two identities from two
    identity providers are two members, and two seats, until an
    organization admin links them. Linking is explicit, needs one sign-in
@@ -3768,14 +3777,18 @@ and group mappings, and shows web sessions ending 10 hours after sign-in
    `createOauthClientForSCIM` (no input; it answers the client ID and the
    secret once), `resetOauthClientForSCIM`, `deleteOauthClientForSCIM`,
    with tokens from the client-credentials grant; deactivation revokes
-   sessions and personal keys. Feature: `auth/scim.feature`.
+   sessions and personal keys. Built on `github.com/elimity-com/scim`,
+   with SCIM tokens of actor kind `scim`. Feature: `auth/scim.feature`,
+   with Entra ID's and Okta's request sequences.
 5. `internal/access/internal/core/mfa`: WebAuthn registration and login,
    `enforceMFA`, `accountToggleEnforcingMFA`, `securityKeys`,
    `securityKeyDelete`, `userSecurityKeyDeleteAll`. MFA enforcement and the
    session lifetime are the organization's and apply in every one of its
    accounts; enforcing MFA needs an OIDC or SAML identity provider in the
    organization and answers `422 validation-failed` without one (decision
-   0006, C282). Feature: `auth/mfa.feature`.
+   0006, C282). The organization's session lifetime may shorten the
+   installation's, never lengthen it. Feature: `auth/mfa.feature`, with
+   `github.com/descope/virtualwebauthn` as the authenticator.
 
 **Exit criteria**
 - SSO, and the Auth and Sessions and Security Keys operations above, meet
