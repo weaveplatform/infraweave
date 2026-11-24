@@ -8,6 +8,7 @@ skipped: missing roots, inputs, credentials, quota or an inaccessible cluster
 fail preflight before any billable apply.
 """
 
+import base64
 import concurrent.futures
 import datetime
 import hashlib
@@ -55,6 +56,12 @@ ULID = re.compile(r"[0-9A-HJKMNP-TV-Z]{26}")
 LIFECYCLES = ("cluster", "deployment", "setup", "external")
 POOL_MODES = ("Managed", "Existing", "Public")
 PRIVATE_FILES = ("deployment.tfplan", "terraform.tfstate.backup", "variables.tfvars.json")
+# Clouds whose Kubernetes setup the coordinator performs: it needs the
+# cloud CLI's token command for the cluster's kubeconfig.
+SETUP_CLOUDS = ("aws",)
+SETUP_FILE_LIMIT = 16384
+# Cleanup's per-cloud threads share one journal file.
+CLEANUP_JOURNAL = threading.Lock()
 
 
 class Unavailable(RuntimeError):
@@ -120,7 +127,8 @@ def read_inputs(cloud, path, bounds):
         inputs = json.loads(raw)
     except json.JSONDecodeError:
         raise ValueError("the inputs file is not JSON") from None
-    exact(inputs, ("cloud", "cluster", "deployment"), "inputs")
+    if not isinstance(inputs, dict) or set(inputs) - {"setup"} != {"cloud", "cluster", "deployment"}:
+        raise ValueError("inputs must have exactly cloud, cluster, deployment and optionally setup")
     provider = exact(inputs["cloud"], ("provider", "identifiers"), "inputs.cloud")
     if provider["provider"] != cloud:
         raise ValueError("inputs.cloud.provider names another cloud")
@@ -146,7 +154,35 @@ def read_inputs(cloud, path, bounds):
         raise ValueError("inputs.deployment.pools must list pools with explicit capacity")
     if sum(pool["capacity"] for pool in pools) > bounds["pool_capacity"]:
         raise ValueError("requested pool capacity exceeds the batch bound of " + str(bounds["pool_capacity"]))
+    if "setup" in inputs:
+        read_setup(cloud, inputs)
     return inputs
+
+
+def read_setup(cloud, inputs):
+    """Check the setup section: which private files hold the Secrets it creates."""
+    if cloud not in SETUP_CLOUDS:
+        raise ValueError("inputs.setup: Kubernetes setup for " + cloud + " ships with its cloud delivery")
+    setup = inputs["setup"]
+    if not isinstance(setup, dict) or set(setup) - {"management_credentials", "pool_credentials"}:
+        raise ValueError("inputs.setup takes only management_credentials and pool_credentials")
+    deployment = inputs["deployment"]
+    namespace = deployment.get("namespace")
+    if not isinstance(namespace, dict) or type(namespace.get("setup_owned")) is not bool:
+        raise ValueError("inputs.setup needs inputs.deployment.namespace with setup_owned")
+    text(namespace.get("name"), "inputs.deployment.namespace.name", LABEL.pattern)
+    management = deployment.get("management_credentials_ref")
+    if (management is None) != (setup.get("management_credentials") is None):
+        raise ValueError("inputs.setup.management_credentials is required for, and only for, management_credentials_ref")
+    files = dict(setup.get("pool_credentials") or {})
+    for pool in deployment["pools"]:
+        text(pool.get("credentials_ref"), "inputs.deployment.pools credentials_ref", LABEL.pattern)
+        name = pool.get("resource_name")
+        if (pool.get("mode") != "Managed") != (name in files):
+            raise ValueError("inputs.setup.pool_credentials names exactly the Existing and Public pools")
+    for path in ([setup["management_credentials"]] if management else []) + list(files.values()):
+        if not isinstance(path, str) or not os.path.isabs(path):
+            raise ValueError("inputs.setup names private files by absolute path")
 
 
 def cloud_command(*args, timeout=COMMAND_TIMEOUT):
@@ -379,6 +415,11 @@ class Journal:
         self.lock = threading.Lock()
         lab.write_json(self.path, value)
 
+    def record(self, cloud, **fields):
+        with self.lock:
+            self.value["clouds"][cloud].update(fields)
+            lab.write_json(self.path, self.value)
+
     def stage(self, cloud, stage, status, **fields):
         with self.lock:
             entry = self.value["clouds"][cloud]
@@ -564,6 +605,159 @@ def apply_stage(directory, cloud, stage, journal, config, executable, bounds, pr
     return json.loads(step("output", "-no-color", "-json", STAGE_OUTPUTS[stage], capture=True, timeout=lab.TERRAFORM_TIMEOUT))
 
 
+def read_private(path, where):
+    """Read one private setup file: a 0600 regular file of bounded size."""
+    path = Path(path)
+    try:
+        status = path.stat()
+    except OSError:
+        raise ValueError(where + " is unreadable") from None
+    if not path.is_file() or status.st_mode & 0o077 or status.st_size > SETUP_FILE_LIMIT:
+        raise ValueError(where + " must be a private (0600) regular file of at most 16 KiB")
+    try:
+        value = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        raise ValueError(where + " is not JSON") from None
+    if not isinstance(value, dict) or not all(isinstance(item, str) and item for item in value.values()):
+        raise ValueError(where + " must map names to nonempty strings")
+    return value
+
+
+def kubeconfig(stage_directory, cloud, config, cluster):
+    """Write a private kubeconfig trusting only the cluster stage's CA."""
+    ids = config["cloud"]["identifiers"]
+    # The token command reads the caller's cloud credentials for each
+    # connection; no token is written to disk.
+    user = {"exec": {"apiVersion": "client.authentication.k8s.io/v1beta1", "command": "aws", "interactiveMode": "Never",
+                     "args": ["eks", "get-token", "--cluster-name", cluster["name"], "--region", ids["region"],
+                              "--output", "json"]}}
+    authority = base64.b64encode(cluster["ca_certificate"].encode()).decode()
+    path = stage_directory / "kubeconfig"
+    lab.write_json(path, {"apiVersion": "v1", "kind": "Config", "current-context": "lab",
+                          "clusters": [{"name": "lab", "cluster": {"server": cluster["endpoint"],
+                                                                   "certificate-authority-data": authority}}],
+                          "users": [{"name": "lab", "user": user}],
+                          "contexts": [{"name": "lab", "context": {"cluster": "lab", "user": "lab"}}]})
+    return path
+
+
+def kubectl(config_path, *args, document=None, timeout=COMMAND_TIMEOUT):
+    """Run kubectl against one cluster. A document goes on standard input, so
+    no Secret value reaches a command line; a failure's output is withheld,
+    because it can quote the document."""
+    try:
+        return subprocess.run(["kubectl", "--kubeconfig", str(config_path), *args], capture_output=True, text=True,
+                              timeout=timeout, input=None if document is None else json.dumps(document),
+                              stdin=subprocess.DEVNULL if document is None else None)
+    except (FileNotFoundError, PermissionError):
+        raise Unavailable("kubectl is not installed") from None
+    except subprocess.TimeoutExpired:
+        raise Unavailable("kubectl did not answer within " + str(timeout) + " seconds") from None
+
+
+def kube_apply(config_path, document, what):
+    completed = kubectl(config_path, "apply", "--server-side", "--field-manager=infraweave-lab", "-f", "-",
+                        document=document)
+    if completed.returncode:
+        raise RuntimeError("kubectl refused to apply " + what)
+
+
+def pool_key(path):
+    """Generate a pool's P-256 private key into a private file."""
+    try:
+        completed = subprocess.run(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(path)],
+                                   capture_output=True, text=True, timeout=COMMAND_TIMEOUT, stdin=subprocess.DEVNULL)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        raise RuntimeError("openssl could not generate a pool key") from None
+    if completed.returncode:
+        raise RuntimeError("openssl could not generate a pool key")
+    path.chmod(0o600)
+    return path.read_text()
+
+
+def setup(directory, cloud, journal, config, cluster):
+    """Create the deployment's namespace and Secrets, or verify a delegated namespace.
+
+    The deployment stage only names them. Values come from the inputs'
+    private files, or for a Managed pool's key from openssl; none is
+    printed, journaled or passed as an argument.
+    """
+    stage_directory = directory / "clouds" / cloud / "setup"
+    stage_directory.mkdir(mode=0o700, parents=True)
+    keys = stage_directory / "keys"
+    keys.mkdir(mode=0o700)
+    deployment, inputs = config["deployment"], config["setup"]
+    namespace = deployment["namespace"]
+    labels = {lab.OWNER_LABEL: journal.value["owner"], "io.infraweave.lab.batch": journal.value["batch"],
+              "io.infraweave.lab.managed-by": "infraweave-lab"}
+    config_path = kubeconfig(stage_directory, cloud, config, cluster)
+    # Recorded first, so cleanup removes a partial setup.
+    record = {"namespace": namespace["name"], "namespaceOwned": namespace["setup_owned"], "secrets": [],
+              "status": "applying"}
+    journal.record(cloud, setup=record)
+    if namespace["setup_owned"]:
+        kube_apply(config_path, {"apiVersion": "v1", "kind": "Namespace",
+                                 "metadata": {"name": namespace["name"], "labels": labels}}, "the namespace")
+    elif kubectl(config_path, "get", "namespace", namespace["name"], "-o", "name").returncode:
+        raise ValueError(cloud + " delegated namespace " + namespace["name"] + " is not readable")
+    secrets = []
+    management = deployment.get("management_credentials_ref")
+    if management:
+        value = read_private(inputs["management_credentials"], "inputs.setup.management_credentials")
+        if set(value) != {"id", "secret"}:
+            raise ValueError("inputs.setup.management_credentials must hold exactly id and secret")
+        secrets.append((management["name"], {management["id_key"]: value["id"], management["secret_key"]: value["secret"]}))
+    for pool in deployment["pools"]:
+        if pool["mode"] == "Managed":
+            data = {"privateKey": pool_key(keys / (pool["resource_name"] + ".pem"))}
+        else:
+            data = read_private(inputs["pool_credentials"][pool["resource_name"]],
+                                "inputs.setup.pool_credentials." + pool["resource_name"])
+            if set(data) != {"token", "privateKey"}:
+                raise ValueError("an Existing or Public pool's credentials hold exactly token and privateKey")
+        secrets.append((pool["credentials_ref"], data))
+    for name, data in secrets:
+        record["secrets"].append(name)
+        journal.record(cloud, setup=record)
+        kube_apply(config_path, {"apiVersion": "v1", "kind": "Secret", "type": "Opaque",
+                                 "metadata": {"name": name, "namespace": namespace["name"], "labels": labels},
+                                 "data": {key: base64.b64encode(item.encode()).decode() for key, item in data.items()}},
+                   "Secret " + name)
+    record["status"] = "applied"
+    journal.record(cloud, setup=record)
+
+
+def teardown_setup(directory, cloud, journal):
+    """Remove what setup created, after the deployment and before the cluster.
+
+    A setup-owned namespace goes whole; a delegated one loses only the
+    Secrets setup created and survives. Absence is read back; an
+    unreachable cluster is unknown, so the cluster stage is not destroyed.
+    """
+    record = journal["clouds"][cloud].get("setup")
+    if not record or record.get("status") == "removed":
+        return {"state": "none" if not record else "removed"}
+    stage_directory = directory / "clouds" / cloud / "setup"
+    config_path = stage_directory / "kubeconfig"
+    if record["namespaceOwned"]:
+        targets = [("namespace", record["namespace"], ())]
+    else:
+        targets = [("secret", name, ("--namespace", record["namespace"])) for name in record["secrets"]]
+    for kind, name, scope in targets:
+        completed = kubectl(config_path, "delete", kind, name, *scope, "--ignore-not-found", "--wait=true",
+                            "--timeout=" + str(journal["cleanupSeconds"]) + "s", timeout=journal["cleanupSeconds"] + 30)
+        if completed.returncode:
+            raise RuntimeError(cloud + " setup " + kind + " " + name + " could not be deleted")
+        found = kubectl(config_path, "get", kind, name, *scope, "--ignore-not-found", "-o", "name")
+        if found.returncode or found.stdout.strip():
+            raise RuntimeError(cloud + " setup " + kind + " " + name + " is not verified absent")
+    for path in (stage_directory / "keys").glob("*.pem"):
+        path.unlink()
+    record["status"] = "removed"
+    return {"state": "removed", "namespace": record["namespace"], "namespaceOwned": record["namespaceOwned"],
+            "secrets": len(record["secrets"])}
+
+
 def provision(directory, cloud, journal, config, executable, bounds, processes):
     """Apply one cloud's cluster then deployment stage and validate attachment."""
     output = apply_stage(directory, cloud, "cluster", journal, config, executable, bounds, processes)
@@ -571,6 +765,8 @@ def provision(directory, cloud, journal, config, executable, bounds, processes):
     journal.stage(cloud, "cluster", "applied", cluster={"id": cluster["id"], "name": cluster["name"], "owned": cluster["owned"]},
                   inventory=cluster["inventory"])
     reach(cloud, cluster["endpoint"], cluster["ca_certificate"], time.monotonic() + bounds["readiness_seconds"])
+    if "setup" in config:
+        setup(directory, cloud, journal, config, cluster)
     hosting = apply_stage(directory, cloud, "deployment", journal, config, executable, bounds, processes,
                           extra={"cluster_stage": cluster})
     hosting = validate_hosting(cloud, hosting, journal.value, config, cluster, bounds)
@@ -749,6 +945,10 @@ def cleanup_cloud(directory, cloud, journal):
             result["stages"][stage] = destroy_stage(directory, cloud, stage, journal)
             if not result["stages"][stage]["emptyState"]:
                 raise RuntimeError(cloud + " " + stage + " state is not empty after destroy")
+            if stage == "deployment":
+                result["setup"] = teardown_setup(directory, cloud, journal)
+                with CLEANUP_JOURNAL:
+                    lab.write_json(directory / "deployment.json", journal)
     except Exception as error:
         result["error"] = type(error).__name__ + ": " + str(error)
         return result

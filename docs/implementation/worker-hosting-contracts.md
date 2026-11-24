@@ -1,8 +1,10 @@
 # Managed Kubernetes worker hosting contract
 
 Status: specified; the lab coordinator for the cloud roots is implemented and
-controller-tested, while cloud modules, acceptance roots and live cloud evidence
-remain undelivered. This is the shared interface required by [#754](https://github.com/weaveplatform/infraweave/issues/754),
+controller-tested. The AWS module and acceptance root are committed
+(`deploy/terraform/modules/workers/aws`, `test/terraform/platform/workers/aws`)
+without live cloud evidence yet; the Azure and Google modules and roots remain
+undelivered. This is the shared interface required by [#754](https://github.com/weaveplatform/infraweave/issues/754),
 under [ADR 0020](../research/decisions/0020-reference-deployments-and-packaging.md#worker-hosting-subset)
 and the [worker protocol/chart contract](worker-pool-contracts.md). The
 [requirement matrix](worker-pool-contracts.json) keeps specification separate

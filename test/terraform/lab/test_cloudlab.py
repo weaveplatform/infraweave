@@ -7,6 +7,7 @@ recorded answers on PATH; the cluster API is a real local TLS listener.
 """
 
 import argparse
+import base64
 from contextlib import contextmanager
 import json
 import os
@@ -124,6 +125,10 @@ argv = " ".join(sys.argv[1:])
 name = os.path.basename(sys.argv[0])
 with open(os.environ["FAKE_CLOUD_LOG"], "a") as log:
     log.write(name + " " + argv + "\\n")
+if name == "kubectl":
+    # Documents arrive on standard input, apart from the logged arguments.
+    with open(os.environ["FAKE_CLOUD_LOG"] + ".stdin", "a") as documents:
+        documents.write(sys.stdin.read() + "\\n")
 with open(os.environ["FAKE_CLOUD"]) as rules:
     for rule in json.load(rules):
         if rule["cli"] == name and all(part in argv for part in rule["match"]):
@@ -158,6 +163,10 @@ def answers(overrides=()):
             {"metric": "CPUS", "limit": 72, "usage": 0}]})},
         {"cli": "gcloud", "match": ["container clusters describe"], "exit": 1, "stderr": "ERROR: (gcloud) NOT_FOUND"},
         {"cli": "gcloud", "match": ["asset search-all-resources"], "stdout": "[]"},
+        {"cli": "kubectl", "match": ["apply --server-side"]},
+        {"cli": "kubectl", "match": ["delete"]},
+        {"cli": "kubectl", "match": ["get", "--ignore-not-found"], "stdout": ""},
+        {"cli": "kubectl", "match": ["get namespace"], "stdout": "namespace/iw-workers\n"},
     ]
     return rules
 
@@ -216,7 +225,7 @@ class Lab:
                 (path / ".terraform.lock.hcl").write_text("")
         self.bin = root / "bin"
         self.bin.mkdir()
-        for name in ("aws", "az", "gcloud"):
+        for name in ("aws", "az", "gcloud", "kubectl"):
             (self.bin / name).write_text(FAKE_CLI)
             (self.bin / name).chmod(0o700)
         self.rules = root / "answers.json"
@@ -228,7 +237,7 @@ class Lab:
     def answer(self, overrides=()):
         self.rules.write_text(json.dumps(answers(overrides)))
 
-    def inputs(self, clouds, endpoint, capacity=2, mode=0o600, **extra):
+    def inputs(self, clouds, endpoint, capacity=2, mode=0o600, setup=None, **extra):
         paths = []
         for name in clouds:
             path = self.root / (name + "-inputs.json")
@@ -239,8 +248,10 @@ class Lab:
             if name in self.reported_owner:
                 deployment["reported_owner"] = self.reported_owner[name]
             deployment.update(extra)
-            path.write_text(json.dumps({"cloud": {"provider": name, "identifiers": IDS[name]},
-                                        "cluster": cluster, "deployment": deployment}))
+            value = {"cloud": {"provider": name, "identifiers": IDS[name]}, "cluster": cluster, "deployment": deployment}
+            if setup is not None:
+                value["setup"] = setup
+            path.write_text(json.dumps(value))
             path.chmod(mode)
             paths.append(name + "=" + str(path))
         return paths
@@ -471,6 +482,99 @@ class CloudBatchTests(unittest.TestCase):
             again = cloud.down(directory)
         self.assertTrue(again["passed"])
         self.assertEqual(again["clouds"]["aws"]["stages"]["cluster"]["state"], "empty")
+
+    def setup_inputs(self, workspace, endpoint):
+        management = self.root / "management.json"
+        management.write_text(json.dumps({"id": "01JABCDEFGHJKMNPQRSTVWXYZ0", "secret": "iwk_m4nagement-s3cr3t"}))
+        management.chmod(0o600)
+        return workspace.inputs(
+            ["aws"], endpoint, setup={"management_credentials": str(management)},
+            namespace={"name": "iw-workers", "setup_owned": True},
+            management_credentials_ref={"name": "management", "id_key": "id", "secret_key": "secret"},
+            pools=[{"resource_name": "stable", "mode": "Managed", "capacity": 2, "credentials_ref": "stable-credentials"}])
+
+    def test_setup_creates_and_removes_the_namespace_and_secrets_between_the_stages(self):
+        workspace = Lab(self.root)
+        with cluster_api(workspace.cert, workspace.key) as endpoint:
+            directory, result, acceptance, _down = self.run_batch(workspace, "workers-aws",
+                                                                  self.setup_inputs(workspace, endpoint))
+        self.assertIsInstance(result, dict, result)
+        self.assertTrue(result["passed"])
+        acceptance.assert_called_once()
+        calls = workspace.calls.read_text()
+        documents = Path(str(workspace.calls) + ".stdin").read_text()
+        applies = [line for line in calls.splitlines() if line.startswith("kubectl") and " apply " in line]
+        self.assertEqual(len(applies), 3)
+        self.assertTrue(all(line.endswith("-f -") for line in applies))
+        # Values travel only on standard input, base64-encoded as a Secret's data.
+        self.assertNotIn("m4nagement", calls)
+        self.assertIn(base64.b64encode(b"iwk_m4nagement-s3cr3t").decode(), documents)
+        self.assertIn('"kind": "Namespace"', documents)
+        self.assertIn(base64.b64encode(b"-----BEGIN EC PRIVATE KEY-----").decode()[:20], documents)
+        self.assertIn("kubectl --kubeconfig", calls)
+        self.assertRegex(calls, r"kubectl .* delete namespace iw-workers")
+        cleanup = lab.read_json(directory / "cleanup.json")
+        self.assertEqual(cleanup["clouds"]["aws"]["setup"], {"state": "removed", "namespace": "iw-workers",
+                                                             "namespaceOwned": True, "secrets": 2})
+        self.assertEqual(cleanup["clouds"]["aws"]["stages"]["cluster"]["state"], "destroyed")
+        setup = directory / "clouds/aws/setup"
+        self.assertEqual(setup.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(list((setup / "keys").iterdir()), [])
+        kubeconfig = (setup / "kubeconfig").read_text()
+        self.assertIn("get-token", kubeconfig)
+        self.assertNotIn("m4nagement", kubeconfig)
+        self.assertEqual(lab.read_json(directory / "deployment.json")["clouds"]["aws"]["setup"]["status"], "removed")
+        published = "".join(path.read_text() for path in (directory / "evidence").iterdir())
+        self.assertNotIn("m4nagement", published)
+
+    def test_unverified_setup_removal_keeps_the_cluster_for_a_retry(self):
+        workspace = Lab(self.root)
+        workspace.answer([{"cli": "kubectl", "match": ["delete"], "exit": 1, "stderr": "Unable to connect"}])
+        with cluster_api(workspace.cert, workspace.key) as endpoint:
+            directory, error, _acceptance, _down = self.run_batch(workspace, "workers-aws",
+                                                                 self.setup_inputs(workspace, endpoint))
+        self.assertIsInstance(error, RuntimeError)
+        cleanup = lab.read_json(directory / "cleanup.json")
+        self.assertFalse(cleanup["passed"])
+        self.assertIn("could not be deleted", cleanup["clouds"]["aws"]["error"])
+        self.assertEqual(cleanup["clouds"]["aws"]["stages"]["deployment"]["state"], "destroyed")
+        self.assertNotIn("cluster", cleanup["clouds"]["aws"]["stages"])
+        self.assertGreater(states(directory, ["aws"])["aws/cluster"], 0)
+        workspace.answer()
+        with workspace.active():
+            again = cloud.down(directory)
+        self.assertTrue(again["passed"])
+        self.assertEqual(again["clouds"]["aws"]["setup"]["state"], "removed")
+        self.assertEqual(again["clouds"]["aws"]["stages"]["cluster"]["state"], "destroyed")
+
+    def test_setup_inputs_name_only_private_files_for_the_secrets_they_create(self):
+        workspace = Lab(self.root)
+        bounds = cloud.definition("workers-aws")["bounds"]
+        path = Path(self.setup_inputs(workspace, "https://127.0.0.1:1")[0].split("=", 1)[1])
+        self.assertIn("setup", cloud.read_inputs("aws", path, bounds))
+        original = json.loads(path.read_text())
+        for name, mutate, message in (
+                ("relative", lambda d: d["setup"].update(management_credentials="management.json"), "absolute"),
+                ("unknown", lambda d: d["setup"].update(kubeconfig="/k"), "only"),
+                ("unreferenced", lambda d: d["deployment"].pop("management_credentials_ref"), "only for"),
+                ("managed-file", lambda d: d["setup"].update(pool_credentials={"stable": "/p.json"}), "Existing and Public"),
+                ("namespace", lambda d: d["deployment"].pop("namespace"), "setup_owned")):
+            with self.subTest(case=name):
+                candidate = json.loads(json.dumps(original))
+                mutate(candidate)
+                path.write_text(json.dumps(candidate))
+                with self.assertRaisesRegex(ValueError, message):
+                    cloud.read_inputs("aws", path, bounds)
+        candidate = json.loads(json.dumps(original))
+        candidate["cloud"] = {"provider": "azure", "identifiers": IDS["azure"]}
+        path.write_text(json.dumps(candidate))
+        with self.assertRaisesRegex(ValueError, "ships with its cloud delivery"):
+            cloud.read_inputs("azure", path, bounds)
+        loose = self.root / "loose.json"
+        loose.write_text(json.dumps({"id": "x", "secret": "y"}))
+        loose.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "private"):
+            cloud.read_private(loose, "management")
 
     def test_one_clouds_failed_apply_still_cleans_every_owned_cloud(self):
         workspace = Lab(self.root, failing=["google"])
