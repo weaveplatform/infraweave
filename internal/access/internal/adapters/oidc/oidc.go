@@ -218,11 +218,46 @@ func (v *Verifier) fetch(ctx context.Context, iss string) (jose.JSONWebKeySet, e
 		return jose.JSONWebKeySet{}, fmt.Errorf("%w: %s's discovery document names issuer %q",
 			ErrIssuer, iss, disc.Issuer)
 	}
-	var set jose.JSONWebKeySet
-	if err := v.get(ctx, disc.JWKSURI, &set); err != nil {
+	var doc struct {
+		Keys []map[string]json.RawMessage `json:"keys"`
+	}
+	if err := v.get(ctx, disc.JWKSURI, &doc); err != nil {
 		return jose.JSONWebKeySet{}, err
 	}
-	return set, nil
+	return keySet(doc.Keys), nil
+}
+
+// certificateMembers are the JWK members that carry or digest the key's
+// certificate chain. go-jose computes a SHA-1 digest of x5c's leaf whenever
+// x5c is present, and the certified FIPS mode panics on SHA-1, so a JWKS
+// from an issuer that publishes x5c, as Entra ID, Auth0 and GitHub Actions
+// do, could not be parsed. The key is fetched over TLS from the issuer's
+// own jwks_uri, so its certificate adds nothing to trusting it.
+//
+// ref: report 36 section 1.1
+var certificateMembers = []string{"x5c", "x5t", "x5t#S256"}
+
+// keySet parses each key of a JWKS without its certificate members. A key
+// go-jose cannot parse, such as one of an unknown type or one whose only
+// key material was its certificate, is left out, so one odd key does not
+// make the issuer's other keys unusable.
+func keySet(raw []map[string]json.RawMessage) jose.JSONWebKeySet {
+	var set jose.JSONWebKeySet
+	for _, members := range raw {
+		for _, m := range certificateMembers {
+			delete(members, m)
+		}
+		var k jose.JSONWebKey
+		b, err := json.Marshal(members)
+		if err == nil {
+			err = k.UnmarshalJSON(b)
+		}
+		if err != nil {
+			continue
+		}
+		set.Keys = append(set.Keys, k)
+	}
+	return set
 }
 
 // get decodes the JSON document at raw, an HTTPS URL, of at most MaxBody
