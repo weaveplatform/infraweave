@@ -93,6 +93,10 @@ func TestUnitAPIOperations(t *testing.T) {
 		"GET /auth/login/{organization}/{providerId}": {Cost: ratelimit.Expensive, Public: true},
 		"GET /auth/oidc/callback":                     {Cost: ratelimit.Expensive, Public: true},
 		"POST /auth/oidc/backchannel-logout":          {Public: true},
+		"GET /.well-known/openid-configuration":       {Public: true, Cost: ratelimit.Standard},
+		"HEAD /.well-known/openid-configuration":      {Public: true, Cost: ratelimit.Standard},
+		"GET /.well-known/jwks":                       {Public: true, Cost: ratelimit.Standard},
+		"HEAD /.well-known/jwks":                      {Public: true, Cost: ratelimit.Standard},
 		"GET " + policiesassembly.ContractPattern:     {Cost: ratelimit.Standard, Gate: gate("policies")},
 		"POST /oauth/register":                        {Cost: ratelimit.Expensive, Public: true},
 		"GET /oauth/authorize":                        {Public: true},
@@ -171,6 +175,8 @@ func TestUnitAPIOperations(t *testing.T) {
 			strings.HasSuffix(key, " "+fs.Pattern), signedState[key],
 			key == "GET "+accessapi.OAuthMetadataPattern, strings.Contains(key, " /oauth/"),
 			strings.Contains(key, " /auth/login"), strings.Contains(key, " /auth/oidc/"),
+			strings.HasSuffix(key, " "+accessapi.FederationDiscoveryPattern),
+			strings.HasSuffix(key, " "+accessapi.FederationJWKSPattern),
 			op.Worker, op.State:
 			if op.Gate.Feature != "" {
 				t.Errorf("%s names %s; a route outside the API documents names none",

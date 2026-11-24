@@ -660,8 +660,16 @@ server.
   `jwks_uri`, `response_types_supported: ["id_token"]`,
   `subject_types_supported: ["public"]`,
   `id_token_signing_alg_values_supported` and `claims_supported`.
-  `GET /.well-known/jwks` returns the federation keys only, each with `use:
-  sig`, `alg` and `kid`, with `Cache-Control: public, max-age=3600`.
+  `GET /.well-known/jwks` returns the federation keys only, `next`,
+  `active` and `retiring`, sorted by `kid`, each with `use: sig`, `alg` and
+  `kid` and never a certificate, so `id_token_signing_alg_values_supported`
+  is the algorithms of those keys. Both answer `GET` and `HEAD` with no
+  credential and `Cache-Control: public, max-age=3600`, and an issuer with
+  a path serves both under that path too, since discovery appends the
+  document's path to the issuer; an issuer on another host is the
+  operator's proxy's. Both are the installation's, so `oidc-federation`
+  gates neither: it applies where a token is minted and to the subject
+  template.
 - **Claims.** Exactly report 12's set
   ([6.3](../reference/12-cloud-integrations-and-oidc.md#63-claims)): `iss`,
   `sub`, `aud`, `exp`, `iat`, `jti`, `nbf`, `spaceId`, `spacePath`,
@@ -784,8 +792,10 @@ Strict YAML under `auth`: `api_issuer`, `run_api_token.issuer`,
 `ES256`), `federation.kms_keys`, `signing.backend`,
 `signing.rotation`, `signing.kms_keys`, `operator.keys`. A
 `federation.issuer` or `federation.jwks_uri` that is not an absolute
-`http` or `https` URL without a query or fragment stops the start; cloud
-relying parties need `https`, which the deployment provides. Identity providers,
+`http` or `https` URL without a query or fragment stops the start, as
+does a `federation.issuer` whose path is not segments of letters, digits
+and `-._~`, under which the discovery routes are mounted; cloud relying
+parties need `https`, which the deployment provides. Identity providers,
 MFA enforcement, session limits and break-glass credentials are
 organization data, not configuration; the operator API writes the
 break-glass credential.

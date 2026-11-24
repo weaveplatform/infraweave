@@ -57,6 +57,42 @@ func TestUnitAssembly(t *testing.T) {
 			}
 		}
 	}
+	// The federation issuer's documents are mounted for GET and HEAD at
+	// the root, and under the issuer's path when it has one.
+	if got := (*Domain)(nil).FederationDiscoveryPatterns(); strings.Join(got, " ") !=
+		"/.well-known/openid-configuration /.well-known/jwks" {
+		t.Errorf("a nil domain's discovery patterns: %v", got)
+	}
+	if got := d.FederationDiscoveryPatterns(); len(got) != 2 {
+		t.Errorf("the public URL's discovery patterns: %v", got)
+	}
+	pathed := DefaultSettings()
+	pathed.Federation.Issuer = "https://iw.example.com/federation/"
+	if err := pathed.Validate(); err != nil {
+		t.Fatalf("an issuer with a path: %v", err)
+	}
+	withPath := mustNew(t, Deps{Settings: pathed, PublicURL: "https://iw.example.com"})
+	patterns := withPath.FederationDiscoveryPatterns()
+	if strings.Join(patterns, " ") != "/.well-known/openid-configuration /.well-known/jwks "+
+		"/federation/.well-known/openid-configuration /federation/.well-known/jwks" {
+		t.Errorf("an issuer with a path's discovery patterns: %v", patterns)
+	}
+	for _, p := range patterns {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			r := chi.NewRouter()
+			withPath.Routes(r)
+			if !r.Match(chi.NewRouteContext(), method, p) {
+				t.Errorf("%s %s is not mounted", method, p)
+			}
+		}
+		r := chi.NewRouter()
+		(*Domain)(nil).Routes(r)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil))
+		if want := http.StatusNotImplemented; strings.HasPrefix(p, "/.well-known") && rec.Code != want {
+			t.Errorf("GET %s on a nil domain: %d, want %d", p, rec.Code, want)
+		}
+	}
 	tasks := d.Cron()
 	if len(tasks) != 2 || tasks[0].Kind.Name != "authn.sessions.expire" ||
 		tasks[0].Every != time.Hour || tasks[1].Kind.Name != "authn.keys.rotate" ||
@@ -159,6 +195,18 @@ func TestUnitSettings(t *testing.T) {
 		"federation algorithm": {func(s *Settings) { s.Federation.Algorithm = "HS256" }, "auth.federation.algorithm"},
 		"federation issuer": {
 			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com/#f" }, "auth.federation.issuer",
+		},
+		"federation issuer pattern": {
+			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com/{org}" }, "has a path of other than segments",
+		},
+		"federation issuer escaped": {
+			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com/a%2Fb" }, "has a path of other than segments",
+		},
+		"federation issuer empty segment": {
+			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com//f" }, "has a path of other than segments",
+		},
+		"federation issuer dot segment": {
+			func(s *Settings) { s.Federation.Issuer = "https://iw.example.com/f/../g" }, "has a path of other than segments",
 		},
 		"federation jwks_uri": {
 			func(s *Settings) { s.Federation.JWKSURI = "keys.example.com/jwks" }, "auth.federation.jwks_uri",

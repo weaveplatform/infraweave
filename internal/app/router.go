@@ -123,7 +123,11 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 	if d.Access != nil {
 		require = d.Access.Requirer()
 	}
-	r := Guarded(log, c, withPollHold(apiOperations(), d.Workers.PollHold()), g,
+	ops := withPollHold(apiOperations(), d.Workers.PollHold())
+	// An issuer with a path serves its discovery routes under it too, which
+	// only the access domain's settings know.
+	maps.Copy(ops, federationDiscoveryOperations(d.Access.FederationDiscoveryPatterns()))
+	r := Guarded(log, c, ops, g,
 		byPrefix{api: d.Auth, operator: d.OperatorAuth, worker: d.WorkerAuth, state: d.StateAuth},
 		require, gated)
 	if b.Routes != nil {

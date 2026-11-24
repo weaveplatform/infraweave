@@ -286,7 +286,7 @@
     {
       "id": "oidc-federation",
       "kind": "capability",
-      "gates": "The OIDC token in every run, the subject template and the discovery documents",
+      "gates": "The OIDC token in every run and the subject template; the federation issuer's discovery document and JWKS are the installation's and served ungated",
       "lowestTier": "Starter",
       "phase": "P15"
     },

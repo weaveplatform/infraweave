@@ -8,8 +8,9 @@
 // records in an audit entry.
 // LoginPattern is the break-glass login's route, beside the APIs, the
 // sign-in patterns are the routes of a sign-in through an organization's
-// OIDC provider, and the OAuth patterns are the authorization server's
-// for MCP clients.
+// OIDC provider, the OAuth patterns are the authorization server's for MCP
+// clients, and the federation patterns the federation issuer's discovery
+// document and JWKS.
 // Authorizer decides the authorization checks for every domain: whether a
 // principal may perform an action in a space, the spaces in which it may,
 // whether it holds an action in any, and the actions it holds in one.

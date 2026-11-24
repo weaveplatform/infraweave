@@ -36,7 +36,10 @@
 // public from its empty security, and whether it admits a credential of
 // no account from its x-infraweave-access: organization, with the
 // access domain's break-glass login (accessapi.LoginPattern) public and
-// expensive beside them, with the controls' state in Guards and
+// expensive beside them, and the federation issuer's discovery document
+// and JWKS public, standard and cacheable at the patterns the access
+// domain names, under the issuer's path too, with the controls' state in
+// Guards and
 // the principal's <kind>:<actor ID> as their caller; the access log runs
 // before them. Run runs a mode: in serve and all it requires
 // server.public_url; it opens PostgreSQL from

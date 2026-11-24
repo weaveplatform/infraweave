@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -88,6 +90,20 @@ type FederationSettings struct {
 	// auth.signing.kms_keys' form, each able to sign Algorithm; the
 	// newest signs once it has been published for 48 hours.
 	KMSKeys []KMSKey `mapstructure:"kms_keys"`
+}
+
+// issuerPath is the path an issuer may have: segments of unreserved
+// characters and an optional trailing slash. The discovery routes are
+// mounted under it as a route pattern, where braces and * would be
+// parameters and an escaped character would not match the path a relying
+// party sends.
+var issuerPath = regexp.MustCompile(`^(/[A-Za-z0-9._~-]+)*/?$`)
+
+// cleanPath reports a path with no . or .. segment, which a client
+// resolves before it sends the path, so a route under it never matches.
+func cleanPath(p string) bool {
+	p = strings.TrimSuffix(p, "/")
+	return p == "" || path.Clean(p) == p
 }
 
 // federationAlgorithms are the algorithms auth.federation.algorithm
@@ -393,8 +409,8 @@ func validateKMSKeys(key, backend string, keys []KMSKey) []error {
 }
 
 // validate checks auth.federation: an issuer and JWKS URI that are
-// absolute http or https URLs without a query or fragment, a known
-// algorithm, and KMS keys as validateKMSKeys checks them under the
+// absolute http or https URLs without a query or fragment, an issuer
+// whose path is plain segments, a known algorithm, and KMS keys as validateKMSKeys checks them under the
 // signing backend, none of them an api-token key: the purposes' keys stay
 // apart. A relying party in a cloud needs https, which the deployment
 // provides.
@@ -407,6 +423,12 @@ func (f FederationSettings) validate(s SigningSettings) []error {
 			errs = append(errs, fmt.Errorf("%w: %s %q is not an absolute http or https URL",
 				ErrConfig, u.key, u.v))
 		}
+	}
+	if u, err := url.Parse(f.Issuer); f.Issuer != "" && err == nil &&
+		(u.RawPath != "" || !issuerPath.MatchString(u.Path) || !cleanPath(u.Path)) {
+		errs = append(errs, fmt.Errorf(
+			"%w: auth.federation.issuer %q has a path of other than segments of letters, digits and -._~",
+			ErrConfig, f.Issuer))
 	}
 	if !slices.Contains(federationAlgorithms, f.Algorithm) {
 		errs = append(errs, fmt.Errorf("%w: auth.federation.algorithm is %q, want one of %s",

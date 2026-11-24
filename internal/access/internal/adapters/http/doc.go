@@ -132,6 +132,13 @@
 // failed and 503 for an unreachable database. The back-channel logout
 // answers 200, or 400 invalid_request for a logout token it refuses.
 // logout's Session also answers logoutUrl, through sso.SignIn.LogoutURL.
+// FederationDiscovery serves the federation issuer's discovery document
+// and JWKS, through the core federation package, for GET and HEAD at
+// FederationDiscoveryPatterns: accessapi's federation patterns and, for
+// an issuer with a path, both under it too. Both answer JSON with
+// Cache-Control: public, max-age=3600, the JWKS the published federation
+// keys alone, and a failed read of the keys the problem it is, which no
+// cache keeps.
 // OperatorServer is its partial of the operator API's
 // strict server, which internal/app embeds under the AccessOperatorAPI
 // alias: organizations, organizationCreate, organization,
@@ -179,10 +186,10 @@
 //
 // # Dependencies
 //
-// It imports the access domain's apikey, authn, breakglass, loopback,
-// group, member, oauth, operator, orgadmin, organization, port, session,
+// It imports the access domain's apikey, authn, breakglass, federation,
+// loopback, group, member, oauth, operator, orgadmin, organization, port, session,
 // settings, space, sso and user packages, accessapi,
-// featuresapi for limit-reached and a feature's refusal, internal/kernel, chi, the generated servers of both APIs, and
+// featuresapi for limit-reached and a feature's refusal, internal/kernel, chi, go-jose for the federation keys, the generated servers of both APIs, and
 // platform/httpkit's apisearch, page, problem, ratelimit and strict. Only the access domain's assembly
 // imports it.
 package http

@@ -64,7 +64,7 @@ A feature is in its lowest seeded tier and every tier above it.
 | `modules` | capability | The Modules tag less sharing, and the module registry protocol | | ✓ | ✓ | ✓ | P17 |
 | `notification-policies` | option | Policy `type: NOTIFICATION` | | ✓ | ✓ | ✓ | P18 |
 | `notifications` | capability | The Notifications tag | | ✓ | ✓ | ✓ | P18 |
-| `oidc-federation` | capability | The OIDC token in every run, the subject template and the discovery documents | | ✓ | ✓ | ✓ | P15 |
+| `oidc-federation` | capability | The OIDC token in every run and the subject template; the federation issuer's discovery document and JWKS are the installation's and served ungated | | ✓ | ✓ | ✓ | P15 |
 | `oidc-sso` | capability | OIDC single sign-on, and creating an organization's OIDC identity providers | | ✓ | ✓ | ✓ | P23 |
 | `policies` | capability | The Policies tag | | ✓ | ✓ | ✓ | P13 |
 | `tasks` | capability | Task runs | | ✓ | ✓ | ✓ | P10 |
