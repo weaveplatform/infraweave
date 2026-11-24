@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -266,20 +267,23 @@ func (r *roles) CallerAccount(context.Context) (string, error) {
 	return "111111111111", nil
 }
 
-func (r *roles) Assume(_ context.Context, a core.Assumption) error {
+// Assume issues a session whose access key ID names the assumption's
+// order, ASIA1 first.
+func (r *roles) Assume(_ context.Context, a core.Assumption) (core.Session, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	switch {
 	case r.none:
-		return core.ErrUnsupported
+		return core.Session{}, core.ErrUnsupported
 	case r.err != nil:
-		return r.err
+		return core.Session{}, r.err
 	}
 	r.assumed = append(r.assumed, a)
 	if ids, ok := r.trusted[a.RoleARN]; ok && !slices.Contains(ids, a.ExternalID) {
-		return &core.Refused{Message: "not authorized to perform sts:AssumeRole"}
+		return core.Session{}, &core.Refused{Message: "not authorized to perform sts:AssumeRole"}
 	}
-	return nil
+	n := strconv.Itoa(len(r.assumed))
+	return core.Session{AccessKeyID: "ASIA" + n, SecretAccessKey: "secret" + n, SessionToken: "token" + n}, nil
 }
 
 // externalIDs are the external IDs of each assumption, in order.

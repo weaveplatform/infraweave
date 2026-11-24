@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/iac/terragrunt"
 	"github.com/weaveplatform/infraweave/internal/iac/version"
@@ -107,6 +108,7 @@ type Service struct {
 	objects     Objects
 	exprs       Renderer
 	sources     runsapi.RunSources
+	credentials cloudapi.Credentials
 	unknownKeys string
 }
 
@@ -286,8 +288,12 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	if err != nil {
 		return workersapi.Handover{}, err
 	}
+	if err := s.cloud(ctx, r, st.Autodeploy, &spec, &sec); err != nil {
+		return workersapi.Handover{}, err
+	}
 	// The source's token is minted after every check that can refuse the
-	// handover, so one refused for its tool or its environment mints none.
+	// handover, so one refused for its tool, its environment or its cloud
+	// credentials mints none.
 	if err := s.source(ctx, r, &spec, &sec); err != nil {
 		return workersapi.Handover{}, err
 	}

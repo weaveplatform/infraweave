@@ -109,13 +109,28 @@ components:
             $ref: '#/components/schemas/RunSpecVariable'
           description: >-
             The run's environment variables, by name: the stack's, its
-            contexts', and the INFRAWEAVE_ and TF_VAR_infraweave_ variables
-            the server sets, which a variable of the same name overrides.
+            contexts', the INFRAWEAVE_ and TF_VAR_infraweave_ variables the
+            server sets, and the write-only AWS_ACCESS_KEY_ID,
+            AWS_SECRET_ACCESS_KEY, AWS_SECURITY_TOKEN and AWS_SESSION_TOKEN
+            of the role the server assumes for the AWS integration that
+            serves the phase; a variable of the same name overrides each
+            variable the server sets.
         files:
           type: array
           items:
             $ref: '#/components/schemas/RunSpecFile'
           description: The files mounted into the run's workspace, by path.
+        cloudAssumptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunSpecCloudAssumption'
+          description: >-
+            The roles the run's worker assumes for this phase with its own
+            credentials, one for each cloud integration that assumes its
+            role on the worker and serves the phase. The worker hands the
+            run the credentials each assumption issues; a launcher that
+            cannot assume them fails the phase in preparation, naming the
+            integration. Absent when none applies.
         sealed:
           type: string
           format: byte
@@ -410,6 +425,52 @@ components:
           type: integer
           format: int64
           description: When the commit was made, in Unix seconds.
+    RunSpecCloudAssumption:
+      description: >-
+        A role the run's worker assumes with its own credentials. None of
+        its members is a secret.
+      type: object
+      additionalProperties: false
+      required: [integrationId, integration, roleArn, externalId, sessionName, durationSeconds, tags]
+      properties:
+        integrationId:
+          type: string
+          maxLength: 26
+          description: The AWS integration's ID.
+        integration:
+          type: string
+          description: The AWS integration's name, which a failure names.
+        roleArn:
+          type: string
+          description: The ARN of the IAM role to assume.
+        externalId:
+          type: string
+          description: >-
+            The external ID to pass: the integration's custom one when it
+            sets one, otherwise the one generated for the stack and the
+            phase's side.
+        sessionName:
+          type: string
+          maxLength: 64
+          description: The RoleSessionName to pass, which leads with the run's ID.
+        durationSeconds:
+          type: integer
+          format: int32
+          minimum: 900
+          maximum: 43200
+          description: How long the session's credentials stay valid, in seconds.
+        region:
+          type: string
+          description: >-
+            The region whose regional STS endpoint assumes the role. Absent
+            for the worker's default.
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            The session tags to pass, by key: run, stack and space when the
+            integration tags its sessions, otherwise empty.
     RunSpecVariable:
       description: >-
         An environment variable. A write-only variable's value is in sealed,

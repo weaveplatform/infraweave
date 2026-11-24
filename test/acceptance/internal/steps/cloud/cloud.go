@@ -50,6 +50,16 @@ func (s *stsSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the AWS role "([^"]+)" trusts the installation with the external ID "([^"]+)"$`, s.trust)
 	sc.Step(`^AWS STS fails every call to assume the role "([^"]+)"$`, s.fail)
 	sc.Step(`^AWS STS was asked to assume the role "([^"]+)" with the external ID "([^"]+)"$`, s.asked)
+	sc.Step(`^the AWS role "([^"]+)" trusts the installation no longer$`, s.refuse)
+	sc.Step(`^AWS STS issued the run "(\w+)" credentials with the external IDs "([^"]*)" alone$`,
+		s.externalIDs)
+	sc.Step(`^AWS STS issued the run "(\w+)" credentials of the role "([^"]+)" with the external ID "([^"]+)", `+
+		`the session name "([^"]+)", (\d+) seconds and the session tags "([^"]*)"$`, s.assumption)
+	sc.Step(`^the digests of the credentials AWS STS issued the run "(\w+)" with the external ID "([^"]+)" `+
+		`are kept as "(\w+)"$`, s.digests)
+	sc.Step(`^no credential AWS STS issued is in an answer, a server's log or any of at least (\d+) objects `+
+		`of the scenario's bucket$`, s.nowhere)
+	sc.Step(`^the answer's runtimeConfig lists the computed write-only variables "([^"]+)"$`, s.computed)
 	sc.Step(`^the answer lists the AWS integrations "([^"]*)"$`, s.lists)
 	sc.Step(`^the answer's attached stacks are "([^"]*)"$`, s.attached)
 	sc.Step(`^the stack "([^"]+)" lists the AWS integrations "([^"]*)"$`, s.stackLists)
@@ -79,13 +89,23 @@ func (s *stsSteps) serve() {
 }
 
 // credentials gives the servers an access key of account, which the fake
-// knows, before they start.
-func (s *stsSteps) credentials(account string) error {
+// knows, before they start. An @objectstore scenario's servers hold the
+// object store's key instead, since the SDK's default credentials reach
+// both services, so the fake knows that key as the installation's too.
+func (s *stsSteps) credentials(ctx context.Context, account string) error {
 	s.serve()
 	s.account = account
-	s.fake.AddCaller(accessKey, account, "arn:aws:iam::"+account+":user/infraweave")
+	arn := "arn:aws:iam::" + account + ":user/infraweave"
+	s.fake.AddCaller(accessKey, account, arn)
 	s.w.Setenv("AWS_ACCESS_KEY_ID", accessKey)
 	s.w.Setenv("AWS_SECRET_ACCESS_KEY", secretKey)
+	if slices.Contains(s.w.Tags, "@objectstore") {
+		store, err := s.w.Suite.Deps.ObjectStore(ctx)
+		if err != nil {
+			return err //nolint:wrapcheck // names @objectstore
+		}
+		s.fake.AddCaller(store.AccessKey, account, arn)
+	}
 	return nil
 }
 

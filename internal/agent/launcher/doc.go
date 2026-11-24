@@ -14,7 +14,9 @@
 // the assigned run under the run token keys its worker session reads, and
 // a token that fails, or keys it cannot read, fails the run in its
 // preparing state before anything below; it then fetches the run's
-// specification with the run token, opens its sealed part with the pool's
+// specification with the run token, refuses one whose cloud integration
+// assumes its role on the worker, naming the integration, since this
+// launcher cannot assume it, opens its sealed part with the pool's
 // private key, resolves the run's image and refuses one a public pool does
 // not admit, evaluates any startup-compiled local initialization policy over
 // its minimal version-1 snapshot, whose exec calls run through

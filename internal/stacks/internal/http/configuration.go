@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
@@ -55,15 +57,20 @@ func (unbound) AwsAttachments(context.Context, kernel.Principal, []kernel.ULID) 
 	return map[kernel.ULID][]stacksapi.AwsAttachment{}, nil
 }
 
+func (unbound) CredentialVariables(context.Context, kernel.AccountID, []kernel.ULID) (map[kernel.ULID][]string, error) {
+	return map[kernel.ULID][]string{}, nil
+}
+
 // edges holds the server's back edges. Every copy of a Server shares
 // one, so a binding made after the server was handed out reaches it.
 type edges struct {
-	aws       stacksapi.StackAwsAttachments
-	policies  stacksapi.StackPolicies
-	requests  stacksapi.PullRequestReader
-	config    stacksapi.StackConfiguration
-	status    stacksapi.StackStatus
-	rollbacks stacksapi.StateRollbacks
+	aws         stacksapi.StackAwsAttachments
+	credentials stacksapi.StackCredentials
+	policies    stacksapi.StackPolicies
+	requests    stacksapi.PullRequestReader
+	config      stacksapi.StackConfiguration
+	status      stacksapi.StackStatus
+	rollbacks   stacksapi.StateRollbacks
 }
 
 // BindPolicies binds the policy projections without a stacks-to-policies import.
@@ -112,6 +119,11 @@ func awsAttachmentViews(as []stacksapi.AwsAttachment) []api.StackAwsIntegrationA
 	}
 	return out
 }
+
+// BindCredentials makes c what every copy of s reads the computed cloud
+// credential variables of a stack's runtimeConfig through. It runs during
+// construction, before the server serves a request.
+func (s Server) BindCredentials(c stacksapi.StackCredentials) { s.edges.credentials = c }
 
 // SetStackStatus makes st the run status every copy of s reads. It runs
 // during construction, before the server serves a request.
@@ -179,6 +191,24 @@ func elementView(e stacksapi.ConfigElement) api.ConfigElement {
 		v.CreatedAt = new(unix(e.CreatedAt.Unix()))
 	}
 	return v
+}
+
+// withComputed is es with a computed write-only element for each of names
+// that no element of es names, by ID: a stored variable of the same name
+// replaces a computed one in the run's environment.
+func withComputed(es []stacksapi.ConfigElementWithSource, names []string) []stacksapi.ConfigElementWithSource {
+	out := slices.Clone(es)
+	for _, name := range names {
+		if !slices.ContainsFunc(es, func(e stacksapi.ConfigElementWithSource) bool { return e.ID == name }) {
+			out = append(out, stacksapi.ConfigElementWithSource{
+				ConfigElement: stacksapi.ConfigElement{ID: name, WriteOnly: true}, Runtime: true,
+			})
+		}
+	}
+	if len(out) > len(es) {
+		slices.SortStableFunc(out, func(a, b stacksapi.ConfigElementWithSource) int { return strings.Compare(a.ID, b.ID) })
+	}
+	return out
 }
 
 func runtimeViews(es []stacksapi.ConfigElementWithSource) []api.ConfigElementWithSource {

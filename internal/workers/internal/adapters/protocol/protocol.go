@@ -330,6 +330,17 @@ func runSpec(spec worker.RunSpec) gen.RunSpec {
 		out.Environment = append(out.Environment,
 			gen.RunSpecVariable{Name: v.Name, Value: v.Value, WriteOnly: v.WriteOnly})
 	}
+	if len(spec.CloudAssumptions) > 0 {
+		assumptions := make([]gen.RunSpecCloudAssumption, 0, len(spec.CloudAssumptions))
+		for _, a := range spec.CloudAssumptions {
+			assumptions = append(assumptions, gen.RunSpecCloudAssumption{
+				IntegrationId: a.Integration.String(), Integration: a.IntegrationName,
+				RoleArn: a.RoleARN, ExternalId: a.ExternalID, SessionName: a.SessionName,
+				DurationSeconds: a.DurationSeconds, Region: optional(a.Region), Tags: nonNilMap(a.Tags),
+			})
+		}
+		out.CloudAssumptions = &assumptions
+	}
 	for _, f := range spec.Files {
 		file := gen.RunSpecFile{
 			Path: f.Path, FileMode: f.Mode, Checksum: f.Checksum, WriteOnly: f.WriteOnly,
@@ -349,6 +360,15 @@ func object(raw json.RawMessage) map[string]any {
 		return map[string]any{}
 	}
 	return out
+}
+
+// nonNilMap is m, empty rather than nil, since the schema requires an
+// object.
+func nonNilMap(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
 }
 
 // optional is s, nil when empty.

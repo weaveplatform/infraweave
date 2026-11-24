@@ -8,6 +8,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
@@ -423,6 +424,12 @@ func (d *Domain) BindSources(s runsapi.RunSources, r stacksapi.StackSources) {
 	d.trigger.BindSources(r)
 	d.control.BindSources(r)
 }
+
+// BindCredentials binds the cloud domain's credentials, a back edge
+// internal/app binds after it constructs that domain; from then on each
+// handover hands its phase the cloud credentials of its stack's
+// attachments.
+func (d *Domain) BindCredentials(c cloudapi.Credentials) { d.handover.BindCredentials(c) }
 
 // StackDestroyer creates the destroy run of a stack's delete with
 // destroyResources, a back edge internal/app binds into the stacks

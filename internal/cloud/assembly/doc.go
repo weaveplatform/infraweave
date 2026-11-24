@@ -9,7 +9,11 @@
 // PurgeBatch rows at a time, which internal/app runs for each
 // accessapi.Deleted; StackAwsAttachments is the
 // stacksapi.StackAwsAttachments internal/app binds into stacks, whose view
-// lists each stack's attachments. Settings are cloud.aws, where the server reaches
+// lists each stack's attachments, and StackCredentials the
+// stacksapi.StackCredentials it binds there too, whose view lists the
+// computed credential variables; Credentials is the cloudapi.Credentials
+// it binds into runs, whose handovers hand each phase its credentials.
+// Settings are cloud.aws, where the server reaches
 // AWS STS with the credentials of the SDK's default chain.
 //
 // # Input and output
@@ -19,7 +23,7 @@
 // # Dependencies
 //
 // It imports the domain's aws, core, http and pg packages, the access,
-// features and stacks api packages, internal/kernel, the AWS SDK's STS
+// cloud, features and stacks api packages, internal/kernel, the AWS SDK's STS
 // client and platform/sql's integrity and migrate packages. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

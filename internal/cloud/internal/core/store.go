@@ -84,23 +84,32 @@ type Store interface {
 	Audit(ctx context.Context, e kernel.AuditEntry) error
 }
 
-// Assumption is one role assumption.
+// Assumption is one role assumption; Tags are its session tags, none
+// when empty.
 type Assumption struct {
 	RoleARN     string
 	ExternalID  string
 	SessionName string
 	Region      string
 	Duration    time.Duration
+	Tags        map[string]string
+}
+
+// Session is the temporary credentials an assumption issued.
+type Session struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	SessionToken    string
 }
 
 // Roles is the server's AWS identity: CallerAccount is the AWS account
-// it assumes roles as, Assume assumes a role and discards the
+// it assumes roles as, Assume assumes a role and answers the session's
 // credentials. Both answer ErrUnsupported without AWS credentials; Assume
 // answers *Refused when STS denies the assumption, and *Upstream when
 // STS fails otherwise.
 type Roles interface {
 	CallerAccount(ctx context.Context) (string, error)
-	Assume(ctx context.Context, a Assumption) error
+	Assume(ctx context.Context, a Assumption) (Session, error)
 }
 
 // Refused is an assumption STS denied, with its message.

@@ -44,7 +44,7 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 	f := newFixture(t)
 	f.store.pool.Certificate = f.cert.Raw
 	run := kernel.NewULID()
-	stackID := kernel.NewULID()
+	stackID, integration := kernel.NewULID(), kernel.NewULID()
 	at := time.Unix(1_800_000_000, 0)
 	root, image, login, value, mode := "infra", "ghcr.io/acme/runner", "alice", "eu", "600"
 	refusal := "stacks.infra.before_plan: must be a list"
@@ -97,6 +97,17 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 				{Path: "a.tf", Checksum: "x", Content: []byte("terraform {}")},
 				{Path: "key.pem", Mode: &mode, Checksum: "y", WriteOnly: true},
 				{Path: "binary.bin", Checksum: "z", Content: []byte{0, 0xff, 'A', '\n', 0}},
+			},
+			CloudAssumptions: []workersapi.CloudAssumption{
+				{
+					Integration: integration, IntegrationName: "Deploy", RoleARN: "arn:aws:iam::222222222222:role/deploy",
+					ExternalID: "ours", SessionName: run.String() + "@infra@acme", DurationSeconds: 7200,
+					Region: "eu-west-1", Tags: map[string]string{"run": run.String()},
+				},
+				{
+					Integration: integration, IntegrationName: "Plain", RoleARN: "arn:aws:iam::222222222222:role/plain",
+					ExternalID: "acme@x@infra@read", SessionName: "s", DurationSeconds: 900,
+				},
 			},
 		},
 	}})
@@ -174,6 +185,19 @@ func TestUnitProtocolRunSpec(t *testing.T) {
 			},
 			map[string]any{
 				"path": "binary.bin", "checksum": "z", "writeOnly": false, "content": "AP9BCgA=",
+			},
+		},
+		"cloudAssumptions": []any{
+			map[string]any{
+				"integrationId": integration.String(), "integration": "Deploy",
+				"roleArn": "arn:aws:iam::222222222222:role/deploy", "externalId": "ours",
+				"sessionName": run.String() + "@infra@acme", "durationSeconds": 7200.0,
+				"region": "eu-west-1", "tags": map[string]any{"run": run.String()},
+			},
+			map[string]any{
+				"integrationId": integration.String(), "integration": "Plain",
+				"roleArn": "arn:aws:iam::222222222222:role/plain", "externalId": "acme@x@infra@read",
+				"sessionName": "s", "durationSeconds": 900.0, "tags": map[string]any{},
 			},
 		},
 	}

@@ -150,6 +150,12 @@ func (d *Domain) BindConfiguration(c stacksapi.StackConfiguration) {
 // constructs that domain; until then a stack lists none.
 func (d *Domain) BindAwsAttachments(a stacksapi.StackAwsAttachments) { d.api.BindAwsAttachments(a) }
 
+// BindCredentials binds the cloud domain's reader of the computed
+// variables each stack's runs receive their cloud credentials in, a back
+// edge internal/app binds after it constructs that domain; until then a
+// stack's runtimeConfig lists none.
+func (d *Domain) BindCredentials(c stacksapi.StackCredentials) { d.api.BindCredentials(c) }
+
 // BindPolicies binds readable policy attachments after policies construction.
 func (d *Domain) BindPolicies(p stacksapi.StackPolicies) { d.api.BindPolicies(p) }
 

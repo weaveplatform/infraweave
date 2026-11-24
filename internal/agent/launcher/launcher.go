@@ -748,6 +748,9 @@ func (l *Launcher) prepare(ctx context.Context, a wire.Assignment, out *lines) (
 	if err != nil {
 		return nil, err //nolint:wrapcheck // client names the call
 	}
+	if err := assumable(spec); err != nil {
+		return nil, err
+	}
 	plain, err := seal.OpenEnvelope(l.id.open, a.Run, a.StateVersion, spec.Sealed)
 	if err != nil {
 		return nil, fmt.Errorf("open the run's secrets: %w", err)
@@ -914,6 +917,22 @@ func (l *Launcher) dropWorkspace(ctx context.Context, run string, c executor.Con
 }
 
 var errPublicRunnerImage = errors.New("runner image is not admitted by the installation public pool")
+
+// errCloudAssumption marks a specification whose cloud integration
+// assumes its role on the worker, which this launcher cannot do.
+var errCloudAssumption = errors.New("this launcher cannot assume a cloud integration's role on the worker")
+
+// assumable refuses spec when it asks the worker to assume a cloud
+// integration's role, naming the integration, so the run's tool never
+// runs without the credentials its phase was promised.
+func assumable(spec wire.RunSpec) error {
+	if spec.CloudAssumptions == nil || len(*spec.CloudAssumptions) == 0 {
+		return nil
+	}
+	a := (*spec.CloudAssumptions)[0]
+	return fmt.Errorf("%w: AWS integration %s (%s) assumes role %s there", errCloudAssumption,
+		a.Integration, a.IntegrationId, a.RoleArn)
+}
 
 // container fetches the tool a's specification names, and the Terragrunt
 // that drives it for a Terragrunt stack's run, and starts the run's

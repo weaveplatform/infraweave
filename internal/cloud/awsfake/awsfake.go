@@ -66,7 +66,8 @@ type Role struct {
 // DurationSeconds the request named, zero when it named none; Region is
 // the region of the SigV4 credential scope; Status and Code are the
 // answer's HTTP status and STS error code, Code empty on success and
-// Status zero for a FaultTimeout request.
+// Status zero for a FaultTimeout request. Issued are the credentials a
+// successful AssumeRole answered, zero for any other call.
 type Call struct {
 	Action      string
 	AccessKeyID string
@@ -78,6 +79,14 @@ type Call struct {
 	Region      string
 	Status      int
 	Code        string
+	Issued      Issued
+}
+
+// Issued are the temporary credentials an AssumeRole answered.
+type Issued struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	SessionToken    string
 }
 
 type caller struct {
@@ -188,7 +197,7 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 	case "GetCallerIdentity":
 		status, code = f.callerIdentity(w, c)
 	case "AssumeRole":
-		status, code = f.assumeRole(w, c, r.Form.Has("DurationSeconds"))
+		status, code, c.Issued = f.assumeRole(w, c, r.Form.Has("DurationSeconds"))
 	default:
 		status, code = http.StatusBadRequest, "InvalidAction"
 		writeError(w, status, code, fmt.Sprintf("Could not find operation %s for version 2011-06-15", c.Action))
@@ -288,13 +297,14 @@ func (f *Fake) callerIdentity(w http.ResponseWriter, c Call) (int, string) {
 	return http.StatusOK, ""
 }
 
-func (f *Fake) assumeRole(w http.ResponseWriter, c Call, durationSet bool) (int, string) {
+func (f *Fake) assumeRole(w http.ResponseWriter, c Call, durationSet bool) (int, string, Issued) {
 	f.mu.Lock()
 	who, known := f.callers[c.AccessKeyID]
 	role, exists := f.roles[c.RoleARN]
 	f.mu.Unlock()
 	if !known {
-		return invalidToken(w)
+		status, code := invalidToken(w)
+		return status, code, Issued{}
 	}
 	duration := c.Duration
 	if !durationSet {
@@ -302,29 +312,30 @@ func (f *Fake) assumeRole(w http.ResponseWriter, c Call, durationSet bool) (int,
 	}
 	if msg := validate(c, duration); msg != "" {
 		writeError(w, http.StatusBadRequest, "ValidationError", msg)
-		return http.StatusBadRequest, "ValidationError"
+		return http.StatusBadRequest, "ValidationError", Issued{}
 	}
 	if !exists || !trusts(role, who) || !externalIDMatches(role.ExternalID, c.ExternalID) {
 		writeError(w, http.StatusForbidden, "AccessDenied",
 			fmt.Sprintf("User: %s is not authorized to perform: sts:AssumeRole on resource: %s", who.arn, c.RoleARN))
-		return http.StatusForbidden, "AccessDenied"
+		return http.StatusForbidden, "AccessDenied", Issued{}
 	}
 	if limit := cmp.Or(role.MaxDuration, defaultDuration); duration > limit {
 		writeError(w, http.StatusBadRequest, "ValidationError", "The requested DurationSeconds exceeds the MaxSessionDuration set for this role.")
-		return http.StatusBadRequest, "ValidationError"
+		return http.StatusBadRequest, "ValidationError", Issued{}
 	}
 	account, name := roleParts(role.ARN)
 	assumed := fmt.Sprintf("arn:aws:sts::%s:assumed-role/%s/%s", account, name, c.SessionName)
-	key, roleID := "ASIA"+random(16), "AROA"+random(17)
+	issued := Issued{AccessKeyID: "ASIA" + random(16), SecretAccessKey: random(40), SessionToken: random(120)}
+	roleID := "AROA" + random(17)
 	f.mu.Lock()
-	f.callers[key] = caller{account: account, arn: assumed, userID: roleID + ":" + c.SessionName}
+	f.callers[issued.AccessKeyID] = caller{account: account, arn: assumed, userID: roleID + ":" + c.SessionName}
 	f.mu.Unlock()
 	expires := time.Now().UTC().Add(duration).Format(time.RFC3339)
 	writeResult(w, "AssumeRole",
-		"<Credentials>"+element("AccessKeyId", key)+element("SecretAccessKey", random(40))+
-			element("SessionToken", random(120))+element("Expiration", expires)+"</Credentials>"+
+		"<Credentials>"+element("AccessKeyId", issued.AccessKeyID)+element("SecretAccessKey", issued.SecretAccessKey)+
+			element("SessionToken", issued.SessionToken)+element("Expiration", expires)+"</Credentials>"+
 			"<AssumedRoleUser>"+element("AssumedRoleId", roleID+":"+c.SessionName)+element("Arn", assumed)+"</AssumedRoleUser>")
-	return http.StatusOK, ""
+	return http.StatusOK, "", issued
 }
 
 // validate answers the message of STS's ValidationError for a request

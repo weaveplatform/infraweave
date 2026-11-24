@@ -727,10 +727,13 @@ type RunReportEvent string
 
 // RunSpec What a claimed run needs. Every value that is not a secret is here in clear; the write-only values, the in-run API token, the run's artifact key and the credential that reads the source are in sealed, which only the pool's private key opens.
 type RunSpec struct {
+	// CloudAssumptions The roles the run's worker assumes for this phase with its own credentials, one for each cloud integration that assumes its role on the worker and serves the phase. The worker hands the run the credentials each assumption issues; a launcher that cannot assume them fails the phase in preparation, naming the integration. Absent when none applies.
+	CloudAssumptions *[]RunSpecCloudAssumption `json:"cloudAssumptions,omitempty"`
+
 	// Commit The commit the run works on.
 	Commit RunSpecCommit `json:"commit"`
 
-	// Environment The run's environment variables, by name: the stack's, its contexts', and the INFRAWEAVE_ and TF_VAR_infraweave_ variables the server sets, which a variable of the same name overrides.
+	// Environment The run's environment variables, by name: the stack's, its contexts', the INFRAWEAVE_ and TF_VAR_infraweave_ variables the server sets, and the write-only AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SECURITY_TOKEN and AWS_SESSION_TOKEN of the role the server assumes for the AWS integration that serves the phase; a variable of the same name overrides each variable the server sets.
 	Environment []RunSpecVariable `json:"environment"`
 
 	// Files The files mounted into the run's workspace, by path.
@@ -783,6 +786,33 @@ type RunSpec struct {
 
 	// Tool The infrastructure tool the launcher mounts into the run. Absent for a vendor that mounts none. A Terragrunt stack's run mounts the tool its Terragrunt drives, tofu for OPEN_TOFU and terraform for TERRAFORM_FOSS, whose version constraint is the stack's terraformVersion, else its Terragrunt settings' terraformVersion.
 	Tool *RunSpecTool `json:"tool,omitempty"`
+}
+
+// RunSpecCloudAssumption A role the run's worker assumes with its own credentials. None of its members is a secret.
+type RunSpecCloudAssumption struct {
+	// DurationSeconds How long the session's credentials stay valid, in seconds.
+	DurationSeconds int32 `json:"durationSeconds"`
+
+	// ExternalId The external ID to pass: the integration's custom one when it sets one, otherwise the one generated for the stack and the phase's side.
+	ExternalId string `json:"externalId"`
+
+	// Integration The AWS integration's name, which a failure names.
+	Integration string `json:"integration"`
+
+	// IntegrationId The AWS integration's ID.
+	IntegrationId string `json:"integrationId"`
+
+	// Region The region whose regional STS endpoint assumes the role. Absent for the worker's default.
+	Region *string `json:"region,omitempty"`
+
+	// RoleArn The ARN of the IAM role to assume.
+	RoleArn string `json:"roleArn"`
+
+	// SessionName The RoleSessionName to pass, which leads with the run's ID.
+	SessionName string `json:"sessionName"`
+
+	// Tags The session tags to pass, by key: run, stack and space when the integration tags its sessions, otherwise empty.
+	Tags map[string]string `json:"tags"`
 }
 
 // RunSpecCommit The commit the run works on.

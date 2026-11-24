@@ -128,6 +128,10 @@ func TestUnitAssumeRole(t *testing.T) {
 	want := awsfake.Call{
 		Action: "AssumeRole", AccessKeyID: serverKey, RoleARN: roleARN, ExternalID: "acme@01J@prod@r", SessionName: "infraweave@stack",
 		Duration: 30 * time.Minute, Region: "eu-west-1", Status: http.StatusOK,
+		Issued: awsfake.Issued{
+			AccessKeyID: aws.ToString(creds.AccessKeyId), SecretAccessKey: aws.ToString(creds.SecretAccessKey),
+			SessionToken: aws.ToString(creds.SessionToken),
+		},
 	}
 	if len(calls) != 1 || calls[0].Tags["account"] != "acme" || calls[0].Tags["stack"] != "prod" || len(calls[0].Tags) != 2 {
 		t.Fatalf("calls = %+v", calls)
