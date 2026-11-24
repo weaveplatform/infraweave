@@ -22,8 +22,9 @@ var ErrInvalid = errors.New("invalid OIDC subject template")
 // Caller is what a run's token says about the run, from which a subject is
 // rendered.
 type Caller struct {
-	// SpaceID is the space's ID; SpacePath is the IDs of the spaces from
-	// the top space down to it, joined by "/".
+	// SpaceID is the space's ID, its slug; SpacePath is SpacePath's of
+	// the space's ancestry, each slug from the top space down to it after
+	// a "/".
 	SpaceID, SpacePath string
 	// Type is "stack" or "module", and ID its slug.
 	Type, ID string

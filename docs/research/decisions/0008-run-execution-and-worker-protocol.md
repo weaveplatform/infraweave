@@ -602,8 +602,10 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `TF_VAR_infraweave_*`, where Spacelift's are `SPACELIFT_*` and
   `TF_VAR_spacelift_*` (0001's rename table), with the same suffixes and
   values except where the rename register records another. A stack's
-  `runtimeConfig` lists the 17 metadata variables and
-  `INFRAWEAVE_API_TOKEN` as computed elements, `runtime` true with the
+  `runtimeConfig` lists the 17 metadata variables,
+  `INFRAWEAVE_API_TOKEN` and, when the account's tier has
+  `oidc-federation`, `INFRAWEAVE_OIDC_TOKEN` as computed elements, both
+  tokens write-only, `runtime` true with the
   category value `INFRAWEAVE_ENVIRONMENT` and no value; its `config` lists only
   the elements set on it. A stored source of a computed name replaces
   that placeholder in this configuration-source view. The real API token
@@ -634,7 +636,16 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   `INFRAWEAVE_API_TOKEN` over from the sealed part, and the runner sets it
   after the stack's variables so none replaces it. These match the observed
   names in [32 section 17.2](../reference/32-spacelift-console-survey.md#172-the-run-environment).
-  P15 adds `INFRAWEAVE_OIDC_TOKEN`; P17 adds `TG_TF_REGISTRY_TOKEN` with
+  When the account's tier has `oidc-federation`, which the handover checks,
+  the sealed part also carries `oidcToken` and `oidcTokenExpiresAt`, the
+  OIDC federation token ([0006](0006-authentication-and-tokens.md#oidc-federation-token))
+  of the phase the handover starts, minted in the handover's transaction
+  beside the in-run API token. The runner writes it to
+  `/mnt/workspace/infraweave.oidc`, mode `0400`, before the phase's hooks
+  and sets `INFRAWEAVE_OIDC_TOKEN` after the stack's variables, as it
+  does `INFRAWEAVE_API_TOKEN`, and the masker hides it. A run of an account
+  without the feature, and a parse run, gets neither and goes on.
+  P17 adds `TG_TF_REGISTRY_TOKEN` with
   the module registry's in-run credential, which
   [0014](0014-module-and-provider-registry.md) has the runner write into
   `~/.terraformrc`; P18b adds the trace context.
@@ -669,8 +680,11 @@ and OIDC token settings ([0006](0006-authentication-and-tokens.md)).
   installs again from the lock file, those in a Terragrunt unit's
   `.terragrunt-cache` too, which it otherwise keeps, and leaves out and
   logs a link that
-  leaves the workspace, a device, a pipe or a socket. A file, link or name
-  that holds the run token or the source credential fails the planning,
+  leaves the workspace, a device, a pipe or a socket. It leaves out
+  `infraweave.oidc` at the workspace's root too, unlogged, so a restored
+  workspace never carries an earlier phase's federation token. A file,
+  link or name that holds the run token, the source credential or the
+  federation token fails the planning,
   naming the path but never the value, as does a sealed workspace over
   2 GiB. The runner uploads it to `workspaces` before it reports the plan,
   since the plan's answer is not known yet. For `PREPARING_APPLY` and

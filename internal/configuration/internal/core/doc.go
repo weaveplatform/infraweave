@@ -24,16 +24,19 @@
 // refuse a space delete or move, and a stack move, that would leave an
 // attachment made by hand out of reach, and delete a deleted stack's
 // attachments and elements; the Service is also the stack view's reader
-// of a stack's contexts and elements.
+// of a stack's contexts and elements, and RuntimeConfig its runtime
+// configuration, which lists infraweave's computed variables, the OIDC
+// federation token among them when the features domain gives the
+// account oidc-federation.
 //
 // # Input and output
 //
-// None: the store, the spaces, the stacks, the authorizer and the outbox
-// are interfaces its callers pass.
+// None: the store, the spaces, the stacks, the authorizer, the outbox and
+// the features domain's options are interfaces its callers pass.
 //
 // # Dependencies
 //
-// It imports the access, stacks and configuration api packages,
+// It imports the access, features, stacks and configuration api packages,
 // internal/kernel and its search package, platform/expr, platform/outbox
 // and platform/tx. The configuration domain's
 // assembly constructs it over the pg store.

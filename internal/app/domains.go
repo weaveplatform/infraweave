@@ -139,12 +139,14 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	access.ResolveSubjects(stacksassembly.Entity, stacks.SpaceOf())
 	access.ResolveSubjects(stacksassembly.BindingEntity, stacks.BindingSpaceOf())
 	configuration := configurationassembly.New(configurationassembly.Deps{
-		DB:     db.Primary(),
-		Keys:   keys,
-		Spaces: access.Spaces(),
-		Stacks: stacks.Stacks(),
-		Authz:  access.Authorizer(),
-		Events: events,
+		DB:           db.Primary(),
+		Keys:         keys,
+		Spaces:       access.Spaces(),
+		Stacks:       stacks.Stacks(),
+		Authz:        access.Authorizer(),
+		Events:       events,
+		Features:     features.Entitlements(),
+		Organization: access.AccountOrganization,
 	})
 	access.GuardSpaces(configuration.SpaceGuard())
 	access.ResolveSubjects(configurationassembly.Entity, configuration.SpaceOf())
@@ -205,6 +207,7 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 		Accounts:            access.Accounts(),
 		Authz:               access.Authorizer(),
 		Tokens:              access.Tokens(),
+		Features:            features.Entitlements(),
 		Stacks:              stacks.Stacks(),
 		Environment:         configuration.Environment(),
 		Catalog:             vendors.Catalog(),

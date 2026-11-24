@@ -10,6 +10,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/cron"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
@@ -116,7 +117,9 @@ type Objects interface {
 // Deps are what the runs domain takes from the platform and the domains
 // before it: the database, the keys a run's artifact key is sealed under,
 // the objects its workers upload, the access domain's spaces, accounts,
-// authorizer and the tokens a handover mints, the stacks domain, the
+// authorizer and the tokens a handover mints, the features domain's
+// options, which decide whether a handover mints an OIDC federation token,
+// the stacks domain, the
 // configuration domain's environment, which a handover opens, the outbox
 // its runs' events go to, the queue its jobs go to, a clock, time.Now
 // when nil, the run settings, and LogRetention,
@@ -147,6 +150,7 @@ type Deps struct {
 	Accounts            accessapi.Accounts
 	Authz               accessapi.Authorizer
 	Tokens              handover.Tokens
+	Features            featuresapi.Options
 	Stacks              stacksapi.Stacks
 	Environment         configapi.Environment
 	Catalog             vendorsapi.Catalog
@@ -256,6 +260,7 @@ func New(d Deps) *Domain {
 			Store: store, Stacks: d.Stacks, Spaces: d.Spaces, Accounts: d.Accounts,
 			Environment: d.Environment, Tokens: d.Tokens, Catalog: d.Catalog, Objects: d.Objects,
 			UnknownKeys: d.RuntimeSettings.RuntimeConfig.UnknownKeys,
+			Features:    d.Features, Organization: d.AccountOrganization,
 		}),
 		reports: report.New(report.Deps{
 			Policies:     d.PolicyEvaluator,

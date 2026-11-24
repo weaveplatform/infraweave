@@ -1,0 +1,92 @@
+[
+  {
+    "runType": "PROPOSED",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TRACKED",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TRACKED",
+    "state": "PREPARING_APPLY",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING_APPLY",
+    "sealed": "oidc-PREPARING_APPLY",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TRACKED",
+    "state": "PREPARING_REPLAN",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING_REPLAN",
+    "sealed": "oidc-PREPARING_REPLAN",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TRACKED",
+    "state": "PREPARING",
+    "autodeploy": true,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TASK",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "DESTROY",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "TESTING",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "stack",
+    "caller": "infra",
+    "phase": "PREPARING",
+    "sealed": "oidc-PREPARING",
+    "expiresAt": 2000000007
+  },
+  {
+    "runType": "PARSE",
+    "state": "PREPARING",
+    "autodeploy": false,
+    "callerType": "",
+    "caller": "",
+    "phase": "",
+    "sealed": "",
+    "expiresAt": 0
+  }
+]

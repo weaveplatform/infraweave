@@ -14,6 +14,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/iac/terragrunt"
 	"github.com/weaveplatform/infraweave/internal/iac/version"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -62,10 +63,11 @@ type Store interface {
 	RecordResolved(ctx context.Context, run lifecycle.Run, record *runtimeconfig.Record) error
 }
 
-// Tokens mints a run's in-run API token; the access domain's Tokens is
-// one.
+// Tokens mints a run's in-run API token and its OIDC federation token;
+// the access domain's Tokens is one.
 type Tokens interface {
 	InRunToken(ctx context.Context, r accessapi.InRunRequest) (accessapi.Token, error)
+	FederationToken(ctx context.Context, r accessapi.FederationRequest) (accessapi.Token, error)
 }
 
 // Renderer checks and renders templates; the expression registry is one.
@@ -81,9 +83,11 @@ type Objects interface {
 
 // Deps are what a handover reads: the runs' storage, the run's stack, the
 // slugs of its account and the account's spaces, the stack's resolved
-// environment, the tokens it mints, the version catalogue its tool's
-// release resolves in, and the objects a local preview's workspace is
-// signed from.
+// environment, the tokens it mints, the features domain's options and the
+// account's organization, which decide whether its run receives an OIDC
+// federation token, the version catalogue its tool's release resolves
+// in, and the objects a local preview's workspace is signed from. A nil
+// Features or Organization mints no federation token.
 type Deps struct {
 	Store       Store
 	Stacks      stacksapi.Stacks
@@ -94,6 +98,9 @@ type Deps struct {
 	Catalog     vendorsapi.Catalog
 	Objects     Objects
 	UnknownKeys string
+
+	Features     featuresapi.Options
+	Organization func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
 }
 
 // Service builds the specifications of claimed runs.
@@ -104,6 +111,8 @@ type Service struct {
 	accounts    accessapi.Accounts
 	env         configapi.Environment
 	tokens      Tokens
+	features    featuresapi.Options
+	org         func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
 	catalog     vendorsapi.Catalog
 	objects     Objects
 	exprs       Renderer
@@ -117,7 +126,7 @@ func New(d Deps) *Service {
 	return &Service{
 		store: d.Store, stacks: d.Stacks, spaces: d.Spaces, accounts: d.Accounts,
 		env: d.Environment, tokens: d.Tokens, catalog: d.Catalog, objects: d.Objects,
-		unknownKeys: d.UnknownKeys,
+		unknownKeys: d.UnknownKeys, features: d.Features, org: d.Organization,
 	}
 }
 
@@ -146,6 +155,11 @@ type secrets struct {
 	APITokenExpiresAt int64             `json:"apiTokenExpiresAt"`
 	ArtifactKey       []byte            `json:"artifactKey"`
 	SourceCredential  *sourceCredential `json:"sourceCredential,omitempty"`
+
+	// OIDCToken and OIDCTokenExpiresAt are absent for a run that receives
+	// no federation token.
+	OIDCToken          string `json:"oidcToken,omitempty"`
+	OIDCTokenExpiresAt int64  `json:"oidcTokenExpiresAt,omitempty"`
 }
 
 // sourceCredential is RunSpecSecrets' sourceCredential: the source's
@@ -302,6 +316,9 @@ func (s *Service) Handover(ctx context.Context, id kernel.ULID) (workersapi.Hand
 	})
 	if err != nil {
 		return workersapi.Handover{}, err //nolint:wrapcheck // the access domain names the mint
+	}
+	if err := s.federation(ctx, r, st, &sec); err != nil {
+		return workersapi.Handover{}, err
 	}
 	key, err := s.store.ArtifactKey(ctx, r)
 	if err != nil {

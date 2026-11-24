@@ -46,9 +46,11 @@
 // with DeletedSchema its document's schema; the domains that keep an
 // account's rows consume it and delete them. Tokens mints and verifies
 // the worker protocol's tokens: a worker session token
-// (WorkerAudience), a run token (RunnerAudience), and an in-run API token
-// for an InRunRequest, ErrInvalidToken for any other token presented as
-// one of the first two. Runs is the back edge, which the runs domain
+// (WorkerAudience), a run token (RunnerAudience), an in-run API token
+// for an InRunRequest, and an OIDC federation token for a
+// FederationRequest, whose caller is a FederationStack or a
+// FederationModule, ErrInvalidToken for any other token presented as one
+// of the first two. Runs is the back edge, which the runs domain
 // implements, that an in-run API token's authentication reads its run's
 // RunAccess through.
 //

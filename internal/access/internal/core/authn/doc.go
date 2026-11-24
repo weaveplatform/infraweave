@@ -69,6 +69,11 @@
 // accessapi.Runs that BindRuns binds, acting as the run's stack from the
 // space the stack lives in, and is refused while the run is not live,
 // before Runs is bound, and on ReachOrganization's routes.
+// FederationToken issues an OIDC federation token: the claims
+// federation.NewToken builds from the account's slug, subject template
+// and the ancestry of the caller's space, which Deps.Subjects reads, with
+// a fresh jti and no session row, signed through Deps.Federation, the
+// active federation key.
 //
 // Authenticate and AuthenticateBrowser read sessions through the
 // replica's session.Cache, which the assembly's watcher drops a session
@@ -79,13 +84,14 @@
 // # Input and output
 //
 // None of its own: it reads and writes through the APIKeys, Sessions,
-// OrganizationKeys, BreakGlass and Tenancy ports and session.Admission,
+// OrganizationKeys, BreakGlass, Tenancy and FederationSubjects ports and
+// session.Admission,
 // reads runs through accessapi.Runs, verifies through the OIDC port, and
 // signs through the token service it is given. Nothing is logged.
 //
 // # Dependencies
 //
-// It imports the access domain's api, apikey, breakglass, loopback,
-// organization, port, session and token packages, internal/kernel and the
+// It imports the access domain's api, apikey, breakglass, federation,
+// loopback, organization, port, session and token packages, internal/kernel and the
 // standard library. The access assembly constructs it.
 package authn

@@ -42,6 +42,9 @@ func newRunSpecWorld(t *testing.T) *claimWorld {
 	}
 	c := config.Defaults()
 	c.VCS.CAFile = g.CAFile
+	// The federation token's issuer defaults to the public URL, which every
+	// mode that serves the worker API requires.
+	c.Server.PublicURL = "http://infraweave.test"
 	w := newClaimWorldConfig(t, c)
 	name := "run-spec-" + strconv.FormatInt(runSpecDependencies.Serial(), 10)
 	commit, err := g.CreateRepository(t.Context(), name, map[string]string{"main.tf": "terraform {}\n"})
@@ -153,8 +156,10 @@ func TestAccRunSpec(t *testing.T) {
 	}
 	if secrets.Environment["TOKEN"] != "s3cret" || secrets.Environment["AUTH"] != "Bearer s3cret" ||
 		len(secrets.Environment) != 2 || secrets.ApiToken == "" ||
-		secrets.ApiTokenExpiresAt <= time.Now().Unix() || len(secrets.ArtifactKey) != 32 {
-		t.Errorf("secrets %+v", secrets)
+		secrets.ApiTokenExpiresAt <= time.Now().Unix() || len(secrets.ArtifactKey) != 32 ||
+		secrets.OidcToken == nil || secrets.OidcTokenExpiresAt == nil ||
+		*secrets.OidcTokenExpiresAt <= time.Now().Unix() {
+		t.Error("the secrets lack a token, its expiry or the artifact key")
 	}
 	if _, again := open(); !bytes.Equal(again.ArtifactKey, secrets.ArtifactKey) {
 		t.Error("a second fetch made another artifact key")

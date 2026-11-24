@@ -59,7 +59,8 @@
 // # Input and output
 //
 // None of its own: the domain reaches PostgreSQL, the keyring, the stacks,
-// spaces, environment and in-run tokens of other domains, the outbox and
+// spaces, environment, features and in-run and federation tokens of other
+// domains, the outbox and
 // the queue through Deps.
 //
 // # Dependencies
@@ -69,6 +70,7 @@
 // surface, timers, trigger, http and pg packages, platform/cron,
 // platform/crypt, platform/expr,
 // platform/outbox, platform/queue, platform/sql/integrity and
-// platform/sql/migrate. Only
+// platform/sql/migrate, and featuresapi, whose Options decide whether a
+// handover mints an OIDC federation token. Only
 // internal/app and cmd/ import it, as the constructors rule enforces.
 package assembly

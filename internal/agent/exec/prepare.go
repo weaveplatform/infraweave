@@ -17,6 +17,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/agent/phaseinputs"
 	"github.com/weaveplatform/infraweave/internal/agent/vendors"
 	"github.com/weaveplatform/infraweave/internal/agent/wire"
+	"github.com/weaveplatform/infraweave/internal/agent/workspace"
 	"github.com/weaveplatform/infraweave/internal/iac/workflow"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/buildinfo"
@@ -29,10 +30,13 @@ var (
 )
 
 // The modes of a mounted file that names none: a write-only file is
-// readable by the runner's user alone.
+// readable by the runner's user alone. The OIDC federation token's file is
+// readable by that user alone, UID 1983 in the runner images, and
+// writable by none, so no hook replaces the token a later step presents.
 const (
 	fileMode          = 0o644
 	writeOnlyFileMode = 0o600
+	oidcTokenFileMode = 0o400
 )
 
 // DisableStateLock is the variable whose value true plans without the
@@ -79,6 +83,9 @@ func (r *run) setUp(ctx context.Context) string {
 
 	if err := r.files(); err != nil {
 		return fmt.Sprintf("The mounted files cannot be written: %v.", err)
+	}
+	if err := r.oidcToken(); err != nil {
+		return fmt.Sprintf("The OIDC federation token cannot be written: %v.", err)
 	}
 	if r.terragrunt() && !r.h.Spec.Terragrunt.RunAll {
 		info, err := os.Stat(filepath.Join(r.dir, backend.UnitFile))
@@ -218,8 +225,9 @@ func readFile(dir, name string, limit int64) ([]byte, error) {
 // the launcher's run settings, SSL_CERT_FILE trusting the handoff's roots
 // when it has any, the passthrough variables every phase sees, the
 // specification's variables with the
-// write-only values opened, then the in-run API token and the state
-// backend's credentials, which no variable of the stack overrides.
+// write-only values opened, then the in-run API token, the OIDC federation
+// token and the state backend's credentials, which no variable of the
+// stack overrides.
 //
 // ref: decision 0008 § "Phases, reports and the plan decision"
 func (r *run) environment(creds []string) ([]string, error) {
@@ -262,6 +270,9 @@ func (r *run) environment(creds []string) ([]string, error) {
 	}
 	if t := r.h.Secrets.ApiToken; t != "" {
 		env = append(env, kernel.APITokenVariable+"="+t)
+	}
+	if t := r.h.Secrets.OidcToken; t != nil && *t != "" {
+		env = append(env, kernel.OIDCTokenVariable+"="+*t)
 	}
 	return append(env, creds...), nil
 }
@@ -374,6 +385,25 @@ func (r *run) files() error {
 		}
 	}
 	return nil
+}
+
+// oidcToken writes the phase's OIDC federation token at
+// workspace.OIDCTokenFile, replacing a mounted file of that name, when the
+// handoff carries one. A run of an account without the feature has none,
+// and no saved workspace carries one to a later container.
+//
+// ref: decision 0006 § "OIDC federation token"
+func (r *run) oidcToken() error {
+	t := r.h.Secrets.OidcToken
+	if t == nil || *t == "" {
+		return nil
+	}
+	root, err := os.OpenRoot(r.d.Workspace)
+	if err != nil {
+		return fmt.Errorf("open the workspace: %w", err)
+	}
+	defer root.Close()
+	return write(root, workspace.OIDCTokenFile, []byte(*t), oidcTokenFileMode)
 }
 
 // write writes content at name under root with mode, whatever the umask.

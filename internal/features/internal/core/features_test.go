@@ -568,3 +568,62 @@ func TestUnitRefusalError(t *testing.T) {
 		}
 	}
 }
+
+// TestUnitOperatorWriteSnapshot checks that the operator's write drops at
+// once the snapshot of this replica it concerns, so the replica that
+// wrote reads what it wrote before any notification arrives.
+func TestUnitOperatorWriteSnapshot(t *testing.T) {
+	s := &store{entitlement: &featuresapi.Entitlement{Tier: "Free", Features: []string{"stacks"}}}
+	svc := core.New(s, inTx(new(int)), nil)
+	ctx, org := t.Context(), kernel.NewOrganizationID()
+	reads := func(what string) int {
+		t.Helper()
+		if _, err := svc.Entitlement(ctx, org); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := svc.Billing(ctx); err != nil {
+			t.Fatal(err)
+		}
+		return s.reads[what]
+	}
+	for _, step := range []struct {
+		name, what string
+		write      func() error
+	}{
+		{"billing", "billing", func() error { _, err := svc.SetBilling(ctx, true, nil); return err }},
+		{"a feature grant", "entitlement", func() error {
+			_, err := svc.GrantFeature(ctx, org, "oidc-sso")
+			return err
+		}},
+		{"a feature revoke", "entitlement", func() error {
+			_, err := svc.RevokeFeature(ctx, org, "oidc-sso")
+			return err
+		}},
+		{"a tier move", "entitlement", func() error { _, err := svc.SetTier(ctx, org, "Free"); return err }},
+		{"a limit grant", "entitlement", func() error {
+			_, err := svc.GrantLimit(ctx, org, "seats", nil)
+			return err
+		}},
+		{"a limit revoke", "entitlement", func() error {
+			_, err := svc.RevokeLimit(ctx, org, "seats")
+			return err
+		}},
+	} {
+		before := reads(step.what)
+		if reads(step.what) != before {
+			t.Fatalf("%s: the snapshot was not kept", step.name)
+		}
+		if err := step.write(); err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+		// An organization's write answers its entitlement read from
+		// storage, one read, and the next read is the snapshot's own.
+		want := 1
+		if step.what == "entitlement" {
+			want = 2
+		}
+		if got := reads(step.what) - before; got != want {
+			t.Errorf("%s: %d reads after the write, want %d", step.name, got, want)
+		}
+	}
+}

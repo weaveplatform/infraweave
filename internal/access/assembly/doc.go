@@ -46,7 +46,9 @@
 // WorkerAuthenticator the one in front of the worker API and
 // StateAuthenticator the one in front of the state backend, which keeps
 // the tokens of the API keys its clients send for this replica; Tokens
-// mints the worker protocol's tokens, and BindRuns binds the runs an
+// mints the worker protocol's tokens and each run's OIDC federation
+// token, whose aud is auth.federation.audience, or the federation
+// issuer's host, followed by "/" and the account's slug, and BindRuns binds the runs an
 // in-run API token's authentication reads; Routes
 // mounts the break-glass login at accessapi.LoginPattern, the
 // authorization server for MCP clients at the OAuth patterns, and the

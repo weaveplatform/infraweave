@@ -699,7 +699,7 @@ components:
         - INFRAWEAVE_ENVIRONMENT
       type: string
       x-enum-descriptions:
-        INFRAWEAVE_ENVIRONMENT: Computed API token or TF_VAR_infraweave_* run metadata, without a value before a run.
+        INFRAWEAVE_ENVIRONMENT: Computed API token, OIDC federation token or TF_VAR_infraweave_* run metadata, without a value before a run.
       x-graphql-type: ConfigElementCategory
     ConfigElementWithSource:
       properties:

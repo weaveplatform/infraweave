@@ -11,6 +11,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/features"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 )
 
 // Errors of the operator's writes. A tier or an organization the operator
@@ -156,6 +157,7 @@ func (s *Service) CreateTier(ctx context.Context, t features.Tier) (Held, error)
 	if err := s.store.CreateTier(ctx, sorted(t)); err != nil {
 		return Held{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, TiersKey)
 	return s.Tier(ctx, t.Name)
 }
 
@@ -170,6 +172,7 @@ func (s *Service) ReplaceTier(ctx context.Context, t features.Tier) (Held, error
 	if err := s.store.ReplaceTier(ctx, sorted(t)); err != nil {
 		return Held{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, TiersKey)
 	return s.Tier(ctx, t.Name)
 }
 
@@ -185,6 +188,7 @@ func (s *Service) DeleteTier(ctx context.Context, name string) (Held, error) {
 	if err := s.store.DeleteTier(ctx, name); err != nil {
 		return Held{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, TiersKey)
 	return was, nil
 }
 
@@ -219,7 +223,18 @@ func (s *Service) SetBilling(ctx context.Context, enabled bool, defaultTier *str
 	if err := s.store.SetBilling(ctx, enabled, defaultTier); err != nil {
 		return Billing{}, unknownTier(err) //nolint:wrapcheck // as above
 	}
+	s.written(ctx, BillingKey)
 	return s.BillingState(ctx)
+}
+
+// written drops this replica's snapshots payload concerns once the
+// operator's write commits. Every replica drops them on the write's
+// infraweave_invalidate notification, but that arrives some time after
+// the commit, and until it does a caller of this replica, such as an
+// account limit set right after billing is switched on, would read the
+// switch or entitlement from before the write.
+func (s *Service) written(ctx context.Context, payload string) {
+	tx.AfterCommit(ctx, func(context.Context) { s.Invalidate(payload) })
 }
 
 // unknownTier turns a tier a body names that does not exist into
@@ -251,6 +266,7 @@ func (s *Service) SetTier(ctx context.Context, org kernel.OrganizationID, tier s
 	if err := s.store.SetTier(ctx, org, tier); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, InvalidateKey(org))
 	return s.OrganizationEntitlement(ctx, org)
 }
 
@@ -262,6 +278,7 @@ func (s *Service) GrantFeature(ctx context.Context, org kernel.OrganizationID, f
 	if err := s.store.GrantFeature(ctx, org, feature); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, InvalidateKey(org))
 	return s.OrganizationEntitlement(ctx, org)
 }
 
@@ -270,6 +287,7 @@ func (s *Service) RevokeFeature(ctx context.Context, org kernel.OrganizationID, 
 	if err := s.store.RevokeFeature(ctx, org, feature); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, InvalidateKey(org))
 	return s.OrganizationEntitlement(ctx, org)
 }
 
@@ -284,6 +302,7 @@ func (s *Service) GrantLimit(ctx context.Context, org kernel.OrganizationID, lim
 	if err := s.store.GrantLimit(ctx, org, limit, value); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, InvalidateKey(org))
 	return s.OrganizationEntitlement(ctx, org)
 }
 
@@ -292,5 +311,6 @@ func (s *Service) RevokeLimit(ctx context.Context, org kernel.OrganizationID, li
 	if err := s.store.RevokeLimit(ctx, org, limit); err != nil {
 		return Operated{}, err //nolint:wrapcheck // as above
 	}
+	s.written(ctx, InvalidateKey(org))
 	return s.OrganizationEntitlement(ctx, org)
 }

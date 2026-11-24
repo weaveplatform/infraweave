@@ -10,6 +10,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	configapi "github.com/weaveplatform/infraweave/internal/configuration/api"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
@@ -31,6 +32,11 @@ type Deps struct {
 	Authz  accessapi.Authorizer
 	Events Events
 	Now    func() time.Time
+	// Features and Organization decide whether a stack's runtime
+	// configuration lists the OIDC federation token; with either nil it
+	// lists none.
+	Features     featuresapi.Options
+	Organization func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
 }
 
 // Service is the configuration domain's logic. Every write runs in one
@@ -45,6 +51,8 @@ type Service struct {
 	events Events
 	now    func() time.Time
 	exprs  Checker
+	feats  featuresapi.Options
+	org    func(context.Context, kernel.AccountID) (kernel.OrganizationID, error)
 }
 
 // New returns the service over d.
@@ -55,7 +63,7 @@ func New(d Deps) *Service {
 	}
 	return &Service{
 		store: d.Store, db: d.DB, spaces: d.Spaces, stacks: d.Stacks, authz: d.Authz,
-		events: d.Events, now: now,
+		events: d.Events, now: now, feats: d.Features, org: d.Organization,
 	}
 }
 

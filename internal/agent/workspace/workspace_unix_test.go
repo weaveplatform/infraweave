@@ -340,3 +340,42 @@ type failing struct{}
 func (failing) Write([]byte) (int, error) {
 	return 0, errors.New("disk full")
 } //nolint:err113 // a test double
+
+// TestUnitWorkspaceOIDCToken checks that the save leaves out the OIDC
+// federation token's file at the workspace's root, unreported, though it
+// holds a forbidden value, and a directory of that name there, while a
+// file of that name elsewhere is kept.
+func TestUnitWorkspaceOIDCToken(t *testing.T) {
+	token := "eyJ" + strings.Repeat("o", 40)
+	pool := poolKey(t)
+	for name, files := range map[string]map[string]string{
+		"the file":      {workspace.OIDCTokenFile: token, "main.tf": "terraform {}"},
+		"a directory":   {workspace.OIDCTokenFile + "/x": "x", "main.tf": "terraform {}"},
+		"a nested name": {"source/" + workspace.OIDCTokenFile: "kept", "main.tf": "terraform {}"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := tree(t, files)
+			var b bytes.Buffer
+			left, err := workspace.Write(&b, dir, workspace.Options{
+				Pool: pool.PublicKey(), Run: run, StateVersion: 5, Forbidden: [][]byte{[]byte(token)},
+			})
+			if err != nil || len(left) != 0 {
+				t.Fatalf("Write: left out %q, %v", left, err)
+			}
+			out := filepath.Join(t.TempDir(), "restored")
+			if err := workspace.Read(bytes.NewReader(b.Bytes()), out, pool, run, 1<<20); err != nil {
+				t.Fatal(err)
+			}
+			got := contents(t, out)
+			if _, ok := got[workspace.OIDCTokenFile]; ok {
+				t.Errorf("restored %s: %v", workspace.OIDCTokenFile, got)
+			}
+			if got["main.tf"] != "terraform {}" {
+				t.Errorf("restored %v", got)
+			}
+			if nested := "source/" + workspace.OIDCTokenFile; files[nested] != "" && got[nested] != "kept" {
+				t.Errorf("%s = %q", nested, got[nested])
+			}
+		})
+	}
+}

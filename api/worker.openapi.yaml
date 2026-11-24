@@ -1230,6 +1230,15 @@ components:
           type: integer
           format: int64
           description: When the in-run API token expires, in Unix seconds.
+        oidcToken:
+          type: string
+          description: >-
+            The OIDC federation token of the phase, which the run's container receives as INFRAWEAVE_OIDC_TOKEN and in /mnt/workspace/infraweave.oidc. Absent when the account's tier lacks oidc-federation.
+        oidcTokenExpiresAt:
+          type: integer
+          format: int64
+          description: >-
+            When the OIDC federation token expires, in Unix seconds. Absent with oidcToken.
         artifactKey:
           type: string
           format: byte

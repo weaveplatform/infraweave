@@ -140,15 +140,25 @@ func (e *environment) ResolveWithHooks(_ context.Context, _ kernel.AccountID, _ 
 	return e.resolved, e.err
 }
 
-// tokens mints in-run tokens, recording each request, or fails with err.
+// tokens mints in-run tokens, recording each request, or fails with err,
+// and federation tokens, recording each request in federation, or fails
+// with federationErr.
 type tokens struct {
 	got []accessapi.InRunRequest
 	err error
+
+	federation    []accessapi.FederationRequest
+	federationErr error
 }
 
 func (t *tokens) InRunToken(_ context.Context, r accessapi.InRunRequest) (accessapi.Token, error) {
 	t.got = append(t.got, r)
 	return accessapi.Token{Raw: "in-run", Expires: time.Unix(2e9, 0)}, t.err
+}
+
+func (t *tokens) FederationToken(_ context.Context, r accessapi.FederationRequest) (accessapi.Token, error) {
+	t.federation = append(t.federation, r)
+	return accessapi.Token{Raw: "oidc-" + string(r.Phase), Expires: time.Unix(2e9+7, 0)}, t.federationErr
 }
 
 // catalog lists versions, newest first, for every vendor but refused,
@@ -414,6 +424,9 @@ type sealed struct {
 		Username string `json:"username"`
 		Token    string `json:"token"`
 	} `json:"sourceCredential"`
+
+	OIDCToken          *string `json:"oidcToken"`
+	OIDCTokenExpiresAt *int64  `json:"oidcTokenExpiresAt"`
 }
 
 // TestUnitHandover checks that a handover renders each variable's

@@ -49,7 +49,9 @@ func (c *configSteps) runtimeStack(slug string) (runtimeStack, error) {
 }
 
 // runtimeLists checks every name exactly once in its public order, and
-// checks the metadata shared by computed and stored rows.
+// checks the metadata shared by computed and stored rows: a computed
+// token, the in-run API token or the OIDC federation token, is
+// write-only.
 func (c *configSteps) runtimeLists(slug, names string) error {
 	view, err := c.runtimeStack(slug)
 	if err != nil {
@@ -67,7 +69,8 @@ func (c *configSteps) runtimeLists(slug, names string) error {
 		if runtime {
 			if e["type"] != "ENVIRONMENT_VARIABLE" || e["category"] != "INFRAWEAVE_ENVIRONMENT" || e["value"] != nil ||
 				e["createdAt"] != nil || e["fileMode"] != nil || e["checksum"] != "" ||
-				e["description"] != "" || e["writeOnly"] != (id == "INFRAWEAVE_API_TOKEN") || source.Context != nil {
+				e["description"] != "" || e["writeOnly"] != (id == "INFRAWEAVE_API_TOKEN" || id == "INFRAWEAVE_OIDC_TOKEN") ||
+				source.Context != nil {
 				return fmt.Errorf("%w: computed metadata of %s: %+v", harness.ErrStep, id, source)
 			}
 		} else if e["category"] != nil || e["writeOnly"] == true && e["value"] != nil {

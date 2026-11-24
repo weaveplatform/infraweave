@@ -20,8 +20,8 @@
 //
 // # Dependencies
 //
-// It imports the domain's api, core, http and pg packages, the access and
-// stacks api packages, internal/kernel, platform/crypt, platform/expr,
+// It imports the domain's api, core, http and pg packages, the access,
+// features and stacks api packages, internal/kernel, platform/crypt, platform/expr,
 // platform/outbox,
 // platform/queue and platform/sql/integrity and migrate. Only internal/app and cmd/ import
 // it, as the constructors rule enforces.

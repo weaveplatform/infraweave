@@ -5,6 +5,10 @@ const (
 	APITokenVariable    = "INFRAWEAVE_API_TOKEN" //nolint:gosec // an environment variable name, not a credential
 	APIEndpointVariable = "TF_VAR_infraweave_api_endpoint"
 	RunStateVariable    = "TF_VAR_infraweave_run_state"
+	// OIDCTokenVariable holds a run's OIDC federation token, which a run
+	// receives only when its account's tier has oidc-federation, so it is
+	// no member of ComputedEnvironmentNames.
+	OIDCTokenVariable = "INFRAWEAVE_OIDC_TOKEN" //nolint:gosec // an environment variable name, not a credential
 )
 
 // ComputedEnvironmentNames lists the metadata and token shown as computed

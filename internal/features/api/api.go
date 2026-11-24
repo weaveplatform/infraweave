@@ -185,6 +185,11 @@ type Entitlements interface {
 	CheckLimit(ctx context.Context, org kernel.OrganizationID, acct kernel.AccountID, limit string, count func(context.Context) (Usage, error)) error
 }
 
+// OIDCFederation is the catalogue feature whose accounts' runs receive an
+// OIDC federation token: the runs domain mints one at each handover and the
+// configuration domain lists it among a stack's computed elements.
+const OIDCFederation = "oidc-federation"
+
 // Options admits effective domain values that require a catalogue option.
 type Options interface {
 	// AllowAccount checks feature for acct of org: the installation's

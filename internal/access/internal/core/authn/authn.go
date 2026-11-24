@@ -91,6 +91,16 @@ type Deps struct {
 	// Accounts reads the account an in-run API token's session belongs
 	// to.
 	Accounts port.Tenancy
+	// Federation signs OIDC federation tokens and Subjects reads what one
+	// names of its account; a nil one refuses every federation token.
+	Federation FederationSigner
+	Subjects   port.FederationSubjects
+	// FederationIssuer is a federation token's iss, auth.federation.issuer
+	// or server.public_url; FederationAudience is auth.federation.audience,
+	// the prefix of its aud, empty for the issuer's host; and
+	// FederationTTL is auth.tokens.federation.ttl.
+	FederationIssuer, FederationAudience string
+	FederationTTL                        time.Duration
 	// BreakGlass reads break-glass credentials and records sign-ins.
 	BreakGlass port.BreakGlass
 	// Admission decides which accounts admit a member.
