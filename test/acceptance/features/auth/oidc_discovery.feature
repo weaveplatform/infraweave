@@ -1,4 +1,4 @@
-@postgres @oidc
+@identity @postgres @oidc
 Feature: The federation issuer's discovery document and JWKS
   A relying party, such as a cloud's STS, Vault or Kubernetes, registers
   the installation as one OIDC identity provider. GET
