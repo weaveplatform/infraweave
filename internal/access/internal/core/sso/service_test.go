@@ -67,6 +67,13 @@ func (s *store) CreateProvider(_ context.Context, p sso.Provider, secret []byte,
 	return p, nil
 }
 
+func (s *store) CreateDefaultProvider(ctx context.Context, p sso.Provider, secret []byte, e kernel.OrganizationAuditEntry) (sso.Provider, error) {
+	if !sso.FirstOfKind(s.ps, p.Kind) {
+		return sso.Provider{}, sso.ErrDefaultExists
+	}
+	return s.CreateProvider(ctx, p, secret, e)
+}
+
 func (s *store) UpdateProvider(_ context.Context, p sso.Provider, secret []byte, e kernel.OrganizationAuditEntry) (sso.Provider, error) {
 	i, err := s.find(p.ID)
 	if err != nil {
@@ -129,9 +136,25 @@ func (f features) AllowAccount(_ context.Context, _ kernel.OrganizationID, _ ker
 	return nil
 }
 
+// discovery reads a discovery document of every host but the ones in
+// refused, recording each host it is asked for.
+type discovery struct {
+	refused map[string]error
+	asked   []string
+}
+
+func (d *discovery) Discover(_ context.Context, host string) (sso.Endpoints, error) {
+	d.asked = append(d.asked, host)
+	if err := d.refused[host]; err != nil {
+		return sso.Endpoints{}, err
+	}
+	return sso.Endpoints{Issuer: host}, nil
+}
+
 type world struct {
 	st      *store
 	s       *sso.Service
+	disc    *discovery
 	admin   orgadmin.Actor
 	member  orgadmin.Actor
 	dropped []kernel.ULID
@@ -140,7 +163,7 @@ type world struct {
 func newWorld(f featuresapi.Options) *world {
 	org := kernel.NewOrganizationID()
 	alice, bob := kernel.NewMemberID(), kernel.NewMemberID()
-	w := &world{st: &store{secrets: map[kernel.ULID][]byte{}}}
+	w := &world{st: &store{secrets: map[kernel.ULID][]byte{}}, disc: &discovery{refused: map[string]error{}}}
 	actor := func(m kernel.MemberID) orgadmin.Actor {
 		return orgadmin.Actor{Principal: kernel.Principal{
 			Kind: kernel.PrincipalUser, OrganizationID: org, MemberID: m, ActorID: m.ULID,
@@ -148,7 +171,7 @@ func newWorld(f featuresapi.Options) *world {
 	}
 	w.admin, w.member = actor(alice), actor(bob)
 	w.s = sso.NewService(sso.Deps{
-		Store: w.st, Admins: admins{admin: alice}, Features: f,
+		Store: w.st, Admins: admins{admin: alice}, Features: f, Discovery: w.disc,
 		Drop: func(id kernel.ULID) { w.dropped = append(w.dropped, id) },
 		Now:  func() time.Time { return t0 },
 	})

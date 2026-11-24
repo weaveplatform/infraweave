@@ -117,6 +117,20 @@ func lockProviders(ctx context.Context, q tx.Querier, org kernel.OrganizationID)
 // CreateProvider inserts p, its kind's default when it is the first of its
 // kind, with secret sealed, and records e, in one transaction.
 func (s *Store) CreateProvider(ctx context.Context, p sso.Provider, secret []byte, e kernel.OrganizationAuditEntry) (sso.Provider, error) {
+	return s.createProvider(ctx, p, secret, e, false)
+}
+
+// CreateDefaultProvider inserts p as its kind's default, with secret
+// sealed, and records e, in one transaction; it is sso.ErrDefaultExists
+// when the organization holds a provider of p's kind. The organization's
+// lock makes two concurrent creates insert one.
+func (s *Store) CreateDefaultProvider(ctx context.Context, p sso.Provider, secret []byte, e kernel.OrganizationAuditEntry) (sso.Provider, error) {
+	return s.createProvider(ctx, p, secret, e, true)
+}
+
+// createProvider inserts p under its organization's lock, refusing it with
+// sso.ErrDefaultExists when sole and p is not the first of its kind.
+func (s *Store) createProvider(ctx context.Context, p sso.Provider, secret []byte, e kernel.OrganizationAuditEntry, sole bool) (sso.Provider, error) {
 	sealed, err := s.seal.SealColumn(ctx, providerSecret, []string{p.ID.UUID()}, secret)
 	if err != nil {
 		return sso.Provider{}, fmt.Errorf("access: seal identity provider %s's secret: %w", p.ID, err)
@@ -131,12 +145,16 @@ func (s *Store) CreateProvider(ctx context.Context, p sso.Provider, secret []byt
 		if err != nil {
 			return err
 		}
+		first := sso.FirstOfKind(existing, p.Kind)
+		if sole && !first {
+			return fmt.Errorf("%w: a %s provider", sso.ErrDefaultExists, p.Kind)
+		}
 		out, err = scanProvider(q.QueryRow(ctx, `INSERT INTO identity_providers
 				(organization_id, id, kind, name, settings, secret_sealed, is_default, created_at,
 				updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING `+providerColumns,
 			p.OrganizationID, p.ID, p.Kind, p.Name, settings, sealed,
-			sso.FirstOfKind(existing, p.Kind), p.CreatedAt, p.UpdatedAt))
+			first, p.CreatedAt, p.UpdatedAt))
 		if err != nil {
 			return fmt.Errorf("access: insert identity provider: %w", sql.Unavailable(err))
 		}

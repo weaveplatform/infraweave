@@ -546,6 +546,14 @@ func TestUnitAccountAdmin(t *testing.T) {
 	if !slices.Equal(asked, []kernel.PrincipalKind{kernel.PrincipalAPIKey, kernel.PrincipalUser}) {
 		t.Errorf("decided for %v", asked)
 	}
+	if p, _, err := w.s.AuthenticateBrowser(ctx, b.Secret,
+		authn.ReachOrganizationAdminPerson); err != nil || p.Kind != kernel.PrincipalBreakGlass {
+		t.Errorf("break-glass on an organization admin person route = %+v, %v", p, err)
+	}
+	if p, _, err := w.s.AuthenticateBrowser(ctx, secret,
+		authn.ReachOrganizationAdminPerson); err != nil || p.Kind != kernel.PrincipalUser {
+		t.Errorf("a member on an organization admin person route = %+v, %v", p, err)
+	}
 
 	down = errDown
 	if _, err := authenticate(t, w.s, raw); !errors.Is(err, errDown) {

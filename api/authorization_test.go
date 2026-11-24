@@ -54,7 +54,8 @@ func operationViolations(where string, op *openapi3.Operation) []string {
 	access, _ := op.Extensions["x-infraweave-access"].(string)
 	public := op.Security != nil && len(*op.Security) == 0
 	switch {
-	case (access == "organization-admin") != (a == accessapi.ActionOrganizationAdmin):
+	case (access == "organization-admin" || access == "organization-admin-person") !=
+		(a == accessapi.ActionOrganizationAdmin):
 		out = append(out, fmt.Sprintf("%s: access %q with %s", where, access, action))
 	case (access == "organization" || public) && a != accessapi.ActionAuthenticated:
 		out = append(out, fmt.Sprintf("%s: access %q, public %t with %s, not AUTHENTICATED",

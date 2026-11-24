@@ -6004,6 +6004,26 @@ type ModuleResource struct {
 	Type string `json:"type"`
 }
 
+// OIDCSettings The settings of the organization's default OIDC provider, which never include its client secret.
+type OIDCSettings struct {
+	// AdminLogin The login of the first sign-in through the provider, which enabled it and always holds the
+	// organization role, so settings that break sign-in cannot lock the organization out. Null until
+	// that sign-in succeeds.
+	AdminLogin   *string      `json:"adminLogin"`
+	ClaimMapping ClaimMapping `json:"claimMapping"`
+
+	// ClientId The client ID the identity provider issued for the authorization code flow.
+	ClientId string `json:"clientId"`
+
+	// IdentityProviderHost The provider's https issuer, or its discovery document's URL (e.g. https://accounts.google.com).
+	IdentityProviderHost string `json:"identityProviderHost"`
+}
+
+// OIDCUpdateInput The claim mapping that replaces the provider's.
+type OIDCUpdateInput struct {
+	ClaimMapping *ClaimMappingInput `json:"claimMapping,omitempty"`
+}
+
 // OauthRedirectAllowedHostsPage One page of a cursor-paginated list.
 type OauthRedirectAllowedHostsPage struct {
 	Items []string `json:"items"`
@@ -6015,6 +6035,21 @@ type OauthRedirectAllowedHostsPage struct {
 // ObservabilityProcessingStatus ObservabilityProcessingStatus says how far a run's observability data got
 // through the pipeline that produces it.
 type ObservabilityProcessingStatus string
+
+// OidcCreateRequest The new default OIDC provider.
+type OidcCreateRequest struct {
+	ClaimMapping *ClaimMappingInput `json:"claimMapping,omitempty"`
+
+	// ClientCredentials The client secret, stored sealed and never answered.
+	ClientCredentials string `json:"clientCredentials"`
+
+	// ClientId The client ID the identity provider issued.
+	ClientId string `json:"clientId"`
+
+	// IdentityProviderHost The provider's https issuer, or its discovery document's URL ending in
+	// /.well-known/openid-configuration. The document must name this issuer exactly.
+	IdentityProviderHost string `json:"identityProviderHost"`
+}
 
 // OpenTofuFeature A feature that an OpenTofu version may support.
 type OpenTofuFeature string
@@ -12031,6 +12066,12 @@ type OauthRedirectAllowedHostsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// OidcCreateParams defines parameters for OidcCreate.
+type OidcCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // OpenTofuEffectiveVersionParams defines parameters for OpenTofuEffectiveVersion.
 type OpenTofuEffectiveVersionParams struct {
 	Constraints string `form:"constraints" json:"constraints"`
@@ -13483,6 +13524,12 @@ type ManagedUserPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // ManagedUserUpdateJSONRequestBody defines body for ManagedUserUpdate for application/json ContentType.
 type ManagedUserUpdateJSONRequestBody = ManagedUserUpdateInputBody
+
+// OidcCreateJSONRequestBody defines body for OidcCreate for application/json ContentType.
+type OidcCreateJSONRequestBody = OidcCreateRequest
+
+// OidcUpdateJSONRequestBody defines body for OidcUpdate for application/json ContentType.
+type OidcUpdateJSONRequestBody = OIDCUpdateInput
 
 // OrganizationUpdateApplicationMergePatchPlusJSONRequestBody defines body for OrganizationUpdate for application/merge-patch+json ContentType.
 type OrganizationUpdateApplicationMergePatchPlusJSONRequestBody = OrganizationUpdateRequest
@@ -17340,6 +17387,14 @@ type ClientInterface interface {
 	// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
 	GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// HasSSO Has SSO
+	//
+	// Whether the organization has single sign-on: true when one of its OIDC or SAML providers is
+	// enabled, which a first successful sign-in through the provider does.
+	//
+	// Corresponds with GET /has-sso (the `HasSSO` operationId).
+	HasSSO(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Id Id
 	//
 	// The ID of the caller's account.
@@ -17607,6 +17662,76 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
 	OauthRedirectAllowedHosts(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcDelete Oidc Delete
+	//
+	// Delete the organization's default OIDC provider with the identities that sign in through it,
+	// revoking every session signed in through it, and answer its settings as they were. The oldest
+	// remaining OIDC provider, if any, becomes the default.
+	//
+	// Corresponds with DELETE /oidc (the `OidcDelete` operationId).
+	OidcDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcCreateWithBody Oidc Create
+	//
+	// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+	// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+	// exactly. A first sign-in enables it: the saving admin's browser opens
+	// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+	// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+	// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+	// already-exists; a different host or client means deleting it first.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /oidc (the `OidcCreate` operationId).
+	OidcCreateWithBody(ctx context.Context, params *OidcCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcCreate Oidc Create
+	//
+	// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+	// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+	// exactly. A first sign-in enables it: the saving admin's browser opens
+	// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+	// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+	// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+	// already-exists; a different host or client means deleting it first.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /oidc (the `OidcCreate` operationId).
+	OidcCreate(ctx context.Context, params *OidcCreateParams, body OidcCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcUpdateWithBody Oidc Update
+	//
+	// Replace the claim mapping of the organization's default OIDC provider; a body without
+	// claimMapping restores every claim's default. The next sign-in through the provider reads its
+	// claims through the new mapping. Its host and client never change: delete the provider and
+	// create another.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+	OidcUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcUpdate Oidc Update
+	//
+	// Replace the claim mapping of the organization's default OIDC provider; a body without
+	// claimMapping restores every claim's default. The next sign-in through the provider reads its
+	// claims through the new mapping. Its host and client never change: delete the provider and
+	// create another.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+	OidcUpdate(ctx context.Context, body OidcUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OidcSettings Oidc Settings
+	//
+	// The settings of the organization's default OIDC provider; 404 when it has none.
+	//
+	// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
+	OidcSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OnTrialUntil On Trial Until
 	//
@@ -24424,6 +24549,24 @@ func (c *Client) GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...Reque
 	return c.Client.Do(req)
 }
 
+// HasSSO Has SSO
+//
+// Whether the organization has single sign-on: true when one of its OIDC or SAML providers is
+// enabled, which a first successful sign-in through the provider does.
+//
+// Corresponds with GET /has-sso (the `HasSSO` operationId).
+func (c *Client) HasSSO(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHasSSORequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // Id Id
 //
 // The ID of the caller's account.
@@ -25022,6 +25165,136 @@ func (c *Client) Name(ctx context.Context, reqEditors ...RequestEditorFn) (*http
 // Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
 func (c *Client) OauthRedirectAllowedHosts(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOauthRedirectAllowedHostsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcDelete Oidc Delete
+//
+// Delete the organization's default OIDC provider with the identities that sign in through it,
+// revoking every session signed in through it, and answer its settings as they were. The oldest
+// remaining OIDC provider, if any, becomes the default.
+//
+// Corresponds with DELETE /oidc (the `OidcDelete` operationId).
+func (c *Client) OidcDelete(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcDeleteRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcCreateWithBody Oidc Create
+//
+// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+// exactly. A first sign-in enables it: the saving admin's browser opens
+// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+// already-exists; a different host or client means deleting it first.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /oidc (the `OidcCreate` operationId).
+func (c *Client) OidcCreateWithBody(ctx context.Context, params *OidcCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcCreate Oidc Create
+//
+// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+// exactly. A first sign-in enables it: the saving admin's browser opens
+// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+// already-exists; a different host or client means deleting it first.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /oidc (the `OidcCreate` operationId).
+func (c *Client) OidcCreate(ctx context.Context, params *OidcCreateParams, body OidcCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcUpdateWithBody Oidc Update
+//
+// Replace the claim mapping of the organization's default OIDC provider; a body without
+// claimMapping restores every claim's default. The next sign-in through the provider reads its
+// claims through the new mapping. Its host and client never change: delete the provider and
+// create another.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+func (c *Client) OidcUpdateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcUpdateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcUpdate Oidc Update
+//
+// Replace the claim mapping of the organization's default OIDC provider; a body without
+// claimMapping restores every claim's default. The next sign-in through the provider reads its
+// claims through the new mapping. Its host and client never change: delete the provider and
+// create another.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+func (c *Client) OidcUpdate(ctx context.Context, body OidcUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcUpdateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OidcSettings Oidc Settings
+//
+// The settings of the organization's default OIDC provider; 404 when it has none.
+//
+// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
+func (c *Client) OidcSettings(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOidcSettingsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -39247,6 +39520,33 @@ func NewGitlabWebhooksEndpointRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewHasSSORequest constructs an http.Request for the HasSSO method
+func NewHasSSORequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/has-sso")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewIdRequest constructs an http.Request for the Id method
 func NewIdRequest(server string) (*http.Request, error) {
 	var err error
@@ -40579,6 +40879,155 @@ func NewOauthRedirectAllowedHostsRequest(server string, params *OauthRedirectAll
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOidcDeleteRequest constructs an http.Request for the OidcDelete method
+func NewOidcDeleteRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oidc")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOidcCreateRequest calls the generic OidcCreate builder with application/json body
+func NewOidcCreateRequest(server string, params *OidcCreateParams, body OidcCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOidcCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewOidcCreateRequestWithBody constructs an http.Request for the OidcCreate method, with any body, and a specified content type
+func NewOidcCreateRequestWithBody(server string, params *OidcCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oidc")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewOidcUpdateRequest calls the generic OidcUpdate builder with application/json body
+func NewOidcUpdateRequest(server string, body OidcUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOidcUpdateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewOidcUpdateRequestWithBody constructs an http.Request for the OidcUpdate method, with any body, and a specified content type
+func NewOidcUpdateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oidc")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewOidcSettingsRequest constructs an http.Request for the OidcSettings method
+func NewOidcSettingsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/oidc/settings")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -56778,6 +57227,16 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /gitlab-webhooks-endpoint (the `GitlabWebhooksEndpoint` operationId).
 	GitlabWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GitlabWebhooksEndpointResponse, error)
 
+	// HasSSOWithResponse Has SSO
+	//
+	// Whether the organization has single sign-on: true when one of its OIDC or SAML providers is
+	// enabled, which a first successful sign-in through the provider does.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /has-sso (the `HasSSO` operationId).
+	HasSSOWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HasSSOResponse, error)
+
 	// IdWithResponse Id
 	//
 	// The ID of the caller's account.
@@ -57085,6 +57544,80 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /oauth-redirect-allowed-hosts (the `OauthRedirectAllowedHosts` operationId).
 	OauthRedirectAllowedHostsWithResponse(ctx context.Context, params *OauthRedirectAllowedHostsParams, reqEditors ...RequestEditorFn) (*OauthRedirectAllowedHostsResponse, error)
+
+	// OidcDeleteWithResponse Oidc Delete
+	//
+	// Delete the organization's default OIDC provider with the identities that sign in through it,
+	// revoking every session signed in through it, and answer its settings as they were. The oldest
+	// remaining OIDC provider, if any, becomes the default.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /oidc (the `OidcDelete` operationId).
+	OidcDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcDeleteResponse, error)
+
+	// OidcCreateWithBodyWithResponse Oidc Create
+	//
+	// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+	// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+	// exactly. A first sign-in enables it: the saving admin's browser opens
+	// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+	// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+	// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+	// already-exists; a different host or client means deleting it first.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /oidc (the `OidcCreate` operationId).
+	OidcCreateWithBodyWithResponse(ctx context.Context, params *OidcCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OidcCreateResponse, error)
+
+	// OidcCreateWithResponse Oidc Create
+	//
+	// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+	// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+	// exactly. A first sign-in enables it: the saving admin's browser opens
+	// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+	// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+	// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+	// already-exists; a different host or client means deleting it first.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /oidc (the `OidcCreate` operationId).
+	OidcCreateWithResponse(ctx context.Context, params *OidcCreateParams, body OidcCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OidcCreateResponse, error)
+
+	// OidcUpdateWithBodyWithResponse Oidc Update
+	//
+	// Replace the claim mapping of the organization's default OIDC provider; a body without
+	// claimMapping restores every claim's default. The next sign-in through the provider reads its
+	// claims through the new mapping. Its host and client never change: delete the provider and
+	// create another.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+	OidcUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OidcUpdateResponse, error)
+
+	// OidcUpdateWithResponse Oidc Update
+	//
+	// Replace the claim mapping of the organization's default OIDC provider; a body without
+	// claimMapping restores every claim's default. The next sign-in through the provider reads its
+	// claims through the new mapping. Its host and client never change: delete the provider and
+	// create another.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+	OidcUpdateWithResponse(ctx context.Context, body OidcUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OidcUpdateResponse, error)
+
+	// OidcSettingsWithResponse Oidc Settings
+	//
+	// The settings of the organization's default OIDC provider; 404 when it has none.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
+	OidcSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcSettingsResponse, error)
 
 	// OnTrialUntilWithResponse On Trial Until
 	//
@@ -74814,6 +75347,108 @@ func (r GitlabWebhooksEndpointResponse) ContentType() string {
 	return ""
 }
 
+// HasSSOResponse200Headers the declared response headers of an HTTP 200 response for HasSSO
+type HasSSOResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// HasSSOResponse429Headers the declared response headers of an HTTP 429 response for HasSSO
+type HasSSOResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// HasSSOResponse503Headers the declared response headers of an HTTP 503 response for HasSSO
+type HasSSOResponse503Headers struct {
+	RetryAfter *int
+}
+
+type HasSSOResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *HasSSOResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *HasSSOResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *HasSSOResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r HasSSOResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r HasSSOResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r HasSSOResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r HasSSOResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r HasSSOResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r HasSSOResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r HasSSOResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r HasSSOResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HasSSOResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r HasSSOResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // IdResponse200Headers the declared response headers of an HTTP 200 response for Id
 type IdResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -77449,6 +78084,456 @@ func (r OauthRedirectAllowedHostsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OauthRedirectAllowedHostsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OidcDeleteResponse200Headers the declared response headers of an HTTP 200 response for OidcDelete
+type OidcDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcDeleteResponse429Headers the declared response headers of an HTTP 429 response for OidcDelete
+type OidcDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcDeleteResponse503Headers the declared response headers of an HTTP 503 response for OidcDelete
+type OidcDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OidcDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OIDCSettings
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OidcDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OidcDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OidcDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OidcDeleteResponse) GetJSON200() *OIDCSettings {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OidcDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OidcCreateResponse201Headers the declared response headers of an HTTP 201 response for OidcCreate
+type OidcCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcCreateResponse429Headers the declared response headers of an HTTP 429 response for OidcCreate
+type OidcCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcCreateResponse503Headers the declared response headers of an HTTP 503 response for OidcCreate
+type OidcCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OidcCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *OIDCSettings
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *OidcCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OidcCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OidcCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r OidcCreateResponse) GetJSON201() *OIDCSettings {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OidcCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OidcUpdateResponse200Headers the declared response headers of an HTTP 200 response for OidcUpdate
+type OidcUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcUpdateResponse429Headers the declared response headers of an HTTP 429 response for OidcUpdate
+type OidcUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcUpdateResponse503Headers the declared response headers of an HTTP 503 response for OidcUpdate
+type OidcUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OidcUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OIDCSettings
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OidcUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OidcUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OidcUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OidcUpdateResponse) GetJSON200() *OIDCSettings {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON422() *Problem {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OidcUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OidcSettingsResponse200Headers the declared response headers of an HTTP 200 response for OidcSettings
+type OidcSettingsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcSettingsResponse429Headers the declared response headers of an HTTP 429 response for OidcSettings
+type OidcSettingsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OidcSettingsResponse503Headers the declared response headers of an HTTP 503 response for OidcSettings
+type OidcSettingsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OidcSettingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OIDCSettings
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *OidcSettingsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OidcSettingsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OidcSettingsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r OidcSettingsResponse) GetJSON200() *OIDCSettings {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OidcSettingsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OidcSettingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OidcSettingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OidcSettingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OidcSettingsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -107016,6 +108101,22 @@ func (c *ClientWithResponses) GitlabWebhooksEndpointWithResponse(ctx context.Con
 	return ParseGitlabWebhooksEndpointResponse(rsp)
 }
 
+// HasSSOWithResponse Has SSO
+//
+// Whether the organization has single sign-on: true when one of its OIDC or SAML providers is
+// enabled, which a first successful sign-in through the provider does.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /has-sso (the `HasSSO` operationId).
+func (c *ClientWithResponses) HasSSOWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HasSSOResponse, error) {
+	rsp, err := c.HasSSO(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHasSSOResponse(rsp)
+}
+
 // IdWithResponse Id
 //
 // The ID of the caller's account.
@@ -107526,6 +108627,116 @@ func (c *ClientWithResponses) OauthRedirectAllowedHostsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseOauthRedirectAllowedHostsResponse(rsp)
+}
+
+// OidcDeleteWithResponse Oidc Delete
+//
+// Delete the organization's default OIDC provider with the identities that sign in through it,
+// revoking every session signed in through it, and answer its settings as they were. The oldest
+// remaining OIDC provider, if any, becomes the default.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /oidc (the `OidcDelete` operationId).
+func (c *ClientWithResponses) OidcDeleteWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcDeleteResponse, error) {
+	rsp, err := c.OidcDelete(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcDeleteResponse(rsp)
+}
+
+// OidcCreateWithBodyWithResponse Oidc Create
+//
+// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+// exactly. A first sign-in enables it: the saving admin's browser opens
+// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+// already-exists; a different host or client means deleting it first.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /oidc (the `OidcCreate` operationId).
+func (c *ClientWithResponses) OidcCreateWithBodyWithResponse(ctx context.Context, params *OidcCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OidcCreateResponse, error) {
+	rsp, err := c.OidcCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcCreateResponse(rsp)
+}
+
+// OidcCreateWithResponse Oidc Create
+//
+// Create the organization's default OIDC provider, stored disabled with its client secret sealed.
+// Its discovery document is read once over HTTPS and must name identityProviderHost's issuer
+// exactly. A first sign-in enables it: the saving admin's browser opens
+// /auth/login/{organization}/{provider ID}?purpose=enable, the ID being the one
+// organizationIdentityProviders lists, and until that sign-in succeeds no one signs in through the
+// provider and hasSSO stays false. An organization that has a default OIDC provider answers 409
+// already-exists; a different host or client means deleting it first.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /oidc (the `OidcCreate` operationId).
+func (c *ClientWithResponses) OidcCreateWithResponse(ctx context.Context, params *OidcCreateParams, body OidcCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OidcCreateResponse, error) {
+	rsp, err := c.OidcCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcCreateResponse(rsp)
+}
+
+// OidcUpdateWithBodyWithResponse Oidc Update
+//
+// Replace the claim mapping of the organization's default OIDC provider; a body without
+// claimMapping restores every claim's default. The next sign-in through the provider reads its
+// claims through the new mapping. Its host and client never change: delete the provider and
+// create another.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+func (c *ClientWithResponses) OidcUpdateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OidcUpdateResponse, error) {
+	rsp, err := c.OidcUpdateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcUpdateResponse(rsp)
+}
+
+// OidcUpdateWithResponse Oidc Update
+//
+// Replace the claim mapping of the organization's default OIDC provider; a body without
+// claimMapping restores every claim's default. The next sign-in through the provider reads its
+// claims through the new mapping. Its host and client never change: delete the provider and
+// create another.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /oidc (the `OidcUpdate` operationId).
+func (c *ClientWithResponses) OidcUpdateWithResponse(ctx context.Context, body OidcUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*OidcUpdateResponse, error) {
+	rsp, err := c.OidcUpdate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcUpdateResponse(rsp)
+}
+
+// OidcSettingsWithResponse Oidc Settings
+//
+// The settings of the organization's default OIDC provider; 404 when it has none.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /oidc/settings (the `OidcSettings` operationId).
+func (c *ClientWithResponses) OidcSettingsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OidcSettingsResponse, error) {
+	rsp, err := c.OidcSettings(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOidcSettingsResponse(rsp)
 }
 
 // OnTrialUntilWithResponse On Trial Until
@@ -131584,6 +132795,135 @@ func ParseGitlabWebhooksEndpointResponse(rsp *http.Response) (*GitlabWebhooksEnd
 	return response, nil
 }
 
+// ParseHasSSOResponse parses an HTTP response from a HasSSOWithResponse call
+func ParseHasSSOResponse(rsp *http.Response) (*HasSSOResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HasSSOResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers HasSSOResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers HasSSOResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers HasSSOResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseIdResponse parses an HTTP response from a IdWithResponse call
 func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -134977,6 +136317,564 @@ func ParseOauthRedirectAllowedHostsResponse(rsp *http.Response) (*OauthRedirectA
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OauthRedirectAllowedHostsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOidcDeleteResponse parses an HTTP response from a OidcDeleteWithResponse call
+func ParseOidcDeleteResponse(rsp *http.Response) (*OidcDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OIDCSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OidcDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OidcDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OidcDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOidcCreateResponse parses an HTTP response from a OidcCreateWithResponse call
+func ParseOidcCreateResponse(rsp *http.Response) (*OidcCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest OIDCSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers OidcCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers OidcCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OidcCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOidcUpdateResponse parses an HTTP response from a OidcUpdateWithResponse call
+func ParseOidcUpdateResponse(rsp *http.Response) (*OidcUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OIDCSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OidcUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OidcUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OidcUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOidcSettingsResponse parses an HTTP response from a OidcSettingsWithResponse call
+func ParseOidcSettingsResponse(rsp *http.Response) (*OidcSettingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OidcSettingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OIDCSettings
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers OidcSettingsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers OidcSettingsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OidcSettingsResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

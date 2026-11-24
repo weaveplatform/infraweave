@@ -34,7 +34,16 @@
 // never answering a secret: a provider of another organization answers
 // 404, a kind whose feature the organization lacks 403
 // feature-not-in-tier or feature-disabled, and invalid or immutable
-// settings 422 validation-failed naming the field. The Managed Users
+// settings 422 validation-failed naming the field. The SSO tag's OIDC
+// operations and hasSSO, through the same service, read, create, replace
+// the claim mapping of and delete the organization's default OIDC
+// provider, answering its settings without the secret and its admin
+// login null until a sign-in enables it, and answer whether the
+// organization has an enabled OIDC or SAML provider: a member without
+// organization-admin answers 403 forbidden, no default OIDC provider 404,
+// a second 409 already-exists, and invalid settings or a host whose
+// discovery document is unusable 422 validation-failed naming the body's
+// field. The Managed Users
 // operations, through the user and group services, invite, read, update,
 // remove and resend the invitation of the account's managed users, record
 // invite and role change requests, and manage its groups: a managed user

@@ -21,7 +21,8 @@
 // any session of an organization but an organization key's is admitted;
 // on ReachOrganizationAdmin, the Organization tag's, only a member's,
 // the break-glass admin's or an organization key's session is, so API
-// key and run tokens are refused there.
+// key and run tokens are refused there; on ReachOrganizationAdminPerson,
+// the SSO tag's, only a member's or the break-glass admin's session is.
 // AuthenticateOperator does so for the operator API, admitting operator
 // sessions alone, so neither API accepts the other's tokens, and
 // AuthenticateWorker for the worker API, admitting worker session tokens

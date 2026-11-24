@@ -56,6 +56,8 @@ const ssoCallback = harness.PublicURL + "/auth/oidc/callback"
 func (s *ssoSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^two infraweave servers, A and B, on one database, trusting the scenario's OIDC issuers$`, s.servers)
 	sc.Step(`^the home organization has the OIDC provider "(\w+)" at the (in-process|navikt) issuer, (enabled with the admin login "[^"]+"|disabled)$`, s.provider)
+	sc.Step(`^(the browser|token "\w+") creates the OIDC settings "(\w+)" at the (in-process|navikt) issuer through ([AB])$`,
+		s.createSettings)
 	sc.Step(`^the provider "(\w+)" takes the subject from the claim "(\w+)"$`, s.subjectClaim)
 	sc.Step(`^the provider "(\w+)" signs in "([^"]+)" next with the claims '([^']*)'$`, s.signsIn)
 	sc.Step(`^the provider "(\w+)" signs in "([^"]+)" next with the fault "([a-z0-9-]+)"$`, s.signsInFaulty)
@@ -70,6 +72,7 @@ func (s *ssoSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^"GET ([^"]+)" through ([AB]) in the browser sends it to "([^"]*)"$`, s.page)
 	sc.Step(`^the browser's session is "([^"]+)"'s, signed in through "(\w+)" with the teams "([^"]*)"$`, s.sessionIs)
 	sc.Step(`^no session was signed in through "(\w+)"$`, s.noSession)
+	sc.Step(`^no live session is signed in through "(\w+)"$`, s.noLiveSession)
 	sc.Step(`^"([^"]+)" is a (pending|deactivated) member of the home account$`, s.memberOf)
 	sc.Step(`^the member "([^"]+)" is (active|pending|deactivated) with (\d+) identit(?:y|ies)$`, s.memberIs)
 	sc.Step(`^the member "([^"]+)" is deactivated$`, s.deactivate)
@@ -130,17 +133,36 @@ func (s *ssoSteps) named(name string) (*ssoProvider, error) {
 	return p, nil
 }
 
-// provider seeds an OIDC provider of the home organization at an issuer of
-// its own, its secret sealed as the API seals it, and registers its client
-// there.
-func (s *ssoSteps) provider(ctx context.Context, name, where, state string) error {
-	p := &ssoProvider{id: kernel.NewULID().String(), client: "infraweave-" + name, local: where == "in-process"}
+// newProvider is a provider named name at an issuer of its own, its
+// client registered there with the secret secret-<name>, and the issuer
+// named {<name> issuer} for the scenario's requests.
+func (s *ssoSteps) newProvider(name, where string) *ssoProvider {
+	p := &ssoProvider{client: "infraweave-" + name, local: where == "in-process"}
 	if p.local {
 		p.issuer = s.local.URL()
 		s.local.RegisterClient(p.client, "secret-"+name)
 	} else {
 		p.issuer = s.mock.Issuer(fmt.Sprintf("sso-%d-%s", s.w.Suite.Deps.Serial(), name))
 	}
+	s.w.IDs[name+" issuer"] = p.issuer
+	return p
+}
+
+// keep registers p as the provider name of the home organization.
+func (s *ssoSteps) keep(name string, p *ssoProvider) {
+	if s.ps == nil {
+		s.ps = map[string]*ssoProvider{}
+	}
+	s.ps[name] = p
+	s.w.IDs[name] = p.id
+}
+
+// provider seeds an OIDC provider of the home organization at an issuer of
+// its own, its secret sealed as the API seals it, and registers its client
+// there.
+func (s *ssoSteps) provider(ctx context.Context, name, where, state string) error {
+	p := s.newProvider(name, where)
+	p.id = kernel.NewULID().String()
 	keys, pool, err := s.w.Keyring(ctx)
 	if err != nil {
 		return err
@@ -168,11 +190,37 @@ func (s *ssoSteps) provider(ctx context.Context, name, where, state string) erro
 		harness.Literal(string(settings)), hex.EncodeToString(sealed), enabled, admin)); err != nil {
 		return err //nolint:wrapcheck // names the query
 	}
-	if s.ps == nil {
-		s.ps = map[string]*ssoProvider{}
+	s.keep(name, p)
+	return nil
+}
+
+// createSettings creates the home organization's OIDC settings through
+// the SSO tag at an issuer of their own, with the client the issuer
+// registers. A created provider is the organization's default OIDC
+// provider, which the steps then sign in through by its ID; a refusal is
+// left for the scenario to check.
+func (s *ssoSteps) createSettings(ctx context.Context, who, name, where, replica string) error {
+	p := s.newProvider(name, where)
+	body, err := json.Marshal(map[string]string{
+		"identityProviderHost": p.issuer, "clientId": p.client, "clientCredentials": "secret-" + name,
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %w", harness.ErrStep, err)
 	}
-	s.ps[name] = p
-	s.w.IDs[name] = p.id
+	if err := s.w.SendAs(ctx, who, http.MethodPost, "/api/v1/oidc", string(body), replica); err != nil {
+		return err //nolint:wrapcheck // names itself
+	}
+	if s.w.Last().Status != http.StatusCreated {
+		return nil
+	}
+	var id kernel.ULID
+	if err := s.w.Row(ctx, `SELECT id FROM identity_providers
+		WHERE organization_id = $1 AND kind = 'OIDC' AND is_default`,
+		[]any{harness.UUIDOf(harness.Home.Org)}, &id); err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	p.id = id.String()
+	s.keep(name, p)
 	return nil
 }
 
@@ -402,6 +450,24 @@ func (s *ssoSteps) noSession(ctx context.Context, name string) error {
 	}
 	if n != 0 {
 		return fmt.Errorf("%w: %d sessions signed in through %s", harness.ErrStep, n, name)
+	}
+	return nil
+}
+
+// noLiveSession checks that every session signed in through the provider
+// is revoked; its row stays for the audit trail.
+func (s *ssoSteps) noLiveSession(ctx context.Context, name string) error {
+	p, err := s.named(name)
+	if err != nil {
+		return err
+	}
+	n, err := s.w.Number(ctx, fmt.Sprintf(`SELECT count(*) FROM sessions
+		WHERE identity_provider_id = '%s' AND revoked_at IS NULL`, harness.UUIDOf(p.id)))
+	if err != nil {
+		return err //nolint:wrapcheck // names the query
+	}
+	if n != 0 {
+		return fmt.Errorf("%w: %d live sessions signed in through %s", harness.ErrStep, n, name)
 	}
 	return nil
 }

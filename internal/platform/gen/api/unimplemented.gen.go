@@ -590,6 +590,10 @@ func (UnimplementedStrict) GitlabWebhooksEndpoint(context.Context, GitlabWebhook
 	return nil, &problem.NotImplementedError{OperationID: "gitlabWebhooksEndpoint", Route: "GET /gitlab-webhooks-endpoint"}
 }
 
+func (UnimplementedStrict) HasSSO(context.Context, HasSSORequestObject) (HasSSOResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "hasSSO", Route: "GET /has-sso"}
+}
+
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
 }
@@ -696,6 +700,22 @@ func (UnimplementedStrict) Name(context.Context, NameRequestObject) (NameRespons
 
 func (UnimplementedStrict) OauthRedirectAllowedHosts(context.Context, OauthRedirectAllowedHostsRequestObject) (OauthRedirectAllowedHostsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "oauthRedirectAllowedHosts", Route: "GET /oauth-redirect-allowed-hosts"}
+}
+
+func (UnimplementedStrict) OidcDelete(context.Context, OidcDeleteRequestObject) (OidcDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oidcDelete", Route: "DELETE /oidc"}
+}
+
+func (UnimplementedStrict) OidcCreate(context.Context, OidcCreateRequestObject) (OidcCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oidcCreate", Route: "POST /oidc"}
+}
+
+func (UnimplementedStrict) OidcUpdate(context.Context, OidcUpdateRequestObject) (OidcUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oidcUpdate", Route: "PUT /oidc"}
+}
+
+func (UnimplementedStrict) OidcSettings(context.Context, OidcSettingsRequestObject) (OidcSettingsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "oidcSettings", Route: "GET /oidc/settings"}
 }
 
 func (UnimplementedStrict) OnTrialUntil(context.Context, OnTrialUntilRequestObject) (OnTrialUntilResponseObject, error) {

@@ -37,6 +37,10 @@ type Store interface {
 	// CreateProvider inserts p, its kind's default when FirstOfKind says
 	// so, with secret sealed, and returns it as stored.
 	CreateProvider(ctx context.Context, p Provider, secret []byte, e kernel.OrganizationAuditEntry) (Provider, error)
+	// CreateDefaultProvider inserts p as its kind's default, with secret
+	// sealed, and returns it as stored; an organization holding a provider
+	// of p's kind is ErrDefaultExists.
+	CreateDefaultProvider(ctx context.Context, p Provider, secret []byte, e kernel.OrganizationAuditEntry) (Provider, error)
 	// UpdateProvider writes p's name, settings and update time, and secret
 	// unless it is nil, and returns p as stored.
 	UpdateProvider(ctx context.Context, p Provider, secret []byte, e kernel.OrganizationAuditEntry) (Provider, error)
@@ -62,6 +66,9 @@ type Deps struct {
 	// Features checks the feature a provider's kind needs; nil checks none,
 	// as billing off admits every feature.
 	Features featuresapi.Options
+	// Discovery reads an OIDC provider's discovery document when the SSO
+	// tag creates one.
+	Discovery Discovery
 	// Drop drops a revoked session from this replica's cache at once.
 	Drop func(kernel.ULID)
 	Now  func() time.Time
@@ -69,9 +76,11 @@ type Deps struct {
 
 // Service manages the organization's identity providers for the
 // Organization tag: it lists, creates, changes and deletes them and
-// chooses the default per kind.
+// chooses the default per kind. For the SSO tag, it reads, creates,
+// changes and deletes the default OIDC provider and answers whether the
+// organization has single sign-on.
 //
-// ref: decision 0021 § "The organization API"
+// ref: decisions 0006 and 0021
 type Service struct{ d Deps }
 
 // NewService returns the service on d.
@@ -192,8 +201,14 @@ func (s *Service) Delete(ctx context.Context, by orgadmin.Actor, id string) (Pro
 	if err != nil {
 		return Provider{}, err
 	}
-	p, ids, err := s.d.Store.DeleteProvider(ctx, by.Principal.OrganizationID, u,
-		entry(by, ActionDelete, "DELETE", u, nil, s.d.Now()))
+	return s.delete(ctx, by, u)
+}
+
+// delete deletes the provider id of by's organization and drops the
+// sessions the store revoked.
+func (s *Service) delete(ctx context.Context, by orgadmin.Actor, id kernel.ULID) (Provider, error) {
+	p, ids, err := s.d.Store.DeleteProvider(ctx, by.Principal.OrganizationID, id,
+		entry(by, ActionDelete, "DELETE", id, nil, s.d.Now()))
 	if err != nil {
 		return Provider{}, err //nolint:wrapcheck // the store names the write
 	}

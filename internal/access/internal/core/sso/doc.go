@@ -28,6 +28,16 @@
 // organization trail entry, and deleting a provider drops the sessions
 // the store revokes from the replica's cache at once.
 //
+// For the SSO tag, Service addresses the organization's default OIDC
+// provider: OIDCSettings reads it; CreateOIDC creates it, disabled and
+// named after its host, once its discovery document reads through
+// Discovery with the exact issuer, refusing a second with
+// ErrDefaultExists, which the store also holds under the organization's
+// lock; UpdateOIDC replaces its claim mapping, leaving it enabled or not;
+// DeleteOIDC deletes it as Delete does. Their FieldErrors name the tag's
+// body fields, clientCredentials for the secret. HasSSO reports an
+// enabled OIDC or SAML provider.
+//
 // SignIn signs people in through an organization's OIDC providers. Start
 // stores a Request, bound to a new RequestCookie value by its SHA-256, and
 // answers the authorization request: a PKCE S256 challenge, a nonce,
@@ -55,7 +65,7 @@
 //
 // None of its own: Service and SignIn read and write through their stores,
 // check features through featuresapi.Options, and reach a provider only
-// through RelyingParty. NewSigningKey and SignIn's states, nonces and
+// through RelyingParty and Discovery. NewSigningKey and SignIn's states, nonces and
 // cookie values read crypto/rand, and kernel.NewULID the clock and
 // crypto/rand.
 //

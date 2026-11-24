@@ -302,7 +302,8 @@ func New(d Deps) (*Domain, error) {
 		orgs:       orgs,
 		orgAdmin:   orgAdmin,
 		providers: sso.NewService(sso.Deps{
-			Store: store, Admins: orgAdmin, Features: d.Features, Drop: auth.Cache().Drop, Now: now,
+			Store: store, Admins: orgAdmin, Features: d.Features, Discovery: verifier,
+			Drop: auth.Cache().Drop, Now: now,
 		}),
 		signIn: signIn,
 		settings: settings.NewService(

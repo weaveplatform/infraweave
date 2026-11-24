@@ -371,10 +371,12 @@ only the break-glass login works. The facts behind the choices below are in
   session of actor kind `user` with no account, carrying the provider, the
   subject, the groups as its original teams, and `original_member`; account
   switching then enters an account as for any member session.
-- **Saving a provider.** `oidcCreate` and `oidcUpdate` store the provider
-  disabled, and the saving admin's next sign-in through it, started from
-  the answer, enables it. Until one sign-in succeeds, a misconfigured
-  provider never replaces a working one.
+- **Saving a provider.** `oidcCreate` stores the provider disabled, and the
+  saving admin's next sign-in through it, started from the answer, enables
+  it. Until one sign-in succeeds, a misconfigured provider never replaces a
+  working one. `oidcUpdate` changes only the claim mapping, never the
+  issuer or client credentials that sign-in depends on, so it keeps the
+  provider's enabled state and the next sign-in reads the new mapping.
 
 **Logout.** `POST /auth/logout` revokes the session and, when the provider
 advertises an `end_session_endpoint`, answers its URL with the ID token hint

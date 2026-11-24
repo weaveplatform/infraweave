@@ -79,7 +79,7 @@
         "phase": "P3b",
         "also": "P3c, P4, P8, P10, P12b, P13b, P15, P18b, P20b, P23, P25",
         "state": "partial",
-        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days; the feature previews (P3c) list the catalogue's own previews, gated on the account's opt-in"
+        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days; the feature previews (P3c) list the catalogue's own previews, gated on the account's opt-in; `hasSSO` (P23) answers whether the organization has an enabled OIDC or SAML provider, to its organization admins alone"
       }
     },
     {
@@ -778,7 +778,7 @@
         "lowestTier": "Starter for `oidc-sso`; Enterprise for `saml-sso` and `scim`",
         "phase": "P23",
         "state": "missing",
-        "notes": "Configures the organization's identity providers, which every account of it shares"
+        "notes": "Configures the organization's identity providers, which every account of it shares. `oidcSettings`, `oidcCreate`, `oidcUpdate` and `oidcDelete` (P23) address the organization's default OIDC provider and admit only organization admins in person, a member's session or CLI token holding `organization-admin` or the break-glass admin: `oidcCreate` reads the discovery document and stores the provider disabled until the saving admin's enabling sign-in, `oidcUpdate` replaces the claim mapping, and `oidcDelete` unlinks single sign-on, deleting the provider's identities and ending its sessions"
       }
     },
     {
