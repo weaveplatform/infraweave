@@ -11,6 +11,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authn"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
@@ -309,6 +310,21 @@ func refusalOf(err error) refusal {
 		return refusal{
 			http.StatusForbidden, "other-member",
 			"The identity provider signed in a different member.",
+		}
+	case errors.Is(err, linking.ErrEnded):
+		return refusal{
+			http.StatusGone, "link-ended",
+			"This link has expired or completed. An organization admin can open another.",
+		}
+	case errors.Is(err, linking.ErrNotLinked):
+		return refusal{
+			http.StatusForbidden, "not-linked",
+			"The identity provider signed in an identity of neither linked member.",
+		}
+	case errors.Is(err, linking.ErrOtherBrowser):
+		return refusal{
+			http.StatusForbidden, "other-browser",
+			"Sign in as the second member in the browser that signed in as the first.",
 		}
 	case errors.Is(err, sso.ErrForbidden):
 		return refusal{http.StatusForbidden, "forbidden", "This browser may not start this sign-in."}

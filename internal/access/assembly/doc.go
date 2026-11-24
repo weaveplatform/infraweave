@@ -10,7 +10,9 @@
 // service, whose secrets Deps.Keys seals, the Managed Users tag through the user
 // and group services, the Roles tag through the role service, the role
 // binding operations through the binding service and the grant views
-// through the holder service; Bindings is the
+// through the holder service, and identity linking, with the link pages
+// Routes mounts at the link patterns, through the linking service;
+// Bindings is the
 // accessapi.Bindings through which another domain binds the actors it
 // keeps, such as stacks, and Grants the accessapi.Grants that explains
 // what reaches a space for them; OrganizationID finds an organization's ID by its
@@ -86,7 +88,7 @@
 // carries for the organization's entitlement, the account limits and the
 // features identity provider kinds need, the
 // access domain's adapters (oidc among them) and
-// its apikey, authn, authz, breakglass, group, operator, orgadmin, session,
+// its apikey, authn, authz, breakglass, group, linking, operator, orgadmin, session,
 // settings, space, sso, token and user packages, platform/cron and platform/queue for its
 // tasks, platform/outbox for its event, platform/crypt and
 // platform/crypt/signer, platform/sql/integrity, platform/sql/migrate,

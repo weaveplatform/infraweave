@@ -145,6 +145,45 @@ components:
         - organizationAdmin
         - status
       type: object
+    OrganizationMemberLink:
+      description: >-
+        An open link between two members of the organization. The person signs
+        in through an identity provider of each member at url before expiresAt,
+        and the second sign-in merges the other member into the member.
+      properties:
+        expiresAt:
+          description: Unix seconds after which the link merges nothing, one hour after it was opened.
+          format: int64
+          type: integer
+        id:
+          description: The link's ID.
+          type: string
+        memberId:
+          description: The member that remains, holding both members' identities, account users, role bindings, personal API keys and organization role.
+          type: string
+        otherMemberId:
+          description: The member merged into memberId, whose sessions end and which then no longer exists.
+          type: string
+        url:
+          description: The page where the person signs in through each member's identity provider.
+          type: string
+      required:
+        - expiresAt
+        - id
+        - memberId
+        - otherMemberId
+        - url
+      type: object
+    OrganizationMemberLinkCreateRequest:
+      additionalProperties: false
+      description: The member to merge into the member the path names.
+      properties:
+        otherMemberId:
+          description: The ID of another member of the organization, not deactivated, that holds an identity.
+          type: string
+      required:
+        - otherMemberId
+      type: object
     OrganizationMemberStatus:
       description: >-
         Whether the member may sign in: ACTIVE once they have, PENDING while an
@@ -1459,6 +1498,67 @@ paths:
         default:
           $ref: '#/components/responses/Problem'
       summary: Organization Member Deactivate
+      tags:
+        - Organization
+      x-infraweave-access: organization-admin
+      x-infraweave-cost: standard
+      x-upstream: none
+  /organization/members/{member}/links:
+    post:
+      description: |-
+        Open a link between two members, which the person who holds both proves: within an hour they sign
+        in at the answer's url through an identity provider of each member, each sign-in a fresh
+        authentication. The second sign-in merges otherMemberId into the member the path names: its
+        identities, account users, role bindings, personal API keys and organization role move to that
+        member, where the member already holds the same one the moved one is dropped, otherMemberId's
+        sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+        e-mail address. A member of another organization answers 404; one member named twice, a
+        deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+        open link already 409 already-exists.
+      operationId: organizationMemberLinkCreate
+      x-infraweave-feature: organization
+      x-infraweave-action: ORGANIZATION_ADMIN
+      x-infraweave-subject: organization
+      parameters:
+        - $ref: '#/components/parameters/OrganizationMemberID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberLinkCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberLink'
+          description: The organizationMemberLinkCreate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "401":
+          $ref: '#/components/responses/Problem'
+        "403":
+          $ref: '#/components/responses/Problem'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Organization Member Link Create
       tags:
         - Organization
       x-infraweave-access: organization-admin

@@ -1133,7 +1133,8 @@
       "infraweave": {
         "feature": "`auth`",
         "lowestTier": "Free",
-        "phase": "P23"
+        "phase": "P23",
+        "notes": "Removes the caller's member's identities of a provider kind but the one its session signed in through, never the member's last, and revokes the sessions signed in through them; `User.identity` lists the member's identities. The infraweave-only `organizationMemberLinkCreate` (Organization tag) opens an organization admin's link that merges two members once the person signs in through an identity of each within the hour; nothing links by e-mail address"
       }
     },
     {

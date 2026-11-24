@@ -663,21 +663,21 @@ type ApiKeyUserRequest struct {
 // FederationProvider All supported federation providers.
 type FederationProvider string
 
-// Identity Identity represents a V2 identity record linked to a user via federation.
+// Identity The identities that sign in as a member, one for each identity provider subject.
 type Identity struct {
-	// Federations Federation records linking this identity to external providers.
+	// Federations The member's identities, oldest first.
 	Federations []IdentityFederation `json:"federations"`
 
-	// Id ULID of the identity.
+	// Id The member's ID.
 	Id string `json:"id"`
 }
 
-// IdentityFederation IdentityFederation represents the link between an identity and an external identity provider.
+// IdentityFederation An identity that signs in as the member, an identity provider's subject.
 type IdentityFederation struct {
-	// ExternalID External ID from the identity provider.
+	// ExternalID The subject the identity provider names the person by.
 	ExternalID string `json:"externalID"`
 
-	// ExternalUsername External username from the identity provider, if available.
+	// ExternalUsername The login the identity provider asserted at the identity's first sign-in, if it asserted one.
 	ExternalUsername *string `json:"externalUsername,omitempty"`
 
 	// Provider All supported federation providers.
@@ -829,7 +829,7 @@ type User struct {
 	// Id Username.
 	Id string `json:"id"`
 
-	// Identity Identity represents a V2 identity record linked to a user via federation.
+	// Identity The identities that sign in as a member, one for each identity provider subject.
 	Identity *Identity `json:"identity,omitempty"`
 
 	// IdentityProvider Identity provider.

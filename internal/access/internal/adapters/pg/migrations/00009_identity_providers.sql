@@ -33,12 +33,14 @@ CREATE UNIQUE INDEX identity_providers_default ON identity_providers (organizati
 -- The identities that sign in as a member: one row per identity provider
 -- subject. Two identities are two members until an organization admin
 -- links them; nothing matches them by email, since an identity provider
--- may let anyone claim any address.
+-- may let anyone claim any address. login is the login the identity's
+-- first sign-in asserted, which the API shows as its external username.
 CREATE TABLE member_identities (
     organization_id      uuid        NOT NULL,
     member_id            uuid        NOT NULL,
     identity_provider_id uuid        NOT NULL,
     subject              text        NOT NULL,
+    login                text        NOT NULL DEFAULT '',
     created_at           timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (identity_provider_id, subject),
     FOREIGN KEY (organization_id, member_id)

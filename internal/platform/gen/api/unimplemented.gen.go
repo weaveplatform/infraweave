@@ -598,6 +598,10 @@ func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObjec
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
 }
 
+func (UnimplementedStrict) IdentityFederationUnlink(context.Context, IdentityFederationUnlinkRequestObject) (IdentityFederationUnlinkResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "identityFederationUnlink", Route: "DELETE /identity-federations/{provider}"}
+}
+
 func (UnimplementedStrict) InstallationAwsAccountId(context.Context, InstallationAwsAccountIdRequestObject) (InstallationAwsAccountIdResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "installationAwsAccountId", Route: "GET /installation-aws-account-id"}
 }
@@ -816,6 +820,10 @@ func (UnimplementedStrict) OrganizationMembers(context.Context, OrganizationMemb
 
 func (UnimplementedStrict) OrganizationMemberDeactivate(context.Context, OrganizationMemberDeactivateRequestObject) (OrganizationMemberDeactivateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "organizationMemberDeactivate", Route: "POST /organization/members/{member}/deactivate"}
+}
+
+func (UnimplementedStrict) OrganizationMemberLinkCreate(context.Context, OrganizationMemberLinkCreateRequestObject) (OrganizationMemberLinkCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "organizationMemberLinkCreate", Route: "POST /organization/members/{member}/links"}
 }
 
 func (UnimplementedStrict) OrganizationAdminRevoke(context.Context, OrganizationAdminRevokeRequestObject) (OrganizationAdminRevokeResponseObject, error) {

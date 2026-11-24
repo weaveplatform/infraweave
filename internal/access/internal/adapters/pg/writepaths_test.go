@@ -20,6 +20,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/authz"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/binding"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/group"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/linking"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/orgadmin"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/organization"
@@ -27,6 +28,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/settings"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/space"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/sso"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/user"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/tx"
@@ -266,7 +268,64 @@ func writePaths(w *auditWorld) []writePath {
 			_, err := w.x.s.DeleteOrganization(ctx, w.org.ID, e)
 			return []kernel.AccountID{w.first.ID}, err
 		}},
+		{"SignInIdentity", func(ctx context.Context) ([]kernel.AccountID, error) {
+			// A link's second sign-in merges a member the account admits
+			// into the account's member.
+			return []kernel.AccountID{w.x.acct}, auditMerge(ctx, w.x)
+		}},
 	}
+}
+
+// auditMerge links x's member and a new member the account admits, each
+// holding an identity at a new provider, and signs in through each, which
+// merges the new member into x's member.
+func auditMerge(ctx context.Context, x seeded) error {
+	p := sso.Provider{OrganizationID: x.org, ID: kernel.NewULID(), Kind: sso.OIDC, Name: "audit"}
+	other := kernel.NewMemberID()
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{
+			`INSERT INTO identity_providers (organization_id, id, kind, name, settings, secret_sealed,
+			enabled_at, admin_login) VALUES ($1, $2, 'OIDC', 'audit', '{}', '\x00', now(), 'root')`,
+			[]any{x.org, p.ID},
+		},
+		{`INSERT INTO members (organization_id, id, login, name, email, status)
+			VALUES ($1, $2, 'audit-other', 'Other', '', 'active')`, []any{x.org, other}},
+		{
+			`INSERT INTO account_users (account_id, organization_id, member_id) VALUES ($1, $2, $3)`,
+			[]any{x.acct, x.org, other},
+		},
+		{
+			`INSERT INTO member_identities (organization_id, member_id, identity_provider_id, subject)
+			VALUES ($1, $2, $3, 'audit-member'), ($1, $4, $3, 'audit-other')`,
+			[]any{x.org, x.member, p.ID, other},
+		},
+	} {
+		if _, err := x.db.Exec(ctx, q.sql, q.args...); err != nil {
+			return err
+		}
+	}
+	now := time.Now()
+	l := linking.Link{
+		OrganizationID: x.org, ID: kernel.NewULID(), MemberID: x.member, OtherMemberID: other,
+		CreatedBy: "audit", CreatedAt: now, ExpiresAt: now.Add(linking.TTL),
+	}
+	if err := x.s.CreateLink(ctx, l, byAdmin(x, linking.ActionCreate)); err != nil {
+		return err
+	}
+	for _, sign := range []struct {
+		subject string
+		prover  kernel.MemberID
+	}{{"audit-member", kernel.MemberID{}}, {"audit-other", x.member}} {
+		rec := signInRecord(x, p, "audit", sign.subject)
+		rec.IDToken, rec.Link, rec.Prover = "", l.ID, sign.prover
+		if _, err := x.s.SignInIdentity(ctx, rec); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // TestUnitAuthzWritePaths checks that writePaths names every exported

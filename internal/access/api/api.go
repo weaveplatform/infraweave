@@ -135,6 +135,18 @@ const (
 	OIDCBackchannelLogoutPattern = "/auth/oidc/backchannel-logout"
 )
 
+// The routes of an identity link, outside the API's base URL, pages for a
+// browser rather than operations of the API: the link's page, which an
+// organization admin's link names, and the start of a sign-in through one
+// of its members' providers. Neither takes a credential; the sign-ins
+// prove the link.
+//
+// ref: decision 0006 § "Members and identity providers"
+const (
+	LinkPattern         = "/auth/link/{linkId}"
+	LinkProviderPattern = "/auth/link/{linkId}/{providerId}"
+)
+
 // The routes of the authorization server for MCP clients, outside the
 // API's base URL as the OAuth protocol places them: RFC 8414 metadata, RFC
 // 7591 registration, and the authorization and token endpoints. None takes

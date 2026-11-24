@@ -5368,21 +5368,21 @@ type HooksInput struct {
 	BeforePlan    []string `json:"beforePlan"`
 }
 
-// Identity Identity represents a V2 identity record linked to a user via federation.
+// Identity The identities that sign in as a member, one for each identity provider subject.
 type Identity struct {
-	// Federations Federation records linking this identity to external providers.
+	// Federations The member's identities, oldest first.
 	Federations []IdentityFederation `json:"federations"`
 
-	// Id ULID of the identity.
+	// Id The member's ID.
 	Id string `json:"id"`
 }
 
-// IdentityFederation IdentityFederation represents the link between an identity and an external identity provider.
+// IdentityFederation An identity that signs in as the member, an identity provider's subject.
 type IdentityFederation struct {
-	// ExternalID External ID from the identity provider.
+	// ExternalID The subject the identity provider names the person by.
 	ExternalID string `json:"externalID"`
 
-	// ExternalUsername External username from the identity provider, if available.
+	// ExternalUsername The login the identity provider asserted at the identity's first sign-in, if it asserted one.
 	ExternalUsername *string `json:"externalUsername,omitempty"`
 
 	// Provider All supported federation providers.
@@ -6360,6 +6360,30 @@ type OrganizationMember struct {
 
 	// Status Whether the member may sign in: ACTIVE once they have, PENDING while an invitation awaits them, DEACTIVATED once an organization admin deactivated them. A deactivated member holds no seat.
 	Status OrganizationMemberStatus `json:"status"`
+}
+
+// OrganizationMemberLink An open link between two members of the organization. The person signs in through an identity provider of each member at url before expiresAt, and the second sign-in merges the other member into the member.
+type OrganizationMemberLink struct {
+	// ExpiresAt Unix seconds after which the link merges nothing, one hour after it was opened.
+	ExpiresAt int64 `json:"expiresAt"`
+
+	// Id The link's ID.
+	Id string `json:"id"`
+
+	// MemberId The member that remains, holding both members' identities, account users, role bindings, personal API keys and organization role.
+	MemberId string `json:"memberId"`
+
+	// OtherMemberId The member merged into memberId, whose sessions end and which then no longer exists.
+	OtherMemberId string `json:"otherMemberId"`
+
+	// Url The page where the person signs in through each member's identity provider.
+	Url string `json:"url"`
+}
+
+// OrganizationMemberLinkCreateRequest The member to merge into the member the path names.
+type OrganizationMemberLinkCreateRequest struct {
+	// OtherMemberId The ID of another member of the organization, not deactivated, that holds an identity.
+	OtherMemberId string `json:"otherMemberId"`
 }
 
 // OrganizationMemberPage One page of a cursor-paginated list.
@@ -10348,7 +10372,7 @@ type User struct {
 	// Id Username.
 	Id string `json:"id"`
 
-	// Identity Identity represents a V2 identity record linked to a user via federation.
+	// Identity The identities that sign in as a member, one for each identity provider subject.
 	Identity *Identity `json:"identity,omitempty"`
 
 	// IdentityProvider Identity provider.
@@ -12161,6 +12185,12 @@ type OrganizationMemberDeactivateParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// OrganizationMemberLinkCreateParams defines parameters for OrganizationMemberLinkCreate.
+type OrganizationMemberLinkCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // OrganizationUsageParams defines parameters for OrganizationUsage.
 type OrganizationUsageParams struct {
 	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
@@ -13554,6 +13584,9 @@ type OrganizationIdentityProviderUpdateApplicationMergePatchPlusJSONRequestBody 
 
 // OrganizationKeyCreateJSONRequestBody defines body for OrganizationKeyCreate for application/json ContentType.
 type OrganizationKeyCreateJSONRequestBody = OrganizationKeyCreateRequest
+
+// OrganizationMemberLinkCreateJSONRequestBody defines body for OrganizationMemberLinkCreate for application/json ContentType.
+type OrganizationMemberLinkCreateJSONRequestBody = OrganizationMemberLinkCreateRequest
 
 // PersonalApiKeyCreateJSONRequestBody defines body for PersonalApiKeyCreate for application/json ContentType.
 type PersonalApiKeyCreateJSONRequestBody = PersonalApiKeyInput
@@ -17402,6 +17435,19 @@ type ClientInterface interface {
 	// Corresponds with GET /id (the `Id` operationId).
 	Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// IdentityFederationUnlink Unlink Identity Federation
+	//
+	// Remove the caller's member's identities at identity providers of the kind provider names, OIDC,
+	// SAML or GITHUB_OAUTH, and revoke the sessions signed in through them, answering the identities that
+	// remain. The identity the caller's session signed in through stays, and removing it alone, or the
+	// member's last identities, answers 422 validation-failed; a member with no identity of the kind
+	// answers 404. Only a credential that names a member may call it: a member's session or a personal
+	// API key. Any other, such as the break-glass admin's session, an organization key's token or an API
+	// key that is not personal, answers 403 forbidden.
+	//
+	// Corresponds with DELETE /identity-federations/{provider} (the `IdentityFederationUnlink` operationId).
+	IdentityFederationUnlink(ctx context.Context, provider string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// InstallationAwsAccountId Get AWS Account ID
 	//
 	// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
@@ -18026,6 +18072,40 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /organization/members/{member}/deactivate (the `OrganizationMemberDeactivate` operationId).
 	OrganizationMemberDeactivate(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberDeactivateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationMemberLinkCreateWithBody Organization Member Link Create
+	//
+	// Open a link between two members, which the person who holds both proves: within an hour they sign
+	// in at the answer's url through an identity provider of each member, each sign-in a fresh
+	// authentication. The second sign-in merges otherMemberId into the member the path names: its
+	// identities, account users, role bindings, personal API keys and organization role move to that
+	// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+	// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+	// e-mail address. A member of another organization answers 404; one member named twice, a
+	// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+	// open link already 409 already-exists.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+	OrganizationMemberLinkCreateWithBody(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OrganizationMemberLinkCreate Organization Member Link Create
+	//
+	// Open a link between two members, which the person who holds both proves: within an hour they sign
+	// in at the answer's url through an identity provider of each member, each sign-in a fresh
+	// authentication. The second sign-in merges otherMemberId into the member the path names: its
+	// identities, account users, role bindings, personal API keys and organization role move to that
+	// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+	// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+	// e-mail address. A member of another organization answers 404; one member named twice, a
+	// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+	// open link already 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+	OrganizationMemberLinkCreate(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, body OrganizationMemberLinkCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OrganizationAdminRevoke Organization Admin Revoke
 	//
@@ -24597,6 +24677,29 @@ func (c *Client) Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.R
 	return c.Client.Do(req)
 }
 
+// IdentityFederationUnlink Unlink Identity Federation
+//
+// Remove the caller's member's identities at identity providers of the kind provider names, OIDC,
+// SAML or GITHUB_OAUTH, and revoke the sessions signed in through them, answering the identities that
+// remain. The identity the caller's session signed in through stays, and removing it alone, or the
+// member's last identities, answers 422 validation-failed; a member with no identity of the kind
+// answers 404. Only a credential that names a member may call it: a member's session or a personal
+// API key. Any other, such as the break-glass admin's session, an organization key's token or an API
+// key that is not personal, answers 403 forbidden.
+//
+// Corresponds with DELETE /identity-federations/{provider} (the `IdentityFederationUnlink` operationId).
+func (c *Client) IdentityFederationUnlink(ctx context.Context, provider string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIdentityFederationUnlinkRequest(c.Server, provider)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // InstallationAwsAccountId Get AWS Account ID
 //
 // The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
@@ -25932,6 +26035,60 @@ func (c *Client) OrganizationMembers(ctx context.Context, params *OrganizationMe
 // Corresponds with POST /organization/members/{member}/deactivate (the `OrganizationMemberDeactivate` operationId).
 func (c *Client) OrganizationMemberDeactivate(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberDeactivateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOrganizationMemberDeactivateRequest(c.Server, member, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationMemberLinkCreateWithBody Organization Member Link Create
+//
+// Open a link between two members, which the person who holds both proves: within an hour they sign
+// in at the answer's url through an identity provider of each member, each sign-in a fresh
+// authentication. The second sign-in merges otherMemberId into the member the path names: its
+// identities, account users, role bindings, personal API keys and organization role move to that
+// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+// e-mail address. A member of another organization answers 404; one member named twice, a
+// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+// open link already 409 already-exists.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+func (c *Client) OrganizationMemberLinkCreateWithBody(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationMemberLinkCreateRequestWithBody(c.Server, member, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// OrganizationMemberLinkCreate Organization Member Link Create
+//
+// Open a link between two members, which the person who holds both proves: within an hour they sign
+// in at the answer's url through an identity provider of each member, each sign-in a fresh
+// authentication. The second sign-in merges otherMemberId into the member the path names: its
+// identities, account users, role bindings, personal API keys and organization role move to that
+// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+// e-mail address. A member of another organization answers 404; one member named twice, a
+// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+// open link already 409 already-exists.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+func (c *Client) OrganizationMemberLinkCreate(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, body OrganizationMemberLinkCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOrganizationMemberLinkCreateRequest(c.Server, member, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -39610,6 +39767,40 @@ func NewIdRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewIdentityFederationUnlinkRequest constructs an http.Request for the IdentityFederationUnlink method
+func NewIdentityFederationUnlinkRequest(server string, provider string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/identity-federations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewInstallationAwsAccountIdRequest constructs an http.Request for the InstallationAwsAccountId method
 func NewInstallationAwsAccountIdRequest(server string) (*http.Request, error) {
 	var err error
@@ -42224,6 +42415,68 @@ func NewOrganizationMemberDeactivateRequest(server string, member OrganizationMe
 	if err != nil {
 		return nil, err
 	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewOrganizationMemberLinkCreateRequest calls the generic OrganizationMemberLinkCreate builder with application/json body
+func NewOrganizationMemberLinkCreateRequest(server string, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, body OrganizationMemberLinkCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewOrganizationMemberLinkCreateRequestWithBody(server, member, params, "application/json", bodyReader)
+}
+
+// NewOrganizationMemberLinkCreateRequestWithBody constructs an http.Request for the OrganizationMemberLinkCreate method, with any body, and a specified content type
+func NewOrganizationMemberLinkCreateRequestWithBody(server string, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "member", member, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/organization/members/%s/links", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	if params != nil {
 
@@ -57309,6 +57562,21 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /id (the `Id` operationId).
 	IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error)
 
+	// IdentityFederationUnlinkWithResponse Unlink Identity Federation
+	//
+	// Remove the caller's member's identities at identity providers of the kind provider names, OIDC,
+	// SAML or GITHUB_OAUTH, and revoke the sessions signed in through them, answering the identities that
+	// remain. The identity the caller's session signed in through stays, and removing it alone, or the
+	// member's last identities, answers 422 validation-failed; a member with no identity of the kind
+	// answers 404. Only a credential that names a member may call it: a member's session or a personal
+	// API key. Any other, such as the break-glass admin's session, an organization key's token or an API
+	// key that is not personal, answers 403 forbidden.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /identity-federations/{provider} (the `IdentityFederationUnlink` operationId).
+	IdentityFederationUnlinkWithResponse(ctx context.Context, provider string, reqEditors ...RequestEditorFn) (*IdentityFederationUnlinkResponse, error)
+
 	// InstallationAwsAccountIdWithResponse Get AWS Account ID
 	//
 	// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
@@ -58009,6 +58277,40 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /organization/members/{member}/deactivate (the `OrganizationMemberDeactivate` operationId).
 	OrganizationMemberDeactivateWithResponse(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberDeactivateParams, reqEditors ...RequestEditorFn) (*OrganizationMemberDeactivateResponse, error)
+
+	// OrganizationMemberLinkCreateWithBodyWithResponse Organization Member Link Create
+	//
+	// Open a link between two members, which the person who holds both proves: within an hour they sign
+	// in at the answer's url through an identity provider of each member, each sign-in a fresh
+	// authentication. The second sign-in merges otherMemberId into the member the path names: its
+	// identities, account users, role bindings, personal API keys and organization role move to that
+	// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+	// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+	// e-mail address. A member of another organization answers 404; one member named twice, a
+	// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+	// open link already 409 already-exists.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+	OrganizationMemberLinkCreateWithBodyWithResponse(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationMemberLinkCreateResponse, error)
+
+	// OrganizationMemberLinkCreateWithResponse Organization Member Link Create
+	//
+	// Open a link between two members, which the person who holds both proves: within an hour they sign
+	// in at the answer's url through an identity provider of each member, each sign-in a fresh
+	// authentication. The second sign-in merges otherMemberId into the member the path names: its
+	// identities, account users, role bindings, personal API keys and organization role move to that
+	// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+	// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+	// e-mail address. A member of another organization answers 404; one member named twice, a
+	// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+	// open link already 409 already-exists.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+	OrganizationMemberLinkCreateWithResponse(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, body OrganizationMemberLinkCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationMemberLinkCreateResponse, error)
 
 	// OrganizationAdminRevokeWithResponse Organization Admin Revoke
 	//
@@ -75615,6 +75917,115 @@ func (r IdResponse) ContentType() string {
 	return ""
 }
 
+// IdentityFederationUnlinkResponse200Headers the declared response headers of an HTTP 200 response for IdentityFederationUnlink
+type IdentityFederationUnlinkResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// IdentityFederationUnlinkResponse429Headers the declared response headers of an HTTP 429 response for IdentityFederationUnlink
+type IdentityFederationUnlinkResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// IdentityFederationUnlinkResponse503Headers the declared response headers of an HTTP 503 response for IdentityFederationUnlink
+type IdentityFederationUnlinkResponse503Headers struct {
+	RetryAfter *int
+}
+
+type IdentityFederationUnlinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Identity
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *Problem
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *IdentityFederationUnlinkResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *IdentityFederationUnlinkResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *IdentityFederationUnlinkResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r IdentityFederationUnlinkResponse) GetJSON200() *Identity {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSON422() *Problem {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r IdentityFederationUnlinkResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r IdentityFederationUnlinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r IdentityFederationUnlinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r IdentityFederationUnlinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r IdentityFederationUnlinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // InstallationAwsAccountIdResponse200Headers the declared response headers of an HTTP 200 response for InstallationAwsAccountId
 type InstallationAwsAccountIdResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -81372,6 +81783,129 @@ func (r OrganizationMemberDeactivateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r OrganizationMemberDeactivateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// OrganizationMemberLinkCreateResponse201Headers the declared response headers of an HTTP 201 response for OrganizationMemberLinkCreate
+type OrganizationMemberLinkCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationMemberLinkCreateResponse429Headers the declared response headers of an HTTP 429 response for OrganizationMemberLinkCreate
+type OrganizationMemberLinkCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// OrganizationMemberLinkCreateResponse503Headers the declared response headers of an HTTP 503 response for OrganizationMemberLinkCreate
+type OrganizationMemberLinkCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type OrganizationMemberLinkCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *OrganizationMemberLink
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *OrganizationMemberLinkCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *OrganizationMemberLinkCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *OrganizationMemberLinkCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r OrganizationMemberLinkCreateResponse) GetJSON201() *OrganizationMemberLink {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r OrganizationMemberLinkCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r OrganizationMemberLinkCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r OrganizationMemberLinkCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OrganizationMemberLinkCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r OrganizationMemberLinkCreateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -108312,6 +108846,27 @@ func (c *ClientWithResponses) IdWithResponse(ctx context.Context, reqEditors ...
 	return ParseIdResponse(rsp)
 }
 
+// IdentityFederationUnlinkWithResponse Unlink Identity Federation
+//
+// Remove the caller's member's identities at identity providers of the kind provider names, OIDC,
+// SAML or GITHUB_OAUTH, and revoke the sessions signed in through them, answering the identities that
+// remain. The identity the caller's session signed in through stays, and removing it alone, or the
+// member's last identities, answers 422 validation-failed; a member with no identity of the kind
+// answers 404. Only a credential that names a member may call it: a member's session or a personal
+// API key. Any other, such as the break-glass admin's session, an organization key's token or an API
+// key that is not personal, answers 403 forbidden.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /identity-federations/{provider} (the `IdentityFederationUnlink` operationId).
+func (c *ClientWithResponses) IdentityFederationUnlinkWithResponse(ctx context.Context, provider string, reqEditors ...RequestEditorFn) (*IdentityFederationUnlinkResponse, error) {
+	rsp, err := c.IdentityFederationUnlink(ctx, provider, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIdentityFederationUnlinkResponse(rsp)
+}
+
 // InstallationAwsAccountIdWithResponse Get AWS Account ID
 //
 // The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
@@ -109443,6 +109998,52 @@ func (c *ClientWithResponses) OrganizationMemberDeactivateWithResponse(ctx conte
 		return nil, err
 	}
 	return ParseOrganizationMemberDeactivateResponse(rsp)
+}
+
+// OrganizationMemberLinkCreateWithBodyWithResponse Organization Member Link Create
+//
+// Open a link between two members, which the person who holds both proves: within an hour they sign
+// in at the answer's url through an identity provider of each member, each sign-in a fresh
+// authentication. The second sign-in merges otherMemberId into the member the path names: its
+// identities, account users, role bindings, personal API keys and organization role move to that
+// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+// e-mail address. A member of another organization answers 404; one member named twice, a
+// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+// open link already 409 already-exists.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+func (c *ClientWithResponses) OrganizationMemberLinkCreateWithBodyWithResponse(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*OrganizationMemberLinkCreateResponse, error) {
+	rsp, err := c.OrganizationMemberLinkCreateWithBody(ctx, member, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationMemberLinkCreateResponse(rsp)
+}
+
+// OrganizationMemberLinkCreateWithResponse Organization Member Link Create
+//
+// Open a link between two members, which the person who holds both proves: within an hour they sign
+// in at the answer's url through an identity provider of each member, each sign-in a fresh
+// authentication. The second sign-in merges otherMemberId into the member the path names: its
+// identities, account users, role bindings, personal API keys and organization role move to that
+// member, where the member already holds the same one the moved one is dropped, otherMemberId's
+// sessions are revoked, and the organization counts one seat fewer. Nothing is ever linked by
+// e-mail address. A member of another organization answers 404; one member named twice, a
+// deactivated member or a member without an identity 422 validation-failed; and a pair that has an
+// open link already 409 already-exists.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /organization/members/{member}/links (the `OrganizationMemberLinkCreate` operationId).
+func (c *ClientWithResponses) OrganizationMemberLinkCreateWithResponse(ctx context.Context, member OrganizationMemberID, params *OrganizationMemberLinkCreateParams, body OrganizationMemberLinkCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*OrganizationMemberLinkCreateResponse, error) {
+	rsp, err := c.OrganizationMemberLinkCreate(ctx, member, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOrganizationMemberLinkCreateResponse(rsp)
 }
 
 // OrganizationAdminRevokeWithResponse Organization Admin Revoke
@@ -133240,6 +133841,142 @@ func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
 	return response, nil
 }
 
+// ParseIdentityFederationUnlinkResponse parses an HTTP response from a IdentityFederationUnlinkWithResponse call
+func ParseIdentityFederationUnlinkResponse(rsp *http.Response) (*IdentityFederationUnlinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &IdentityFederationUnlinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Identity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers IdentityFederationUnlinkResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers IdentityFederationUnlinkResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers IdentityFederationUnlinkResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseInstallationAwsAccountIdResponse parses an HTTP response from a InstallationAwsAccountIdWithResponse call
 func ParseInstallationAwsAccountIdResponse(rsp *http.Response) (*InstallationAwsAccountIdResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -140511,6 +141248,156 @@ func ParseOrganizationMemberDeactivateResponse(rsp *http.Response) (*Organizatio
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers OrganizationMemberDeactivateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseOrganizationMemberLinkCreateResponse parses an HTTP response from a OrganizationMemberLinkCreateWithResponse call
+func ParseOrganizationMemberLinkCreateResponse(rsp *http.Response) (*OrganizationMemberLinkCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OrganizationMemberLinkCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest OrganizationMemberLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers OrganizationMemberLinkCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers OrganizationMemberLinkCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers OrganizationMemberLinkCreateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

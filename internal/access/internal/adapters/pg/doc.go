@@ -12,7 +12,8 @@
 // clients, requests and spent refresh tokens, spaces and space_closure,
 // roles, role_actions and role_bindings, and the organization's
 // identity_providers, one per kind its default by a partial unique index,
-// with the member_identities that sign in through each. Creating an account, with its
+// with the member_identities that sign in through each, and member_links.
+// Creating an account, with its
 // organization or by an organization admin, seeds its top space, legacy
 // and system roles in the same transaction, and claiming or creating one
 // binds space-admin on its top space to the account admin it names. A
@@ -92,8 +93,20 @@
 // IsOrganizationAdmin also admits a session signed in through one of the
 // organization's providers as that provider's admin login. A back-channel
 // logout's jti is kept in oidc_logout_tokens until it expires, its primary
-// key accepting each once. ExpireSignIns deletes the ended requests and
-// the expired logout tokens. user.Store's writes record their account trail entry in the
+// key accepting each once. ExpireSignIns deletes the ended requests, the
+// expired logout tokens and the links that expired uncompleted.
+// linking.Store keeps an organization admin's links in member_links, one
+// open link per pair of members by a partial unique index, created under
+// the organization's row lock. A link's sign-in, in the sign-in's
+// transaction, locks the link, proves its member, and on the second
+// member merges: the other member's identities, admissions, user role
+// bindings, invitations, personal keys and organization role move to the
+// member, the member's row winning a conflict; the other member's
+// sessions and its personal keys' are revoked, its row deleted, and each
+// affected account's authorization rebuilt, with the merge's trail entry.
+// Unlinking locks the member's identities, deletes those of the kind but
+// the session's own, and revokes the sessions signed in through them, with
+// its trail entry. user.Store's writes record their account trail entry in the
 // same transaction: inviting a login takes its organization's row lock,
 // admits its member or a new pending one and checks the seat a member no
 // other account admits takes; removing a managed user deletes its
