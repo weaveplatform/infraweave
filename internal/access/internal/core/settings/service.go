@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/federation"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -40,6 +41,7 @@ type Store interface {
 	// ToggleNonHumanKeyManagers flips the setting and returns its new value.
 	ToggleNonHumanKeyManagers(ctx context.Context, acct kernel.AccountID) (bool, error)
 	SetSecurityEmail(ctx context.Context, acct kernel.AccountID, email string) error
+	SetOIDCSubjectTemplate(ctx context.Context, acct kernel.AccountID, template string) error
 	SetRedirectHosts(ctx context.Context, acct kernel.AccountID, hosts []string) error
 	SetSurvey(ctx context.Context, acct kernel.AccountID, s Survey) error
 	// ToggleDeletionMark records m when the account is not marked and
@@ -145,6 +147,29 @@ func (s *Service) SetSecurityEmail(ctx context.Context, p kernel.Principal, emai
 		return "", err //nolint:wrapcheck // as above
 	}
 	return email, nil
+}
+
+// SetOIDCSubjectTemplate sets the subject template of the OIDC federation
+// tokens of p's account, and answers the template now in effect: an empty
+// template restores federation.DefaultSubjectTemplate. A template
+// federation.CheckSubjectTemplate refuses is ErrInvalid.
+func (s *Service) SetOIDCSubjectTemplate(ctx context.Context, p kernel.Principal, template string) (string, error) {
+	if err := federation.CheckSubjectTemplate(template); err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	if err := s.d.Store.SetOIDCSubjectTemplate(ctx, p.AccountID, template); err != nil {
+		return "", err //nolint:wrapcheck // as above
+	}
+	return EffectiveSubjectTemplate(template), nil
+}
+
+// EffectiveSubjectTemplate is the template an account's stored template t
+// puts in effect.
+func EffectiveSubjectTemplate(t string) string {
+	if t == "" {
+		return federation.DefaultSubjectTemplate
+	}
+	return t
 }
 
 // SetRedirectHosts replaces the OAuth redirect allowlist of p's account.

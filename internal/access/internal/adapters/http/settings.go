@@ -171,6 +171,25 @@ func (s Server) AccountUpdateSecurityEmail(ctx context.Context, req api.AccountU
 	return api.AccountUpdateSecurityEmail200JSONResponse{Body: email}, nil
 }
 
+// AccountSetOIDCSubjectTemplate sets the subject template of the
+// account's OIDC federation tokens and answers the template in effect; a
+// null template restores the default.
+func (s Server) AccountSetOIDCSubjectTemplate(ctx context.Context, req api.AccountSetOIDCSubjectTemplateRequestObject) (api.AccountSetOIDCSubjectTemplateResponseObject, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var template string
+	if req.Body.Template != nil {
+		template = *req.Body.Template
+	}
+	effective, err := s.settings.SetOIDCSubjectTemplate(ctx, p, template)
+	if err != nil {
+		return nil, settingError(err)
+	}
+	return api.AccountSetOIDCSubjectTemplate200JSONResponse{Body: effective}, nil
+}
+
 // OauthRedirectAllowedHosts lists the account's OAuth redirect allowlist
 // in the order it was set. A cursor names the last host of its page, so a
 // host removed since answers 400 invalid-cursor.

@@ -10,6 +10,9 @@ CREATE TABLE account_settings (
     -- The OAuth redirect allowlist: bare hosts and hosts with one leading
     -- "*.", in the order an admin set them.
     oauth_redirect_hosts       text[]      NOT NULL DEFAULT '{}',
+    -- The subject template of the account's OIDC federation tokens; empty
+    -- is the default template.
+    oidc_subject_template      text        NOT NULL DEFAULT '',
     survey_completed           boolean     NOT NULL DEFAULT false,
     survey_response            text,
     -- The deletion mark: an account may be deleted while marked_at is set,

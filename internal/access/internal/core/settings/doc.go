@@ -1,7 +1,8 @@
 // Package settings holds the account-wide settings no other domain owns:
 // whether members may create personal API keys and may ask for them, whether
 // API keys may manage API keys, the security contact, the OAuth redirect
-// allowlist, the awareness survey and the deletion mark that ends in
+// allowlist, the subject template of its OIDC federation tokens, the
+// awareness survey and the deletion mark that ends in
 // deleting the account. Service reads and sets them for
 // the caller's account through Store. CheckRedirectHosts and
 // CheckSecurityEmail refuse a value with ErrInvalid naming it; only a
@@ -19,6 +20,7 @@
 //
 // # Dependencies
 //
-// It imports internal/kernel and the standard library. The access domain's
+// It imports internal/kernel, the access domain's federation package and
+// the standard library. The access domain's
 // adapters and assembly import it.
 package settings

@@ -42,6 +42,10 @@ func (UnimplementedStrict) AccountSetOAuthRedirectAllowlist(context.Context, Acc
 	return nil, &problem.NotImplementedError{OperationID: "accountSetOAuthRedirectAllowlist", Route: "POST /account/set-o-auth-redirect-allowlist"}
 }
 
+func (UnimplementedStrict) AccountSetOIDCSubjectTemplate(context.Context, AccountSetOIDCSubjectTemplateRequestObject) (AccountSetOIDCSubjectTemplateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "accountSetOIDCSubjectTemplate", Route: "POST /account/set-oidc-subject-template"}
+}
+
 func (UnimplementedStrict) AccountSetPersonalApiKeysEnabled(context.Context, AccountSetPersonalApiKeysEnabledRequestObject) (AccountSetPersonalApiKeysEnabledResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "accountSetPersonalApiKeysEnabled", Route: "POST /account/set-personal-api-keys-enabled"}
 }
