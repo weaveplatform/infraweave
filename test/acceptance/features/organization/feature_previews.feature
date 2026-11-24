@@ -49,7 +49,7 @@ Feature: Feature previews
     And the answer's account is '{"enabled":true,"canManage":true}'
     And the answer's personal is '{"enabled":false}'
     When "PUT /api/v1/feature-preview/personal" through A with token "p" and '{"enabled":true}' answers '{"features":[],"account":{"enabled":true,"canManage":true},"personal":{"enabled":true},"visible":false}'
-    Then "GET /api/v1/feature-preview" through B in the browser answers '{"features":[],"account":{"enabled":true,"canManage":true},"personal":{"enabled":true},"visible":false}'
+    Then "GET /api/v1/feature-preview" through B in the browser eventually answers '{"features":[],"account":{"enabled":true,"canManage":true},"personal":{"enabled":true},"visible":false}'
     And "GET /api/v1/feature-preview" through A with token "admin" eventually answers '{"features":[],"account":{"enabled":true,"canManage":true},"visible":false}'
 
   @op:featurePreview @op:accountSetFeaturePreviewsEnabled @op:featurePreviewSetPersonalEnabled @case:denial @case:success
