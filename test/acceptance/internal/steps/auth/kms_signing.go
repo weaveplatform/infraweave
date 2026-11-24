@@ -34,8 +34,8 @@ func (k *kmsSteps) register(sc *godog.ScenarioContext) {
 	)
 	sc.Step(`^the signing key's row names the Transit key and holds no private half$`, k.row)
 	sc.Step(
-		`^the federation key's row names the rsa-3072 Transit key, signs RS256 and holds no private half$`,
-		k.federationRow,
+		`^signing_keys holds no federation key, since no federation token has been signed$`,
+		k.noFederationRow,
 	)
 	sc.Step(
 		`^an infraweave server signing with an aes256-gcm96 Transit key is started$`,
@@ -115,10 +115,10 @@ func (k *kmsSteps) row(ctx context.Context) error {
 	return k.rowOf(ctx, "api-token", "1|vault:"+k.ref+"|ES256|f")
 }
 
-// federationRow checks that the one federation signing key, which the
-// start created, is the RSA Transit key's and signs RS256.
-func (k *kmsSteps) federationRow(ctx context.Context) error {
-	return k.rowOf(ctx, "federation", "1|vault:"+k.federation+"|RS256|f")
+// noFederationRow checks that starting the servers, which opened the
+// federation Transit key, created no federation signing key.
+func (k *kmsSteps) noFederationRow(ctx context.Context) error {
+	return k.rowOf(ctx, "federation", "0|||f")
 }
 
 // rowOf checks purpose's signing keys: their count, and the KMS

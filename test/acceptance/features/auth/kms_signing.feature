@@ -9,6 +9,7 @@ Feature: Tokens signed through a KMS
   with a key that cannot sign its purpose's algorithm, ES256 for api-token
   and auth.federation.algorithm, RS256 by default, for federation, or
   without a federation key at all, naming the key or the setting. The
+  first federation key is created on first use, never at start. The
   scenarios sign with versions of Transit keys on the @vault container,
   which the servers reach through secrets.kek.vault's address and token
   while the KEK stays local.
@@ -20,7 +21,7 @@ Feature: Tokens signed through a KMS
     Then token "t1" carries the claims of an API token of the home key
     And the viewer through B with token "t1" is the home key
     And the signing key's row names the Transit key and holds no private half
-    And the federation key's row names the rsa-3072 Transit key, signs RS256 and holds no private half
+    And signing_keys holds no federation key, since no federation token has been signed
 
   Scenario: A Transit key that cannot sign ES256 stops the start
     When an infraweave server signing with an aes256-gcm96 Transit key is started

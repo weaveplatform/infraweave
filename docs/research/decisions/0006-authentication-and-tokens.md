@@ -725,9 +725,13 @@ customer can write it into a trust policy. Without AWS credentials it answers
   both purposes in process and seals them; `kms` takes operator-supplied
   key references (`awskms`, `gcpkms`, `azurekv`, `vault` transit), signs
   through the KMS, and rotates only when the operator adds a reference.
-  The first start creates each backend's first `federation` key, so the
-  JWKS is never empty; the first `api-token` key is created when the first
-  token is signed.
+  Each purpose's first key is created on first use: the first `api-token`
+  key when the first token is signed, and the first `federation` key when
+  the first federation token is signed or the JWKS is first read, so the
+  JWKS is never empty when a token can be presented. The daily rotation
+  never creates the first `federation` key: an RSA 3072 key is slow to
+  generate, above all under FIPS 140-3, and an installation that never
+  federates never pays for one.
   - **References** name one fixed key pair each, because the row's
     `public_jwk` is read once: an AWS KMS key ID or ARN (not an alias), a
     Cloud KMS CryptoKeyVersion, a Key Vault key ID with its version, and a

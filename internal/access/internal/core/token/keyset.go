@@ -22,6 +22,10 @@ type keySet struct {
 	purpose Purpose
 	policy  Policy
 	now     func() time.Time
+	// onUse leaves a purpose with no key to its first use: rotation
+	// creates no first key, and signing or reading the published keys
+	// does.
+	onUse bool
 
 	signMu   sync.Mutex
 	active   signer.Signer
@@ -83,10 +87,14 @@ func (k *keySet) activeKey(ctx context.Context) (kernel.ULID, error) {
 	return kernel.ULID{}, fmt.Errorf("%w: %s", ErrNoKey, k.purpose)
 }
 
-// rotate applies the rotation due now.
+// rotate applies the rotation due now; under onUse, none to a purpose
+// with no key yet.
 func (k *keySet) rotate(ctx context.Context) error {
 	now := k.now()
 	if err := k.store.Rotate(ctx, k.purpose, func(keys []Key) []Step {
+		if k.onUse && len(keys) == 0 {
+			return nil
+		}
 		return k.policy.Plan(keys, now)
 	}); err != nil {
 		return fmt.Errorf("rotate %s signing keys: %w", k.purpose, err)
@@ -140,10 +148,20 @@ func (k *keySet) publicKey(ctx context.Context, kid string) (jose.JSONWebKey, bo
 // publishedKeys returns the public halves of the keys that verify, oldest
 // first, from this replica's cache, reloading it once it is SignerRefresh
 // old: a next key verifies for MinPublished before it signs, far longer.
+// A purpose with no key creates its first, as signing does, so the
+// published keys are never empty.
 func (k *keySet) publishedKeys(ctx context.Context) ([]jose.JSONWebKey, error) {
 	k.verifyMu.Lock()
 	defer k.verifyMu.Unlock()
 	if k.public == nil || k.now().Sub(k.reloadedAt) >= SignerRefresh {
+		if err := k.reload(ctx); err != nil {
+			return nil, err
+		}
+	}
+	if len(k.published) == 0 {
+		if _, err := k.activeKey(ctx); err != nil {
+			return nil, err
+		}
 		if err := k.reload(ctx); err != nil {
 			return nil, err
 		}

@@ -311,15 +311,6 @@ func New(d Deps) (*Domain, error) {
 	}, nil
 }
 
-// EnsureFederationKey creates the first federation signing key when there
-// is none, of auth.federation.algorithm, or from the newest of
-// auth.federation.kms_keys under the kms backend, so a relying party finds
-// a published key from the first start on. Replicas that start together
-// agree on one key.
-func (d *Domain) EnsureFederationKey(ctx context.Context) error {
-	return d.federation.Bootstrap(ctx) //nolint:wrapcheck // names the purpose
-}
-
 // kmsRefs are keys as signing_keys.kms_key_ref stores them, oldest first.
 func kmsRefs(keys []KMSKey) []string {
 	refs := make([]string, 0, len(keys))

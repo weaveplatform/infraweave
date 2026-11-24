@@ -409,9 +409,9 @@ FROM signing_keys WHERE state = 'active' ORDER BY purpose`)
 	}
 }
 
-// Replicas that start together on an empty table, each creating its
-// first api-token and federation keys, agree on one active key of each
-// purpose: concurrent rotations of both purposes queue on one lock.
+// Replicas that use an empty table together, each creating its first
+// api-token and federation keys, agree on one active key of each purpose:
+// concurrent rotations of both purposes queue on one lock.
 func TestAccSigningKeysPurposesConcurrent(t *testing.T) {
 	db := pool(t)
 	keys := keyring(t, db)
@@ -423,7 +423,7 @@ func TestAccSigningKeysPurposesConcurrent(t *testing.T) {
 			token.Policy{TokenLife: time.Hour, Algorithm: signer.ES256}, time.Now)
 		api := token.New(pg.NewSigningKeys(db, keys, nil), "https://iw.example.com",
 			token.Policy{TokenLife: time.Hour}, time.Now)
-		wg.Go(func() { errs[2*i] = fed.Bootstrap(t.Context()) })
+		wg.Go(func() { _, errs[2*i] = fed.FederationKeys(t.Context()) })
 		wg.Go(func() { _, _, errs[2*i+1] = api.Issue(t.Context(), request()) })
 	}
 	wg.Wait()
@@ -450,9 +450,6 @@ func TestAccSigningKeysFederationKMS(t *testing.T) {
 	f := token.NewFederation(store, token.Policy{
 		TokenLife: time.Hour, Algorithm: signer.RS256, Refs: []string{fed.Ref()},
 	}, time.Now)
-	if err := f.Bootstrap(ctx); err != nil {
-		t.Fatal(err)
-	}
 	raw, err := f.Sign(ctx, federationClaims())
 	if err != nil {
 		t.Fatal(err)

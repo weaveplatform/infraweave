@@ -109,12 +109,14 @@ WHERE kind IN ('queue.prune', 'idempotency.purge', 'events.prune', 'authn.keys.r
 WHERE kind IN ('worker.reap', 'worker.sample', 'run.timers') AND queue = 'scheduler'
     AND state = 'succeeded'`) == 3
 	})
-	// The start creates the first federation key, an RS256 one by
-	// default, and the first rotation on an empty table the first
-	// api-token key.
+	// The first rotation on an empty table creates the first api-token
+	// key, and no federation key: that waits for its first use.
 	if n := rows(t, observer, `SELECT count(*) FROM signing_keys WHERE state = 'active'
-AND (purpose, algorithm) IN (('api-token', 'ES256'), ('federation', 'RS256'))`); n != 2 {
-		t.Errorf("%d of an active ES256 api-token key and an active RS256 federation key, want 2", n)
+AND purpose = 'api-token' AND algorithm = 'ES256'`); n != 1 {
+		t.Errorf("%d active ES256 api-token keys after the first rotation, want 1", n)
+	}
+	if n := rows(t, observer, `SELECT count(*) FROM signing_keys WHERE purpose = 'federation'`); n != 0 {
+		t.Errorf("%d federation keys before any federation token, want none", n)
 	}
 	if n := rows(
 		t,

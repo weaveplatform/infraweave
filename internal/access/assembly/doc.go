@@ -40,9 +40,7 @@
 // SHA-256 of its secret, which Validate checks; New reads ca_file and fails when it
 // holds no certificate; Deps.KMS are the
 // kms backend's keys of both purposes, which internal/app opens, and the
-// settings' kms_keys say which purpose each is for.
-// EnsureFederationKey creates the first federation signing key, which
-// internal/app calls at start. Authenticator is the
+// settings' kms_keys say which purpose each is for. Authenticator is the
 // middleware internal/app puts in front of the API,
 // OperatorAuthenticator the one in front of the operator API,
 // WorkerAuthenticator the one in front of the worker API and

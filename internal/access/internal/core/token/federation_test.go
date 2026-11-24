@@ -61,21 +61,21 @@ func verifyPublished(t *testing.T, f *token.FederationService, raw string, alg j
 	return claims, tok.Claims(matching[0].Key, &claims) //nolint:wrapcheck // a test's
 }
 
-// TestUnitFederationAlgorithms checks that the first federation key is of
-// the configured algorithm, RSA 3072 for RS256 and PS256 and P-256 for
-// ES256, that a token it signs names it and verifies with go-jose against
-// its published JWK alone, and that the api-token keys are untouched.
+// TestUnitFederationAlgorithms checks that the first read of the published
+// keys creates the first federation key, once, of the configured
+// algorithm, RSA 3072 for RS256 and PS256 and P-256 for ES256, that a
+// token it signs names it and verifies with go-jose against its published
+// JWK alone, and that the api-token keys are untouched.
 func TestUnitFederationAlgorithms(t *testing.T) {
 	for _, alg := range signer.Algorithms {
 		t.Run(string(alg), func(t *testing.T) {
 			ctx := context.Background()
 			store, c := newMemStore(), &clock{t: start}
 			f := federation(store, c, alg)
-			if err := f.Bootstrap(ctx); err != nil {
-				t.Fatal(err)
-			}
-			if err := f.Bootstrap(ctx); err != nil {
-				t.Fatal(err)
+			for range 2 {
+				if keys, err := f.FederationKeys(ctx); err != nil || len(keys) != 1 {
+					t.Fatalf("FederationKeys = %+v, %v", keys, err)
+				}
 			}
 			live, _ := store.Keys(ctx, token.Federation)
 			if len(live) != 1 || live[0].State != token.StateActive || live[0].Public.Algorithm != string(alg) {
@@ -138,9 +138,10 @@ func TestUnitFederationAlgorithms(t *testing.T) {
 }
 
 // TestUnitFederationRotation runs authn.keys.rotate's federation half over
-// a key lifetime in virtual time: the successor is published from day 83
-// and signs from day 90, and the retiring key stays published until its
-// last token's expiry plus RetireGrace.
+// a key lifetime in virtual time: it creates no first key, the first
+// signing does, the successor is published from day 83 and signs from day
+// 90, and the retiring key stays published until its last token's expiry
+// plus RetireGrace.
 func TestUnitFederationRotation(t *testing.T) {
 	ctx := context.Background()
 	store, c := newMemStore(), &clock{t: start}
@@ -173,6 +174,9 @@ func TestUnitFederationRotation(t *testing.T) {
 	}
 
 	rotate()
+	if live, _ := store.Keys(ctx, token.Federation); len(live) != 0 {
+		t.Fatalf("the first rotation created %+v, want no federation key before its first use", live)
+	}
 	a := kidOf(t, sign())
 	for range 82 {
 		c.advance(day)
@@ -237,7 +241,7 @@ func TestUnitFederationRotation(t *testing.T) {
 func TestUnitFederationKMSRotation(t *testing.T) {
 	ctx := context.Background()
 	store, c := newMemStore(), &clock{t: start}
-	if err := federation(store, c, signer.PS256, "awskms:a").Bootstrap(ctx); err != nil {
+	if _, err := federation(store, c, signer.PS256, "awskms:a").FederationKeys(ctx); err != nil {
 		t.Fatal(err)
 	}
 	f := federation(store, c, signer.PS256, "awskms:a", "awskms:b")
@@ -277,9 +281,10 @@ func TestUnitFederationKeyCache(t *testing.T) {
 	ctx := context.Background()
 	store, c := newMemStore(), &clock{t: start}
 	f := federation(store, c, signer.ES256)
-	if err := f.Bootstrap(ctx); err != nil {
+	if _, err := f.FederationKeys(ctx); err != nil {
 		t.Fatal(err)
 	}
+	c.advance(token.SignerRefresh)
 	reads := store.reads
 	for range 3 {
 		if _, err := f.FederationKeys(ctx); err != nil {
@@ -317,13 +322,8 @@ func TestUnitFederationStoreFailures(t *testing.T) {
 	store, c := newMemStore(), &clock{t: start}
 	f := federation(store, c, signer.RS256)
 	store.err = errDown
-	for name, err := range map[string]error{
-		"Bootstrap": f.Bootstrap(ctx),
-		"Rotate":    f.Rotate(ctx),
-	} {
-		if !errors.Is(err, errDown) || !strings.Contains(err.Error(), "federation") {
-			t.Errorf("%s = %v", name, err)
-		}
+	if err := f.Rotate(ctx); !errors.Is(err, errDown) || !strings.Contains(err.Error(), "federation") {
+		t.Errorf("Rotate = %v", err)
 	}
 	if _, err := f.Sign(ctx, federationClaims(c.now())); !errors.Is(err, errDown) {
 		t.Errorf("Sign = %v", err)
@@ -336,8 +336,8 @@ func TestUnitFederationStoreFailures(t *testing.T) {
 	}
 	store.err = nil
 	store.inert = true
-	if err := f.Bootstrap(ctx); !errors.Is(err, token.ErrNoKey) {
-		t.Errorf("Bootstrap on a store that applies nothing = %v, want ErrNoKey", err)
+	if _, err := f.FederationKeys(ctx); !errors.Is(err, token.ErrNoKey) {
+		t.Errorf("FederationKeys on a store that applies nothing = %v, want ErrNoKey", err)
 	}
 	// Claims that do not marshal are not signed.
 	store.inert = false

@@ -137,12 +137,6 @@ func Run(ctx context.Context, c config.Config, log *slog.Logger, m Mode) error {
 	if err := domains.Features.Seed(ctx); err != nil {
 		return err //nolint:wrapcheck // names the seed
 	}
-	// A relying party fetches the federation keys before any run presents
-	// a token, so the first start creates the first one, through the KMS
-	// key that opened above under the kms backend.
-	if err := domains.Access.EnsureFederationKey(ctx); err != nil {
-		return err //nolint:wrapcheck // names the purpose
-	}
 	if m.API {
 		revoked, _ := l.Subscribe(notify.Invalidate) // one of notify.Channels, so never an error
 		wg.Go(func() { domains.Access.WatchSessions(background, revoked) })

@@ -20,12 +20,13 @@
 //
 // FederationService holds the Federation purpose's keys, which sign
 // Policy.Algorithm (auth.federation.algorithm: RS256 on RSA 3072 by
-// default, PS256 or ES256). Bootstrap creates the first key at start,
-// Sign signs a caller's claims as a JWT with the active key,
-// FederationKeys answers the published keys, next, active and retiring,
+// default, PS256 or ES256). Sign signs a caller's claims as a JWT with the
+// active key, FederationKeys answers the published keys, next, active and retiring,
 // as JWKs with kid, use sig and alg, from a per-replica cache reread
 // every SignerRefresh, and FederationKey finds one by kid, an unknown kid
-// reloading the cache at most once a second.
+// reloading the cache at most once a second. Sign and FederationKeys create
+// the first federation key on first use; Rotate never does, so an
+// installation that never federates generates no RSA key.
 //
 // Keys pass through StateNext, StateActive, StateRetiring and
 // StateRetired. Policy.Plan is the rotation due at a time: a next key
