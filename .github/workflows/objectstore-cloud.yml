@@ -85,6 +85,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # Lists the cloud's missing variables rather than failing at its
       # login with an error that names none of them.
       - name: Read the cloud's configuration

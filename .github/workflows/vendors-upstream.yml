@@ -52,6 +52,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Fail on purpose
         if: ${{ inputs.force-failure }}
         run: |

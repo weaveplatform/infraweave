@@ -178,6 +178,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # terraform reads the provider schema; the wrapper would mix its own
       # output into the JSON that specref parses.
       - name: Set up Terraform

@@ -73,6 +73,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Fail on purpose
         if: ${{ inputs.force-failure && matrix.partition == 'core' }}
         run: |
@@ -128,6 +131,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Native acceptance and capture replays
         env:
@@ -198,6 +204,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       # An empty setting leaves make accept-stress's default, which an
       # empty INFRAWEAVE_ACCEPT_STRESS in the environment would replace.

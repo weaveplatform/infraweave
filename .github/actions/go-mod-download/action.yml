@@ -1,0 +1,30 @@
+name: Download Go modules
+description: >-
+  Downloads every module the job's Go builds need, retrying a dropped
+  connection to the module proxy, then points the job's later steps at the
+  module cache in place of the proxy, so none of them can fetch a module
+  unretried. Runs after actions/setup-go, from the repository root.
+
+runs:
+  using: composite
+  steps:
+    # bash on every runner, Windows included: the script and the Makefile
+    # both need it.
+    - name: Download modules, retrying the proxy
+      shell: bash
+      env:
+        GOWORK: 'off'
+      run: make mod-download
+
+    # The module cache, served as a file:// proxy, rather than GOPROXY=off:
+    # go run pkg@version looks up the module's latest version for its
+    # deprecation notice, which GOPROXY=off refuses, failing the step. A
+    # module missing from the cache fails its step at once, naming the
+    # module. Windows reports C:\..., which a file URL writes as /C:/....
+    - name: Build from the module cache from here on
+      shell: bash
+      run: |
+        cache=$(go env GOMODCACHE)
+        cache=${cache//\\//}
+        [[ $cache == /* ]] || cache=/$cache
+        echo "GOPROXY=file://$cache/cache/download" >> "$GITHUB_ENV"

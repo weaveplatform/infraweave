@@ -458,6 +458,7 @@ keys.
 | `make lint` / `make fmt` | golangci-lint with `.golangci.yml` over the whole tree, including depguard's [import rules](docs/implementation/repo-layout.md#depguard-rules) and the `time.Sleep` ban in tests |
 | `make lint-fixtures` | Lints the `test/depguard` module, whose packages break each import rule once, and fails unless the findings are exactly `test/depguard/expected.txt` |
 | `make build` | Cross-compiles every `cmd/*` binary for six platforms, CGO disabled |
+| `make mod-download` | Downloads every module the build and tests need, and the module graph of each `go run` tool, trying each download three times; every CI job that compiles Go runs it first, then builds from the module cache alone |
 
 Three scheduled workflows report beside the gate and never block a
 merge; each opens an issue on failure, or comments on the open one.

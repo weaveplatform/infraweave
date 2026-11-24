@@ -57,6 +57,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Vet
         run: go vet ./...
 
@@ -136,6 +139,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       # The runner has Docker, so a scenario skipped for want of a daemon
       # fails the job rather than passing unseen.
@@ -221,6 +227,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Native acceptance and capture replays
         env:
           INFRAWEAVE_ACCEPT_REQUIRE_DOCKER: '1'
@@ -294,6 +303,8 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
       - name: Read the pinned Terraform release
         id: pins
         run: |
@@ -382,6 +393,8 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
       - name: Name the certified FIPS build cache
         id: fips_cache
         env:
@@ -466,6 +479,8 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
       - name: Name the certified FIPS build cache
         id: fips_cache
         env:
@@ -607,6 +622,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # Preserve both feature cohorts and every native SQL contract.
       - name: Acceptance on the next major
         id: accept
@@ -677,6 +695,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Download every partition's results
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -712,6 +733,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # Offline: regenerates both products' references from the committed
       # snapshots and diffs, so an edit to either rest-mapping.yaml, the Flows
       # schemas.yaml or the generator without `make reference` (or
@@ -739,6 +763,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # Rebundles the fragments and reruns oapi-codegen and stubgen, so a
       # fragment edited without `make generate` fails here rather than
       # leaving the server out of step with its spec.
@@ -763,6 +790,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       # The linter version lives in a plain file so the deps refresh job can
       # move it without the workflows permission a workflow edit would need.
@@ -816,6 +846,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: govulncheck
         run: make vuln
 
@@ -837,6 +870,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Build every cmd/* binary for every release platform (CGO disabled)
         run: make build
@@ -861,6 +897,9 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Download every coverage directory
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -988,6 +1027,8 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
       - name: Set up QEMU
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - name: Set up Helm
@@ -1038,6 +1079,8 @@ jobs:
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: 'go.mod'
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
       - name: Set up QEMU
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - name: Build the certified FIPS binaries
