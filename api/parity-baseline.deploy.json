@@ -7,9 +7,6 @@
       "aiIntegrationUpdate",
       "aiIntegrations"
     ],
-    "Account": [
-      "spaceliftAwsAccountId"
-    ],
     "Account Settings": [
       "accountRequestInfraAssistantEnabling",
       "accountSetInfraAssistantBuildModeEnabled",
@@ -78,21 +75,9 @@
       "templateSchema"
     ],
     "Cloud Integrations": [
-      "awsIntegration",
-      "awsIntegrationAttach",
-      "awsIntegrationAttachedStack",
-      "awsIntegrationAttachmentUpdate",
-      "awsIntegrationByName",
-      "awsIntegrationCreate",
-      "awsIntegrationDelete",
-      "awsIntegrationDetach",
       "awsIntegrationExternalIdForScan",
-      "awsIntegrationExternalIdForStack",
       "awsIntegrationIntentProjectAttach",
       "awsIntegrationIntentProjectDetach",
-      "awsIntegrationUpdate",
-      "awsIntegrations",
-      "awsIntegrationsEnabled",
       "azureIntegration",
       "azureIntegrationAttach",
       "azureIntegrationAttachedStack",
@@ -105,9 +90,7 @@
       "azureIntegrationDetach",
       "azureIntegrationUpdate",
       "azureIntegrations",
-      "azureIntegrationsEnabled",
-      "stackIntegrationAwsCreate",
-      "stackIntegrationAwsDelete"
+      "azureIntegrationsEnabled"
     ],
     "Debug": [
       "debugInfo"

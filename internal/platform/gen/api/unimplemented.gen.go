@@ -254,6 +254,54 @@ func (UnimplementedStrict) AwarenessSourceSurvey(context.Context, AwarenessSourc
 	return nil, &problem.NotImplementedError{OperationID: "awarenessSourceSurvey", Route: "GET /awareness-source-survey"}
 }
 
+func (UnimplementedStrict) AwsIntegrationDetach(context.Context, AwsIntegrationDetachRequestObject) (AwsIntegrationDetachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationDetach", Route: "DELETE /aws-integration-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) AwsIntegrationAttachmentUpdate(context.Context, AwsIntegrationAttachmentUpdateRequestObject) (AwsIntegrationAttachmentUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationAttachmentUpdate", Route: "PUT /aws-integration-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) AwsIntegrationByName(context.Context, AwsIntegrationByNameRequestObject) (AwsIntegrationByNameResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationByName", Route: "GET /aws-integration-by-name"}
+}
+
+func (UnimplementedStrict) AwsIntegrations(context.Context, AwsIntegrationsRequestObject) (AwsIntegrationsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrations", Route: "GET /aws-integrations"}
+}
+
+func (UnimplementedStrict) AwsIntegrationCreate(context.Context, AwsIntegrationCreateRequestObject) (AwsIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationCreate", Route: "POST /aws-integrations"}
+}
+
+func (UnimplementedStrict) AwsIntegrationsEnabled(context.Context, AwsIntegrationsEnabledRequestObject) (AwsIntegrationsEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationsEnabled", Route: "GET /aws-integrations-enabled"}
+}
+
+func (UnimplementedStrict) AwsIntegrationDelete(context.Context, AwsIntegrationDeleteRequestObject) (AwsIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationDelete", Route: "DELETE /aws-integrations/{awsIntegrationId}"}
+}
+
+func (UnimplementedStrict) AwsIntegration(context.Context, AwsIntegrationRequestObject) (AwsIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegration", Route: "GET /aws-integrations/{awsIntegrationId}"}
+}
+
+func (UnimplementedStrict) AwsIntegrationPatch(context.Context, AwsIntegrationPatchRequestObject) (AwsIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationPatch", Route: "PATCH /aws-integrations/{awsIntegrationId}"}
+}
+
+func (UnimplementedStrict) AwsIntegrationUpdate(context.Context, AwsIntegrationUpdateRequestObject) (AwsIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationUpdate", Route: "PUT /aws-integrations/{awsIntegrationId}"}
+}
+
+func (UnimplementedStrict) AwsIntegrationAttachedStack(context.Context, AwsIntegrationAttachedStackRequestObject) (AwsIntegrationAttachedStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationAttachedStack", Route: "GET /aws-integrations/{awsIntegrationId}/attached-stack"}
+}
+
+func (UnimplementedStrict) AwsIntegrationExternalIdForStack(context.Context, AwsIntegrationExternalIdForStackRequestObject) (AwsIntegrationExternalIdForStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationExternalIdForStack", Route: "GET /aws-integrations/{awsIntegrationId}/external-id-for-stack"}
+}
+
 func (UnimplementedStrict) AzureDevOpsRepoIntegrationCreate(context.Context, AzureDevOpsRepoIntegrationCreateRequestObject) (AzureDevOpsRepoIntegrationCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsRepoIntegrationCreate", Route: "POST /azure-dev-ops-repo-integrations"}
 }
@@ -544,6 +592,10 @@ func (UnimplementedStrict) GitlabWebhooksEndpoint(context.Context, GitlabWebhook
 
 func (UnimplementedStrict) Id(context.Context, IdRequestObject) (IdResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "id", Route: "GET /id"}
+}
+
+func (UnimplementedStrict) InstallationAwsAccountId(context.Context, InstallationAwsAccountIdRequestObject) (InstallationAwsAccountIdResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "installationAwsAccountId", Route: "GET /installation-aws-account-id"}
 }
 
 func (UnimplementedStrict) IntegrationsCount(context.Context, IntegrationsCountRequestObject) (IntegrationsCountResponseObject, error) {
@@ -1140,6 +1192,18 @@ func (UnimplementedStrict) StackAttachablePolicies(context.Context, StackAttacha
 
 func (UnimplementedStrict) StackAttachableWorkerPools(context.Context, StackAttachableWorkerPoolsRequestObject) (StackAttachableWorkerPoolsResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackAttachableWorkerPools", Route: "GET /stacks/{stackId}/attachable-worker-pools"}
+}
+
+func (UnimplementedStrict) AwsIntegrationAttach(context.Context, AwsIntegrationAttachRequestObject) (AwsIntegrationAttachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "awsIntegrationAttach", Route: "PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId}"}
+}
+
+func (UnimplementedStrict) StackIntegrationAwsDelete(context.Context, StackIntegrationAwsDeleteRequestObject) (StackIntegrationAwsDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackIntegrationAwsDelete", Route: "DELETE /stacks/{stackId}/aws-role"}
+}
+
+func (UnimplementedStrict) StackIntegrationAwsCreate(context.Context, StackIntegrationAwsCreateRequestObject) (StackIntegrationAwsCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "stackIntegrationAwsCreate", Route: "PUT /stacks/{stackId}/aws-role"}
 }
 
 func (UnimplementedStrict) StackConfigElement(context.Context, StackConfigElementRequestObject) (StackConfigElementResponseObject, error) {

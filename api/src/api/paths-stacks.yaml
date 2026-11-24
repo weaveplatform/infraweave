@@ -7797,9 +7797,13 @@ paths:
       x-rest-style: update
   /stacks/{stackId}/attachable-aws-integrations:
     get:
-      description: List of aws integrations that can be attached to this Stack.
+      description: >-
+        The AWS integrations the stack may attach that the caller may read:
+        those in the stack's space, and those in each ancestor reached through
+        an unbroken chain of spaces that inherit their parent's entities, by
+        name.
       operationId: stackAttachableAwsIntegrations
-      x-infraweave-feature: stacks
+      x-infraweave-feature: cloud-integrations
       x-infraweave-action: SPACE_READ
       x-infraweave-subject: path:stackId:stack
       parameters:

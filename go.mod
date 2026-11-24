@@ -22,6 +22,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.7.12
 	github.com/aws/aws-sdk-go-v2/service/kms v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.116.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.53.0
+	github.com/aws/smithy-go v1.28.9
 	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/containerd/errdefs v1.0.0
@@ -123,8 +125,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/signin v1.14.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.39.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.53.0 // indirect
-	github.com/aws/smithy-go v1.28.9 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect

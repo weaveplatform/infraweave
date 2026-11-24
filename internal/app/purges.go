@@ -30,6 +30,7 @@ const (
 	runsPurge          = "runs.purge"
 	workersPurge       = "workers.purge"
 	statePurge         = "state.purge"
+	cloudPurge         = "cloud.purge"
 )
 
 // subscribePurges subscribes each domain's purge to accessapi.Deleted on
@@ -63,6 +64,9 @@ func subscribePurges(events *outbox.Outbox, d Domains) error {
 		},
 		statePurge: func(ctx context.Context, del accessapi.Deleted) error {
 			return d.State.Purge(ctx, kernel.AccountID{ULID: del.Account})
+		},
+		cloudPurge: func(ctx context.Context, del accessapi.Deleted) error {
+			return d.Cloud.Purge(ctx, kernel.AccountID{ULID: del.Account})
 		},
 	} {
 		if err := events.Subscribe(accessapi.DeletedKind, consumer, purge(run)); err != nil {

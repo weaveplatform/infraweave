@@ -7,6 +7,7 @@ import (
 	"time"
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
+	cloudassembly "github.com/weaveplatform/infraweave/internal/cloud/assembly"
 	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
 	eventsassembly "github.com/weaveplatform/infraweave/internal/events/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
@@ -45,6 +46,7 @@ func held() []integrity.Held {
 		policiesassembly.Held(),
 		runsassembly.Held(),
 		stateassembly.Held(),
+		cloudassembly.Held(),
 		vcsassembly.Held(),
 		eventsassembly.Held(),
 		workersassembly.Held(),

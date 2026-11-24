@@ -3563,6 +3563,54 @@ type AwsIntegration struct {
 // AwsIntegrationKind The concrete type, for union and interface responses.
 type AwsIntegrationKind string
 
+// AwsIntegrationAttachRequest The arguments of awsIntegrationAttach not carried in the path.
+type AwsIntegrationAttachRequest struct {
+	// Read Indicates whether this attachment is used for read operations. Defaults to `true`.
+	Read bool `json:"read"`
+
+	// Write Indicates whether this attachment is used for write operations. Defaults to `true`.
+	Write bool `json:"write"`
+}
+
+// AwsIntegrationAttachmentUpdateRequest The arguments of awsIntegrationAttachmentUpdate not carried in the path.
+type AwsIntegrationAttachmentUpdateRequest struct {
+	Read  bool `json:"read"`
+	Write bool `json:"write"`
+}
+
+// AwsIntegrationCreateRequest The arguments of awsIntegrationCreate not carried in the path.
+type AwsIntegrationCreateRequest struct {
+	// AutoattachEnabled Enables `autoattach:` labels functionality for this integration.
+	AutoattachEnabled *bool `json:"autoattachEnabled,omitempty"`
+
+	// DurationSeconds How long the assumed role's credentials stay valid, in seconds: 900 to 3600 when the server assumes the role, 900 to 43200 with generateCredentialsInWorker. Defaults to 3600.
+	DurationSeconds *int32 `json:"durationSeconds,omitempty"`
+
+	// ExternalID A custom external ID the private worker assumes the role with, accepted only with generateCredentialsInWorker. Without one, the generated external ID applies.
+	ExternalID *string `json:"externalID,omitempty"`
+
+	// GenerateCredentialsInWorker Generate AWS credentials in the private worker. Defaults to `false`.
+	GenerateCredentialsInWorker bool `json:"generateCredentialsInWorker"`
+
+	// Labels Labels to set on the integration
+	Labels []string `json:"labels"`
+
+	// Name The friendly name of the integration
+	Name string `json:"name"`
+
+	// Region AWS region to select a regional AWS STS endpoint.
+	Region *string `json:"region,omitempty"`
+
+	// RoleArn ARN of the AWS IAM role to attach
+	RoleArn string `json:"roleArn"`
+
+	// Space ID (slug) of the space the integration is in; the account's top space when absent.
+	Space *string `json:"space,omitempty"`
+
+	// TagAssumeRole Whether role assumption tags the session with the run, the stack and the space. Defaults to `false`.
+	TagAssumeRole *bool `json:"tagAssumeRole,omitempty"`
+}
+
 // AwsIntegrationPage One page of a cursor-paginated list.
 type AwsIntegrationPage struct {
 	Items []AwsIntegration `json:"items"`
@@ -3608,6 +3656,20 @@ type AwsIntegrationStackAttachment struct {
 
 	// Write Whether the integration is used for write operations.
 	Write bool `json:"write"`
+}
+
+// AwsIntegrationUpdateRequest The arguments of awsIntegrationUpdate not carried in the path.
+type AwsIntegrationUpdateRequest struct {
+	AutoattachEnabled           *bool    `json:"autoattachEnabled,omitempty"`
+	DurationSeconds             int32    `json:"durationSeconds"`
+	ExternalID                  string   `json:"externalID"`
+	GenerateCredentialsInWorker bool     `json:"generateCredentialsInWorker"`
+	Labels                      []string `json:"labels"`
+	Name                        string   `json:"name"`
+	Region                      *string  `json:"region,omitempty"`
+	RoleArn                     string   `json:"roleArn"`
+	Space                       *string  `json:"space,omitempty"`
+	TagAssumeRole               *bool    `json:"tagAssumeRole,omitempty"`
 }
 
 // AzureDevOpsRepoIntegration defines model for AzureDevOpsRepoIntegration.
@@ -4931,6 +4993,16 @@ type ExpressionEvaluation struct {
 
 // ExpressionForm How the source is written: expression, one CEL expression that keeps its type, or template, text with expressions embedded as ${{ … }} and rendered into a string.
 type ExpressionForm string
+
+// ExternalIdForStackResult ExternalIdForStackResult contains information needed for creating AWS AssumeRole
+// policies for an integration stack attachment.
+type ExternalIdForStackResult struct {
+	// AssumeRolePolicyStatement An example AssumeRole policy statement that allows the stack to assume the role.
+	AssumeRolePolicyStatement string `json:"assumeRolePolicyStatement"`
+
+	// ExternalId The external ID that would be used when assuming the role for the stack.
+	ExternalId string `json:"externalId"`
+}
 
 // ExternalIntegration defines model for ExternalIntegration.
 type ExternalIntegration struct {
@@ -9665,6 +9737,24 @@ type StackIntegrationAws struct {
 	Region *string `json:"region,omitempty"`
 }
 
+// StackIntegrationAwsCreateRequest The arguments of stackIntegrationAwsCreate not carried in the path.
+type StackIntegrationAwsCreateRequest struct {
+	// DurationSeconds AWS IAM role session duration in seconds
+	DurationSeconds *int32 `json:"durationSeconds,omitempty"`
+
+	// ExternalID Custom external ID (works only for private workers).
+	ExternalID *string `json:"externalID,omitempty"`
+
+	// GenerateCredentialsInWorker Generate AWS credentials in the private worker. Defaults to `false`.
+	GenerateCredentialsInWorker *bool `json:"generateCredentialsInWorker,omitempty"`
+
+	// Region AWS region to select a regional AWS STS endpoint.
+	Region *string `json:"region,omitempty"`
+
+	// RoleArn ARN of the AWS IAM role to attach
+	RoleArn string `json:"roleArn"`
+}
+
 // StackIntegrationSlack Slack integration - with that set up, a Stack or Module can send notifications
 // about various events to a number of Slack channels.
 type StackIntegrationSlack struct {
@@ -11442,6 +11532,61 @@ type AvailableUserGroupsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// AwsIntegrationByNameParams defines parameters for AwsIntegrationByName.
+type AwsIntegrationByNameParams struct {
+	Name string `form:"name" json:"name"`
+}
+
+// AwsIntegrationsParams defines parameters for AwsIntegrations.
+type AwsIntegrationsParams struct {
+	IncludeLegacy *bool `form:"includeLegacy,omitempty" json:"includeLegacy,omitempty"`
+
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AwsIntegrationCreateParams defines parameters for AwsIntegrationCreate.
+type AwsIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AwsIntegrationDeleteParams defines parameters for AwsIntegrationDelete.
+type AwsIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AwsIntegrationPatchParams defines parameters for AwsIntegrationPatch.
+type AwsIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AwsIntegrationUpdateParams defines parameters for AwsIntegrationUpdate.
+type AwsIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AwsIntegrationAttachedStackParams defines parameters for AwsIntegrationAttachedStack.
+type AwsIntegrationAttachedStackParams struct {
+	Id string `form:"id" json:"id"`
+}
+
+// AwsIntegrationExternalIdForStackParams defines parameters for AwsIntegrationExternalIdForStack.
+type AwsIntegrationExternalIdForStackParams struct {
+	StackId string `form:"stackId" json:"stackId"`
+	Read    bool   `form:"read" json:"read"`
+	Write   bool   `form:"write" json:"write"`
+}
+
 // AzureDevOpsRepoIntegrationCreateParams defines parameters for AzureDevOpsRepoIntegrationCreate.
 type AzureDevOpsRepoIntegrationCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -13207,6 +13352,18 @@ type AuthSessionAccountJSONRequestBody = AuthSessionAccountRequest
 // ApiKeyUserJSONRequestBody defines body for ApiKeyUser for application/json ContentType.
 type ApiKeyUserJSONRequestBody = ApiKeyUserRequest
 
+// AwsIntegrationAttachmentUpdateJSONRequestBody defines body for AwsIntegrationAttachmentUpdate for application/json ContentType.
+type AwsIntegrationAttachmentUpdateJSONRequestBody = AwsIntegrationAttachmentUpdateRequest
+
+// AwsIntegrationCreateJSONRequestBody defines body for AwsIntegrationCreate for application/json ContentType.
+type AwsIntegrationCreateJSONRequestBody = AwsIntegrationCreateRequest
+
+// AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for AwsIntegrationPatch for application/merge-patch+json ContentType.
+type AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// AwsIntegrationUpdateJSONRequestBody defines body for AwsIntegrationUpdate for application/json ContentType.
+type AwsIntegrationUpdateJSONRequestBody = AwsIntegrationUpdateRequest
+
 // AzureDevOpsRepoIntegrationCreateJSONRequestBody defines body for AzureDevOpsRepoIntegrationCreate for application/json ContentType.
 type AzureDevOpsRepoIntegrationCreateJSONRequestBody = AzureDevOpsRepoIntegrationCreateRequest
 
@@ -13476,6 +13633,14 @@ type StackPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
 
 // StackUpdateJSONRequestBody defines body for StackUpdate for application/json ContentType.
 type StackUpdateJSONRequestBody = StackInput
+
+// AwsIntegrationAttachJSONRequestBody defines body for AwsIntegrationAttach for application/json ContentType.
+type AwsIntegrationAttachJSONRequestBody = AwsIntegrationAttachRequest
+
+// StackIntegrationAwsCreateJSONRequestBody defines body for StackIntegrationAwsCreate for application/json ContentType.
+//
+// Deprecated: this type has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+type StackIntegrationAwsCreateJSONRequestBody = StackIntegrationAwsCreateRequest
 
 // StackConfigAddJSONRequestBody defines body for StackConfigAdd for application/json ContentType.
 type StackConfigAddJSONRequestBody = ConfigInput
@@ -15971,7 +16136,7 @@ type ClientInterface interface {
 
 	// AttachableAwsIntegrationsInSpace Attachable AWS Integrations
 	//
-	// List of aws integrations that can be attached Stacks/Modules in given space.
+	// The AWS integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Corresponds with GET /attachable-aws-integrations-in-space (the `AttachableAwsIntegrationsInSpace` operationId).
 	AttachableAwsIntegrationsInSpace(ctx context.Context, params *AttachableAwsIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16187,6 +16352,136 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationDetach Detach AWS Integration
+	//
+	// Detaches an AWS integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+	//
+	// Corresponds with DELETE /aws-integration-attachments/{attachmentId} (the `AwsIntegrationDetach` operationId).
+	AwsIntegrationDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationAttachmentUpdateWithBody Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+	AwsIntegrationAttachmentUpdateWithBody(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationAttachmentUpdate Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+	AwsIntegrationAttachmentUpdate(ctx context.Context, attachmentId string, body AwsIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationByName Get AWS Integration by Name
+	//
+	// One AWS integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Corresponds with GET /aws-integration-by-name (the `AwsIntegrationByName` operationId).
+	AwsIntegrationByName(ctx context.Context, params *AwsIntegrationByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrations List AWS Integrations
+	//
+	// The AWS integrations of the account in spaces the caller may read, by name. The legacy
+	// integrations stackIntegrationAwsCreate binds to one stack are left out unless includeLegacy
+	// is true.
+	//
+	// Corresponds with GET /aws-integrations (the `AwsIntegrations` operationId).
+	AwsIntegrations(ctx context.Context, params *AwsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationCreateWithBody Create AWS Integration
+	//
+	// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+	AwsIntegrationCreateWithBody(ctx context.Context, params *AwsIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationCreate Create AWS Integration
+	//
+	// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+	AwsIntegrationCreate(ctx context.Context, params *AwsIntegrationCreateParams, body AwsIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationsEnabled List Enabled AWS Integrations
+	//
+	// Whether the account may use AWS integrations.
+	//
+	// Corresponds with GET /aws-integrations-enabled (the `AwsIntegrationsEnabled` operationId).
+	AwsIntegrationsEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationDelete Delete AWS Integration
+	//
+	// Deletes an AWS integration with its attachments, and answers it as it was.
+	//
+	// Corresponds with DELETE /aws-integrations/{awsIntegrationId} (the `AwsIntegrationDelete` operationId).
+	AwsIntegrationDelete(ctx context.Context, awsIntegrationId string, params *AwsIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegration Get AWS Integration
+	//
+	// One AWS integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId} (the `AwsIntegration` operationId).
+	AwsIntegration(ctx context.Context, awsIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationPatchWithBody Patch AWS Integration
+	//
+	// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+	AwsIntegrationPatchWithBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch AWS Integration
+	//
+	// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+	AwsIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, body AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationUpdateWithBody Update AWS Integration
+	//
+	// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+	AwsIntegrationUpdateWithBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationUpdate Update AWS Integration
+	//
+	// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+	AwsIntegrationUpdate(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, body AwsIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationAttachedStack Aws integration attached stack
+	//
+	// One of the integration's stack attachments, by the attachment's ID.
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId}/attached-stack (the `AwsIntegrationAttachedStack` operationId).
+	AwsIntegrationAttachedStack(ctx context.Context, awsIntegrationId string, params *AwsIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationExternalIdForStack Aws integration external id for stack
+	//
+	// The external ID role assumption uses for the integration on a stack, for read, write or both, with an example trust policy statement that names the AWS account of the installation's own identity and each external ID asked for. Asked for both, it answers the write side's external ID; a stack's legacy AWS role has one for both sides. An installation without AWS credentials answers installation-unsupported.
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId}/external-id-for-stack (the `AwsIntegrationExternalIdForStack` operationId).
+	AwsIntegrationExternalIdForStack(ctx context.Context, awsIntegrationId string, params *AwsIntegrationExternalIdForStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AzureDevOpsRepoIntegrationCreateWithBody Create Azure DevOps Integration
 	//
@@ -17048,6 +17343,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InstallationAwsAccountId Get AWS Account ID
+	//
+	// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
+	//
+	// Corresponds with GET /installation-aws-account-id (the `InstallationAwsAccountId` operationId).
+	InstallationAwsAccountId(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// IntegrationsCount Get Integrations Count
 	//
@@ -18761,7 +19063,7 @@ type ClientInterface interface {
 
 	// StackAttachableAwsIntegrations Stack attachable aws integrations
 	//
-	// List of aws integrations that can be attached to this Stack.
+	// The AWS integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-aws-integrations (the `StackAttachableAwsIntegrations` operationId).
 	StackAttachableAwsIntegrations(ctx context.Context, stackId string, params *StackAttachableAwsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -18793,6 +19095,61 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-worker-pools (the `StackAttachableWorkerPools` operationId).
 	StackAttachableWorkerPools(ctx context.Context, stackId string, params *StackAttachableWorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationAttachWithBody Attach AWS Integration
+	//
+	// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. For an integration the
+	// server assumes, the role's trust policy is tested for each side first.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+	AwsIntegrationAttachWithBody(ctx context.Context, stackId string, awsIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AwsIntegrationAttach Attach AWS Integration
+	//
+	// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. For an integration the
+	// server assumes, the role's trust policy is tested for each side first.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+	AwsIntegrationAttach(ctx context.Context, stackId string, awsIntegrationId string, body AwsIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackIntegrationAwsDelete Detach from Stack
+	//
+	// Deletes the stack's legacy AWS role, the integration stackIntegrationAwsCreate made. Superseded by awsIntegrationDetach.
+	//
+	// Corresponds with DELETE /stacks/{stackId}/aws-role (the `StackIntegrationAwsDelete` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsDelete(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackIntegrationAwsCreateWithBody Attach to Stack
+	//
+	// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsCreateWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// StackIntegrationAwsCreate Attach to Stack
+	//
+	// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsCreate(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackConfigElement Stack config element
 	//
@@ -21413,7 +21770,7 @@ func (c *Client) ApiKeyReset(ctx context.Context, apiKeyId string, params *ApiKe
 
 // AttachableAwsIntegrationsInSpace Attachable AWS Integrations
 //
-// List of aws integrations that can be attached Stacks/Modules in given space.
+// The AWS integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Corresponds with GET /attachable-aws-integrations-in-space (the `AttachableAwsIntegrationsInSpace` operationId).
 func (c *Client) AttachableAwsIntegrationsInSpace(ctx context.Context, params *AttachableAwsIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -21870,6 +22227,296 @@ func (c *Client) AvailableUserGroups(ctx context.Context, params *AvailableUserG
 // Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 func (c *Client) AwarenessSourceSurvey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAwarenessSourceSurveyRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationDetach Detach AWS Integration
+//
+// Detaches an AWS integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+//
+// Corresponds with DELETE /aws-integration-attachments/{attachmentId} (the `AwsIntegrationDetach` operationId).
+func (c *Client) AwsIntegrationDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationDetachRequest(c.Server, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationAttachmentUpdateWithBody Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+func (c *Client) AwsIntegrationAttachmentUpdateWithBody(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationAttachmentUpdateRequestWithBody(c.Server, attachmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationAttachmentUpdate Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+func (c *Client) AwsIntegrationAttachmentUpdate(ctx context.Context, attachmentId string, body AwsIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationAttachmentUpdateRequest(c.Server, attachmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationByName Get AWS Integration by Name
+//
+// One AWS integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Corresponds with GET /aws-integration-by-name (the `AwsIntegrationByName` operationId).
+func (c *Client) AwsIntegrationByName(ctx context.Context, params *AwsIntegrationByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationByNameRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrations List AWS Integrations
+//
+// The AWS integrations of the account in spaces the caller may read, by name. The legacy
+// integrations stackIntegrationAwsCreate binds to one stack are left out unless includeLegacy
+// is true.
+//
+// Corresponds with GET /aws-integrations (the `AwsIntegrations` operationId).
+func (c *Client) AwsIntegrations(ctx context.Context, params *AwsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationCreateWithBody Create AWS Integration
+//
+// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+func (c *Client) AwsIntegrationCreateWithBody(ctx context.Context, params *AwsIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationCreate Create AWS Integration
+//
+// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+func (c *Client) AwsIntegrationCreate(ctx context.Context, params *AwsIntegrationCreateParams, body AwsIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationsEnabled List Enabled AWS Integrations
+//
+// Whether the account may use AWS integrations.
+//
+// Corresponds with GET /aws-integrations-enabled (the `AwsIntegrationsEnabled` operationId).
+func (c *Client) AwsIntegrationsEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationsEnabledRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationDelete Delete AWS Integration
+//
+// Deletes an AWS integration with its attachments, and answers it as it was.
+//
+// Corresponds with DELETE /aws-integrations/{awsIntegrationId} (the `AwsIntegrationDelete` operationId).
+func (c *Client) AwsIntegrationDelete(ctx context.Context, awsIntegrationId string, params *AwsIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationDeleteRequest(c.Server, awsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegration Get AWS Integration
+//
+// One AWS integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId} (the `AwsIntegration` operationId).
+func (c *Client) AwsIntegration(ctx context.Context, awsIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationRequest(c.Server, awsIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationPatchWithBody Patch AWS Integration
+//
+// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+func (c *Client) AwsIntegrationPatchWithBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationPatchRequestWithBody(c.Server, awsIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch AWS Integration
+//
+// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+func (c *Client) AwsIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, body AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, awsIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationUpdateWithBody Update AWS Integration
+//
+// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+func (c *Client) AwsIntegrationUpdateWithBody(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationUpdateRequestWithBody(c.Server, awsIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationUpdate Update AWS Integration
+//
+// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+func (c *Client) AwsIntegrationUpdate(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, body AwsIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationUpdateRequest(c.Server, awsIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationAttachedStack Aws integration attached stack
+//
+// One of the integration's stack attachments, by the attachment's ID.
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId}/attached-stack (the `AwsIntegrationAttachedStack` operationId).
+func (c *Client) AwsIntegrationAttachedStack(ctx context.Context, awsIntegrationId string, params *AwsIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationAttachedStackRequest(c.Server, awsIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationExternalIdForStack Aws integration external id for stack
+//
+// The external ID role assumption uses for the integration on a stack, for read, write or both, with an example trust policy statement that names the AWS account of the installation's own identity and each external ID asked for. Asked for both, it answers the write side's external ID; a stack's legacy AWS role has one for both sides. An installation without AWS credentials answers installation-unsupported.
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId}/external-id-for-stack (the `AwsIntegrationExternalIdForStack` operationId).
+func (c *Client) AwsIntegrationExternalIdForStack(ctx context.Context, awsIntegrationId string, params *AwsIntegrationExternalIdForStackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationExternalIdForStackRequest(c.Server, awsIntegrationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -23781,6 +24428,23 @@ func (c *Client) GitlabWebhooksEndpoint(ctx context.Context, reqEditors ...Reque
 // Corresponds with GET /id (the `Id` operationId).
 func (c *Client) Id(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewIdRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InstallationAwsAccountId Get AWS Account ID
+//
+// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
+//
+// Corresponds with GET /installation-aws-account-id (the `InstallationAwsAccountId` operationId).
+func (c *Client) InstallationAwsAccountId(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInstallationAwsAccountIdRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -27523,7 +28187,7 @@ func (c *Client) StackUpdate(ctx context.Context, stackId string, params *StackU
 
 // StackAttachableAwsIntegrations Stack attachable aws integrations
 //
-// List of aws integrations that can be attached to this Stack.
+// The AWS integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Corresponds with GET /stacks/{stackId}/attachable-aws-integrations (the `StackAttachableAwsIntegrations` operationId).
 func (c *Client) StackAttachableAwsIntegrations(ctx context.Context, stackId string, params *StackAttachableAwsIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27596,6 +28260,108 @@ func (c *Client) StackAttachablePolicies(ctx context.Context, stackId string, pa
 // Corresponds with GET /stacks/{stackId}/attachable-worker-pools (the `StackAttachableWorkerPools` operationId).
 func (c *Client) StackAttachableWorkerPools(ctx context.Context, stackId string, params *StackAttachableWorkerPoolsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackAttachableWorkerPoolsRequest(c.Server, stackId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationAttachWithBody Attach AWS Integration
+//
+// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. For an integration the
+// server assumes, the role's trust policy is tested for each side first.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+func (c *Client) AwsIntegrationAttachWithBody(ctx context.Context, stackId string, awsIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationAttachRequestWithBody(c.Server, stackId, awsIntegrationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AwsIntegrationAttach Attach AWS Integration
+//
+// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. For an integration the
+// server assumes, the role's trust policy is tested for each side first.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+func (c *Client) AwsIntegrationAttach(ctx context.Context, stackId string, awsIntegrationId string, body AwsIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAwsIntegrationAttachRequest(c.Server, stackId, awsIntegrationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackIntegrationAwsDelete Detach from Stack
+//
+// Deletes the stack's legacy AWS role, the integration stackIntegrationAwsCreate made. Superseded by awsIntegrationDetach.
+//
+// Corresponds with DELETE /stacks/{stackId}/aws-role (the `StackIntegrationAwsDelete` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *Client) StackIntegrationAwsDelete(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackIntegrationAwsDeleteRequest(c.Server, stackId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackIntegrationAwsCreateWithBody Attach to Stack
+//
+// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *Client) StackIntegrationAwsCreateWithBody(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackIntegrationAwsCreateRequestWithBody(c.Server, stackId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// StackIntegrationAwsCreate Attach to Stack
+//
+// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *Client) StackIntegrationAwsCreate(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStackIntegrationAwsCreateRequest(c.Server, stackId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -34233,6 +34999,645 @@ func NewAwarenessSourceSurveyRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewAwsIntegrationDetachRequest constructs an http.Request for the AwsIntegrationDetach method
+func NewAwsIntegrationDetachRequest(server string, attachmentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integration-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationAttachmentUpdateRequest calls the generic AwsIntegrationAttachmentUpdate builder with application/json body
+func NewAwsIntegrationAttachmentUpdateRequest(server string, attachmentId string, body AwsIntegrationAttachmentUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAwsIntegrationAttachmentUpdateRequestWithBody(server, attachmentId, "application/json", bodyReader)
+}
+
+// NewAwsIntegrationAttachmentUpdateRequestWithBody constructs an http.Request for the AwsIntegrationAttachmentUpdate method, with any body, and a specified content type
+func NewAwsIntegrationAttachmentUpdateRequestWithBody(server string, attachmentId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integration-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAwsIntegrationByNameRequest constructs an http.Request for the AwsIntegrationByName method
+func NewAwsIntegrationByNameRequest(server string, params *AwsIntegrationByNameParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integration-by-name")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationsRequest constructs an http.Request for the AwsIntegrations method
+func NewAwsIntegrationsRequest(server string, params *AwsIntegrationsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.IncludeLegacy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeLegacy", *params.IncludeLegacy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationCreateRequest calls the generic AwsIntegrationCreate builder with application/json body
+func NewAwsIntegrationCreateRequest(server string, params *AwsIntegrationCreateParams, body AwsIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAwsIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAwsIntegrationCreateRequestWithBody constructs an http.Request for the AwsIntegrationCreate method, with any body, and a specified content type
+func NewAwsIntegrationCreateRequestWithBody(server string, params *AwsIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationsEnabledRequest constructs an http.Request for the AwsIntegrationsEnabled method
+func NewAwsIntegrationsEnabledRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationDeleteRequest constructs an http.Request for the AwsIntegrationDelete method
+func NewAwsIntegrationDeleteRequest(server string, awsIntegrationId string, params *AwsIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationRequest constructs an http.Request for the AwsIntegration method
+func NewAwsIntegrationRequest(server string, awsIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic AwsIntegrationPatch builder with application/merge-patch+json body
+func NewAwsIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, awsIntegrationId string, params *AwsIntegrationPatchParams, body AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAwsIntegrationPatchRequestWithBody(server, awsIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewAwsIntegrationPatchRequestWithBody constructs an http.Request for the AwsIntegrationPatch method, with any body, and a specified content type
+func NewAwsIntegrationPatchRequestWithBody(server string, awsIntegrationId string, params *AwsIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationUpdateRequest calls the generic AwsIntegrationUpdate builder with application/json body
+func NewAwsIntegrationUpdateRequest(server string, awsIntegrationId string, params *AwsIntegrationUpdateParams, body AwsIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAwsIntegrationUpdateRequestWithBody(server, awsIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewAwsIntegrationUpdateRequestWithBody constructs an http.Request for the AwsIntegrationUpdate method, with any body, and a specified content type
+func NewAwsIntegrationUpdateRequestWithBody(server string, awsIntegrationId string, params *AwsIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationAttachedStackRequest constructs an http.Request for the AwsIntegrationAttachedStack method
+func NewAwsIntegrationAttachedStackRequest(server string, awsIntegrationId string, params *AwsIntegrationAttachedStackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s/attached-stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationExternalIdForStackRequest constructs an http.Request for the AwsIntegrationExternalIdForStack method
+func NewAwsIntegrationExternalIdForStackRequest(server string, awsIntegrationId string, params *AwsIntegrationExternalIdForStackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/aws-integrations/%s/external-id-for-stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "stackId", params.StackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "read", params.Read, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "write", params.Write, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAzureDevOpsRepoIntegrationCreateRequest calls the generic AzureDevOpsRepoIntegrationCreate builder with application/json body
 func NewAzureDevOpsRepoIntegrationCreateRequest(server string, params *AzureDevOpsRepoIntegrationCreateParams, body AzureDevOpsRepoIntegrationCreateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -37849,6 +39254,33 @@ func NewIdRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/id")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewInstallationAwsAccountIdRequest constructs an http.Request for the InstallationAwsAccountId method
+func NewInstallationAwsAccountIdRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/installation-aws-account-id")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -45532,6 +46964,141 @@ func NewStackAttachableWorkerPoolsRequest(server string, stackId string, params 
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewAwsIntegrationAttachRequest calls the generic AwsIntegrationAttach builder with application/json body
+func NewAwsIntegrationAttachRequest(server string, stackId string, awsIntegrationId string, body AwsIntegrationAttachJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAwsIntegrationAttachRequestWithBody(server, stackId, awsIntegrationId, "application/json", bodyReader)
+}
+
+// NewAwsIntegrationAttachRequestWithBody constructs an http.Request for the AwsIntegrationAttach method, with any body, and a specified content type
+func NewAwsIntegrationAttachRequestWithBody(server string, stackId string, awsIntegrationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "awsIntegrationId", awsIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/aws-integrations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewStackIntegrationAwsDeleteRequest constructs an http.Request for the StackIntegrationAwsDelete method
+func NewStackIntegrationAwsDeleteRequest(server string, stackId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/aws-role", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewStackIntegrationAwsCreateRequest calls the generic StackIntegrationAwsCreate builder with application/json body
+func NewStackIntegrationAwsCreateRequest(server string, stackId string, body StackIntegrationAwsCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStackIntegrationAwsCreateRequestWithBody(server, stackId, "application/json", bodyReader)
+}
+
+// NewStackIntegrationAwsCreateRequestWithBody constructs an http.Request for the StackIntegrationAwsCreate method, with any body, and a specified content type
+func NewStackIntegrationAwsCreateRequestWithBody(server string, stackId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/aws-role", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -53877,7 +55444,7 @@ type ClientWithResponsesInterface interface {
 
 	// AttachableAwsIntegrationsInSpaceWithResponse Attachable AWS Integrations
 	//
-	// List of aws integrations that can be attached Stacks/Modules in given space.
+	// The AWS integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -54127,6 +55694,152 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /awareness-source-survey (the `AwarenessSourceSurvey` operationId).
 	AwarenessSourceSurveyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwarenessSourceSurveyResponse, error)
+
+	// AwsIntegrationDetachWithResponse Detach AWS Integration
+	//
+	// Detaches an AWS integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /aws-integration-attachments/{attachmentId} (the `AwsIntegrationDetach` operationId).
+	AwsIntegrationDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*AwsIntegrationDetachResponse, error)
+
+	// AwsIntegrationAttachmentUpdateWithBodyWithResponse Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+	AwsIntegrationAttachmentUpdateWithBodyWithResponse(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachmentUpdateResponse, error)
+
+	// AwsIntegrationAttachmentUpdateWithResponse Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+	AwsIntegrationAttachmentUpdateWithResponse(ctx context.Context, attachmentId string, body AwsIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachmentUpdateResponse, error)
+
+	// AwsIntegrationByNameWithResponse Get AWS Integration by Name
+	//
+	// One AWS integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integration-by-name (the `AwsIntegrationByName` operationId).
+	AwsIntegrationByNameWithResponse(ctx context.Context, params *AwsIntegrationByNameParams, reqEditors ...RequestEditorFn) (*AwsIntegrationByNameResponse, error)
+
+	// AwsIntegrationsWithResponse List AWS Integrations
+	//
+	// The AWS integrations of the account in spaces the caller may read, by name. The legacy
+	// integrations stackIntegrationAwsCreate binds to one stack are left out unless includeLegacy
+	// is true.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integrations (the `AwsIntegrations` operationId).
+	AwsIntegrationsWithResponse(ctx context.Context, params *AwsIntegrationsParams, reqEditors ...RequestEditorFn) (*AwsIntegrationsResponse, error)
+
+	// AwsIntegrationCreateWithBodyWithResponse Create AWS Integration
+	//
+	// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+	AwsIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AwsIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationCreateResponse, error)
+
+	// AwsIntegrationCreateWithResponse Create AWS Integration
+	//
+	// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+	AwsIntegrationCreateWithResponse(ctx context.Context, params *AwsIntegrationCreateParams, body AwsIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationCreateResponse, error)
+
+	// AwsIntegrationsEnabledWithResponse List Enabled AWS Integrations
+	//
+	// Whether the account may use AWS integrations.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integrations-enabled (the `AwsIntegrationsEnabled` operationId).
+	AwsIntegrationsEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwsIntegrationsEnabledResponse, error)
+
+	// AwsIntegrationDeleteWithResponse Delete AWS Integration
+	//
+	// Deletes an AWS integration with its attachments, and answers it as it was.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /aws-integrations/{awsIntegrationId} (the `AwsIntegrationDelete` operationId).
+	AwsIntegrationDeleteWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AwsIntegrationDeleteResponse, error)
+
+	// AwsIntegrationWithResponse Get AWS Integration
+	//
+	// One AWS integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId} (the `AwsIntegration` operationId).
+	AwsIntegrationWithResponse(ctx context.Context, awsIntegrationId string, reqEditors ...RequestEditorFn) (*AwsIntegrationResponse, error)
+
+	// AwsIntegrationPatchWithBodyWithResponse Patch AWS Integration
+	//
+	// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+	AwsIntegrationPatchWithBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationPatchResponse, error)
+
+	// AwsIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch AWS Integration
+	//
+	// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+	AwsIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, body AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationPatchResponse, error)
+
+	// AwsIntegrationUpdateWithBodyWithResponse Update AWS Integration
+	//
+	// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+	AwsIntegrationUpdateWithBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationUpdateResponse, error)
+
+	// AwsIntegrationUpdateWithResponse Update AWS Integration
+	//
+	// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+	AwsIntegrationUpdateWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, body AwsIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationUpdateResponse, error)
+
+	// AwsIntegrationAttachedStackWithResponse Aws integration attached stack
+	//
+	// One of the integration's stack attachments, by the attachment's ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId}/attached-stack (the `AwsIntegrationAttachedStack` operationId).
+	AwsIntegrationAttachedStackWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachedStackResponse, error)
+
+	// AwsIntegrationExternalIdForStackWithResponse Aws integration external id for stack
+	//
+	// The external ID role assumption uses for the integration on a stack, for read, write or both, with an example trust policy statement that names the AWS account of the installation's own identity and each external ID asked for. Asked for both, it answers the write side's external ID; a stack's legacy AWS role has one for both sides. An installation without AWS credentials answers installation-unsupported.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /aws-integrations/{awsIntegrationId}/external-id-for-stack (the `AwsIntegrationExternalIdForStack` operationId).
+	AwsIntegrationExternalIdForStackWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationExternalIdForStackParams, reqEditors ...RequestEditorFn) (*AwsIntegrationExternalIdForStackResponse, error)
 
 	// AzureDevOpsRepoIntegrationCreateWithBodyWithResponse Create Azure DevOps Integration
 	//
@@ -55070,6 +56783,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /id (the `Id` operationId).
 	IdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*IdResponse, error)
+
+	// InstallationAwsAccountIdWithResponse Get AWS Account ID
+	//
+	// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /installation-aws-account-id (the `InstallationAwsAccountId` operationId).
+	InstallationAwsAccountIdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*InstallationAwsAccountIdResponse, error)
 
 	// IntegrationsCountWithResponse Get Integrations Count
 	//
@@ -56955,7 +58677,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackAttachableAwsIntegrationsWithResponse Stack attachable aws integrations
 	//
-	// List of aws integrations that can be attached to this Stack.
+	// The AWS integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -56997,6 +58719,63 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-worker-pools (the `StackAttachableWorkerPools` operationId).
 	StackAttachableWorkerPoolsWithResponse(ctx context.Context, stackId string, params *StackAttachableWorkerPoolsParams, reqEditors ...RequestEditorFn) (*StackAttachableWorkerPoolsResponse, error)
+
+	// AwsIntegrationAttachWithBodyWithResponse Attach AWS Integration
+	//
+	// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. For an integration the
+	// server assumes, the role's trust policy is tested for each side first.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+	AwsIntegrationAttachWithBodyWithResponse(ctx context.Context, stackId string, awsIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachResponse, error)
+
+	// AwsIntegrationAttachWithResponse Attach AWS Integration
+	//
+	// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. For an integration the
+	// server assumes, the role's trust policy is tested for each side first.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+	AwsIntegrationAttachWithResponse(ctx context.Context, stackId string, awsIntegrationId string, body AwsIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachResponse, error)
+
+	// StackIntegrationAwsDeleteWithResponse Detach from Stack
+	//
+	// Deletes the stack's legacy AWS role, the integration stackIntegrationAwsCreate made. Superseded by awsIntegrationDetach.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /stacks/{stackId}/aws-role (the `StackIntegrationAwsDelete` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsDeleteWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*StackIntegrationAwsDeleteResponse, error)
+
+	// StackIntegrationAwsCreateWithBodyWithResponse Attach to Stack
+	//
+	// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsCreateWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackIntegrationAwsCreateResponse, error)
+
+	// StackIntegrationAwsCreateWithResponse Attach to Stack
+	//
+	// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+	//
+	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	StackIntegrationAwsCreateWithResponse(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackIntegrationAwsCreateResponse, error)
 
 	// StackConfigElementWithResponse Stack config element
 	//
@@ -64621,6 +66400,1177 @@ func (r AwarenessSourceSurveyResponse) ContentType() string {
 	return ""
 }
 
+// AwsIntegrationDetachResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationDetach
+type AwsIntegrationDetachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationDetachResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationDetach
+type AwsIntegrationDetachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationDetachResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationDetach
+type AwsIntegrationDetachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationDetachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationDetachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationDetachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationDetachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationDetachResponse) GetJSON200() *AwsIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationDetachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationDetachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationDetachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationDetachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationDetachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationDetachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationDetachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationDetachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationAttachmentUpdateResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationAttachmentUpdate
+type AwsIntegrationAttachmentUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachmentUpdateResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationAttachmentUpdate
+type AwsIntegrationAttachmentUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachmentUpdateResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationAttachmentUpdate
+type AwsIntegrationAttachmentUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationAttachmentUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationAttachmentUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationAttachmentUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationAttachmentUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationAttachmentUpdateResponse) GetJSON200() *AwsIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationAttachmentUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationAttachmentUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationAttachmentUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationAttachmentUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationAttachmentUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationByNameResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationByName
+type AwsIntegrationByNameResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationByNameResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationByName
+type AwsIntegrationByNameResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationByNameResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationByName
+type AwsIntegrationByNameResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegration
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationByNameResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationByNameResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationByNameResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationByNameResponse) GetJSON200() *AwsIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationByNameResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationByNameResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationByNameResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationByNameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationByNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationByNameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationsResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrations
+type AwsIntegrationsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationsResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrations
+type AwsIntegrationsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationsResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrations
+type AwsIntegrationsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegrationPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationsResponse) GetJSON200() *AwsIntegrationPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AwsIntegrationsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for AwsIntegrationCreate
+type AwsIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationCreate
+type AwsIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationCreate
+type AwsIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AwsIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AwsIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AwsIntegrationCreateResponse) GetJSON201() *AwsIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AwsIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AwsIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationsEnabledResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationsEnabled
+type AwsIntegrationsEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationsEnabledResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationsEnabled
+type AwsIntegrationsEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationsEnabledResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationsEnabled
+type AwsIntegrationsEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationsEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationsEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationsEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationsEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationsEnabledResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationsEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationsEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationsEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationsEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationsEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationsEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationsEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationDelete
+type AwsIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationDelete
+type AwsIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationDelete
+type AwsIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationDeleteResponse) GetJSON200() *AwsIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AwsIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegration
+type AwsIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegration
+type AwsIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegration
+type AwsIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationResponse) GetJSON200() *AwsIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationPatch
+type AwsIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationPatch
+type AwsIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationPatch
+type AwsIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationPatchResponse) GetJSON200() *AwsIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationUpdate
+type AwsIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationUpdate
+type AwsIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationUpdate
+type AwsIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationUpdateResponse) GetJSON200() *AwsIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AwsIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationAttachedStackResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationAttachedStack
+type AwsIntegrationAttachedStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachedStackResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationAttachedStack
+type AwsIntegrationAttachedStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachedStackResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationAttachedStack
+type AwsIntegrationAttachedStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationAttachedStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationAttachedStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationAttachedStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationAttachedStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationAttachedStackResponse) GetJSON200() *AwsIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationAttachedStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationAttachedStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationAttachedStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationAttachedStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationAttachedStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationAttachedStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationAttachedStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationAttachedStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AwsIntegrationExternalIdForStackResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationExternalIdForStack
+type AwsIntegrationExternalIdForStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationExternalIdForStackResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationExternalIdForStack
+type AwsIntegrationExternalIdForStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationExternalIdForStackResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationExternalIdForStack
+type AwsIntegrationExternalIdForStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationExternalIdForStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ExternalIdForStackResult
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationExternalIdForStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationExternalIdForStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationExternalIdForStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationExternalIdForStackResponse) GetJSON200() *ExternalIdForStackResult {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationExternalIdForStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationExternalIdForStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationExternalIdForStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationExternalIdForStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationExternalIdForStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationExternalIdForStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationExternalIdForStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationExternalIdForStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AzureDevOpsRepoIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for AzureDevOpsRepoIntegrationCreate
 type AzureDevOpsRepoIntegrationCreateResponse201Headers struct {
 	XRateLimitLimit     *int
@@ -71943,6 +74893,94 @@ func (r IdResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r IdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// InstallationAwsAccountIdResponse200Headers the declared response headers of an HTTP 200 response for InstallationAwsAccountId
+type InstallationAwsAccountIdResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// InstallationAwsAccountIdResponse429Headers the declared response headers of an HTTP 429 response for InstallationAwsAccountId
+type InstallationAwsAccountIdResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// InstallationAwsAccountIdResponse503Headers the declared response headers of an HTTP 503 response for InstallationAwsAccountId
+type InstallationAwsAccountIdResponse503Headers struct {
+	RetryAfter *int
+}
+
+type InstallationAwsAccountIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *InstallationAwsAccountIdResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *InstallationAwsAccountIdResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *InstallationAwsAccountIdResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r InstallationAwsAccountIdResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r InstallationAwsAccountIdResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r InstallationAwsAccountIdResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r InstallationAwsAccountIdResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r InstallationAwsAccountIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r InstallationAwsAccountIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r InstallationAwsAccountIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r InstallationAwsAccountIdResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -86869,6 +89907,291 @@ func (r StackAttachableWorkerPoolsResponse) ContentType() string {
 	return ""
 }
 
+// AwsIntegrationAttachResponse200Headers the declared response headers of an HTTP 200 response for AwsIntegrationAttach
+type AwsIntegrationAttachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachResponse429Headers the declared response headers of an HTTP 429 response for AwsIntegrationAttach
+type AwsIntegrationAttachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AwsIntegrationAttachResponse503Headers the declared response headers of an HTTP 503 response for AwsIntegrationAttach
+type AwsIntegrationAttachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AwsIntegrationAttachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AwsIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AwsIntegrationAttachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AwsIntegrationAttachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AwsIntegrationAttachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AwsIntegrationAttachResponse) GetJSON200() *AwsIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AwsIntegrationAttachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AwsIntegrationAttachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AwsIntegrationAttachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AwsIntegrationAttachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AwsIntegrationAttachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AwsIntegrationAttachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AwsIntegrationAttachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AwsIntegrationAttachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackIntegrationAwsDeleteResponse200Headers the declared response headers of an HTTP 200 response for StackIntegrationAwsDelete
+type StackIntegrationAwsDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackIntegrationAwsDeleteResponse429Headers the declared response headers of an HTTP 429 response for StackIntegrationAwsDelete
+type StackIntegrationAwsDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackIntegrationAwsDeleteResponse503Headers the declared response headers of an HTTP 503 response for StackIntegrationAwsDelete
+type StackIntegrationAwsDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackIntegrationAwsDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackIntegrationAws
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackIntegrationAwsDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackIntegrationAwsDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackIntegrationAwsDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackIntegrationAwsDeleteResponse) GetJSON200() *StackIntegrationAws {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackIntegrationAwsDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackIntegrationAwsDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackIntegrationAwsDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackIntegrationAwsDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackIntegrationAwsDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackIntegrationAwsDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackIntegrationAwsDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackIntegrationAwsDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// StackIntegrationAwsCreateResponse200Headers the declared response headers of an HTTP 200 response for StackIntegrationAwsCreate
+type StackIntegrationAwsCreateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackIntegrationAwsCreateResponse429Headers the declared response headers of an HTTP 429 response for StackIntegrationAwsCreate
+type StackIntegrationAwsCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// StackIntegrationAwsCreateResponse503Headers the declared response headers of an HTTP 503 response for StackIntegrationAwsCreate
+type StackIntegrationAwsCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type StackIntegrationAwsCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StackIntegrationAws
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *StackIntegrationAwsCreateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *StackIntegrationAwsCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *StackIntegrationAwsCreateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r StackIntegrationAwsCreateResponse) GetJSON200() *StackIntegrationAws {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r StackIntegrationAwsCreateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r StackIntegrationAwsCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r StackIntegrationAwsCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r StackIntegrationAwsCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r StackIntegrationAwsCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r StackIntegrationAwsCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StackIntegrationAwsCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r StackIntegrationAwsCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackConfigElementResponse200Headers the declared response headers of an HTTP 200 response for StackConfigElement
 type StackConfigElementResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -101489,7 +104812,7 @@ func (c *ClientWithResponses) ApiKeyResetWithResponse(ctx context.Context, apiKe
 
 // AttachableAwsIntegrationsInSpaceWithResponse Attachable AWS Integrations
 //
-// List of aws integrations that can be attached Stacks/Modules in given space.
+// The AWS integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -101888,6 +105211,248 @@ func (c *ClientWithResponses) AwarenessSourceSurveyWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseAwarenessSourceSurveyResponse(rsp)
+}
+
+// AwsIntegrationDetachWithResponse Detach AWS Integration
+//
+// Detaches an AWS integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /aws-integration-attachments/{attachmentId} (the `AwsIntegrationDetach` operationId).
+func (c *ClientWithResponses) AwsIntegrationDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*AwsIntegrationDetachResponse, error) {
+	rsp, err := c.AwsIntegrationDetach(ctx, attachmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationDetachResponse(rsp)
+}
+
+// AwsIntegrationAttachmentUpdateWithBodyWithResponse Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+func (c *ClientWithResponses) AwsIntegrationAttachmentUpdateWithBodyWithResponse(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachmentUpdateResponse, error) {
+	rsp, err := c.AwsIntegrationAttachmentUpdateWithBody(ctx, attachmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationAttachmentUpdateResponse(rsp)
+}
+
+// AwsIntegrationAttachmentUpdateWithResponse Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both. At least one is set, a stack keeps at most one read and one write attachment, and a side the server assumes is tested against the role's trust policy first.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /aws-integration-attachments/{attachmentId} (the `AwsIntegrationAttachmentUpdate` operationId).
+func (c *ClientWithResponses) AwsIntegrationAttachmentUpdateWithResponse(ctx context.Context, attachmentId string, body AwsIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachmentUpdateResponse, error) {
+	rsp, err := c.AwsIntegrationAttachmentUpdate(ctx, attachmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationAttachmentUpdateResponse(rsp)
+}
+
+// AwsIntegrationByNameWithResponse Get AWS Integration by Name
+//
+// One AWS integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integration-by-name (the `AwsIntegrationByName` operationId).
+func (c *ClientWithResponses) AwsIntegrationByNameWithResponse(ctx context.Context, params *AwsIntegrationByNameParams, reqEditors ...RequestEditorFn) (*AwsIntegrationByNameResponse, error) {
+	rsp, err := c.AwsIntegrationByName(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationByNameResponse(rsp)
+}
+
+// AwsIntegrationsWithResponse List AWS Integrations
+//
+// The AWS integrations of the account in spaces the caller may read, by name. The legacy
+// integrations stackIntegrationAwsCreate binds to one stack are left out unless includeLegacy
+// is true.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integrations (the `AwsIntegrations` operationId).
+func (c *ClientWithResponses) AwsIntegrationsWithResponse(ctx context.Context, params *AwsIntegrationsParams, reqEditors ...RequestEditorFn) (*AwsIntegrationsResponse, error) {
+	rsp, err := c.AwsIntegrations(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationsResponse(rsp)
+}
+
+// AwsIntegrationCreateWithBodyWithResponse Create AWS Integration
+//
+// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+func (c *ClientWithResponses) AwsIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AwsIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationCreateResponse, error) {
+	rsp, err := c.AwsIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationCreateResponse(rsp)
+}
+
+// AwsIntegrationCreateWithResponse Create AWS Integration
+//
+// Creates an AWS integration in a space, the account's top space when none is named. The caller administers that space.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /aws-integrations (the `AwsIntegrationCreate` operationId).
+func (c *ClientWithResponses) AwsIntegrationCreateWithResponse(ctx context.Context, params *AwsIntegrationCreateParams, body AwsIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationCreateResponse, error) {
+	rsp, err := c.AwsIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationCreateResponse(rsp)
+}
+
+// AwsIntegrationsEnabledWithResponse List Enabled AWS Integrations
+//
+// Whether the account may use AWS integrations.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integrations-enabled (the `AwsIntegrationsEnabled` operationId).
+func (c *ClientWithResponses) AwsIntegrationsEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AwsIntegrationsEnabledResponse, error) {
+	rsp, err := c.AwsIntegrationsEnabled(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationsEnabledResponse(rsp)
+}
+
+// AwsIntegrationDeleteWithResponse Delete AWS Integration
+//
+// Deletes an AWS integration with its attachments, and answers it as it was.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /aws-integrations/{awsIntegrationId} (the `AwsIntegrationDelete` operationId).
+func (c *ClientWithResponses) AwsIntegrationDeleteWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AwsIntegrationDeleteResponse, error) {
+	rsp, err := c.AwsIntegrationDelete(ctx, awsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationDeleteResponse(rsp)
+}
+
+// AwsIntegrationWithResponse Get AWS Integration
+//
+// One AWS integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId} (the `AwsIntegration` operationId).
+func (c *ClientWithResponses) AwsIntegrationWithResponse(ctx context.Context, awsIntegrationId string, reqEditors ...RequestEditorFn) (*AwsIntegrationResponse, error) {
+	rsp, err := c.AwsIntegration(ctx, awsIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationResponse(rsp)
+}
+
+// AwsIntegrationPatchWithBodyWithResponse Patch AWS Integration
+//
+// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+func (c *ClientWithResponses) AwsIntegrationPatchWithBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationPatchResponse, error) {
+	rsp, err := c.AwsIntegrationPatchWithBody(ctx, awsIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationPatchResponse(rsp)
+}
+
+// AwsIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch AWS Integration
+//
+// Change the members of AwsIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through awsIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /aws-integrations/{awsIntegrationId} (the `AwsIntegrationPatch` operationId).
+func (c *ClientWithResponses) AwsIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationPatchParams, body AwsIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationPatchResponse, error) {
+	rsp, err := c.AwsIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, awsIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationPatchResponse(rsp)
+}
+
+// AwsIntegrationUpdateWithBodyWithResponse Update AWS Integration
+//
+// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AwsIntegrationUpdateWithBodyWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationUpdateResponse, error) {
+	rsp, err := c.AwsIntegrationUpdateWithBody(ctx, awsIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationUpdateResponse(rsp)
+}
+
+// AwsIntegrationUpdateWithResponse Update AWS Integration
+//
+// Replaces an AWS integration's settings. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. The role's trust policy is not tested again; the next run that assumes it does.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /aws-integrations/{awsIntegrationId} (the `AwsIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AwsIntegrationUpdateWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationUpdateParams, body AwsIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationUpdateResponse, error) {
+	rsp, err := c.AwsIntegrationUpdate(ctx, awsIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationUpdateResponse(rsp)
+}
+
+// AwsIntegrationAttachedStackWithResponse Aws integration attached stack
+//
+// One of the integration's stack attachments, by the attachment's ID.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId}/attached-stack (the `AwsIntegrationAttachedStack` operationId).
+func (c *ClientWithResponses) AwsIntegrationAttachedStackWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachedStackResponse, error) {
+	rsp, err := c.AwsIntegrationAttachedStack(ctx, awsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationAttachedStackResponse(rsp)
+}
+
+// AwsIntegrationExternalIdForStackWithResponse Aws integration external id for stack
+//
+// The external ID role assumption uses for the integration on a stack, for read, write or both, with an example trust policy statement that names the AWS account of the installation's own identity and each external ID asked for. Asked for both, it answers the write side's external ID; a stack's legacy AWS role has one for both sides. An installation without AWS credentials answers installation-unsupported.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /aws-integrations/{awsIntegrationId}/external-id-for-stack (the `AwsIntegrationExternalIdForStack` operationId).
+func (c *ClientWithResponses) AwsIntegrationExternalIdForStackWithResponse(ctx context.Context, awsIntegrationId string, params *AwsIntegrationExternalIdForStackParams, reqEditors ...RequestEditorFn) (*AwsIntegrationExternalIdForStackResponse, error) {
+	rsp, err := c.AwsIntegrationExternalIdForStack(ctx, awsIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationExternalIdForStackResponse(rsp)
 }
 
 // AzureDevOpsRepoIntegrationCreateWithBodyWithResponse Create Azure DevOps Integration
@@ -103461,6 +107026,21 @@ func (c *ClientWithResponses) IdWithResponse(ctx context.Context, reqEditors ...
 		return nil, err
 	}
 	return ParseIdResponse(rsp)
+}
+
+// InstallationAwsAccountIdWithResponse Get AWS Account ID
+//
+// The AWS account of the identity the installation assumes AWS integration roles with, for a role's trust policy to name. An installation without AWS credentials answers 403 installation-unsupported.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /installation-aws-account-id (the `InstallationAwsAccountId` operationId).
+func (c *ClientWithResponses) InstallationAwsAccountIdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*InstallationAwsAccountIdResponse, error) {
+	rsp, err := c.InstallationAwsAccountId(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInstallationAwsAccountIdResponse(rsp)
 }
 
 // IntegrationsCountWithResponse Get Integrations Count
@@ -106559,7 +110139,7 @@ func (c *ClientWithResponses) StackUpdateWithResponse(ctx context.Context, stack
 
 // StackAttachableAwsIntegrationsWithResponse Stack attachable aws integrations
 //
-// List of aws integrations that can be attached to this Stack.
+// The AWS integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -106630,6 +110210,92 @@ func (c *ClientWithResponses) StackAttachableWorkerPoolsWithResponse(ctx context
 		return nil, err
 	}
 	return ParseStackAttachableWorkerPoolsResponse(rsp)
+}
+
+// AwsIntegrationAttachWithBodyWithResponse Attach AWS Integration
+//
+// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. For an integration the
+// server assumes, the role's trust policy is tested for each side first.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+func (c *ClientWithResponses) AwsIntegrationAttachWithBodyWithResponse(ctx context.Context, stackId string, awsIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachResponse, error) {
+	rsp, err := c.AwsIntegrationAttachWithBody(ctx, stackId, awsIntegrationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationAttachResponse(rsp)
+}
+
+// AwsIntegrationAttachWithResponse Attach AWS Integration
+//
+// Attaches an AWS integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. For an integration the
+// server assumes, the role's trust policy is tested for each side first.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/aws-integrations/{awsIntegrationId} (the `AwsIntegrationAttach` operationId).
+func (c *ClientWithResponses) AwsIntegrationAttachWithResponse(ctx context.Context, stackId string, awsIntegrationId string, body AwsIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*AwsIntegrationAttachResponse, error) {
+	rsp, err := c.AwsIntegrationAttach(ctx, stackId, awsIntegrationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAwsIntegrationAttachResponse(rsp)
+}
+
+// StackIntegrationAwsDeleteWithResponse Detach from Stack
+//
+// Deletes the stack's legacy AWS role, the integration stackIntegrationAwsCreate made. Superseded by awsIntegrationDetach.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /stacks/{stackId}/aws-role (the `StackIntegrationAwsDelete` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *ClientWithResponses) StackIntegrationAwsDeleteWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*StackIntegrationAwsDeleteResponse, error) {
+	rsp, err := c.StackIntegrationAwsDelete(ctx, stackId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackIntegrationAwsDeleteResponse(rsp)
+}
+
+// StackIntegrationAwsCreateWithBodyWithResponse Attach to Stack
+//
+// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+//
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *ClientWithResponses) StackIntegrationAwsCreateWithBodyWithResponse(ctx context.Context, stackId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StackIntegrationAwsCreateResponse, error) {
+	rsp, err := c.StackIntegrationAwsCreateWithBody(ctx, stackId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackIntegrationAwsCreateResponse(rsp)
+}
+
+// StackIntegrationAwsCreateWithResponse Attach to Stack
+//
+// Sets the stack's legacy AWS role: an integration bound to this stack alone, attached for read and write, with the external ID <account>@<stack>. Superseded by awsIntegrationCreate and awsIntegrationAttach.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/aws-role (the `StackIntegrationAwsCreate` operationId).
+// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+func (c *ClientWithResponses) StackIntegrationAwsCreateWithResponse(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackIntegrationAwsCreateResponse, error) {
+	rsp, err := c.StackIntegrationAwsCreate(ctx, stackId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStackIntegrationAwsCreateResponse(rsp)
 }
 
 // StackConfigElementWithResponse Stack config element
@@ -117080,6 +120746,1519 @@ func ParseAwarenessSourceSurveyResponse(rsp *http.Response) (*AwarenessSourceSur
 	return response, nil
 }
 
+// ParseAwsIntegrationDetachResponse parses an HTTP response from a AwsIntegrationDetachWithResponse call
+func ParseAwsIntegrationDetachResponse(rsp *http.Response) (*AwsIntegrationDetachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationDetachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationDetachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationDetachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationDetachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationAttachmentUpdateResponse parses an HTTP response from a AwsIntegrationAttachmentUpdateWithResponse call
+func ParseAwsIntegrationAttachmentUpdateResponse(rsp *http.Response) (*AwsIntegrationAttachmentUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationAttachmentUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationAttachmentUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationAttachmentUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationAttachmentUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationByNameResponse parses an HTTP response from a AwsIntegrationByNameWithResponse call
+func ParseAwsIntegrationByNameResponse(rsp *http.Response) (*AwsIntegrationByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationByNameResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationByNameResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationByNameResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationsResponse parses an HTTP response from a AwsIntegrationsWithResponse call
+func ParseAwsIntegrationsResponse(rsp *http.Response) (*AwsIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegrationPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationCreateResponse parses an HTTP response from a AwsIntegrationCreateWithResponse call
+func ParseAwsIntegrationCreateResponse(rsp *http.Response) (*AwsIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AwsIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationsEnabledResponse parses an HTTP response from a AwsIntegrationsEnabledWithResponse call
+func ParseAwsIntegrationsEnabledResponse(rsp *http.Response) (*AwsIntegrationsEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationsEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationsEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationsEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationsEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationDeleteResponse parses an HTTP response from a AwsIntegrationDeleteWithResponse call
+func ParseAwsIntegrationDeleteResponse(rsp *http.Response) (*AwsIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationResponse parses an HTTP response from a AwsIntegrationWithResponse call
+func ParseAwsIntegrationResponse(rsp *http.Response) (*AwsIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationPatchResponse parses an HTTP response from a AwsIntegrationPatchWithResponse call
+func ParseAwsIntegrationPatchResponse(rsp *http.Response) (*AwsIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationUpdateResponse parses an HTTP response from a AwsIntegrationUpdateWithResponse call
+func ParseAwsIntegrationUpdateResponse(rsp *http.Response) (*AwsIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationAttachedStackResponse parses an HTTP response from a AwsIntegrationAttachedStackWithResponse call
+func ParseAwsIntegrationAttachedStackResponse(rsp *http.Response) (*AwsIntegrationAttachedStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationAttachedStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationAttachedStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationAttachedStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationAttachedStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationExternalIdForStackResponse parses an HTTP response from a AwsIntegrationExternalIdForStackWithResponse call
+func ParseAwsIntegrationExternalIdForStackResponse(rsp *http.Response) (*AwsIntegrationExternalIdForStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationExternalIdForStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ExternalIdForStackResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationExternalIdForStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationExternalIdForStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationExternalIdForStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAzureDevOpsRepoIntegrationCreateResponse parses an HTTP response from a AzureDevOpsRepoIntegrationCreateWithResponse call
 func ParseAzureDevOpsRepoIntegrationCreateResponse(rsp *http.Response) (*AzureDevOpsRepoIntegrationCreateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -126504,6 +131683,121 @@ func ParseIdResponse(rsp *http.Response) (*IdResponse, error) {
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers IdResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseInstallationAwsAccountIdResponse parses an HTTP response from a InstallationAwsAccountIdWithResponse call
+func ParseInstallationAwsAccountIdResponse(rsp *http.Response) (*InstallationAwsAccountIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &InstallationAwsAccountIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers InstallationAwsAccountIdResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers InstallationAwsAccountIdResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers InstallationAwsAccountIdResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -145585,6 +150879,372 @@ func ParseStackAttachableWorkerPoolsResponse(rsp *http.Response) (*StackAttachab
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackAttachableWorkerPoolsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAwsIntegrationAttachResponse parses an HTTP response from a AwsIntegrationAttachWithResponse call
+func ParseAwsIntegrationAttachResponse(rsp *http.Response) (*AwsIntegrationAttachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AwsIntegrationAttachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AwsIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AwsIntegrationAttachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AwsIntegrationAttachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AwsIntegrationAttachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackIntegrationAwsDeleteResponse parses an HTTP response from a StackIntegrationAwsDeleteWithResponse call
+func ParseStackIntegrationAwsDeleteResponse(rsp *http.Response) (*StackIntegrationAwsDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackIntegrationAwsDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackIntegrationAws
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackIntegrationAwsDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackIntegrationAwsDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackIntegrationAwsDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseStackIntegrationAwsCreateResponse parses an HTTP response from a StackIntegrationAwsCreateWithResponse call
+func ParseStackIntegrationAwsCreateResponse(rsp *http.Response) (*StackIntegrationAwsCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StackIntegrationAwsCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackIntegrationAws
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers StackIntegrationAwsCreateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers StackIntegrationAwsCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers StackIntegrationAwsCreateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

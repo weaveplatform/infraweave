@@ -14,6 +14,7 @@ import (
 
 	accessassembly "github.com/weaveplatform/infraweave/internal/access/assembly"
 	"github.com/weaveplatform/infraweave/internal/app/config"
+	cloudassembly "github.com/weaveplatform/infraweave/internal/cloud/assembly"
 	configurationassembly "github.com/weaveplatform/infraweave/internal/configuration/assembly"
 	eventsassembly "github.com/weaveplatform/infraweave/internal/events/assembly"
 	featuresassembly "github.com/weaveplatform/infraweave/internal/features/assembly"
@@ -48,6 +49,7 @@ func Streams() []migrate.Stream {
 		policiesassembly.Stream(),
 		runsassembly.Stream(),
 		stateassembly.Stream(),
+		cloudassembly.Stream(),
 		vcsassembly.Stream(),
 		eventsassembly.Stream(),
 	}
