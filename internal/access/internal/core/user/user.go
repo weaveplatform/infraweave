@@ -150,6 +150,10 @@ type Store interface {
 	// RecordRequest records e, a request of a managed user or a person, on
 	// the account's trail.
 	RecordRequest(ctx context.Context, e kernel.AuditEntry) error
+	// LastSignInKind is the kind of the identity provider the
+	// organization's member last signed in through, empty before the
+	// first such sign-in.
+	LastSignInKind(ctx context.Context, org kernel.OrganizationID, id kernel.MemberID) (string, error)
 }
 
 // Deps are what the service needs.
@@ -183,6 +187,18 @@ func (s *Service) User(ctx context.Context, p kernel.Principal, id string) (User
 		return User{}, err
 	}
 	return s.d.Store.User(ctx, p.AccountID, m) //nolint:wrapcheck // as above
+}
+
+// LastSignInKind is the kind of the identity provider p's member last
+// signed in through, such as OIDC. It is empty before the member's first
+// sign-in through one, and for a principal that is no member's session,
+// such as an API key's or the break-glass admin's.
+func (s *Service) LastSignInKind(ctx context.Context, p kernel.Principal) (string, error) {
+	if p.Kind != kernel.PrincipalUser || p.MemberID.IsZero() {
+		return "", nil
+	}
+	//nolint:wrapcheck // the store names the read
+	return s.d.Store.LastSignInKind(ctx, p.OrganizationID, p.MemberID)
 }
 
 // Invite invites the person in names to p's account.

@@ -142,6 +142,13 @@ func (p *people) RecordRequest(_ context.Context, e kernel.AuditEntry) error {
 	return p.st.err()
 }
 
+// LastSignInKind is the member's LastSignInKind as the account's users
+// hold it.
+func (p *people) LastSignInKind(_ context.Context, _ kernel.OrganizationID, id kernel.MemberID) (string, error) {
+	u, err := p.user(p.acct, id)
+	return u.Member.LastSignInKind, err
+}
+
 func (p *people) Groups(_ context.Context, _ kernel.AccountID, after kernel.ULID, limit int) ([]group.Group, error) {
 	var out []group.Group
 	for _, g := range p.groups {

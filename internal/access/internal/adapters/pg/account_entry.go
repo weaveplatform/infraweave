@@ -23,7 +23,10 @@ var _ port.AccountEntry = (*Store)(nil)
 
 // Enter commits an account session only while the verified credential remains
 // usable. The account fence also orders policy/scheme changes and revocations
-// before the session and its account-qualified grants become visible.
+// before the session and its account-qualified grants become visible. A
+// member session's entry records the groups its sign-in reported in the
+// same transaction, so the session and the admission's latest_groups never
+// disagree.
 func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *apikey.Key, source kernel.ULID) (session.Session, error) {
 	var entered session.Session
 	var denied *session.LoginDenied
@@ -36,6 +39,11 @@ func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *
 			// A policy refusal commits its evaluation events; it never
 			// reaches session insertion or revokes another live session.
 			return err
+		}
+		if verified == nil {
+			if err := recordGroups(ctx, tx.Q(ctx, s.db), entered); err != nil {
+				return err
+			}
 		}
 		if err := s.CreateSession(ctx, entered); err != nil {
 			return err
@@ -125,6 +133,33 @@ func entryMember(ctx context.Context, q tx.Querier, ss *session.Session, scheme 
 		if err != nil {
 			return fmt.Errorf("access: fence managed admission: %w", sql.Unavailable(err))
 		}
+	}
+	return nil
+}
+
+// recordGroups writes the groups ss's sign-in reported, its original
+// teams, as the latest_groups of the member's admission to the account ss
+// enters, raising the admission's version when they change. A sign-in
+// that reported no groups writes none, so the member leaves every managed
+// user group of the account; a session whose original teams are unknown
+// writes nothing. Only the entered account is written: another keeps the
+// groups of the member's latest entry into it. Under LOGIN_POLICIES a
+// member may enter without an admission, and then there is no row to
+// write.
+//
+// ref: decision 0007 § "Bindings"
+func recordGroups(ctx context.Context, q tx.Querier, ss session.Session) error {
+	if !ss.OriginalTeamsKnown {
+		return nil
+	}
+	groups := ss.OriginalTeams
+	if groups == nil {
+		groups = []string{}
+	}
+	if _, err := q.Exec(ctx, `UPDATE account_users SET latest_groups = $3, version = version + 1
+		WHERE account_id = $1 AND member_id = $2 AND latest_groups IS DISTINCT FROM $3::text[]`,
+		ss.AccountID, ss.MemberID, groups); err != nil {
+		return fmt.Errorf("access: record the groups of account entry: %w", sql.Unavailable(err))
 	}
 	return nil
 }

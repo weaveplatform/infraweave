@@ -18,6 +18,8 @@ func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&kmsSteps{w: w}).register(sc)
 	(&providerSteps{w: w}).register(sc)
 	(&issuerSteps{w: w}).register(sc)
-	(&ssoSteps{w: w}).register(sc)
+	sso := &ssoSteps{w: w}
+	sso.register(sc)
+	sso.registerGroups(sc)
 	(&discoverySteps{w: w}).register(sc)
 }

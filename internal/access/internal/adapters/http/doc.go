@@ -51,7 +51,9 @@
 // member or address 409 invalid-state, a group name in use 409
 // already-exists, a role change request from anything but a member 403,
 // a seat beyond the pool 403 limit-reached and input the service refuses
-// 422 validation-failed. An invitation's and a new group's roleBindings,
+// 422 validation-failed. A managed user's loginMethod is the kind of the
+// identity provider its member last signed in through, GitHub OAuth as
+// GITHUB and EMPTY before any. An invitation's and a new group's roleBindings,
 // an API key's accessRules and roleBindings, and a managed user's
 // accessRules, which replace those it holds, are stored as role bindings
 // in the transaction that writes the actor, through Atomic, all or none:
@@ -66,8 +68,9 @@
 // and disable the account's personal keys, a key of the account's own
 // answering 404 to the disable; every ApiKey answer names a personal
 // key's owner. Every User answer, of apiKeyUser, viewer and
-// authSessionAccount, is composed from the principal and the apikey
-// service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
+// authSessionAccount, is composed from the principal, the user service's
+// LastSignInKind as identityProvider (EMPTY before a sign-in through a
+// provider, and for an API key), and the apikey service's Held: apiKeys, ownedApiKeys and canCreatePersonalApiKey are
 // that service's answers from its own rules, never a copy of them, and
 // actions the evaluator's actions on each space of the
 // account where the caller holds any. Each ApiKey's

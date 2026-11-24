@@ -55,6 +55,21 @@ func TestUnitManagedUserSeen(t *testing.T) {
 	}
 }
 
+// TestUnitManagedUserLoginMethod serves the kind of the identity provider
+// the member last signed in through as loginMethod, GitHub OAuth as the
+// enum's GITHUB, and EMPTY before any such sign-in.
+func TestUnitManagedUserLoginMethod(t *testing.T) {
+	for kind, want := range map[string]api.IdentityProvider{
+		"OIDC": api.IdentityProviderOIDC, "SAML": api.IdentityProviderSAML,
+		"GITHUB_OAUTH": api.IdentityProviderGITHUB, "": api.IdentityProviderEMPTY,
+	} {
+		u := managedUser(managed.User{Member: member.Member{LastSignInKind: kind}}, nil, nil)
+		if u.LoginMethod != want {
+			t.Errorf("loginMethod of %q = %s, want %s", kind, u.LoginMethod, want)
+		}
+	}
+}
+
 // TestUnitManagedUsersNoPrincipal checks that each operation refuses a
 // request that reaches it with no principal.
 func TestUnitManagedUsersNoPrincipal(t *testing.T) {

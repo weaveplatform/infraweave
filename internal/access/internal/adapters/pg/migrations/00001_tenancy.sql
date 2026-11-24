@@ -56,6 +56,10 @@ CREATE TABLE members (
     status          text        NOT NULL CHECK (status IN ('active', 'pending', 'deactivated')),
     created_at      timestamptz NOT NULL DEFAULT now(),
     last_seen_at    timestamptz,
+    -- The kind of the identity provider the member last signed in
+    -- through; NULL before the first such sign-in. It is a kind, not a
+    -- provider, so it outlives the provider's deletion.
+    last_sign_in_kind text CHECK (last_sign_in_kind IN ('OIDC', 'SAML', 'GITHUB_OAUTH')),
     UNIQUE (organization_id, id)
 );
 COMMENT ON TABLE members IS

@@ -198,6 +198,15 @@ func TestAccSignInIdentity(t *testing.T) {
 	if first.MemberID != carol || first.ActorID != carol.ULID || status != "active" || seen == nil {
 		t.Errorf("first sign-in: session %+v, member %s %s %v", first, carol, status, seen)
 	}
+	if kind, err := s.LastSignInKind(ctx, x.org, carol); err != nil || kind != "OIDC" {
+		t.Errorf("carol's last sign-in kind = %q, %v", kind, err)
+	}
+	if kind, err := s.LastSignInKind(ctx, x.org, x.member); err != nil || kind != "" {
+		t.Errorf("a member never signed in through a provider = %q, %v", kind, err)
+	}
+	if _, err := s.LastSignInKind(ctx, x.org, kernel.NewMemberID()); !errors.Is(err, port.ErrNotFound) {
+		t.Errorf("an unknown member's last sign-in kind = %v", err)
+	}
 	read, err := s.Session(ctx, first.ID)
 	if err != nil || read.IDPSID != "sid-carol-sub" || read.IdentityProviderID != p.ID || !read.AccountID.IsZero() {
 		t.Errorf("stored session %+v, %v", read, err)
