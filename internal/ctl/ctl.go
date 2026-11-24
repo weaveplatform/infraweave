@@ -76,7 +76,17 @@ func Root() *cobra.Command {
 		"",
 		"API key ID (INFRAWEAVECTL_API_KEY); its secret is INFRAWEAVECTL_API_KEY_SECRET",
 	)
-	root.AddCommand(profileCmd(), whoamiCmd(), versionCmd(), apiCmd(), operatorCmd())
+	root.AddCommand(
+		profileCmd(), whoamiCmd(), versionCmd(), apiCmd(), operatorCmd(), previewCmd(),
+	)
+	// A child's own PersistentPreRunE would replace the gate, so none sets
+	// one.
+	root.PersistentPreRunE = gate
+	help := root.HelpFunc()
+	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		hideInactive(cmd)
+		help(cmd, args)
+	})
 	return root
 }
 
