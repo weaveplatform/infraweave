@@ -28,6 +28,7 @@ func TestUnitImagesPinned(t *testing.T) {
 		{"ImageFakeGCS", ImageFakeGCS, ""},
 		{"ImageAzurite", ImageAzurite, ""},
 		{"ImageVault", ImageVault, ""},
+		{"ImageOAuth2Mock", ImageOAuth2Mock, ""},
 		{"ImageMoto", ImageMoto, ""},
 		{"ImageBitbucketDC", ImageBitbucketDC, ""},
 		{"ImageGitLabCE", ImageGitLabCE, ""},

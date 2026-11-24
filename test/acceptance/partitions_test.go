@@ -176,7 +176,7 @@ func TestUnitDockerTags(t *testing.T) {
 	got := harness.DockerTags([]string{
 		"@postgres", "@identity", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
 	})
-	if !slices.Equal(got, []string{"@postgres", "@vcs"}) {
+	if !slices.Equal(got, []string{"@postgres", "@oidc", "@vcs"}) {
 		t.Errorf("dockerTags = %q", got)
 	}
 }
