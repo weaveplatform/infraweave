@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -25,6 +27,13 @@ const oidcKeyID = "acceptance"
 // its discovery document and JWKS and mints RS256 tokens with whatever
 // claims a scenario chooses. A server trusts it through CertPEM. It runs in
 // process, so @oidc scenarios need no Docker.
+//
+// Its JWKS carries the signing key's self-signed certificate as x5c and its
+// SHA-256 thumbprint as x5t#S256, as Entra ID, Auth0 and GitHub Actions
+// publish theirs, so every @oidc scenario parses a key set with certificate
+// members; under the certified FIPS mode a parser that digests x5c with
+// SHA-1 fails them. It publishes no x5t, which is a SHA-1 digest this
+// process cannot compute in that mode.
 type Issuer struct {
 	srv *httptest.Server
 	key *rsa.PrivateKey
@@ -36,6 +45,11 @@ func StartIssuer() (*Issuer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("oidc key: %w", err)
 	}
+	cert, err := selfSigned(key)
+	if err != nil {
+		return nil, err
+	}
+	thumb := sha256.Sum256(cert)
 	iss := &Issuer{key: key}
 	r := chi.NewRouter()
 	r.Get("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
@@ -48,17 +62,37 @@ func StartIssuer() (*Issuer, error) {
 		})
 	})
 	r.Get("/jwks", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"keys": []map[string]string{{
-			"kty": "RSA",
-			"use": "sig",
-			"alg": "RS256",
-			"kid": oidcKeyID,
-			"n":   b64(key.N.Bytes()),
-			"e":   b64(big.NewInt(int64(key.E)).Bytes()),
+		writeJSON(w, map[string]any{"keys": []map[string]any{{
+			"kty":      "RSA",
+			"use":      "sig",
+			"alg":      "RS256",
+			"kid":      oidcKeyID,
+			"n":        b64(key.N.Bytes()),
+			"e":        b64(big.NewInt(int64(key.E)).Bytes()),
+			"x5c":      []string{base64.StdEncoding.EncodeToString(cert)},
+			"x5t#S256": b64(thumb[:]),
 		}}})
 	})
 	iss.srv = httptest.NewTLSServer(r)
 	return iss, nil
+}
+
+// selfSigned is the DER of a self-signed certificate for key, the x5c an
+// issuer publishes beside the key.
+func selfSigned(key *rsa.PrivateKey) ([]byte, error) {
+	now := time.Now()
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "acceptance issuer"},
+		NotBefore:    now.Add(-time.Hour),
+		NotAfter:     now.Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		return nil, fmt.Errorf("oidc certificate: %w", err)
+	}
+	return der, nil
 }
 
 // URL is the issuer identifier, which is also its base URL.

@@ -1,14 +1,19 @@
 package oidc
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -299,4 +304,105 @@ func TestUnitIssuerRefused(t *testing.T) {
 	if v, err := New(Options{}); err != nil || v.now == nil {
 		t.Errorf("no options: %v", err)
 	}
+}
+
+// published is the JWKS member map of key under kid, with extra members
+// added, as an issuer that also publishes certificates writes it.
+func published(t *testing.T, key any, kid string, alg jose.SignatureAlgorithm, extra map[string]any) map[string]any {
+	t.Helper()
+	b, err := json.Marshal(jose.JSONWebKey{Key: key, KeyID: kid, Algorithm: string(alg), Use: "sig"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range extra {
+		m[k] = v
+	}
+	return m
+}
+
+// selfSigned is the DER of a self-signed certificate for signer.
+func selfSigned(t *testing.T, signer crypto.Signer) []byte {
+	t.Helper()
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "issuer"},
+		NotBefore:    t0.Add(-time.Hour),
+		NotAfter:     t0.Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, signer.Public(), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return der
+}
+
+// TestUnitJWKSCertificateMembers checks that keys publishing x5c, x5t and
+// x5t#S256, as Entra ID, Auth0 and GitHub Actions publish them, verify
+// tokens, also under GODEBUG=fips140=only, where go-jose's SHA-1 digest of
+// x5c would panic; and that a key that cannot be parsed is left out
+// without making the issuer's other keys unusable.
+func TestUnitJWKSCertificateMembers(t *testing.T) {
+	ctx := t.Context()
+	i := newIDP(t)
+	rsaCert, ecCert := selfSigned(t, i.rsa), selfSigned(t, i.ec)
+	rsaSum, ecSum := sha256.Sum256(rsaCert), sha256.Sum256(ecCert)
+	b64 := base64.RawURLEncoding.EncodeToString
+	// x5t is a SHA-1 digest the test cannot compute under fips140=only;
+	// its length is what an issuer publishes, its bytes do not matter.
+	x5t := b64(make([]byte, 20))
+	for name, tc := range map[string]struct {
+		rsa, ec map[string]any
+	}{
+		"x5c": {
+			map[string]any{"x5c": []string{base64.StdEncoding.EncodeToString(rsaCert)}},
+			map[string]any{"x5c": []string{base64.StdEncoding.EncodeToString(ecCert)}},
+		},
+		"x5t":      {map[string]any{"x5t": x5t}, map[string]any{"x5t": x5t}},
+		"x5t#S256": {map[string]any{"x5t#S256": b64(rsaSum[:])}, map[string]any{"x5t#S256": b64(ecSum[:])}},
+		"all three": {
+			map[string]any{"x5c": []string{base64.StdEncoding.EncodeToString(rsaCert)}, "x5t": x5t, "x5t#S256": b64(rsaSum[:])},
+			map[string]any{"x5c": []string{base64.StdEncoding.EncodeToString(ecCert)}, "x5t": x5t, "x5t#S256": b64(ecSum[:])},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			i.jwks = func(w http.ResponseWriter) {
+				_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]any{
+					published(t, &i.rsa.PublicKey, "r1", jose.RS256, tc.rsa),
+					published(t, &i.ec.PublicKey, "e1", jose.ES256, tc.ec),
+				}})
+			}
+			now := t0
+			v := newVerifier(t, i, &now)
+			for _, k := range []struct {
+				alg jose.SignatureAlgorithm
+				kid string
+			}{{jose.RS256, "r1"}, {jose.ES256, "e1"}} {
+				if _, err := v.Verify(ctx, i.srv.URL, "infraweave", i.mint(t, k.alg, k.kid, i.claims(nil))); err != nil {
+					t.Errorf("%s: %v", k.kid, err)
+				}
+			}
+		})
+	}
+
+	t.Run("unparseable keys left out", func(t *testing.T) {
+		i.jwks = func(w http.ResponseWriter) {
+			_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]any{
+				{"kty": "RSA", "kid": "cert-only", "x5c": []string{base64.StdEncoding.EncodeToString(rsaCert)}},
+				{"kty": "unknown", "kid": "odd"},
+				published(t, &i.ec.PublicKey, "e1", jose.ES256, nil),
+			}})
+		}
+		now := t0
+		v := newVerifier(t, i, &now)
+		if _, err := v.Verify(ctx, i.srv.URL, "infraweave", i.mint(t, jose.ES256, "e1", i.claims(nil))); err != nil {
+			t.Errorf("the parseable key: %v", err)
+		}
+		if _, err := v.Verify(ctx, i.srv.URL, "infraweave", i.mint(t, jose.RS256, "cert-only", i.claims(nil))); !errors.Is(err, ErrToken) {
+			t.Errorf("a key whose only material was its certificate: %v, want ErrToken", err)
+		}
+	})
 }
