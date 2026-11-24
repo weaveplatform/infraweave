@@ -3062,6 +3062,11 @@ type AccountSetOAuthRedirectAllowlistRequest struct {
 	Hosts []string `json:"hosts"`
 }
 
+// AccountSetOIDCSubjectTemplateRequest The arguments of accountSetOIDCSubjectTemplate not carried in the path.
+type AccountSetOIDCSubjectTemplateRequest struct {
+	Template *string `json:"template,omitempty"`
+}
+
 // AccountSetPersonalApiKeysEnabledRequest The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
 type AccountSetPersonalApiKeysEnabledRequest struct {
 	DisableExistingKeys *bool `json:"disableExistingKeys,omitempty"`
@@ -11131,6 +11136,12 @@ type AccountSetOAuthRedirectAllowlistParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AccountSetOIDCSubjectTemplateParams defines parameters for AccountSetOIDCSubjectTemplate.
+type AccountSetOIDCSubjectTemplateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // AccountSetPersonalApiKeysEnabledParams defines parameters for AccountSetPersonalApiKeysEnabled.
 type AccountSetPersonalApiKeysEnabledParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -13138,6 +13149,9 @@ type AccountSetFeaturePreviewsEnabledJSONRequestBody = AccountSetFeaturePreviews
 
 // AccountSetOAuthRedirectAllowlistJSONRequestBody defines body for AccountSetOAuthRedirectAllowlist for application/json ContentType.
 type AccountSetOAuthRedirectAllowlistJSONRequestBody = AccountSetOAuthRedirectAllowlistRequest
+
+// AccountSetOIDCSubjectTemplateJSONRequestBody defines body for AccountSetOIDCSubjectTemplate for application/json ContentType.
+type AccountSetOIDCSubjectTemplateJSONRequestBody = AccountSetOIDCSubjectTemplateRequest
 
 // AccountSetPersonalApiKeysEnabledJSONRequestBody defines body for AccountSetPersonalApiKeysEnabled for application/json ContentType.
 type AccountSetPersonalApiKeysEnabledJSONRequestBody = AccountSetPersonalApiKeysEnabledRequest
@@ -15580,6 +15594,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
 	AccountSetOAuthRedirectAllowlist(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetOIDCSubjectTemplateWithBody Account Set OIDC Subject Template
+	//
+	// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+	AccountSetOIDCSubjectTemplateWithBody(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AccountSetOIDCSubjectTemplate Account Set OIDC Subject Template
+	//
+	// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+	AccountSetOIDCSubjectTemplate(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, body AccountSetOIDCSubjectTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AccountSetPersonalApiKeysEnabledWithBody Account Set Personal Api Keys Enabled
 	//
@@ -20525,6 +20557,44 @@ func (c *Client) AccountSetOAuthRedirectAllowlistWithBody(ctx context.Context, p
 // Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
 func (c *Client) AccountSetOAuthRedirectAllowlist(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAccountSetOAuthRedirectAllowlistRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetOIDCSubjectTemplateWithBody Account Set OIDC Subject Template
+//
+// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+func (c *Client) AccountSetOIDCSubjectTemplateWithBody(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetOIDCSubjectTemplateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AccountSetOIDCSubjectTemplate Account Set OIDC Subject Template
+//
+// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+func (c *Client) AccountSetOIDCSubjectTemplate(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, body AccountSetOIDCSubjectTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAccountSetOIDCSubjectTemplateRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -31304,6 +31374,61 @@ func NewAccountSetOAuthRedirectAllowlistRequestWithBody(server string, params *A
 	}
 
 	operationPath := fmt.Sprintf("/account/set-o-auth-redirect-allowlist")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAccountSetOIDCSubjectTemplateRequest calls the generic AccountSetOIDCSubjectTemplate builder with application/json body
+func NewAccountSetOIDCSubjectTemplateRequest(server string, params *AccountSetOIDCSubjectTemplateParams, body AccountSetOIDCSubjectTemplateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAccountSetOIDCSubjectTemplateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAccountSetOIDCSubjectTemplateRequestWithBody constructs an http.Request for the AccountSetOIDCSubjectTemplate method, with any body, and a specified content type
+func NewAccountSetOIDCSubjectTemplateRequestWithBody(server string, params *AccountSetOIDCSubjectTemplateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/account/set-oidc-subject-template")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -53342,6 +53467,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /account/set-o-auth-redirect-allowlist (the `AccountSetOAuthRedirectAllowlist` operationId).
 	AccountSetOAuthRedirectAllowlistWithResponse(ctx context.Context, params *AccountSetOAuthRedirectAllowlistParams, body AccountSetOAuthRedirectAllowlistJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetOAuthRedirectAllowlistResponse, error)
 
+	// AccountSetOIDCSubjectTemplateWithBodyWithResponse Account Set OIDC Subject Template
+	//
+	// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+	AccountSetOIDCSubjectTemplateWithBodyWithResponse(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetOIDCSubjectTemplateResponse, error)
+
+	// AccountSetOIDCSubjectTemplateWithResponse Account Set OIDC Subject Template
+	//
+	// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+	AccountSetOIDCSubjectTemplateWithResponse(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, body AccountSetOIDCSubjectTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetOIDCSubjectTemplateResponse, error)
+
 	// AccountSetPersonalApiKeysEnabledWithBodyWithResponse Account Set Personal Api Keys Enabled
 	//
 	// Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
@@ -59268,6 +59411,108 @@ func (r AccountSetOAuthRedirectAllowlistResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AccountSetOAuthRedirectAllowlistResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AccountSetOIDCSubjectTemplateResponse200Headers the declared response headers of an HTTP 200 response for AccountSetOIDCSubjectTemplate
+type AccountSetOIDCSubjectTemplateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetOIDCSubjectTemplateResponse429Headers the declared response headers of an HTTP 429 response for AccountSetOIDCSubjectTemplate
+type AccountSetOIDCSubjectTemplateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AccountSetOIDCSubjectTemplateResponse503Headers the declared response headers of an HTTP 503 response for AccountSetOIDCSubjectTemplate
+type AccountSetOIDCSubjectTemplateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AccountSetOIDCSubjectTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AccountSetOIDCSubjectTemplateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AccountSetOIDCSubjectTemplateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AccountSetOIDCSubjectTemplateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AccountSetOIDCSubjectTemplateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AccountSetOIDCSubjectTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AccountSetOIDCSubjectTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AccountSetOIDCSubjectTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AccountSetOIDCSubjectTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -100552,6 +100797,36 @@ func (c *ClientWithResponses) AccountSetOAuthRedirectAllowlistWithResponse(ctx c
 	return ParseAccountSetOAuthRedirectAllowlistResponse(rsp)
 }
 
+// AccountSetOIDCSubjectTemplateWithBodyWithResponse Account Set OIDC Subject Template
+//
+// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+func (c *ClientWithResponses) AccountSetOIDCSubjectTemplateWithBodyWithResponse(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AccountSetOIDCSubjectTemplateResponse, error) {
+	rsp, err := c.AccountSetOIDCSubjectTemplateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetOIDCSubjectTemplateResponse(rsp)
+}
+
+// AccountSetOIDCSubjectTemplateWithResponse Account Set OIDC Subject Template
+//
+// Set the subject template of the account's OIDC federation tokens, which every run of the account renders into its token's sub claim, and answer the template now in effect. A null or empty template restores the default, space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}. A template holds at most 1000 characters: letters, digits, "-", "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath}, {callerType}, {callerId}, {runId}, {runType} and {scope}; anything else answers 422 validation-failed naming the offending part.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /account/set-oidc-subject-template (the `AccountSetOIDCSubjectTemplate` operationId).
+func (c *ClientWithResponses) AccountSetOIDCSubjectTemplateWithResponse(ctx context.Context, params *AccountSetOIDCSubjectTemplateParams, body AccountSetOIDCSubjectTemplateJSONRequestBody, reqEditors ...RequestEditorFn) (*AccountSetOIDCSubjectTemplateResponse, error) {
+	rsp, err := c.AccountSetOIDCSubjectTemplate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAccountSetOIDCSubjectTemplateResponse(rsp)
+}
+
 // AccountSetPersonalApiKeysEnabledWithBodyWithResponse Account Set Personal Api Keys Enabled
 //
 // Allow or refuse personal API key creation for the account. With enabled false and disableExistingKeys true, every personal key of the account is disabled and its sessions revoked.
@@ -110109,6 +110384,135 @@ func ParseAccountSetOAuthRedirectAllowlistResponse(rsp *http.Response) (*Account
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AccountSetOAuthRedirectAllowlistResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAccountSetOIDCSubjectTemplateResponse parses an HTTP response from a AccountSetOIDCSubjectTemplateWithResponse call
+func ParseAccountSetOIDCSubjectTemplateResponse(rsp *http.Response) (*AccountSetOIDCSubjectTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AccountSetOIDCSubjectTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AccountSetOIDCSubjectTemplateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AccountSetOIDCSubjectTemplateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AccountSetOIDCSubjectTemplateResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

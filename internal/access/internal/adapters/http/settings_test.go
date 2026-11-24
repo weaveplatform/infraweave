@@ -57,6 +57,11 @@ func (c *configs) SetSecurityEmail(_ context.Context, _ kernel.AccountID, e stri
 	return c.fail()
 }
 
+func (c *configs) SetOIDCSubjectTemplate(_ context.Context, _ kernel.AccountID, t string) error {
+	c.s.OIDCSubjectTemplate = t
+	return c.fail()
+}
+
 func (c *configs) SetRedirectHosts(_ context.Context, _ kernel.AccountID, h []string) error {
 	c.s.RedirectHosts = h
 	return c.fail()
@@ -332,6 +337,12 @@ func TestUnitSettingsNoPrincipal(t *testing.T) {
 		"set email": func() error {
 			_, err := s.AccountUpdateSecurityEmail(ctx, api.AccountUpdateSecurityEmailRequestObject{
 				Body: &api.AccountUpdateSecurityEmailJSONRequestBody{},
+			})
+			return err
+		},
+		"set subject template": func() error {
+			_, err := s.AccountSetOIDCSubjectTemplate(ctx, api.AccountSetOIDCSubjectTemplateRequestObject{
+				Body: &api.AccountSetOIDCSubjectTemplateJSONRequestBody{},
 			})
 			return err
 		},

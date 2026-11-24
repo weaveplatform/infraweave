@@ -37,6 +37,9 @@ type Settings struct {
 	// NonAdminKeyManagers is apiKeyEnableNonAdminManagers' setting.
 	NonAdminKeyManagers bool
 	SecurityEmail       string
+	// OIDCSubjectTemplate is the subject template of the account's OIDC
+	// federation tokens, empty for federation.DefaultSubjectTemplate.
+	OIDCSubjectTemplate string
 	// RedirectHosts is the OAuth redirect allowlist, in the order set.
 	RedirectHosts []string
 	Survey        Survey

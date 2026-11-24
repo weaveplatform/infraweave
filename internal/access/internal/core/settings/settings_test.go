@@ -9,6 +9,7 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/access/internal/core/federation"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 )
 
@@ -112,6 +113,11 @@ func (m *mem) SetSecurityEmail(_ context.Context, _ kernel.AccountID, e string) 
 	return m.err
 }
 
+func (m *mem) SetOIDCSubjectTemplate(_ context.Context, _ kernel.AccountID, t string) error {
+	m.s.OIDCSubjectTemplate = t
+	return m.err
+}
+
 func (m *mem) SetRedirectHosts(_ context.Context, _ kernel.AccountID, h []string) error {
 	m.s.RedirectHosts = h
 	return m.err
@@ -201,6 +207,18 @@ func TestUnitService(t *testing.T) {
 		e != "sec@example.com" || m.s.SecurityEmail != e {
 		t.Errorf("SetSecurityEmail = %q, %v", e, err)
 	}
+	if _, err := svc.SetOIDCSubjectTemplate(ctx, member, "space {spaceId}"); !errors.Is(err, ErrInvalid) ||
+		!errors.Is(err, federation.ErrInvalid) {
+		t.Errorf("a bad subject template = %v", err)
+	}
+	if tpl, err := svc.SetOIDCSubjectTemplate(ctx, member, "space:{spaceId}"); err != nil ||
+		tpl != "space:{spaceId}" || m.s.OIDCSubjectTemplate != tpl {
+		t.Errorf("SetOIDCSubjectTemplate = %q, %v", tpl, err)
+	}
+	if tpl, err := svc.SetOIDCSubjectTemplate(ctx, member, ""); err != nil ||
+		tpl != federation.DefaultSubjectTemplate || m.s.OIDCSubjectTemplate != "" {
+		t.Errorf("restoring the default subject template = %q, %v", tpl, err)
+	}
 	if _, err := svc.SetRedirectHosts(
 		ctx,
 		member,
@@ -253,6 +271,7 @@ func TestUnitService(t *testing.T) {
 	for name, err := range map[string]error{
 		"personal": func() error { _, err := svc.SetPersonalAPIKeys(ctx, member, false, true); return err }(),
 		"email":    func() error { _, err := svc.SetSecurityEmail(ctx, member, ""); return err }(),
+		"template": func() error { _, err := svc.SetOIDCSubjectTemplate(ctx, member, ""); return err }(),
 		"hosts":    func() error { _, err := svc.SetRedirectHosts(ctx, member, nil); return err }(),
 		"survey":   func() error { _, err := svc.SetSurvey(ctx, member, Survey{}); return err }(),
 		"delete":   svc.Delete(ctx, member, ""),

@@ -31,14 +31,15 @@ func (s *Store) Settings(ctx context.Context, acct kernel.AccountID) (settings.S
 	err := tx.Q(ctx, s.db).QueryRow(ctx, `
 		SELECT a.authorization_scheme, coalesce(st.personal_api_keys, true),
 			coalesce(st.api_key_non_human_managers, false), a.api_key_non_admin_managers,
-			coalesce(st.security_email, ''), coalesce(st.oauth_redirect_hosts, '{}'),
+			coalesce(st.security_email, ''), coalesce(st.oidc_subject_template, ''),
+			coalesce(st.oauth_redirect_hosts, '{}'),
 			coalesce(st.survey_completed, false), st.survey_response,
 			st.marked_at, st.mark_reason, st.mark_description,
 			(SELECT count(*) FROM accounts o WHERE o.organization_id = a.organization_id) = 1
 		FROM accounts a LEFT JOIN account_settings st ON st.account_id = a.id
 		WHERE a.id = $1`, acct).
 		Scan(&st.AuthorizationScheme, &st.PersonalAPIKeys, &st.NonHumanKeyManagers, &st.NonAdminKeyManagers,
-			&st.SecurityEmail, &st.RedirectHosts, &st.Survey.Completed, &st.Survey.Response,
+			&st.SecurityEmail, &st.OIDCSubjectTemplate, &st.RedirectHosts, &st.Survey.Completed, &st.Survey.Response,
 			&marked, &reason, &described, &st.LastAccount)
 	if marked != nil {
 		st.Mark = &settings.Mark{At: *marked, Reason: reason, Description: described}
@@ -131,6 +132,11 @@ func (s *Store) ToggleNonHumanKeyManagers(ctx context.Context, acct kernel.Accou
 // SetSecurityEmail records the account's security contact.
 func (s *Store) SetSecurityEmail(ctx context.Context, acct kernel.AccountID, email string) error {
 	return s.upsert(ctx, acct, "security_email", email)
+}
+
+// SetOIDCSubjectTemplate records the account's OIDC subject template.
+func (s *Store) SetOIDCSubjectTemplate(ctx context.Context, acct kernel.AccountID, template string) error {
+	return s.upsert(ctx, acct, "oidc_subject_template", template)
 }
 
 // SetRedirectHosts replaces the account's OAuth redirect allowlist.

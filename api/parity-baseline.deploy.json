@@ -14,7 +14,6 @@
       "accountRequestInfraAssistantEnabling",
       "accountSetInfraAssistantBuildModeEnabled",
       "accountSetInfraAssistantEnabled",
-      "accountSetOIDCSubjectTemplate",
       "accountSetSpaceliftIntelligenceEnabled",
       "accountToggleEnforcingMFA",
       "aiIntegrationToggle",

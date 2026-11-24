@@ -28,6 +28,15 @@ components:
         - hosts
       type: object
       x-graphql-args-of: accountSetOAuthRedirectAllowlist
+    AccountSetOIDCSubjectTemplateRequest:
+      additionalProperties: false
+      description: The arguments of accountSetOIDCSubjectTemplate not carried in the path.
+      properties:
+        template:
+          nullable: true
+          type: string
+      type: object
+      x-graphql-args-of: accountSetOIDCSubjectTemplate
     AccountSetPersonalApiKeysEnabledRequest:
       additionalProperties: false
       description: The arguments of accountSetPersonalApiKeysEnabled not carried in the path.
@@ -539,6 +548,69 @@ paths:
       x-bruno: Advanced/Account Settings/Account Set OAuth Redirect Allowlist.bru
       x-graphql:
         field: accountSetOAuthRedirectAllowlist
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: singleton
+  /account/set-oidc-subject-template:
+    post:
+      description: >-
+        Set the subject template of the account's OIDC federation tokens,
+        which every run of the account renders into its token's sub claim,
+        and answer the template now in effect. A null or empty template
+        restores the default,
+        space:{spaceId}:{callerType}:{callerId}:run_type:{runType}:scope:{scope}.
+        A template holds at most 1000 characters: letters, digits, "-",
+        "_", ":", "/", "|" and the placeholders {spaceId}, {spacePath},
+        {callerType}, {callerId}, {runId}, {runType} and {scope}; anything
+        else answers 422 validation-failed naming the offending part.
+      operationId: accountSetOIDCSubjectTemplate
+      x-infraweave-feature: oidc-federation
+      x-infraweave-action: ACCOUNT_ADMIN
+      x-infraweave-subject: account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              template: space:{spaceId}:{callerType}:{callerId}
+            schema:
+              $ref: '#/components/schemas/AccountSetOIDCSubjectTemplateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The accountSetOIDCSubjectTemplate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Account Set OIDC Subject Template
+      tags:
+        - Account Settings
+      x-bruno: Advanced/Account Settings/Account Set OIDCSubject Template.bru
+      x-graphql:
+        field: accountSetOIDCSubjectTemplate
         operation: mutation
         type: Mutation
       x-infraweave-cost: standard
