@@ -26,14 +26,19 @@ type ctlSteps struct {
 
 func (c *ctlSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(
-		`^infraweavectl's profile "(\w+)" holds ([AB])'s endpoint and the operator key$`,
+		`^infraweavectl's profile "(\w+)" holds ([AB])'s endpoint and the (operator|home|member) key$`,
 		c.profile,
 	)
+	sc.Step(`^infraweavectl's profile "(\w+)" holds ([AB])'s endpoint and token "(\w+)"$`,
+		c.tokenProfile)
 	sc.Step(`^infraweavectl whoami prints the claims of an operator token$`, c.whoami)
 	sc.Step(`^infraweavectl version names infraweavectl$`, c.version)
 	sc.Step(`^infraweavectl "([^"]+)" prints JSON holding '([^']*)'$`, c.prints)
-	sc.Step(`^infraweavectl "([^"]+)"( with the home key)? fails with a (\d+) problem "([a-z-]+)"$`,
-		c.fails)
+	sc.Step(`^infraweavectl "([^"]+)" prints '([^']*)'$`, c.printsExactly)
+	sc.Step(
+		`^infraweavectl "([^"]+)"( with the home key)? fails with a (\d+) problem "([a-z-]+)"(?: naming the action "([A-Z_]+)")?$`,
+		c.fails,
+	)
 }
 
 // run runs infraweavectl with args, stdin as standard input and env over
@@ -63,13 +68,43 @@ func (c *ctlSteps) run(ctx context.Context, stdin string, env []string, args ...
 	return string(out), nil
 }
 
-func (c *ctlSteps) profile(ctx context.Context, name, replica string) error {
+// endpoint is a replica's API endpoint.
+func (c *ctlSteps) endpoint(replica string) string {
 	i := 0
 	if replica == "B" {
 		i = 1
 	}
-	_, err := c.run(ctx, harness.OperatorSecret()+"\n", nil, "profile", "set", name,
-		"--endpoint", "http://"+c.w.Servers[i].API, "--api-key", harness.OperatorKey)
+	return "http://" + c.w.Servers[i].API
+}
+
+// profile sets a profile with an API key: the operator key, or a tenant's,
+// seeded first since a scenario may name it before any exchange does.
+func (c *ctlSteps) profile(ctx context.Context, name, replica, who string) error {
+	key, secret := harness.OperatorKey, harness.OperatorSecret()
+	if who != "operator" {
+		t := harness.Tenants[who]
+		db, err := c.w.Querier(ctx)
+		if err != nil {
+			return err
+		}
+		if err := t.Seed(ctx, db); err != nil {
+			return err
+		}
+		key, secret = t.Key, t.Secret()
+	}
+	_, err := c.run(ctx, secret+"\n", nil, "profile", "set", name,
+		"--endpoint", c.endpoint(replica), "--api-key", key)
+	return err
+}
+
+// tokenProfile sets a profile with one of the scenario's named tokens.
+func (c *ctlSteps) tokenProfile(ctx context.Context, name, replica, tok string) error {
+	t, ok := c.w.Tokens[tok]
+	if !ok {
+		return fmt.Errorf("%w: no token %q", harness.ErrStep, tok)
+	}
+	_, err := c.run(ctx, t+"\n", nil, "profile", "set", name,
+		"--endpoint", c.endpoint(replica), "--token")
 	return err
 }
 
@@ -125,8 +160,26 @@ func (c *ctlSteps) prints(ctx context.Context, command, want string) error {
 	return nil
 }
 
-// fails checks that the command exits 1 having printed the problem.
-func (c *ctlSteps) fails(ctx context.Context, command, homeKey, code, slug string) error {
+// printsExactly checks that the command printed want, compared as JSON.
+func (c *ctlSteps) printsExactly(ctx context.Context, command, want string) error {
+	out, err := c.run(ctx, "", nil, strings.Fields(command)...)
+	if err != nil {
+		return err
+	}
+	var got, exp any
+	if err := json.Unmarshal([]byte(want), &exp); err != nil {
+		return fmt.Errorf("%w: the step's JSON %q: %w", harness.ErrStep, want, err)
+	}
+	if json.Unmarshal([]byte(out), &got) != nil || !reflect.DeepEqual(got, exp) {
+		return fmt.Errorf("%w: infraweavectl %s printed %s, want %s", harness.ErrStep, command,
+			out, want)
+	}
+	return nil
+}
+
+// fails checks that the command exits 1 having printed the problem and,
+// when the step names one, the refused action.
+func (c *ctlSteps) fails(ctx context.Context, command, homeKey, code, slug, action string) error {
 	var env []string
 	if homeKey != "" {
 		env = []string{
@@ -143,9 +196,13 @@ func (c *ctlSteps) fails(ctx context.Context, command, homeKey, code, slug strin
 			runErr,
 		)
 	}
-	var p sdk.Problem
+	var p struct {
+		sdk.Problem
+
+		Action string `json:"action"`
+	}
 	if err := json.Unmarshal([]byte(out), &p); err != nil || fmt.Sprint(p.Status) != code ||
-		p.Slug() != slug {
+		p.Slug() != slug || (action != "" && p.Action != action) {
 		return fmt.Errorf(
 			"%w: infraweavectl %s printed %s, want a %s problem %q: %w",
 			harness.ErrStep,

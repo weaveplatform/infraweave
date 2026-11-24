@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/spf13/cobra"
 
 	"github.com/weaveplatform/infraweave/internal/platform/private"
 	"github.com/weaveplatform/infraweave/pkg/sdk"
@@ -37,17 +38,25 @@ type seen struct {
 
 // server models the API: it exchanges the key "k1" with secret "s1" for
 // jwt, answers a two-page tier and organization list, refuses to delete
-// Enterprise, and echoes every other request back as it saw it.
+// Enterprise, answers featurePreview with previews, or with a problem of
+// refuse's status when it is set, and echoes every other request back as
+// it saw it.
 type server struct {
 	*httptest.Server
 
-	mu   sync.Mutex
-	reqs []seen
+	mu       sync.Mutex
+	reqs     []seen
+	previews string
+	refuse   int
 }
+
+// noPreviews is featurePreview's answer while the catalogue marks no
+// feature in preview.
+const noPreviews = `{"features":[],"account":{"enabled":false,"canManage":true},"visible":false}`
 
 func newServer(t *testing.T) *server {
 	t.Helper()
-	s := &server{}
+	s := &server{previews: noPreviews}
 	r := chi.NewRouter()
 	r.Post(sdk.ExchangePath, func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
@@ -88,6 +97,17 @@ func newServer(t *testing.T) *server {
 				problem(w, http.StatusConflict, "invalid-state")
 			},
 		)
+		r.Get(previewPath, func(w http.ResponseWriter, r *http.Request) {
+			s.mu.Lock()
+			s.reqs = append(s.reqs, seen{Method: r.Method, Path: r.URL.EscapedPath()})
+			body, status := s.previews, s.refuse
+			s.mu.Unlock()
+			if status != 0 {
+				problem(w, status, "forbidden")
+				return
+			}
+			_, _ = io.WriteString(w, body)
+		})
 		r.Get("/api/v1/plain", func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = io.WriteString(w, "plain text")
 		})
@@ -124,6 +144,21 @@ func problem(w http.ResponseWriter, status int, slug string) {
 	})
 }
 
+// setPreviews makes featurePreview answer body, or refuse with status
+// when it is not 0.
+func (s *server) setPreviews(body string, status int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.previews, s.refuse = body, status
+}
+
+// count is how many requests the server has recorded.
+func (s *server) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.reqs)
+}
+
 // last is the request the server echoed last.
 func (s *server) last(t *testing.T) seen {
 	t.Helper()
@@ -135,11 +170,12 @@ func (s *server) last(t *testing.T) seen {
 	return s.reqs[len(s.reqs)-1]
 }
 
-// cli runs infraweavectl with a profiles file of its own and none of its
-// variables set.
+// cli runs infraweavectl, the tree root builds, with a profiles file of
+// its own and none of its variables set.
 type cli struct {
 	t      *testing.T
 	config string
+	root   func() *cobra.Command
 }
 
 func newCLI(t *testing.T) *cli {
@@ -147,13 +183,13 @@ func newCLI(t *testing.T) *cli {
 	for _, env := range settingEnv {
 		t.Setenv(env, "")
 	}
-	return &cli{t: t, config: filepath.Join(t.TempDir(), "conf", "config.yaml")}
+	return &cli{t: t, config: filepath.Join(t.TempDir(), "conf", "config.yaml"), root: Root}
 }
 
 // run runs args with stdin as standard input and returns standard output.
 func (c *cli) run(stdin string, args ...string) (string, error) {
 	c.t.Helper()
-	root := Root()
+	root := c.root()
 	var out bytes.Buffer
 	root.SetIn(strings.NewReader(stdin))
 	root.SetOut(&out)

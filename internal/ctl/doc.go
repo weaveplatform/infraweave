@@ -1,6 +1,14 @@
 // Package ctl is infraweavectl's command tree: profile, whoami, version,
-// api, and operator with tier, organization, grant and billing. Root builds
+// api, operator with tier, organization, grant and billing, and preview
+// with show and the account's and the member's own opt-in. Root builds
 // it; cmd/infraweavectl runs it.
+//
+// A command whose annotation names a feature preview, or whose ancestor's
+// does, is hidden from help and refused with ErrPreviewInactive unless
+// featurePreview answers that preview active for the caller: the account
+// has opted in and, for a member, the member has not opted out. Help and
+// every other command call nothing for it while no command carries the
+// annotation.
 //
 // Settings are strict YAML profiles, each an endpoint and a credential (an
 // API key's ID and secret, or a token), with flag > environment > file
@@ -21,7 +29,9 @@
 // call goes to the server through pkg/sdk's Client.Do, and each command
 // prints the answer's body, indented JSON, to standard output; a list
 // command follows every cursor and prints one array. An answer of 400 or
-// more prints its problem and returns the SDK's typed error.
+// more prints its problem and returns the SDK's typed error. A command a
+// feature preview gates reads featurePreview before it runs, and help
+// reads it to hide such a command.
 //
 // # Dependencies
 //
