@@ -85,7 +85,7 @@ func (b *browserSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^a member no account admits has a browser session$`, b.unadmitted)
 	sc.Step(`^the browser switches to the (home|sibling) account through ([AB])$`, b.switchTo)
 	sc.Step(
-		`^switching the browser to the (sibling|stranger) account through ([AB]) answers a (\d+) problem "([a-z-]+)"$`,
+		`^switching the browser to the (home|sibling|stranger) account through ([AB]) answers a (\d+) problem "([a-z-]+)"$`,
 		b.switchRefused,
 	)
 	sc.Step(`^the account read through ([AB]) in the browser is the (home|sibling) account$`,

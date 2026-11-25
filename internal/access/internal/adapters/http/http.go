@@ -124,10 +124,8 @@ func (s Server) ApiKeyUser(ctx context.Context, req api.ApiKeyUserRequestObject)
 	// The key's first use in the seat window would take the organization
 	// or account past its seats. The exchange checks the secret first, so
 	// only a holder of the key learns the limit.
-	if le, ok := errors.AsType[*featuresapi.LimitError](err); ok {
-		return nil, &problem.Error{
-			Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value),
-		}
+	if refused := seatRefusal(err); refused != nil {
+		return nil, refused
 	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store marks an unreachable database
@@ -273,6 +271,17 @@ func (s Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.Logo
 		out.Headers.SetCookie = &c
 	}
 	return out, nil
+}
+
+// seatRefusal is the 403 limit-reached that answers err when a seats
+// limit refused it, as an admission or a key's first use does, and nil
+// otherwise.
+func seatRefusal(err error) *problem.Error {
+	le, ok := errors.AsType[*featuresapi.LimitError](err)
+	if !ok {
+		return nil
+	}
+	return &problem.Error{Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value)}
 }
 
 // principal is the caller, which the middleware put on every route but

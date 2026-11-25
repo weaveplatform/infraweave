@@ -16266,7 +16266,7 @@ type ClientInterface interface {
 
 	// AuthAccounts Auth Accounts
 	//
-	// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+	// The accounts that admit the caller's member, evaluated now, in slug order, among them those that admit it through a managed user group its sign-in's groups name. A credential that is not a member's, such as a break-glass session, sees none.
 	//
 	// Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
 	AuthAccounts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16355,7 +16355,10 @@ type ClientInterface interface {
 	// Replace the caller's session with a new one for an account that admits its member, in the same channel
 	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
-	// 404, as does a credential that is not a member's.
+	// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+	// not one of its managed users when a group its sign-in reported names a managed user group of the account
+	// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+	// seat left answers 403 limit-reached.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -16367,7 +16370,10 @@ type ClientInterface interface {
 	// Replace the caller's session with a new one for an account that admits its member, in the same channel
 	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
-	// 404, as does a credential that is not a member's.
+	// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+	// not one of its managed users when a group its sign-in reported names a managed user group of the account
+	// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+	// seat left answers 403 limit-reached.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -22108,7 +22114,7 @@ func (c *Client) AttachableWorkerPoolsInSpace(ctx context.Context, params *Attac
 
 // AuthAccounts Auth Accounts
 //
-// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+// The accounts that admit the caller's member, evaluated now, in slug order, among them those that admit it through a managed user group its sign-in's groups name. A credential that is not a member's, such as a break-glass session, sees none.
 //
 // Corresponds with GET /auth/accounts (the `AuthAccounts` operationId).
 func (c *Client) AuthAccounts(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22277,7 +22283,10 @@ func (c *Client) AuthOAuthRequestDeny(ctx context.Context, requestId string, par
 // Replace the caller's session with a new one for an account that admits its member, in the same channel
 // and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 // and carries no jwt; any other carries the new token. An account that does not admit the member answers
-// 404, as does a credential that is not a member's.
+// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+// not one of its managed users when a group its sign-in reported names a managed user group of the account
+// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+// seat left answers 403 limit-reached.
 //
 // Takes any type of body and a specified content type.
 //
@@ -22299,7 +22308,10 @@ func (c *Client) AuthSessionAccountWithBody(ctx context.Context, params *AuthSes
 // Replace the caller's session with a new one for an account that admits its member, in the same channel
 // and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 // and carries no jwt; any other carries the new token. An account that does not admit the member answers
-// 404, as does a credential that is not a member's.
+// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+// not one of its managed users when a group its sign-in reported names a managed user group of the account
+// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+// seat left answers 403 limit-reached.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -56273,7 +56285,7 @@ type ClientWithResponsesInterface interface {
 
 	// AuthAccountsWithResponse Auth Accounts
 	//
-	// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+	// The accounts that admit the caller's member, evaluated now, in slug order, among them those that admit it through a managed user group its sign-in's groups name. A credential that is not a member's, such as a break-glass session, sees none.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -56370,7 +56382,10 @@ type ClientWithResponsesInterface interface {
 	// Replace the caller's session with a new one for an account that admits its member, in the same channel
 	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
-	// 404, as does a credential that is not a member's.
+	// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+	// not one of its managed users when a group its sign-in reported names a managed user group of the account
+	// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+	// seat left answers 403 limit-reached.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -56382,7 +56397,10 @@ type ClientWithResponsesInterface interface {
 	// Replace the caller's session with a new one for an account that admits its member, in the same channel
 	// and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 	// and carries no jwt; any other carries the new token. An account that does not admit the member answers
-	// 404, as does a credential that is not a member's.
+	// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+	// not one of its managed users when a group its sign-in reported names a managed user group of the account
+	// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+	// seat left answers 403 limit-reached.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -106717,7 +106735,7 @@ func (c *ClientWithResponses) AttachableWorkerPoolsInSpaceWithResponse(ctx conte
 
 // AuthAccountsWithResponse Auth Accounts
 //
-// The accounts that admit the caller's member, evaluated now, in slug order. A credential that is not a member's, such as a break-glass session, sees none.
+// The accounts that admit the caller's member, evaluated now, in slug order, among them those that admit it through a managed user group its sign-in's groups name. A credential that is not a member's, such as a break-glass session, sees none.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -106862,7 +106880,10 @@ func (c *ClientWithResponses) AuthOAuthRequestDenyWithResponse(ctx context.Conte
 // Replace the caller's session with a new one for an account that admits its member, in the same channel
 // and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 // and carries no jwt; any other carries the new token. An account that does not admit the member answers
-// 404, as does a credential that is not a member's.
+// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+// not one of its managed users when a group its sign-in reported names a managed user group of the account
+// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+// seat left answers 403 limit-reached.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -106880,7 +106901,10 @@ func (c *ClientWithResponses) AuthSessionAccountWithBodyWithResponse(ctx context
 // Replace the caller's session with a new one for an account that admits its member, in the same channel
 // and with the same absolute expiry; the old session ends. A browser session's answer sets the new cookie
 // and carries no jwt; any other carries the new token. An account that does not admit the member answers
-// 404, as does a credential that is not a member's.
+// 404, as does a credential that is not a member's. Under MANAGED_USERS, an account admits a member that is
+// not one of its managed users when a group its sign-in reported names a managed user group of the account
+// that holds a role binding; the first switch makes the member a managed user, taking a seat, and with no
+// seat left answers 403 limit-reached.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //

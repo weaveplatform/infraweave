@@ -26,14 +26,16 @@ var _ port.AccountEntry = (*Store)(nil)
 // before the session and its account-qualified grants become visible. A
 // member session's entry records the groups its sign-in reported in the
 // same transaction, so the session and the admission's latest_groups never
-// disagree.
+// disagree. A member that only the account's managed user groups admit
+// gains its admission in the same transaction, refused with a
+// *featuresapi.LimitError when its seat does not fit.
 func (s *Store) Enter(ctx context.Context, candidate session.Session, verified *apikey.Key, source kernel.ULID) (session.Session, error) {
 	var entered session.Session
 	var denied *session.LoginDenied
 	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 		entered = candidate
 		denied = nil
-		grants, refused, err := s.prepareEntry(ctx, &entered, verified, source)
+		grants, refused, err := s.prepareEntry(ctx, &entered, verified, source, true)
 		denied = refused
 		if err != nil || denied != nil {
 			// A policy refusal commits its evaluation events; it never
@@ -82,7 +84,11 @@ func (s *Store) installLoginGrants(ctx context.Context, ss session.Session, gran
 	return nil
 }
 
-func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apikey.Key, source kernel.ULID) ([]binding.Binding, *session.LoginDenied, error) {
+// prepareEntry fences ss's entry into its account and decides it. With
+// admit false, as the account switcher's listing asks, a member that only
+// the account's managed user groups admit is admitted without its
+// admission being created.
+func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apikey.Key, source kernel.ULID, admit bool) ([]binding.Binding, *session.LoginDenied, error) {
 	q := tx.Q(ctx, s.db)
 	scheme, err := lockAccount(ctx, q, ss.AccountID)
 	if errors.Is(err, port.ErrNotFound) {
@@ -96,11 +102,19 @@ func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apik
 			return nil, nil, err
 		}
 	} else {
-		if err := entryMember(ctx, q, ss, scheme); err != nil {
+		admitted, err := entryMember(ctx, q, ss, scheme)
+		if err != nil {
 			return nil, nil, err
 		}
 		if err := entrySource(ctx, q, ss, source); err != nil {
 			return nil, nil, err
+		}
+		// The groups come from the source session, so they are read only
+		// after entrySource replaces the candidate's own.
+		if !admitted {
+			if err := s.admitThroughGroups(ctx, q, *ss, admit); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	if scheme == accessapi.LoginPolicies {
@@ -109,32 +123,84 @@ func (s *Store) prepareEntry(ctx context.Context, ss *session.Session, key *apik
 	return nil, nil, nil
 }
 
-func entryMember(ctx context.Context, q tx.Querier, ss *session.Session, scheme accessapi.AuthorizationScheme) error {
+// entryMember fences the member ss names and reports whether the account
+// admits it without its groups: under MANAGED_USERS through its
+// admission, an account_users row, and under LOGIN_POLICIES always, as
+// the login policies decide instead.
+func entryMember(ctx context.Context, q tx.Querier, ss *session.Session, scheme accessapi.AuthorizationScheme) (bool, error) {
 	if ss.ActorKind != kernel.PrincipalUser || ss.MemberID.IsZero() || ss.ActorID != ss.MemberID.ULID {
-		return session.ErrNotAdmitted
+		return false, session.ErrNotAdmitted
 	}
 	var active bool
 	err := q.QueryRow(ctx, `SELECT m.status='active' FROM members m JOIN accounts a ON a.organization_id=m.organization_id
 		WHERE a.id=$1 AND m.organization_id=$2 AND m.id=$3 FOR SHARE OF m`,
 		ss.AccountID, ss.OrganizationID, ss.MemberID).Scan(&active)
 	if errors.Is(err, pgx.ErrNoRows) || err == nil && !active {
-		return session.ErrNotAdmitted
+		return false, session.ErrNotAdmitted
 	}
 	if err != nil {
-		return fmt.Errorf("access: fence entering member: %w", sql.Unavailable(err))
+		return false, fmt.Errorf("access: fence entering member: %w", sql.Unavailable(err))
 	}
-	if scheme == accessapi.ManagedUsers {
-		var member kernel.MemberID
-		err := q.QueryRow(ctx, `SELECT member_id FROM account_users WHERE account_id=$1 AND member_id=$2 FOR SHARE`,
-			ss.AccountID, ss.MemberID).Scan(&member)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return session.ErrNotAdmitted
-		}
-		if err != nil {
-			return fmt.Errorf("access: fence managed admission: %w", sql.Unavailable(err))
-		}
+	if scheme != accessapi.ManagedUsers {
+		return true, nil
 	}
-	return nil
+	var member kernel.MemberID
+	err = q.QueryRow(ctx, `SELECT member_id FROM account_users WHERE account_id=$1 AND member_id=$2 FOR SHARE`,
+		ss.AccountID, ss.MemberID).Scan(&member)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("access: fence managed admission: %w", sql.Unavailable(err))
+	}
+	return true, nil
+}
+
+// admitThroughGroups admits ss's member, which the account it enters does
+// not admit yet, when one of the session's original teams names, exactly,
+// a managed user group of the account that holds a binding. A session
+// whose teams are unknown is never admitted this way, nor is an API key's,
+// whose entry entryCredential fences instead. With admit, the entry
+// creates the member's admission, whose latest_groups are those teams,
+// after checking the seat it takes, so the member holds a managed user and
+// a seat from then on; without, nothing is written. The caller holds the account's row lock,
+// which every binding change's authz_version bump waits for, so no
+// binding change commits between this read and the entry's commit. A
+// group losing its last binding leaves the admissions it created.
+//
+// ref: decision 0007 § "Schemes and login"
+func (s *Store) admitThroughGroups(ctx context.Context, q tx.Querier, ss session.Session, admit bool) error {
+	if !ss.OriginalTeamsKnown || len(ss.OriginalTeams) == 0 {
+		return session.ErrNotAdmitted
+	}
+	var matched, seated bool
+	err := q.QueryRow(ctx, `SELECT
+			EXISTS (SELECT 1 FROM managed_user_groups g
+				WHERE g.account_id = $1 AND g.name = ANY($3::text[])
+					AND EXISTS (SELECT 1 FROM role_bindings b
+						WHERE b.account_id = $1 AND b.actor_kind = 'group' AND b.actor_id = g.id)),
+			EXISTS (SELECT 1 FROM account_users WHERE organization_id = $2 AND member_id = $4)`,
+		ss.AccountID, ss.OrganizationID, ss.OriginalTeams, ss.MemberID).Scan(&matched, &seated)
+	if err != nil {
+		return fmt.Errorf("access: match the groups of account entry: %w", sql.Unavailable(err))
+	}
+	if !matched {
+		return session.ErrNotAdmitted
+	}
+	if !admit {
+		return nil
+	}
+	if err := s.checkSeat(ctx, ss.OrganizationID, ss.AccountID, seated); err != nil {
+		return err
+	}
+	// An invitation committed since entryMember's read admits the member
+	// already; its row stands, and recordGroups writes the groups to it.
+	if _, err := q.Exec(ctx, `INSERT INTO account_users (account_id, organization_id, member_id, latest_groups)
+		VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+		ss.AccountID, ss.OrganizationID, ss.MemberID, ss.OriginalTeams); err != nil {
+		return fmt.Errorf("access: admit member %s through its groups: %w", ss.MemberID, sql.Unavailable(err))
+	}
+	return s.bumpAuthz(ctx, q, ss.AccountID)
 }
 
 // recordGroups writes the groups ss's sign-in reported, its original
@@ -189,8 +255,11 @@ func entrySource(ctx context.Context, q tx.Querier, next *session.Session, id ke
 }
 
 // AdmittedAccounts reevaluates admission without installing a session or
-// grants. Each target has its own transaction, so a refusal's evidence commits
-// without retaining locks across the organization or exposing its detail.
+// grants, and lists an account that admits the member only through its
+// managed user groups without creating the admission or checking its
+// seat, which the entry does. Each target has its own transaction, so a
+// refusal's evidence commits without retaining locks across the
+// organization or exposing its detail.
 func (s *Store) AdmittedAccounts(ctx context.Context, identity session.Session) ([]session.Admitted, error) {
 	if !identity.Live(time.Now()) {
 		return nil, port.ErrCredentialChanged
@@ -213,7 +282,7 @@ func (s *Store) AdmittedAccounts(ctx context.Context, identity session.Session) 
 		err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
 			candidate := identity
 			candidate.AccountID, candidate.CreatedAt = account.ID, time.Now()
-			_, refused, err := s.prepareEntry(ctx, &candidate, nil, identity.ID)
+			_, refused, err := s.prepareEntry(ctx, &candidate, nil, identity.ID, false)
 			denied = refused
 			return err
 		})

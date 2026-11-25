@@ -191,6 +191,9 @@ func consentError(err error, id string) error {
 	if denied, ok := errors.AsType[*session.LoginDenied](err); ok {
 		return problem.Forbidden.Error(denied.Message) //nolint:wrapcheck // the committed policy refusal
 	}
+	if refused := seatRefusal(err); refused != nil {
+		return refused
+	}
 	switch {
 	case errors.Is(err, port.ErrNotFound):
 		//nolint:wrapcheck // a problem, answered as it is

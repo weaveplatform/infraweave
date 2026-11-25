@@ -57,6 +57,9 @@ func (s Server) CliConfirmationToken(ctx context.Context, req api.CliConfirmatio
 		return nil, err
 	}
 	sealed, err := s.auth.CLIToken(ctx, p, req.Body.PubKey)
+	if refused := seatRefusal(err); refused != nil {
+		return nil, refused
+	}
 	switch {
 	case errors.Is(err, authn.ErrNotAdmitted):
 		return nil, problem.Forbidden.Error("Account entry was refused for the new CLI session.") //nolint:wrapcheck // safe public refusal
@@ -99,7 +102,9 @@ func (s Server) AuthAccounts(ctx context.Context, _ api.AuthAccountsRequestObjec
 // that admits its member. A browser session's answer sets its new cookie
 // and carries no jwt; a token session's carries the new token. An
 // account that does not admit the member, or one that does not exist,
-// answers 404, as the switcher would not list it.
+// answers 404, as the switcher would not list it. An account that admits
+// the member only through its managed user groups, with no seat left for
+// the admission the switch creates, answers 403 limit-reached.
 func (s Server) AuthSessionAccount(ctx context.Context, req api.AuthSessionAccountRequestObject) (api.AuthSessionAccountResponseObject, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -112,6 +117,9 @@ func (s Server) AuthSessionAccount(ctx context.Context, req api.AuthSessionAccou
 		return nil, notFound //nolint:wrapcheck // a problem, answered as it is
 	}
 	sw, err := s.auth.SwitchAccount(ctx, p, kernel.AccountID{ULID: acct})
+	if refused := seatRefusal(err); refused != nil {
+		return nil, refused
+	}
 	switch {
 	case errors.Is(err, authn.ErrNotAdmitted):
 		return nil, notFound //nolint:wrapcheck // a problem, answered as it is

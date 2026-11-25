@@ -61,6 +61,44 @@ type auditWorld struct {
 	org     organization.Organization
 	first   account.Account
 	source  kernel.ULID
+	// grouped is the browser session of a member that only a bound group
+	// of the account admits.
+	grouped session.Session
+}
+
+// groupedMember seeds an active member no account admits, a group of
+// the account named as its sign-in's group and bound to space-admin on the
+// top space, and its browser session, with direct statements that send
+// nothing.
+func (w *auditWorld) groupedMember(ctx context.Context) error {
+	m, g := kernel.NewMemberID(), kernel.NewULID()
+	for _, stmt := range []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO members (organization_id, id, login, name, email, status)
+			VALUES ($1, $2, 'gina', 'Gina', 'gina@example.com', 'active')`, []any{w.x.org, m}},
+		{`INSERT INTO managed_user_groups (account_id, id, name, created_at)
+			VALUES ($1, $2, 'admitting', now())`, []any{w.x.acct, g}},
+		{`INSERT INTO role_bindings (account_id, id, actor_kind, actor_id, role_id, space_id, origin, created_by)
+			SELECT $1, gen_random_uuid(), 'group', $2, id, $1, 'binding', 'audit'
+			FROM roles WHERE account_id = $1 AND slug = 'space-admin'`, []any{w.x.acct, g}},
+	} {
+		if _, err := w.x.db.Exec(ctx, stmt.sql, stmt.args...); err != nil {
+			return err
+		}
+	}
+	// PostgreSQL keeps microseconds, and an entry refuses a source
+	// session that expires before the candidate, so the expiry is one the
+	// row holds exactly.
+	at := time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour)
+	w.grouped = session.Session{
+		ID: kernel.NewULID(), OrganizationID: w.x.org, AccountID: w.x.acct, MemberID: m,
+		Channel: session.ChannelWeb, ActorKind: kernel.PrincipalUser, ActorID: m.ULID,
+		Login: "gina", ExpiresAt: at, IdleExpiresAt: at, OriginalMember: new(true),
+		OriginalTeamsKnown: true, OriginalTeams: []string{"admitting"},
+	}
+	return w.x.s.CreateSession(ctx, w.grouped)
 }
 
 // grantAuditEvaluator drives only the authorization-write audit. Public LOGIN
@@ -88,6 +126,30 @@ func writePaths(w *auditWorld) []writePath {
 			_, err := w.x.s.ClaimAccount(ctx, w.x.org, w.x.acct, w.x.member, spacesAt,
 				byAdmin(w.x, orgadmin.ActionAccountClaim))
 			return one(err)
+		}},
+		{"AdmittedAccounts", func(ctx context.Context) ([]kernel.AccountID, error) {
+			if err := w.groupedMember(ctx); err != nil {
+				return nil, err
+			}
+			_, err := w.x.s.AdmittedAccounts(ctx, w.grouped)
+			return nil, err
+		}},
+		{"Approve", func(ctx context.Context) ([]kernel.AccountID, error) {
+			now := time.Now()
+			client := oauth.Client{ID: kernel.NewULID(), Name: "Consent", RedirectURIs: []string{"http://localhost/cb"}, CreatedAt: now}
+			if err := w.x.s.CreateClient(ctx, client); err != nil {
+				return nil, err
+			}
+			_, hash := session.NewSecret()
+			r := oauth.Request{
+				ID: kernel.NewULID(), Client: client, RedirectURI: "http://localhost/cb", Resource: "https://iw.example.com/mcp",
+				Scopes: []string{"mcp:read"}, Challenge: oauth.Challenge("audit"), CreatedAt: now, ExpiresAt: now.Add(time.Minute),
+				AccountID: w.x.acct, CodeHash: hash, CodeExpiresAt: now.Add(time.Minute),
+			}
+			if err := w.x.s.CreateRequest(ctx, r); err != nil {
+				return nil, err
+			}
+			return one(w.x.s.Approve(ctx, w.grouped.Principal(), r, now))
 		}},
 		{"SetAuthorizationScheme", func(ctx context.Context) ([]kernel.AccountID, error) {
 			ss := w.x.webSession(time.Now().Add(time.Hour))

@@ -117,7 +117,14 @@
 // members are the admissions whose latest_groups hold its name, which a
 // member session's account entry writes, in the entry's transaction, from
 // the groups its sign-in reported, raising the admission's version when
-// they change; another account's admission keeps its own. Creating
+// they change; another account's admission keeps its own. Under
+// MANAGED_USERS a member no admission admits enters an account, or
+// consents to an OAuth client in it, when one of its session's known
+// groups names exactly a managed user group of the account that holds a
+// binding: the entry creates the admission with those groups after
+// checking the seat it takes, in its transaction, and the account
+// switcher's listing admits the member without writing or checking a
+// seat. A group losing its last binding leaves the admissions. Creating
 // a personal key share-locks the account, the owner's admission and the
 // member while it reads personalApiKeysEnabled and the owner's state,
 // and turning the setting off, removing the member and deactivating them

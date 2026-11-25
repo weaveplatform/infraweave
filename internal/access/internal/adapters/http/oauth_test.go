@@ -12,6 +12,7 @@ import (
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/oauth"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/port"
 	"github.com/weaveplatform/infraweave/internal/access/internal/core/session"
+	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 )
@@ -25,6 +26,9 @@ type grants struct {
 	hosts     map[kernel.AccountID][]string
 	down      bool
 	admission session.Admission
+	// seatless refuses an approval as an admission through the account's
+	// groups that finds no seat would.
+	seatless *featuresapi.LimitError
 }
 
 func newGrants() *grants {
@@ -80,6 +84,9 @@ func (g *grants) Decide(_ context.Context, d oauth.Request, _ time.Time) error {
 }
 
 func (g *grants) Approve(ctx context.Context, p kernel.Principal, d oauth.Request, now time.Time) error {
+	if g.seatless != nil {
+		return g.seatless
+	}
 	_, allowed, err := g.admission.Admits(ctx, p.OrganizationID, p.MemberID, d.AccountID)
 	if err != nil {
 		return err
@@ -311,6 +318,10 @@ func TestUnitOAuthConsent(t *testing.T) {
 		refusedAs(t, name, rec, http.StatusForbidden, "forbidden")
 	}
 	w.grants.hosts[w.acct] = []string{"app.example.com"}
+	w.grants.seatless = &featuresapi.LimitError{Limit: featuresapi.Seats, Scope: featuresapi.ScopeOrganization, Value: 2}
+	refusedAs(t, "an approval beyond the seats limit", approve(`{"account":"`+w.acct.String()+`"}`),
+		http.StatusForbidden, "limit-reached")
+	w.grants.seatless = nil
 	rec := approve(`{"account":"` + w.acct.String() + `"}`)
 	if d := decode[api.AuthOAuthDecision](t, rec); rec.Code != http.StatusOK ||
 		!strings.HasPrefix(d.RedirectTo, "https://app.example.com/cb?code=") {
