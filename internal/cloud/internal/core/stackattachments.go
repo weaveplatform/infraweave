@@ -21,7 +21,7 @@ var _ stacksapi.StackAwsAttachments = (*Service)(nil)
 // readable spaces, the account's slug and the integrations named, so a
 // page of stacks costs the same queries however long it is.
 func (s *Service) AwsAttachments(ctx context.Context, p kernel.Principal, stacks []kernel.ULID) (map[kernel.ULID][]stacksapi.AwsAttachment, error) {
-	found, attached, err := s.attached(ctx, p.AccountID, stacks)
+	found, attached, err := s.attached(ctx, s.aws(), p.AccountID, stacks)
 	if err != nil {
 		return nil, err
 	}

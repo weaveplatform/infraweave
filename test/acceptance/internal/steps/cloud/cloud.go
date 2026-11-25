@@ -20,6 +20,7 @@ import (
 // World w.
 func Register(sc *godog.ScenarioContext, w *harness.World) {
 	(&stsSteps{w: w}).register(sc)
+	(&entraSteps{w: w}).register(sc)
 }
 
 // The servers' AWS identity: the installation's account and the access
@@ -60,7 +61,7 @@ func (s *stsSteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^no credential AWS STS issued is in an answer, a server's log or any of at least (\d+) objects `+
 		`of the scenario's bucket$`, s.nowhere)
 	sc.Step(`^the answer's runtimeConfig lists the computed write-only variables "([^"]+)"$`, s.computed)
-	sc.Step(`^the answer lists the AWS integrations "([^"]*)"$`, s.lists)
+	sc.Step(`^the answer lists the (?:AWS|Azure) integrations "([^"]*)"$`, s.lists)
 	sc.Step(`^the answer's attached stacks are "([^"]*)"$`, s.attached)
 	sc.Step(`^the stack "([^"]+)" lists the AWS integrations "([^"]*)"$`, s.stackLists)
 	sc.Step(`^the stack "([^"]+)" shows the AWS integration "([^"]+)" with the external ID "([^"]+)"$`, s.stackExternalID)
@@ -73,7 +74,7 @@ func (s *stsSteps) register(sc *godog.ScenarioContext) {
 func (s *stsSteps) serve() {
 	s.fake = awsfake.New()
 	s.srv = httptest.NewServer(s.fake)
-	s.w.Settings["cloud"] = map[string]any{"aws": map[string]any{"sts_endpoint": s.srv.URL}}
+	cloudSettings(s.w)["aws"] = map[string]any{"sts_endpoint": s.srv.URL}
 	none := filepath.Join(s.w.Dir, "no-aws-config")
 	for k, v := range map[string]string{
 		"AWS_ACCESS_KEY_ID": "", "AWS_SECRET_ACCESS_KEY": "", "AWS_SESSION_TOKEN": "",

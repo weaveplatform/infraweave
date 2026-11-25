@@ -35,6 +35,7 @@ func TestAccUnavailable(t *testing.T) {
 		}(),
 		"Delete":  s.Delete(ctx, acct, in.ID),
 		"InSpace": func() error { _, err := s.InSpace(ctx, acct, in.ID); return err }(),
+		"Counts":  func() error { _, err := s.Counts(ctx, acct); return err }(),
 		"Purge":   func() error { _, err := s.Purge(ctx, acct, 1); return err }(),
 		"Search": func() error {
 			_, err := s.Search(ctx, acct, search.Input{}, integration.Scope{Provider: "GITLAB"})

@@ -89,7 +89,9 @@ type Config struct {
 	// ref: decision 0010
 	State stateassembly.Settings `mapstructure:"state"`
 	// Cloud is the cloud domain's: where the server reaches AWS STS to
-	// assume AWS integrations' roles.
+	// assume AWS integrations' roles, and the operator's Entra application
+	// that creates Azure integrations' applications, which needs Microsoft
+	// Graph's Application.ReadWrite.OwnedBy application permission.
 	//
 	// ref: decision 0006 "AWS external ID and session name"
 	Cloud cloudassembly.Settings `mapstructure:"cloud"`

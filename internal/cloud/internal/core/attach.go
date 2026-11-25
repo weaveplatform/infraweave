@@ -38,21 +38,21 @@ func sides(at string, read, write bool) error {
 	}
 }
 
-// taken refuses giving stack the sides read and write when another of
-// its stored attachments, not skip, serves one of them already, or when
-// integration is attached to it already.
-func (s *Service) taken(ctx context.Context, acct kernel.AccountID, st stacksapi.Stack, integration, skip kernel.ULID, read, write bool) error {
-	have, err := s.store.Attachments(ctx, acct, []kernel.ULID{st.ID}, true)
+// taken refuses giving stack the sides read and write of the kind k when
+// another of its stored attachments, not skip, serves one of them
+// already, or when integration is attached to it already.
+func (s *Service) taken(ctx context.Context, k kind, acct kernel.AccountID, st stacksapi.Stack, integration, skip kernel.ULID, read, write bool) error {
+	have, err := k.stored(ctx, acct, []kernel.ULID{st.ID}, true)
 	if err != nil {
-		return err //nolint:wrapcheck // the store names the read
+		return err
 	}
 	for _, a := range have[st.ID] {
 		switch {
 		case a.ID == skip:
 		case a.Integration == integration:
 			return &Conflict{Detail: fmt.Sprintf(
-				"the AWS integration is attached to stack %s already; update attachment %s instead",
-				st.Slug, a.ID)}
+				"the %s is attached to stack %s already; update attachment %s instead",
+				k.noun, st.Slug, a.ID)}
 		case read && a.Read:
 			return &Conflict{Detail: fmt.Sprintf(
 				"stack %s has a read attachment already; a stack has one read and one write attachment",
@@ -152,10 +152,10 @@ func (s *Service) Attach(ctx context.Context, p kernel.Principal, slug, id strin
 	if err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
 	}
-	if err := s.reaches(ctx, i, st, "/stackId"); err != nil {
+	if err := s.reaches(ctx, s.aws(), i.Account, i.Space, i.Name, st, "/stackId"); err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
 	}
-	if err := s.taken(ctx, p.AccountID, st, i.ID, kernel.ULID{}, read, write); err != nil {
+	if err := s.taken(ctx, s.aws(), p.AccountID, st, i.ID, kernel.ULID{}, read, write); err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
 	}
 	if err := s.trust(ctx, i, st, read, write, ""); err != nil {
@@ -172,7 +172,7 @@ func (s *Service) Attach(ctx context.Context, p kernel.Principal, slug, id strin
 		if err := s.holdStack(ctx, st); err != nil {
 			return err
 		}
-		if err := s.reaches(ctx, i, st, "/stackId"); err != nil {
+		if err := s.reaches(ctx, s.aws(), i.Account, i.Space, i.Name, st, "/stackId"); err != nil {
 			return err
 		}
 		if err := s.store.Attach(ctx, a); err != nil {
@@ -210,22 +210,23 @@ func (s *Service) holdStack(ctx context.Context, st stacksapi.Stack) error {
 	return s.spaces.Hold(ctx, st.Account, st.Space) //nolint:wrapcheck // the access domain names the lock
 }
 
-// reaches refuses attaching i to st when st's space does not reach i's,
-// pointing at pointer.
-func (s *Service) reaches(ctx context.Context, i Integration, st stacksapi.Stack, pointer string) error {
-	tree, err := s.spaces.Tree(ctx, i.Account)
+// reaches refuses attaching acct's integration of the kind k named name,
+// in space, to st when st's space does not reach space, pointing at
+// pointer.
+func (s *Service) reaches(ctx context.Context, k kind, acct kernel.AccountID, space kernel.ULID, name string, st stacksapi.Stack, pointer string) error {
+	tree, err := s.spaces.Tree(ctx, acct)
 	if err != nil {
 		return err //nolint:wrapcheck // the access domain names the read
 	}
-	if slices.Contains(Reach(index(tree), st.Space), i.Space) {
+	if slices.Contains(Reach(index(tree), st.Space), space) {
 		return nil
 	}
 	return &kernel.Invalid{
-		Detail: fmt.Sprintf("Stack %s cannot reach AWS integration %s.", st.Slug, i.Name),
+		Detail: fmt.Sprintf("Stack %s cannot reach %s %s.", st.Slug, k.noun, name),
 		Errors: []kernel.FieldError{{
 			Pointer: pointer, Reason: kernel.ReasonRule, Message: fmt.Sprintf(
-				"A stack attaches the AWS integrations of its space and of the spaces it "+
-					"inherits from; %s is in neither.", i.Name),
+				"A stack attaches the %ss of its space and of the spaces it "+
+					"inherits from; %s is in neither.", k.noun, name),
 		}},
 	}
 }
@@ -280,6 +281,15 @@ func autoRefused(id string) error {
 // attaches to, automatic or stored, which the middleware decides an
 // attachment's operations on; accessapi.ErrNoSubject when acct lacks it.
 func (s *Service) AttachmentSpaceOf(ctx context.Context, acct kernel.AccountID, id string) (kernel.ULID, error) {
+	return s.attachmentSpace(ctx, acct, id, s.attachment)
+}
+
+// attachmentSpace is the space of the stack acct's attachment id attaches
+// to, an automatic one's by its ID and a stored one's as stored reads it.
+func (s *Service) attachmentSpace(
+	ctx context.Context, acct kernel.AccountID, id string,
+	stored func(ctx context.Context, acct kernel.AccountID, id string) (Attachment, error),
+) (kernel.ULID, error) {
 	var stack kernel.ULID
 	if rest, ok := strings.CutPrefix(id, AutoPrefix); ok {
 		_, after, found := strings.Cut(rest, "-")
@@ -289,7 +299,7 @@ func (s *Service) AttachmentSpaceOf(ctx context.Context, acct kernel.AccountID, 
 		}
 		stack = uid
 	} else {
-		a, err := s.attachment(ctx, acct, id)
+		a, err := stored(ctx, acct, id)
 		if _, missing := errors.AsType[*Missing](err); missing {
 			return kernel.ULID{}, accessapi.ErrNoSubject
 		} else if err != nil {
@@ -333,7 +343,7 @@ func (s *Service) UpdateAttachment(ctx context.Context, p kernel.Principal, id s
 			}},
 		}
 	}
-	if err := s.taken(ctx, p.AccountID, st, kernel.ULID{}, a.ID, read, write); err != nil {
+	if err := s.taken(ctx, s.aws(), p.AccountID, st, kernel.ULID{}, a.ID, read, write); err != nil {
 		return Attachment{}, stacksapi.Stack{}, err
 	}
 	if err := s.trust(ctx, i, st, read, write, ""); err != nil {

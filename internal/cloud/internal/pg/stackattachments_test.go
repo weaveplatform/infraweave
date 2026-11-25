@@ -104,7 +104,7 @@ func TestAccStackAttachments(t *testing.T) {
 		t.Fatalf("err = %v, want the account slug's failure", err)
 	}
 	f.svc = core.New(core.Deps{
-		Store: f.store, DB: f.db, Spaces: f.spaces, Accounts: accounts{}, Stacks: f.stacks,
+		Store: f.store, Azure: pg.NewAzure(f.db), DB: f.db, Spaces: f.spaces, Accounts: accounts{}, Stacks: f.stacks,
 		Authz: brokenReach{f.authzOf()}, Roles: f.roles,
 	})
 	if _, err := f.svc.AwsAttachments(ctx, f.admin, []kernel.ULID{f.web.ID}); !errors.Is(err, errBroken) {
@@ -163,7 +163,7 @@ func TestAccStackAttachmentsQueries(t *testing.T) {
 	}
 	t.Cleanup(traced.Close)
 	svc := core.New(core.Deps{
-		Store: pg.New(traced), DB: traced, Spaces: f.spaces, Accounts: accounts{}, Stacks: f.stacks,
+		Store: pg.New(traced), Azure: pg.NewAzure(traced), DB: traced, Spaces: f.spaces, Accounts: accounts{}, Stacks: f.stacks,
 		Authz: f.authzOf(), Roles: f.roles,
 	})
 	read := func(stacks []kernel.ULID) int64 {

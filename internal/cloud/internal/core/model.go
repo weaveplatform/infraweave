@@ -43,7 +43,10 @@ type Attachment struct {
 	Stack       kernel.ULID
 	Read, Write bool
 	Auto        bool
-	CreatedAt   time.Time
+	// Subscription is an Azure attachment's subscription, nil when the
+	// integration's default applies and for an AWS attachment.
+	Subscription *string
+	CreatedAt    time.Time
 }
 
 // AutoPrefix starts the ID the API gives an automatic attachment, which
@@ -97,11 +100,20 @@ const (
 // ErrNotFound reports an integration or an attachment the account lacks.
 var ErrNotFound = errors.New("cloud: not found")
 
-// NameTaken is a name another integration of the account holds.
-type NameTaken struct{ Name string }
+// NameTaken is a name another integration of the account of the Kind it
+// names holds, an AWS integration when Kind is empty.
+type NameTaken struct{ Kind, Name string }
+
+// What is the kind of integration that holds the name.
+func (e *NameTaken) What() string {
+	if e.Kind == "" {
+		return "AWS integration"
+	}
+	return e.Kind
+}
 
 func (e *NameTaken) Error() string {
-	return fmt.Sprintf("cloud: an AWS integration named %q exists", e.Name)
+	return fmt.Sprintf("cloud: an %s named %q exists", e.What(), e.Name)
 }
 
 // Conflict is a write the stack's or the integration's attachments

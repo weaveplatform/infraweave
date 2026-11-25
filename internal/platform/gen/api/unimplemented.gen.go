@@ -334,6 +334,58 @@ func (UnimplementedStrict) AzureDevOpsWebhooksEndpoint(context.Context, AzureDev
 	return nil, &problem.NotImplementedError{OperationID: "azureDevOpsWebhooksEndpoint", Route: "GET /azure-dev-ops-webhooks-endpoint"}
 }
 
+func (UnimplementedStrict) AzureIntegrationDetach(context.Context, AzureIntegrationDetachRequestObject) (AzureIntegrationDetachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationDetach", Route: "DELETE /azure-integration-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) AzureIntegrationAttachmentUpdate(context.Context, AzureIntegrationAttachmentUpdateRequestObject) (AzureIntegrationAttachmentUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationAttachmentUpdate", Route: "PUT /azure-integration-attachments/{attachmentId}"}
+}
+
+func (UnimplementedStrict) AzureIntegrationByName(context.Context, AzureIntegrationByNameRequestObject) (AzureIntegrationByNameResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationByName", Route: "GET /azure-integration-by-name"}
+}
+
+func (UnimplementedStrict) AzureIntegrations(context.Context, AzureIntegrationsRequestObject) (AzureIntegrationsResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrations", Route: "GET /azure-integrations"}
+}
+
+func (UnimplementedStrict) AzureIntegrationCreate(context.Context, AzureIntegrationCreateRequestObject) (AzureIntegrationCreateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationCreate", Route: "POST /azure-integrations"}
+}
+
+func (UnimplementedStrict) AzureIntegrationsEnabled(context.Context, AzureIntegrationsEnabledRequestObject) (AzureIntegrationsEnabledResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationsEnabled", Route: "GET /azure-integrations-enabled"}
+}
+
+func (UnimplementedStrict) AzureIntegrationDelete(context.Context, AzureIntegrationDeleteRequestObject) (AzureIntegrationDeleteResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationDelete", Route: "DELETE /azure-integrations/{azureIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureIntegration(context.Context, AzureIntegrationRequestObject) (AzureIntegrationResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegration", Route: "GET /azure-integrations/{azureIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureIntegrationPatch(context.Context, AzureIntegrationPatchRequestObject) (AzureIntegrationPatchResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationPatch", Route: "PATCH /azure-integrations/{azureIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureIntegrationUpdate(context.Context, AzureIntegrationUpdateRequestObject) (AzureIntegrationUpdateResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationUpdate", Route: "PUT /azure-integrations/{azureIntegrationId}"}
+}
+
+func (UnimplementedStrict) AzureIntegrationAttachedStack(context.Context, AzureIntegrationAttachedStackRequestObject) (AzureIntegrationAttachedStackResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationAttachedStack", Route: "GET /azure-integrations/{azureIntegrationId}/attached-stack"}
+}
+
+func (UnimplementedStrict) AzureIntegrationConsentClear(context.Context, AzureIntegrationConsentClearRequestObject) (AzureIntegrationConsentClearResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationConsentClear", Route: "POST /azure-integrations/{azureIntegrationId}/consent-clear"}
+}
+
+func (UnimplementedStrict) AzureIntegrationConsentConfirm(context.Context, AzureIntegrationConsentConfirmRequestObject) (AzureIntegrationConsentConfirmResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationConsentConfirm", Route: "POST /azure-integrations/{azureIntegrationId}/consent-confirm"}
+}
+
 func (UnimplementedStrict) BilledExternally(context.Context, BilledExternallyRequestObject) (BilledExternallyResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "billedExternally", Route: "GET /billed-externally"}
 }
@@ -1236,6 +1288,10 @@ func (UnimplementedStrict) StackIntegrationAwsDelete(context.Context, StackInteg
 
 func (UnimplementedStrict) StackIntegrationAwsCreate(context.Context, StackIntegrationAwsCreateRequestObject) (StackIntegrationAwsCreateResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "stackIntegrationAwsCreate", Route: "PUT /stacks/{stackId}/aws-role"}
+}
+
+func (UnimplementedStrict) AzureIntegrationAttach(context.Context, AzureIntegrationAttachRequestObject) (AzureIntegrationAttachResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "azureIntegrationAttach", Route: "PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId}"}
 }
 
 func (UnimplementedStrict) StackConfigElement(context.Context, StackConfigElementRequestObject) (StackConfigElementResponseObject, error) {

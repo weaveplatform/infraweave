@@ -271,6 +271,8 @@ func newDomains(c config.Config, db *sql.DB, keys *crypt.Keyring, objects Object
 	stacks.GuardStacks(cloud.StackGuard())
 	access.ResolveSubjects(cloudassembly.Entity, cloud.SpaceOf())
 	access.ResolveSubjects(cloudassembly.AttachmentEntity, cloud.AttachmentSpaceOf())
+	access.ResolveSubjects(cloudassembly.AzureEntity, cloud.AzureSpaceOf())
+	access.ResolveSubjects(cloudassembly.AzureAttachmentEntity, cloud.AzureAttachmentSpaceOf())
 	stacks.BindAwsAttachments(cloud.StackAwsAttachments())
 	runs.BindCredentials(cloud.Credentials())
 	stacks.BindCredentials(cloud.StackCredentials())

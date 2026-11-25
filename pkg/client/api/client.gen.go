@@ -3788,6 +3788,52 @@ type AzureIntegration struct {
 	UpdatedAt int32 `json:"updatedAt"`
 }
 
+// AzureIntegrationAttachRequest The arguments of azureIntegrationAttach not carried in the path.
+type AzureIntegrationAttachRequest struct {
+	// Read Indicates whether this attachment is used for read operations.
+	Read bool `json:"read"`
+
+	// SubscriptionId The Azure subscription ID the stack's runs use, a GUID; absent, the integration's defaultSubscriptionId applies.
+	SubscriptionId *string `json:"subscriptionId,omitempty"`
+
+	// Write Indicates whether this attachment is used for write operations.
+	Write bool `json:"write"`
+}
+
+// AzureIntegrationAttachmentUpdateRequest The arguments of azureIntegrationAttachmentUpdate not carried in the path.
+type AzureIntegrationAttachmentUpdateRequest struct {
+	Read           bool    `json:"read"`
+	SubscriptionId *string `json:"subscriptionId,omitempty"`
+	Write          bool    `json:"write"`
+}
+
+// AzureIntegrationConsent AzureIntegrationConsent is the persisted consent state after confirming or clearing consent.
+type AzureIntegrationConsent struct {
+	// AdminConsentProvided The integration's final admin consent state after the mutation.
+	AdminConsentProvided bool `json:"adminConsentProvided"`
+}
+
+// AzureIntegrationCreateRequest The arguments of azureIntegrationCreate not carried in the path.
+type AzureIntegrationCreateRequest struct {
+	// AutoattachEnabled Enables `autoattach:` labels functionality for this integration, which needs a defaultSubscriptionId.
+	AutoattachEnabled *bool `json:"autoattachEnabled,omitempty"`
+
+	// DefaultSubscriptionId The default subscription ID to use, a GUID, if one isn't specified at the stack level.
+	DefaultSubscriptionId *string `json:"defaultSubscriptionId,omitempty"`
+
+	// Labels Labels to set on the integration
+	Labels []string `json:"labels"`
+
+	// Name The friendly name of the integration
+	Name string `json:"name"`
+
+	// Space ID (slug) of the space the integration is in; the account's top space when absent.
+	Space *string `json:"space,omitempty"`
+
+	// TenantID The Entra tenant ID of the customer, a GUID. It cannot change after creation.
+	TenantID string `json:"tenantID"`
+}
+
 // AzureIntegrationPage One page of a cursor-paginated list.
 type AzureIntegrationPage struct {
 	Items []AzureIntegration `json:"items"`
@@ -3825,6 +3871,15 @@ type AzureIntegrationStackAttachment struct {
 
 	// Write True if this attachment is used for write operations.
 	Write bool `json:"write"`
+}
+
+// AzureIntegrationUpdateRequest The arguments of azureIntegrationUpdate not carried in the path.
+type AzureIntegrationUpdateRequest struct {
+	AutoattachEnabled     *bool    `json:"autoattachEnabled,omitempty"`
+	DefaultSubscriptionId *string  `json:"defaultSubscriptionId,omitempty"`
+	Labels                []string `json:"labels"`
+	Name                  string   `json:"name"`
+	Space                 *string  `json:"space,omitempty"`
 }
 
 // BillingAddon BillingAddon represents an addon that can be bought along with the plan.
@@ -11688,6 +11743,64 @@ type AzureDevOpsRepoIntegrationTestParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
+// AzureIntegrationByNameParams defines parameters for AzureIntegrationByName.
+type AzureIntegrationByNameParams struct {
+	Name string `form:"name" json:"name"`
+}
+
+// AzureIntegrationsParams defines parameters for AzureIntegrations.
+type AzureIntegrationsParams struct {
+	// Cursor The nextCursor of the previous page. Leave it out for the first page. Cursors are opaque and never expire.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Page size. Values outside 1–100 are clamped.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AzureIntegrationCreateParams defines parameters for AzureIntegrationCreate.
+type AzureIntegrationCreateParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AzureIntegrationDeleteParams defines parameters for AzureIntegrationDelete.
+type AzureIntegrationDeleteParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureIntegrationPatchParams defines parameters for AzureIntegrationPatch.
+type AzureIntegrationPatchParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureIntegrationUpdateParams defines parameters for AzureIntegrationUpdate.
+type AzureIntegrationUpdateParams struct {
+	// IfMatch The ETag of the version the change was made against, or *. When the entity has changed since, the request answers 412 precondition-failed and changes nothing. Without it, the last write wins.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// AzureIntegrationAttachedStackParams defines parameters for AzureIntegrationAttachedStack.
+type AzureIntegrationAttachedStackParams struct {
+	Id string `form:"id" json:"id"`
+}
+
+// AzureIntegrationConsentClearParams defines parameters for AzureIntegrationConsentClear.
+type AzureIntegrationConsentClearParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// AzureIntegrationConsentConfirmParams defines parameters for AzureIntegrationConsentConfirm.
+type AzureIntegrationConsentConfirmParams struct {
+	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
 // BillingSubscriptionCreateParams defines parameters for BillingSubscriptionCreate.
 type BillingSubscriptionCreateParams struct {
 	// IdempotencyKey Makes a retry of this request safe. A repeat with the same key and the same request replays the first response instead of acting again. Keys are scoped to the caller and kept for 24 hours.
@@ -13447,6 +13560,18 @@ type AzureDevOpsRepoIntegrationPatchApplicationMergePatchPlusJSONRequestBody = M
 // AzureDevOpsRepoIntegrationUpdateJSONRequestBody defines body for AzureDevOpsRepoIntegrationUpdate for application/json ContentType.
 type AzureDevOpsRepoIntegrationUpdateJSONRequestBody = AzureDevOpsRepoIntegrationUpdateRequest
 
+// AzureIntegrationAttachmentUpdateJSONRequestBody defines body for AzureIntegrationAttachmentUpdate for application/json ContentType.
+type AzureIntegrationAttachmentUpdateJSONRequestBody = AzureIntegrationAttachmentUpdateRequest
+
+// AzureIntegrationCreateJSONRequestBody defines body for AzureIntegrationCreate for application/json ContentType.
+type AzureIntegrationCreateJSONRequestBody = AzureIntegrationCreateRequest
+
+// AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody defines body for AzureIntegrationPatch for application/merge-patch+json ContentType.
+type AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody = MergePatch
+
+// AzureIntegrationUpdateJSONRequestBody defines body for AzureIntegrationUpdate for application/json ContentType.
+type AzureIntegrationUpdateJSONRequestBody = AzureIntegrationUpdateRequest
+
 // BillingSubscriptionCreateJSONRequestBody defines body for BillingSubscriptionCreate for application/json ContentType.
 type BillingSubscriptionCreateJSONRequestBody = BillingSubscriptionCreateRequest
 
@@ -13724,6 +13849,9 @@ type AwsIntegrationAttachJSONRequestBody = AwsIntegrationAttachRequest
 //
 // Deprecated: this type has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 type StackIntegrationAwsCreateJSONRequestBody = StackIntegrationAwsCreateRequest
+
+// AzureIntegrationAttachJSONRequestBody defines body for AzureIntegrationAttach for application/json ContentType.
+type AzureIntegrationAttachJSONRequestBody = AzureIntegrationAttachRequest
 
 // StackConfigAddJSONRequestBody defines body for StackConfigAdd for application/json ContentType.
 type StackConfigAddJSONRequestBody = ConfigInput
@@ -16226,7 +16354,7 @@ type ClientInterface interface {
 
 	// AttachableAzureIntegrationsInSpace Attachable Azure Integrations
 	//
-	// List of azure integrations that can be attached Stacks/Modules in given space.
+	// The Azure integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Corresponds with GET /attachable-azure-integrations-in-space (the `AttachableAzureIntegrationsInSpace` operationId).
 	AttachableAzureIntegrationsInSpace(ctx context.Context, params *AttachableAzureIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16660,6 +16788,141 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
 	AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationDetach Detach Azure Integration
+	//
+	// Detaches an Azure integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+	//
+	// Corresponds with DELETE /azure-integration-attachments/{attachmentId} (the `AzureIntegrationDetach` operationId).
+	AzureIntegrationDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationAttachmentUpdateWithBody Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+	AzureIntegrationAttachmentUpdateWithBody(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationAttachmentUpdate Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+	AzureIntegrationAttachmentUpdate(ctx context.Context, attachmentId string, body AzureIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationByName Get Azure Integration by Name
+	//
+	// One Azure integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Corresponds with GET /azure-integration-by-name (the `AzureIntegrationByName` operationId).
+	AzureIntegrationByName(ctx context.Context, params *AzureIntegrationByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrations List Azure Integrations
+	//
+	// The Azure integrations of the account in spaces the caller may read, by name.
+	//
+	// Corresponds with GET /azure-integrations (the `AzureIntegrations` operationId).
+	AzureIntegrations(ctx context.Context, params *AzureIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationCreateWithBody Create Azure Integration
+	//
+	// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+	AzureIntegrationCreateWithBody(ctx context.Context, params *AzureIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationCreate Create Azure Integration
+	//
+	// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+	AzureIntegrationCreate(ctx context.Context, params *AzureIntegrationCreateParams, body AzureIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationsEnabled List Enabled Azure Integrations
+	//
+	// Whether the account may use Azure integrations: its feature switches admit cloud integrations, and the installation has an application registered to create Entra applications with.
+	//
+	// Corresponds with GET /azure-integrations-enabled (the `AzureIntegrationsEnabled` operationId).
+	AzureIntegrationsEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationDelete Delete Azure Integration
+	//
+	// Deletes an Azure integration with its attachments and its Entra application, and answers it as it was. A Microsoft Graph failure answers service-unavailable and keeps the integration.
+	//
+	// Corresponds with DELETE /azure-integrations/{azureIntegrationId} (the `AzureIntegrationDelete` operationId).
+	AzureIntegrationDelete(ctx context.Context, azureIntegrationId string, params *AzureIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegration Get Azure Integration
+	//
+	// One Azure integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Corresponds with GET /azure-integrations/{azureIntegrationId} (the `AzureIntegration` operationId).
+	AzureIntegration(ctx context.Context, azureIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationPatchWithBody Patch Azure Integration
+	//
+	// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+	AzureIntegrationPatchWithBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Azure Integration
+	//
+	// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type.
+	//
+	// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+	AzureIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, body AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationUpdateWithBody Update Azure Integration
+	//
+	// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+	AzureIntegrationUpdateWithBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationUpdate Update Azure Integration
+	//
+	// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+	AzureIntegrationUpdate(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, body AzureIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationAttachedStack Azure integration attached stack
+	//
+	// One of the integration's stack attachments, by the attachment's ID.
+	//
+	// Corresponds with GET /azure-integrations/{azureIntegrationId}/attached-stack (the `AzureIntegrationAttachedStack` operationId).
+	AzureIntegrationAttachedStack(ctx context.Context, azureIntegrationId string, params *AzureIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationConsentClear Azure integration consent clear
+	//
+	// Records that admin consent is no longer granted to the integration's Entra application, with the caller and the time. It neither revokes consent in Entra nor asks Entra anything.
+	//
+	// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-clear (the `AzureIntegrationConsentClear` operationId).
+	AzureIntegrationConsentClear(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentClearParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationConsentConfirm Azure integration consent confirm
+	//
+	// Records an admin's statement that consent was granted to the integration's Entra application in the customer's tenant, with the caller and the time. The statement is never checked against Entra.
+	//
+	// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-confirm (the `AzureIntegrationConsentConfirm` operationId).
+	AzureIntegrationConsentConfirm(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentConfirmParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BilledExternally Billed Externally
 	//
@@ -17463,7 +17726,7 @@ type ClientInterface interface {
 
 	// IntegrationsCount Get Integrations Count
 	//
-	// Returns counts of different types of integrations in the account.
+	// The account's count of each kind of integration, whatever space it lives in. The caller reads the account's top space. A kind the installation does not offer yet counts 0.
 	//
 	// Corresponds with GET /integrations-count (the `IntegrationsCount` operationId).
 	IntegrationsCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -19297,7 +19560,7 @@ type ClientInterface interface {
 
 	// StackAttachableAzureIntegrations Stack attachable azure integrations
 	//
-	// List of azure integrations that can be attached to this Stack.
+	// The Azure integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Corresponds with GET /stacks/{stackId}/attachable-azure-integrations (the `StackAttachableAzureIntegrations` operationId).
 	StackAttachableAzureIntegrations(ctx context.Context, stackId string, params *StackAttachableAzureIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -19377,6 +19640,30 @@ type ClientInterface interface {
 	//
 	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	StackIntegrationAwsCreate(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationAttachWithBody Attach Azure Integration
+	//
+	// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. subscriptionId
+	// overrides the integration's defaultSubscriptionId for this stack.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+	AzureIntegrationAttachWithBody(ctx context.Context, stackId string, azureIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AzureIntegrationAttach Attach Azure Integration
+	//
+	// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. subscriptionId
+	// overrides the integration's defaultSubscriptionId for this stack.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+	AzureIntegrationAttach(ctx context.Context, stackId string, azureIntegrationId string, body AzureIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StackConfigElement Stack config element
 	//
@@ -22014,7 +22301,7 @@ func (c *Client) AttachableAwsIntegrationsInSpace(ctx context.Context, params *A
 
 // AttachableAzureIntegrationsInSpace Attachable Azure Integrations
 //
-// List of azure integrations that can be attached Stacks/Modules in given space.
+// The Azure integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Corresponds with GET /attachable-azure-integrations-in-space (the `AttachableAzureIntegrationsInSpace` operationId).
 func (c *Client) AttachableAzureIntegrationsInSpace(ctx context.Context, params *AttachableAzureIntegrationsInSpaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22949,6 +23236,311 @@ func (c *Client) AzureDevOpsRepoIntegrationTest(ctx context.Context, azureDevOps
 // Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
 func (c *Client) AzureDevOpsWebhooksEndpoint(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAzureDevOpsWebhooksEndpointRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationDetach Detach Azure Integration
+//
+// Detaches an Azure integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+//
+// Corresponds with DELETE /azure-integration-attachments/{attachmentId} (the `AzureIntegrationDetach` operationId).
+func (c *Client) AzureIntegrationDetach(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationDetachRequest(c.Server, attachmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationAttachmentUpdateWithBody Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+func (c *Client) AzureIntegrationAttachmentUpdateWithBody(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationAttachmentUpdateRequestWithBody(c.Server, attachmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationAttachmentUpdate Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+func (c *Client) AzureIntegrationAttachmentUpdate(ctx context.Context, attachmentId string, body AzureIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationAttachmentUpdateRequest(c.Server, attachmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationByName Get Azure Integration by Name
+//
+// One Azure integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Corresponds with GET /azure-integration-by-name (the `AzureIntegrationByName` operationId).
+func (c *Client) AzureIntegrationByName(ctx context.Context, params *AzureIntegrationByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationByNameRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrations List Azure Integrations
+//
+// The Azure integrations of the account in spaces the caller may read, by name.
+//
+// Corresponds with GET /azure-integrations (the `AzureIntegrations` operationId).
+func (c *Client) AzureIntegrations(ctx context.Context, params *AzureIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationCreateWithBody Create Azure Integration
+//
+// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+func (c *Client) AzureIntegrationCreateWithBody(ctx context.Context, params *AzureIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationCreateRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationCreate Create Azure Integration
+//
+// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+func (c *Client) AzureIntegrationCreate(ctx context.Context, params *AzureIntegrationCreateParams, body AzureIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationCreateRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationsEnabled List Enabled Azure Integrations
+//
+// Whether the account may use Azure integrations: its feature switches admit cloud integrations, and the installation has an application registered to create Entra applications with.
+//
+// Corresponds with GET /azure-integrations-enabled (the `AzureIntegrationsEnabled` operationId).
+func (c *Client) AzureIntegrationsEnabled(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationsEnabledRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationDelete Delete Azure Integration
+//
+// Deletes an Azure integration with its attachments and its Entra application, and answers it as it was. A Microsoft Graph failure answers service-unavailable and keeps the integration.
+//
+// Corresponds with DELETE /azure-integrations/{azureIntegrationId} (the `AzureIntegrationDelete` operationId).
+func (c *Client) AzureIntegrationDelete(ctx context.Context, azureIntegrationId string, params *AzureIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationDeleteRequest(c.Server, azureIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegration Get Azure Integration
+//
+// One Azure integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Corresponds with GET /azure-integrations/{azureIntegrationId} (the `AzureIntegration` operationId).
+func (c *Client) AzureIntegration(ctx context.Context, azureIntegrationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationRequest(c.Server, azureIntegrationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationPatchWithBody Patch Azure Integration
+//
+// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+func (c *Client) AzureIntegrationPatchWithBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationPatchRequestWithBody(c.Server, azureIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationPatchWithApplicationMergePatchPlusJSONBody Patch Azure Integration
+//
+// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type.
+//
+// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+func (c *Client) AzureIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, body AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(c.Server, azureIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationUpdateWithBody Update Azure Integration
+//
+// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+func (c *Client) AzureIntegrationUpdateWithBody(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationUpdateRequestWithBody(c.Server, azureIntegrationId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationUpdate Update Azure Integration
+//
+// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+func (c *Client) AzureIntegrationUpdate(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, body AzureIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationUpdateRequest(c.Server, azureIntegrationId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationAttachedStack Azure integration attached stack
+//
+// One of the integration's stack attachments, by the attachment's ID.
+//
+// Corresponds with GET /azure-integrations/{azureIntegrationId}/attached-stack (the `AzureIntegrationAttachedStack` operationId).
+func (c *Client) AzureIntegrationAttachedStack(ctx context.Context, azureIntegrationId string, params *AzureIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationAttachedStackRequest(c.Server, azureIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationConsentClear Azure integration consent clear
+//
+// Records that admin consent is no longer granted to the integration's Entra application, with the caller and the time. It neither revokes consent in Entra nor asks Entra anything.
+//
+// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-clear (the `AzureIntegrationConsentClear` operationId).
+func (c *Client) AzureIntegrationConsentClear(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentClearParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationConsentClearRequest(c.Server, azureIntegrationId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationConsentConfirm Azure integration consent confirm
+//
+// Records an admin's statement that consent was granted to the integration's Entra application in the customer's tenant, with the caller and the time. The statement is never checked against Entra.
+//
+// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-confirm (the `AzureIntegrationConsentConfirm` operationId).
+func (c *Client) AzureIntegrationConsentConfirm(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentConfirmParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationConsentConfirmRequest(c.Server, azureIntegrationId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -24731,7 +25323,7 @@ func (c *Client) InstallationAwsAccountId(ctx context.Context, reqEditors ...Req
 
 // IntegrationsCount Get Integrations Count
 //
-// Returns counts of different types of integrations in the account.
+// The account's count of each kind of integration, whatever space it lives in. The caller reads the account's top space. A kind the installation does not offer yet counts 0.
 //
 // Corresponds with GET /integrations-count (the `IntegrationsCount` operationId).
 func (c *Client) IntegrationsCount(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -28685,7 +29277,7 @@ func (c *Client) StackAttachableAwsIntegrations(ctx context.Context, stackId str
 
 // StackAttachableAzureIntegrations Stack attachable azure integrations
 //
-// List of azure integrations that can be attached to this Stack.
+// The Azure integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Corresponds with GET /stacks/{stackId}/attachable-azure-integrations (the `StackAttachableAzureIntegrations` operationId).
 func (c *Client) StackAttachableAzureIntegrations(ctx context.Context, stackId string, params *StackAttachableAzureIntegrationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -28843,6 +29435,50 @@ func (c *Client) StackIntegrationAwsCreateWithBody(ctx context.Context, stackId 
 // Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 func (c *Client) StackIntegrationAwsCreate(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewStackIntegrationAwsCreateRequest(c.Server, stackId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationAttachWithBody Attach Azure Integration
+//
+// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. subscriptionId
+// overrides the integration's defaultSubscriptionId for this stack.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+func (c *Client) AzureIntegrationAttachWithBody(ctx context.Context, stackId string, azureIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationAttachRequestWithBody(c.Server, stackId, azureIntegrationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AzureIntegrationAttach Attach Azure Integration
+//
+// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. subscriptionId
+// overrides the integration's defaultSubscriptionId for this stack.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+func (c *Client) AzureIntegrationAttach(ctx context.Context, stackId string, azureIntegrationId string, body AzureIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAzureIntegrationAttachRequest(c.Server, stackId, azureIntegrationId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -36512,6 +37148,658 @@ func NewAzureDevOpsWebhooksEndpointRequest(server string) (*http.Request, error)
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationDetachRequest constructs an http.Request for the AzureIntegrationDetach method
+func NewAzureIntegrationDetachRequest(server string, attachmentId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integration-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationAttachmentUpdateRequest calls the generic AzureIntegrationAttachmentUpdate builder with application/json body
+func NewAzureIntegrationAttachmentUpdateRequest(server string, attachmentId string, body AzureIntegrationAttachmentUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureIntegrationAttachmentUpdateRequestWithBody(server, attachmentId, "application/json", bodyReader)
+}
+
+// NewAzureIntegrationAttachmentUpdateRequestWithBody constructs an http.Request for the AzureIntegrationAttachmentUpdate method, with any body, and a specified content type
+func NewAzureIntegrationAttachmentUpdateRequestWithBody(server string, attachmentId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "attachmentId", attachmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integration-attachments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAzureIntegrationByNameRequest constructs an http.Request for the AzureIntegrationByName method
+func NewAzureIntegrationByNameRequest(server string, params *AzureIntegrationByNameParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integration-by-name")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "name", params.Name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationsRequest constructs an http.Request for the AzureIntegrations method
+func NewAzureIntegrationsRequest(server string, params *AzureIntegrationsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationCreateRequest calls the generic AzureIntegrationCreate builder with application/json body
+func NewAzureIntegrationCreateRequest(server string, params *AzureIntegrationCreateParams, body AzureIntegrationCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureIntegrationCreateRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewAzureIntegrationCreateRequestWithBody constructs an http.Request for the AzureIntegrationCreate method, with any body, and a specified content type
+func NewAzureIntegrationCreateRequestWithBody(server string, params *AzureIntegrationCreateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationsEnabledRequest constructs an http.Request for the AzureIntegrationsEnabled method
+func NewAzureIntegrationsEnabledRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations-enabled")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationDeleteRequest constructs an http.Request for the AzureIntegrationDelete method
+func NewAzureIntegrationDeleteRequest(server string, azureIntegrationId string, params *AzureIntegrationDeleteParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationRequest constructs an http.Request for the AzureIntegration method
+func NewAzureIntegrationRequest(server string, azureIntegrationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody calls the generic AzureIntegrationPatch builder with application/merge-patch+json body
+func NewAzureIntegrationPatchRequestWithApplicationMergePatchPlusJSONBody(server string, azureIntegrationId string, params *AzureIntegrationPatchParams, body AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureIntegrationPatchRequestWithBody(server, azureIntegrationId, params, "application/merge-patch+json", bodyReader)
+}
+
+// NewAzureIntegrationPatchRequestWithBody constructs an http.Request for the AzureIntegrationPatch method, with any body, and a specified content type
+func NewAzureIntegrationPatchRequestWithBody(server string, azureIntegrationId string, params *AzureIntegrationPatchParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+		if params.IfMatch != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationUpdateRequest calls the generic AzureIntegrationUpdate builder with application/json body
+func NewAzureIntegrationUpdateRequest(server string, azureIntegrationId string, params *AzureIntegrationUpdateParams, body AzureIntegrationUpdateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureIntegrationUpdateRequestWithBody(server, azureIntegrationId, params, "application/json", bodyReader)
+}
+
+// NewAzureIntegrationUpdateRequestWithBody constructs an http.Request for the AzureIntegrationUpdate method, with any body, and a specified content type
+func NewAzureIntegrationUpdateRequestWithBody(server string, azureIntegrationId string, params *AzureIntegrationUpdateParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IfMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", *params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationAttachedStackRequest constructs an http.Request for the AzureIntegrationAttachedStack method
+func NewAzureIntegrationAttachedStackRequest(server string, azureIntegrationId string, params *AzureIntegrationAttachedStackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s/attached-stack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "id", params.Id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationConsentClearRequest constructs an http.Request for the AzureIntegrationConsentClear method
+func NewAzureIntegrationConsentClearRequest(server string, azureIntegrationId string, params *AzureIntegrationConsentClearParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s/consent-clear", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewAzureIntegrationConsentConfirmRequest constructs an http.Request for the AzureIntegrationConsentConfirm method
+func NewAzureIntegrationConsentConfirmRequest(server string, azureIntegrationId string, params *AzureIntegrationConsentConfirmParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/azure-integrations/%s/consent-confirm", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -47883,6 +49171,60 @@ func NewStackIntegrationAwsCreateRequestWithBody(server string, stackId string, 
 	return req, nil
 }
 
+// NewAzureIntegrationAttachRequest calls the generic AzureIntegrationAttach builder with application/json body
+func NewAzureIntegrationAttachRequest(server string, stackId string, azureIntegrationId string, body AzureIntegrationAttachJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAzureIntegrationAttachRequestWithBody(server, stackId, azureIntegrationId, "application/json", bodyReader)
+}
+
+// NewAzureIntegrationAttachRequestWithBody constructs an http.Request for the AzureIntegrationAttach method, with any body, and a specified content type
+func NewAzureIntegrationAttachRequestWithBody(server string, stackId string, azureIntegrationId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "stackId", stackId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "azureIntegrationId", azureIntegrationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stacks/%s/azure-integrations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewStackConfigElementRequest constructs an http.Request for the StackConfigElement method
 func NewStackConfigElementRequest(server string, stackId string, params *StackConfigElementParams) (*http.Request, error) {
 	var err error
@@ -56233,7 +57575,7 @@ type ClientWithResponsesInterface interface {
 
 	// AttachableAzureIntegrationsInSpaceWithResponse Attachable Azure Integrations
 	//
-	// List of azure integrations that can be attached Stacks/Modules in given space.
+	// The Azure integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -56725,6 +58067,159 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /azure-dev-ops-webhooks-endpoint (the `AzureDevOpsWebhooksEndpoint` operationId).
 	AzureDevOpsWebhooksEndpointWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AzureDevOpsWebhooksEndpointResponse, error)
+
+	// AzureIntegrationDetachWithResponse Detach Azure Integration
+	//
+	// Detaches an Azure integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /azure-integration-attachments/{attachmentId} (the `AzureIntegrationDetach` operationId).
+	AzureIntegrationDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*AzureIntegrationDetachResponse, error)
+
+	// AzureIntegrationAttachmentUpdateWithBodyWithResponse Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+	AzureIntegrationAttachmentUpdateWithBodyWithResponse(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachmentUpdateResponse, error)
+
+	// AzureIntegrationAttachmentUpdateWithResponse Update Attachment
+	//
+	// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+	AzureIntegrationAttachmentUpdateWithResponse(ctx context.Context, attachmentId string, body AzureIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachmentUpdateResponse, error)
+
+	// AzureIntegrationByNameWithResponse Get Azure Integration by Name
+	//
+	// One Azure integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-integration-by-name (the `AzureIntegrationByName` operationId).
+	AzureIntegrationByNameWithResponse(ctx context.Context, params *AzureIntegrationByNameParams, reqEditors ...RequestEditorFn) (*AzureIntegrationByNameResponse, error)
+
+	// AzureIntegrationsWithResponse List Azure Integrations
+	//
+	// The Azure integrations of the account in spaces the caller may read, by name.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-integrations (the `AzureIntegrations` operationId).
+	AzureIntegrationsWithResponse(ctx context.Context, params *AzureIntegrationsParams, reqEditors ...RequestEditorFn) (*AzureIntegrationsResponse, error)
+
+	// AzureIntegrationCreateWithBodyWithResponse Create Azure Integration
+	//
+	// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+	AzureIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AzureIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationCreateResponse, error)
+
+	// AzureIntegrationCreateWithResponse Create Azure Integration
+	//
+	// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+	AzureIntegrationCreateWithResponse(ctx context.Context, params *AzureIntegrationCreateParams, body AzureIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationCreateResponse, error)
+
+	// AzureIntegrationsEnabledWithResponse List Enabled Azure Integrations
+	//
+	// Whether the account may use Azure integrations: its feature switches admit cloud integrations, and the installation has an application registered to create Entra applications with.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-integrations-enabled (the `AzureIntegrationsEnabled` operationId).
+	AzureIntegrationsEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AzureIntegrationsEnabledResponse, error)
+
+	// AzureIntegrationDeleteWithResponse Delete Azure Integration
+	//
+	// Deletes an Azure integration with its attachments and its Entra application, and answers it as it was. A Microsoft Graph failure answers service-unavailable and keeps the integration.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /azure-integrations/{azureIntegrationId} (the `AzureIntegrationDelete` operationId).
+	AzureIntegrationDeleteWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AzureIntegrationDeleteResponse, error)
+
+	// AzureIntegrationWithResponse Get Azure Integration
+	//
+	// One Azure integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-integrations/{azureIntegrationId} (the `AzureIntegration` operationId).
+	AzureIntegrationWithResponse(ctx context.Context, azureIntegrationId string, reqEditors ...RequestEditorFn) (*AzureIntegrationResponse, error)
+
+	// AzureIntegrationPatchWithBodyWithResponse Patch Azure Integration
+	//
+	// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+	AzureIntegrationPatchWithBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationPatchResponse, error)
+
+	// AzureIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Azure Integration
+	//
+	// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+	//
+	// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+	AzureIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, body AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationPatchResponse, error)
+
+	// AzureIntegrationUpdateWithBodyWithResponse Update Azure Integration
+	//
+	// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+	AzureIntegrationUpdateWithBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationUpdateResponse, error)
+
+	// AzureIntegrationUpdateWithResponse Update Azure Integration
+	//
+	// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+	AzureIntegrationUpdateWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, body AzureIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationUpdateResponse, error)
+
+	// AzureIntegrationAttachedStackWithResponse Azure integration attached stack
+	//
+	// One of the integration's stack attachments, by the attachment's ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /azure-integrations/{azureIntegrationId}/attached-stack (the `AzureIntegrationAttachedStack` operationId).
+	AzureIntegrationAttachedStackWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachedStackResponse, error)
+
+	// AzureIntegrationConsentClearWithResponse Azure integration consent clear
+	//
+	// Records that admin consent is no longer granted to the integration's Entra application, with the caller and the time. It neither revokes consent in Entra nor asks Entra anything.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-clear (the `AzureIntegrationConsentClear` operationId).
+	AzureIntegrationConsentClearWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentClearParams, reqEditors ...RequestEditorFn) (*AzureIntegrationConsentClearResponse, error)
+
+	// AzureIntegrationConsentConfirmWithResponse Azure integration consent confirm
+	//
+	// Records an admin's statement that consent was granted to the integration's Entra application in the customer's tenant, with the caller and the time. The statement is never checked against Entra.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-confirm (the `AzureIntegrationConsentConfirm` operationId).
+	AzureIntegrationConsentConfirmWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentConfirmParams, reqEditors ...RequestEditorFn) (*AzureIntegrationConsentConfirmResponse, error)
 
 	// BilledExternallyWithResponse Billed Externally
 	//
@@ -57606,7 +59101,7 @@ type ClientWithResponsesInterface interface {
 
 	// IntegrationsCountWithResponse Get Integrations Count
 	//
-	// Returns counts of different types of integrations in the account.
+	// The account's count of each kind of integration, whatever space it lives in. The caller reads the account's top space. A kind the installation does not offer yet counts 0.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -59620,7 +61115,7 @@ type ClientWithResponsesInterface interface {
 
 	// StackAttachableAzureIntegrationsWithResponse Stack attachable azure integrations
 	//
-	// List of azure integrations that can be attached to this Stack.
+	// The Azure integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -59710,6 +61205,30 @@ type ClientWithResponsesInterface interface {
 	//
 	// Deprecated: this operation has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	StackIntegrationAwsCreateWithResponse(ctx context.Context, stackId string, body StackIntegrationAwsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*StackIntegrationAwsCreateResponse, error)
+
+	// AzureIntegrationAttachWithBodyWithResponse Attach Azure Integration
+	//
+	// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. subscriptionId
+	// overrides the integration's defaultSubscriptionId for this stack.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+	AzureIntegrationAttachWithBodyWithResponse(ctx context.Context, stackId string, azureIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachResponse, error)
+
+	// AzureIntegrationAttachWithResponse Attach Azure Integration
+	//
+	// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+	// read and write is true, and a stack has at most one read and one write attachment. The
+	// integration lives in the stack's space or one the stack inherits from. subscriptionId
+	// overrides the integration's defaultSubscriptionId for this stack.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+	AzureIntegrationAttachWithResponse(ctx context.Context, stackId string, azureIntegrationId string, body AzureIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachResponse, error)
 
 	// StackConfigElementWithResponse Stack config element
 	//
@@ -69325,6 +70844,1300 @@ func (r AzureDevOpsWebhooksEndpointResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AzureDevOpsWebhooksEndpointResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationDetachResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationDetach
+type AzureIntegrationDetachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationDetachResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationDetach
+type AzureIntegrationDetachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationDetachResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationDetach
+type AzureIntegrationDetachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationDetachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationDetachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationDetachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationDetachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationDetachResponse) GetJSON200() *AzureIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationDetachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationDetachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationDetachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationDetachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationDetachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationDetachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationDetachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationDetachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationAttachmentUpdateResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationAttachmentUpdate
+type AzureIntegrationAttachmentUpdateResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachmentUpdateResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationAttachmentUpdate
+type AzureIntegrationAttachmentUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachmentUpdateResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationAttachmentUpdate
+type AzureIntegrationAttachmentUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationAttachmentUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationAttachmentUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationAttachmentUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationAttachmentUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationAttachmentUpdateResponse) GetJSON200() *AzureIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationAttachmentUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationAttachmentUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationAttachmentUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationAttachmentUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationAttachmentUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationAttachmentUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationByNameResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationByName
+type AzureIntegrationByNameResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationByNameResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationByName
+type AzureIntegrationByNameResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationByNameResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationByName
+type AzureIntegrationByNameResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegration
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationByNameResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationByNameResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationByNameResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationByNameResponse) GetJSON200() *AzureIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationByNameResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationByNameResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationByNameResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationByNameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationByNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationByNameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationsResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrations
+type AzureIntegrationsResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationsResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrations
+type AzureIntegrationsResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationsResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrations
+type AzureIntegrationsResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationPage
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *InvalidCursor
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationsResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationsResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationsResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationsResponse) GetJSON200() *AzureIntegrationPage {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AzureIntegrationsResponse) GetApplicationproblemJSON400() *InvalidCursor {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationsResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationsResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationCreateResponse201Headers the declared response headers of an HTTP 201 response for AzureIntegrationCreate
+type AzureIntegrationCreateResponse201Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationCreateResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationCreate
+type AzureIntegrationCreateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationCreateResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationCreate
+type AzureIntegrationCreateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *AzureIntegration
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers201 the parsed response headers for an HTTP 201 response
+	Headers201 *AzureIntegrationCreateResponse201Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationCreateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationCreateResponse503Headers
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AzureIntegrationCreateResponse) GetJSON201() *AzureIntegration {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureIntegrationCreateResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureIntegrationCreateResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationCreateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationCreateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationCreateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationsEnabledResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationsEnabled
+type AzureIntegrationsEnabledResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationsEnabledResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationsEnabled
+type AzureIntegrationsEnabledResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationsEnabledResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationsEnabled
+type AzureIntegrationsEnabledResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationsEnabledResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationsEnabledResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationsEnabledResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationsEnabledResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationsEnabledResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationsEnabledResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationsEnabledResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationsEnabledResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationsEnabledResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationsEnabledResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationsEnabledResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationsEnabledResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationDeleteResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationDelete
+type AzureIntegrationDeleteResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationDeleteResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationDelete
+type AzureIntegrationDeleteResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationDeleteResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationDelete
+type AzureIntegrationDeleteResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationDeleteResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationDeleteResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationDeleteResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationDeleteResponse) GetJSON200() *AzureIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationDeleteResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureIntegrationDeleteResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationDeleteResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationDeleteResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationDeleteResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationDeleteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationDeleteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegration
+type AzureIntegrationResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegration
+type AzureIntegrationResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegration
+type AzureIntegrationResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationResponse) GetJSON200() *AzureIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationPatchResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationPatch
+type AzureIntegrationPatchResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationPatchResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationPatch
+type AzureIntegrationPatchResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationPatchResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationPatch
+type AzureIntegrationPatchResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationPatchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationPatchResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationPatchResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationPatchResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationPatchResponse) GetJSON200() *AzureIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationPatchResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationPatchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationPatchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationPatchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationPatchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationUpdateResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationUpdate
+type AzureIntegrationUpdateResponse200Headers struct {
+	ETag                *string
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationUpdateResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationUpdate
+type AzureIntegrationUpdateResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationUpdateResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationUpdate
+type AzureIntegrationUpdateResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationUpdateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegration
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *PreconditionFailed
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationUpdateResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationUpdateResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationUpdateResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationUpdateResponse) GetJSON200() *AzureIntegration {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationUpdateResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r AzureIntegrationUpdateResponse) GetApplicationproblemJSON412() *PreconditionFailed {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationUpdateResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationUpdateResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationUpdateResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationUpdateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationUpdateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationUpdateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationUpdateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationAttachedStackResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationAttachedStack
+type AzureIntegrationAttachedStackResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachedStackResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationAttachedStack
+type AzureIntegrationAttachedStackResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachedStackResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationAttachedStack
+type AzureIntegrationAttachedStackResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationAttachedStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationAttachedStackResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationAttachedStackResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationAttachedStackResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationAttachedStackResponse) GetJSON200() *AzureIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationAttachedStackResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationAttachedStackResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationAttachedStackResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationAttachedStackResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationAttachedStackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationAttachedStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationAttachedStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationAttachedStackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationConsentClearResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationConsentClear
+type AzureIntegrationConsentClearResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationConsentClearResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationConsentClear
+type AzureIntegrationConsentClearResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationConsentClearResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationConsentClear
+type AzureIntegrationConsentClearResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationConsentClearResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationConsent
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationConsentClearResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationConsentClearResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationConsentClearResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationConsentClearResponse) GetJSON200() *AzureIntegrationConsent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationConsentClearResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationConsentClearResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationConsentClearResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationConsentClearResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationConsentClearResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AzureIntegrationConsentConfirmResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationConsentConfirm
+type AzureIntegrationConsentConfirmResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationConsentConfirmResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationConsentConfirm
+type AzureIntegrationConsentConfirmResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationConsentConfirmResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationConsentConfirm
+type AzureIntegrationConsentConfirmResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationConsentConfirmResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationConsent
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *IdempotencyConflict
+	// ApplicationproblemJSON422 the response for an HTTP 422 `application/problem+json` response
+	ApplicationproblemJSON422 *IdempotencyMismatch
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationConsentConfirmResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationConsentConfirmResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationConsentConfirmResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationConsentConfirmResponse) GetJSON200() *AzureIntegrationConsent {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSON409() *IdempotencyConflict {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON422 returns the response for an HTTP 422 `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSON422() *IdempotencyMismatch {
+	return r.ApplicationproblemJSON422
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationConsentConfirmResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationConsentConfirmResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationConsentConfirmResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationConsentConfirmResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationConsentConfirmResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -92012,6 +94825,101 @@ func (r StackIntegrationAwsCreateResponse) ContentType() string {
 	return ""
 }
 
+// AzureIntegrationAttachResponse200Headers the declared response headers of an HTTP 200 response for AzureIntegrationAttach
+type AzureIntegrationAttachResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachResponse429Headers the declared response headers of an HTTP 429 response for AzureIntegrationAttach
+type AzureIntegrationAttachResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// AzureIntegrationAttachResponse503Headers the declared response headers of an HTTP 503 response for AzureIntegrationAttach
+type AzureIntegrationAttachResponse503Headers struct {
+	RetryAfter *int
+}
+
+type AzureIntegrationAttachResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AzureIntegrationStackAttachment
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *NotFound
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *AzureIntegrationAttachResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AzureIntegrationAttachResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *AzureIntegrationAttachResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AzureIntegrationAttachResponse) GetJSON200() *AzureIntegrationStackAttachment {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AzureIntegrationAttachResponse) GetApplicationproblemJSON404() *NotFound {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r AzureIntegrationAttachResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r AzureIntegrationAttachResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AzureIntegrationAttachResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AzureIntegrationAttachResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AzureIntegrationAttachResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AzureIntegrationAttachResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AzureIntegrationAttachResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // StackConfigElementResponse200Headers the declared response headers of an HTTP 200 response for StackConfigElement
 type StackConfigElementResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -106647,7 +109555,7 @@ func (c *ClientWithResponses) AttachableAwsIntegrationsInSpaceWithResponse(ctx c
 
 // AttachableAzureIntegrationsInSpaceWithResponse Attachable Azure Integrations
 //
-// List of azure integrations that can be attached Stacks/Modules in given space.
+// The Azure integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -107444,6 +110352,261 @@ func (c *ClientWithResponses) AzureDevOpsWebhooksEndpointWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseAzureDevOpsWebhooksEndpointResponse(rsp)
+}
+
+// AzureIntegrationDetachWithResponse Detach Azure Integration
+//
+// Detaches an Azure integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /azure-integration-attachments/{attachmentId} (the `AzureIntegrationDetach` operationId).
+func (c *ClientWithResponses) AzureIntegrationDetachWithResponse(ctx context.Context, attachmentId string, reqEditors ...RequestEditorFn) (*AzureIntegrationDetachResponse, error) {
+	rsp, err := c.AzureIntegrationDetach(ctx, attachmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationDetachResponse(rsp)
+}
+
+// AzureIntegrationAttachmentUpdateWithBodyWithResponse Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+func (c *ClientWithResponses) AzureIntegrationAttachmentUpdateWithBodyWithResponse(ctx context.Context, attachmentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachmentUpdateResponse, error) {
+	rsp, err := c.AzureIntegrationAttachmentUpdateWithBody(ctx, attachmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationAttachmentUpdateResponse(rsp)
+}
+
+// AzureIntegrationAttachmentUpdateWithResponse Update Attachment
+//
+// Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-integration-attachments/{attachmentId} (the `AzureIntegrationAttachmentUpdate` operationId).
+func (c *ClientWithResponses) AzureIntegrationAttachmentUpdateWithResponse(ctx context.Context, attachmentId string, body AzureIntegrationAttachmentUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachmentUpdateResponse, error) {
+	rsp, err := c.AzureIntegrationAttachmentUpdate(ctx, attachmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationAttachmentUpdateResponse(rsp)
+}
+
+// AzureIntegrationByNameWithResponse Get Azure Integration by Name
+//
+// One Azure integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-integration-by-name (the `AzureIntegrationByName` operationId).
+func (c *ClientWithResponses) AzureIntegrationByNameWithResponse(ctx context.Context, params *AzureIntegrationByNameParams, reqEditors ...RequestEditorFn) (*AzureIntegrationByNameResponse, error) {
+	rsp, err := c.AzureIntegrationByName(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationByNameResponse(rsp)
+}
+
+// AzureIntegrationsWithResponse List Azure Integrations
+//
+// The Azure integrations of the account in spaces the caller may read, by name.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-integrations (the `AzureIntegrations` operationId).
+func (c *ClientWithResponses) AzureIntegrationsWithResponse(ctx context.Context, params *AzureIntegrationsParams, reqEditors ...RequestEditorFn) (*AzureIntegrationsResponse, error) {
+	rsp, err := c.AzureIntegrations(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationsResponse(rsp)
+}
+
+// AzureIntegrationCreateWithBodyWithResponse Create Azure Integration
+//
+// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+func (c *ClientWithResponses) AzureIntegrationCreateWithBodyWithResponse(ctx context.Context, params *AzureIntegrationCreateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationCreateResponse, error) {
+	rsp, err := c.AzureIntegrationCreateWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationCreateResponse(rsp)
+}
+
+// AzureIntegrationCreateWithResponse Create Azure Integration
+//
+// Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-integrations (the `AzureIntegrationCreate` operationId).
+func (c *ClientWithResponses) AzureIntegrationCreateWithResponse(ctx context.Context, params *AzureIntegrationCreateParams, body AzureIntegrationCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationCreateResponse, error) {
+	rsp, err := c.AzureIntegrationCreate(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationCreateResponse(rsp)
+}
+
+// AzureIntegrationsEnabledWithResponse List Enabled Azure Integrations
+//
+// Whether the account may use Azure integrations: its feature switches admit cloud integrations, and the installation has an application registered to create Entra applications with.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-integrations-enabled (the `AzureIntegrationsEnabled` operationId).
+func (c *ClientWithResponses) AzureIntegrationsEnabledWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AzureIntegrationsEnabledResponse, error) {
+	rsp, err := c.AzureIntegrationsEnabled(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationsEnabledResponse(rsp)
+}
+
+// AzureIntegrationDeleteWithResponse Delete Azure Integration
+//
+// Deletes an Azure integration with its attachments and its Entra application, and answers it as it was. A Microsoft Graph failure answers service-unavailable and keeps the integration.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /azure-integrations/{azureIntegrationId} (the `AzureIntegrationDelete` operationId).
+func (c *ClientWithResponses) AzureIntegrationDeleteWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationDeleteParams, reqEditors ...RequestEditorFn) (*AzureIntegrationDeleteResponse, error) {
+	rsp, err := c.AzureIntegrationDelete(ctx, azureIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationDeleteResponse(rsp)
+}
+
+// AzureIntegrationWithResponse Get Azure Integration
+//
+// One Azure integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-integrations/{azureIntegrationId} (the `AzureIntegration` operationId).
+func (c *ClientWithResponses) AzureIntegrationWithResponse(ctx context.Context, azureIntegrationId string, reqEditors ...RequestEditorFn) (*AzureIntegrationResponse, error) {
+	rsp, err := c.AzureIntegration(ctx, azureIntegrationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationResponse(rsp)
+}
+
+// AzureIntegrationPatchWithBodyWithResponse Patch Azure Integration
+//
+// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+func (c *ClientWithResponses) AzureIntegrationPatchWithBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationPatchResponse, error) {
+	rsp, err := c.AzureIntegrationPatchWithBody(ctx, azureIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationPatchResponse(rsp)
+}
+
+// AzureIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse Patch Azure Integration
+//
+// Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+//
+// Takes a body of the `application/merge-patch+json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /azure-integrations/{azureIntegrationId} (the `AzureIntegrationPatch` operationId).
+func (c *ClientWithResponses) AzureIntegrationPatchWithApplicationMergePatchPlusJSONBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationPatchParams, body AzureIntegrationPatchApplicationMergePatchPlusJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationPatchResponse, error) {
+	rsp, err := c.AzureIntegrationPatchWithApplicationMergePatchPlusJSONBody(ctx, azureIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationPatchResponse(rsp)
+}
+
+// AzureIntegrationUpdateWithBodyWithResponse Update Azure Integration
+//
+// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AzureIntegrationUpdateWithBodyWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationUpdateResponse, error) {
+	rsp, err := c.AzureIntegrationUpdateWithBody(ctx, azureIntegrationId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationUpdateResponse(rsp)
+}
+
+// AzureIntegrationUpdateWithResponse Update Azure Integration
+//
+// Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /azure-integrations/{azureIntegrationId} (the `AzureIntegrationUpdate` operationId).
+func (c *ClientWithResponses) AzureIntegrationUpdateWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationUpdateParams, body AzureIntegrationUpdateJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationUpdateResponse, error) {
+	rsp, err := c.AzureIntegrationUpdate(ctx, azureIntegrationId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationUpdateResponse(rsp)
+}
+
+// AzureIntegrationAttachedStackWithResponse Azure integration attached stack
+//
+// One of the integration's stack attachments, by the attachment's ID.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /azure-integrations/{azureIntegrationId}/attached-stack (the `AzureIntegrationAttachedStack` operationId).
+func (c *ClientWithResponses) AzureIntegrationAttachedStackWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationAttachedStackParams, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachedStackResponse, error) {
+	rsp, err := c.AzureIntegrationAttachedStack(ctx, azureIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationAttachedStackResponse(rsp)
+}
+
+// AzureIntegrationConsentClearWithResponse Azure integration consent clear
+//
+// Records that admin consent is no longer granted to the integration's Entra application, with the caller and the time. It neither revokes consent in Entra nor asks Entra anything.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-clear (the `AzureIntegrationConsentClear` operationId).
+func (c *ClientWithResponses) AzureIntegrationConsentClearWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentClearParams, reqEditors ...RequestEditorFn) (*AzureIntegrationConsentClearResponse, error) {
+	rsp, err := c.AzureIntegrationConsentClear(ctx, azureIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationConsentClearResponse(rsp)
+}
+
+// AzureIntegrationConsentConfirmWithResponse Azure integration consent confirm
+//
+// Records an admin's statement that consent was granted to the integration's Entra application in the customer's tenant, with the caller and the time. The statement is never checked against Entra.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /azure-integrations/{azureIntegrationId}/consent-confirm (the `AzureIntegrationConsentConfirm` operationId).
+func (c *ClientWithResponses) AzureIntegrationConsentConfirmWithResponse(ctx context.Context, azureIntegrationId string, params *AzureIntegrationConsentConfirmParams, reqEditors ...RequestEditorFn) (*AzureIntegrationConsentConfirmResponse, error) {
+	rsp, err := c.AzureIntegrationConsentConfirm(ctx, azureIntegrationId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationConsentConfirmResponse(rsp)
 }
 
 // BilledExternallyWithResponse Billed Externally
@@ -108908,7 +112071,7 @@ func (c *ClientWithResponses) InstallationAwsAccountIdWithResponse(ctx context.C
 
 // IntegrationsCountWithResponse Get Integrations Count
 //
-// Returns counts of different types of integrations in the account.
+// The account's count of each kind of integration, whatever space it lives in. The caller reads the account's top space. A kind the installation does not offer yet counts 0.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -112194,7 +115357,7 @@ func (c *ClientWithResponses) StackAttachableAwsIntegrationsWithResponse(ctx con
 
 // StackAttachableAzureIntegrationsWithResponse Stack attachable azure integrations
 //
-// List of azure integrations that can be attached to this Stack.
+// The Azure integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -112336,6 +115499,42 @@ func (c *ClientWithResponses) StackIntegrationAwsCreateWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseStackIntegrationAwsCreateResponse(rsp)
+}
+
+// AzureIntegrationAttachWithBodyWithResponse Attach Azure Integration
+//
+// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. subscriptionId
+// overrides the integration's defaultSubscriptionId for this stack.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+func (c *ClientWithResponses) AzureIntegrationAttachWithBodyWithResponse(ctx context.Context, stackId string, azureIntegrationId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachResponse, error) {
+	rsp, err := c.AzureIntegrationAttachWithBody(ctx, stackId, azureIntegrationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationAttachResponse(rsp)
+}
+
+// AzureIntegrationAttachWithResponse Attach Azure Integration
+//
+// Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+// read and write is true, and a stack has at most one read and one write attachment. The
+// integration lives in the stack's space or one the stack inherits from. subscriptionId
+// overrides the integration's defaultSubscriptionId for this stack.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /stacks/{stackId}/azure-integrations/{azureIntegrationId} (the `AzureIntegrationAttach` operationId).
+func (c *ClientWithResponses) AzureIntegrationAttachWithResponse(ctx context.Context, stackId string, azureIntegrationId string, body AzureIntegrationAttachJSONRequestBody, reqEditors ...RequestEditorFn) (*AzureIntegrationAttachResponse, error) {
+	rsp, err := c.AzureIntegrationAttach(ctx, stackId, azureIntegrationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAzureIntegrationAttachResponse(rsp)
 }
 
 // StackConfigElementWithResponse Stack config element
@@ -125346,6 +128545,1669 @@ func ParseAzureDevOpsWebhooksEndpointResponse(rsp *http.Response) (*AzureDevOpsW
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers AzureDevOpsWebhooksEndpointResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationDetachResponse parses an HTTP response from a AzureIntegrationDetachWithResponse call
+func ParseAzureIntegrationDetachResponse(rsp *http.Response) (*AzureIntegrationDetachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationDetachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationDetachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationDetachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationDetachResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationAttachmentUpdateResponse parses an HTTP response from a AzureIntegrationAttachmentUpdateWithResponse call
+func ParseAzureIntegrationAttachmentUpdateResponse(rsp *http.Response) (*AzureIntegrationAttachmentUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationAttachmentUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationAttachmentUpdateResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationAttachmentUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationAttachmentUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationByNameResponse parses an HTTP response from a AzureIntegrationByNameWithResponse call
+func ParseAzureIntegrationByNameResponse(rsp *http.Response) (*AzureIntegrationByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationByNameResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationByNameResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationByNameResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationsResponse parses an HTTP response from a AzureIntegrationsWithResponse call
+func ParseAzureIntegrationsResponse(rsp *http.Response) (*AzureIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest InvalidCursor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationsResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationsResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationCreateResponse parses an HTTP response from a AzureIntegrationCreateWithResponse call
+func ParseAzureIntegrationCreateResponse(rsp *http.Response) (*AzureIntegrationCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 201:
+		var headers AzureIntegrationCreateResponse201Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers201 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationsEnabledResponse parses an HTTP response from a AzureIntegrationsEnabledWithResponse call
+func ParseAzureIntegrationsEnabledResponse(rsp *http.Response) (*AzureIntegrationsEnabledResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationsEnabledResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationsEnabledResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationsEnabledResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationsEnabledResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationDeleteResponse parses an HTTP response from a AzureIntegrationDeleteWithResponse call
+func ParseAzureIntegrationDeleteResponse(rsp *http.Response) (*AzureIntegrationDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationDeleteResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationDeleteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationDeleteResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationResponse parses an HTTP response from a AzureIntegrationWithResponse call
+func ParseAzureIntegrationResponse(rsp *http.Response) (*AzureIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationPatchResponse parses an HTTP response from a AzureIntegrationPatchWithResponse call
+func ParseAzureIntegrationPatchResponse(rsp *http.Response) (*AzureIntegrationPatchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationPatchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationPatchResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationPatchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationPatchResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationUpdateResponse parses an HTTP response from a AzureIntegrationUpdateWithResponse call
+func ParseAzureIntegrationUpdateResponse(rsp *http.Response) (*AzureIntegrationUpdateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationUpdateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest PreconditionFailed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationUpdateResponse200Headers
+		if values := rsp.Header.Values("ETag"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "ETag", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.ETag = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationUpdateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationUpdateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationAttachedStackResponse parses an HTTP response from a AzureIntegrationAttachedStackWithResponse call
+func ParseAzureIntegrationAttachedStackResponse(rsp *http.Response) (*AzureIntegrationAttachedStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationAttachedStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationAttachedStackResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationAttachedStackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationAttachedStackResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationConsentClearResponse parses an HTTP response from a AzureIntegrationConsentClearWithResponse call
+func ParseAzureIntegrationConsentClearResponse(rsp *http.Response) (*AzureIntegrationConsentClearResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationConsentClearResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationConsent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationConsentClearResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationConsentClearResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationConsentClearResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationConsentConfirmResponse parses an HTTP response from a AzureIntegrationConsentConfirmWithResponse call
+func ParseAzureIntegrationConsentConfirmResponse(rsp *http.Response) (*AzureIntegrationConsentConfirmResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationConsentConfirmResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationConsent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest IdempotencyConflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest IdempotencyMismatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationConsentConfirmResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationConsentConfirmResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationConsentConfirmResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -154387,6 +159249,128 @@ func ParseStackIntegrationAwsCreateResponse(rsp *http.Response) (*StackIntegrati
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers StackIntegrationAwsCreateResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAzureIntegrationAttachResponse parses an HTTP response from a AzureIntegrationAttachWithResponse call
+func ParseAzureIntegrationAttachResponse(rsp *http.Response) (*AzureIntegrationAttachResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AzureIntegrationAttachResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AzureIntegrationStackAttachment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers AzureIntegrationAttachResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers AzureIntegrationAttachResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers AzureIntegrationAttachResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

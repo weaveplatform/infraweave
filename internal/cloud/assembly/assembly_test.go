@@ -3,6 +3,7 @@ package assembly
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/weaveplatform/infraweave/internal/cloud/awsfake"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/aws"
+	"github.com/weaveplatform/infraweave/internal/cloud/internal/azure"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -152,5 +154,31 @@ func TestUnitBackEdges(t *testing.T) {
 	d := New(Deps{})
 	if d.Credentials() == nil || d.StackCredentials() == nil {
 		t.Fatal("the domain answers no back edge")
+	}
+}
+
+func TestUnitValidateAzure(t *testing.T) {
+	t.Setenv("AZURE_CLIENT_ID", "")
+	ok := azure.Settings{
+		TenantID: "11111111-2222-3333-4444-555555555555", ClientID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}
+	if err := (Settings{Azure: ok}).Validate(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AZURE_CLIENT_ID", "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee")
+	if err := (Settings{Azure: ok}).Validate(); !errors.Is(err, ErrConfig) || !errors.Is(err, azure.ErrSettings) {
+		t.Fatalf("another application in AZURE_CLIENT_ID: %v", err)
+	}
+}
+
+func TestUnitAzureConfigured(t *testing.T) {
+	for _, s := range []Settings{{}, {Azure: azure.Settings{TenantID: "t", ClientID: "c"}}} {
+		d := New(Deps{Settings: s})
+		if d.AzureSpaceOf() == nil || d.AzureAttachmentSpaceOf() == nil {
+			t.Fatal("the domain resolves no Azure subject")
+		}
+	}
+	if count(math.MaxInt32+1) != math.MaxInt32 || count(3) != 3 {
+		t.Error("counts are not clamped")
 	}
 }

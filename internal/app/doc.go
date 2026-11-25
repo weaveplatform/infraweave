@@ -79,7 +79,10 @@
 // accessapi.Deleted, since features cannot read access' event itself, and
 // the configuration domain subscribes its automatic attachments, and the
 // vcs domain its tracking of a stack's commit, to stacksapi.Changed. It stops the ticker, then
-// the workers, after the HTTP drain. MessageQueueStats is the
+// the workers, after the HTTP drain. IntegrationsCount composes an
+// account's integrationsCount from each domain's Counter, the cloud
+// domain's aws and azure and the vcs domain's VCS providers, with 0 for a
+// kind no domain serves. MessageQueueStats is the
 // installation's own operation, which no domain owns, as are the operator
 // API's dead-job operations and its data key rotation, the same rotation
 // as infraweave secrets rotate; Platform holds what they reach. MigrateUp

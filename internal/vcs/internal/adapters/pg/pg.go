@@ -249,6 +249,27 @@ func (s *Store) Default(ctx context.Context, acct kernel.AccountID, provider str
 		WHERE i.account_id = $1 AND i.provider = $2 AND i.is_default`, acct, provider)))
 }
 
+// Counts is how many integrations acct has of each provider that has
+// one.
+func (s *Store) Counts(ctx context.Context, acct kernel.AccountID) (map[string]int, error) {
+	rows, err := tx.Q(ctx, s.db).Query(ctx, `SELECT provider, count(*) FROM vcs_integrations
+		WHERE account_id = $1 GROUP BY provider`, acct)
+	if err != nil {
+		return nil, fmt.Errorf("vcs: count integrations: %w", sql.Unavailable(err))
+	}
+	out := map[string]int{}
+	var provider string
+	var n int
+	_, err = pgx.ForEachRow(rows, []any{&provider, &n}, func() error {
+		out[provider] = n
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("vcs: count integrations: %w", sql.Unavailable(err))
+	}
+	return out, nil
+}
+
 // one names the read of a single integration.
 func one(in integration.Integration, err error) (integration.Integration, error) {
 	switch {

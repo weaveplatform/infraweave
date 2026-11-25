@@ -207,7 +207,7 @@ infraweave/
 │   ├── policies/                  flat: policies, attachments, inputs, combination, samples, simulation (P13, P13b)
 │   │   └── api/ assembly/ internal/{core,inputs,combine,sample,http,pg}/
 │   ├── cloud/                     flat: AWS, Azure, GCP integrations, attachments, which present the OIDC run tokens access issues (P15)
-│   │   └── api/ assembly/ awsfake/ internal/{core,oidc,aws,azure,gcp,http,pg}/
+│   │   └── api/ assembly/ awsfake/ entrafake/ internal/{core,oidc,aws,azure,gcp,http,pg}/
 │   ├── schedules/                 flat: scheduled runs, tasks, deletes, drift detection (P16)
 │   │   └── api/ assembly/ internal/{core,http,pg}/
 │   ├── registry/                  hexagon: modules, versions, test cases, providers, GPG keys (P17, P17b)

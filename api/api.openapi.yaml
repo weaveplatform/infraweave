@@ -15,7 +15,7 @@ tags:
     description: Marker tag. Operations with this tag are implemented by hand and excluded from code generation.
   - name: Cloud Integrations
     description: >-
-      Roles in a cloud account that runs assume instead of holding long-lived keys. An AWS integration lives in a space and attaches to the stacks that reach it, for read phases, write phases or both; each attachment assumes the role with an external ID fixed by the account, the integration, the stack and the side.
+      Roles in a cloud account that runs assume instead of holding long-lived keys. An AWS integration lives in a space and attaches to the stacks that reach it, for read phases, write phases or both; each attachment assumes the role with an external ID fixed by the account, the integration, the stack and the side. An Azure integration is a multi-tenant Entra application the installation creates for a customer's tenant, whose admin consents to it; it attaches to stacks as an AWS integration does, with the subscription each stack uses.
   - name: Contexts
     description: >-
       Reusable bundles of environment variables, mounted files and hooks, attached to stacks by priority so configuration is shared rather than copied. Every value is sealed at rest, and a write-only one is readable only by runs.
@@ -2154,7 +2154,8 @@ paths:
       x-rest-style: read
   /attachable-azure-integrations-in-space:
     get:
-      description: List of azure integrations that can be attached Stacks/Modules in given space.
+      description: >-
+        The Azure integrations a stack in the space id may attach that the caller may read: those in the space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
       operationId: attachableAzureIntegrationsInSpace
       parameters:
         - in: query
@@ -2200,7 +2201,7 @@ paths:
       x-infraweave-divergence:
         - cursor-pagination
         - rate-limit
-      x-infraweave-feature: spaces
+      x-infraweave-feature: cloud-integrations
       x-infraweave-subject: query:id
       x-rest-style: read
   /attachable-contexts-in-space:
@@ -4236,6 +4237,694 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: read
+  /azure-integration-attachments/{attachmentId}:
+    delete:
+      description: >-
+        Detaches an Azure integration from a stack, by the attachment's ID. An attachment an autoattach label makes is refused; removing the label from the integration or the stack detaches it.
+      operationId: azureIntegrationDetach
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AZURE_INTEGRATION_DETACH
+      x-infraweave-subject: path:attachmentId:azure_integration_attachment
+      parameters:
+        - in: path
+          name: attachmentId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationStackAttachment'
+          description: The azureIntegrationDetach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Detach Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Detach Azure Integration.bru
+      x-graphql:
+        field: azureIntegrationDetach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: detach
+    put:
+      description: >-
+        Changes whether an attachment serves read phases, write phases or both, and the subscription it uses. At least one side is set, and a stack keeps at most one read and one write attachment. An absent subscriptionId uses the integration's defaultSubscriptionId.
+      operationId: azureIntegrationAttachmentUpdate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AZURE_INTEGRATION_UPDATE
+      x-infraweave-subject: path:attachmentId:azure_integration_attachment
+      parameters:
+        - in: path
+          name: attachmentId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              read: true
+              subscriptionId: null
+              write: true
+            schema:
+              $ref: '#/components/schemas/AzureIntegrationAttachmentUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationStackAttachment'
+          description: The azureIntegrationAttachmentUpdate result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Attachment
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Update Attachment.bru
+      x-graphql:
+        field: azureIntegrationAttachmentUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: override
+  /azure-integration-by-name:
+    get:
+      description: >-
+        One Azure integration of the account, by its name. An integration in a space the caller cannot read answers as one that does not exist.
+      operationId: azureIntegrationByName
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: name
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: The azureIntegrationByName result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Azure Integration by Name
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Get Azure Integration by Name.bru
+      x-graphql:
+        field: azureIntegrationByName
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /azure-integrations:
+    get:
+      description: The Azure integrations of the account in spaces the caller may read, by name.
+      operationId: azureIntegrations
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: list
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationPage'
+          description: The azureIntegrations result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "400":
+          $ref: '#/components/responses/InvalidCursor'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Azure Integrations
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/List Azure Integrations.bru
+      x-graphql:
+        field: azureIntegrations
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - cursor-pagination
+        - rate-limit
+      x-rest-style: list
+    post:
+      description: >-
+        Creates an Azure integration for a customer's Entra tenant in a space, the account's top space when none is named. The caller administers that space. The installation creates a dedicated multi-tenant Entra application for the integration through its own registered application, and answers the URL an admin of the customer's tenant grants consent at. An installation without a registered application answers installation-unsupported, and a Microsoft Graph failure answers service-unavailable and stores nothing.
+      operationId: azureIntegrationCreate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: body:space
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            example:
+              labels: []
+              name: my-azure-integration
+              space: root
+              tenantID: 00000000-0000-0000-0000-000000000000
+            schema:
+              $ref: '#/components/schemas/AzureIntegrationCreateRequest'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: Created.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Create Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Create Azure Integration.bru
+      x-graphql:
+        field: azureIntegrationCreate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: create
+  /azure-integrations-enabled:
+    get:
+      description: >-
+        Whether the account may use Azure integrations: its feature switches admit cloud integrations, and the installation has an application registered to create Entra applications with.
+      operationId: azureIntegrationsEnabled
+      x-infraweave-feature: account-details
+      x-infraweave-action: AUTHENTICATED
+      x-infraweave-subject: account
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: boolean
+          description: The azureIntegrationsEnabled result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: List Enabled Azure Integrations
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/List Enabled Azure Integrations.bru
+      x-graphql:
+        field: azureIntegrationsEnabled
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: read
+  /azure-integrations/{azureIntegrationId}:
+    delete:
+      description: >-
+        Deletes an Azure integration with its attachments and its Entra application, and answers it as it was. A Microsoft Graph failure answers service-unavailable and keeps the integration.
+      operationId: azureIntegrationDelete
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: The azureIntegrationDelete result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Delete Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Delete Azure Integration.bru
+      x-graphql:
+        field: azureIntegrationDelete
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: delete
+    get:
+      description: >-
+        One Azure integration of the account. An integration in a space the caller cannot read answers as one that does not exist.
+      operationId: azureIntegration
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: The azureIntegration result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Get Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Get Azure Integration.bru
+      x-graphql:
+        field: azureIntegration
+        operation: query
+        type: Query
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - rate-limit
+      x-rest-style: item
+    patch:
+      description: Change the members of AzureIntegrationUpdateRequest that a JSON Merge Patch (RFC 7396) names and keep the rest; null resets a member to its default. It runs through azureIntegrationUpdate, so it validates and persists as the PUT does.
+      operationId: azureIntegrationPatch
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/MergePatch'
+        description: A JSON Merge Patch of AzureIntegrationUpdateRequest.
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: The azureIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Patch Azure Integration
+      tags:
+        - Cloud Integrations
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-upstream: none
+    put:
+      description: >-
+        Replaces an Azure integration's settings. The tenant is fixed at creation, so the body names none. A move to another space needs the caller to administer that space too, and is refused when a stack attached to the integration would no longer reach it. Enabling auto-attachment needs a defaultSubscriptionId.
+      operationId: azureIntegrationUpdate
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_ADMIN
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            example:
+              labels: []
+              name: my-azure-integration-updated
+              space: root
+            schema:
+              $ref: '#/components/schemas/AzureIntegrationUpdateRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegration'
+          description: The azureIntegrationUpdate result.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "412":
+          $ref: '#/components/responses/PreconditionFailed'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Update Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Update Azure Integration.bru
+      x-graphql:
+        field: azureIntegrationUpdate
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - if-match
+        - merge-patch
+        - rate-limit
+      x-rest-style: update
+  /azure-integrations/{azureIntegrationId}/attached-stack:
+    get:
+      description: One of the integration's stack attachments, by the attachment's ID.
+      operationId: azureIntegrationAttachedStack
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: SPACE_READ
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - description: Selects the parent object.
+          in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationStackAttachment'
+          description: The attachedStack result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Azure integration attached stack
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: attachedStack
+        operation: query
+        type: AzureIntegration
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: field
+  /azure-integrations/{azureIntegrationId}/consent-clear:
+    post:
+      description: >-
+        Records that admin consent is no longer granted to the integration's Entra application, with the caller and the time. It neither revokes consent in Entra nor asks Entra anything.
+      operationId: azureIntegrationConsentClear
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: AZURE_INTEGRATION_CLEAR_CONSENT
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationConsent'
+          description: The azureIntegrationConsentClear result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Azure integration consent clear
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: azureIntegrationConsentClear
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
+  /azure-integrations/{azureIntegrationId}/consent-confirm:
+    post:
+      description: >-
+        Records an admin's statement that consent was granted to the integration's Entra application in the customer's tenant, with the caller and the time. The statement is never checked against Entra.
+      operationId: azureIntegrationConsentConfirm
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: AZURE_INTEGRATION_CONFIRM_CONSENT
+      x-infraweave-subject: path:azureIntegrationId:azure_integration
+      parameters:
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationConsent'
+          description: The azureIntegrationConsentConfirm result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "409":
+          $ref: '#/components/responses/IdempotencyConflict'
+        "422":
+          $ref: '#/components/responses/IdempotencyMismatch'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Azure integration consent confirm
+      tags:
+        - Cloud Integrations
+      x-graphql:
+        field: azureIntegrationConsentConfirm
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - idempotency-key
+        - rate-limit
+      x-rest-style: action
   /billed-externally:
     get:
       description: >-
@@ -7859,7 +8548,8 @@ paths:
       x-rest-style: read
   /integrations-count:
     get:
-      description: Returns counts of different types of integrations in the account.
+      description: >-
+        The account's count of each kind of integration, whatever space it lives in. The caller reads the account's top space. A kind the installation does not offer yet counts 0.
       operationId: integrationsCount
       responses:
         "200":
@@ -7894,7 +8584,7 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-infraweave-feature: spaces
-      x-infraweave-subject: list
+      x-infraweave-subject: account
       x-rest-style: read
   /managed-user-groups:
     get:
@@ -15752,9 +16442,10 @@ paths:
       x-rest-style: field
   /stacks/{stackId}/attachable-azure-integrations:
     get:
-      description: List of azure integrations that can be attached to this Stack.
+      description: >-
+        The Azure integrations the stack may attach that the caller may read: those in the stack's space, and those in each ancestor reached through an unbroken chain of spaces that inherit their parent's entities, by name.
       operationId: stackAttachableAzureIntegrations
-      x-infraweave-feature: stacks
+      x-infraweave-feature: cloud-integrations
       x-infraweave-action: SPACE_READ
       x-infraweave-subject: path:stackId:stack
       parameters:
@@ -16141,6 +16832,77 @@ paths:
       x-infraweave-divergence:
         - rate-limit
       x-rest-style: override
+  /stacks/{stackId}/azure-integrations/{azureIntegrationId}:
+    put:
+      description: |-
+        Attaches an Azure integration to a stack for read phases, write phases or both. At least one of
+        read and write is true, and a stack has at most one read and one write attachment. The
+        integration lives in the stack's space or one the stack inherits from. subscriptionId
+        overrides the integration's defaultSubscriptionId for this stack.
+      operationId: azureIntegrationAttach
+      x-infraweave-feature: cloud-integrations
+      x-infraweave-action: STACK_AZURE_INTEGRATION_ATTACH
+      x-infraweave-subject: path:stackId:stack
+      parameters:
+        - description: ID of the stack to attach the integration to
+          in: path
+          name: stackId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: stack
+          x-terraform:
+            - spacelift_azure_integration_attachment.stack_id
+        - in: path
+          name: azureIntegrationId
+          required: true
+          schema:
+            type: string
+          x-graphql-arg: id
+      requestBody:
+        content:
+          application/json:
+            example:
+              read: true
+              subscriptionId: 00000000-0000-0000-0000-000000000000
+              write: true
+            schema:
+              $ref: '#/components/schemas/AzureIntegrationAttachRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AzureIntegrationStackAttachment'
+          description: The azureIntegrationAttach result.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "429":
+          $ref: '#/components/responses/TooManyRequests'
+        "503":
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+      summary: Attach Azure Integration
+      tags:
+        - Cloud Integrations
+      x-bruno: Cloud Integrations/Azure/Attach Azure Integration.bru
+      x-graphql:
+        field: azureIntegrationAttach
+        operation: mutation
+        type: Mutation
+      x-infraweave-cost: standard
+      x-infraweave-divergence:
+        - rate-limit
+      x-rest-style: attach
   /stacks/{stackId}/config-element:
     get:
       description: >-
@@ -25916,6 +26678,104 @@ components:
       x-graphql-omitted:
         attachedStack: served by GET /azure-integrations/{azureIntegrationId}/attached-stack
       x-graphql-type: AzureIntegration
+    AzureIntegrationAttachRequest:
+      additionalProperties: false
+      description: The arguments of azureIntegrationAttach not carried in the path.
+      properties:
+        read:
+          description: Indicates whether this attachment is used for read operations.
+          type: boolean
+          x-terraform:
+            - spacelift_azure_integration_attachment.read
+        subscriptionId:
+          description: >-
+            The Azure subscription ID the stack's runs use, a GUID; absent, the integration's defaultSubscriptionId applies.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_azure_integration_attachment.subscription_id
+        write:
+          description: Indicates whether this attachment is used for write operations.
+          type: boolean
+          x-terraform:
+            - spacelift_azure_integration_attachment.write
+      required:
+        - read
+        - write
+      type: object
+      x-graphql-args-of: azureIntegrationAttach
+    AzureIntegrationAttachmentUpdateRequest:
+      additionalProperties: false
+      description: The arguments of azureIntegrationAttachmentUpdate not carried in the path.
+      properties:
+        read:
+          type: boolean
+        subscriptionId:
+          nullable: true
+          type: string
+        write:
+          type: boolean
+      required:
+        - read
+        - write
+      type: object
+      x-graphql-args-of: azureIntegrationAttachmentUpdate
+    AzureIntegrationConsent:
+      description: AzureIntegrationConsent is the persisted consent state after confirming or clearing consent.
+      properties:
+        adminConsentProvided:
+          description: The integration's final admin consent state after the mutation.
+          type: boolean
+      required:
+        - adminConsentProvided
+      type: object
+      x-graphql-type: AzureIntegrationConsent
+    AzureIntegrationCreateRequest:
+      additionalProperties: false
+      description: The arguments of azureIntegrationCreate not carried in the path.
+      properties:
+        autoattachEnabled:
+          description: >-
+            Enables `autoattach:` labels functionality for this integration, which needs a defaultSubscriptionId.
+          nullable: true
+          type: boolean
+          x-terraform:
+            - spacelift_azure_integration.autoattach_enabled
+        defaultSubscriptionId:
+          description: The default subscription ID to use, a GUID, if one isn't specified at the stack level.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_azure_integration.default_subscription_id
+        labels:
+          description: Labels to set on the integration
+          items:
+            type: string
+          type: array
+          x-terraform:
+            - spacelift_azure_integration.labels
+        name:
+          description: The friendly name of the integration
+          type: string
+          x-terraform:
+            - spacelift_azure_integration.name
+        space:
+          description: ID (slug) of the space the integration is in; the account's top space when absent.
+          nullable: true
+          type: string
+          x-terraform:
+            - spacelift_azure_integration.space_id
+        tenantID:
+          description: The Entra tenant ID of the customer, a GUID. It cannot change after creation.
+          type: string
+          x-terraform:
+            - spacelift_azure_integration.tenant_id
+      required:
+        - labels
+        - name
+        - tenantID
+      type: object
+      x-graphql-args-of: azureIntegrationCreate
     AzureIntegrationPage:
       description: One page of a cursor-paginated list.
       properties:
@@ -25972,6 +26832,30 @@ components:
         - write
       type: object
       x-graphql-type: AzureIntegrationStackAttachment
+    AzureIntegrationUpdateRequest:
+      additionalProperties: false
+      description: The arguments of azureIntegrationUpdate not carried in the path.
+      properties:
+        autoattachEnabled:
+          nullable: true
+          type: boolean
+        defaultSubscriptionId:
+          nullable: true
+          type: string
+        labels:
+          items:
+            type: string
+          type: array
+        name:
+          type: string
+        space:
+          nullable: true
+          type: string
+      required:
+        - labels
+        - name
+      type: object
+      x-graphql-args-of: azureIntegrationUpdate
     BillingAddon:
       description: BillingAddon represents an addon that can be bought along with the plan.
       properties:
