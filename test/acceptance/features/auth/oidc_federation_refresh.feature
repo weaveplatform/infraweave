@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @docker @tofu @oidc
+@run-credentials @postgres @objectstore @vcs @docker @tofu @oidc
 Feature: A long phase's OIDC federation token is refreshed
   Federation tokens here live 15 minutes and 15 seconds, so the runner
   asks for a new one 15 seconds after the handover mints the first,
