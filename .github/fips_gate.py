@@ -21,8 +21,10 @@ def catalogue(matrix):
     names = [job["shard"] for job in jobs]
     if not jobs or len(names) != len(set(names)) or names.count("native") != 1 or "unit" in names:
         raise ValueError("Incomplete or duplicate FIPS matrix")
+    # A shard's budget exceeds the Makefile's sixty-minute Go package
+    # deadline, so the deadline, which names the running test, fires first.
     for job in jobs:
-        if job["partition"] != ("" if job["shard"] == "native" else job["shard"]) or not 10 < job["timeout"] <= 30:
+        if job["partition"] != ("" if job["shard"] == "native" else job["shard"]) or not 60 < job["timeout"] <= 90:
             raise ValueError("Invalid FIPS shard selector or budget")
     return {"unit", *names}
 

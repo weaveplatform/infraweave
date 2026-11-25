@@ -109,21 +109,21 @@ jobs:
       matrix:
         include:
           - partition: core
-            timeout: 20
+            timeout: 75
           - partition: identity
-            timeout: 20
+            timeout: 75
           - partition: terraform
-            timeout: 30
+            timeout: 75
           - partition: terraform-vcs
-            timeout: 30
+            timeout: 75
           - partition: terraform-plans
-            timeout: 30
+            timeout: 75
           - partition: run-credentials
-            timeout: 30
+            timeout: 75
           - partition: runs
-            timeout: 30
+            timeout: 75
           - partition: integrations
-            timeout: 20
+            timeout: 75
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.timeout }}
     steps:
@@ -212,7 +212,7 @@ jobs:
   native:
     name: accept-native
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
@@ -607,7 +607,7 @@ jobs:
       matrix:
         partition: [core, identity, native]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0

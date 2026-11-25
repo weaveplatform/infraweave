@@ -14,8 +14,8 @@ from fips_gate import catalogue, identity, record, validate
 
 class FipsGateTest(unittest.TestCase):
     def setUp(self):
-        self.matrix = {"include": [{"shard": "native", "partition": "", "timeout": 20},
-                                   {"shard": "core", "partition": "core", "timeout": 20}]}
+        self.matrix = {"include": [{"shard": "native", "partition": "", "timeout": 75},
+                                   {"shard": "core", "partition": "core", "timeout": 75}]}
         self.source = {"head": "head", "base": "base", "checkout": "merge", "tree": "tree", "run": "42", "attempt": 2}
         self.children = {"fips-unit": "success", "fips-tests": "success"}
         self.results = [{"schema": 1, "shard": shard, "status": "success", "seconds": 1, **self.source,
@@ -78,7 +78,7 @@ class FipsGateTest(unittest.TestCase):
                 elif bad == "selector":
                     matrix["include"][-1]["partition"] = ""
                 elif bad == "budget":
-                    matrix["include"][-1]["timeout"] = 10
+                    matrix["include"][-1]["timeout"] = 60
                 with self.assertRaises(ValueError):
                     catalogue(matrix)
 

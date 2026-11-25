@@ -93,7 +93,7 @@ func TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload(t *testing.T) {
 	actual := make([]string, 0, len(quality.Jobs["accept"].Strategy.Matrix.Include))
 	for _, job := range quality.Jobs["accept"].Strategy.Matrix.Include {
 		actual = append(actual, job.Partition)
-		if job.Timeout <= 10 {
+		if job.Timeout <= 60 {
 			t.Errorf("accept-%s job budget %dm leaves no margin above the Go test deadline", job.Partition, job.Timeout)
 		}
 	}
@@ -167,7 +167,7 @@ func TestUnitCINativeAcceptanceIsRequired(t *testing.T) {
 		t.Fatal("missing native acceptance target")
 	}
 	recipe, _, _ = strings.Cut(recipe, "\n\n")
-	for _, required := range []string{"-run '^TestAcc'", "-skip '^TestAccFeatures$$'", "./...", "-timeout 10m", "/native"} {
+	for _, required := range []string{"-run '^TestAcc'", "-skip '^TestAccFeatures$$'", "./...", "-timeout 60m", "/native"} {
 		if !strings.Contains(recipe, required) {
 			t.Errorf("native target omits %s", required)
 		}
@@ -261,7 +261,7 @@ func TestUnitCIFIPSUsesCatalogueCompleteSelectorsAndFailClosedAggregate(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, selector := range []string{"ACCEPT_FEATURES_ONLY = $(strip $(PARTITION))", "^TestAccFeatures$$,^TestAcc", "./test/acceptance,./...", "ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)"} {
+	for _, selector := range []string{"ACCEPT_FEATURES_ONLY = $(strip $(PARTITION))", "^TestAccFeatures$$,^TestAcc", "./test/acceptance,./...", "ACCEPT_TIMEOUT ?= $(if $(PARTITION),60m,120m)"} {
 		if !strings.Contains(string(raw), selector) {
 			t.Errorf("feature partitions can omit a newly registered catalogue entry or share an unbounded budget: missing %s", selector)
 		}

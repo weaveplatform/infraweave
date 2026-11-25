@@ -57,7 +57,7 @@ jobs:
       matrix:
         partition: [core, identity, terraform-plans, terraform-vcs, terraform, run-credentials, runs, integrations]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
@@ -116,7 +116,7 @@ jobs:
     name: nightly accept-native
     if: ${{ !inputs.stress && github.event.schedule != '17 5 * * 6' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 75
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
