@@ -590,3 +590,82 @@ func TestAccByteOrder(t *testing.T) {
 		t.Errorf("the grants read as %v, %v", g.Features, err)
 	}
 }
+
+// TestAccWritesDropOnCommit checks that every write hands OnCommit's drop
+// the payloads it notifies, once it commits, and that a write of what no
+// snapshot holds does neither.
+func TestAccWritesDropOnCommit(t *testing.T) {
+	ctx := t.Context()
+	db := pool(t)
+	s := pg.New(db)
+	var dropped []string
+	s.OnCommit(func(payload string) { dropped = append(dropped, payload) })
+	exec(t, db, `INSERT INTO tiers (name) VALUES ($1) ON CONFLICT DO NOTHING`, root.Enterprise)
+	notified := listen(t, db)
+	org, acct, member := kernel.NewOrganizationID(), kernel.NewAccountID(), kernel.NewMemberID()
+	gold := root.Tier{Name: "Gold-" + kernel.NewULID().String(), Features: []string{"stacks"}}
+	seed := root.Tier{
+		Name: "Seeded-" + kernel.NewULID().String(), Features: []string{"stacks"}, Limits: map[string]int64{},
+	}
+	seats := int64(3)
+	for _, step := range []struct {
+		name  string
+		write func() error
+		want  []string
+	}{
+		{"CreateOrganization", func() error { return s.CreateOrganization(ctx, org) }, nil},
+		{"CreateTier", func() error { return s.CreateTier(ctx, gold) }, []string{core.TiersKey}},
+		{"ReplaceTier", func() error { return s.ReplaceTier(ctx, gold) }, []string{core.TiersKey}},
+		{"SetBilling", func() error { return s.SetBilling(ctx, true, nil) }, []string{core.BillingKey}},
+		{"SetTier", func() error { return s.SetTier(ctx, org, gold.Name) }, []string{core.InvalidateKey(org)}},
+		{"GrantFeature", func() error { return s.GrantFeature(ctx, org, "scans") }, []string{core.InvalidateKey(org)}},
+		{"RevokeFeature", func() error { return s.RevokeFeature(ctx, org, "scans") }, []string{core.InvalidateKey(org)}},
+		{"GrantLimit", func() error { return s.GrantLimit(ctx, org, "seats", &seats) }, []string{core.InvalidateKey(org)}},
+		{"RevokeLimit", func() error { return s.RevokeLimit(ctx, org, "seats") }, []string{core.InvalidateKey(org)}},
+		{"SetAccountLimit", func() error { return s.SetAccountLimit(ctx, org, acct, "seats", 1) }, nil},
+		{"ClearAccountLimit", func() error { return s.ClearAccountLimit(ctx, acct, "seats") }, nil},
+		{"SetFeaturePreviews", func() error { return s.SetFeaturePreviews(ctx, acct, true) }, []string{core.AccountKey(acct)}},
+		{"SetPersonalFeaturePreviews", func() error {
+			return s.SetPersonalFeaturePreviews(ctx, acct, member, false)
+		}, nil},
+		{"RemoveMember", func() error { return s.RemoveMember(ctx, acct, member) }, nil},
+		{"Seed", func() error { return s.Seed(ctx, []root.Tier{seed}) }, []string{core.TiersKey}},
+		{"an unchanged Seed", func() error { return s.Seed(ctx, []root.Tier{seed}) }, nil},
+		{"DeleteAccount", func() error { return s.DeleteAccount(ctx, acct) }, []string{core.AccountKey(acct)}},
+		{"DeleteOrganization", func() error { return s.DeleteOrganization(ctx, org) }, []string{core.InvalidateKey(org)}},
+		{"DeleteTier", func() error { return s.DeleteTier(ctx, gold.Name) }, []string{core.TiersKey}},
+	} {
+		dropped = nil
+		if err := step.write(); err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+		if !slices.Equal(dropped, step.want) {
+			t.Errorf("%s dropped %q, want %q", step.name, dropped, step.want)
+		}
+		if got := notified(); !slices.Equal(got, step.want) {
+			t.Errorf("%s notified %q, want %q", step.name, got, step.want)
+		}
+	}
+
+	// Inside a caller's transaction the drop waits for its commit, and a
+	// rollback drops nothing.
+	dropped = nil
+	errRollback := errors.New("rollback")
+	err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+		if err := s.SetBilling(ctx, false, nil); err != nil {
+			return err
+		}
+		if dropped != nil {
+			t.Errorf("dropped %q before the commit", dropped)
+		}
+		return errRollback
+	})
+	if !errors.Is(err, errRollback) || dropped != nil {
+		t.Errorf("a rolled-back write: %v, dropped %q", err, dropped)
+	}
+	if err := tx.Do(ctx, db, tx.Options{}, func(ctx context.Context) error {
+		return s.SetBilling(ctx, false, nil)
+	}); err != nil || !slices.Equal(dropped, []string{core.BillingKey}) {
+		t.Errorf("a committed write: %v, dropped %q", err, dropped)
+	}
+}

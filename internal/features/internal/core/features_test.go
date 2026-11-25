@@ -16,8 +16,10 @@ import (
 var errStore = errors.New("store down")
 
 // store is an in-memory core.Store of one organization, with billing
-// on unless billingOff.
+// on unless billingOff. A write that pg.Store notifies hands its payload
+// to drop, as pg.Store does on commit.
 type store struct {
+	drop        func(payload string)
 	entitlement *featuresapi.Entitlement
 	accounts    map[string]int64
 	billingOff  bool
@@ -39,6 +41,16 @@ type store struct {
 	optedOut    map[[2]kernel.ULID]bool
 	previewErr  error
 	personalErr error
+}
+
+func (s *store) OnCommit(drop func(payload string)) { s.drop = drop }
+
+// committed hands payload to drop unless the write failed with err.
+func (s *store) committed(err error, payload string) error {
+	if err == nil {
+		s.drop(payload)
+	}
+	return err
 }
 
 func (s *store) read(what string) {
@@ -569,9 +581,10 @@ func TestUnitRefusalError(t *testing.T) {
 	}
 }
 
-// TestUnitOperatorWriteSnapshot checks that the operator's write drops at
-// once the snapshot of this replica it concerns, so the replica that
-// wrote reads what it wrote before any notification arrives.
+// TestUnitOperatorWriteSnapshot checks that the payload a committed
+// operator's write hands to the store's OnCommit drops the snapshot of
+// this replica it concerns, so the replica that wrote reads what it wrote
+// before any notification arrives.
 func TestUnitOperatorWriteSnapshot(t *testing.T) {
 	s := &store{entitlement: &featuresapi.Entitlement{Tier: "Free", Features: []string{"stacks"}}}
 	svc := core.New(s, inTx(new(int)), nil)

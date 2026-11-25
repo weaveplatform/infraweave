@@ -26,6 +26,7 @@ func (s *store) SetFeaturePreviews(_ context.Context, acct kernel.AccountID, ena
 		s.optedIn = map[kernel.AccountID]bool{}
 	}
 	s.optedIn[acct] = enabled
+	s.drop(core.AccountKey(acct))
 	return nil
 }
 

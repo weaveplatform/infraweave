@@ -60,18 +60,11 @@ func (s *Service) FeaturePreviewsEnabled(ctx context.Context, acct kernel.Accoun
 	return on, nil
 }
 
-// SetFeaturePreviewsEnabled sets acct's opt-in. It drops this replica's
-// snapshot of it at once, so the caller's next request here reads the
-// write rather than waiting for the notification; every other replica
-// applies it once the write commits and its notification arrives, which
-// also corrects a read this replica kept before a surrounding transaction
-// committed.
+// SetFeaturePreviewsEnabled sets acct's opt-in. This replica drops its
+// snapshot of it when the write commits, and every other replica when the
+// write's notification arrives.
 func (s *Service) SetFeaturePreviewsEnabled(ctx context.Context, acct kernel.AccountID, enabled bool) error {
-	if err := s.store.SetFeaturePreviews(ctx, acct, enabled); err != nil {
-		return err //nolint:wrapcheck // as above
-	}
-	s.Invalidate(AccountKey(acct))
-	return nil
+	return s.store.SetFeaturePreviews(ctx, acct, enabled) //nolint:wrapcheck // as above
 }
 
 // PersonalFeaturePreviewsEnabled reads member's setting in acct. No
@@ -145,9 +138,10 @@ func (s *Service) FeaturePreviews(ctx context.Context, p kernel.Principal) (Prev
 }
 
 // SetAccountFeaturePreviews sets the opt-in of p's account and answers
-// the feature previews as p sees them with enabled applied. The replica's
-// snapshot takes the write only when its notification arrives after the
-// commit, so the answer uses enabled rather than reading the opt-in back.
+// the feature previews as p sees them with enabled applied. The snapshot
+// takes the write only once it commits, which inside a caller's
+// transaction is after this returns, so the answer uses enabled rather
+// than reading the opt-in back.
 func (s *Service) SetAccountFeaturePreviews(ctx context.Context, p kernel.Principal, enabled bool) (Previews, error) {
 	if err := s.SetFeaturePreviewsEnabled(ctx, p.AccountID, enabled); err != nil {
 		return Previews{}, err

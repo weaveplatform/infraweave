@@ -24,10 +24,13 @@
 //
 // # Input and output
 //
-// It reads and writes PostgreSQL through the DB it is given. A seed or an
-// operator change sends the payload of what it changed, an organization,
-// the tiers or the billing switch, on infraweave_invalidate when it
-// commits, as does a write or deletion of an account's opt-in.
+// It reads and writes PostgreSQL through the DB it is given. A seed, an
+// operator change or an organization's deletion sends the payload of what
+// it changed, an organization, the tiers or the billing switch, on
+// infraweave_invalidate when it commits, as does a write or deletion of
+// an account's opt-in, and hands the same payload to OnCommit's drop on
+// its own replica once it commits. A new organization, an account's
+// limits and a member's setting, which no snapshot holds, send none.
 //
 // # Dependencies
 //
