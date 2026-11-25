@@ -47,9 +47,9 @@ Feature: A long phase's OIDC federation token is refreshed in a Kubernetes Pod
     And the federation token "first" verifies against the issuer "http://infraweave.test" discovered through A, living "15m15s", with the claims:
       | iss        | "http://infraweave.test" |
       | aud        | "infraweave.test/acme" |
-      | sub        | "space:team:stack:infra:run_type:PROPOSED:scope:read" |
-      | spaceId    | "team" |
-      | spacePath  | "/acme/team" |
+      | sub        | "space:{team}:stack:infra:run_type:PROPOSED:scope:read" |
+      | spaceId    | "{team}" |
+      | spacePath  | "/acme/{team}" |
       | callerType | "stack" |
       | callerId   | "infra" |
       | runType    | "PROPOSED" |
@@ -58,9 +58,9 @@ Feature: A long phase's OIDC federation token is refreshed in a Kubernetes Pod
     And the federation token "second" verifies against the issuer "http://infraweave.test" discovered through B, living "15m15s", with the claims:
       | iss        | "http://infraweave.test" |
       | aud        | "infraweave.test/acme" |
-      | sub        | "space:team:stack:infra:run_type:PROPOSED:scope:read" |
-      | spaceId    | "team" |
-      | spacePath  | "/acme/team" |
+      | sub        | "space:{team}:stack:infra:run_type:PROPOSED:scope:read" |
+      | spaceId    | "{team}" |
+      | spacePath  | "/acme/{team}" |
       | callerType | "stack" |
       | callerId   | "infra" |
       | runType    | "PROPOSED" |
