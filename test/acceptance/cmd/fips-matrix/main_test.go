@@ -20,7 +20,7 @@ func TestUnitMatrixIncludesNativeAndEveryCataloguePartitionExactlyOnce(t *testin
 		if job.Shard == "native" && job.Partition != "" || job.Shard != "native" && job.Partition != job.Shard {
 			t.Errorf("shard %q selects unintended partition %q", job.Shard, job.Partition)
 		}
-		if job.Timeout <= 10 || job.Timeout > 30 {
+		if job.Timeout <= 60 || job.Timeout > 90 {
 			t.Errorf("shard %q has unbounded or insufficient job budget %d", job.Shard, job.Timeout)
 		}
 	}

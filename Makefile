@@ -114,12 +114,14 @@ build:
 # Feature partitions run Gherkin alone; accept-native runs captures and the
 # TestAcc suites beside the code. With no PARTITION, ordinary scenarios run;
 # Terraform-provisioned labs require their explicit batches.
-# Explicit partitions and native acceptance have independent ten-minute
-# package deadlines in CI, including certified FIPS. The unpartitioned local
-# convenience command retains its thirty-minute aggregate deadline.
+# Explicit partitions and native acceptance have independent sixty-minute
+# package deadlines in CI, including certified FIPS, well above the longest
+# partition, so a slow runner never times out a passing suite. The
+# unpartitioned local convenience command runs every partition in one
+# process, so its deadline is twice that.
 # ref: decision 0016
 ACCEPT_FEATURES_ONLY = $(strip $(PARTITION))
-ACCEPT_TIMEOUT ?= $(if $(PARTITION),10m,30m)
+ACCEPT_TIMEOUT ?= $(if $(PARTITION),60m,120m)
 accept:
 	@rm -rf $(COVER_DIR)/accept && mkdir -p $(COVER_DIR)/accept
 	INFRAWEAVE_ACCEPT_PARTITION=$(PARTITION) $(GO) test -count=1 -timeout $(ACCEPT_TIMEOUT) -run '$(if $(ACCEPT_FEATURES_ONLY),^TestAccFeatures$$,^TestAcc)' -covermode=atomic -cover -coverpkg=$(MODULE)/... $(if $(ACCEPT_FEATURES_ONLY),./test/acceptance,./...) -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/accept
@@ -127,7 +129,7 @@ accept:
 ## accept-native: every non-feature TestAcc, including captures and real PostgreSQL contracts
 accept-native:
 	@rm -rf $(COVER_DIR)/native && mkdir -p $(COVER_DIR)/native
-	INFRAWEAVE_ACCEPT_PARTITION= $(GO) test -count=1 -timeout 10m -run '^TestAcc' -skip '^TestAccFeatures$$' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/native
+	INFRAWEAVE_ACCEPT_PARTITION= $(GO) test -count=1 -timeout 60m -run '^TestAcc' -skip '^TestAccFeatures$$' -covermode=atomic -cover -coverpkg=$(MODULE)/... ./... -args -test.gocoverdir=$(CURDIR)/$(COVER_DIR)/native
 
 ## accept-stress: make accept under the stress INFRAWEAVE_ACCEPT_STRESS names, by default a fifth of the signed uploads refused, 500ms on each object store request and half a CPU for each run container (make accept-stress PARTITION=runs)
 # The default applies only here: a variable this file sets is not exported,

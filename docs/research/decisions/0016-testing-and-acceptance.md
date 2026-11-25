@@ -596,19 +596,22 @@ coverage it would contribute is not waived.
   it produces coverage, of `coverage`.
 - When a partition approaches its timeout, it splits by tag into two
   required jobs; scenarios are never dropped to fit.
-  The Terraform plan-artifact workload, native VCS workflows, other Terraform cases, run
-  credential cases and remaining worker run cases each retain a ten-minute Go test deadline and thirty-minute
-  Actions job budget. The Go deadline includes test cleanup: each partition
-  needs margin for container teardown and coverage/report flushing after its
-  scenario assertions finish. Their profiles and Cucumber results all join the
+  The Terraform plan-artifact workload, native VCS workflows, other Terraform
+  cases, run credential cases and remaining worker run cases each have a
+  sixty-minute Go test deadline and a seventy-five-minute Actions job budget.
+  The deadline sits well above the longest partition, so a slow shared runner
+  never fails a passing suite; a partition that grows toward it still splits.
+  The Go deadline includes test cleanup: each partition needs margin for
+  container teardown and coverage/report flushing after its scenario
+  assertions finish. Their profiles and Cucumber results all join the
   same gates. Nightly acceptance and weekly/requested stress include all five
   workloads. Certified FIPS runs the same complete partitions and the native
-  suite in separate jobs with independent ten-minute package deadlines;
+  suite in separate jobs with independent sixty-minute package deadlines;
   unrelated suites cannot consume one another's alarm budget. The unit job
-  has twenty minutes, native/core/identity/integrations each twenty minutes,
-  and Terraform/run jobs each thirty minutes for setup, compilation and
-  cleanup. The unpartitioned local convenience command retains thirty minutes;
-  required FIPS CI does not use it. See the
+  has twenty minutes, and every native and partition job seventy-five
+  minutes for setup, compilation and cleanup. The unpartitioned local
+  convenience command, which runs every partition in one process, has 120
+  minutes; required FIPS CI does not use it. See the
   [budget diagnosis and verification](../../implementation/fips-ci-budgets.md).
   Required acceptance also writes an incremental `out/progress.jsonl` when
   `INFRAWEAVE_ACCEPT_PROGRESS=1`. Scenario and step identities, elapsed times,

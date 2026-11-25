@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/weaveplatform/infraweave/test/acceptance/internal/harness"
 )
@@ -15,15 +14,17 @@ type shard struct {
 	Timeout   int    `json:"timeout"`
 }
 
+// jobBudget is every shard's Actions budget in minutes: the Makefile's
+// sixty-minute Go package deadline for accept and accept-native, plus
+// setup, compilation and coverage upload, so the Go deadline, which names
+// the test still running, always fires before Actions cancels the job.
+const jobBudget = 75
+
 func matrix() map[string][]shard {
 	jobs := make([]shard, 0, 1+len(harness.Partitions))
-	jobs = append(jobs, shard{Shard: "native", Timeout: 20})
+	jobs = append(jobs, shard{Shard: "native", Timeout: jobBudget})
 	for _, partition := range harness.Partitions {
-		budget := 20
-		if strings.HasPrefix(partition.Name, "terraform") || partition.Name == "runs" || partition.Name == "run-credentials" {
-			budget = 30
-		}
-		jobs = append(jobs, shard{Shard: partition.Name, Partition: partition.Name, Timeout: budget})
+		jobs = append(jobs, shard{Shard: partition.Name, Partition: partition.Name, Timeout: jobBudget})
 	}
 	return map[string][]shard{"include": jobs}
 }

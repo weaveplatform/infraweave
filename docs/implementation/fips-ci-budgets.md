@@ -10,12 +10,14 @@ existing explicit infrastructure jobs.
 | Suite | Command | Go package deadline | Actions job budget |
 | --- | --- | --- | --- |
 | Unit | `make test FIPS=1` | existing Go default, 10 minutes | 20 minutes |
-| Native/component/capture | `make accept-native FIPS=1` | 10 minutes | 20 minutes |
-| Core, identity, integrations | `make accept FIPS=1 PARTITION=<name>` | 10 minutes each | 20 minutes each |
-| Terraform plans, Terraform VCS, Terraform, run credentials, runs | same explicit partition command | 10 minutes each | 30 minutes each |
+| Native/component/capture | `make accept-native FIPS=1` | 60 minutes | 75 minutes |
+| Every scenario partition | `make accept FIPS=1 PARTITION=<name>` | 60 minutes each | 75 minutes each |
 | Required aggregate | validate complete execution receipts and dependency results | no Go test | 5 minutes |
 
-These preserve the existing regular acceptance partition budgets. Native runs
+These match the regular acceptance partition budgets. The sixty-minute
+deadline sits well above the longest partition, whose FIPS jobs took up to
+fourteen minutes against the earlier ten-minute deadline, so a slow shared
+runner never fails a passing suite. Native runs
 every `TestAcc` family across `./...` except `TestAccFeatures`; each scenario job
 runs `TestAccFeatures` alone with its catalogued selector. Existing capture replay
 and intentional evidence-gap reporting remain intact. There is no C51-specific
