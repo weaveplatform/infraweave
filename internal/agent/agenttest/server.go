@@ -189,6 +189,7 @@ type Server struct {
 	deregistered  []string
 	refuse        map[string]int
 	lost          bool
+	oidcTokens    int
 }
 
 // NewServer is a fake worker API for pool.
@@ -210,6 +211,7 @@ func NewServer(pool Pool) *Server {
 		r.Post("/runs/{run}/log-chunks", s.logChunks)
 		r.Post("/runs/{run}/artifacts", s.artifactsCommit)
 		r.Get("/runs/{run}/workspace", s.workspace)
+		r.Post("/runs/{run}/oidc-token", s.oidcToken)
 	})
 	r.Put("/store/*", s.put)
 	r.Get("/store/*", s.get)
@@ -233,8 +235,8 @@ func (t inProcess) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // Refuse makes the server answer the next n calls of op (register, poll,
-// deregister, run-token-keys, spec, reports, upload-urls, put or
-// log-chunks) with status;
+// deregister, run-token-keys, spec, reports, upload-urls, put,
+// log-chunks or oidc-token) with status;
 // n of 0 takes op's calls again.
 func (s *Server) Refuse(op string, status, n int) {
 	s.mu.Lock()
@@ -734,6 +736,24 @@ func (s *Server) workspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, Endpoint+"/store/"+key, http.StatusTemporaryRedirect)
+}
+
+// oidcToken reissues a run's federation token: oidc-<n>, the n-th the
+// server issued, living an hour.
+func (s *Server) oidcToken(w http.ResponseWriter, r *http.Request) {
+	if st := s.refused("oidc-token"); st != 0 {
+		problem(w, st, "the federation token is refused")
+		return
+	}
+	if _, _, ok := s.run(r); !ok {
+		problem(w, http.StatusUnauthorized, "the run token is refused")
+		return
+	}
+	s.mu.Lock()
+	s.oidcTokens++
+	n := s.oidcTokens
+	s.mu.Unlock()
+	answer(w, wire.OIDCToken{Token: "oidc-" + strconv.Itoa(n), ExpiresAt: time.Now().Add(time.Hour).Unix()})
 }
 
 // get answers an uploaded object's bytes to a request with no bearer

@@ -30,6 +30,8 @@
 // scheduler, with the account's default runner image when neither the
 // run nor its stack names one, and the run's secrets sealed to the P-256
 // key of its pool's current certificate for the run's state version.
+// FederationToken answers a run token's bearer the OIDC federation token
+// the scheduler reissues for the phase its run is in.
 //
 // ref: decision 0008 § "Claiming runs", § "The worker API", § "Worker
 // status, drain, cycle and reset", § "The run specification and its

@@ -152,7 +152,7 @@
       "infraweave": "The federation token file is refreshed during long runs",
       "why": "A run past one hour otherwise loses cloud access",
       "impact": "None; runs longer than the token lifetime keep their cloud credentials",
-      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale)"
+      "source": "[0006 Rationale](../research/decisions/0006-authentication-and-tokens.md#rationale), [0008 The worker API](../research/decisions/0008-run-execution-and-worker-protocol.md#the-worker-api)"
     },
     {
       "id": "DV-017",

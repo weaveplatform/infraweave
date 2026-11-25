@@ -116,6 +116,18 @@ type Assignment struct {
 // that no account has, whose run token the worker API refuses.
 var ErrNotOnWorker = errors.New("workers: the run is not on a worker")
 
+// ErrNotInPhase reports a run whose federation token is asked for while
+// it is in no phase, such as waiting for confirmation or ended, or that
+// receives no federation token at all, as a parse run.
+var ErrNotInPhase = errors.New("workers: the run is in no phase that receives a federation token")
+
+// FederationToken is an OIDC federation token the runs domain reissues
+// for a run's phase: the compact JWS and when it expires.
+type FederationToken struct {
+	Raw     string
+	Expires time.Time
+}
+
 // Handover is what a claimed run needs, as the runs domain builds it: the
 // run's account and pool, which the workers domain seals Secrets to, the
 // specification, and Secrets, the JSON of the worker API's
@@ -347,6 +359,17 @@ type Scheduler interface {
 	//
 	// ref: decision 0008 § "The run specification and its secrets"
 	Handover(ctx context.Context, run kernel.ULID) (Handover, error)
+	// FederationToken reissues the OIDC federation token of the phase
+	// run, which a run token names, is in, in the transaction ctx
+	// carries: the claims and scope of the token the phase's handover
+	// delivered, with the account's current subject template and a fresh
+	// jti, iat and exp. It answers ErrNotOnWorker as Handover does,
+	// ErrNotInPhase for a run in no phase or one that receives no
+	// federation token, and the features domain's refusal for an account
+	// whose tier no longer includes oidc-federation.
+	//
+	// ref: decision 0006 § "OIDC federation token"
+	FederationToken(ctx context.Context, run kernel.ULID) (FederationToken, error)
 	// Queued counts the runs waiting for a worker of each private pool,
 	// of every account: the runs a claim may take. A pool none waits for
 	// is absent.

@@ -872,6 +872,24 @@ components:
           maxItems: 64
           items:
             $ref: '#/components/schemas/ArtifactRecord'
+    OIDCToken:
+      description: >-
+        An OIDC federation token reissued for the phase the run is in, with
+        the claims and scope of the token its handover delivered and a
+        fresh jti, iat, nbf and exp.
+      type: object
+      additionalProperties: false
+      required: [token, expiresAt]
+      properties:
+        token:
+          type: string
+          description: >-
+            The token, a compact JWS that the run writes to
+            /mnt/workspace/infraweave.oidc in place of the one it holds.
+        expiresAt:
+          type: integer
+          format: int64
+          description: When the token expires, in Unix seconds.
 paths:
   /runs/{run}/spec:
     get:
@@ -1131,6 +1149,55 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/InvalidState'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ApiDisabled'
+        default:
+          $ref: '#/components/responses/Problem'
+  /runs/{run}/oidc-token:
+    post:
+      summary: Reissue a run's OIDC federation token
+      description: >-
+        Answers a new OIDC federation token for the run the run token names,
+        while the run is in a phase: INITIALIZING, PLANNING, APPLYING,
+        PERFORMING or DESTROYING. The token carries the claims and scope of
+        the token the phase's handover delivered, with the account's current
+        subject template rendered again and a fresh jti, iat, nbf and exp.
+        The runner asks for one before the token it holds expires, so a
+        phase that outlives the token keeps federating. A run in any other
+        state, or one that receives no federation token, answers 409
+        invalid-state; an account whose tier no longer includes
+        oidc-federation answers 403 feature-not-in-tier, and one whose
+        operator switched it off 403 feature-disabled. Each call issues a
+        token, so none is replayed.
+      operationId: workerRunOIDCToken
+      security:
+        - runToken: []
+      tags:
+        - Runs
+      parameters:
+        - $ref: '#/components/parameters/Run'
+      responses:
+        '200':
+          description: The new token.
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCToken'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/FeatureRefused'
         '409':
           $ref: '#/components/responses/InvalidState'
         '429':

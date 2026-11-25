@@ -35,19 +35,23 @@ type Reporter interface {
 }
 
 // Deps are what Run needs beyond the handoff: the worker API's reports,
-// log uploads and artifact uploads, the runner's log, where the session's
-// masked output goes, the workspace holding its checkout and mounted
-// files, the environment the session starts from, and Stop, which carries each
-// SIGINT the launcher sends the runner to stop the run.
+// log uploads, artifact uploads and federation token reissues, the
+// runner's log, where the session's masked output goes, the workspace
+// holding its checkout and mounted files, the environment the session
+// starts from, Stop, which carries each SIGINT the launcher sends the
+// runner to stop the run, and the clock the federation token's refresh
+// reads, time.Now when nil. A nil Federation refreshes no token.
 type Deps struct {
-	Reports   Reporter
-	Logs      runlog.API
-	Uploads   Uploads
-	Log       *slog.Logger
-	Out       io.Writer
-	Workspace string
-	Environ   []string
-	Stop      <-chan os.Signal
+	Reports    Reporter
+	Logs       runlog.API
+	Uploads    Uploads
+	Federation Federation
+	Log        *slog.Logger
+	Out        io.Writer
+	Workspace  string
+	Environ    []string
+	Stop       <-chan os.Signal
+	Now        func() time.Time
 }
 
 // Report retries: a report whose answer was lost, or that the server
@@ -153,8 +157,8 @@ func Run(ctx context.Context, h handoff.Handoff, d Deps) error {
 
 // run is one run's execution: its handoff, its log, its prepared
 // environment and session, the exposure of the phase it last executed,
-// the plan's JSON file, and whether the session has initialized the
-// workspace.
+// the plan's JSON file, whether the session has initialized the
+// workspace, and its federation token's refresh.
 type run struct {
 	h           handoff.Handoff
 	d           Deps
@@ -172,6 +176,14 @@ type run struct {
 	profiled    []profiled
 	profiles    int
 	stop        stop
+	// refreshed stops the federation token's refresh and waits for it to
+	// end; nil until the refresh starts. oidc holds the tokens each
+	// refresh put in the token's file.
+	refreshed func()
+	oidc      struct {
+		sync.Mutex
+		tokens []string
+	}
 }
 
 // stop is what a run's stop acts on: the phase running, "" between
@@ -682,10 +694,14 @@ func (r *run) afterRun(ctx context.Context, final string) {
 	}
 }
 
-// close ends the session and then the log, once it has read the
-// session's last line, removes the run's temporary files, and hands the
-// workspace back to its launcher.
+// close stops the federation token's refresh, so no refresh writes to
+// the workspace once it is handed back, ends the session and then the
+// log, once it has read the session's last line, removes the run's
+// temporary files, and hands the workspace back to its launcher.
 func (r *run) close(ctx context.Context) {
+	if r.refreshed != nil {
+		r.refreshed()
+	}
 	if r.shell != nil {
 		_ = r.shell.close()
 	}

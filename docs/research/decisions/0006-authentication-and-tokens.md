@@ -702,11 +702,17 @@ server.
   set, and a rendered subject of at most 2048 characters. A failure answers
   `422`, problem `validation-failed`, whose `errors` entry names the
   offending placeholder or character.
-- **Refresh.** The runner asks for a new token 15 minutes before expiry and
-  rewrites `/mnt/workspace/infraweave.oidc`; the environment variable keeps the
-  token of the phase start. A tracked run without autodeploy gets a `read`
-  token for planning and a new `write` token at the `PREPARING_APPLY`
-  handover.
+- **Refresh.** The runner asks for a new token 15 minutes before expiry, or
+  halfway to it when the token lives no longer than that, through the
+  worker API's `POST /worker/v1/runs/{run}/oidc-token`
+  ([0008](0008-run-execution-and-worker-protocol.md#the-worker-api)), and
+  rewrites `/mnt/workspace/infraweave.oidc` atomically; the environment
+  variable keeps the token of the phase start. A failed call is retried
+  with backoff until the held token expires and never fails the phase. The
+  run token lives until the run ends plus one hour, at most 24 hours, so a
+  refresh is possible for as long as a run can be in a phase. A tracked
+  run without autodeploy gets a `read` token for planning and a new
+  `write` token at the `PREPARING_APPLY` handover.
 
 ### AWS external ID and session name
 

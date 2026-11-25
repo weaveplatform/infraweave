@@ -1,11 +1,15 @@
 package runs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -27,35 +31,50 @@ import (
 // ref: decision 0006 § "OIDC federation token"
 type federationSteps struct {
 	w *harness.World
-	// tokens are the raw tokens the scenario kept, by name, and jtis the
-	// jti of each token verified so far.
-	tokens map[string]string
-	jtis   map[string]string
+	// tokens are the raw tokens the scenario kept, by name, jtis the jti
+	// and exps the exp of each token verified so far, and answers the
+	// expiresAt the worker API answered with each token it reissued.
+	tokens  map[string]string
+	jtis    map[string]string
+	exps    map[string]int64
+	answers map[string]int64
 }
 
-// federationLine starts the log line a hook prints the token on.
-const federationLine = "oidc token: "
+// federationLine starts the log line a hook prints the token on, and
+// refreshedLine the one it prints the token file's content on once a
+// refresh has replaced it.
+const (
+	federationLine = "oidc token: "
+	refreshedLine  = "oidc refreshed: "
+)
 
 func (f *federationSteps) register(sc *godog.ScenarioContext) {
-	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), whose federation token is kept as "(\w+)"$`,
+	sc.Step(`^token "(\w+)" reads the run "(\w+)"'s ([A-Z_]+) log through ([AB]), whose (refreshed )?federation token is kept as "(\w+)"$`,
 		f.keep)
-	sc.Step(`^the federation token "(\w+)" verifies against the issuer "([^"]+)" discovered through ([AB]), with the claims:$`,
+	sc.Step(`^the federation token "(\w+)" verifies against the issuer "([^"]+)" discovered through ([AB])(?:, living "([^"]+)")?, with the claims:$`,
 		f.verify)
+	sc.Step(`^the answer's federation token is kept as "(\w+)"$`, f.answered)
+	sc.Step(`^the federation token "(\w+)" expires after the federation token "(\w+)"$`, f.later)
 	sc.Step(`^no object in the scenario's bucket holds the federation token "(\w+)"$`, f.unstored)
 	sc.Step(`^token "(\w+)" gives the home organization a copy of the tier "([^"]+)" without "([a-z-]+)", with billing on, through ([AB])$`,
 		f.tierWithout)
 }
 
-// keep reads the token a hook printed in the run's log of state, which
-// must not hold the token itself.
-func (f *federationSteps) keep(ctx context.Context, tok, run, state, replica, name string) error {
+// keep reads the token a hook printed in the run's log of state, or the
+// refreshed one it printed from the token's file, which the log must not
+// hold itself.
+func (f *federationSteps) keep(ctx context.Context, tok, run, state, replica, refreshed, name string) error {
 	text, err := logText(ctx, f.w, tok, run, state, replica)
 	if err != nil {
 		return err
 	}
+	prefix := federationLine
+	if refreshed != "" {
+		prefix = refreshedLine
+	}
 	var printed []string
 	for line := range strings.SplitSeq(text, "\n") {
-		if rest, ok := strings.CutPrefix(line, federationLine); ok {
+		if rest, ok := strings.CutPrefix(line, prefix); ok {
 			printed = append(printed, rest)
 		}
 	}
@@ -88,12 +107,19 @@ func (t toIssuer) RoundTrip(r *http.Request) (*http.Response, error) {
 // token's signature against the served JWKS and its issuer and expiry,
 // and checks its claims are exactly the discovery document's
 // claims_supported, with the table's values, each JSON with the
-// scenario's IDs resolved, and a fresh ULID jti, a lifetime of an hour
-// and nbf equal to iat.
-func (f *federationSteps) verify(ctx context.Context, name, issuer, replica string, table *godog.Table) error {
+// scenario's IDs resolved, and a fresh ULID jti, a lifetime of an hour,
+// or of lifetime when the step names one, and nbf equal to iat.
+func (f *federationSteps) verify(ctx context.Context, name, issuer, replica, lifetime string, table *godog.Table) error {
 	raw, ok := f.tokens[name]
 	if !ok {
 		return fmt.Errorf("%w: no federation token kept as %q", harness.ErrStep, name)
+	}
+	life := time.Hour
+	if lifetime != "" {
+		var err error
+		if life, err = time.ParseDuration(lifetime); err != nil {
+			return fmt.Errorf("%w: the lifetime %q: %w", harness.ErrStep, lifetime, err)
+		}
 	}
 	base, err := url.Parse(f.w.Base(replica))
 	if err != nil {
@@ -145,13 +171,13 @@ func (f *federationSteps) verify(ctx context.Context, name, issuer, replica stri
 			return fmt.Errorf("%w: the claim %s is %s, want %s", harness.ErrStep, claim, claims[claim], want)
 		}
 	}
-	return f.times(name, claims)
+	return f.times(name, claims, life)
 }
 
 // times checks the token's jti is a ULID no other token of the scenario
-// carries, and that it lives an hour from an iat within the last ten
-// minutes, nbf equal to iat.
-func (f *federationSteps) times(name string, claims map[string]json.RawMessage) error {
+// carries, and that it lives life from an iat within the last ten
+// minutes, nbf equal to iat, keeping its exp.
+func (f *federationSteps) times(name string, claims map[string]json.RawMessage, life time.Duration) error {
 	var (
 		jti           string
 		iat, nbf, exp int64
@@ -171,26 +197,73 @@ func (f *federationSteps) times(name string, claims map[string]json.RawMessage) 
 	}
 	f.jtis[name] = jti
 	issued := time.Unix(iat, 0)
-	if nbf != iat || exp-iat != int64(time.Hour/time.Second) || time.Since(issued) > 10*time.Minute ||
+	if nbf != iat || exp-iat != int64(life/time.Second) || time.Since(issued) > 10*time.Minute ||
 		time.Until(issued) > time.Minute {
 		return fmt.Errorf("%w: iat %d, nbf %d, exp %d", harness.ErrStep, iat, nbf, exp)
+	}
+	f.exps[name] = exp
+	return nil
+}
+
+// answered keeps the token of the scenario's last answer, a 200 of the
+// worker API's oidc-token, whose expiresAt the token's exp must match
+// once verified.
+func (f *federationSteps) answered(name string) error {
+	r := f.w.Last()
+	var got struct {
+		Token     string `json:"token"`
+		ExpiresAt int64  `json:"expiresAt"`
+	}
+	if r.Status != http.StatusOK || json.Unmarshal(r.Body, &got) != nil || strings.Count(got.Token, ".") != 2 {
+		return fmt.Errorf("%w: the answer is %d, not a federation token", harness.ErrStep, r.Status)
+	}
+	f.tokens[name], f.answers[name] = got.Token, got.ExpiresAt
+	return nil
+}
+
+// later checks that the verified token name expires after the verified
+// token before, and that an answered token's expiresAt is its exp.
+func (f *federationSteps) later(name, before string) error {
+	exp, ok := f.exps[name]
+	first, ok2 := f.exps[before]
+	if !ok || !ok2 {
+		return fmt.Errorf("%w: verify %q and %q first", harness.ErrStep, name, before)
+	}
+	for n, e := range map[string]int64{name: exp, before: first} {
+		if at, ok := f.answers[n]; ok && at != e {
+			return fmt.Errorf("%w: %q answered expiresAt %d, its exp is %d", harness.ErrStep, n, at, e)
+		}
+	}
+	if exp <= first {
+		return fmt.Errorf("%w: %q expires at %d, not after %q at %d", harness.ErrStep, name, exp, before, first)
 	}
 	return nil
 }
 
 // unstored checks that no object of the scenario's bucket holds the kept
 // token: the logs, artifacts and saved workspaces the store holds are
-// sealed, and the log masks the token before it is sealed.
+// sealed, and the log masks the token before it is sealed. A scenario
+// without @objectstore keeps its objects on the fs driver, under the
+// scenario's objects directory.
 func (f *federationSteps) unstored(ctx context.Context, name string) error {
 	raw, ok := f.tokens[name]
 	if !ok {
 		return fmt.Errorf("%w: no federation token kept as %q", harness.ErrStep, name)
 	}
-	store, err := f.w.Suite.Deps.ObjectStore(ctx)
-	if err != nil {
-		return err //nolint:wrapcheck // names @objectstore
+	var (
+		keys []string
+		read int
+		err  error
+	)
+	if slices.Contains(f.w.Tags, "@objectstore") {
+		store, serr := f.w.Suite.Deps.ObjectStore(ctx)
+		if serr != nil {
+			return serr //nolint:wrapcheck // names @objectstore
+		}
+		keys, read, err = store.Containing(ctx, f.w.Bucket, []byte(raw))
+	} else {
+		keys, read, err = filesHolding(f.w.Objects(), []byte(raw))
 	}
-	keys, read, err := store.Containing(ctx, f.w.Bucket, []byte(raw))
 	switch {
 	case err != nil:
 		return err //nolint:wrapcheck // names the bucket
@@ -200,6 +273,28 @@ func (f *federationSteps) unstored(ctx context.Context, name string) error {
 		return fmt.Errorf("%w: the bucket holds no object", harness.ErrStep)
 	}
 	return nil
+}
+
+// filesHolding is the files under root that hold secret, and how many
+// files it read.
+func filesHolding(root string, secret []byte) ([]string, int, error) {
+	var keys []string
+	read := 0
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.Type().IsRegular() {
+			return err
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err //nolint:wrapcheck // names the path
+		}
+		read++
+		if bytes.Contains(b, secret) {
+			keys = append(keys, path)
+		}
+		return nil
+	})
+	return keys, read, err //nolint:wrapcheck // names the path
 }
 
 // tierWithout creates a tier holding what tier holds but feature, gives

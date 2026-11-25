@@ -551,6 +551,15 @@ type NextStep struct {
 // NextStepAction What the worker does next.
 type NextStepAction string
 
+// OIDCToken An OIDC federation token reissued for the phase the run is in, with the claims and scope of the token its handover delivered and a fresh jti, iat, nbf and exp.
+type OIDCToken struct {
+	// ExpiresAt When the token expires, in Unix seconds.
+	ExpiresAt int64 `json:"expiresAt"`
+
+	// Token The token, a compact JWS that the run writes to /mnt/workspace/infraweave.oidc in place of the one it holds.
+	Token string `json:"token"`
+}
+
 // PlanDelta What the run's plan changes, which a succeeded report of PLANNING carries and no other report does: the resources it adds, changes, deletes, imports, moves and forgets, whether any output changes, and how many resources the state held before the plan. An absent move, forget or resources is zero.
 type PlanDelta struct {
 	// Add Resources the plan adds.
@@ -637,6 +646,9 @@ type Problem struct {
 	// Errors For invalid-request and validation-failed, each field the server refused.
 	Errors *[]ProblemFieldError `json:"errors,omitempty"`
 
+	// Feature The feature of feature-disabled and feature-not-in-tier, a name of the feature catalogue.
+	Feature *string `json:"feature,omitempty"`
+
 	// Instance The request this problem answers, as urn:infraweave:request: and the request ID the X-Request-Id response header carries and the server logs.
 	Instance *string `json:"instance,omitempty"`
 
@@ -648,6 +660,9 @@ type Problem struct {
 
 	// Status The HTTP status code, repeated for clients that lose it.
 	Status int32 `json:"status"`
+
+	// Tiers For feature-not-in-tier, the tiers that include the feature, smallest first.
+	Tiers *[]string `json:"tiers,omitempty"`
 
 	// Title A short summary of the problem type.
 	Title string `json:"title"`
@@ -1159,6 +1174,9 @@ type Run = string
 // ApiDisabled An RFC 9457 problem detail. Every error response uses the status code and this body.
 type ApiDisabled = Problem
 
+// FeatureRefused An RFC 9457 problem detail. Every error response uses the status code and this body.
+type FeatureRefused = Problem
+
 // InvalidRequest An RFC 9457 problem detail. Every error response uses the status code and this body.
 type InvalidRequest = Problem
 
@@ -1393,6 +1411,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
 	WorkerRunLogChunks(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// WorkerRunOIDCToken Reissue a run's OIDC federation token
+	//
+	// Answers a new OIDC federation token for the run the run token names, while the run is in a phase: INITIALIZING, PLANNING, APPLYING, PERFORMING or DESTROYING. The token carries the claims and scope of the token the phase's handover delivered, with the account's current subject template rendered again and a fresh jti, iat, nbf and exp. The runner asks for one before the token it holds expires, so a phase that outlives the token keeps federating. A run in any other state, or one that receives no federation token, answers 409 invalid-state; an account whose tier no longer includes oidc-federation answers 403 feature-not-in-tier, and one whose operator switched it off 403 feature-disabled. Each call issues a token, so none is replayed.
+	//
+	// Corresponds with POST /runs/{run}/oidc-token (the `WorkerRunOIDCToken` operationId).
+	WorkerRunOIDCToken(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// WorkerRunReportWithBody Report a phase of a run
 	//
@@ -1697,6 +1722,23 @@ func (c *Client) WorkerRunLogChunksWithBody(ctx context.Context, run Run, conten
 // Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
 func (c *Client) WorkerRunLogChunks(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewWorkerRunLogChunksRequest(c.Server, run, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// WorkerRunOIDCToken Reissue a run's OIDC federation token
+//
+// Answers a new OIDC federation token for the run the run token names, while the run is in a phase: INITIALIZING, PLANNING, APPLYING, PERFORMING or DESTROYING. The token carries the claims and scope of the token the phase's handover delivered, with the account's current subject template rendered again and a fresh jti, iat, nbf and exp. The runner asks for one before the token it holds expires, so a phase that outlives the token keeps federating. A run in any other state, or one that receives no federation token, answers 409 invalid-state; an account whose tier no longer includes oidc-federation answers 403 feature-not-in-tier, and one whose operator switched it off 403 feature-disabled. Each call issues a token, so none is replayed.
+//
+// Corresponds with POST /runs/{run}/oidc-token (the `WorkerRunOIDCToken` operationId).
+func (c *Client) WorkerRunOIDCToken(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewWorkerRunOIDCTokenRequest(c.Server, run)
 	if err != nil {
 		return nil, err
 	}
@@ -2125,6 +2167,40 @@ func NewWorkerRunLogChunksRequestWithBody(server string, run Run, contentType st
 	return req, nil
 }
 
+// NewWorkerRunOIDCTokenRequest constructs an http.Request for the WorkerRunOIDCToken method
+func NewWorkerRunOIDCTokenRequest(server string, run Run) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "run", run, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runs/%s/oidc-token", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewWorkerRunReportRequest calls the generic WorkerRunReport builder with application/json body
 func NewWorkerRunReportRequest(server string, run Run, body WorkerRunReportJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2456,6 +2532,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /runs/{run}/log-chunks (the `WorkerRunLogChunks` operationId).
 	WorkerRunLogChunksWithResponse(ctx context.Context, run Run, body WorkerRunLogChunksJSONRequestBody, reqEditors ...RequestEditorFn) (*WorkerRunLogChunksResponse, error)
+
+	// WorkerRunOIDCTokenWithResponse Reissue a run's OIDC federation token
+	//
+	// Answers a new OIDC federation token for the run the run token names, while the run is in a phase: INITIALIZING, PLANNING, APPLYING, PERFORMING or DESTROYING. The token carries the claims and scope of the token the phase's handover delivered, with the account's current subject template rendered again and a fresh jti, iat, nbf and exp. The runner asks for one before the token it holds expires, so a phase that outlives the token keeps federating. A run in any other state, or one that receives no federation token, answers 409 invalid-state; an account whose tier no longer includes oidc-federation answers 403 feature-not-in-tier, and one whose operator switched it off 403 feature-disabled. Each call issues a token, so none is replayed.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /runs/{run}/oidc-token (the `WorkerRunOIDCToken` operationId).
+	WorkerRunOIDCTokenWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunOIDCTokenResponse, error)
 
 	// WorkerRunReportWithBodyWithResponse Report a phase of a run
 	//
@@ -3272,6 +3357,115 @@ func (r WorkerRunLogChunksResponse) ContentType() string {
 	return ""
 }
 
+// WorkerRunOIDCTokenResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunOIDCToken
+type WorkerRunOIDCTokenResponse200Headers struct {
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunOIDCTokenResponse429Headers the declared response headers of an HTTP 429 response for WorkerRunOIDCToken
+type WorkerRunOIDCTokenResponse429Headers struct {
+	RetryAfter          *int
+	XRateLimitLimit     *int
+	XRateLimitRemaining *int
+	XRateLimitReset     *int
+}
+
+// WorkerRunOIDCTokenResponse503Headers the declared response headers of an HTTP 503 response for WorkerRunOIDCToken
+type WorkerRunOIDCTokenResponse503Headers struct {
+	RetryAfter *int
+}
+
+type WorkerRunOIDCTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OIDCToken
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Unauthenticated
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *FeatureRefused
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *InvalidState
+	// ApplicationproblemJSON429 the response for an HTTP 429 `application/problem+json` response
+	ApplicationproblemJSON429 *TooManyRequests
+	// ApplicationproblemJSON503 the response for an HTTP 503 `application/problem+json` response
+	ApplicationproblemJSON503 *ApiDisabled
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *WorkerRunOIDCTokenResponse200Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *WorkerRunOIDCTokenResponse429Headers
+	// Headers503 the parsed response headers for an HTTP 503 response
+	Headers503 *WorkerRunOIDCTokenResponse503Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r WorkerRunOIDCTokenResponse) GetJSON200() *OIDCToken {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSON401() *Unauthenticated {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSON403() *FeatureRefused {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSON409() *InvalidState {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON429 returns the response for an HTTP 429 `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSON429() *TooManyRequests {
+	return r.ApplicationproblemJSON429
+}
+
+// GetApplicationproblemJSON503 returns the response for an HTTP 503 `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSON503() *ApiDisabled {
+	return r.ApplicationproblemJSON503
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r WorkerRunOIDCTokenResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r WorkerRunOIDCTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r WorkerRunOIDCTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r WorkerRunOIDCTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r WorkerRunOIDCTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // WorkerRunReportResponse200Headers the declared response headers of an HTTP 200 response for WorkerRunReport
 type WorkerRunReportResponse200Headers struct {
 	XRateLimitLimit     *int
@@ -3896,6 +4090,21 @@ func (c *ClientWithResponses) WorkerRunLogChunksWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseWorkerRunLogChunksResponse(rsp)
+}
+
+// WorkerRunOIDCTokenWithResponse Reissue a run's OIDC federation token
+//
+// Answers a new OIDC federation token for the run the run token names, while the run is in a phase: INITIALIZING, PLANNING, APPLYING, PERFORMING or DESTROYING. The token carries the claims and scope of the token the phase's handover delivered, with the account's current subject template rendered again and a fresh jti, iat, nbf and exp. The runner asks for one before the token it holds expires, so a phase that outlives the token keeps federating. A run in any other state, or one that receives no federation token, answers 409 invalid-state; an account whose tier no longer includes oidc-federation answers 403 feature-not-in-tier, and one whose operator switched it off 403 feature-disabled. Each call issues a token, so none is replayed.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /runs/{run}/oidc-token (the `WorkerRunOIDCToken` operationId).
+func (c *ClientWithResponses) WorkerRunOIDCTokenWithResponse(ctx context.Context, run Run, reqEditors ...RequestEditorFn) (*WorkerRunOIDCTokenResponse, error) {
+	rsp, err := c.WorkerRunOIDCToken(ctx, run, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWorkerRunOIDCTokenResponse(rsp)
 }
 
 // WorkerRunReportWithBodyWithResponse Report a phase of a run
@@ -4966,6 +5175,142 @@ func ParseWorkerRunLogChunksResponse(rsp *http.Response) (*WorkerRunLogChunksRes
 		response.Headers429 = &headers
 	case rsp.StatusCode == 503:
 		var headers WorkerRunLogChunksResponse503Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers503 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseWorkerRunOIDCTokenResponse parses an HTTP response from a WorkerRunOIDCTokenWithResponse call
+func ParseWorkerRunOIDCTokenResponse(rsp *http.Response) (*WorkerRunOIDCTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &WorkerRunOIDCTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OIDCToken
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthenticated
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest FeatureRefused
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest InvalidState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiDisabled
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON503 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers WorkerRunOIDCTokenResponse200Headers
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers200 = &headers
+	case rsp.StatusCode == 429:
+		var headers WorkerRunOIDCTokenResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Limit"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Limit", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitLimit = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Remaining"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Remaining", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitRemaining = &value
+		}
+		if values := rsp.Header.Values("X-RateLimit-Reset"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-RateLimit-Reset", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XRateLimitReset = &value
+		}
+		response.Headers429 = &headers
+	case rsp.StatusCode == 503:
+		var headers WorkerRunOIDCTokenResponse503Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {

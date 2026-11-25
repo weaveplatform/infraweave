@@ -342,15 +342,18 @@ func (failing) Write([]byte) (int, error) {
 } //nolint:err113 // a test double
 
 // TestUnitWorkspaceOIDCToken checks that the save leaves out the OIDC
-// federation token's file at the workspace's root, unreported, though it
-// holds a forbidden value, and a directory of that name there, while a
-// file of that name elsewhere is kept.
+// federation token's file at the workspace's root and the file a refresh
+// renames over it, unreported, though each holds a forbidden value, and a
+// directory of either name there, while a file of that name elsewhere is
+// kept.
 func TestUnitWorkspaceOIDCToken(t *testing.T) {
 	token := "eyJ" + strings.Repeat("o", 40)
 	pool := poolKey(t)
 	for name, files := range map[string]map[string]string{
 		"the file":      {workspace.OIDCTokenFile: token, "main.tf": "terraform {}"},
 		"a directory":   {workspace.OIDCTokenFile + "/x": "x", "main.tf": "terraform {}"},
+		"a refresh":     {workspace.OIDCTokenNext: token, "main.tf": "terraform {}"},
+		"its directory": {workspace.OIDCTokenNext + "/x": token, "main.tf": "terraform {}"},
 		"a nested name": {"source/" + workspace.OIDCTokenFile: "kept", "main.tf": "terraform {}"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -367,8 +370,10 @@ func TestUnitWorkspaceOIDCToken(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := contents(t, out)
-			if _, ok := got[workspace.OIDCTokenFile]; ok {
-				t.Errorf("restored %s: %v", workspace.OIDCTokenFile, got)
+			for _, name := range []string{workspace.OIDCTokenFile, workspace.OIDCTokenNext} {
+				if _, ok := got[name]; ok {
+					t.Errorf("restored %s: %v", name, got)
+				}
 			}
 			if got["main.tf"] != "terraform {}" {
 				t.Errorf("restored %v", got)

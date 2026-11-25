@@ -14,7 +14,15 @@
 // files under the workspace. A file under source/ replaces the checkout's.
 // When the handoff carries an OIDC federation token it writes it at
 // workspace.OIDCTokenFile, /mnt/workspace/infraweave.oidc, mode 0400,
-// before any hook runs.
+// before any hook runs. Fifteen minutes before that token expires, or
+// halfway to its expiry when it lives no longer, the runner asks the
+// worker API's Federation for a new one, adds it to the log's masks and
+// the saved workspace's forbidden values, writes it to
+// workspace.OIDCTokenNext and renames that over the file, so a reader
+// sees one token or the other whole; INFRAWEAVE_OIDC_TOKEN keeps the
+// first. A failed call is retried, doubling from a second to a minute,
+// until the held token expires, and fails no phase. The refresh reads
+// Deps.Now and stops before the workspace is handed back.
 // It reads the project root's
 // .infraweave/workflow.yml when it has one, which a stack whose workflow
 // tool is CUSTOM must, and checks every template of it, or of the tool's
@@ -136,6 +144,7 @@
 // ref: decision 0008 § "Stop and kill"
 // ref: decision 0013 § "Masking"
 // ref: decision 0010 § "How a run reaches it"
+// ref: decision 0006 § "OIDC federation token"
 //
 // # Input and output
 //
@@ -144,10 +153,11 @@
 // and the tool, signals the session's process group on a stop, masks
 // their output onto the output it is given and
 // uploads, sends reports through a Reporter and log chunks through a
-// runlog.API, and uploads and records its artifacts and CPU profiles
-// through Uploads. It logs each phase, the run's end, each report or
-// upload it sends again, a CPU profile it could not save and a log it
-// could not flush.
+// runlog.API, uploads and records its artifacts and CPU profiles
+// through Uploads, and asks for federation tokens through a Federation.
+// It logs each phase, the run's end, each report or upload it sends
+// again, a CPU profile it could not save, a log it could not flush, and
+// each federation token refreshed or not, naming no token.
 //
 // # Dependencies
 //

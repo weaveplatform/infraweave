@@ -110,3 +110,26 @@ func poolKey(der []byte) (*ecdh.PublicKey, error) {
 	}
 	return key, nil
 }
+
+// FederationToken reissues, to the bearer b of a run token, the OIDC
+// federation token of the phase run is in: ErrUnauthenticated when the
+// token is another run's, and workersapi.ErrNotOnWorker before
+// BindScheduler. The runs domain answers the run's state, and the
+// features domain the account's tier, as workersapi.Scheduler says.
+//
+// ref: decision 0006 § "OIDC federation token"
+func (s *Service) FederationToken(ctx context.Context, b accessapi.Bearer, run kernel.ULID) (workersapi.FederationToken, error) {
+	if b.ID != run {
+		return workersapi.FederationToken{}, refuse("run %s's token asks for run %s's federation token", b.ID, run)
+	}
+	if s.scheduler == nil {
+		return workersapi.FederationToken{}, workersapi.ErrNotOnWorker
+	}
+	var out workersapi.FederationToken
+	err := tx.Do(ctx, s.db, tx.Options{}, func(ctx context.Context) error {
+		var err error
+		out, err = s.scheduler.FederationToken(ctx, run)
+		return err //nolint:wrapcheck // the runs domain names its refusal
+	})
+	return out, err //nolint:wrapcheck // named above
+}

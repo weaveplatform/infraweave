@@ -10,12 +10,17 @@
 // its state, its state version and its run token; GET /runs/{run}/spec
 // answers the run's specification with its secrets sealed, 409
 // invalid-state for a run not on a worker and 422 validation-failed for a
-// template that does not render. A credential the service refuses is
-// logged with its reason and answered 401 without it, and a registration
-// beyond the private-workers limit answers 403 limit-reached.
+// template that does not render. POST /runs/{run}/oidc-token answers the
+// OIDC federation token reissued for the run's phase, 409 invalid-state
+// for a run in no phase, and 403 feature-not-in-tier or feature-disabled
+// for an account that may no longer federate. A credential the service
+// refuses is logged with its reason and answered 401 without it, and a
+// registration beyond the private-workers limit answers 403
+// limit-reached.
 //
 // ref: decision 0008 § "The worker API", § "The run specification and its
 // secrets"
+// ref: decision 0006 § "OIDC federation token"
 //
 // # Input and output
 //

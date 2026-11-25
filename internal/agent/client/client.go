@@ -345,6 +345,20 @@ func (c *Client) LogChunks(ctx context.Context, token, run string, in wire.LogCh
 	return nil
 }
 
+// OIDCToken asks for a new OIDC federation token for the phase run is in,
+// with its run token. The answer's error names neither token.
+func (c *Client) OIDCToken(ctx context.Context, token, run string) (wire.OIDCToken, error) {
+	const op = "reissue the federation token"
+	res, err := c.c.WorkerRunOIDCTokenWithResponse(ctx, run, bearer(token))
+	if err != nil {
+		return wire.OIDCToken{}, fmt.Errorf("%s: %w", op, err)
+	}
+	if res.JSON200 == nil {
+		return wire.OIDCToken{}, refused(op, res.HTTPResponse, res.Body)
+	}
+	return *res.JSON200, nil
+}
+
 // MaxRunTokenKeys bounds the run token keys' answer RunTokenKeys reads.
 const MaxRunTokenKeys = 1 << 20
 

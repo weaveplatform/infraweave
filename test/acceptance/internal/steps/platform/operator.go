@@ -44,6 +44,13 @@ func (o *operatorSteps) register(sc *godog.ScenarioContext) {
 			o.w.Settings["auth"] = auth
 			return o.w.TwoReplicas(ctx)
 		})
+	sc.Step(`^two infraweave servers, A and B, on one database, with an operator key and federation tokens lasting "([^"]+)"$`,
+		func(ctx context.Context, lifetime string) error {
+			auth := harness.OperatorAuth()
+			auth["tokens"] = map[string]any{"federation": map[string]any{"ttl": lifetime}}
+			o.w.Settings["auth"] = auth
+			return o.w.TwoReplicas(ctx)
+		})
 	sc.Step(`^the password "([^"]+)" hashed by infraweave auth hash-password$`, o.hashPassword)
 	sc.Step(`^the hash verifies "([^"]+)" and not "([^"]+)"$`, o.verifies)
 	sc.Step(`^the operator key is exchanged through ([AB]) for token "(\w+)"$`, o.exchange)

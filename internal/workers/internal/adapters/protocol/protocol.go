@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"time"
@@ -49,7 +50,8 @@ func bearer(ctx context.Context) (accessapi.Bearer, error) {
 // refusals are the runs domain's refusals of a claimed run's calls and
 // the problems that answer them: 409 invalid-state for a run off its
 // worker, a state version it moved on from, or a report its state cannot
-// take; 409 already-exists for an upload name taken; 404 for a run with
+// take, or a federation token asked for outside a phase; 409
+// already-exists for an upload name taken; 404 for a run with
 // no workspace; and 400 for a report whose delta is missing or misplaced,
 // or that comes before the outputs it follows.
 var refusals = []struct {
@@ -58,6 +60,7 @@ var refusals = []struct {
 	detail string
 }{
 	{workersapi.ErrNotOnWorker, problem.InvalidState, "The run is not on a worker."},
+	{workersapi.ErrNotInPhase, problem.InvalidState, "The run is in no phase that receives a federation token."},
 	{workersapi.ErrMovedOn, problem.InvalidState, "The run moved on from that state version."},
 	{workersapi.ErrReportRefused, problem.InvalidState, "The run's state cannot take this report."},
 	{
@@ -78,8 +81,9 @@ var refusals = []struct {
 // answer maps the service's refusals to problems: a refused hosting
 // ownership to 409 invalid-state and a refused credential to 401, which the
 // log records with their reasons, the private-workers
-// limit to 403 limit-reached, and the runs domain's refusals as refusals
-// lists. A *kernel.Invalid is answered as it is.
+// limit to 403 limit-reached, a feature the account may not use to 403
+// feature-not-in-tier or feature-disabled, and the runs domain's refusals
+// as refusals lists. A *kernel.Invalid is answered as it is.
 func (s Server) answer(ctx context.Context, err error) error {
 	for _, r := range refusals {
 		if errors.Is(err, r.err) {
@@ -101,7 +105,24 @@ func (s Server) answer(ctx context.Context, err error) error {
 			Problem: problem.NewLimitReached(le.Limit, string(le.Scope), le.Value),
 		}
 	}
+	if r, ok := errors.AsType[*featuresapi.Refusal](err); ok {
+		return &problem.Error{Problem: featureRefused(r)}
+	}
 	return err
+}
+
+// featureRefused is the 403 that answers r: feature-disabled when the
+// operator switched the feature off, else feature-not-in-tier naming the
+// tiers that include it.
+func featureRefused(r *featuresapi.Refusal) problem.Problem {
+	if r.Disabled {
+		p := problem.FeatureDisabled.New(fmt.Sprintf("The operator has switched off %s for this installation.", r.Feature))
+		p.Feature = r.Feature
+		return p
+	}
+	p := problem.FeatureNotInTier.New(fmt.Sprintf("The organization's tier does not include %s.", r.Feature))
+	p.Feature, p.Tiers = r.Feature, r.Tiers
+	return p
 }
 
 // WorkerRegister registers the worker the signed registration describes.

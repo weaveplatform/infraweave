@@ -46,6 +46,10 @@ func (UnimplementedStrict) WorkerRunLogChunks(context.Context, WorkerRunLogChunk
 	return nil, &problem.NotImplementedError{OperationID: "workerRunLogChunks", Route: "POST /runs/{run}/log-chunks"}
 }
 
+func (UnimplementedStrict) WorkerRunOIDCToken(context.Context, WorkerRunOIDCTokenRequestObject) (WorkerRunOIDCTokenResponseObject, error) {
+	return nil, &problem.NotImplementedError{OperationID: "workerRunOIDCToken", Route: "POST /runs/{run}/oidc-token"}
+}
+
 func (UnimplementedStrict) WorkerRunReport(context.Context, WorkerRunReportRequestObject) (WorkerRunReportResponseObject, error) {
 	return nil, &problem.NotImplementedError{OperationID: "workerRunReport", Route: "POST /runs/{run}/reports"}
 }

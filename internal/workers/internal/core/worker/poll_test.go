@@ -13,6 +13,7 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/kernel/search"
+	"github.com/weaveplatform/infraweave/internal/platform/tx"
 	workersapi "github.com/weaveplatform/infraweave/internal/workers/api"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/pool"
 	"github.com/weaveplatform/infraweave/internal/workers/internal/core/worker"
@@ -384,15 +385,28 @@ func TestUnitWorkerManage(t *testing.T) {
 
 // scheduler hands out runs in order, recording each claim; err fails
 // every claim. Its handover is the one Handover answers for any run, with
-// handErr, recording each run it is asked for.
+// handErr, recording each run it is asked for, and federation the token
+// FederationToken answers, with federationErr, recording each run it
+// reissues for and whether a transaction carried the call.
 type scheduler struct {
-	mu       sync.Mutex
-	runs     []workersapi.Assignment
-	claims   []workersapi.Claim
-	err      error
-	handover workersapi.Handover
-	handErr  error
-	handed   []kernel.ULID
+	mu            sync.Mutex
+	runs          []workersapi.Assignment
+	claims        []workersapi.Claim
+	err           error
+	handover      workersapi.Handover
+	handErr       error
+	handed        []kernel.ULID
+	federation    workersapi.FederationToken
+	federationErr error
+	reissued      []kernel.ULID
+	inTx          bool
+}
+
+func (s *scheduler) FederationToken(ctx context.Context, run kernel.ULID) (workersapi.FederationToken, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reissued, s.inTx = append(s.reissued, run), tx.In(ctx)
+	return s.federation, s.federationErr
 }
 
 func (s *scheduler) Handover(_ context.Context, run kernel.ULID) (workersapi.Handover, error) {
