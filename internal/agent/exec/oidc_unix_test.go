@@ -180,14 +180,21 @@ var awaitRefresh = []string{
 		` ] || echo "partial ${#t}"; n=$((n+1)); done`,
 }
 
-// refreshing is a world whose handoff's federation token is refreshed
-// about a second into the first phase, fifteen minutes before it
-// expires, and whose reissued tokens live two seconds, so each is
-// refreshed a second after it is issued; fail's calls are refused.
+// refreshing is a world whose handoff's federation token lives six
+// seconds, so it is refreshed halfway to its expiry, about three seconds
+// into the first phase, and whose reissued tokens live two seconds, so
+// each is refreshed a second after it is issued; fail's calls are
+// refused. A handoff token living less than refreshLead keeps the first
+// refresh a fraction of the time left, so a slow setup only brings it
+// forward: one living just over refreshLead would wait half of fifteen
+// minutes once setup outlasts the margin. TestUnitRefreshIn covers the
+// lead.
 func refreshing(t *testing.T, fail map[int]error) (*world, *federation) {
 	t.Helper()
 	w := newWorld(t)
-	token, exp := oidcToken, time.Now().Add(15*time.Minute+time.Second).Unix()
+	// The expiry is rounded up to the second the handoff carries, so the
+	// token lives at least the six seconds.
+	token, exp := oidcToken, (time.Now().Add(6*time.Second).UnixMilli()+999)/1000
 	w.h.Secrets.OidcToken, w.h.Secrets.OidcTokenExpiresAt = &token, &exp
 	f := &federation{ttl: 2 * time.Second, fail: fail}
 	w.fed, w.logs = f, &lockedBuffer{}
@@ -280,11 +287,13 @@ func TestUnitExecOIDCTokenRefreshForbidden(t *testing.T) {
 }
 
 // TestUnitExecOIDCTokenNoRefresh checks that a handoff whose token names
-// no expiry, or a runner with no Federation, refreshes nothing.
+// no expiry, or a runner with no Federation, refreshes nothing. Each
+// phase outlasts the three seconds in which refreshing's token would be
+// refreshed.
 func TestUnitExecOIDCTokenNoRefresh(t *testing.T) {
 	w, f := refreshing(t, nil)
 	w.h.Secrets.OidcTokenExpiresAt = nil
-	w.h.Spec.Hooks = map[string][]string{"before_init": {"sleep 1.5"}}
+	w.h.Spec.Hooks = map[string][]string{"before_init": {"sleep 3.5"}}
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +302,7 @@ func TestUnitExecOIDCTokenNoRefresh(t *testing.T) {
 	}
 	w, f = refreshing(t, nil)
 	w.fed = nil
-	w.h.Spec.Hooks = map[string][]string{"before_init": {"sleep 1.5"}}
+	w.h.Spec.Hooks = map[string][]string{"before_init": {"sleep 3.5"}}
 	if err := w.run(); err != nil {
 		t.Fatal(err)
 	}
