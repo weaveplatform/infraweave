@@ -97,8 +97,8 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # A scenario runs in the first of terraform-plans, terraform-vcs, terraform, runs,
-  # integrations, identity and core that lists one of its tags; TestUnitFeaturePartitions
+  # A scenario runs in the first of terraform-plans, terraform-vcs, terraform,
+  # run-credentials, runs, integrations, identity and core that lists one of its tags; TestUnitFeaturePartitions
   # fails a tag no partition lists. A partition near its timeout splits by
   # tag into two jobs; scenarios are never dropped to fit.
   # ref: decision 0016
@@ -117,6 +117,8 @@ jobs:
           - partition: terraform-vcs
             timeout: 30
           - partition: terraform-plans
+            timeout: 30
+          - partition: run-credentials
             timeout: 30
           - partition: runs
             timeout: 30

@@ -93,6 +93,9 @@ func TestUnitPlace(t *testing.T) {
 		{[]string{"@policy-check", "@postgres"}, "core"},
 		{[]string{"@plan-sanitization", "@terraform", "@docker"}, "terraform"},
 		{[]string{"@plan-sanitization", "@tofu", "@docker"}, "runs"},
+		{[]string{"@run-credentials", "@postgres", "@vcs", "@docker", "@tofu", "@oidc"}, "run-credentials"},
+		{[]string{"@run-credentials", "@terraform", "@docker"}, "terraform"},
+		{[]string{"@run-credentials", "@vcs-lab"}, "vcs-lab"},
 		{[]string{"@plan-sanitization", "@vcs"}, "integrations"},
 		{[]string{"@op:stacks", "@case:denial", "@quarantine"}, "core"},
 		{[]string{"@postgres"}, "core"},
@@ -134,7 +137,8 @@ func TestUnitPlace(t *testing.T) {
 
 func TestUnitTagExpression(t *testing.T) {
 	ordinary := "~@vcs-lab && ~@kubernetes-lab && ~@managed-cloud-workers"
-	runPrefix := ordinary + " && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
+	credentialPrefix := ordinary + " && ~@terraform-plans && ~@terraform-vcs && ~@terraform && "
+	runPrefix := credentialPrefix + "~@run-credentials && "
 	integrationPrefix := runPrefix + "~@docker && ~@tofu && ~@terragrunt && ~@kubernetes && ~@flows-agent && "
 	corePrefix := integrationPrefix + "~@vcs && ~@github && ~@gitlab && ~@bitbucket-cloud && ~@bitbucket-dc && ~@azure-devops && ~@ai"
 	for name, want := range map[string]string{
@@ -145,6 +149,7 @@ func TestUnitTagExpression(t *testing.T) {
 		"terraform-plans":       ordinary + " && @terraform-plans",
 		"terraform-vcs":         ordinary + " && ~@terraform-plans && @terraform-vcs",
 		"terraform":             ordinary + " && ~@terraform-plans && ~@terraform-vcs && @terraform",
+		"run-credentials":       credentialPrefix + "@run-credentials",
 		"runs":                  strings.ReplaceAll("@docker,@tofu,@terragrunt,@kubernetes,@flows-agent", "@", runPrefix+"@"),
 		"integrations":          strings.ReplaceAll("@vcs,@github,@gitlab,@bitbucket-cloud,@bitbucket-dc,@azure-devops,@ai", "@", integrationPrefix+"@"),
 		"identity":              corePrefix + " && @identity",
@@ -264,7 +269,7 @@ func TestUnitSelection(t *testing.T) {
 
 func TestUnitDockerTags(t *testing.T) {
 	got := harness.DockerTags([]string{
-		"@postgres", "@identity", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
+		"@postgres", "@identity", "@run-credentials", "@oidc", "@ai", "@op:stacks", "@vcs", "@runtime-config-reject", "@webhook-controls",
 	})
 	if !slices.Equal(got, []string{"@postgres", "@oidc", "@vcs"}) {
 		t.Errorf("dockerTags = %q", got)
@@ -447,4 +452,47 @@ func TestUnitCoreIdentitySplitCoverage(t *testing.T) {
 		}
 	}
 	t.Logf("preserved core union: %d expanded scenarios", len(legacy))
+}
+
+// The two jobs must preserve the previous runs workload, including outline
+// examples. run-credentials owns exactly the run scenarios that hand a run an
+// OIDC federation token (@oidc) or assumed cloud credentials (features/cloud/),
+// so a new one that omits @run-credentials fails here rather than landing in
+// runs unseen.
+func TestUnitRunCredentialsSplitCoverage(t *testing.T) {
+	legacy := godogScenarios(t, harness.And(
+		"~@vcs-lab && ~@kubernetes-lab && ~@managed-cloud-workers && ~@terraform-plans && ~@terraform-vcs && ~@terraform",
+		"@docker,@tofu,@terragrunt,@kubernetes,@flows-agent",
+	))
+	union := map[string]string{}
+	for _, name := range []string{"run-credentials", "runs"} {
+		expr, err := harness.TagExpression(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		selected := godogScenarios(t, expr)
+		if len(selected) == 0 {
+			t.Fatalf("required partition %s has no scenarios", name)
+		}
+		for id, scenario := range selected {
+			if _, ok := legacy[id]; !ok {
+				t.Errorf("%s: %s moved into %s from another partition or carries no run dependency", scenario.Uri, scenario.Name, name)
+			}
+			if prior, ok := union[id]; ok {
+				t.Errorf("%s: %s belongs to both %s and %s", scenario.Uri, scenario.Name, prior, name)
+			}
+			credentials := slices.Contains(pickleTags(scenario), "@oidc") || strings.HasPrefix(scenario.Uri, "features/cloud/")
+			if (name == "run-credentials") != credentials {
+				t.Errorf("%s: %s has incorrect run credential ownership %s", scenario.Uri, scenario.Name, name)
+			}
+			union[id] = name
+		}
+		t.Logf("%s: %d expanded scenarios", name, len(selected))
+	}
+	for id, scenario := range legacy {
+		if _, ok := union[id]; !ok {
+			t.Errorf("%s: %s disappeared from run acceptance", scenario.Uri, scenario.Name)
+		}
+	}
+	t.Logf("preserved runs union: %d expanded scenarios", len(legacy))
 }

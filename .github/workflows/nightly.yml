@@ -6,9 +6,10 @@ name: go | Nightly acceptance
 # OpenTofu scenarios run against the newest tool releases; other scenarios use
 # the quality gate's dependency configuration.
 #
-# Once a week, and on demand, the stress jobs run terraform-plans, terraform-vcs, terraform and runs
-# under make accept-stress: refused signed uploads, a slow object store and
-# capped run containers. It is informational too, and its failures are
+# Once a week, and on demand, the stress jobs run terraform-plans,
+# terraform-vcs, terraform, run-credentials and runs under make
+# accept-stress: refused signed uploads, a slow object store and capped run
+# containers. It is informational too, and its failures are
 # triaged as product defects or harness assumptions.
 # ref: decision 0016
 on:
@@ -23,7 +24,7 @@ on:
         type: boolean
         default: false
       stress:
-        description: 'Run the terraform-plans, terraform-vcs, terraform and runs partitions under stress instead of every partition'
+        description: 'Run the terraform-plans, terraform-vcs, terraform, run-credentials and runs partitions under stress instead of every partition'
         type: boolean
         default: false
       stress-settings:
@@ -54,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [core, identity, terraform-plans, terraform-vcs, terraform, runs, integrations]
+        partition: [core, identity, terraform-plans, terraform-vcs, terraform, run-credentials, runs, integrations]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -186,7 +187,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [terraform-plans, terraform-vcs, terraform, runs]
+        partition: [terraform-plans, terraform-vcs, terraform, run-credentials, runs]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -273,7 +274,7 @@ jobs:
           set -euo pipefail
           if [ "$STRESS" = "failure" ]; then
             title="Stress acceptance failed"
-            body="A terraform-plans, terraform-vcs, terraform or runs partition failed under stress on ${SHA}: ${RUN_URL}. Each failed partition's scenarios' evidence, with each object store call, is an artefact of the run; triage each failure as a product defect or a harness assumption."
+            body="A terraform-plans, terraform-vcs, terraform, run-credentials or runs partition failed under stress on ${SHA}: ${RUN_URL}. Each failed partition's scenarios' evidence, with each object store call, is an artefact of the run; triage each failure as a product defect or a harness assumption."
           else
             title="Nightly acceptance failed"
             body="The nightly acceptance run failed on ${SHA}: ${RUN_URL}. Each failed partition uploads its scenarios' evidence as an artefact of the run."

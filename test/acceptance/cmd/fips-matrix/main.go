@@ -20,7 +20,7 @@ func matrix() map[string][]shard {
 	jobs = append(jobs, shard{Shard: "native", Timeout: 20})
 	for _, partition := range harness.Partitions {
 		budget := 20
-		if strings.HasPrefix(partition.Name, "terraform") || partition.Name == "runs" {
+		if strings.HasPrefix(partition.Name, "terraform") || partition.Name == "runs" || partition.Name == "run-credentials" {
 			budget = 30
 		}
 		jobs = append(jobs, shard{Shard: partition.Name, Partition: partition.Name, Timeout: budget})

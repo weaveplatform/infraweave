@@ -438,6 +438,7 @@ coverage it would contribute is not waived.
 | `accept-vendors` | `ubuntu-latest` | `@pulumi`, `@aws`, `@kubernetes`, `@ansible` | 30 min | yes |
 | `accept-terraform-plans` | `ubuntu-latest` | `@terraform-plans` plan artifact/sanitization scenarios, also carrying `@terraform` and their actual dependency tags | 30 min | yes |
 | `accept-terraform` | `ubuntu-latest` | remaining `@terraform` | 30 min | yes |
+| `accept-run-credentials` | `ubuntu-latest` | `@run-credentials` scenarios, which hand runs OIDC federation tokens or assumed cloud credentials, also carrying their actual dependency tags | 30 min | yes |
 | `accept-runs` | `ubuntu-latest` | remaining `@docker`, `@tofu`, `@terragrunt`, `@flows-agent`; `@kubernetes` until `accept-vendors` is implemented | 30 min | yes |
 | `accept-integrations` | `ubuntu-latest` | `@vcs`, `@ai` | 20 min | yes |
 | `provider-parity` | `ubuntu-latest` | `specref provider-parity` and `TestAccProvider` | 30 min | yes |
@@ -559,7 +560,7 @@ coverage it would contribute is not waived.
     that broke.
   - **Failures.** As the cloud object store job: an issue per provider.
 
-- A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform-vcs`, `accept-terraform`, `accept-runs`,
+- A scenario's partition is the first of `accept-terraform-plans`, `accept-terraform-vcs`, `accept-terraform`, `accept-run-credentials`, `accept-runs`,
   `accept-integrations` and `accept-core` that lists one of its tags, so a
   `@postgres` `@terraform` scenario runs once, in `accept-terraform`.
   The planned `accept-vendors` precedes them when its vendors are
@@ -584,6 +585,10 @@ coverage it would contribute is not waived.
   `@terraform-vcs` selects existing Terraform-owned native provider workflow
   cases; it retains their actual dependency tags and does not move OpenTofu-only
   cases out of their existing run partition.
+  `TestUnitRunCredentialsSplitCoverage` likewise proves that
+  `accept-run-credentials` and `accept-runs` together hold exactly the previous
+  run selection, and that `accept-run-credentials` holds exactly its run
+  scenarios that carry `@oidc` or live under `features/cloud/`.
   `TestUnitCIPartitionsRunAndCollectEveryRegisteredWorkload` checks the harness
   registry against required/nightly/stress matrices and the aggregate artifact
   gates, so adding a selector without a required job cannot silently lose work.
@@ -591,12 +596,12 @@ coverage it would contribute is not waived.
   it produces coverage, of `coverage`.
 - When a partition approaches its timeout, it splits by tag into two
   required jobs; scenarios are never dropped to fit.
-  The Terraform plan-artifact workload, native VCS workflows, other Terraform cases and remaining
-  worker run cases each retain a ten-minute Go test deadline and thirty-minute
+  The Terraform plan-artifact workload, native VCS workflows, other Terraform cases, run
+  credential cases and remaining worker run cases each retain a ten-minute Go test deadline and thirty-minute
   Actions job budget. The Go deadline includes test cleanup: each partition
   needs margin for container teardown and coverage/report flushing after its
   scenario assertions finish. Their profiles and Cucumber results all join the
-  same gates. Nightly acceptance and weekly/requested stress include all four
+  same gates. Nightly acceptance and weekly/requested stress include all five
   workloads. Certified FIPS runs the same complete partitions and the native
   suite in separate jobs with independent ten-minute package deadlines;
   unrelated suites cannot consume one another's alarm budget. The unit job

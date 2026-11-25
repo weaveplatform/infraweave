@@ -1,4 +1,4 @@
-@postgres @objectstore @vcs @docker @tofu
+@run-credentials @postgres @objectstore @vcs @docker @tofu
 Feature: Runs receive the AWS credentials the server assumes for them
   A run of a stack with an AWS integration attached receives the
   credentials of its role in AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,

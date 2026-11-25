@@ -12,7 +12,7 @@ existing explicit infrastructure jobs.
 | Unit | `make test FIPS=1` | existing Go default, 10 minutes | 20 minutes |
 | Native/component/capture | `make accept-native FIPS=1` | 10 minutes | 20 minutes |
 | Core, identity, integrations | `make accept FIPS=1 PARTITION=<name>` | 10 minutes each | 20 minutes each |
-| Terraform plans, Terraform VCS, Terraform, runs | same explicit partition command | 10 minutes each | 30 minutes each |
+| Terraform plans, Terraform VCS, Terraform, run credentials, runs | same explicit partition command | 10 minutes each | 30 minutes each |
 | Required aggregate | validate complete execution receipts and dependency results | no Go test | 5 minutes |
 
 These preserve the existing regular acceptance partition budgets. Native runs
