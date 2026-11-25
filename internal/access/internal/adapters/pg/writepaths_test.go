@@ -88,7 +88,10 @@ func (w *auditWorld) groupedMember(ctx context.Context) error {
 			return err
 		}
 	}
-	at := time.Now().Add(time.Hour)
+	// PostgreSQL keeps microseconds, and an entry refuses a source
+	// session that expires before the candidate, so the expiry is one the
+	// row holds exactly.
+	at := time.Now().UTC().Truncate(time.Microsecond).Add(time.Hour)
 	w.grouped = session.Session{
 		ID: kernel.NewULID(), OrganizationID: w.x.org, AccountID: w.x.acct, MemberID: m,
 		Channel: session.ChannelWeb, ActorKind: kernel.PrincipalUser, ActorID: m.ULID,
