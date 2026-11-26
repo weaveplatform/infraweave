@@ -8,6 +8,7 @@ import (
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
+	"github.com/weaveplatform/infraweave/internal/cloud/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
 )
@@ -330,7 +331,7 @@ func TestAccAttachRefuses(t *testing.T) {
 func (f *fixture) accountsBroken(t *testing.T) {
 	t.Helper()
 	f.svc = core.New(core.Deps{
-		Store: f.store, DB: f.db, Spaces: f.spaces, Accounts: accounts{err: errBroken},
+		Store: f.store, Azure: pg.NewAzure(f.db), DB: f.db, Spaces: f.spaces, Accounts: accounts{err: errBroken},
 		Stacks: f.stacks, Authz: f.authzOf(), Roles: f.roles,
 	})
 }

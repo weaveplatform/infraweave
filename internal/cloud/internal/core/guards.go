@@ -72,23 +72,32 @@ func (s *Service) SpaceGuard() SpaceGuard { return SpaceGuard{s} }
 // StackGuard is the service as a stacksapi.StackGuard.
 func (s *Service) StackGuard() StackGuard { return StackGuard{s} }
 
-// SpaceInUse reports whether an integration lives in space, which refuses
-// its deletion.
+// SpaceInUse reports whether an AWS or an Azure integration lives in
+// space, which refuses its deletion.
 func (g SpaceGuard) SpaceInUse(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error) {
-	return g.s.store.InSpace(ctx, acct, space) //nolint:wrapcheck // the store names the read
+	in, err := g.s.store.InSpace(ctx, acct, space)
+	if err != nil || in {
+		return in, err //nolint:wrapcheck // the store names the read
+	}
+	return g.s.azure.InSpace(ctx, acct, space) //nolint:wrapcheck // as above
 }
 
 // LostOnMove lists each stored attachment m would cut off, as "aws
-// integration <name>". A move changes the ancestors of the spaces it moves
-// alone, so only a stack in one of them can lose an integration. A legacy
-// integration is bound to its stack, not reached through its space.
+// integration <name>" or "azure integration <name>". A move changes the
+// ancestors of the spaces it moves alone, so only a stack in one of them
+// can lose an integration. A legacy integration is bound to its stack,
+// not reached through its space.
 func (g SpaceGuard) LostOnMove(ctx context.Context, m accessapi.SpaceMove) ([]accessapi.LostReach, error) {
 	s := g.s
-	ids, err := s.store.AttachedStacks(ctx, m.Account)
-	if err != nil || len(ids) == 0 {
+	aws, err := s.store.AttachedStacks(ctx, m.Account)
+	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
-	stacks, err := s.stacks.ByIDs(ctx, m.Account, ids)
+	azure, err := s.azure.AttachedStacks(ctx, m.Account)
+	if err != nil || len(aws)+len(azure) == 0 {
+		return nil, err //nolint:wrapcheck // the store names the read
+	}
+	stacks, err := s.stacks.ByIDs(ctx, m.Account, append(aws, azure...))
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the stacks domain names the read
 	}
@@ -117,8 +126,8 @@ func (g SpaceGuard) LostOnMove(ctx context.Context, m accessapi.SpaceMove) ([]ac
 		home := stacks[st].Space
 		return slices.Contains(Reach(before, home), space) &&
 			!slices.Contains(Reach(after, home), space)
-	}, func(st kernel.ULID, i Integration) {
-		lost = append(lost, accessapi.LostReach{Stack: stacks[st].Slug, Entity: entity(i)})
+	}, func(st kernel.ULID, entity string) {
+		lost = append(lost, accessapi.LostReach{Stack: stacks[st].Slug, Entity: entity})
 	})
 	slices.SortFunc(lost, func(a, b accessapi.LostReach) int {
 		return cmp.Or(strings.Compare(a.Stack, b.Stack), strings.Compare(a.Entity, b.Entity))
@@ -126,37 +135,65 @@ func (g SpaceGuard) LostOnMove(ctx context.Context, m accessapi.SpaceMove) ([]ac
 	return lost, err
 }
 
-// entity names i as a guard's refusal does.
-func entity(i Integration) string { return "aws integration " + i.Name }
+// held is an integration an attachment holds, as a guard reads it: its
+// space, and the entity a refusal names it as.
+type held struct {
+	space  kernel.ULID
+	entity string
+}
 
-// lost calls each with every integration stored as attached to one of
-// stacks, legacy ones left out, whose space cut, given the stack and the
-// integration's space, reports the stack cut off from.
+// lost calls each with every AWS and Azure integration stored as attached
+// to one of stacks, legacy ones left out, whose space cut, given the
+// stack and the integration's space, reports the stack cut off from,
+// named as a guard's refusal names it.
 func (s *Service) lost(
 	ctx context.Context,
 	acct kernel.AccountID,
 	stacks []kernel.ULID,
 	cut func(stack, space kernel.ULID) bool,
-	each func(stack kernel.ULID, i Integration),
+	each func(stack kernel.ULID, entity string),
 ) error {
-	attached, err := s.store.Attachments(ctx, acct, stacks, true)
-	if err != nil {
-		return err //nolint:wrapcheck // the store names the read
-	}
-	var ids []kernel.ULID
-	for _, as := range attached {
-		for _, a := range as {
-			ids = append(ids, a.Integration)
+	aws := func(ctx context.Context, ids []kernel.ULID) (map[kernel.ULID]held, error) {
+		all, err := s.store.ByIDs(ctx, acct, ids)
+		out := map[kernel.ULID]held{}
+		for id, i := range all {
+			if !i.Legacy {
+				out[id] = held{i.Space, "aws integration " + i.Name}
+			}
 		}
+		return out, err //nolint:wrapcheck // the store names the read
 	}
-	integrations, err := s.store.ByIDs(ctx, acct, ids)
-	if err != nil {
-		return err //nolint:wrapcheck // the store names the read
+	azure := func(ctx context.Context, ids []kernel.ULID) (map[kernel.ULID]held, error) {
+		all, err := s.azure.ByIDs(ctx, acct, ids)
+		out := map[kernel.ULID]held{}
+		for id, i := range all {
+			out[id] = held{i.Space, "azure integration " + i.Name}
+		}
+		return out, err //nolint:wrapcheck // the store names the read
 	}
-	for stack, as := range attached {
-		for _, a := range as {
-			if i := integrations[a.Integration]; !i.Legacy && cut(stack, i.Space) {
-				each(stack, i)
+	for _, k := range []struct {
+		kind
+		held func(ctx context.Context, ids []kernel.ULID) (map[kernel.ULID]held, error)
+	}{{s.aws(), aws}, {s.azureKind(), azure}} {
+		attached, err := k.stored(ctx, acct, stacks, true)
+		if err != nil {
+			return err
+		}
+		var ids []kernel.ULID
+		for _, as := range attached {
+			for _, a := range as {
+				ids = append(ids, a.Integration)
+			}
+		}
+		integrations, err := k.held(ctx, ids)
+		if err != nil {
+			return err
+		}
+		for stack, as := range attached {
+			for _, a := range as {
+				if i, ok := integrations[a.Integration]; ok && cut(stack, i.space) {
+					each(stack, i.entity)
+				}
 			}
 		}
 	}
@@ -164,8 +201,9 @@ func (s *Service) lost(
 }
 
 // LostOnMove names each integration stored as attached to the stack that
-// m would leave outside its reach, as "aws integration <name>", by name.
-// An automatic attachment follows the move instead.
+// m would leave outside its reach, as "aws integration <name>" or "azure
+// integration <name>", in order. An automatic attachment follows the
+// move instead.
 func (g StackGuard) LostOnMove(ctx context.Context, m stacksapi.StackMove) ([]string, error) {
 	s := g.s
 	nodes, err := s.spaces.Tree(ctx, m.Account)
@@ -176,17 +214,20 @@ func (g StackGuard) LostOnMove(ctx context.Context, m stacksapi.StackMove) ([]st
 	var lost []string
 	err = s.lost(ctx, m.Account, []kernel.ULID{m.ID}, func(_, space kernel.ULID) bool {
 		return !slices.Contains(reach, space)
-	}, func(_ kernel.ULID, i Integration) {
-		lost = append(lost, entity(i))
+	}, func(_ kernel.ULID, entity string) {
+		lost = append(lost, entity)
 	})
 	slices.Sort(lost)
 	return lost, err
 }
 
-// Deleting deletes the stack's attachments and its legacy integration,
-// which mean nothing without it.
+// Deleting deletes the stack's AWS and Azure attachments and its legacy
+// AWS integration, which mean nothing without it.
 func (g StackGuard) Deleting(ctx context.Context, st stacksapi.Stack) error {
-	return g.s.store.DeleteStack(ctx, st.Account, st.ID) //nolint:wrapcheck // the store names the write
+	if err := g.s.store.DeleteStack(ctx, st.Account, st.ID); err != nil {
+		return err //nolint:wrapcheck // the store names the write
+	}
+	return g.s.azure.DeleteStack(ctx, st.Account, st.ID) //nolint:wrapcheck // as above
 }
 
 // integrationMove refuses moving i to space when a stack i is stored as
@@ -196,19 +237,26 @@ func (s *Service) integrationMove(ctx context.Context, i Integration, space kern
 	if i.Legacy {
 		return nil
 	}
-	attached, err := s.store.Attachments(ctx, i.Account, []kernel.ULID{i.ID}, false)
-	if err != nil || len(attached[i.ID]) == 0 {
-		return err //nolint:wrapcheck // the store names the read
+	return s.moveFrom(ctx, s.aws(), i.Account, i.ID, i.Name, space)
+}
+
+// moveFrom refuses moving acct's integration id of the kind k, named
+// name, to space when a stack it is stored as attached to could no longer
+// reach it, naming each stack.
+func (s *Service) moveFrom(ctx context.Context, k kind, acct kernel.AccountID, id kernel.ULID, name string, space kernel.ULID) error {
+	attached, err := k.stored(ctx, acct, []kernel.ULID{id}, false)
+	if err != nil || len(attached[id]) == 0 {
+		return err
 	}
-	ids := make([]kernel.ULID, 0, len(attached[i.ID]))
-	for _, a := range attached[i.ID] {
+	ids := make([]kernel.ULID, 0, len(attached[id]))
+	for _, a := range attached[id] {
 		ids = append(ids, a.Stack)
 	}
-	stacks, err := s.stacks.ByIDs(ctx, i.Account, ids)
+	stacks, err := s.stacks.ByIDs(ctx, acct, ids)
 	if err != nil {
 		return err //nolint:wrapcheck // the stacks domain names the read
 	}
-	nodes, err := s.spaces.Tree(ctx, i.Account)
+	nodes, err := s.spaces.Tree(ctx, acct)
 	if err != nil {
 		return err //nolint:wrapcheck // the access domain names the read
 	}
@@ -226,7 +274,7 @@ func (s *Service) integrationMove(ctx context.Context, i Integration, space kern
 	inv := &kernel.Invalid{}
 	reasons := make([]string, 0, len(lost))
 	for _, l := range lost {
-		reason := fmt.Sprintf("Stack %s would no longer reach AWS integration %s.", l, i.Name)
+		reason := fmt.Sprintf("Stack %s would no longer reach %s %s.", l, k.noun, name)
 		reasons = append(reasons, reason)
 		inv.Errors = append(inv.Errors, kernel.FieldError{
 			Pointer: "/space", Reason: kernel.ReasonRule, Message: reason,

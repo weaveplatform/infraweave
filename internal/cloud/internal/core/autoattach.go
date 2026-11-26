@@ -67,6 +67,41 @@ func autoStackLabels(labels []string) ([]string, bool) {
 	return slices.Compact(out), false
 }
 
+// candidate is an integration with auto-attachment enabled as effective
+// matches it against a stack: its ID, its space and its labels.
+type candidate struct {
+	ID, Space kernel.ULID
+	Labels    []string
+}
+
+// kind is one kind of integration as the attachment rules read it: noun
+// names one in a refusal, stored reads the stored attachments of
+// integrations, or of stacks when byStack is set, keyed by that ID,
+// oldest first, and labelled reads the candidates in spaces that carry
+// any of labels, by name. AWS and Azure integrations attach to a stack
+// apart, each kind keeping its own read and write attachment.
+type kind struct {
+	noun     string
+	stored   func(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, byStack bool) (map[kernel.ULID][]Attachment, error)
+	labelled func(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]candidate, error)
+}
+
+// aws is AWS integrations as a kind.
+func (s *Service) aws() kind {
+	return kind{
+		noun:   "AWS integration",
+		stored: s.store.Attachments,
+		labelled: func(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]candidate, error) {
+			all, err := s.store.Labelled(ctx, acct, spaces, labels)
+			out := make([]candidate, len(all))
+			for n, i := range all {
+				out[n] = candidate{ID: i.ID, Space: i.Space, Labels: i.Labels}
+			}
+			return out, err //nolint:wrapcheck // the store names the read
+		},
+	}
+}
+
 // Effective is the attachments that serve st, whose labels are labels,
 // in the account's tree: its stored ones, then one computed for each side
 // they leave free from the first integration in its reach, by name, whose
@@ -74,16 +109,16 @@ func autoStackLabels(labels []string) ([]string, bool) {
 // attached to it. A stored attachment outranks a computed one, and a
 // stack keeps one read and one write attachment either way.
 func (s *Service) Effective(ctx context.Context, acct kernel.AccountID, st stacksapi.Stack, labels []string, tree Tree) ([]Attachment, error) {
-	out, err := s.effective(ctx, acct, []stacksapi.Stack{st}, map[kernel.ULID][]string{st.ID: labels}, tree)
+	out, err := s.effective(ctx, s.aws(), acct, []stacksapi.Stack{st}, map[kernel.ULID][]string{st.ID: labels}, tree)
 	return out[st.ID], err
 }
 
-// effective is Effective for each of stacks, whose labels are keyed by
-// stack ID, keyed by stack ID, from one read of their stored attachments
-// and one of the integrations that may attach to any of them, so a page
-// of stacks costs two queries however long it is.
+// effective is Effective for each of stacks of the kind k, whose labels
+// are keyed by stack ID, keyed by stack ID, from one read of their stored
+// attachments and one of the integrations that may attach to any of
+// them, so a page of stacks costs two queries however long it is.
 func (s *Service) effective(
-	ctx context.Context, acct kernel.AccountID, stacks []stacksapi.Stack, labels map[kernel.ULID][]string, tree Tree,
+	ctx context.Context, k kind, acct kernel.AccountID, stacks []stacksapi.Stack, labels map[kernel.ULID][]string, tree Tree,
 ) (map[kernel.ULID][]Attachment, error) {
 	if len(stacks) == 0 {
 		return map[kernel.ULID][]Attachment{}, nil
@@ -92,7 +127,7 @@ func (s *Service) effective(
 	for n, st := range stacks {
 		ids[n] = st.ID
 	}
-	stored, err := s.store.Attachments(ctx, acct, ids, true)
+	stored, err := k.stored(ctx, acct, ids, true)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the store names the read
 	}
@@ -128,9 +163,9 @@ func (s *Service) effective(
 	}
 	slices.SortFunc(spaces, byID)
 	slices.Sort(names)
-	candidates, err := s.store.Labelled(ctx, acct, slices.Compact(spaces), slices.Compact(names))
+	candidates, err := k.labelled(ctx, acct, slices.Compact(spaces), slices.Compact(names))
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the store names the read
+		return nil, err
 	}
 	for _, f := range open {
 		for _, i := range candidates {
@@ -157,12 +192,13 @@ func (s *Service) effective(
 // is asked for: the stacks, their labels, the space tree, and effective's
 // two.
 func (s *Service) Attached(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID][]Attachment, error) {
-	_, out, err := s.attached(ctx, acct, stacks)
+	_, out, err := s.attached(ctx, s.aws(), acct, stacks)
 	return out, err
 }
 
-// attached is Attached with the stacks it found, keyed by ID.
-func (s *Service) attached(ctx context.Context, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, map[kernel.ULID][]Attachment, error) {
+// attached is Attached of the kind k with the stacks it found, keyed by
+// ID.
+func (s *Service) attached(ctx context.Context, k kind, acct kernel.AccountID, stacks []kernel.ULID) (map[kernel.ULID]stacksapi.Stack, map[kernel.ULID][]Attachment, error) {
 	found, err := s.stacks.ByIDs(ctx, acct, stacks)
 	if err != nil {
 		return nil, nil, err //nolint:wrapcheck // the stacks domain names the read
@@ -183,7 +219,7 @@ func (s *Service) attached(ctx context.Context, acct kernel.AccountID, stacks []
 	if err != nil {
 		return nil, nil, err //nolint:wrapcheck // the access domain names the read
 	}
-	out, err := s.effective(ctx, acct, all, labels, index(nodes))
+	out, err := s.effective(ctx, k, acct, all, labels, index(nodes))
 	return found, out, err
 }
 
@@ -192,16 +228,23 @@ func (s *Service) attached(ctx context.Context, acct kernel.AccountID, stacks []
 // i's autoattach labels name a stack in its reach for a side that no
 // other attachment of the stack serves first.
 func (s *Service) AttachedTo(ctx context.Context, i Integration) ([]Attachment, error) {
-	stored, err := s.store.Attachments(ctx, i.Account, []kernel.ULID{i.ID}, false)
+	return s.attachedTo(ctx, s.aws(), i.Account, candidate{ID: i.ID, Space: i.Space, Labels: i.Labels},
+		i.Autoattach && !i.Legacy)
+}
+
+// attachedTo is AttachedTo of the integration i of the kind k, which
+// attaches by its labels when auto is set.
+func (s *Service) attachedTo(ctx context.Context, k kind, acct kernel.AccountID, i candidate, auto bool) ([]Attachment, error) {
+	stored, err := k.stored(ctx, acct, []kernel.ULID{i.ID}, false)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the store names the read
+		return nil, err
 	}
 	out := stored[i.ID]
 	names, all := autoStackLabels(i.Labels)
-	if !i.Autoattach || i.Legacy || (!all && len(names) == 0) {
+	if !auto || (!all && len(names) == 0) {
 		return out, nil
 	}
-	nodes, err := s.spaces.Tree(ctx, i.Account)
+	nodes, err := s.spaces.Tree(ctx, acct)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the access domain names the read
 	}
@@ -209,9 +252,9 @@ func (s *Service) AttachedTo(ctx context.Context, i Integration) ([]Attachment, 
 	spaces := Reached(tree, i.Space)
 	var stacks []stacksapi.Stack
 	if all {
-		stacks, err = s.stacks.InSpaces(ctx, i.Account, spaces)
+		stacks, err = s.stacks.InSpaces(ctx, acct, spaces)
 	} else {
-		stacks, err = s.stacks.Find(ctx, i.Account, spaces, names)
+		stacks, err = s.stacks.Find(ctx, acct, spaces, names)
 	}
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the stacks domain names the read
@@ -220,12 +263,12 @@ func (s *Service) AttachedTo(ctx context.Context, i Integration) ([]Attachment, 
 	for n, st := range stacks {
 		ids[n] = st.ID
 	}
-	labels, err := s.stacks.Labels(ctx, i.Account, ids)
+	labels, err := s.stacks.Labels(ctx, acct, ids)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the stacks domain names the read
 	}
 	slices.SortFunc(stacks, func(a, b stacksapi.Stack) int { return byID(a.ID, b.ID) })
-	effective, err := s.effective(ctx, i.Account, stacks, labels, tree)
+	effective, err := s.effective(ctx, k, acct, stacks, labels, tree)
 	if err != nil {
 		return nil, err
 	}

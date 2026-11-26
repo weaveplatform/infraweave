@@ -17,17 +17,21 @@ import (
 )
 
 // Deps are what the service is constructed over. Enabled reports whether
-// an account may use AWS integrations.
+// an account may use cloud integrations; Azure stores Azure integrations,
+// and Applications is the installation's Graph client, nil without
+// cloud.azure.
 type Deps struct {
-	Store    Store
-	DB       tx.Beginner
-	Spaces   accessapi.Spaces
-	Accounts accessapi.Accounts
-	Stacks   stacksapi.Stacks
-	Authz    accessapi.Authorizer
-	Roles    Roles
-	Enabled  func(ctx context.Context, acct kernel.AccountID) (bool, error)
-	Now      func() time.Time
+	Store        Store
+	Azure        AzureStore
+	Applications Applications
+	DB           tx.Beginner
+	Spaces       accessapi.Spaces
+	Accounts     accessapi.Accounts
+	Stacks       stacksapi.Stacks
+	Authz        accessapi.Authorizer
+	Roles        Roles
+	Enabled      func(ctx context.Context, acct kernel.AccountID) (bool, error)
+	Now          func() time.Time
 }
 
 // Service is the cloud domain's logic. Every write runs in one
@@ -35,6 +39,8 @@ type Deps struct {
 // stores the IDs of, so no delete or move removes them first.
 type Service struct {
 	store    Store
+	azure    AzureStore
+	apps     Applications
 	db       tx.Beginner
 	spaces   accessapi.Spaces
 	accounts accessapi.Accounts
@@ -52,7 +58,8 @@ func New(d Deps) *Service {
 		now = time.Now
 	}
 	return &Service{
-		store: d.Store, db: d.DB, spaces: d.Spaces, accounts: d.Accounts, stacks: d.Stacks,
+		store: d.Store, azure: d.Azure, apps: d.Applications, db: d.DB, spaces: d.Spaces,
+		accounts: d.Accounts, stacks: d.Stacks,
 		authz: d.Authz, roles: d.Roles, enabled: d.Enabled, now: now,
 	}
 }
@@ -196,17 +203,26 @@ func (s *Service) StackAttachable(ctx context.Context, p kernel.Principal, slug 
 }
 
 func (s *Service) attachable(ctx context.Context, p kernel.Principal, space kernel.ULID, page Page) ([]Integration, bool, error) {
+	reach, err := s.within(ctx, p, space)
+	if err != nil {
+		return nil, false, err
+	}
+	return s.store.List(ctx, p.AccountID, reach, false, page) //nolint:wrapcheck // the store names the read
+}
+
+// within are the spaces a stack in space reaches whose integrations p may
+// read.
+func (s *Service) within(ctx context.Context, p kernel.Principal, space kernel.ULID) ([]kernel.ULID, error) {
 	tree, err := s.spaces.Tree(ctx, p.AccountID)
 	if err != nil {
-		return nil, false, err //nolint:wrapcheck // the access domain names the read
+		return nil, err //nolint:wrapcheck // the access domain names the read
 	}
 	reach, err := s.authz.Reachable(ctx, p, accessapi.ActionSpaceRead)
 	if err != nil {
-		return nil, false, err //nolint:wrapcheck // the snapshot's read names itself
+		return nil, err //nolint:wrapcheck // the snapshot's read names itself
 	}
 	within := Reach(index(tree), space)
-	reach = slices.DeleteFunc(reach, func(id kernel.ULID) bool { return !slices.Contains(within, id) })
-	return s.store.List(ctx, p.AccountID, reach, false, page) //nolint:wrapcheck // the store names the read
+	return slices.DeleteFunc(reach, func(id kernel.ULID) bool { return !slices.Contains(within, id) }), nil
 }
 
 // Enabled reports whether acct may use AWS integrations.

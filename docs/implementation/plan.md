@@ -2649,8 +2649,15 @@ and shows the subject template's default
    `azureIntegrationsEnabled`, `attachableAzureIntegrationsInSpace`,
    `stackAttachableAzureIntegrations` (the module reads land in P17), with
    the Entra applications created through the operator-registered
-   application in `cloud.azure`, or `installation-unsupported` without one;
-   GCP through the OIDC token only. `integrationsCount`.
+   application in `cloud.azure`, or `installation-unsupported` without one.
+   The operator's application needs Microsoft Graph's
+   `Application.ReadWrite.OwnedBy` application permission, granted by an
+   admin of its tenant; azidentity's default credential chain finds its
+   credential. GCP through the OIDC token only. `integrationsCount` is
+   composed in `internal/app` from each domain's counter: `cloud` counts
+   `aws` and `azure`, `vcs` counts `github`, `gitlab`, `bitbucketCloud`,
+   `bitbucketDatacenter` and `azureDevOps`, and a kind no domain serves yet
+   answers 0.
    `azureIntegrationConsentConfirm` and `azureIntegrationConsentClear`
    record and clear an admin's statement that consent was granted, which
    infraweave stores with its actor and time and never checks against

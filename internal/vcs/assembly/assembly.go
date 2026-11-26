@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
 	"github.com/weaveplatform/infraweave/internal/platform/crypt"
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/outbox"
 	"github.com/weaveplatform/infraweave/internal/platform/queue"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
@@ -149,6 +151,7 @@ type Domain struct {
 	push         *push.Service
 	ignored      *ignored.Service
 	requests     *pullrequest.Service
+	counts       *pg.Store
 }
 
 // New constructs the domain over d, reaching raw Git repositories, served
@@ -319,6 +322,7 @@ func New(d Deps) (*Domain, error) {
 		limits:       limits,
 		ignored:      ignoredTriggers,
 		feedback:     checks,
+		counts:       pg.New(d.DB, d.Keys),
 		api:          http.New(integrations, d.Spaces, nil, limits).WithDeliveries(inbox).WithIgnored(ignoredTriggers),
 	}, nil
 }
@@ -334,6 +338,21 @@ func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.integrations.SpaceOf }
 // StackIntegrations checks the integration a stack's write names, the
 // back edge internal/app binds in the stacks domain.
 func (d *Domain) StackIntegrations() stacksapi.StackIntegrations { return d.integrations }
+
+// Count sets the counts of acct's integrations of each VCS provider on
+// into, for the account's integrationsCount: github counts GitHub's,
+// which the GitHub App and GitHub Enterprise share.
+func (d *Domain) Count(ctx context.Context, acct kernel.AccountID, into *api.IntegrationsCount) error {
+	n, err := d.counts.Counts(ctx, acct)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	c := func(p string) int32 { return int32(min(n[p], math.MaxInt32)) } //nolint:gosec // clamped
+	into.Github = c(integration.GitHubEnterprise) + c(integration.GitHub)
+	into.Gitlab, into.AzureDevOps = c(integration.GitLab), c(integration.AzureDevOps)
+	into.BitbucketCloud, into.BitbucketDatacenter = c(integration.BitbucketCloud), c(integration.BitbucketDC)
+	return nil
+}
 
 // PurgeBatch is how many integrations one statement of Purge deletes.
 const PurgeBatch = 500

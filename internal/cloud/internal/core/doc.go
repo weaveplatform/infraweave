@@ -1,5 +1,5 @@
-// Package core is the cloud domain's model and rules for AWS
-// integrations: an integration in a space names a role in a customer's
+// Package core is the cloud domain's model and rules for AWS and Azure
+// integrations. An AWS integration in a space names a role in a customer's
 // AWS account, the region whose STS endpoint assumes it, the session
 // duration (900 to 3600 seconds when the server assumes the role, up to
 // 43200 when a private worker does) and, for a worker's integration
@@ -36,14 +36,31 @@
 // and delete a deleted stack's attachments and legacy integration. Every
 // write records an AWS_INTEGRATION audit entry in its transaction.
 //
+// An Azure integration in a space names a customer's Entra tenant, fixed
+// at creation, and the multi-tenant Entra application CreateAzure creates
+// for it through Applications, named by DisplayName, whose admin consent
+// AdminConsentURL asks for. Graph is called outside the transaction that
+// stores the integration, and an application whose row is not written is
+// deleted again; DeleteAzure deletes the application before the row, so a
+// Graph failure keeps the integration. Without Applications the
+// installation has no cloud.azure, and a create or delete answers
+// ErrAzureUnsupported. SetConsent records an admin's statement that
+// consent was granted, or no longer is, with its actor and time, never
+// asking Entra. Azure attachments follow the AWS rules, with one read and
+// one write per stack and an optional subscription each; auto-attachment
+// needs a default subscription, which automatic attachments use. The
+// guards and PurgeAzure cover Azure integrations too, and every Azure
+// write records an AZURE_INTEGRATION audit entry.
+//
 // # Input and output
 //
-// None: the store, the spaces, the accounts, the stacks, the authorizer
-// and the server's AWS identity are interfaces its callers pass.
+// None: the stores, the spaces, the accounts, the stacks, the authorizer,
+// the server's AWS identity and the Graph client are interfaces its
+// callers pass.
 //
 // # Dependencies
 //
 // It imports the access, cloud and stacks api packages, internal/kernel
 // and platform/tx. The cloud domain's assembly constructs it over the pg
-// store and the STS client.
+// stores, the STS client and the Graph client.
 package core

@@ -61,7 +61,7 @@ func page(cursor *api.Cursor, limit *api.Limit) (core.Page, error) {
 		after, err := base64.RawURLEncoding.DecodeString(*cursor)
 		if err != nil || len(after) == 0 {
 			//nolint:wrapcheck // a problem, answered as it is
-			return core.Page{}, problem.InvalidCursor.Error("The cursor belongs to no list of AWS integrations.")
+			return core.Page{}, problem.InvalidCursor.Error("The cursor belongs to no list of integrations.")
 		}
 		p.After = string(after)
 	}
@@ -479,7 +479,15 @@ func deref[T any](v *T) T {
 // stale If-Match are answered as they are.
 func cloudError(err error) error {
 	var upstream *core.Upstream
+	var graph *core.GraphFailure
 	switch {
+	case errors.Is(err, core.ErrAzureUnsupported):
+		//nolint:wrapcheck // a problem, answered as it is
+		return problem.InstallationUnsupported.Error(
+			"The installation has no Entra application registered to create Azure integrations' applications with.")
+	case errors.As(err, &graph):
+		//nolint:wrapcheck // as above
+		return problem.ServiceUnavailable.Error(graphDetail(graph))
 	case errors.Is(err, core.ErrUnsupported):
 		//nolint:wrapcheck // a problem, answered as it is
 		return problem.InstallationUnsupported.Error(
@@ -500,7 +508,7 @@ func cloudError(err error) error {
 	if t, ok := errors.AsType[*core.NameTaken](err); ok {
 		//nolint:wrapcheck // as above
 		return problem.AlreadyExists.Error(
-			fmt.Sprintf("Another AWS integration of this account is named %q.", t.Name))
+			fmt.Sprintf("Another %s of this account is named %q.", t.What(), t.Name))
 	}
 	if c, ok := errors.AsType[*core.Conflict](err); ok {
 		//nolint:wrapcheck // as above
@@ -511,6 +519,18 @@ func cloudError(err error) error {
 		return problem.NotFound.Error("No such AWS integration in this account.")
 	}
 	return err
+}
+
+// graphDetail is a Graph failure's detail: its status and error code
+// when Graph answered.
+func graphDetail(g *core.GraphFailure) string {
+	switch {
+	case g.Status == 0:
+		return "Microsoft Graph could not be reached; retry later."
+	case g.Code != "":
+		return fmt.Sprintf("Microsoft Graph failed: %d %s; retry later.", g.Status, g.Code)
+	}
+	return fmt.Sprintf("Microsoft Graph failed: %d; retry later.", g.Status)
 }
 
 // upper is s with its first letter in upper case.

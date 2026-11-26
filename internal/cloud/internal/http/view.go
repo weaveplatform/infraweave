@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"time"
 
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -127,4 +128,98 @@ func (s Server) legacyView(ctx context.Context, i core.Integration, st stacksapi
 		v.ExternalID = &i.ExternalID
 	}
 	return v, nil
+}
+
+func azureETag(i core.AzureIntegration) *string {
+	t := strict.ETag(i.Version)
+	return &t
+}
+
+// unix is t's seconds as the API's int32 timestamps carry them, which
+// hold every time before 2038.
+func unix(t time.Time) int32 { return int32(t.Unix()) } //nolint:gosec // as above
+
+// azureView is i as the API answers it.
+func (s Server) azureView(ctx context.Context, i core.AzureIntegration) (api.AzureIntegration, error) {
+	vs, err := s.azureViews(ctx, i.Account, i)
+	if err != nil {
+		return api.AzureIntegration{}, err
+	}
+	return vs[0], nil
+}
+
+// azureViews are all as the API answers them, each with its attachments,
+// stored and computed, and the spaces and stacks they name read once.
+func (s Server) azureViews(ctx context.Context, acct kernel.AccountID, all ...core.AzureIntegration) ([]api.AzureIntegration, error) {
+	slugs, err := s.spaces.Slugs(ctx, acct)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the access domain names the read
+	}
+	attached := make([][]core.Attachment, len(all))
+	var ids []kernel.ULID
+	for n, i := range all {
+		if attached[n], err = s.svc.AzureAttachedTo(ctx, i); err != nil {
+			return nil, err //nolint:wrapcheck // the store names the read
+		}
+		for _, a := range attached[n] {
+			ids = append(ids, a.Stack)
+		}
+	}
+	stacks, err := s.stacks.ByIDs(ctx, acct, ids)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // the stacks domain names the read
+	}
+	out := make([]api.AzureIntegration, len(all))
+	for n, i := range all {
+		v := api.AzureIntegration{
+			Id: i.ID.String(), Name: i.Name, Space: slugs[i.Space],
+			SpaceDetails: api.SpaceRef{Id: slugs[i.Space]}, TenantId: i.TenantID,
+			ApplicationId: i.ApplicationID, ObjectId: i.ObjectID, DisplayName: i.DisplayName,
+			ServicePrincipalObjectId: i.ServicePrincipal,
+			AdminConsentURL:          core.AdminConsentURL(i.TenantID, i.ApplicationID),
+			AdminConsentProvided:     i.ConsentProvided,
+			DefaultSubscriptionId:    i.DefaultSubscription, Labels: labelsOf(i.Labels),
+			AutoattachEnabled: i.Autoattach, CreatedAt: unix(i.CreatedAt), UpdatedAt: unix(i.UpdatedAt),
+			AttachedStacks: []api.AzureIntegrationStackAttachment{},
+		}
+		for _, a := range attached[n] {
+			st, ok := stacks[a.Stack]
+			if !ok {
+				continue
+			}
+			v.AttachedStacks = append(v.AttachedStacks, azureAttachmentView(a, st, slugs[st.Space]))
+		}
+		v.HasAttachedStacks = len(v.AttachedStacks) > 0
+		out[n] = v
+	}
+	return out, nil
+}
+
+// azureAttachmentView is a on st as the API answers it. An attachment
+// with no subscription of its own, an automatic one's included, uses the
+// integration's default.
+func azureAttachmentView(a core.Attachment, st stacksapi.Stack, space string) api.AzureIntegrationStackAttachment {
+	return api.AzureIntegrationStackAttachment{
+		Id: a.APIID(), IsAutoattached: a.Auto, Read: a.Read, Write: a.Write,
+		StackId: st.Slug, StackName: st.Name, SpaceDetails: api.SpaceRef{Id: space},
+		SubscriptionId: a.Subscription,
+	}
+}
+
+// azureAttachmentOn is a on st as the API answers it.
+func (s Server) azureAttachmentOn(ctx context.Context, a core.Attachment, st stacksapi.Stack) (api.AzureIntegrationStackAttachment, error) {
+	slugs, err := s.spaces.Slugs(ctx, st.Account)
+	if err != nil {
+		return api.AzureIntegrationStackAttachment{}, err //nolint:wrapcheck // the access domain names the read
+	}
+	return azureAttachmentView(a, st, slugs[st.Space]), nil
+}
+
+// azureInputView is i as an update's body, which a merge patch applies
+// to.
+func azureInputView(i core.AzureIntegration, space string) api.AzureIntegrationUpdateRequest {
+	return api.AzureIntegrationUpdateRequest{
+		Name: i.Name, Space: &space, DefaultSubscriptionId: i.DefaultSubscription,
+		Labels: labelsOf(i.Labels), AutoattachEnabled: &i.Autoattach,
+	}
 }

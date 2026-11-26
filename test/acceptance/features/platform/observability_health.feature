@@ -28,11 +28,11 @@ Feature: Observability and health
 
   Scenario: Log lines carry the standard fields and the request ID
     Given a running infraweave server
-    When "GET /api/v1/integrations-count" is sent on the API listener with X-Request-Id "scenario-request-1"
+    When "GET /api/v1/metrics" is sent on the API listener with X-Request-Id "scenario-request-1"
     Then the response carries X-Request-Id "scenario-request-1"
-    And the server logs a "request" line with request_id "scenario-request-1", route "/api/v1/integrations-count" and status 501
+    And the server logs a "request" line with request_id "scenario-request-1", route "/api/v1/metrics" and status 501
     And every line the server logged has the standard fields with mode "serve,scheduler"
-    When "GET /api/v1/integrations-count" is sent on the API listener with X-Request-Id "not a valid id"
+    When "GET /api/v1/metrics" is sent on the API listener with X-Request-Id "not a valid id"
     Then the response carries a generated X-Request-Id
 
   Scenario: SIGTERM drains a request in flight

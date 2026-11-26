@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -12,11 +14,13 @@ import (
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
 	cloudapi "github.com/weaveplatform/infraweave/internal/cloud/api"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/aws"
+	"github.com/weaveplatform/infraweave/internal/cloud/internal/azure"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/http"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/pg"
 	featuresapi "github.com/weaveplatform/infraweave/internal/features/api"
 	"github.com/weaveplatform/infraweave/internal/kernel"
+	"github.com/weaveplatform/infraweave/internal/platform/gen/api"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/integrity"
 	"github.com/weaveplatform/infraweave/internal/platform/sql/migrate"
 	stacksapi "github.com/weaveplatform/infraweave/internal/stacks/api"
@@ -30,28 +34,37 @@ func Stream() migrate.Stream { return pg.Stream() }
 func Held() []integrity.Held { return pg.Held() }
 
 // The kinds of entity the access domain's middleware finds a space for,
-// as the API's x-infraweave-subject names them: an AWS integration, in its
-// own space, and an attachment, in its stack's.
+// as the API's x-infraweave-subject names them: an AWS or an Azure
+// integration, in its own space, and an attachment, in its stack's.
 const (
-	Entity           = "aws_integration"
-	AttachmentEntity = "aws_integration_attachment"
+	Entity                = "aws_integration"
+	AttachmentEntity      = "aws_integration_attachment"
+	AzureEntity           = "azure_integration"
+	AzureAttachmentEntity = "azure_integration_attachment"
 )
 
-// Feature is the capability that gates AWS integrations.
+// Feature is the capability that gates AWS and Azure integrations.
 const Feature = "cloud-integrations"
 
 // Settings are the cloud domain's: cloud.aws, where the server reaches
-// AWS STS.
+// AWS STS, and cloud.azure, the operator's Entra application that creates
+// each Azure integration's application. Without cloud.azure the
+// installation serves no Azure integration.
 type Settings struct {
-	AWS aws.Settings `mapstructure:"aws"`
+	AWS   aws.Settings   `mapstructure:"aws"`
+	Azure azure.Settings `mapstructure:"azure"`
 }
 
 // ErrConfig reports a cloud setting the server could not start with.
 var ErrConfig = errors.New("invalid cloud configuration")
 
 // Validate refuses a cloud.aws.sts_endpoint that is not an absolute http
-// or https URL, which every STS call would fail on.
+// or https URL, which every STS call would fail on, and a cloud.azure the
+// operator's application cannot be reached with.
 func (s Settings) Validate() error {
+	if err := s.Azure.Validate(os.Getenv); err != nil {
+		return fmt.Errorf("%w: %w", ErrConfig, err)
+	}
 	e := s.AWS.STSEndpoint
 	if e == "" {
 		return nil
@@ -92,9 +105,14 @@ type Domain struct {
 // New constructs the domain on d.
 func New(d Deps) *Domain {
 	store := pg.New(d.DB)
+	var apps core.Applications
+	if d.Settings.Azure.Configured() {
+		apps = azure.Applications{C: azure.New(d.Settings.Azure, azure.Options{})}
+	}
 	svc := core.New(core.Deps{
-		Store: store, DB: d.DB, Spaces: d.Spaces, Accounts: d.Accounts, Stacks: d.Stacks,
-		Authz: d.Authz, Roles: roles{aws.New(d.Settings.AWS, d.STS...)},
+		Store: store, Azure: pg.NewAzure(d.DB), Applications: apps, DB: d.DB, Spaces: d.Spaces,
+		Accounts: d.Accounts, Stacks: d.Stacks, Authz: d.Authz,
+		Roles:   roles{aws.New(d.Settings.AWS, d.STS...)},
 		Enabled: enabled(d.Features, d.Organization), Now: d.Now,
 	})
 	return &Domain{svc: svc, store: store, api: http.New(svc, d.Spaces, d.Stacks)}
@@ -158,10 +176,19 @@ func mapped(err error) error {
 const PurgeBatch = 500
 
 // Purge deletes the deleted account acct's integrations and attachments,
-// PurgeBatch rows at a time. internal/app runs it for each
-// accessapi.Deleted; a purge stopped part way keeps what it deleted, and
-// running it again finishes.
+// PurgeBatch rows at a time, the Azure ones with their Entra
+// applications. internal/app runs it for each accessapi.Deleted; a purge
+// stopped part way keeps what it deleted, and running it again finishes.
 func (d *Domain) Purge(ctx context.Context, acct kernel.AccountID) error {
+	for {
+		done, err := d.svc.PurgeAzure(ctx, acct, PurgeBatch)
+		if err != nil {
+			return err //nolint:wrapcheck // the service names the purge
+		}
+		if done {
+			break
+		}
+	}
 	for {
 		done, err := d.store.Purge(ctx, acct, PurgeBatch)
 		if err != nil || done {
@@ -199,6 +226,33 @@ func (d *Domain) SpaceOf() accessapi.SpaceOf { return d.svc.SpaceOf }
 // AttachmentSpaceOf finds the space of an attachment's stack by the
 // attachment's ID, which internal/app registers for AttachmentEntity.
 func (d *Domain) AttachmentSpaceOf() accessapi.SpaceOf { return d.svc.AttachmentSpaceOf }
+
+// AzureSpaceOf finds an Azure integration's space by its ID, which
+// internal/app registers for AzureEntity.
+func (d *Domain) AzureSpaceOf() accessapi.SpaceOf { return d.svc.AzureSpaceOf }
+
+// AzureAttachmentSpaceOf finds the space of an Azure attachment's stack by
+// the attachment's ID, which internal/app registers for
+// AzureAttachmentEntity.
+func (d *Domain) AzureAttachmentSpaceOf() accessapi.SpaceOf { return d.svc.AzureAttachmentSpaceOf }
+
+// Count sets the counts of acct's AWS and Azure integrations on into,
+// legacy AWS integrations left out, for the account's integrationsCount.
+func (d *Domain) Count(ctx context.Context, acct kernel.AccountID, into *api.IntegrationsCount) error {
+	aws, err := d.store.Count(ctx, acct)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	azure, err := d.svc.AzureCount(ctx, acct)
+	if err != nil {
+		return err //nolint:wrapcheck // the store names the read
+	}
+	into.Aws, into.Azure = count(aws), count(azure)
+	return nil
+}
+
+// count is n as the API's int32 counts carry it, clamped.
+func count(n int) int32 { return int32(min(n, math.MaxInt32)) } //nolint:gosec // clamped
 
 // CloudAPI is the domain's partial of the API's strict server, which
 // internal/app embeds under this alias.

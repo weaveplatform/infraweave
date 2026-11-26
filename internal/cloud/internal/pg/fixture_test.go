@@ -309,6 +309,7 @@ type fixture struct {
 	spaces                *spaces
 	stacks                *stacks
 	roles                 *roles
+	apps                  *apps
 	acct                  kernel.AccountID
 	sp                    map[string]kernel.ULID
 	web, data             stacksapi.Stack
@@ -361,13 +362,13 @@ func newFixture(t *testing.T) *fixture {
 	store := pg.New(db)
 	r := &roles{trusted: map[string][]string{}}
 	f := &fixture{
-		db: db, store: store, spaces: tree, stacks: st, roles: r, acct: acct, sp: sp,
+		db: db, store: store, spaces: tree, stacks: st, roles: r, apps: &apps{}, acct: acct, sp: sp,
 		web: web, data: data, admin: admin, writer: writer, reader: reader,
 		now: time.Unix(1_800_000_000, 0),
 	}
 	f.svc = core.New(core.Deps{
-		Store: store, DB: db, Spaces: tree, Accounts: accounts{}, Stacks: st, Authz: az,
-		Roles: r, Enabled: func(context.Context, kernel.AccountID) (bool, error) { return true, nil },
+		Store: store, Azure: pg.NewAzure(db), Applications: f.apps, DB: db, Spaces: tree,
+		Accounts: accounts{}, Stacks: st, Authz: az, Roles: r, Enabled: func(context.Context, kernel.AccountID) (bool, error) { return true, nil },
 		Now: func() time.Time { return f.now },
 	})
 	return f

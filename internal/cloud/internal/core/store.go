@@ -84,6 +84,61 @@ type Store interface {
 	Audit(ctx context.Context, e kernel.AuditEntry) error
 }
 
+// AzureStore is what the service needs of the storage of Azure
+// integrations and their attachments. Every method joins the transaction
+// its context carries.
+type AzureStore interface {
+	// Create writes a new integration; a *NameTaken when another Azure
+	// integration of its account holds its name.
+	Create(ctx context.Context, in AzureIntegration) error
+	// Write replaces the integration's fields but its tenant and its
+	// application, and sets its version; a *NameTaken as Create.
+	Write(ctx context.Context, in AzureIntegration) error
+	// Get reads acct's integration id, locked as lock says; ErrNotFound
+	// when acct lacks it.
+	Get(ctx context.Context, acct kernel.AccountID, id kernel.ULID, lock Lock) (AzureIntegration, error)
+	// ByName reads acct's integration name; ErrNotFound when acct lacks
+	// it.
+	ByName(ctx context.Context, acct kernel.AccountID, name string) (AzureIntegration, error)
+	// ByIDs reads those of acct's integrations ids that it has, keyed by
+	// ID.
+	ByIDs(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID) (map[kernel.ULID]AzureIntegration, error)
+	// List reads a page of acct's integrations in spaces, by name, and
+	// reports whether another page follows.
+	List(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, page Page) ([]AzureIntegration, bool, error)
+	// Labelled reads acct's integrations in spaces with auto-attachment
+	// enabled and a default subscription that carry any of labels, by
+	// name.
+	Labelled(ctx context.Context, acct kernel.AccountID, spaces []kernel.ULID, labels []string) ([]AzureIntegration, error)
+	// InSpace reports whether an integration of acct lives in space.
+	InSpace(ctx context.Context, acct kernel.AccountID, space kernel.ULID) (bool, error)
+	// Delete deletes acct's integration id with its attachments.
+	Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// Count is how many integrations acct has.
+	Count(ctx context.Context, acct kernel.AccountID) (int, error)
+	// Oldest reads up to n of acct's integrations, oldest first.
+	Oldest(ctx context.Context, acct kernel.AccountID, n int) ([]AzureIntegration, error)
+
+	// Attach writes a; a *Conflict when its stack has the sides it sets
+	// already, or its integration is attached to the stack already.
+	Attach(ctx context.Context, a Attachment) error
+	// SetAttachment sets the sides and the subscription of acct's
+	// attachment id; a *Conflict as Attach.
+	SetAttachment(ctx context.Context, acct kernel.AccountID, id kernel.ULID, read, write bool, subscription *string) error
+	// Attachment reads acct's attachment id; ErrNotFound when acct lacks
+	// it.
+	Attachment(ctx context.Context, acct kernel.AccountID, id kernel.ULID) (Attachment, error)
+	// Detach deletes acct's attachment id.
+	Detach(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error
+	// Attachments reads the stored attachments of integrations, or of
+	// stacks when byStack is set, keyed by that ID, oldest first.
+	Attachments(ctx context.Context, acct kernel.AccountID, ids []kernel.ULID, byStack bool) (map[kernel.ULID][]Attachment, error)
+	// AttachedStacks lists the stacks a stored attachment of acct names.
+	AttachedStacks(ctx context.Context, acct kernel.AccountID) ([]kernel.ULID, error)
+	// DeleteStack deletes the stack's attachments.
+	DeleteStack(ctx context.Context, acct kernel.AccountID, stack kernel.ULID) error
+}
+
 // Assumption is one role assumption; Tags are its session tags, none
 // when empty.
 type Assumption struct {

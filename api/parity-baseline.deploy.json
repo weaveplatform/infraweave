@@ -76,20 +76,7 @@
     "Cloud Integrations": [
       "awsIntegrationExternalIdForScan",
       "awsIntegrationIntentProjectAttach",
-      "awsIntegrationIntentProjectDetach",
-      "azureIntegration",
-      "azureIntegrationAttach",
-      "azureIntegrationAttachedStack",
-      "azureIntegrationAttachmentUpdate",
-      "azureIntegrationByName",
-      "azureIntegrationConsentClear",
-      "azureIntegrationConsentConfirm",
-      "azureIntegrationCreate",
-      "azureIntegrationDelete",
-      "azureIntegrationDetach",
-      "azureIntegrationUpdate",
-      "azureIntegrations",
-      "azureIntegrationsEnabled"
+      "awsIntegrationIntentProjectDetach"
     ],
     "Debug": [
       "debugInfo"

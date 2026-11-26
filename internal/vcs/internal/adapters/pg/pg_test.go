@@ -518,3 +518,22 @@ func TestAccWrite(t *testing.T) {
 		t.Errorf("Purge of an empty account = %t, %v", done, err)
 	}
 }
+
+// TestAccCounts counts an account's integrations by provider, another
+// account's left out.
+func TestAccCounts(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t)
+	for _, name := range []string{"Main", "Second"} {
+		if _, err := f.svc.Create(ctx, f.admin, gitlab(name, "", name == "Main")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := f.store.Counts(ctx, f.acct)
+	if err != nil || len(got) != 1 || got[integration.GitLab] != 2 {
+		t.Fatalf("counts %v, %v", got, err)
+	}
+	if got, err := f.store.Counts(ctx, kernel.NewAccountID()); err != nil || len(got) != 0 {
+		t.Fatalf("another account's counts %v, %v", got, err)
+	}
+}

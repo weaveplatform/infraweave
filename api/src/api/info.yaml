@@ -23,7 +23,10 @@ tags:
       keys. An AWS integration lives in a space and attaches to the stacks
       that reach it, for read phases, write phases or both; each attachment
       assumes the role with an external ID fixed by the account, the
-      integration, the stack and the side.
+      integration, the stack and the side. An Azure integration is a
+      multi-tenant Entra application the installation creates for a
+      customer's tenant, whose admin consents to it; it attaches to stacks
+      as an AWS integration does, with the subscription each stack uses.
   - name: Contexts
     description: >-
       Reusable bundles of environment variables, mounted files and hooks,

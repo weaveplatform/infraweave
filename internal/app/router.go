@@ -67,8 +67,9 @@ type apiServer struct {
 	expressionsassembly.ExpressionsAPI
 	policiesassembly.PoliciesAPI
 	unimplemented
-	queues QueueStats
-	blobs  *blobs.Objects
+	queues   QueueStats
+	blobs    *blobs.Objects
+	counters []Counter
 }
 
 // unimplemented holds UnimplementedStrict one level below the partials.
@@ -153,6 +154,7 @@ func API(log *slog.Logger, c config.Server, g Guards, d Domains, p Platform, b B
 			PoliciesAPI:      d.Policies.API(),
 			queues:           p.Queues,
 			blobs:            b.Objects,
+			counters:         counters(d),
 		},
 		[]api.StrictMiddlewareFunc{responseHeaders},
 		api.StrictHTTPServerOptions{

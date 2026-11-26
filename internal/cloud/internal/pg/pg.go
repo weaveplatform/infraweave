@@ -34,8 +34,9 @@ func Stream() migrate.Stream {
 	return migrate.Stream{Name: StreamName, Files: sub}
 }
 
-// Held are the cloud columns that hold other domains' rows: an
-// integration's account and space, and the stack an attachment names.
+// Held are the cloud columns that hold other domains' rows: an AWS or an
+// Azure integration's account and space, and the stack an attachment
+// names.
 func Held() []integrity.Held {
 	return []integrity.Held{
 		{Entity: "account", Table: "aws_integrations", Columns: []string{"account_id"}},
@@ -43,6 +44,13 @@ func Held() []integrity.Held {
 		{
 			Entity:  "stack",
 			Table:   "aws_integration_attachments",
+			Columns: []string{"account_id", "stack_id"},
+		},
+		{Entity: "account", Table: "azure_integrations", Columns: []string{"account_id"}},
+		{Entity: "space", Table: "azure_integrations", Columns: []string{"account_id", "space_id"}},
+		{
+			Entity:  "stack",
+			Table:   "azure_integration_attachments",
 			Columns: []string{"account_id", "stack_id"},
 		},
 	}
@@ -231,6 +239,11 @@ func (s *Store) InSpace(ctx context.Context, acct kernel.AccountID, space kernel
 	return in, nil
 }
 
+// Count is how many AWS integrations acct has, legacy ones left out.
+func (s *Store) Count(ctx context.Context, acct kernel.AccountID) (int, error) {
+	return count(ctx, s.db, `SELECT count(*) FROM aws_integrations WHERE account_id = $1 AND NOT legacy`, acct)
+}
+
 // Delete deletes acct's integration id; its attachments cascade.
 func (s *Store) Delete(ctx context.Context, acct kernel.AccountID, id kernel.ULID) error {
 	_, err := tx.Q(ctx, s.db).Exec(ctx,
@@ -383,7 +396,8 @@ func (s *Store) Audit(ctx context.Context, e kernel.AuditEntry) error {
 }
 
 // purged are the tables Purge empties of an account, in order: the rows
-// that name an integration before it.
+// that name an integration before it. The service deletes the Azure
+// integrations, whose Entra applications go with them, before Purge runs.
 var purged = []string{"aws_integration_attachments", "aws_integrations"}
 
 // Purge deletes up to batch of the deleted account acct's rows from the

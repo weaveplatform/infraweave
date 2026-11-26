@@ -13,7 +13,8 @@
 // other domains' rows and SealedColumns its sealed secrets; SpaceGuard
 // and SpaceOf, for Entity, are its say in the access domain;
 // StackIntegrations the check of the integration a stack's write names,
-// which internal/app binds in the stacks domain; and Purge deletes a
+// which internal/app binds in the stacks domain; Count sets the
+// account's integrationsCount of each provider; and Purge deletes a
 // deleted account's integrations. Feedback exposes VCS-owned target
 // selection and job enqueueing to the events domain.
 // Comments exposes queued native Upsert for notification policies. Labelled
@@ -46,7 +47,7 @@
 // # Dependencies
 //
 // It imports the access, features and stacks api packages, internal/kernel,
-// platform/crypt, platform/outbox, platform/queue, platform/sql's
+// platform/crypt, platform/gen/api, platform/outbox, platform/queue, platform/sql's
 // integrity and migrate packages, platform/tx and the domain's api, http,
 // azuredevops, bitbucketcloud, bitbucketdc, github, gitlab, pg, rawgit,
 // integration, feedback, port and source packages. Only internal/app and cmd/ import it, as the
