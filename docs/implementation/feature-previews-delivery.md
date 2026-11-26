@@ -56,8 +56,5 @@ baseline's missing list. `specref parity --states --check` passes locally when
 supplied the complete baseline's merged Cucumber results; a focused report alone
 cannot evidence unrelated capability states. The parity baseline needs no edit.
 
-The successful CI gate supplies the full OS/FIPS/coverage evidence; a full local
-`make gate` is not claimed. This PR must pass its own complete gate before merge,
-and the epic remains open until that gate and the matrix satisfy its exit criteria.
-The minimum observed free disk was 30.65 GiB. Local tests run with `GOWORK=off`, compiler parallelism bounded to two packages,
-and a disk guard that stops at 12 GiB free, above the required 10 GB floor.
+The successful baseline CI gate supplies the OS/FIPS/coverage evidence above.
+A full local `make gate` run is not part of this evidence.

@@ -205,6 +205,5 @@
     "scenarios": 7,
     "steps": 99,
     "passed": true
-  },
-  "localMinimumFreeGiB": 30.65
+  }
 }
