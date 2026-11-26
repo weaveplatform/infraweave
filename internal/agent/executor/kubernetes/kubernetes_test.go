@@ -172,13 +172,12 @@ func (k *kubelet) Attach(ctx context.Context, namespace, pod, container string, 
 	if container == CommandContainer {
 		return k.command(ctx, pod, stdin, stdout)
 	}
-	b, err := io.ReadAll(stdin)
-	if err != nil {
+	k.mu.Lock()
+	k.handoffs[pod] = []byte{}
+	k.mu.Unlock()
+	if _, err := io.Copy(handoffWriter{k: k, pod: pod}, stdin); err != nil {
 		return err
 	}
-	k.mu.Lock()
-	k.handoffs[pod] = b
-	k.mu.Unlock()
 	_, _ = io.WriteString(stdout, "phase output\n")
 	_, _ = io.WriteString(stderr, "phase error\n")
 	// A runner's attach also ends when its Pod is deleted or fails.
@@ -213,6 +212,22 @@ func (k *kubelet) Attach(ctx context.Context, namespace, pod, container string, 
 
 // command is a helper container: it reads its request and answers it on
 // standard output, or runs until its attach ends when k.hold is set.
+// handoffWriter appends what a runner's attach reads to its Pod's
+// handoff. io.Copy stores each chunk before it reads the next, and Start
+// returns on the read that ends the input, so the handoff is whole by
+// the time Start returns.
+type handoffWriter struct {
+	k   *kubelet
+	pod string
+}
+
+func (w handoffWriter) Write(b []byte) (int, error) {
+	w.k.mu.Lock()
+	defer w.k.mu.Unlock()
+	w.k.handoffs[w.pod] = append(w.k.handoffs[w.pod], b...)
+	return len(b), nil
+}
+
 func (k *kubelet) command(ctx context.Context, pod string, stdin io.Reader, stdout io.Writer) error {
 	b, err := io.ReadAll(stdin)
 	if err != nil {
