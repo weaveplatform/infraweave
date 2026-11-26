@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -141,6 +143,111 @@ func TestUnitRetries(t *testing.T) {
 	}
 }
 
+// methods are the method and status of each recorded Graph request.
+func (f *fixture) methods() []string {
+	calls := f.graphCalls()
+	out := make([]string, 0, len(calls))
+	for _, c := range calls {
+		out = append(out, c.Method+" "+strconv.Itoa(c.Status))
+	}
+	return out
+}
+
+// TestUnitCreateAnswerLost adopts the application a create made before
+// Graph failed its answer, rather than creating a second.
+func TestUnitCreateAnswerLost(t *testing.T) {
+	f := start(t)
+	c := f.client()
+	f.fake.FailNext(entrafake.FaultCommitted, 1)
+	app, err := c.CreateApplication(t.Context(), "infraweave-acme-01K'lost")
+	if err != nil {
+		t.Fatal(err)
+	}
+	apps := f.fake.Applications()
+	if len(apps) != 1 || apps[0].ID != app.ObjectID || apps[0].AppID != app.AppID ||
+		app.DisplayName != "infraweave-acme-01K'lost" {
+		t.Fatalf("applications %+v, adopted %+v", apps, app)
+	}
+	if got := f.methods(); !slices.Equal(got, []string{"POST 500", "GET 200"}) {
+		t.Errorf("calls %v, want the failed POST and the lookup alone", got)
+	}
+}
+
+// TestUnitCreateLookupFindsNone posts again when the lookup after a
+// server error finds no application.
+func TestUnitCreateLookupFindsNone(t *testing.T) {
+	f := start(t)
+	f.fake.FailNext(entrafake.FaultServerError, 1)
+	if _, err := f.client().CreateApplication(t.Context(), "retried"); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(f.fake.Applications()); n != 1 {
+		t.Errorf("%d applications, want 1", n)
+	}
+	if got := f.methods(); !slices.Equal(got, []string{"POST 500", "GET 200", "POST 201"}) {
+		t.Errorf("calls %v", got)
+	}
+}
+
+// TestUnitCreateDuplicates fails a create whose lookup finds more than
+// one application of its name, deleting them all.
+func TestUnitCreateDuplicates(t *testing.T) {
+	f := start(t)
+	c := f.client()
+	if _, err := c.CreateApplication(t.Context(), "twin"); err != nil {
+		t.Fatal(err)
+	}
+	f.fake.FailNext(entrafake.FaultCommitted, 1)
+	_, err := c.CreateApplication(t.Context(), "twin")
+	var g *GraphError
+	if !errors.Is(err, ErrDuplicate) || !errors.As(err, &g) || g.Status != http.StatusInternalServerError ||
+		g.Code != "InternalServerError" {
+		t.Fatalf("err = %v, want the duplicates on Graph's 500", err)
+	}
+	if apps := f.fake.Applications(); len(apps) != 0 {
+		t.Errorf("applications left: %+v", apps)
+	}
+}
+
+// TestUnitCreateThrottled retries a throttled create without a lookup,
+// since Graph throttles a request before it writes.
+func TestUnitCreateThrottled(t *testing.T) {
+	f := start(t)
+	f.fake.RetryAfter(0)
+	f.fake.FailNext(entrafake.FaultThrottle, 1)
+	if _, err := f.client().CreateApplication(t.Context(), "throttled"); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.methods(); !slices.Equal(got, []string{"POST 429", "POST 201"}) {
+		t.Errorf("calls %v", got)
+	}
+}
+
+// TestUnitCreateLookupFails retries a lookup Graph fails, and a create
+// that fails Graph's lookups for good deletes nothing it cannot list.
+func TestUnitCreateLookupFails(t *testing.T) {
+	f := start(t)
+	f.fake.FailNext(entrafake.FaultCommitted, 2)
+	if _, err := f.client().CreateApplication(t.Context(), "slow"); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.methods(); !slices.Equal(got, []string{"POST 500", "GET 500", "GET 200"}) {
+		t.Errorf("calls %v", got)
+	}
+	if n := len(f.fake.Applications()); n != 1 {
+		t.Errorf("%d applications, want the adopted one", n)
+	}
+	f.fake.Reset()
+	f.fake.FailNext(entrafake.FaultCommitted, 1<<30)
+	c := New(f.set, Options{Backoff: time.Millisecond, Deadline: 100 * time.Millisecond})
+	if _, err := c.CreateApplication(t.Context(), "down"); err == nil {
+		t.Fatal("a create Graph never answered succeeded")
+	}
+	if n := len(f.fake.Applications()); n != 2 {
+		t.Errorf("%d applications, want the one Graph never listed beside the first", n)
+	}
+}
+
 func TestUnitPersistentFailures(t *testing.T) {
 	f := start(t)
 	c := New(f.set, Options{Backoff: time.Millisecond, Deadline: 300 * time.Millisecond})
@@ -226,8 +333,17 @@ func TestUnitMalformedAnswer(t *testing.T) {
 	fake.AddSecret(tenant, client, secret)
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/v1.0/applications" {
+			fake.ServeHTTP(httptest.NewRecorder(), r)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":""}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/v1.0/applications" && r.URL.Query().Get("$filter") == "displayName eq 'list'" {
+			_, _ = w.Write([]byte(`{"value":[{"id":"x"}]}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/v1.0/applications" && r.URL.Query().Get("$filter") == "displayName eq 'nolist'" {
+			_, _ = w.Write([]byte(`[`))
 			return
 		}
 		fake.ServeHTTP(w, r)
@@ -249,6 +365,19 @@ func TestUnitMalformedAnswer(t *testing.T) {
 	var g *GraphError
 	if !errors.As(err, &g) || g.Code != "MalformedAnswer" || g.Status != http.StatusCreated {
 		t.Fatalf("err = %v, want a malformed answer", err)
+	}
+	// The application the unreadable answer was about is deleted.
+	if apps := fake.Applications(); len(apps) != 0 {
+		t.Errorf("applications left: %+v", apps)
+	}
+	pl, err := c.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"list", "nolist"} {
+		if _, fail := c.find(t.Context(), pl, name); fail == nil || fail.Code != "MalformedAnswer" {
+			t.Errorf("%s: %v, want a malformed answer", name, fail)
+		}
 	}
 }
 
@@ -327,6 +456,20 @@ func TestUnitApplications(t *testing.T) {
 	}
 	if err := a.Delete(t.Context(), app.ObjectID); err != nil {
 		t.Fatal(err)
+	}
+	// The application a lookup adopts is the one a delete of the answered
+	// object ID removes, as the service's delete of an integration it did
+	// not store does.
+	f.fake.FailNext(entrafake.FaultCommitted, 1)
+	app, err = a.Create(t.Context(), "adopted")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Delete(t.Context(), app.ObjectID); err != nil {
+		t.Fatal(err)
+	}
+	if apps := f.fake.Applications(); len(apps) != 0 {
+		t.Errorf("the adopted application survived: %+v", apps)
 	}
 	f.fake.FailNext(entrafake.FaultUnavailable, 1<<30)
 	a.C = New(f.set, Options{Backoff: time.Millisecond, Deadline: 50 * time.Millisecond})

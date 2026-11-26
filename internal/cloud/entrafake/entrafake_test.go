@@ -164,3 +164,51 @@ func TestUnitApplications(t *testing.T) {
 		t.Errorf("Reset kept the faults: %d", status)
 	}
 }
+
+func TestUnitListAndCommittedFault(t *testing.T) {
+	f := start(t)
+	f.fake.AddSecret(tenant, "app", "secret")
+	_, tok := f.token(t, url.Values{
+		"grant_type": {"client_credentials"}, "client_id": {"app"}, "client_secret": {"secret"},
+	})
+	token, _ := tok["access_token"].(string)
+	list := func(filter string) (int, []any) {
+		t.Helper()
+		status, body := f.do(t, http.MethodGet, "/v1.0/applications?$filter="+url.QueryEscape(filter), token, "")
+		v, _ := body["value"].([]any)
+		return status, v
+	}
+	f.fake.FailNext(entrafake.FaultCommitted, 1)
+	if status, _ := f.do(t, http.MethodPost, "/v1.0/applications", token, `{"displayName":"o'neil"}`); status != http.StatusInternalServerError {
+		t.Errorf("a committed create: %d", status)
+	}
+	if status, _ := f.do(t, http.MethodPost, "/v1.0/applications", token, `{"displayName":"other"}`); status != http.StatusCreated {
+		t.Errorf("create: %d", status)
+	}
+	status, v := list("displayName eq 'o''neil'")
+	if status != http.StatusOK || len(v) != 1 {
+		t.Fatalf("list %d %v", status, v)
+	}
+	if a, _ := v[0].(map[string]any); a["displayName"] != "o'neil" || a["id"] == "" {
+		t.Errorf("listed %v", a)
+	}
+	if status, v := list("displayName eq 'nobody'"); status != http.StatusOK || len(v) != 0 {
+		t.Errorf("an empty list %d %v", status, v)
+	}
+	for _, filter := range []string{"", "startswith(displayName, 'o')", "displayName eq 'o'neil'", "displayName eq 'open"} {
+		if status, _ := list(filter); status != http.StatusBadRequest {
+			t.Errorf("%q: %d", filter, status)
+		}
+	}
+	if status, _ := f.do(t, http.MethodGet, "/v1.0/applications?$filter=x", "", ""); status != http.StatusUnauthorized {
+		t.Errorf("a list without a token: %d", status)
+	}
+	// FaultCommitted fails any other request outright.
+	f.fake.FailNext(entrafake.FaultCommitted, 1)
+	if status, _ := list("displayName eq 'other'"); status != http.StatusInternalServerError {
+		t.Errorf("a committed fault on a list: %d", status)
+	}
+	if n := len(f.fake.Applications()); n != 2 {
+		t.Errorf("%d applications, want 2", n)
+	}
+}

@@ -6,7 +6,11 @@
 // in Settings, through azidentity's default credential chain. Graph's
 // throttling, its server errors and the 404s of an object it has not yet
 // replicated are retried with backoff, honouring Retry-After, within the
-// call's deadline; what is left is a *GraphError. Applications is the
+// call's deadline; what is left is a *GraphError. A create that fails in
+// a way Graph may have answered after writing the application looks the
+// application up by its display name before it posts again, adopting
+// one, failing on more than one and deleting what it finds when it fails,
+// so a retry leaves no application behind. Applications is the
 // client as the service's core.Applications, its failures as
 // *core.GraphFailure.
 //

@@ -3,6 +3,9 @@ package pg_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -10,6 +13,8 @@ import (
 	"time"
 
 	accessapi "github.com/weaveplatform/infraweave/internal/access/api"
+	"github.com/weaveplatform/infraweave/internal/cloud/entrafake"
+	"github.com/weaveplatform/infraweave/internal/cloud/internal/azure"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/core"
 	"github.com/weaveplatform/infraweave/internal/cloud/internal/pg"
 	"github.com/weaveplatform/infraweave/internal/kernel"
@@ -249,6 +254,61 @@ func TestAccAzureAbandon(t *testing.T) {
 		t.Fatalf("%d applications, deletes %v", n, f.apps.deleted)
 	}
 }
+
+// TestAccAzureAbandonAdopted deletes the application a create adopted
+// after Graph failed the answer to its write, when the transaction fails
+// to store the integration.
+func TestAccAzureAbandonAdopted(t *testing.T) {
+	f := newFixture(t)
+	fake := entrafake.New()
+	fake.AddSecret(tenantOfOperator, clientOfOperator, "s3cret")
+	srv := fake.Start()
+	t.Cleanup(srv.Close)
+	ca := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(ca, srv.CA, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("AZURE_TOKEN_CREDENTIALS", "EnvironmentCredential")
+	t.Setenv("AZURE_TENANT_ID", tenantOfOperator)
+	t.Setenv("AZURE_CLIENT_ID", clientOfOperator)
+	t.Setenv("AZURE_CLIENT_SECRET", "s3cret")
+	graph := azure.Applications{C: azure.New(azure.Settings{
+		TenantID: tenantOfOperator, ClientID: clientOfOperator, AuthorityHost: srv.URL + "/",
+		GraphEndpoint: srv.URL, CAFile: ca,
+	}, azure.Options{Backoff: time.Millisecond, Deadline: 5 * time.Second})}
+	svc := core.New(core.Deps{
+		Store: f.store, Azure: pg.NewAzure(f.db), Applications: graph, DB: f.db,
+		Spaces: holdFails{f.spaces, errBroken}, Accounts: accounts{}, Stacks: f.stacks,
+		Authz: f.authzOf(), Roles: f.roles, Now: func() time.Time { return f.now },
+	})
+	fake.FailNext(entrafake.FaultCommitted, 1)
+	_, err := svc.CreateAzure(t.Context(), f.admin, core.AzureInput{Name: "lost", TenantID: customer, Space: "team"})
+	if !errors.Is(err, errBroken) {
+		t.Fatalf("err = %v", err)
+	}
+	if apps := fake.Applications(); len(apps) != 0 {
+		t.Errorf("the adopted application survived: %+v", apps)
+	}
+	var posts, deletes int
+	for _, c := range fake.Calls() {
+		switch {
+		case c.Method == http.MethodPost && c.Path == "/v1.0/applications":
+			posts++
+		case c.Method == http.MethodDelete:
+			deletes++
+		}
+	}
+	if posts != 1 || deletes != 1 {
+		t.Errorf("%d creates and %d deletes, want one of each", posts, deletes)
+	}
+}
+
+// The operator's tenant and Entra application in the tests that reach
+// the Entra fake.
+const (
+	tenantOfOperator = "44444444-3333-2222-1111-000000000000"
+	clientOfOperator = "aaaaaaaa-1111-2222-3333-444444444444"
+)
 
 // holdFails is spaces whose holds fail with err.
 type holdFails struct {

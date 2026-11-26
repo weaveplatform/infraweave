@@ -32,6 +32,10 @@ const (
 	// FaultThrottle answers 429 TooManyRequests with Retry-After, Graph's
 	// throttling.
 	FaultThrottle
+	// FaultCommitted creates the application a create asks for and then
+	// answers 500 InternalServerError, as Graph does when it fails after
+	// its write; any other request it answers 500 alone.
+	FaultCommitted
 )
 
 // The grants a token request authenticates its client with.
@@ -118,6 +122,7 @@ func New() *Fake {
 	r.Post("/{tenant}/oauth2/v2.0/token", f.token)
 	r.Route("/v1.0/applications", func(r chi.Router) {
 		r.Post("/", f.create)
+		r.Get("/", f.list)
 		r.Get("/{id}", f.read)
 		r.Delete("/{id}", f.remove)
 	})
@@ -290,7 +295,9 @@ func oauthError(w http.ResponseWriter, status int, code, msg string) int {
 
 // graph authenticates a Graph request and takes the fault it meets,
 // answering it when either refuses it; ok is false once it has answered.
-func (f *Fake) graph(w http.ResponseWriter, r *http.Request, c *Call) bool {
+// A create that meets FaultCommitted is let through with committed set,
+// for create to answer after its write.
+func (f *Fake) graph(w http.ResponseWriter, r *http.Request, c *Call) (ok, committed bool) {
 	tok, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	f.mu.Lock()
 	who, known := f.tokens[tok]
@@ -304,13 +311,17 @@ func (f *Fake) graph(w http.ResponseWriter, r *http.Request, c *Call) bool {
 	if !found || !known {
 		c.Status = graphError(w, http.StatusUnauthorized, "InvalidAuthenticationToken",
 			"Access token is empty or invalid.")
-		return false
+		return false, false
 	}
 	c.Client = who
 	switch fault {
+	case FaultCommitted:
+		if r.Method == http.MethodPost {
+			return true, true
+		}
+		c.Status = serverError(w)
 	case FaultServerError:
-		c.Status = graphError(w, http.StatusInternalServerError, "InternalServerError",
-			"An internal server error occurred.")
+		c.Status = serverError(w)
 	case FaultUnavailable:
 		w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 		c.Status = graphError(w, http.StatusServiceUnavailable, "serviceNotAvailable",
@@ -320,9 +331,13 @@ func (f *Fake) graph(w http.ResponseWriter, r *http.Request, c *Call) bool {
 		c.Status = graphError(w, http.StatusTooManyRequests, "TooManyRequests",
 			"Too many requests from the application.")
 	case FaultNone:
-		return true
+		return true, false
 	}
-	return false
+	return false, false
+}
+
+func serverError(w http.ResponseWriter) int {
+	return graphError(w, http.StatusInternalServerError, "InternalServerError", "An internal server error occurred.")
 }
 
 func graphError(w http.ResponseWriter, status int, code, msg string) int {
@@ -338,7 +353,8 @@ func graphError(w http.ResponseWriter, status int, code, msg string) int {
 func (f *Fake) create(w http.ResponseWriter, r *http.Request) {
 	c := Call{Method: r.Method, Path: r.URL.Path}
 	defer func() { f.record(c) }()
-	if !f.graph(w, r, &c) {
+	ok, committed := f.graph(w, r, &c)
+	if !ok {
 		return
 	}
 	var in Application
@@ -374,8 +390,52 @@ func (f *Fake) create(w http.ResponseWriter, r *http.Request) {
 	}
 	out := *app
 	f.mu.Unlock()
+	if committed {
+		c.Status = serverError(w)
+		return
+	}
 	c.Status = http.StatusCreated
 	writeJSON(w, http.StatusCreated, out)
+}
+
+// list answers the applications a $filter of displayName eq a quoted
+// string names, oldest first, as Graph's default query does; any other
+// filter, or none, answers 400 Request_UnsupportedQuery. The listing sees
+// an application DelayReplication holds back, as Graph's may.
+func (f *Fake) list(w http.ResponseWriter, r *http.Request) {
+	c := Call{Method: r.Method, Path: r.URL.Path}
+	defer func() { f.record(c) }()
+	if ok, _ := f.graph(w, r, &c); !ok {
+		return
+	}
+	name, ok := displayNameEq(r.URL.Query().Get("$filter"))
+	if !ok {
+		c.Status = graphError(w, http.StatusBadRequest, "Request_UnsupportedQuery",
+			"Unsupported or invalid query filter clause specified for property 'displayName' of resource 'Application'.")
+		return
+	}
+	out := []Application{}
+	for _, a := range f.Applications() {
+		if a.DisplayName == name {
+			out = append(out, a)
+		}
+	}
+	c.Status = http.StatusOK
+	writeJSON(w, http.StatusOK, map[string]any{"value": out})
+}
+
+// displayNameEq is the string filter compares displayName to with eq, an
+// OData literal in single quotes that doubles a quote it holds.
+func displayNameEq(filter string) (string, bool) {
+	lit, ok := strings.CutPrefix(filter, "displayName eq '")
+	if !ok || !strings.HasSuffix(lit, "'") {
+		return "", false
+	}
+	lit = strings.TrimSuffix(lit, "'")
+	if strings.Contains(strings.ReplaceAll(lit, "''", ""), "'") {
+		return "", false
+	}
+	return strings.ReplaceAll(lit, "''", "'"), true
 }
 
 // find is the application id, or ok false, answered as Graph answers an
@@ -403,7 +463,7 @@ func (f *Fake) find(w http.ResponseWriter, id string, c *Call) (Application, boo
 func (f *Fake) read(w http.ResponseWriter, r *http.Request) {
 	c := Call{Method: r.Method, Path: r.URL.Path}
 	defer func() { f.record(c) }()
-	if !f.graph(w, r, &c) {
+	if ok, _ := f.graph(w, r, &c); !ok {
 		return
 	}
 	app, ok := f.find(w, chi.URLParam(r, "id"), &c)
@@ -417,7 +477,7 @@ func (f *Fake) read(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) remove(w http.ResponseWriter, r *http.Request) {
 	c := Call{Method: r.Method, Path: r.URL.Path}
 	defer func() { f.record(c) }()
-	if !f.graph(w, r, &c) {
+	if ok, _ := f.graph(w, r, &c); !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")

@@ -50,7 +50,8 @@ const MultipleOrgs = "AzureADMultipleOrgs"
 // whose credential azidentity's default chain finds, and the endpoints it
 // is reached at. The application needs Microsoft Graph's
 // Application.ReadWrite.OwnedBy application permission, with its tenant's
-// admin consent, to create applications and delete the ones it owns.
+// admin consent, to create applications, list them by display name and
+// delete the ones it owns.
 type Settings struct {
 	// TenantID is the tenant the operator's application is registered
 	// in, which applications are created in.
@@ -140,6 +141,10 @@ type GraphError struct {
 	Code    string
 	Message string
 	Err     error
+
+	// after is the wait the answer's Retry-After asks for, when waits.
+	after time.Duration
+	waits bool
 }
 
 func (e *GraphError) Error() string {
@@ -252,8 +257,26 @@ func (c *Client) load() (*runtime.Pipeline, error) {
 
 // CreateApplication creates a multi-tenant application named displayName
 // that asks Graph's delegated User.Read, retrying throttling and server
-// errors within the call's deadline.
+// errors within the call's deadline. displayName must name no other
+// application: it is how a create whose answer was lost finds the
+// application it made.
+//
+// Graph has no idempotency key for a create, and a 5xx, a transport
+// failure or a deadline may follow a write Graph made. So after such a
+// failure each try first lists the applications of that name: one is
+// adopted instead of posting again, none lets the POST be retried, and
+// more than one fails the create. A 429 is Graph refusing the request
+// before it writes, so it is retried without a lookup, as a 4xx is final
+// without one. A create that fails after an uncertain POST deletes every
+// application of its name the listing shows, so neither a duplicate nor
+// an application its caller never learns of is left behind; Graph's
+// listing may lag a write, so this is as complete as the listing is.
 func (c *Client) CreateApplication(ctx context.Context, displayName string) (Application, error) {
+	op := "create application " + displayName
+	pl, err := c.load()
+	if err != nil {
+		return Application{}, &GraphError{Op: op, Err: err}
+	}
 	body := map[string]any{
 		"displayName":    displayName,
 		"signInAudience": MultipleOrgs,
@@ -262,24 +285,118 @@ func (c *Client) CreateApplication(ctx context.Context, displayName string) (App
 			"resourceAccess": []any{map[string]any{"id": userRead, "type": "Scope"}},
 		}},
 	}
-	var out struct {
-		ID          string `json:"id"`
-		AppID       string `json:"appId"`
-		DisplayName string `json:"displayName"`
+	// uncertain is set once a POST failed in a way Graph may have answered
+	// after writing the application.
+	uncertain := false
+	var last *GraphError
+	app, err := retry(ctx, c, 0, func(ctx context.Context) (Application, *GraphError) {
+		if uncertain {
+			found, fail := c.find(ctx, pl, displayName)
+			switch {
+			case fail != nil:
+				return Application{}, fail
+			case len(found) == 1:
+				return found[0], nil
+			case len(found) > 1:
+				return Application{}, &GraphError{
+					Op: op, Status: last.Status, Code: last.Code, Message: last.Message,
+					Err: fmt.Errorf("%w: %d named %s", ErrDuplicate, len(found), displayName),
+				}
+			}
+		}
+		app, fail := c.post(ctx, pl, op, body)
+		if fail != nil && fail.Status/100 != 4 {
+			uncertain, last = true, fail
+		}
+		return app, fail
+	})
+	if err != nil && uncertain {
+		c.discard(ctx, pl, displayName)
 	}
-	op := "create application " + displayName
-	resp, err := c.do(ctx, op, http.MethodPost, "/v1.0/applications", body, 0)
-	if err != nil {
-		return Application{}, err
+	return app, err
+}
+
+// ErrDuplicate reports retried creates that left more than one
+// application of a display name, which the create deletes and fails.
+var ErrDuplicate = errors.New("more than one application")
+
+// post sends one create.
+func (c *Client) post(ctx context.Context, pl *runtime.Pipeline, op string, body any) (Application, *GraphError) {
+	resp, fail := c.send(ctx, pl, op, http.MethodPost, "/v1.0/applications", body)
+	if fail != nil {
+		return Application{}, fail
 	}
 	defer resp.Body.Close() //nolint:errcheck // a read-only body
+	var out graphApplication
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || out.ID == "" || out.AppID == "" {
 		return Application{}, &GraphError{
 			Op: op, Status: resp.StatusCode, Code: "MalformedAnswer",
 			Message: "the answer names no application",
 		}
 	}
-	return Application{AppID: out.AppID, ObjectID: out.ID, DisplayName: out.DisplayName}, nil
+	return out.application(), nil
+}
+
+// graphApplication is an application as Graph answers it.
+type graphApplication struct {
+	ID          string `json:"id"`
+	AppID       string `json:"appId"`
+	DisplayName string `json:"displayName"`
+}
+
+func (g graphApplication) application() Application {
+	return Application{AppID: g.AppID, ObjectID: g.ID, DisplayName: g.DisplayName}
+}
+
+// find sends one listing of the applications named displayName. An eq
+// filter on displayName is one of Graph's default queries, so it needs
+// neither ConsistencyLevel: eventual nor $count.
+func (c *Client) find(ctx context.Context, pl *runtime.Pipeline, displayName string) ([]Application, *GraphError) {
+	op := "find application " + displayName
+	filter := "displayName eq '" + strings.ReplaceAll(displayName, "'", "''") + "'"
+	path := "/v1.0/applications?$filter=" + strings.ReplaceAll(url.QueryEscape(filter), "+", "%20")
+	resp, fail := c.send(ctx, pl, op, http.MethodGet, path, nil)
+	if fail != nil {
+		return nil, fail
+	}
+	defer resp.Body.Close() //nolint:errcheck // a read-only body
+	var out struct {
+		Value []graphApplication `json:"value"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, &GraphError{Op: op, Status: resp.StatusCode, Code: "MalformedAnswer", Message: "the answer is no list"}
+	}
+	apps := make([]Application, 0, len(out.Value))
+	for _, a := range out.Value {
+		if a.ID == "" || a.AppID == "" {
+			return nil, &GraphError{Op: op, Status: resp.StatusCode, Code: "MalformedAnswer", Message: "the answer names no application"}
+		}
+		apps = append(apps, a.application())
+	}
+	return apps, nil
+}
+
+// discardDeadline bounds discard. With DefaultDeadline spent on the
+// create first, the two stay within the server's 60s default write
+// timeout, past which the client would never read the create's answer.
+const discardDeadline = 10 * time.Second
+
+// discard deletes every application named displayName that Graph lists,
+// within a deadline of its own, since it runs when the create's may have
+// passed. Its failures leave the applications under their name, which
+// names the integration's ULID, for the operator to delete.
+func (c *Client) discard(ctx context.Context, pl *runtime.Pipeline, displayName string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), min(c.opts.Deadline, discardDeadline))
+	defer cancel()
+	found, err := retry(ctx, c, 0, func(ctx context.Context) ([]Application, *GraphError) {
+		return c.find(ctx, pl, displayName)
+	})
+	if err != nil {
+		return
+	}
+	for _, a := range found {
+		_ = c.DeleteApplication(ctx, a.ObjectID) // the create's own error is the answer
+	}
 }
 
 // DeleteApplication deletes the application whose object ID is id. A 404
@@ -298,14 +415,23 @@ func (c *Client) DeleteApplication(ctx context.Context, id string) error {
 	return resp.Body.Close() //nolint:wrapcheck // closing a drained body
 }
 
-// do sends one Graph request until it succeeds, retrying 429 and 5xx
-// answers, a transport failure and up to notFound 404s, each after
-// Retry-After or the backoff, while the call's deadline allows the wait.
+// do sends one Graph request until it succeeds, as retry retries it.
 func (c *Client) do(ctx context.Context, op, method, path string, body any, notFound int) (*http.Response, error) {
 	pl, err := c.load()
 	if err != nil {
 		return nil, &GraphError{Op: op, Err: err}
 	}
+	return retry(ctx, c, notFound, func(ctx context.Context) (*http.Response, *GraphError) {
+		return c.send(ctx, pl, op, method, path, body)
+	})
+}
+
+// retry calls try until it succeeds, retrying 429 and 5xx answers, a
+// transport failure and up to notFound 404s, each after Retry-After or
+// c's backoff, while the call's deadline, c's when ctx has none, allows
+// the wait.
+func retry[T any](ctx context.Context, c *Client, notFound int, try func(context.Context) (T, *GraphError)) (T, error) {
+	var zero T
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, c.opts.Deadline)
@@ -314,29 +440,27 @@ func (c *Client) do(ctx context.Context, op, method, path string, body any, notF
 	delay := c.opts.Backoff
 	var answered *GraphError
 	for attempt := 0; ; attempt++ {
-		resp, fail := c.send(ctx, pl, op, method, path, body)
+		v, fail := try(ctx)
 		switch {
 		case fail == nil:
-			return resp, nil
+			return v, nil
 		case fail.Err != nil && ctx.Err() != nil && answered != nil:
 			// The deadline cut a retry short; Graph's last answer says
 			// more about the failure than the deadline does.
-			return nil, answered
+			return zero, answered
 		case fail.Err == nil:
 			answered = fail
 		}
-		wait, retry := delay, retryable(fail, attempt < notFound)
-		if fail.Status == http.StatusTooManyRequests || fail.Status == http.StatusServiceUnavailable {
-			if after, ok := retryAfter(resp); ok {
-				wait = after
-			}
+		wait := delay
+		if fail.waits {
+			wait = fail.after
 		}
-		if !retry || !fits(ctx, wait) {
-			return nil, fail
+		if !retryable(fail, attempt < notFound) || !fits(ctx, wait) {
+			return zero, fail
 		}
 		select {
 		case <-ctx.Done():
-			return nil, fail
+			return zero, fail
 		case <-time.After(wait):
 		}
 		delay = min(delay*2, MaxBackoff)
@@ -344,7 +468,7 @@ func (c *Client) do(ctx context.Context, op, method, path string, body any, notF
 }
 
 // send sends the request once and answers a 2xx answer, or the failure,
-// with the answer it came in when there was one.
+// with the Retry-After of a throttled or unavailable answer.
 func (c *Client) send(ctx context.Context, pl *runtime.Pipeline, op, method, path string, body any) (*http.Response, *GraphError) {
 	req, err := runtime.NewRequest(ctx, method, c.graph()+path)
 	if err != nil {
@@ -371,7 +495,11 @@ func (c *Client) send(ctx context.Context, pl *runtime.Pipeline, op, method, pat
 	}
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 	_ = json.Unmarshal(b, &answer) // a body that is not Graph's error leaves the code empty
-	return resp, &GraphError{Op: op, Status: resp.StatusCode, Code: answer.Error.Code, Message: answer.Error.Message}
+	fail := &GraphError{Op: op, Status: resp.StatusCode, Code: answer.Error.Code, Message: answer.Error.Message}
+	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
+		fail.after, fail.waits = retryAfter(resp)
+	}
+	return nil, fail
 }
 
 // retryable reports whether fail may pass on another try: throttling, a
