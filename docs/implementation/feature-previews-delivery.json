@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "issue": 825,
+  "epic": 820,
+  "status": "baseline-and-expanded-denial-verified; PR-gate-required",
+  "auditedOn": "2026-11-26",
+  "baseline": {
+    "revision": "2004d821e0afd7f2b6a44ff4b3000bb34973c943",
+    "ciRun": 45817912926,
+    "features": 226,
+    "scenarios": 1325,
+    "coveragePercent": 95.3,
+    "coveredStatements": 60275,
+    "totalStatements": 63258,
+    "perPackageThreshold": 90
+  },
+  "scenarios": [
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 24,
+      "name": "An account admin opts the account in and out, and every replica reads it",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled"
+      ],
+      "cases": [
+        "success"
+      ],
+      "steps": 9,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 34,
+      "name": "A member opts out and back in, through the browser and through a personal key, and the account's setting is unchanged",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "success"
+      ],
+      "steps": 21,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 56,
+      "name": "A member who is no account admin reads the account's setting, may not change it, and sets their own",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "denial",
+        "success"
+      ],
+      "steps": 20,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 77,
+      "name": "An API key that is not personal reads no personal setting and sets none, and one that does not administer the account changes nothing",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "denial"
+      ],
+      "steps": 13,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 91,
+      "name": "A malformed setting is refused and changes nothing, and a reused idempotency key answers 422",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "failure"
+      ],
+      "steps": 16,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews.feature",
+      "line": 108,
+      "name": "A member's session that no account admits reads and sets no feature preview setting",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "failure"
+      ],
+      "steps": 9,
+      "passed": true
+    },
+    {
+      "uri": "features/cli/feature_previews.feature",
+      "line": 18,
+      "name": "An account admin reads the feature previews and opts the account in and out with infraweavectl",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled"
+      ],
+      "cases": [
+        "success"
+      ],
+      "steps": 7,
+      "passed": true
+    },
+    {
+      "uri": "features/cli/feature_previews.feature",
+      "line": 26,
+      "name": "A member hides feature previews in their own clients and shows them again with infraweavectl and a personal key",
+      "operations": [
+        "featurePreview",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "success"
+      ],
+      "steps": 12,
+      "passed": true
+    },
+    {
+      "uri": "features/cli/feature_previews.feature",
+      "line": 39,
+      "name": "A member who is no account admin may not opt the account in with infraweavectl, and sets their own setting",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "denial",
+        "success"
+      ],
+      "steps": 17,
+      "passed": true
+    },
+    {
+      "uri": "features/cli/feature_previews.feature",
+      "line": 57,
+      "name": "An API key that is not personal sets no personal setting with infraweavectl, and one that does not administer the account changes nothing",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "denial"
+      ],
+      "steps": 11,
+      "passed": true
+    },
+    {
+      "uri": "features/cli/feature_previews.feature",
+      "line": 69,
+      "name": "infraweavectl prints the problem of a session that has ended, and the account's opt-in is unchanged",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "failure"
+      ],
+      "steps": 10,
+      "passed": true
+    },
+    {
+      "uri": "features/organization/feature_previews_disabled.feature",
+      "line": 8,
+      "name": "Disabling account settings refuses all feature preview operations",
+      "operations": [
+        "featurePreview",
+        "accountSetFeaturePreviewsEnabled",
+        "featurePreviewSetPersonalEnabled"
+      ],
+      "cases": [
+        "denial"
+      ],
+      "steps": 11,
+      "passed": true,
+      "revision": "c5ffaa26cc0155fa45cfb2e0da8641054311d535",
+      "certifiedFIPS": true
+    }
+  ],
+  "cataloguePreviewCount": 0,
+  "liveReferenceCapture": false,
+  "expandedAPI": {
+    "revision": "c5ffaa26cc0155fa45cfb2e0da8641054311d535",
+    "certifiedFIPS": true,
+    "scenarios": 7,
+    "steps": 99,
+    "passed": true
+  }
+}

@@ -79,7 +79,7 @@
         "phase": "P3b",
         "also": "P3c, P4, P8, P10, P12b, P13b, P15, P18b, P20b, P23, P25",
         "state": "partial",
-        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days; the feature previews (P3c) list the catalogue's own previews, gated on the account's opt-in; `hasSSO` (P23) answers whether the organization has an enabled OIDC or SAML provider, to its organization admins alone"
+        "notes": "Each setting lands with the phase that owns its subject; `runLogRetentionDays` (P10) answers `objectstore.retention.run-logs` in whole days; the feature previews (P3c) list the catalogue's own previews, gated on the account's opt-in, with the three operations, cross-replica settings, CLI and empty catalogue verified in docs/implementation/feature-previews-delivery.md (#825); `hasSSO` (P23) answers whether the organization has an enabled OIDC or SAML provider, to its organization admins alone"
       }
     },
     {
