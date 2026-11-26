@@ -19,6 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
@@ -181,11 +183,21 @@ func (o *ObjectStore) Containing(ctx context.Context, bucket string, needle []by
 			return nil, 0, fmt.Errorf("@objectstore: list %s: %w", bucket, err)
 		}
 		for _, obj := range page.Contents {
+			if strings.HasSuffix(aws.ToString(obj.Key), "/") {
+				continue
+			}
 			out, err := c.GetObject(
 				ctx,
 				&s3.GetObjectInput{Bucket: aws.String(bucket), Key: obj.Key},
 			)
 			if err != nil {
+				// A listing can outlive an object while logs are compacted.
+				var missing *types.NoSuchKey
+				var response *smithyhttp.ResponseError
+				if errors.As(err, &missing) ||
+					(errors.As(err, &response) && response.HTTPStatusCode() == http.StatusNotFound) {
+					continue
+				}
 				return nil, 0, fmt.Errorf("@objectstore: get %s: %w", aws.ToString(obj.Key), err)
 			}
 			b, err := io.ReadAll(out.Body)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -374,13 +375,27 @@ func (b *backendSteps) sealed(ctx context.Context, secret string, n int) error {
 // containing is the files under root that hold secret, and how many files
 // it read.
 func containing(root string, secret []byte) ([]string, int, error) {
+	keys, read, err := containingFiles(os.DirFS(root), secret)
+	for i, key := range keys {
+		keys[i] = filepath.Join(root, key)
+	}
+	return keys, read, err
+}
+
+func containingFiles(objects fs.FS, secret []byte) ([]string, int, error) {
 	var keys []string
 	read := 0
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(objects, ".", func(path string, d fs.DirEntry, err error) error {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
 		if err != nil || !d.Type().IsRegular() {
 			return err
 		}
-		b, err := os.ReadFile(path)
+		b, err := fs.ReadFile(objects, path)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
 		if err != nil {
 			return err //nolint:wrapcheck // names the path
 		}
