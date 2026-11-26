@@ -56,7 +56,7 @@ func TestUnitObjectStoreContaining(t *testing.T) {
 			})
 			server := httptest.NewServer(r)
 			t.Cleanup(server.Close)
-			store := ObjectStore{Endpoint: server.URL, AccessKey: "key", SecretKey: "secret"}
+			store := ObjectStore{Endpoint: server.URL, AccessKey: "key", SecretKey: storeSecretKey}
 			keys, n, err := store.Containing(t.Context(), "bucket", []byte("needle"))
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("Containing = %v, %d, %v; want error %v", keys, n, err, tc.wantErr)
