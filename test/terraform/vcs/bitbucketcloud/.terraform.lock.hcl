@@ -2,23 +2,23 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.terraform.io/drfaust92/bitbucket" {
-  version     = "2.55.0"
-  constraints = "2.55.0"
+  version     = "2.55.2"
+  constraints = "2.55.2"
   hashes = [
-    "h1:euFpLmoba8cDnEYh8GxumzdEuNOL1fSLyOTTsvE67/Q=",
-    "h1:wCKyeC772C4aVTHOzzeliQs6IKKf2coMss9wJCoPzFs=",
-    "zh:0e54a5363b7ccb185e57d1a88d9855af574a8a3c66cb3bc102bd0dd9d13a3e43",
-    "zh:4c04162e1f664f038964caf9b4e9fffc3386aab12d74c34688c4a708ed805c94",
-    "zh:69d689f753008b2d192e657bbf38cf2225a723fa656bd4a444075768b38c699e",
-    "zh:81e0814d506e69c090d8ab871d9c82bebadde15e5b8c5543fad10f9d9de16a97",
-    "zh:89783d5dd3f3722a0ffa6a35796c153a14e05e89ed246c24f8b027639ca5bb95",
-    "zh:94ea5279a1d8022e832c29b27756afec64a6f0983870a1ecfc6d09a26b8a5956",
-    "zh:97b3f5004174bb7955239119405e57a9df82808e04bd84a003ae4139b8d46cfb",
-    "zh:a0660226811637085dfe2a06ed859e1ba87b5d724e37b86924dab3b40c733dbb",
-    "zh:c07ff67aed1a3f67b780b8cef8bc715d7e12dd6331d4c0b10d78ecce06d8ffdd",
-    "zh:c8f2f04ab538a68089efd5e9174cb079771f186dad649b4acf2ce54a68e76772",
-    "zh:d38c6bde7366ad27ab99c56f61111fe16386ae8601491cfe29c87269fa561f9d",
-    "zh:d6e95e4423d81b36ead5d43d8d2da77cb01ec3d7a6cea2d043b3747167ec8dfa",
-    "zh:e27a170f738fdc25ab859efe7dc31325395ab9afaaccdf4fc90c8b2bae032704",
+    "h1:poBjLQT1+HD3s+NejQqKS4M6FJRioBsoExE4+PQnpVo=",
+    "h1:xy6NF7wfzS5sCF4texxKskfxWJAUqexbadzRcyM4CRU=",
+    "zh:14994a9307ac8efc03893d1a01097e011ad07f374812fb809570648ef10c16fd",
+    "zh:1af429edbb7eec432eea23a8b34a3d503963afbe9b61f4293130db99d34b23d0",
+    "zh:265f75cc8d8b829817071829776895665ab8588d216ddf159a9f9d41ef63c630",
+    "zh:3cfcef126f49e96062fcede446a1928ffc07fef182ebe1266c5a8f83c98f33c2",
+    "zh:4a6302c5b0cde6b2c611cfb5d4683d9b96b91d7d458e03597380e65843cf6e75",
+    "zh:6ecc135240dbfa5a65d7618047081d9ccd8a791b63fe046bb6c639249c158b88",
+    "zh:796ce238d24d28ee9fc6a6b74955f45edf8b0b6edb95fe70543108d9a8c78958",
+    "zh:84af5f243e05f879f60ef2a8a24b2e91c585c08b4ae6fb39fd1f8d6988754757",
+    "zh:ae7e1ea886cecbd496ec98d22c2c0fe7324c8700f81d0462243d96fa233b8a2c",
+    "zh:bf5dbce1409e92e8275a6c1ea996defaed3102c22be2264f95d20140dc407a53",
+    "zh:d0311d13fa24ab6218b8240101e41fb0c6ae71a09840f15b83f93b5dbf881753",
+    "zh:de628a5725f5054c4fc2ed9b31be124ccd8604f8be14f476a30334ec9a2d2fbf",
+    "zh:fb8bda52486d63c645340536767f383b507eba5659a1e665c48d818058cbea4a",
   ]
 }

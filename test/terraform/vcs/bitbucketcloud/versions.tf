@@ -4,7 +4,7 @@ terraform {
   required_providers {
     bitbucket = {
       source  = "DrFaust92/bitbucket"
-      version = "2.55.0"
+      version = "2.55.2"
     }
   }
 }
