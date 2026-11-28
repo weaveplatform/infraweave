@@ -10,11 +10,11 @@ RUN apk add --no-cache bash ca-certificates curl git jq openssh-client procps tz
 ENV PATH="/opt/pulumi:${PATH}" \
     HOME="/home/infraweave"
 RUN case "$TARGETARCH" in \
-      amd64) arch=x64; sum=1e38f0fb69a14a326cf3acfaf975770e8de5d0771042f26292f0013d237b8393 ;; \
-      arm64) arch=arm64; sum=b9c2708bd13ffdcba79f555a0532893a9b5a44efca8e225d171b8f7b605b16ce ;; \
+      amd64) arch=x64; sum=bc1b25c6ae82793ba1f0b890b2a6c0d380652694e42e8a2556736071eda9f583 ;; \
+      arm64) arch=arm64; sum=35de8596e629caf1556ac7560cdbd5b09a07a096dda0e0dd035d09bb5a3287cb ;; \
       *) exit 1 ;; \
     esac \
- && curl --fail --location --retry 3 "https://github.com/pulumi/pulumi/releases/download/v3.277.0/pulumi-v3.277.0-linux-${arch}.tar.gz" -o /tmp/pulumi.tar.gz \
+ && curl --fail --location --retry 3 "https://github.com/pulumi/pulumi/releases/download/v3.278.0/pulumi-v3.278.0-linux-${arch}.tar.gz" -o /tmp/pulumi.tar.gz \
  && echo "$sum  /tmp/pulumi.tar.gz" | sha256sum -c - \
  && mkdir /opt/pulumi \
  && tar -xzf /tmp/pulumi.tar.gz --strip-components=1 -C /opt/pulumi \
