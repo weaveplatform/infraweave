@@ -1,9 +1,10 @@
 {
   "base": "alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
   "cohorts": {
-    "opentofu": []
+    "pulumi": [],
+    "terragrunt": []
   },
-  "revision": 4,
+  "revision": 5,
   "schema": 1,
   "tools": {
     "ansible": {
@@ -25,10 +26,10 @@
     },
     "pulumi": {
       "sha256": {
-        "pulumi-v3.277.0-linux-arm64.tar.gz": "b9c2708bd13ffdcba79f555a0532893a9b5a44efca8e225d171b8f7b605b16ce",
-        "pulumi-v3.277.0-linux-x64.tar.gz": "1e38f0fb69a14a326cf3acfaf975770e8de5d0771042f26292f0013d237b8393"
+        "pulumi-v3.278.0-linux-arm64.tar.gz": "35de8596e629caf1556ac7560cdbd5b09a07a096dda0e0dd035d09bb5a3287cb",
+        "pulumi-v3.278.0-linux-x64.tar.gz": "bc1b25c6ae82793ba1f0b890b2a6c0d380652694e42e8a2556736071eda9f583"
       },
-      "version": "3.277.0"
+      "version": "3.278.0"
     },
     "terraform": {
       "previous": {
@@ -46,10 +47,10 @@
     },
     "terragrunt": {
       "sha256": {
-        "terragrunt_linux_amd64": "1ba4ad11cf6ac277e8ba59a3fdceb8576778e22f6a24bedd542e91bad9f36491",
-        "terragrunt_linux_arm64": "a730c7daf2fb7dd13e6e7b016b3a89fd4f546bc81a31f8ff19474866c566b755"
+        "terragrunt_linux_amd64": "f55f5943f7a5976b1a3675bbbe540cf81bbba3e415c18e980203f0fd664dae6b",
+        "terragrunt_linux_arm64": "ac27de1383e298a91a4268b5f300852a9ef96bf2b07b4603b5784fd790b9dc05"
       },
-      "version": "1.2.2"
+      "version": "1.2.3"
     }
   }
 }
